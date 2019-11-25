@@ -1,0 +1,92 @@
+#!/bin/bash
+# Author: Tergoev M.A.
+. "$(dirname $(readlink -f "$0"))/runlib"
+
+rm -fR "${PORT_WINE_PATH}/Games"
+rm -fR "${PORT_WINE_PATH}/Program Files"
+#rm -fR "${PORT_WINE_PATH}/data/prefix/drive_c/users/${us}"
+#rm -fR "${PORT_WINE_PATH}/data/prefix/drive_c/users/${us_dir}" 
+rm -fR "${PORT_WINE_PATH}/data/prefix/dosdevices" 
+rm -f "${PORT_WINE_PATH}/data/prefix/"*".reg" 
+rm -f "${PORT_WINE_PATH}/data/prefix/.update-timestamp"
+rm -f "${PORT_WINE_PATH}/"*".log" 
+rm -f "${config_path}/update_notifier"
+
+if [ ! -d "/home/${USER}/.local/share/applications" ]
+then
+	mkdir -p "/home/${USER}/.local/share/applications"
+fi
+
+name_desktop="${gamename}" 
+echo "[Desktop Entry]"	 		  > "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Name=${name_desktop}" 				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Exec="${PORT_WINE_PATH}/data/scripts/start""	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Type=Application" 		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Categories=Game"	    		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "StartupNotify=true" 	         >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Path="${PORT_WINE_PATH}/data/scripts/""		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Icon="${PORT_WINE_PATH}/data/img/w.png""   	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
+cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" /home/${USER}/.local/share/applications/ 
+
+name_desktop="readme" 
+echo "[Desktop Entry]"	 		   			 	   	> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Name=${name_desktop}" 				 						  >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Version=1.0"									  >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Type=Link" 									  >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Icon="${PORT_WINE_PATH}/data/img/readme.png""   				  >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "URL=${urlg}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
+
+rm -fR "${PORT_WINE_PATH}/Settings"
+mkdir -p "${PORT_WINE_PATH}/Settings"
+
+for name_desktop in "winecfg" "winereg" "winefile" "wineboot" "stop" "winecmd"
+do
+echo ""[Desktop Entry]"
+"Name=${name_desktop}"
+"Exec="${PORT_WINE_PATH}/data/scripts/${name_desktop}""
+"Type=Application"
+"Categories=Game"
+"StartupNotify=true"
+"Path="${PORT_WINE_PATH}/data/scripts/""
+"Icon="${PORT_WINE_PATH}/data/img/s.png""" > "${PORT_WINE_PATH}/Settings/${name_desktop}.desktop"
+chmod u+x "${PORT_WINE_PATH}/Settings/${name_desktop}.desktop"
+done
+
+for name_desktop in "remove" 
+do
+echo ""[Desktop Entry]"
+"Name=${name_desktop}"
+"Exec="${PORT_WINE_PATH}/data/scripts/${name_desktop}""
+"Type=Application"
+"Categories=Game"
+"StartupNotify=true"
+"Path="${PORT_WINE_PATH}/data/scripts/""
+"Icon="${PORT_WINE_PATH}/data/img/s.png""" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
+chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
+done
+
+echo ""[Desktop Entry]"
+"Name=winetricks"
+"Exec="${PORT_WINE_PATH}/data/scripts/winetricks-q-force""
+"Type=Application"
+"Categories=Game"
+"StartupNotify=true"
+"Path="${PORT_WINE_PATH}/data/scripts/""
+"Icon="${PORT_WINE_PATH}/data/img/s.png""" > "${PORT_WINE_PATH}/Settings/winetricks.desktop"
+chmod u+x "${PORT_WINE_PATH}/Settings/winetricks.desktop"
+
+cp -f "${PORT_WINE_PATH}/data/prefix/reg.xuser/"* "${PORT_WINE_PATH}/data/prefix/"
+
+sed -i "s/crossover/$us_dir/g" "${PORT_WINE_PATH}/data/prefix/"*.reg
+sed -i "s/xuser/${USER}/g" "${PORT_WINE_PATH}/data/prefix/"*.reg
+
+cp -fR "${PORT_WINE_PATH}/data/prefix/drive_c/users/Public/" "${PORT_WINE_PATH}/data/prefix/drive_c/users/$us_dir/" 
+#ln -sf "/bin/ping" "${PORT_WINE_PATH}/data/prefix/drive_c/ping.exe"
+
+ln -sf "${PORT_WINE_PATH}/data/prefix/drive_c/" "${PORT_WINE_PATH}/drive_c"
+
+ADD_IN_POST_INSTALL
+
+exit 0

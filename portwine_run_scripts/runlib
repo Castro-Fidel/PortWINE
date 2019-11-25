@@ -1,0 +1,219 @@
+#!/bin/bash
+# Author: Tergoev M.A.
+
+[ $(id -u) -eq 0 ] && echo "Do not run the script from the superuser!" && zenity --error --text "Do not run the script from the superuser!" && exit 1
+
+for PROGS in "xterm" "wget" "curl"
+do
+	if [ ! -x "`which "${PROGS}" 2>/dev/null`" ]
+	then
+		zenity --info --text "You need to install: ${PROGS}"
+	fi
+done
+
+cd "$(dirname "`readlink -f "$0"`")"
+export link="$(pwd)"
+cd "${link}/../../"
+export PORT_WINE_PATH="$(pwd)"
+cd "${link}"
+. "${link}"/vars
+
+export config_path="${PORT_WINE_PATH}/data/tmp"
+if [ ! -d "${config_path}" ]
+then
+	mkdir -p "${config_path}"
+fi
+
+if [ ! -e "${config_path}/${portname}_loc" ]
+then
+	SET_LANG=`zenity --title  "Install $portname" --text "Select the language\nВыберите язык" --list --radiolist \
+	--column="Set (Выбор)" --column "Language (Язык):" \
+	TRUE "RUS" \
+	FALSE "ENG" `
+	echo "${SET_LANG}" > "${config_path}/${portname}_loc"
+fi
+
+if [ ! -e "${config_path}/${portname}_ver" ]
+then
+	echo "10" > "${config_path}/${portname}_ver"
+fi
+
+if [ "${update_loc}" = "RUS" ] 
+then
+	LC_COLLATE_old="${LC_COLLATE}"
+	LC_CTYPE_old="${LC_CTYPE}"
+	LC_ALL_old="${LC_ALL}"
+	
+	export LC_COLLATE=ru_RU.UTF-8
+	export LC_CTYPE=ru_RU.UTF-8
+	export LC_ALL=ru_RU.UTF-8
+fi
+
+export LD_LIBRARY_PATH_OLD="${LD_LIBRARY_PATH}"
+export LD_PRELOAD_OLD="${LD_PRELOAD}"
+export PATH_OLD="$PATH"
+
+. "${link}"/lang
+
+########################################################################
+if [ ! -d "${PORT_WINE_PATH}/data/wine/lib64" ]
+then
+	export WINEARCH=win32
+	export WINELOADER="${PORT_WINE_PATH}/data/wine/bin/wine"
+	export WINEDLLPATH="${PORT_WINE_PATH}"/data/wine/lib/wine
+	export LD_LIBRARY_PATH="${PORT_WINE_PATH}"/data/wine/lib
+else
+	export WINEARCH=win64
+	export WINELOADER="${PORT_WINE_PATH}/data/wine/bin/wine64"
+	export WINEDLLPATH="${PORT_WINE_PATH}"/data/wine/lib64/wine
+	export LD_LIBRARY_PATH="${PORT_WINE_PATH}"/data/wine/lib:"${PORT_WINE_PATH}"/data/wine/lib64
+fi
+
+if [ -d "${PORT_WINE_PATH}/data/wine/include" ]
+then
+	export C_INCLUDE_PATH="${PORT_WINE_PATH}/data/wine/include"
+fi
+
+if [ ! -e "${PORT_WINE_PATH}/data/wine/share/wine/smb.conf" ]
+then
+	export us_dir="$USER" 
+	export STAGING_WRITECOPY=1
+	export STAGING_SHARED_MEMORY=1 
+else
+	export us_dir="crossover"
+fi
+
+export WINESERVER="${PORT_WINE_PATH}/data/wine/bin/wineserver"
+export WINECFG="${PORT_WINE_PATH}/data/wine/bin/winecfg"
+export WINEREG="${PORT_WINE_PATH}/data/wine/bin/regedit"
+export WINEOPEN="${PORT_WINE_PATH}/data/wine/bin/winefile" 
+export WINEBOOT="${PORT_WINE_PATH}/data/wine/bin/wineboot" 
+export WINECMD="${PORT_WINE_PATH}/data/wine/bin/wineconsole" 
+export WINEPREFIX="${PORT_WINE_PATH}/data/prefix"
+export PATH="${PORT_WINE_PATH}/data/wine/bin":${PATH}
+export WINESTART="C:\\windows\\command\\start.exe"
+
+export urlg="http://portwine-linux.ru/donate"
+#export CORES="$(getconf _NPROCESSORS_ONLN)"
+
+########################################################################
+
+START_PORTWINE ()
+{
+chown -R "$USER" "$WINEPREFIX/drive_c"
+
+gpu="0"
+export DRI_PRIME=1
+export optirun_on=env
+if [ -x "`which primusrun 2>/dev/null`" ]
+then
+	export optirun_on="primusrun"
+	gpu="1"
+elif [ -x "`which optirun 2>/dev/null`" ]
+then
+	export optirun_on="optirun -b primus"
+	gpu="1"
+fi
+
+if [ -x "`which nvidia-settings 2>/dev/null`" ]
+then
+	nvidia-settings -a [gpu:"${gpu}"]/GPUPowerMizerMode=1 > /dev/null
+	export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+fi
+
+export int_xneur=0
+if [ $(pgrep xneur)>'0' ]
+then
+	killall xneur
+	export int_xneur=1
+fi 
+
+sh "${link}"/port_update 
+
+#rm -f "$WINEPREFIX/dosdevices/z:"
+for x in "$WINEPREFIX/drive_c/users/${us_dir}/"*
+do
+	if test -h "$x" && test -d "$x"
+	then
+		rm -f "$x"
+		mkdir -p "$x"
+	fi
+done
+for x in "$WINEPREFIX/drive_c/users/${us_dir}/Desktop/"*
+do
+	if test -h "$x" && test -d "$x"
+	then
+		rm -f "$x"
+		mkdir -p "$x"
+	fi
+done
+
+#"$WINE" regedit /d 'HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Explorer\Desktop\Namespace\{9D20AAE8-0625-44B0-9CA7-71889C2254D9}'
+echo disable > "$WINEPREFIX/.update-timestamp"
+
+ADD_IN_START_PORTWINE
+} 
+########################################################################
+
+OPENGL_SET ()
+{
+if [ -e "${config_path}/dxvk" ]
+then
+	bash "${link}/dxvk/setup_dxvk.sh" "uninstall"
+	rm -f "${config_path}/dxvk"
+else
+	echo "DXVK is disabled"
+fi
+}
+
+########################################################################
+
+VULKAN_SET ()
+{
+if [ -e "${config_path}/dxvk" ]
+then
+	echo "DXVK is enabled"
+else
+	bash "${link}/dxvk/setup_dxvk.sh" "install"
+	echo "DXVK is enabled" > "${config_path}/dxvk"
+fi
+}
+
+########################################################################
+
+STOP_PORTWINE ()
+{
+echo " "
+sleep 5
+while [ $(pgrep wineserver)>'0' ]
+do
+	sleep 5
+done
+
+if [ "$int_xneur" -eq "1"  ]
+then
+	xneur &
+fi
+
+if [ "${update_loc}" = "RUS" ] 
+then
+	export LC_COLLATE="${LC_COLLATE_old}"
+	export LC_CTYPE="${LC_CTYPE_old}"
+	export LC_ALL="${LC_ALL_old}"
+fi
+
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH_OLD}"
+export LD_PRELOAD="${LD_PRELOAD_OLD}"
+export PATH="$PATH_OLD"
+
+if [ -x "`which nvidia-settings 2>/dev/null`" ]
+then
+	nvidia-settings -a [gpu:"${gpu}"]/GPUPowerMizerMode=0 > /dev/null
+fi
+
+ADD_IN_STOP_PORTWINE
+
+rm -f "${PORT_WINE_PATH}"/0
+rm -f "${link}"/0
+exit 0
+}

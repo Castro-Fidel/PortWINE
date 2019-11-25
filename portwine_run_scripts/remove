@@ -1,0 +1,20 @@
+#!/bin/bash
+# Author: Tergoev M.A.
+. "$(dirname $(readlink -f "$0"))/runlib"
+
+xsd=`zenity --title  "${port_del1}"  --text "${port_del2}" \
+--list --radiolist --column="${inst_set}" --column "${port_del3}" \
+TRUE "${port_del4}" \
+FALSE "${port_del5}" `
+if [ $? -eq 1 ];then exit 1; fi
+	case $xsd in
+		"${port_del4}")
+			exit 0 ;;
+		"${port_del5}")
+			rm -fR "/home/${USER}/.local/share/applications/${gamename}.desktop"
+			rm -fR "${PORT_WINE_PATH}" 
+			rm -fR "/home/${USER}/.config/${portname}" 
+			ADD_IN_POST_UNINSTALL
+			zenity --info --title "PortWINE ${port_del6}!" --text "$portname ${port_del6}!" --no-wrap ;;
+	esac 
+exit 0

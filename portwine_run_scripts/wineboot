@@ -1,0 +1,13 @@
+#!/bin/bash
+# Author: Tergoev M.A.
+
+. "$(dirname "`readlink -f "$0"`")"/runlib
+rm -f ${link}/winetricks
+"/usr/bin/xterm" -e wget  -T 3 --output-document="${link}/winetricks" https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks
+chmod +x "${link}/winetricks" 
+sed -i '2a . $(dirname $(readlink -f "$0"))/runlib\nSTART_PORTWINE\nexport WINELOADER="${PORT_WINE_PATH}/data/wine/bin/wine" ' "${link}/winetricks" 
+sleep 1
+export WINEDEBUG=""
+"/usr/bin/xterm" -e "${WINEBOOT}" -u
+rm -f "${config_path}/dxvk"
+STOP_PORTWINE
