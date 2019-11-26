@@ -1,8 +1,12 @@
 #!/bin/bash
 # Author: Tergoev M.A.
 ########################################################################
+sszen() {
+zenity --progress --title="Settings..." --text="Updating start parameters" --pulsate --auto-close --auto-kill --width=450
+} 
+########################################################################
 . "$(dirname $(readlink -f "$0"))/runlib"
-wget -T 2 --output-document="${link}/dxvk.tar.gz" $(curl —silent "https://api.github.com/repos/doitsujin/dxvk/releases/latest" | grep -Po '"browser_download_url": "\K.*?(?=")')
+wget -T 2 --output-document="${link}/dxvk.tar.gz" $(curl —silent "https://api.github.com/repos/doitsujin/dxvk/releases/latest" | grep -Po '"browser_download_url": "\K.*?(?=")') | sszen 
 if [ $? -eq 1 ]; then 
 	zenity --error --title "Ошибка!" --text "Не удалось скачать скрипт установки DXVK, проверьте соединение с интернетом и повторите настройку запустив ярлык start_settings из каталога: \n\n"${PORT_WINE_PATH}/settings/"" --no-wrap
 	exit 1; 
@@ -15,16 +19,16 @@ rm -fr "${link}"/dxvk-*
 start_settings=`zenity --title  "Опции запуска" --text "Выбирете желаемый вариант запуска ${portname}. Вы всегда можете изменить свой выбор, \nзапустив ярлык start_settings из каталога: \n"${PORT_WINE_PATH}"/settings/" --list --radiolist \
 --column="${inst_set}" --column "Версия" --column "Совместимость"  --width=600 --height=300 \
 TRUE "Cтандартный запуск" "Старый запуск, с вопросами и логами" \
-FALSE "Только OpenGL" "Использовать библиотеки WINE" \
-FALSE "Только DXVK_latest" "AMD/Intel: latest: Nvidia: latest" \
-FALSE "Только DXVK_1.2.3" "AMD/Intel: Mesa 19.1-git+: Nvidia: 418.52.05+" \
-FALSE "Только DXVK_1.0.3" "AMD: Mesa 18.1.2+; Nvidia:396.24.02+" `
+FALSE "OpenGL" "Использовать библиотеки WINE" \
+FALSE "DXVK_latest" "AMD/Intel: latest: Nvidia: latest" \
+FALSE "DXVK_1.2.3" "AMD/Intel: Mesa 19.1-git+: Nvidia: 418.52.05+" \
+FALSE "DXVK_1.0.3" "AMD: Mesa 18.1.2+; Nvidia:396.24.02+" `
 
 if [ $? -eq 1 ];then exit 1; fi
 case $start_settings in
-	"Только стандартный запуск") 
+	"Cтандартный запуск") 
 
-bash "${link}/setup_dxvk.sh" "uninstall"
+bash "${link}/setup_dxvk.sh" "uninstall" | sszen 
 if [ -e "${config_path}/dxvk" ]
 then
 	rm -f "${config_path}/dxvk"
@@ -76,7 +80,7 @@ EOF
 ;;
 	"OpenGL") 
 
-bash "${link}/setup_dxvk.sh" "uninstall"
+bash "${link}/setup_dxvk.sh" "uninstall" | sszen 
 if [ -e "${config_path}/dxvk" ]
 then
 	rm -f "${config_path}/dxvk"
@@ -94,8 +98,8 @@ EOF
 ;;
 	"DXVK_1.0.3") 
 
-bash "${link}/setup_dxvk.sh" "uninstall"
-sh "${link}/winetricks" -q --force dxvk103
+bash "${link}/setup_dxvk.sh" "uninstall" | sszen 
+sh "${link}/winetricks" -q --force dxvk103 | sszen 
 echo "DXVK is enabled" > "${config_path}/dxvk"
 
 cat > "${link}/start" <<EOF
@@ -110,8 +114,8 @@ EOF
 ;;
 	"DXVK_1.2.3") 
 
-bash "${link}/setup_dxvk.sh" "uninstall"
-sh "${link}/winetricks" -q --force dxvk123
+bash "${link}/setup_dxvk.sh" "uninstall" | sszen 
+sh "${link}/winetricks" -q --force dxvk123 | sszen 
 echo "DXVK is enabled" > "${config_path}/dxvk"
 
 cat > "${link}/start" <<EOF
