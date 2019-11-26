@@ -1,42 +1,4 @@
 #!/bin/bash
 # Author: Tergoev M.A.
 . "$(dirname $(readlink -f "$0"))/runlib"
-xsd=`zenity --title  "${port_start1}" --text "${port_start2}" --list --radiolist --height=260 \
---column="${inst_set}" --column "${port_start3}" \
-FALSE "${port_start4}" \
-TRUE "${port_start8}" \
-FALSE "${port_start6} (${port_start4})" \
-FALSE "${port_start6} (DXVK)" `
-
-if [ $? -eq 1 ];then exit 1; fi
-case $xsd in
-	"${port_start4}")
-		START_PORTWINE
-		WINE_DX_TO_OPENGL
-		OPENGL_SET
-		"${optirun_on}" "${WINELOADER}" "${gamestart}" "${launch_parameters}" ;;
-
-	"${port_start6} (${port_start4})")
-		START_PORTWINE
-		WINE_DX_TO_OPENGL
-		OPENGL_SET		
-		. "${link}/debug" ;;
-
-	"${port_start6} (DXVK)")
-		START_PORTWINE
-		WINE_DX_TO_VULKAN 
-		VULKAN_SET
-		. "${link}/debug" ;;
-
-	"${port_start8}")
-		START_PORTWINE
-		WINE_DX_TO_VULKAN 
-		VULKAN_SET
-		"${optirun_on}" "${WINELOADER}" "${gamestart}" "${launch_parameters}" ;;
-
-esac 
-
-STOP_PORTWINE 
-
-
-
+sh "${link}"/start_settings
