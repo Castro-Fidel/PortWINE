@@ -16,17 +16,17 @@ tar -xzvf "${link}"/dxvk.tar.gz -C "${link}"
 rm -f "${link}"/dxvk.tar.gz
 mv "${link}"/dxvk-*/setup_dxvk.sh "${link}"/setup_dxvk.sh
 rm -fr "${link}"/dxvk-*
-start_settings=`zenity --title  "Опции запуска" --text "Выбирете желаемый вариант запуска ${portname}. Вы всегда можете изменить свой выбор, \nзапустив ярлык start_settings из каталога: \n"${PORT_WINE_PATH}"/settings/" --list --radiolist \
---column="${inst_set}" --column "Версия" --column "Совместимость"  --width=600 --height=300 \
-TRUE "Cтандартный запуск" "Старый запуск, с вопросами и логами" \
-FALSE "OpenGL" "Использовать библиотеки WINE" \
+start_settings=`zenity --title  "${ss_title}" --text "${ss_text}" --list --radiolist \
+--column="${inst_set}" --column "${ss_ver}" --column "${ss_dr}"  --width=600 --height=300 \
+TRUE "${ss_default_1}" "${ss_default_2}" \
+FALSE "OpenGL" "${ss_ogl_2}" \
 FALSE "DXVK_latest" "AMD/Intel: latest: Nvidia: latest" \
 FALSE "DXVK_1.2.3" "AMD/Intel: Mesa 19.1-git+: Nvidia: 418.52.05+" \
 FALSE "DXVK_1.0.3" "AMD: Mesa 18.1.2+; Nvidia:396.24.02+" `
 
 if [ $? -eq 1 ];then exit 1; fi
 case $start_settings in
-	"Cтандартный запуск") 
+	"${ss_default_1}") 
 
 bash "${link}/setup_dxvk.sh" "uninstall" | sszen 
 if [ -e "${config_path}/dxvk" ]
@@ -108,7 +108,7 @@ cat > "${link}/start" <<EOF
 . "\$(dirname \$(readlink -f "\$0"))/runlib"
 START_PORTWINE
 WINE_DX_TO_VULKAN 
-"\${optirun_on}" "\${WINELOADER}" "\${gamestart}" "\${launch_parameters}" ;;
+"\${optirun_on}" "\${WINELOADER}" "\${gamestart}" "\${launch_parameters}" 
 STOP_PORTWINE
 EOF
 ;;
@@ -124,14 +124,14 @@ cat > "${link}/start" <<EOF
 . "\$(dirname \$(readlink -f "\$0"))/runlib"
 START_PORTWINE
 WINE_DX_TO_VULKAN 
-"\${optirun_on}" "\${WINELOADER}" "\${gamestart}" "\${launch_parameters}" ;;
+"\${optirun_on}" "\${WINELOADER}" "\${gamestart}" "\${launch_parameters}" 
 STOP_PORTWINE
 EOF
 ;;
 	"DXVK_latest") 
 
-bash "${link}/setup_dxvk.sh" "uninstall"
-sh "${link}/winetricks" -q --force dxvk
+bash "${link}/setup_dxvk.sh" "uninstall" | sszen
+sh "${link}/winetricks" -q --force dxvk | sszen
 echo "DXVK is enabled" > "${config_path}/dxvk"
 
 cat > "${link}/start" <<EOF
@@ -140,43 +140,11 @@ cat > "${link}/start" <<EOF
 . "\$(dirname \$(readlink -f "\$0"))/runlib"
 START_PORTWINE
 WINE_DX_TO_VULKAN 
-"\${optirun_on}" "\${WINELOADER}" "\${gamestart}" "\${launch_parameters}" ;;
+"\${optirun_on}" "\${WINELOADER}" "\${gamestart}" "\${launch_parameters}" 
 STOP_PORTWINE
 EOF
 ;;
 
 esac 
 ########################################################################
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
