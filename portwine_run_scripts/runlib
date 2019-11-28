@@ -61,12 +61,22 @@ then
 	export WINEARCH=win32
 	export WINELOADER="${PORT_WINE_PATH}/data/wine/bin/wine"
 	export WINEDLLPATH="${PORT_WINE_PATH}"/data/wine/lib/wine
-	export LD_LIBRARY_PATH="${PORT_WINE_PATH}"/data/wine/lib
+	if [ "$runtime_libs" -eq "1"  ]
+	then
+		export LD_LIBRARY_PATH="${PORT_WINE_PATH}"/data/wine/runtime-lib:"${PORT_WINE_PATH}"/data/wine/lib:${LD_LIBRARY_PATH}
+	else
+		export LD_LIBRARY_PATH="${PORT_WINE_PATH}"/data/wine/lib:${LD_LIBRARY_PATH}
+	fi
 else
 	export WINEARCH=win64
 	export WINELOADER="${PORT_WINE_PATH}/data/wine/bin/wine64"
 	export WINEDLLPATH="${PORT_WINE_PATH}"/data/wine/lib64/wine
-	export LD_LIBRARY_PATH="${PORT_WINE_PATH}"/data/wine/lib:"${PORT_WINE_PATH}"/data/wine/lib64
+	if [ "$runtime_libs" -eq "1"  ]
+	then
+		export LD_LIBRARY_PATH="${PORT_WINE_PATH}"/data/wine/runtime-lib_64:"${PORT_WINE_PATH}"/data/wine/runtime-lib:"${PORT_WINE_PATH}"/data/wine/lib64:"${PORT_WINE_PATH}"/data/wine/lib:${LD_LIBRARY_PATH}
+	else
+		export LD_LIBRARY_PATH="${PORT_WINE_PATH}"/data/wine/lib64:"${PORT_WINE_PATH}"/data/wine/lib:${LD_LIBRARY_PATH}
+	fi
 fi
 
 if [ -d "${PORT_WINE_PATH}/data/wine/include" ]
