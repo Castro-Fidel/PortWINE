@@ -1,5 +1,18 @@
 #!/bin/bash
-# Author: Tergoev M.A.
+# Author: PortWINE-Linux.ru
+. "$(dirname $(readlink -f "$0"))/runlib"
+
+if [ -e "${config_path}/dxvk" ]
+then
+	START_PORTWINE
+	WINE_DX_TO_VULKAN 
+	VULKAN_SET
+else
+	START_PORTWINE
+	WINE_DX_TO_OPENGL
+	OPENGL_SET
+fi
+
 echo "${port_deb1}" > "${PORT_WINE_PATH}/${portname}.log"
 echo "${port_deb2}" >> "${PORT_WINE_PATH}/${portname}.log"
 echo "--------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
@@ -43,9 +56,11 @@ echo "Version WINE in the Port" >> "${PORT_WINE_PATH}/${portname}.log"
 echo "--------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
 echo "log WINE" >> "${PORT_WINE_PATH}/${portname}.log"
 
-export WINEDEBUG="fixme-all,+vulkan,-trace"
+export WINEDEBUG="warn+all"
 export VK_LOADER_DEBUG=-all
-export DXVK_LOG_LEVEL=debug
+export DXVK_LOG_LEVEL="info"
+export VKD3D_DEBUG="warn"
+export DXVK_HUD="fps,devinfo"
 
 "${optirun_on}" "${WINELOADER}" "${gamestart}" "${launch_parameters}" 2>> "${PORT_WINE_PATH}/${portname}.log"
 
