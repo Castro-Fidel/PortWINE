@@ -1,7 +1,7 @@
 #!/bin/bash
 # Author: PortWINE-Linux.ru
 
-[ $(id -u) -eq 0 ] && echo "Do not run the script from the superuser!" && zenity --error --text "Do not run the script from the superuser!" && exit 1
+[ $(id -u) -eq 0 ] && echo "Do not run this script as root!" && zenity --error --text "Do not run this script as root!" && exit 1
 
 for PROGS in "xterm" "wget" "curl"
 do
@@ -56,61 +56,82 @@ export PATH_OLD="$PATH"
 . "${link}"/lang
 
 ########################################################################
-if [ ! -d "${PORT_WINE_PATH}/data/wine/lib64" ]
+GLIBC_REQUIRED=2.27
+GLIBC_VERSION="$(ldd --version | head -n1 | sed 's/\(.*\) //g' | sed 's/\.[^.]*//2g')"
+if [ "$(echo "${GLIBC_VERSION//./}")" -lt "$(echo "${GLIBC_REQUIRED//./}")" ]; then
+	WINEDIR="${PORT_WINE_PATH}"/data/wine_glibc_223 
+else
+	WINEDIR="${PORT_WINE_PATH}"/data/wine_glibc_227
+fi
+########################################################################
+if [ ! -d "${WINEDIR}/lib64" ]
 then
 	export WINEARCH=win32
-	export WINELOADER="${PORT_WINE_PATH}/data/wine/bin/wine"
-	export WINEDLLPATH="${PORT_WINE_PATH}"/data/wine/lib/wine
+	export WINELOADER="${WINEDIR}/bin/wine"
+	export WINEDLLPATH="${WINEDIR}/lib/wine"
 	if [ "$runtime_libs" -eq "1"  ]
 	then
-		export LD_LIBRARY_PATH="${PORT_WINE_PATH}"/data/wine/runtime-lib_i386:"${PORT_WINE_PATH}"/data/wine/lib:${LD_LIBRARY_PATH}
+		export LD_LIBRARY_PATH=${WINEDIR}/runtime-lib_i386:${WINEDIR}/lib:${LD_LIBRARY_PATH}
 	else
-		export LD_LIBRARY_PATH="${PORT_WINE_PATH}"/data/wine/lib:${LD_LIBRARY_PATH}
+		export LD_LIBRARY_PATH=${WINEDIR}/lib:${LD_LIBRARY_PATH}
 	fi
 else
 	export WINEARCH=win64
-	export WINELOADER="${PORT_WINE_PATH}/data/wine/bin/wine64"
-	export WINEDLLPATH="${PORT_WINE_PATH}"/data/wine/lib64/wine
+	export WINELOADER="${WINEDIR}/bin/wine64"
+	export WINEDLLPATH="${WINEDIR}/lib64/wine"
 	if [ "$runtime_libs" -eq "1"  ]
 	then
-		export LD_LIBRARY_PATH="${PORT_WINE_PATH}"/data/wine/runtime-lib_x86_64:"${PORT_WINE_PATH}"/data/wine/runtime-lib_i386:"${PORT_WINE_PATH}"/data/wine/lib64:"${PORT_WINE_PATH}"/data/wine/lib:${LD_LIBRARY_PATH}
+		export LD_LIBRARY_PATH=${WINEDIR}/runtime-lib_x86_64:${WINEDIR}/runtime-lib_i386:${WINEDIR}/lib64:${WINEDIR}/lib:${LD_LIBRARY_PATH}
 	else
-		export LD_LIBRARY_PATH="${PORT_WINE_PATH}"/data/wine/lib64:"${PORT_WINE_PATH}"/data/wine/lib:${LD_LIBRARY_PATH}
+		export LD_LIBRARY_PATH=${WINEDIR}/lib64:${WINEDIR}/lib:${LD_LIBRARY_PATH}
 	fi
 fi
 
-if [ -d "${PORT_WINE_PATH}/data/wine/include" ]
-then
-	export C_INCLUDE_PATH="${PORT_WINE_PATH}/data/wine/include"
-fi
-
-if [ ! -e "${PORT_WINE_PATH}/data/wine/share/wine/smb.conf" ]
+if [ ! -e "${WINEDIR}/share/wine/smb.conf" ]
 then
 	export us_dir="$USER" 
 	export STAGING_WRITECOPY=1
-	export STAGING_SHARED_MEMORY=1 
 else
 	export us_dir="crossover"
 fi
 
-export WINESERVER="${PORT_WINE_PATH}/data/wine/bin/wineserver"
-export WINECFG="${PORT_WINE_PATH}/data/wine/bin/winecfg"
-export WINEREG="${PORT_WINE_PATH}/data/wine/bin/regedit"
-export WINEOPEN="${PORT_WINE_PATH}/data/wine/bin/winefile" 
-export WINEBOOT="${PORT_WINE_PATH}/data/wine/bin/wineboot" 
-export WINECMD="${PORT_WINE_PATH}/data/wine/bin/wineconsole" 
+export WINESERVER="${WINEDIR}/bin/wineserver"
+export WINECFG="${WINEDIR}/bin/winecfg"
+export WINEREG="${WINEDIR}/bin/regedit"
+export WINEOPEN="${WINEDIR}/bin/winefile" 
+export WINEBOOT="${WINEDIR}/bin/wineboot" 
+export WINECMD="${WINEDIR}/bin/wineconsole" 
 export WINEPREFIX="${PORT_WINE_PATH}/data/prefix"
-export PATH="${PORT_WINE_PATH}/data/wine/bin":${PATH}
+export PATH="${WINEDIR}/bin":${PATH}
 export WINESTART="C:\\windows\\command\\start.exe"
 
 export urlg="http://portwine-linux.ru/donate"
 #export CORES="$(getconf _NPROCESSORS_ONLN)"
 
+export WINEFSYNC=1
+export PROTON_NO_FSYNC=0
+
+# Check if Wine has PBA or ESYNC features
+if grep PBA "${WINEDIR}/lib/wine/wined3d.dll.so" &>/dev/null || grep PBA "${WINEDIR}/lib64/wine/wined3d.dll.so" &>/dev/null; then
+	PBA_ENABLE=1
+else
+	PBA_ENABLE=0
+fi
+
+if grep ESYNC "${WINEDIR}/lib/wine/ntdll.dll.so" &>/dev/null || grep ESYNC "${WINEDIR}/lib64/wine/ntdll.dll.so" &>/dev/null; 
+then
+	if ! ulimit -n 500000 &>/dev/null; then
+		export WINEESYNC=0
+	else
+		export WINEESYNC=1
+	fi
+fi
 ########################################################################
 
 START_PORTWINE ()
 {
 chown -R "$USER" "$WINEPREFIX/drive_c"
+chown -R "$USER" "$WINEPREFIX"/*.reg
 
 gpu="0"
 export DRI_PRIME=1
@@ -174,6 +195,12 @@ then
 else
 	echo "DXVK is disabled"
 fi
+export PROTON_USE_WINED3D=1
+export PROTON_USE_D9VK=0
+export DXVK_STATE_CACHE=0
+export __GL_SHADER_DISK_CACHE_PATH="${PATH_TO_GAME}" 
+export __GL_SHADER_DISK_CACHE=1
+export mesa_glthread="true"
 }
 
 ########################################################################
@@ -187,6 +214,11 @@ else
 	sh "${link}/winetricks" -q --force dxvk
 	echo "DXVK is enabled" > "${config_path}/dxvk"
 fi
+export PROTON_USE_WINED3D=0
+export __GL_SHADER_DISK_CACHE=0
+export DXVK_STATE_CACHE_PATH="${PATH_TO_GAME}"
+export DXVK_STATE_CACHE=1
+export mesa_glthread="false"
 }
 
 ########################################################################
