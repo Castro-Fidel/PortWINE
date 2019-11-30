@@ -56,13 +56,16 @@ export PATH_OLD="$PATH"
 . "${link}"/lang
 
 ########################################################################
-GLIBC_REQUIRED=2.27
+GLIBC_REQUIRED=2.23
 GLIBC_VERSION="$(ldd --version | head -n1 | sed 's/\(.*\) //g' | sed 's/\.[^.]*//2g')"
-if [ "$(echo "${GLIBC_VERSION//./}")" -lt "$(echo "${GLIBC_REQUIRED//./}")" ]; then
+
+if [ "$(echo ${GLIBC_VERSION} | sed 's/\.//g')" -lt "$(echo ${GLIBC_REQUIRED} | sed 's/\.//g')" ]
+then
 	WINEDIR="${PORT_WINE_PATH}"/data/wine_glibc_223 
 else
 	WINEDIR="${PORT_WINE_PATH}"/data/wine_glibc_227
 fi
+echo "Used WINE: ${WINEDIR}"
 ########################################################################
 if [ ! -d "${WINEDIR}/lib64" ]
 then
@@ -112,20 +115,22 @@ export WINEFSYNC=1
 export PROTON_NO_FSYNC=0
 
 # Check if Wine has PBA or ESYNC features
-if grep PBA "${WINEDIR}/lib/wine/wined3d.dll.so" &>/dev/null || grep PBA "${WINEDIR}/lib64/wine/wined3d.dll.so" &>/dev/null; then
+if grep PBA "${WINEDIR}/lib/wine/wined3d.dll.so" &>/dev/null || grep PBA "${WINEDIR}/lib64/wine/wined3d.dll.so" &>/dev/null
+then
 	PBA_ENABLE=1
 else
 	PBA_ENABLE=0
 fi
 
-if grep ESYNC "${WINEDIR}/lib/wine/ntdll.dll.so" &>/dev/null || grep ESYNC "${WINEDIR}/lib64/wine/ntdll.dll.so" &>/dev/null; 
-then
-	if ! ulimit -n 500000 &>/dev/null; then
+#if grep ESYNC "${WINEDIR}/lib/wine/ntdll.dll.so" &>/dev/null || grep ESYNC "${WINEDIR}/lib64/wine/ntdll.dll.so" &>/dev/null
+#then
+#	if ! ulimit -n 500000 &>/dev/null
+#	then
 		export WINEESYNC=0
-	else
-		export WINEESYNC=1
-	fi
-fi
+#	else
+#		export WINEESYNC=1
+#	fi
+#fi
 ########################################################################
 
 START_PORTWINE ()
@@ -151,13 +156,6 @@ then
 	nvidia-settings -a [gpu:"${gpu}"]/GPUPowerMizerMode=1 > /dev/null
 	export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
 fi
-
-export int_xneur=0
-if [ $(pgrep xneur)>'0' ]
-then
-	killall xneur
-	export int_xneur=1
-fi 
 
 sh "${link}"/port_update 
 
@@ -231,11 +229,6 @@ while [ $(pgrep wineserver)>'0' ]
 do
 	sleep 5
 done
-
-if [ "$int_xneur" -eq "1"  ]
-then
-	xneur &
-fi
 
 if [ "${update_loc}" = "RUS" ] 
 then
