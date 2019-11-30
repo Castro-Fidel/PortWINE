@@ -56,14 +56,22 @@ export PATH_OLD="$PATH"
 . "${link}"/lang
 
 ########################################################################
-GLIBC_REQUIRED=2.23
+GLIBC_REQUIRED=2.27
 GLIBC_VERSION="$(ldd --version | head -n1 | sed 's/\(.*\) //g' | sed 's/\.[^.]*//2g')"
 
 if [ "$(echo ${GLIBC_VERSION} | sed 's/\.//g')" -lt "$(echo ${GLIBC_REQUIRED} | sed 's/\.//g')" ]
 then
-	WINEDIR="${PORT_WINE_PATH}"/data/wine_glibc_223 
+	WINEDIR="${PORT_WINE_PATH}"/data/wine_glibc_223
+	if [ -d "${PORT_WINE_PATH}/data/wine_glibc_227" ]
+	then
+		rm -fr "${PORT_WINE_PATH}"/data/wine_glibc_227
+	fi
 else
 	WINEDIR="${PORT_WINE_PATH}"/data/wine_glibc_227
+	if [ -d "${PORT_WINE_PATH}/data/wine_glibc_223" ]
+	then
+		rm -fr "${PORT_WINE_PATH}"/data/wine_glibc_223
+	fi
 fi
 echo "Used WINE: ${WINEDIR}"
 ########################################################################
@@ -131,6 +139,8 @@ fi
 #		export WINEESYNC=1
 #	fi
 #fi
+
+${WINESERVER} -k
 ########################################################################
 
 START_PORTWINE ()
@@ -181,6 +191,7 @@ done
 echo disable > "$WINEPREFIX/.update-timestamp"
 
 ADD_IN_START_PORTWINE
+${WINEBOOT} -r
 } 
 ########################################################################
 
@@ -188,7 +199,7 @@ OPENGL_SET ()
 {
 if [ -e "${config_path}/dxvk" ]
 then
-	bash "${link}/setup_dxvk.sh" "uninstall"
+	sh "${link}/setup_dxvk.sh" "uninstall"
 	rm -f "${config_path}/dxvk"
 else
 	echo "DXVK is disabled"
@@ -199,6 +210,13 @@ export DXVK_STATE_CACHE=0
 export __GL_SHADER_DISK_CACHE_PATH="${PATH_TO_GAME}" 
 export __GL_SHADER_DISK_CACHE=1
 export mesa_glthread="true"
+
+if [ -x "`which nvidia-settings 2>/dev/null`" ]
+then
+	export LD_PRELOAD="libpthread.so.0 libGL.so.1" 
+	export __GL_THREADED_OPTIMIZATIONS=1
+fi
+
 }
 
 ########################################################################

@@ -6,15 +6,19 @@ zenity --progress --title="Settings..." --text="Updating start parameters" --pul
 } 
 ########################################################################
 . "$(dirname $(readlink -f "$0"))/runlib"
-wget -T 2 --output-document="${link}/dxvk.tar.gz" $(curl —silent "https://api.github.com/repos/doitsujin/dxvk/releases/latest" | grep -Po '"browser_download_url": "\K.*?(?=")') | sszen 
-if [ $? -eq 1 ]; then 
+${WINESERVER} -k
+wget -T 5 --output-document="${link}/dxvk.tar.gz" $(curl —silent "https://api.github.com/repos/doitsujin/dxvk/releases/latest" | grep -Po '"browser_download_url": "\K.*?(?=")') | sszen 
+if [ $? -eq 1 ]
+then 
 	zenity --error --title "Ошибка!" --text "Не удалось скачать скрипт установки DXVK, проверьте соединение с интернетом и повторите настройку запустив ярлык start_settings из каталога: \n\n"${PORT_WINE_PATH}/settings/"" --no-wrap
-	exit 1; 
+	exit 1 
 fi 
 rm -f "${link}"/setup_dxvk.sh
+rm -fr "${link}"/x32
+rm -fr "${link}"/x64
 tar -xzvf "${link}"/dxvk.tar.gz -C "${link}"
 rm -f "${link}"/dxvk.tar.gz
-mv "${link}"/dxvk-*/setup_dxvk.sh "${link}"/setup_dxvk.sh
+mv "${link}"/dxvk-*/* "${link}"/
 rm -fr "${link}"/dxvk-*
 start_settings=`zenity --title  "${ss_title}" --text "${ss_text}" --list --radiolist \
 --column="${inst_set}" --column "${ss_ver}" --column "${ss_dr}"  --width=600 --height=300 \
@@ -23,12 +27,12 @@ FALSE "OpenGL" "${ss_ogl_2}" \
 FALSE "DXVK_latest" "AMD/Intel: latest: Nvidia: latest" \
 FALSE "DXVK_1.2.3" "AMD/Intel: Mesa 19.1-git+: Nvidia: 418.52.05+" \
 FALSE "DXVK_1.0.3" "AMD: Mesa 18.1.2+; Nvidia:396.24.02+" `
-
 if [ $? -eq 1 ];then exit 1; fi
+
 case $start_settings in
 	"${ss_default_1}") 
 
-bash "${link}/setup_dxvk.sh" "uninstall" | sszen 
+sh "${link}/setup_dxvk.sh" "uninstall" | sszen 
 if [ -e "${config_path}/dxvk" ]
 then
 	rm -f "${config_path}/dxvk"
@@ -66,7 +70,7 @@ EOF
 ;;
 	"OpenGL") 
 
-bash "${link}/setup_dxvk.sh" "uninstall" | sszen 
+sh "${link}/setup_dxvk.sh" "uninstall" | sszen 
 if [ -e "${config_path}/dxvk" ]
 then
 	rm -f "${config_path}/dxvk"
@@ -84,7 +88,7 @@ EOF
 ;;
 	"DXVK_1.0.3") 
 
-bash "${link}/setup_dxvk.sh" "uninstall" | sszen 
+sh "${link}/setup_dxvk.sh" "uninstall" | sszen 
 sh "${link}/winetricks" -q --force dxvk103 | sszen 
 echo "DXVK is enabled" > "${config_path}/dxvk"
 
@@ -100,7 +104,7 @@ EOF
 ;;
 	"DXVK_1.2.3") 
 
-bash "${link}/setup_dxvk.sh" "uninstall" | sszen 
+sh "${link}/setup_dxvk.sh" "uninstall" | sszen 
 sh "${link}/winetricks" -q --force dxvk123 | sszen 
 echo "DXVK is enabled" > "${config_path}/dxvk"
 
@@ -116,7 +120,7 @@ EOF
 ;;
 	"DXVK_latest") 
 
-bash "${link}/setup_dxvk.sh" "uninstall" | sszen
+sh "${link}/setup_dxvk.sh" "uninstall" | sszen
 sh "${link}/winetricks" -q --force dxvk | sszen
 echo "DXVK is enabled" > "${config_path}/dxvk"
 
@@ -131,6 +135,7 @@ STOP_PORTWINE
 EOF
 ;;
 
-esac 
+esac
 ########################################################################
+
 
