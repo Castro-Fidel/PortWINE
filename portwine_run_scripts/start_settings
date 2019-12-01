@@ -1,28 +1,6 @@
 #!/bin/bash
 # Author: PortWINE-Linux.ru
-########################################################################
-sszen() {
-zenity --progress --title="Settings..." --text="Updating start parameters" --pulsate --auto-close --auto-kill --width=450
-} 
-########################################################################
 . "$(dirname $(readlink -f "$0"))/runlib"
-${WINESERVER} -k
-wget -T 5 --output-document="${link}/dxvk.tar.gz" $(curl —silent "https://api.github.com/repos/doitsujin/dxvk/releases/latest" | grep -Po '"browser_download_url": "\K.*?(?=")') | sszen 
-if [ $? -eq 1 ]
-then 
-	zenity --error --title "Ошибка!" --text "Не удалось скачать скрипт установки DXVK, проверьте соединение с интернетом и повторите настройку запустив ярлык start_settings из каталога: \n\n"${PORT_WINE_PATH}/settings/"" --no-wrap
-	exit 1 
-fi 
-rm -f "${link}"/setup_dxvk.sh
-rm -fr "${link}"/x32
-rm -fr "${link}"/x64
-tar -xzvf "${link}"/dxvk.tar.gz -C "${link}"
-rm -f "${link}"/dxvk.tar.gz
-mv "${link}"/dxvk-*/* "${link}"/
-rm -fr "${link}"/dxvk-*
-
-sed -i 's/\*d/d/g' "${WINEPREFIX}/user.reg"
-
 start_settings=`zenity --title  "${ss_title}" --text "${ss_text}" --list --radiolist \
 --column="${inst_set}" --column "${ss_ver}" --column "${ss_dr}"  --width=600 --height=300 \
 TRUE "${ss_default_1}" "${ss_default_2}" \
@@ -31,18 +9,16 @@ FALSE "DXVK_latest" "AMD/Intel: latest: Nvidia: latest" \
 FALSE "DXVK_1.2.3" "AMD/Intel: Mesa 19.1-git+: Nvidia: 418.52.05+" \
 FALSE "DXVK_1.0.3" "AMD: Mesa 18.1.2+; Nvidia:396.24.02+" `
 if [ $? -eq 1 ];then exit 1; fi
-
 case $start_settings in
 	"${ss_default_1}") 
-
-sh "${link}/setup_dxvk.sh" "uninstall" | sszen 
-if [ -e "${config_path}/dxvk" ]
+RM_DXVK | sszen
+if grep DXVK "${WINEPREFIX}/drive_c/windows/system32/d3d11.dll" || grep DXVK "${WINEPREFIX}/drive_c/windows/syswow64/d3d11.dll" 
 then
-	rm -f "${config_path}/dxvk"
+	echo "error replacing DXVK files"
 else
-	echo "DXVK is disabled"
+	echo "Ok. DXVK is disabled"
 fi
-
+STOP_PORTWINE | sszen
 cat > "${link}/start" <<EOF
 #!/bin/bash
 # Author: Tergoev M.A.
@@ -51,34 +27,32 @@ xsd=\`zenity --title  "\${port_start1}" --text "\${port_start2}" --list --radiol
 --column="\${inst_set}" --column "\${port_start3}" \\
 TRUE "\${port_start4}" \\
 FALSE "\${port_start8}"  \`
-
 if [ \$? -eq 1 ];then exit 1; fi
 case \$xsd in
 	"\${port_start4}")
 		START_PORTWINE
 		WINE_DX_TO_OPENGL
 		OPENGL_SET
-		"/usr/bin/xterm" -geometry 150x10 -sb -e '"\${optirun_on}" "\${WINELOADER}" "\${gamestart}" "\${launch_parameters}"' ;;
+		"/usr/bin/xterm" -geometry 130x13 -sb -e 'echo "--------------------------------------------------------PORTWINE-LINUX.RU--------------------------------------------------------" && "\${optirun_on}" "\${WINELOADER}" "\${gamestart}" "\${launch_parameters}"' ;;
 
 	"\${port_start8}")
 		START_PORTWINE
 		WINE_DX_TO_VULKAN 
 		VULKAN_SET
-		"/usr/bin/xterm" -geometry 150x10 -sb -e '"\${optirun_on}" "\${WINELOADER}" "\${gamestart}" "\${launch_parameters}"' ;;
-
+		"/usr/bin/xterm" -geometry 130x13 -sb -e 'echo "--------------------------------------------------------PORTWINE-LINUX.RU--------------------------------------------------------" && "\${optirun_on}" "\${WINELOADER}" "\${gamestart}" "\${launch_parameters}"' ;;
 esac 
-
 STOP_PORTWINE
 EOF
 ;;
 	"OpenGL") 
-
-sh "${link}/setup_dxvk.sh" "uninstall" | sszen 
-if [ -e "${config_path}/dxvk" ]
+RM_DXVK | sszen
+if grep DXVK "${WINEPREFIX}/drive_c/windows/system32/d3d11.dll" || grep DXVK "${WINEPREFIX}/drive_c/windows/syswow64/d3d11.dll" 
 then
-	rm -f "${config_path}/dxvk"
+	echo "error replacing DXVK files"
+else
+	echo "Ok. DXVK is disabled"
 fi
-
+STOP_PORTWINE | sszen
 cat > "${link}/start" <<EOF
 #!/bin/bash
 # Author: Tergoev M.A.
@@ -86,16 +60,19 @@ cat > "${link}/start" <<EOF
 START_PORTWINE
 WINE_DX_TO_OPENGL
 OPENGL_SET
-"/usr/bin/xterm" -geometry 150x10 -sb -e '"\${optirun_on}" "\${WINELOADER}" "\${gamestart}" "\${launch_parameters}"'
+"/usr/bin/xterm" -geometry 130x13 -sb -e 'echo "--------------------------------------------------------PORTWINE-LINUX.RU--------------------------------------------------------" && "\${optirun_on}" "\${WINELOADER}" "\${gamestart}" "\${launch_parameters}"'
 STOP_PORTWINE
 EOF
 ;;
 	"DXVK_1.0.3") 
-
-sh "${link}/setup_dxvk.sh" "uninstall" | sszen 
-sh "${link}/winetricks" -q --force dxvk103 | sszen 
-echo "DXVK is enabled" > "${config_path}/dxvk"
-
+if grep DXVK "${WINEPREFIX}/drive_c/windows/system32/d3d11.dll" || grep DXVK "${WINEPREFIX}/drive_c/windows/syswow64/d3d11.dll" 
+then
+	RM_DXVK | sszen
+	echo "Old DXVK is disabled"
+fi
+sh "${link}/winetricks" --force dxvk103 | sszen 
+STOP_PORTWINE | sszen
+echo "New DXVK is enabled"
 cat > "${link}/start" <<EOF
 #!/bin/bash
 # Author: Tergoev M.A.
@@ -103,16 +80,19 @@ cat > "${link}/start" <<EOF
 START_PORTWINE
 WINE_DX_TO_VULKAN 
 VULKAN_SET
-"/usr/bin/xterm" -geometry 150x10 -sb -e '"\${optirun_on}" "\${WINELOADER}" "\${gamestart}" "\${launch_parameters}"'
+"/usr/bin/xterm" -geometry 130x13 -sb -e 'echo "--------------------------------------------------------PORTWINE-LINUX.RU--------------------------------------------------------" && "\${optirun_on}" "\${WINELOADER}" "\${gamestart}" "\${launch_parameters}"'
 STOP_PORTWINE
 EOF
 ;;
 	"DXVK_1.2.3") 
-
-sh "${link}/setup_dxvk.sh" "uninstall" | sszen 
-sh "${link}/winetricks" -q --force dxvk123 | sszen 
-echo "DXVK is enabled" > "${config_path}/dxvk"
-
+if grep DXVK "${WINEPREFIX}/drive_c/windows/system32/d3d11.dll" || grep DXVK "${WINEPREFIX}/drive_c/windows/syswow64/d3d11.dll" 
+then
+	RM_DXVK | sszen
+	echo "Old DXVK is disabled"
+fi
+sh "${link}/winetricks" --force dxvk123 | sszen 
+STOP_PORTWINE | sszen
+echo "New DXVK is enabled"
 cat > "${link}/start" <<EOF
 #!/bin/bash
 # Author: Tergoev M.A.
@@ -120,16 +100,19 @@ cat > "${link}/start" <<EOF
 START_PORTWINE
 WINE_DX_TO_VULKAN 
 VULKAN_SET
-"/usr/bin/xterm" -geometry 150x10 -sb -e '"\${optirun_on}" "\${WINELOADER}" "\${gamestart}" "\${launch_parameters}"'
+"/usr/bin/xterm" -geometry 130x13 -sb -e 'echo "--------------------------------------------------------PORTWINE-LINUX.RU--------------------------------------------------------" && "\${optirun_on}" "\${WINELOADER}" "\${gamestart}" "\${launch_parameters}"'
 STOP_PORTWINE
 EOF
 ;;
 	"DXVK_latest") 
-
-sh "${link}/setup_dxvk.sh" "uninstall" | sszen
-sh "${link}/winetricks" -q --force dxvk | sszen
-echo "DXVK is enabled" > "${config_path}/dxvk"
-
+if grep DXVK "${WINEPREFIX}/drive_c/windows/system32/d3d11.dll" || grep DXVK "${WINEPREFIX}/drive_c/windows/syswow64/d3d11.dll" 
+then
+	RM_DXVK | sszen
+	echo "Old DXVK is disabled"
+fi
+sh "${link}/winetricks" --force dxvk | sszen 
+STOP_PORTWINE | sszen
+echo "New DXVK is enabled"
 cat > "${link}/start" <<EOF
 #!/bin/bash
 # Author: Tergoev M.A.
@@ -137,13 +120,8 @@ cat > "${link}/start" <<EOF
 START_PORTWINE
 WINE_DX_TO_VULKAN 
 VULKAN_SET
-"/usr/bin/xterm" -geometry 150x10 -sb -e '"\${optirun_on}" "\${WINELOADER}" "\${gamestart}" "\${launch_parameters}"'
+"/usr/bin/xterm" -geometry 130x13 -sb -e 'echo "--------------------------------------------------------PORTWINE-LINUX.RU--------------------------------------------------------" && "\${optirun_on}" "\${WINELOADER}" "\${gamestart}" "\${launch_parameters}"'
 STOP_PORTWINE
 EOF
 ;;
-
 esac
-
-${WINESERVER} -k
-${WINEBOOT} -r
-

@@ -10,7 +10,11 @@ do
 		zenity --info --text "You need to install: ${PROGS}"
 	fi
 done
-
+########################################################################
+sszen() {
+zenity --progress --title="Settings..." --text="Updating start parameters" --pulsate --auto-close --auto-kill --width=450
+} 
+########################################################################
 cd "$(dirname "`readlink -f "$0"`")"
 export link="$(pwd)"
 cd "${link}/../../"
@@ -58,20 +62,24 @@ export PATH_OLD="$PATH"
 ########################################################################
 GLIBC_REQUIRED=2.27
 GLIBC_VERSION="$(ldd --version | head -n1 | sed 's/\(.*\) //g' | sed 's/\.[^.]*//2g')"
-
-if [ "$(echo ${GLIBC_VERSION} | sed 's/\.//g')" -lt "$(echo ${GLIBC_REQUIRED} | sed 's/\.//g')" ]
+if [ ! -d "${PORT_WINE_PATH}"/data/wine ]
 then
-	WINEDIR="${PORT_WINE_PATH}"/data/wine_glibc_223
-	if [ -d "${PORT_WINE_PATH}/data/wine_glibc_227" ]
+	if [ "$(echo ${GLIBC_VERSION} | sed 's/\.//g')" -lt "$(echo ${GLIBC_REQUIRED} | sed 's/\.//g')" ]
 	then
-		rm -fr "${PORT_WINE_PATH}"/data/wine_glibc_227
+		WINEDIR="${PORT_WINE_PATH}"/data/wine_glibc_223
+		if [ -d "${PORT_WINE_PATH}/data/wine_glibc_227" ]
+		then
+			rm -fr "${PORT_WINE_PATH}"/data/wine_glibc_227
+		fi
+	else
+		WINEDIR="${PORT_WINE_PATH}"/data/wine_glibc_227
+		if [ -d "${PORT_WINE_PATH}/data/wine_glibc_223" ]
+		then
+			rm -fr "${PORT_WINE_PATH}"/data/wine_glibc_223
+		fi
 	fi
 else
-	WINEDIR="${PORT_WINE_PATH}"/data/wine_glibc_227
-	if [ -d "${PORT_WINE_PATH}/data/wine_glibc_223" ]
-	then
-		rm -fr "${PORT_WINE_PATH}"/data/wine_glibc_223
-	fi
+	WINEDIR="${PORT_WINE_PATH}"/data/wine
 fi
 echo "Used WINE: ${WINEDIR}"
 ########################################################################
@@ -123,14 +131,14 @@ export WINEFSYNC=1
 export PROTON_NO_FSYNC=0
 
 # Check if Wine has PBA or ESYNC features
-if grep PBA "${WINEDIR}/lib/wine/wined3d.dll.so" &>/dev/null || grep PBA "${WINEDIR}/lib64/wine/wined3d.dll.so" &>/dev/null
+if grep PBA "${WINEDIR}/lib/wine/wined3d.dll.so" || grep PBA "${WINEDIR}/lib64/wine/wined3d.dll.so" &>/dev/null
 then
-	PBA_ENABLE=1
+	export PBA_ENABLE=1
 else
-	PBA_ENABLE=0
+	export PBA_ENABLE=0
 fi
 
-#if grep ESYNC "${WINEDIR}/lib/wine/ntdll.dll.so" &>/dev/null || grep ESYNC "${WINEDIR}/lib64/wine/ntdll.dll.so" &>/dev/null
+#if grep ESYNC "${WINEDIR}/lib/wine/ntdll.dll.so"|| grep ESYNC "${WINEDIR}/lib64/wine/ntdll.dll.so" &>/dev/null
 #then
 #	if ! ulimit -n 500000 &>/dev/null
 #	then
@@ -139,8 +147,8 @@ fi
 #		export WINEESYNC=1
 #	fi
 #fi
-chmod -R 777 "${WINEPREFIX}"
-${WINESERVER} -k 
+"${WINESERVER}" -k 
+chmod -R 755 "${WINEPREFIX}"
 ########################################################################
 
 START_PORTWINE ()
@@ -188,55 +196,73 @@ done
 echo disable > "$WINEPREFIX/.update-timestamp"
 
 ADD_IN_START_PORTWINE
-${WINEBOOT} -r
 } 
 ########################################################################
-
+WAIT_WINESERVER ()
+{
+sleep 3
+while [ $(pgrep wineserver)>'0' ]
+do
+	sleep 1
+done
+}
+########################################################################
+RM_DXVK () 
+{
+"${WINESERVER}" -k
+WAIT_WINESERVER
+sed -i 's/\*d/d/g' "${WINEPREFIX}/user.reg"
+for rm_userreg in "d3d10" "d3d10_1" "d3d10core" "d3d11" "dxgi"
+do
+	sed -i "/$rm_userreg/d" "${WINEPREFIX}/user.reg"
+	rm -f "${WINEPREFIX}/drive_c/windows/system32/${rm_userreg}".dll
+	rm -f "${WINEPREFIX}/drive_c/windows/syswow64/${rm_userreg}".dll
+done
+"${WINEBOOT}" -u
+WAIT_WINESERVER
+echo "DXVK has been deleted"
+}
+########################################################################
 OPENGL_SET ()
 {
-if [ -e "${config_path}/dxvk" ]
+if grep DXVK "${WINEPREFIX}/drive_c/windows/system32/d3d11.dll" || grep DXVK "${WINEPREFIX}/drive_c/windows/syswow64/d3d11.dll" 
 then
-	sh "${link}/setup_dxvk.sh" "uninstall"
-	rm -f "${config_path}/dxvk"
-else
-	echo "DXVK is disabled"
+	RM_DXVK | sszen
 fi
+if grep DXVK "${WINEPREFIX}/drive_c/windows/system32/d3d11.dll" || grep DXVK "${WINEPREFIX}/drive_c/windows/syswow64/d3d11.dll"  
+then
+	echo "Error replacing DXVK files"
+else
+	echo "Ok. DXVK is disabled"
+fi
+
 export PROTON_USE_WINED3D=1
 export PROTON_USE_D9VK=0
 export DXVK_STATE_CACHE=0
 export __GL_SHADER_DISK_CACHE_PATH="${PATH_TO_GAME}" 
 export __GL_SHADER_DISK_CACHE=1
-export mesa_glthread="true"
+#export mesa_glthread="true"
 }
-
 ########################################################################
-
 VULKAN_SET ()
 {
-if [ -e "${config_path}/dxvk" ]
+if ! grep DXVK "${WINEPREFIX}/drive_c/windows/system32/d3d11.dll" || ! grep DXVK "${WINEPREFIX}/drive_c/windows/syswow64/d3d11.dll"
 then
-	echo "DXVK is enabled"
-else
 	sh "${link}/winetricks" -q --force dxvk
-	echo "DXVK is enabled" > "${config_path}/dxvk"
+	WAIT_WINESERVER
 fi
+echo "DXVK is enabled"
+
 export PROTON_USE_WINED3D=0
 export __GL_SHADER_DISK_CACHE=0
 export DXVK_STATE_CACHE_PATH="${PATH_TO_GAME}"
 export DXVK_STATE_CACHE=1
 export mesa_glthread="false"
 }
-
 ########################################################################
-
 STOP_PORTWINE ()
 {
-echo " "
-sleep 5
-while [ $(pgrep wineserver)>'0' ]
-do
-	sleep 5
-done
+WAIT_WINESERVER
 
 if [ "${update_loc}" = "RUS" ] 
 then
