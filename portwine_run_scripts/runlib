@@ -1,19 +1,23 @@
 #!/bin/bash
 # Author: PortWINE-Linux.ru
-
+########################################################################
 [ $(id -u) -eq 0 ] && echo "Do not run this script as root!" && zenity --error --text "Do not run this script as root!" && exit 1
-
-for PROGS in "xterm" "wget" "curl"
-do
-	if [ ! -x "`which "${PROGS}" 2>/dev/null`" ]
-	then
-		zenity --info --text "You need to install: ${PROGS}"
-	fi
-done
 ########################################################################
 sszen() {
 zenity --progress --title="Settings..." --text="Updating start parameters" --pulsate --auto-close --auto-kill --width=450
 } 
+########################################################################
+pwzen() {
+zenity --progress --title="Settings..." --text="Please wait!" --pulsate --auto-close --auto-kill --width=450
+} 
+########################################################################
+wine_pids=$(ls -l /proc/*/exe 2>/dev/null | grep -E 'wine(64)?-preloader|wineserver' | perl -pe 's;^.*/proc/(\d+)/exe.*$;$1;g;')
+if ! [ -z "${wine_pids}" ] ; then
+    kill -9 ${wine_pids}
+fi
+########################################################################
+export kill_winedevice=0
+export kill_explorer=0
 ########################################################################
 cd "$(dirname "`readlink -f "$0"`")"
 export link="$(pwd)"
@@ -21,13 +25,11 @@ cd "${link}/../../"
 export PORT_WINE_PATH="$(pwd)"
 cd "${link}"
 . "${link}"/vars
-
 export config_path="${PORT_WINE_PATH}/data/tmp"
 if [ ! -d "${config_path}" ]
 then
 	mkdir -p "${config_path}"
 fi
-
 if [ ! -e "${config_path}/${portname}_loc" ]
 then
 	SET_LANG=`zenity --title  "Install $portname" --text "Select the language\nВыберите язык" --list --radiolist \
@@ -36,165 +38,74 @@ then
 	FALSE "ENG" `
 	echo "${SET_LANG}" > "${config_path}/${portname}_loc"
 fi
-
+. "${link}"/lang
 if [ ! -e "${config_path}/${portname}_ver" ]
 then
 	echo "10" > "${config_path}/${portname}_ver"
 fi
-
-if [ "${update_loc}" = "RUS" ] 
+if [ ! -f "${config_path}/dxvk_on" ]
 then
-	LC_COLLATE_old="${LC_COLLATE}"
-	LC_CTYPE_old="${LC_CTYPE}"
-	LC_ALL_old="${LC_ALL}"
-	
-	export LC_COLLATE=ru_RU.UTF-8
-	export LC_CTYPE=ru_RU.UTF-8
-	export LC_ALL=ru_RU.UTF-8
+    start_settings=`zenity --title  "${ss_title}" --text "${ss_text}" --list --radiolist \
+    --column="${inst_set}" --column "${ss_ver}" --column "${ss_dr}"  --width=600 --height=250 \
+    FALSE "OpenGL" "${ss_ogl_2}" \
+    FALSE "DXVK+HUD" "${ss_ogl_3} + HUD" \
+    TRUE "DXVK" "${ss_ogl_3}" `
+    if [ $? -eq 1 ];then exit 1; fi
+    case $start_settings in
+    "OpenGL") 
+            echo "0" > "${config_path}/dxvk_on" ;;
+    "DXVK") 
+            echo "1" > "${config_path}/dxvk_on" ;;
+    "DXVK+HUD") 
+            echo "2" > "${config_path}/dxvk_on" ;;
+    esac
 fi
-
-export LD_LIBRARY_PATH_OLD="${LD_LIBRARY_PATH}"
-export LD_PRELOAD_OLD="${LD_PRELOAD}"
-export PATH_OLD="$PATH"
-
-. "${link}"/lang
-
+read "var_dxvk_on" < "${config_path}/dxvk_on"
+export "var_dxvk_on"
+#if [ ! -x "`which "gamemode" 2>/dev/null`" ]
+#then
+#    LD_PRELOAD="$LD_PRELOAD:/usr/${LIB}/libgamemodeauto.so" 
+#    var_gamemode="gamemoderun"
+#else
+#    var_gamemode=""
+#fi
 ########################################################################
-GLIBC_REQUIRED=2.27
-GLIBC_VERSION="$(ldd --version | head -n1 | sed 's/\(.*\) //g' | sed 's/\.[^.]*//2g')"
-if [ ! -d "${PORT_WINE_PATH}"/data/wine ]
-then
-	if [ "$(echo ${GLIBC_VERSION} | sed 's/\.//g')" -lt "$(echo ${GLIBC_REQUIRED} | sed 's/\.//g')" ]
-	then
-		WINEDIR="${PORT_WINE_PATH}"/data/wine_glibc_223
-		if [ -d "${PORT_WINE_PATH}/data/wine_glibc_227" ]
-		then
-			rm -fr "${PORT_WINE_PATH}"/data/wine_glibc_227
-		fi
-	else
-		WINEDIR="${PORT_WINE_PATH}"/data/wine_glibc_227
-		if [ -d "${PORT_WINE_PATH}/data/wine_glibc_223" ]
-		then
-			rm -fr "${PORT_WINE_PATH}"/data/wine_glibc_223
-		fi
-	fi
-else
-	WINEDIR="${PORT_WINE_PATH}"/data/wine
-fi
-echo "Used WINE: ${WINEDIR}"
-########################################################################
-if [ ! -d "${WINEDIR}/lib64" ]
-then
-	export WINEARCH=win32
-	export WINELOADER="${WINEDIR}/bin/wine"
-	export WINEDLLPATH="${WINEDIR}/lib/wine"
-	if [ "$runtime_libs" -eq "1"  ]
-	then
-		export LD_LIBRARY_PATH=${WINEDIR}/runtime-lib_i386:${WINEDIR}/lib:${LD_LIBRARY_PATH}
-	else
-		export LD_LIBRARY_PATH=${WINEDIR}/lib:${LD_LIBRARY_PATH}
-	fi
-else
-	export WINEARCH=win64
-	export WINELOADER="${WINEDIR}/bin/wine64"
-	export WINEDLLPATH="${WINEDIR}/lib64/wine"
-	if [ "$runtime_libs" -eq "1"  ]
-	then
-		export LD_LIBRARY_PATH=${WINEDIR}/runtime-lib_x86_64:${WINEDIR}/runtime-lib_i386:${WINEDIR}/lib64:${WINEDIR}/lib:${LD_LIBRARY_PATH}
-	else
-		export LD_LIBRARY_PATH=${WINEDIR}/lib64:${WINEDIR}/lib:${LD_LIBRARY_PATH}
-	fi
-fi
-
-if [ ! -e "${WINEDIR}/share/wine/smb.conf" ]
-then
-	export us_dir="$USER" 
-	export STAGING_WRITECOPY=1
-else
-	export us_dir="crossover"
-fi
-
+WINEDIR="${PORT_WINE_PATH}"/data/dist
+WINELIB="${PORT_WINE_PATH}"/data/libs
+export PROTONRUN="${PORT_WINE_PATH}/data/proton"
+export WINEARCH=win64
+export WINELOADER="${WINEDIR}/bin/wine"
+export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
 export WINESERVER="${WINEDIR}/bin/wineserver"
-export WINECFG="${WINEDIR}/bin/winecfg"
-export WINEREG="${WINEDIR}/bin/regedit"
-export WINEOPEN="${WINEDIR}/bin/winefile" 
 export WINEBOOT="${WINEDIR}/bin/wineboot" 
-export WINECMD="${WINEDIR}/bin/wineconsole" 
-export WINEPREFIX="${PORT_WINE_PATH}/data/prefix"
+export WINEPREFIX="${PORT_WINE_PATH}/data/pfx"
 export PATH="${WINEDIR}/bin":${PATH}
 export WINESTART="C:\\windows\\command\\start.exe"
+export STEAM_COMPAT_DATA_PATH="${PORT_WINE_PATH}/data/"
+export LD_LIBRARY_PATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine:${WINELIB}/ubuntu12_32/steam-runtime/pinned_libs_32:${WINELIB}/ubuntu12_32/steam-runtime/pinned_libs_64:/usr/lib/x86_64-linux-gnu/libfakeroot:/lib/i386-linux-gnu:/usr/lib/i386-linux-gnu:/usr/local/lib:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/lib:/usr/lib:/usr/lib/i386-linux-gnu/i686:/usr/lib/i386-linux-gnu/sse2:/usr/lib/i386-linux-gnu/i686/sse2:${WINELIB}/ubuntu12_32/steam-runtime/i386/lib/i386-linux-gnu:${WINELIB}/ubuntu12_32/steam-runtime/i386/lib:${WINELIB}/ubuntu12_32/steam-runtime/i386/usr/lib/i386-linux-gnu:${WINELIB}/ubuntu12_32/steam-runtime/i386/usr/lib:${WINELIB}/ubuntu12_32/steam-runtime/amd64/lib/x86_64-linux-gnu:${WINELIB}/ubuntu12_32/steam-runtime/amd64/lib:${WINELIB}/ubuntu12_32/steam-runtime/amd64/usr/lib/x86_64-linux-gnu:${WINELIB}/ubuntu12_32/steam-runtime/amd64/usr/lib"
+########################################################################
+export DXVK_STATE_CACHE_PATH="${PATH_TO_GAME}"
+export DXVK_STATE_CACHE=1
+export __GL_SHADER_DISK_CACHE_PATH="${PATH_TO_GAME}" 
+export __GL_SHADER_DISK_CACHE=1
+export __GL_SHADER_DISK_CACHE_SIZE=1000000000
+export __GL_THREADED_OPTIMIZATIONS=1
+export mesa_glthread=true
+export DRI_PRIME=1
 
 export urlg="http://portwine-linux.ru/donate"
-#export CORES="$(getconf _NPROCESSORS_ONLN)"
-
-export WINEFSYNC=1
-export PROTON_NO_FSYNC=0
-
-# Check if Wine has PBA or ESYNC features
-if grep PBA "${WINEDIR}/lib/wine/wined3d.dll.so" || grep PBA "${WINEDIR}/lib64/wine/wined3d.dll.so" &>/dev/null
-then
-	export PBA_ENABLE=1
-else
-	export PBA_ENABLE=0
-fi
-
-#if grep ESYNC "${WINEDIR}/lib/wine/ntdll.dll.so"|| grep ESYNC "${WINEDIR}/lib64/wine/ntdll.dll.so" &>/dev/null
-#then
-#	if ! ulimit -n 500000 &>/dev/null
-#	then
-		export WINEESYNC=0
-#	else
-#		export WINEESYNC=1
-#	fi
-#fi
-"${WINESERVER}" -k 
-chmod -R 755 "${WINEPREFIX}"
 ########################################################################
 
 START_PORTWINE ()
 {
-gpu="0"
-export DRI_PRIME=1
-export optirun_on=env
-if [ -x "`which primusrun 2>/dev/null`" ]
-then
-	export optirun_on="primusrun"
-	gpu="1"
-elif [ -x "`which optirun 2>/dev/null`" ]
-then
-	export optirun_on="optirun -b primus"
-	gpu="1"
-fi
-
-if [ -x "`which nvidia-settings 2>/dev/null`" ]
-then
-	nvidia-settings -a [gpu:"${gpu}"]/GPUPowerMizerMode=1 > /dev/null
-	export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
-fi
-
 sh "${link}"/port_update 
-
-#rm -f "$WINEPREFIX/dosdevices/z:"
-for x in "$WINEPREFIX/drive_c/users/${us_dir}/"*
-do
-	if test -h "$x" && test -d "$x"
-	then
-		rm -f "$x"
-		mkdir -p "$x"
-	fi
-done
-for x in "$WINEPREFIX/drive_c/users/${us_dir}/Desktop/"*
-do
-	if test -h "$x" && test -d "$x"
-	then
-		rm -f "$x"
-		mkdir -p "$x"
-	fi
-done
-
-#"$WINE" regedit /d 'HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Explorer\Desktop\Namespace\{9D20AAE8-0625-44B0-9CA7-71889C2254D9}'
-echo disable > "$WINEPREFIX/.update-timestamp"
-
+if [ "${var_dxvk_on}" -eq "1" ] 
+then
+    export DXVK_HUD=0
+elif [ "${var_dxvk_on}" -eq "2" ] 
+then
+    export DXVK_HUD="fps,devinfo"
+fi
 ADD_IN_START_PORTWINE
 } 
 ########################################################################
@@ -203,86 +114,29 @@ WAIT_WINESERVER ()
 sleep 3
 while [ $(pgrep wineserver)>'0' ]
 do
-	sleep 1
+	sleep 2
 done
 }
 ########################################################################
-RM_DXVK () 
+KILL9_WINEDEVICE ()
 {
-"${WINESERVER}" -k
-WAIT_WINESERVER
-sed -i 's/\*d/d/g' "${WINEPREFIX}/user.reg"
-for rm_userreg in "d3d10" "d3d10_1" "d3d10core" "d3d11" "dxgi"
-do
-	sed -i "/$rm_userreg/d" "${WINEPREFIX}/user.reg"
-	rm -f "${WINEPREFIX}/drive_c/windows/system32/${rm_userreg}".dll
-	rm -f "${WINEPREFIX}/drive_c/windows/syswow64/${rm_userreg}".dll
-done
-"${WINEBOOT}" -u
-WAIT_WINESERVER
-echo "DXVK has been deleted"
-}
-########################################################################
-OPENGL_SET ()
-{
-if grep DXVK "${WINEPREFIX}/drive_c/windows/system32/d3d11.dll" || grep DXVK "${WINEPREFIX}/drive_c/windows/syswow64/d3d11.dll" 
+if [ "${kill_winedevice}" -eq "1" ] 
 then
-	RM_DXVK | sszen
+    sleep 10
+    killall -r -s9 winedevice 
 fi
-if grep DXVK "${WINEPREFIX}/drive_c/windows/system32/d3d11.dll" || grep DXVK "${WINEPREFIX}/drive_c/windows/syswow64/d3d11.dll"  
+if [ "${kill_explorer}" -eq "1" ] 
 then
-	echo "Error replacing DXVK files"
-else
-	echo "Ok. DXVK is disabled"
+    sleep 10
+    killall -r -s9 explorer
 fi
-
-export PROTON_USE_WINED3D=1
-export PROTON_USE_D9VK=0
-export DXVK_STATE_CACHE=0
-export __GL_SHADER_DISK_CACHE_PATH="${PATH_TO_GAME}" 
-export __GL_SHADER_DISK_CACHE=1
-#export mesa_glthread="true"
-}
-########################################################################
-VULKAN_SET ()
-{
-if ! grep DXVK "${WINEPREFIX}/drive_c/windows/system32/d3d11.dll" || ! grep DXVK "${WINEPREFIX}/drive_c/windows/syswow64/d3d11.dll"
-then
-	sh "${link}/winetricks" -q --force dxvk
-	WAIT_WINESERVER
-fi
-echo "DXVK is enabled"
-
-export PROTON_USE_WINED3D=0
-export __GL_SHADER_DISK_CACHE=0
-export DXVK_STATE_CACHE_PATH="${PATH_TO_GAME}"
-export DXVK_STATE_CACHE=1
-export mesa_glthread="false"
 }
 ########################################################################
 STOP_PORTWINE ()
 {
 WAIT_WINESERVER
-
-if [ "${update_loc}" = "RUS" ] 
-then
-	export LC_COLLATE="${LC_COLLATE_old}"
-	export LC_CTYPE="${LC_CTYPE_old}"
-	export LC_ALL="${LC_ALL_old}"
-fi
-
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH_OLD}"
-export LD_PRELOAD="${LD_PRELOAD_OLD}"
-export PATH="$PATH_OLD"
-
-if [ -x "`which nvidia-settings 2>/dev/null`" ]
-then
-	nvidia-settings -a [gpu:"${gpu}"]/GPUPowerMizerMode=0 > /dev/null
-fi
-
 ADD_IN_STOP_PORTWINE
 
 rm -f "${PORT_WINE_PATH}"/0
 rm -f "${link}"/0
-exit 0
 }

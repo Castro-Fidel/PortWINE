@@ -1,15 +1,7 @@
 #!/bin/bash
 # Author: PortWINE-Linux.ru
-
 . "$(dirname $(readlink -f "$0"))/runlib"
 
-rm -fR "${PORT_WINE_PATH}/Games"
-rm -fR "${PORT_WINE_PATH}/Program Files"
-#rm -fR "${PORT_WINE_PATH}/data/prefix/drive_c/users/${us}"
-#rm -fR "${PORT_WINE_PATH}/data/prefix/drive_c/users/${us_dir}" 
-rm -fR "${PORT_WINE_PATH}/data/prefix/dosdevices" 
-rm -f "${PORT_WINE_PATH}/data/prefix/"*".reg" 
-rm -f "${PORT_WINE_PATH}/data/prefix/.update-timestamp"
 rm -f "${PORT_WINE_PATH}/"*".log" 
 rm -f "${config_path}/update_notifier"
 
@@ -19,30 +11,30 @@ then
 fi
 
 name_desktop="${gamename}" 
-echo "[Desktop Entry]"	 		  > "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "[Desktop Entry]"	 				  > "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "Name=${name_desktop}" 				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "Exec="${PORT_WINE_PATH}/data/scripts/start""	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Type=Application" 		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Categories=Game"	    		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "StartupNotify=true" 	         >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Type=Application" 				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Categories=Game"	    				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "StartupNotify=true" 	    			 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "Path="${PORT_WINE_PATH}/data/scripts/""		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "Icon="${PORT_WINE_PATH}/data/img/w.png""   	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" /home/${USER}/.local/share/applications/ 
 
 name_desktop="readme" 
-echo "[Desktop Entry]"	 		   			 	   	> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Name=${name_desktop}" 				 						  >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Version=1.0"									  >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Type=Link" 									  >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Icon="${PORT_WINE_PATH}/data/img/readme.png""   				  >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "[Desktop Entry]"					 > "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Name=${name_desktop}"				>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Version=1.0"					>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Type=Link"					>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Icon="${PORT_WINE_PATH}/data/img/readme.png""	>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "URL=${urlg}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 
 rm -fR "${PORT_WINE_PATH}/Settings"
 mkdir -p "${PORT_WINE_PATH}/Settings"
 
-for name_desktop in "winecfg" "winereg" "winefile" "wineboot" "stop" "winecmd" "start_settings"
+for name_desktop in "winecfg" "winefile" "wineboot" "winecmd" "winereg"
 do
 echo ""[Desktop Entry]"
 "Name=${name_desktop}"
@@ -55,7 +47,7 @@ echo ""[Desktop Entry]"
 chmod u+x "${PORT_WINE_PATH}/Settings/${name_desktop}.desktop"
 done
 
-for name_desktop in "remove" "debug"
+for name_desktop in "remove" "debug" "restart"
 do
 echo ""[Desktop Entry]"
 "Name=${name_desktop}"
@@ -78,19 +70,11 @@ echo ""[Desktop Entry]"
 "Icon="${PORT_WINE_PATH}/data/img/s.png""" > "${PORT_WINE_PATH}/Settings/winetricks.desktop"
 chmod u+x "${PORT_WINE_PATH}/Settings/winetricks.desktop"
 
-cp -f "${PORT_WINE_PATH}/data/prefix/reg.xuser/"* "${PORT_WINE_PATH}/data/prefix/"
+chmod u+x "${PORT_WINE_PATH}/data/scripts/"*
+ln -s "${PORT_WINE_PATH}/data/pfx/drive_c/" "${PORT_WINE_PATH}/drive_c"
 
-sed -i "s/xuser/${USER}/g" "${PORT_WINE_PATH}/data/prefix/"*.reg
-
-if [ ! -d "${PORT_WINE_PATH}/data/prefix/drive_c/users/steamuser/" ]
-then
-	cp -fR "${PORT_WINE_PATH}/data/prefix/drive_c/users/Public/" "${PORT_WINE_PATH}/data/prefix/drive_c/users/$us_dir/" 
-fi
-
-ln -s "${PORT_WINE_PATH}/data/prefix/drive_c/" "${PORT_WINE_PATH}/drive_c"
+sed -i "s/xuser/${USER}/g" "${PORT_WINE_PATH}/data/pfx/"*.reg
 
 ADD_IN_POST_INSTALL
-RM_DXVK
-sh "${link}/start_settings"
 
-exit 0
+xdg-open "http://portwine-linux.ru/portwine-faq/" > /dev/null 2>&1  & exit 0  
