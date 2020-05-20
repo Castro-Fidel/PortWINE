@@ -51,20 +51,26 @@ else
 	echo "!!!vulkaninfo not found!!!"  >> "${PORT_WINE_PATH}/${portname}.log"
 fi
 echo "---------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+if [ ! -x "`which gamemoderun 2>/dev/null`" ]
+then
+	echo "!!!gamemod not found!!!"  >> "${PORT_WINE_PATH}/${portname}.log"
+fi
+echo "--------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
 echo "Version WINE in the Port" >> "${PORT_WINE_PATH}/${portname}.log"
 "$WINELOADER" --version 2>&1 | tee -a "${PORT_WINE_PATH}/${portname}.log"
-echo "--------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+echo "-------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
 echo "log WINE" >> "${PORT_WINE_PATH}/${portname}.log"
 
-export WINEDEBUG="err+all,fixme-all"
-export VK_LOADER_DEBUG=-all
+export WINEDEBUG=""
 export DXVK_LOG_LEVEL="info"
+export VK_LOADER_DEBUG="warn"
 export VKD3D_DEBUG="warn"
-export DXVK_HUD="fps,devinfo"
+export DXVK_HUD="full"
+export WINE_MONO_TRACE="E:System.NotImplementedException"
 
 #"/usr/bin/xterm" -geometry 130x13 -sb -e 'echo "--------------------------------------------------------PORTWINE-LINUX.RU--------------------------------------------------------" && "${PROTONRUN}" "run" "${gamestart}" "${launch_parameters}" &>> "${PORT_WINE_PATH}/${portname}.log"'
 
-"${PROTONRUN}" "run" "${gamestart}" ${launch_parameters} | ${var_gamemode}  &>> "${PORT_WINE_PATH}/${portname}.log" 
+"${PROTONRUN}" "run" "${gamestart}" ${launch_parameters} >> "${PORT_WINE_PATH}/${portname}.log" 2>&1 | ${var_gamemode} 
 
 KILL9_WINEDEVICE | pwzen
 STOP_PORTWINE | pwzen
