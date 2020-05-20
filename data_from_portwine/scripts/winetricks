@@ -1,5 +1,8 @@
 #!/bin/sh
 # shellcheck disable=SC2030,SC2031
+. $(dirname $(readlink -f "$0"))/runlib
+START_PORTWINE
+export WINELOADER="${PORT_WINE_PATH}/data/wine/bin/wine" 
 # SC2030: Modification of WINE is local (to subshell caused by (..) group).
 # SC2031: WINE was modified in a subshell. That change might be lost
 # This has to be right after the shebang, see: https://github.com/koalaman/shellcheck/issues/779
@@ -16,9 +19,6 @@ WINETRICKS_VERSION=20200412-next
 #--------------------------------------------------------------------
 #
 # Winetricks is a package manager for Win32 dlls and applications on POSIX.
-. $(dirname $(readlink -f "$0"))/runlib
-START_PORTWINE
-export WINELOADER="${WINEDIR}/bin/wine" 
 # Features:
 # - Consists of a single shell script - no installation required
 # - Downloads packages automatically from original trusted sources
@@ -5094,7 +5094,6 @@ winetricks_set_wineprefix()
     case "$W_APPDATA_WIN" in
         "") w_info "$(winetricks_print_wineprefix_info)" ; w_die "$WINE cmd.exe /c echo '%AppData%' returned empty string, error message \"$(cat $W_TMP_EARLY/early_wine.err.txt)\" ";;
         %*) w_info "$(winetricks_print_wineprefix_info)" ; w_die "$WINE cmd.exe /c echo '%AppData%' returned unexpanded string '$W_PROGRAMS_WIN' ... this can be caused by a corrupt wineprefix (\`wineboot -u\` may help), by an old wine, or by not owning $WINEPREFIX" ;;
-        *unknown*) w_info "$(winetricks_print_wineprefix_info)" ; w_die "$WINE cmd.exe /c echo '%AppData%' returned a string containing the word 'unknown', as if a voice had cried out in terror, and was suddenly silenced." ;;
     esac
 
     # Kludge: use Temp instead of temp to avoid \t expansion in w_try
@@ -10975,7 +10974,8 @@ load_msxml6()
     # https://www.microsoft.com/en-us/download/details.aspx?id=9774
 
     # 64bit exe also includes 32bit dlls
-    w_download https://download.microsoft.com/download/1/5/8/158F681A-E595-472B-B15E-62B649B1B6FF/msxml6-KB973686-enu-amd64.exe 0e5c4af488e88e8defb59de80271671d8283d5744b2eebdb351bbd4950fb0883
+    # Originally here: https://download.microsoft.com/download/1/5/8/158F681A-E595-472B-B15E-62B649B1B6FF/msxml6-KB973686-enu-amd64.exe
+    w_download https://web.archive.org/web/20190122095451/https://download.microsoft.com/download/1/5/8/158F681A-E595-472B-B15E-62B649B1B6FF/msxml6-KB973686-enu-amd64.exe 0e5c4af488e88e8defb59de80271671d8283d5744b2eebdb351bbd4950fb0883
 
     w_try_cabextract --directory="${W_TMP}" "${W_CACHE}"/msxml6/msxml6-KB973686-enu-amd64.exe
     w_try_cabextract --directory="${W_TMP}" "${W_TMP}"/msxml6.msi
@@ -11173,7 +11173,7 @@ load_prntvpt()
 
     if [ "$W_ARCH" = "win64" ]; then
         helper_win7sp1_x64 amd64_microsoft-windows-p..g-printticket-win32_31bf3856ad364e35_6.1.7601.17514_none_7180ae1eb5ce8062/prntvpt.dll
-        w_try cp "$W_TMP/x86_microsoft-windows-p..g-printticket-win32_31bf3856ad364e35_6.1.7601.17514_none_1562129afd710f2c/prntvpt.dll" "$W_SYSTEM64_DLLS/prntvpt.dll"
+        w_try cp "$W_TMP/amd64_microsoft-windows-p..g-printticket-win32_31bf3856ad364e35_6.1.7601.17514_none_7180ae1eb5ce8062/prntvpt.dll" "$W_SYSTEM64_DLLS/prntvpt.dll"
         w_try_regsvr64 prntvpt.dll
     fi
 }
@@ -11979,13 +11979,26 @@ w_metadata vcrun2003 dlls \
 
 load_vcrun2003()
 {
-    # Load the Visual C++ 2003 runtime libraries
     # Sadly, I know of no Microsoft URL for these
-    echo "Installing BZFlag (which comes with the Visual C++ 2003 runtimes)"
     # winetricks-test can't handle ${file1} in url since it does a raw parsing :/
     w_download https://sourceforge.net/projects/bzflag/files/bzedit%20win32/1.6.5/BZEditW32_1.6.5.exe 84d1bda5dbf814742898a2e1c0e4bc793e9bc1fba4b7a93d59a7ef12bd0fd802
-    w_try "$WINE" "$W_CACHE/vcrun2003/${file1}" ${W_OPT_UNATTENDED:+/S}
-    w_try cp "$W_PROGRAMS_X86_UNIX/BZEdit1.6.5"/m*71* "$W_SYSTEM32_DLLS"
+
+    w_try_7z "$W_SYSTEM32_DLLS" "${W_CACHE}/vcrun2003/BZEditW32_1.6.5.exe" "mfc71.dll" "msvcp71.dll" "msvcr71.dll" -y
+}
+
+w_metadata mfc71 dlls \
+    title="Visual C++ 2003 mfc71 library; part of vcrun2003" \
+    publisher="Microsoft" \
+    year="2003" \
+    media="download" \
+    file1="BZEditW32_1.6.5.exe" \
+    installed_file1="$W_SYSTEM32_DLLS_WIN/mfc71.dll"
+
+load_mfc71()
+{
+    w_download_to vcrun2003 https://sourceforge.net/projects/bzflag/files/bzedit%20win32/1.6.5/BZEditW32_1.6.5.exe 84d1bda5dbf814742898a2e1c0e4bc793e9bc1fba4b7a93d59a7ef12bd0fd802
+
+    w_try_7z "$W_SYSTEM32_DLLS" "${W_CACHE}/vcrun2003/BZEditW32_1.6.5.exe" "mfc71.dll" -y
 }
 
 #----------------------------------------------------------------
@@ -12027,6 +12040,39 @@ load_vcrun2005()
     if [ "$W_ARCH" = "win64" ] ;then
         w_download https://download.microsoft.com/download/8/B/4/8B42259F-5D70-43F4-AC2E-4B208FD8D66A/vcredist_x64.EXE 0551a61c85b718e1fa015b0c3e3f4c4eea0637055536c00e7969286b4fa663e0
         w_try "$WINE" vcredist_x64.exe ${W_OPT_UNATTENDED:+/q}
+    fi
+}
+
+w_metadata mfc80 dlls \
+    title="Visual C++ 2005 mfc80 library; part of vcrun2005" \
+    publisher="Microsoft" \
+    year="2011" \
+    media="download" \
+    file1="../vcrun2005/vcredist_x86.EXE" \
+    installed_file1="$W_SYSTEM32_DLLS_WIN/mfc80.dll"
+
+load_mfc80()
+{
+    w_download_to vcrun2005 https://download.microsoft.com/download/8/B/4/8B42259F-5D70-43F4-AC2E-4B208FD8D66A/vcredist_x86.EXE 4ee4da0fe62d5fa1b5e80c6e6d88a4a2f8b3b140c35da51053d0d7b72a381d29
+
+    w_try_cabextract --directory="$W_TMP/win32" "$W_CACHE"/vcrun2005/vcredist_x86.EXE -F 'vcredist.msi'
+    w_try_cabextract --directory="$W_TMP/win32" "$W_TMP/win32/vcredist.msi"
+
+    w_try cp "$W_TMP/win32"/mfc80.dll.8.0.50727.6195.9BAE13A2_E7AF_D6C3_FF1F_C8B3B9A1E18E "$W_SYSTEM32_DLLS"/mfc80.dll
+    w_try cp "$W_TMP/win32"/mfc80u.dll.8.0.50727.6195.9BAE13A2_E7AF_D6C3_FF1F_C8B3B9A1E18E "$W_SYSTEM32_DLLS"/mfc80u.dll
+    w_try cp "$W_TMP/win32"/mfcm80.dll.8.0.50727.6195.9BAE13A2_E7AF_D6C3_FF1F_C8B3B9A1E18E "$W_SYSTEM32_DLLS"/mfcm80.dll
+    w_try cp "$W_TMP/win32"/mfcm80u.dll.8.0.50727.6195.9BAE13A2_E7AF_D6C3_FF1F_C8B3B9A1E18E "$W_SYSTEM32_DLLS"/mfcm80u.dll
+
+    if [ "$W_ARCH" = "win64" ]; then
+        w_download_to vcrun2005 https://download.microsoft.com/download/8/B/4/8B42259F-5D70-43F4-AC2E-4B208FD8D66A/vcredist_x64.EXE 0551a61c85b718e1fa015b0c3e3f4c4eea0637055536c00e7969286b4fa663e0
+
+        w_try_cabextract --directory="$W_TMP/win64" "$W_CACHE"/vcrun2005/vcredist_x64.EXE -F 'vcredist.msi'
+        w_try_cabextract --directory="$W_TMP/win64" "$W_TMP/win64/vcredist.msi"
+
+        w_try cp "$W_TMP/win64"/mfc80.dll.8.0.50727.6195.8731EA9C_B0D8_8F16_FF1F_C8B3B9A1E18E "$W_SYSTEM64_DLLS"/mfc80.dll
+        w_try cp "$W_TMP/win64"/mfc80u.dll.8.0.50727.6195.8731EA9C_B0D8_8F16_FF1F_C8B3B9A1E18E "$W_SYSTEM64_DLLS"/mfc80u.dll
+        w_try cp "$W_TMP/win64"/mfcm80.dll.8.0.50727.6195.8731EA9C_B0D8_8F16_FF1F_C8B3B9A1E18E "$W_SYSTEM64_DLLS"/mfcm80.dll
+        w_try cp "$W_TMP/win64"/mfcm80u.dll.8.0.50727.6195.8731EA9C_B0D8_8F16_FF1F_C8B3B9A1E18E "$W_SYSTEM64_DLLS"/mfcm80u.dll
     fi
 }
 
@@ -12083,6 +12129,39 @@ load_vcrun2008()
     esac
 }
 
+w_metadata mfc90 dlls \
+    title="Visual C++ 2008 mfc90 library; part of vcrun2008" \
+    publisher="Microsoft" \
+    year="2011" \
+    media="download" \
+    file1="../vcrun2008/vcredist_x86.exe" \
+    installed_file1="$W_SYSTEM32_DLLS_WIN/mfc90.dll"
+
+load_mfc90()
+{
+    w_download_to vcrun2008 https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x86.exe 6b3e4c51c6c0e5f68c8a72b497445af3dbf976394cbb62aa23569065c28deeb6
+
+    w_try_cabextract --directory="$W_TMP/win32" "$W_CACHE"/vcrun2008/vcredist_x86.exe -F 'vc_red.cab'
+    w_try_cabextract --directory="$W_TMP/win32" "$W_TMP/win32/vc_red.cab"
+
+    w_try cp "$W_TMP/win32"/mfc90.dll.30729.6161.Microsoft_VC90_MFC_x86.QFE "$W_SYSTEM32_DLLS"/mfc90.dll
+    w_try cp "$W_TMP/win32"/mfc90u.dll.30729.6161.Microsoft_VC90_MFC_x86.QFE "$W_SYSTEM32_DLLS"/mfc90u.dll
+    w_try cp "$W_TMP/win32"/mfcm90.dll.30729.6161.Microsoft_VC90_MFC_x86.QFE "$W_SYSTEM32_DLLS"/mfcm90.dll
+    w_try cp "$W_TMP/win32"/mfcm90u.dll.30729.6161.Microsoft_VC90_MFC_x86.QFE "$W_SYSTEM32_DLLS"/mfcm90u.dll
+
+    if [ "$W_ARCH" = "win64" ]; then
+        w_download_to vcrun2008 https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x64.exe b811f2c047a3e828517c234bd4aa4883e1ec591d88fad21289ae68a6915a6665
+
+        w_try_cabextract --directory="$W_TMP/win64" "$W_CACHE"/vcrun2008/vcredist_x64.exe -F 'vc_red.cab'
+        w_try_cabextract --directory="$W_TMP/win64" "$W_TMP/win64/vc_red.cab"
+
+        w_try cp "$W_TMP/win64"/mfc90.dll.30729.6161.Microsoft_VC90_MFC_x64.QFE "$W_SYSTEM64_DLLS"/mfc90.dll
+        w_try cp "$W_TMP/win64"/mfc90u.dll.30729.6161.Microsoft_VC90_MFC_x64.QFE "$W_SYSTEM64_DLLS"/mfc90u.dll
+        w_try cp "$W_TMP/win64"/mfcm90.dll.30729.6161.Microsoft_VC90_MFC_x64.QFE "$W_SYSTEM64_DLLS"/mfcm90.dll
+        w_try cp "$W_TMP/win64"/mfcm90u.dll.30729.6161.Microsoft_VC90_MFC_x64.QFE "$W_SYSTEM64_DLLS"/mfcm90u.dll
+    fi
+}
+
 #----------------------------------------------------------------
 
 w_metadata vcrun2010 dlls \
@@ -12121,6 +12200,39 @@ load_vcrun2010()
             fi
             ;;
     esac
+}
+
+w_metadata mfc100 dlls \
+    title="Visual C++ 2010 mfc100 library; part of vcrun2010" \
+    publisher="Microsoft" \
+    year="2010" \
+    media="download" \
+    file1="../vcrun2010/vcredist_x86.exe" \
+    installed_file1="$W_SYSTEM32_DLLS_WIN/mfc100u.dll"
+
+load_mfc100()
+{
+    w_download_to vcrun2010 https://download.microsoft.com/download/5/B/C/5BC5DBB3-652D-4DCE-B14A-475AB85EEF6E/vcredist_x86.exe 8162b2d665ca52884507ede19549e99939ce4ea4a638c537fa653539819138c8
+
+    w_try_cabextract --directory="$W_TMP/win32" "$W_CACHE"/vcrun2010/vcredist_x86.exe -F '*.cab'
+    w_try_cabextract --directory="$W_TMP/win32" "$W_TMP/win32/vc_red.cab"
+
+    w_try cp "$W_TMP/win32"/F_CENTRAL_mfc100_x86 "$W_SYSTEM32_DLLS"/mfc100.dll
+    w_try cp "$W_TMP/win32"/F_CENTRAL_mfc100u_x86 "$W_SYSTEM32_DLLS"/mfc100u.dll
+    w_try cp "$W_TMP/win32"/F_CENTRAL_mfcm100_x86 "$W_SYSTEM32_DLLS"/mfcm100.dll
+    w_try cp "$W_TMP/win32"/F_CENTRAL_mfcm100u_x86 "$W_SYSTEM32_DLLS"/mfcm100u.dll
+
+    if [ "$W_ARCH" = "win64" ]; then
+        w_download_to vcrun2010 https://download.microsoft.com/download/A/8/0/A80747C3-41BD-45DF-B505-E9710D2744E0/vcredist_x64.exe c6cd2d3f0b11dc2a604ffdc4dd97861a83b77e21709ba71b962a47759c93f4c8
+
+        w_try_cabextract --directory="$W_TMP/win64" "$W_CACHE"/vcrun2010/vcredist_x64.exe -F '*.cab'
+        w_try_cabextract --directory="$W_TMP/win64" "$W_TMP/win64/vc_red.cab"
+
+        w_try cp "$W_TMP/win64"/F_CENTRAL_mfc100_x64 "$W_SYSTEM64_DLLS"/mfc100.dll
+        w_try cp "$W_TMP/win64"/F_CENTRAL_mfc100u_x64 "$W_SYSTEM64_DLLS"/mfc100u.dll
+        w_try cp "$W_TMP/win64"/F_CENTRAL_mfcm100_x64 "$W_SYSTEM64_DLLS"/mfcm100.dll
+        w_try cp "$W_TMP/win64"/F_CENTRAL_mfcm100u_x64 "$W_SYSTEM64_DLLS"/mfcm100u.dll
+    fi
 }
 
 #----------------------------------------------------------------
@@ -12165,6 +12277,39 @@ load_vcrun2012()
     esac
 }
 
+w_metadata mfc110 dlls \
+    title="Visual C++ 2012 mfc110 library; part of vcrun2012" \
+    publisher="Microsoft" \
+    year="2012" \
+    media="download" \
+    file1="../vcrun2012/vcredist_x86.exe" \
+    installed_file1="$W_SYSTEM32_DLLS_WIN/mfc110u.dll"
+
+load_mfc110()
+{
+    w_download_to vcrun2012 https://download.microsoft.com/download/1/6/B/16B06F60-3B20-4FF2-B699-5E9B7962F9AE/VSU_4/vcredist_x86.exe b924ad8062eaf4e70437c8be50fa612162795ff0839479546ce907ffa8d6e386
+
+    w_try_cabextract --directory="$W_TMP/win32"  "$W_CACHE"/vcrun2012/vcredist_x86.exe -F 'a3'
+    w_try_cabextract --directory="$W_TMP/win32" "$W_TMP/win32/a3"
+
+    w_try cp "$W_TMP/win32"/F_CENTRAL_mfc110_x86 "$W_SYSTEM32_DLLS"/mfc110.dll
+    w_try cp "$W_TMP/win32"/F_CENTRAL_mfc110u_x86 "$W_SYSTEM32_DLLS"/mfc110u.dll
+    w_try cp "$W_TMP/win32"/F_CENTRAL_mfcm110_x86 "$W_SYSTEM32_DLLS"/mfcm110.dll
+    w_try cp "$W_TMP/win32"/F_CENTRAL_mfcm110u_x86 "$W_SYSTEM32_DLLS"/mfcm110u.dll
+
+    if [ "$W_ARCH" = "win64" ]; then
+        w_download_to vcrun2012 https://download.microsoft.com/download/1/6/B/16B06F60-3B20-4FF2-B699-5E9B7962F9AE/VSU_4/vcredist_x64.exe 681be3e5ba9fd3da02c09d7e565adfa078640ed66a0d58583efad2c1e3cc4064
+
+        w_try_cabextract --directory="$W_TMP/win64"  "$W_CACHE"/vcrun2012/vcredist_x64.exe -F 'a3'
+        w_try_cabextract --directory="$W_TMP/win64" "$W_TMP/win64/a3"
+
+        w_try cp "$W_TMP/win64"/F_CENTRAL_mfc110_x64 "$W_SYSTEM64_DLLS"/mfc110.dll
+        w_try cp "$W_TMP/win64"/F_CENTRAL_mfc110u_x64 "$W_SYSTEM64_DLLS"/mfc110u.dll
+        w_try cp "$W_TMP/win64"/F_CENTRAL_mfcm110_x64 "$W_SYSTEM64_DLLS"/mfcm110.dll
+        w_try cp "$W_TMP/win64"/F_CENTRAL_mfcm110u_x64 "$W_SYSTEM64_DLLS"/mfcm110u.dll
+    fi
+}
+
 #----------------------------------------------------------------
 
 w_metadata vcrun2013 dlls \
@@ -12207,6 +12352,39 @@ load_vcrun2013()
             fi
             ;;
     esac
+}
+
+w_metadata mfc120 dlls \
+    title="Visual C++ 2013 mfc120 library; part of vcrun2013" \
+    publisher="Microsoft" \
+    year="2013" \
+    media="download" \
+    file1="../vcrun2013/vcredist_x86.exe" \
+    installed_file1="$W_SYSTEM32_DLLS_WIN/mfc120u.dll"
+
+load_mfc120()
+{
+    w_download_to vcrun2013 https://download.microsoft.com/download/0/5/6/056dcda9-d667-4e27-8001-8a0c6971d6b1/vcredist_x86.exe 89f4e593ea5541d1c53f983923124f9fd061a1c0c967339109e375c661573c17
+
+    w_try_cabextract --directory="$W_TMP/win32"  "$W_CACHE"/vcrun2013/vcredist_x86.exe -F 'a3'
+    w_try_cabextract --directory="$W_TMP/win32" "$W_TMP/win32/a3"
+
+    w_try cp "$W_TMP/win32"/F_CENTRAL_mfc120_x86 "$W_SYSTEM32_DLLS"/mfc120.dll
+    w_try cp "$W_TMP/win32"/F_CENTRAL_mfc120u_x86 "$W_SYSTEM32_DLLS"/mfc120u.dll
+    w_try cp "$W_TMP/win32"/F_CENTRAL_mfcm120_x86 "$W_SYSTEM32_DLLS"/mfcm120.dll
+    w_try cp "$W_TMP/win32"/F_CENTRAL_mfcm120u_x86 "$W_SYSTEM32_DLLS"/mfcm120u.dll
+
+    if [ "$W_ARCH" = "win64" ]; then
+        w_download_to vcrun2013 https://download.microsoft.com/download/0/5/6/056dcda9-d667-4e27-8001-8a0c6971d6b1/vcredist_x64.exe 20e2645b7cd5873b1fa3462b99a665ac8d6e14aae83ded9d875fea35ffdd7d7e
+
+        w_try_cabextract --directory="$W_TMP/win64"  "$W_CACHE"/vcrun2013/vcredist_x64.exe -F 'a3'
+        w_try_cabextract --directory="$W_TMP/win64" "$W_TMP/win64/a3"
+
+        w_try cp "$W_TMP/win64"/F_CENTRAL_mfc120_x64 "$W_SYSTEM64_DLLS"/mfc120.dll
+        w_try cp "$W_TMP/win64"/F_CENTRAL_mfc120u_x64 "$W_SYSTEM64_DLLS"/mfc120u.dll
+        w_try cp "$W_TMP/win64"/F_CENTRAL_mfcm120_x64 "$W_SYSTEM64_DLLS"/mfcm120.dll
+        w_try cp "$W_TMP/win64"/F_CENTRAL_mfcm120u_x64 "$W_SYSTEM64_DLLS"/mfcm120u.dll
+    fi
 }
 
 #----------------------------------------------------------------
@@ -12270,6 +12448,39 @@ load_vcrun2015()
             fi
             ;;
     esac
+}
+
+w_metadata mfc140 dlls \
+    title="Visual C++ 2015 mfc140 library; part of vcrun2015" \
+    publisher="Microsoft" \
+    year="2015" \
+    media="download" \
+    file1="../vcrun2015/vc_redist.x86.exe" \
+    installed_file1="$W_SYSTEM32_DLLS_WIN/mfc140u.dll"
+
+load_mfc140()
+{
+    w_download_to vcrun2015 https://download.microsoft.com/download/9/3/F/93FCF1E7-E6A4-478B-96E7-D4B285925B00/vc_redist.x86.exe fdd1e1f0dcae2d0aa0720895eff33b927d13076e64464bb7c7e5843b7667cd14
+
+    w_try_cabextract --directory="$W_TMP/win32"  "$W_CACHE"/vcrun2015/vc_redist.x86.exe -F 'a11'
+    w_try_cabextract --directory="$W_TMP/win32" "$W_TMP/win32/a11"
+
+    w_try cp "$W_TMP/win32"/mfc140.dll "$W_SYSTEM32_DLLS"/mfc140.dll
+    w_try cp "$W_TMP/win32"/mfc140u.dll "$W_SYSTEM32_DLLS"/mfc140u.dll
+    w_try cp "$W_TMP/win32"/mfcm140.dll "$W_SYSTEM32_DLLS"/mfcm140.dll
+    w_try cp "$W_TMP/win32"/mfcm140u.dll "$W_SYSTEM32_DLLS"/mfcm140u.dll
+
+    if [ "$W_ARCH" = "win64" ]; then
+        w_download_to vcrun2015 https://download.microsoft.com/download/9/3/F/93FCF1E7-E6A4-478B-96E7-D4B285925B00/vc_redist.x64.exe 5eea714e1f22f1875c1cb7b1738b0c0b1f02aec5ecb95f0fdb1c5171c6cd93a3
+
+        w_try_cabextract --directory="$W_TMP/win64"  "$W_CACHE"/vcrun2015/vc_redist.x64.exe -F 'a11'
+        w_try_cabextract --directory="$W_TMP/win64" "$W_TMP/win64/a11"
+
+        w_try cp "$W_TMP/win64"/mfc140.dll "$W_SYSTEM64_DLLS"/mfc140.dll
+        w_try cp "$W_TMP/win64"/mfc140u.dll "$W_SYSTEM64_DLLS"/mfc140u.dll
+        w_try cp "$W_TMP/win64"/mfcm140.dll "$W_SYSTEM64_DLLS"/mfcm140.dll
+        w_try cp "$W_TMP/win64"/mfcm140u.dll "$W_SYSTEM64_DLLS"/mfcm140u.dll
+    fi
 }
 
 #----------------------------------------------------------------
@@ -12939,12 +13150,7 @@ w_metadata calibri fonts \
 
 load_calibri()
 {
-    # https://www.microsoft.com/en-us/download/details.aspx?id=13
-    # Originally at https://download.microsoft.com/download/E/6/7/E675FFFC-2A6D-4AB0-B3EB-27C9F8C8F696/PowerPointViewer.exe
-    w_download_to PowerPointViewer "http://www.business.uwm.edu/gdrive/Dietenberger_E/PowerPointViewer.exe" 249473568eba7a1e4f95498acba594e0f42e6581add4dead70c1dfb908a09423
-    w_try_cabextract -d "$W_TMP" -F "ppviewer.cab" "$W_CACHE/PowerPointViewer/$file1"
-    w_try_cabextract -d "$W_TMP" -F "CALIBRI*.TTF" "$W_TMP/ppviewer.cab"
-    w_try_cp_font_files "$W_TMP" "$W_FONTSDIR_UNIX" "CALIBRI*.TTF"
+    helper_pptfonts "CALIBRI*.TTF"
     w_register_font calibri.ttf "Calibri"
     w_register_font calibrib.ttf "Calibri Bold"
     w_register_font calibrii.ttf "Calibri Italic"
@@ -12963,12 +13169,7 @@ w_metadata cambria fonts \
 
 load_cambria()
 {
-    # https://www.microsoft.com/en-us/download/details.aspx?id=13
-    # Originally at https://download.microsoft.com/download/E/6/7/E675FFFC-2A6D-4AB0-B3EB-27C9F8C8F696/PowerPointViewer.exe
-    w_download_to PowerPointViewer "http://www.business.uwm.edu/gdrive/Dietenberger_E/PowerPointViewer.exe" 249473568eba7a1e4f95498acba594e0f42e6581add4dead70c1dfb908a09423
-    w_try_cabextract -d "$W_TMP" -F "ppviewer.cab" "$W_CACHE/PowerPointViewer/$file1"
-    w_try_cabextract -d "$W_TMP" -F "CAMBRIA*.TT*" "$W_TMP/ppviewer.cab"
-    w_try_cp_font_files "$W_TMP" "$W_FONTSDIR_UNIX" "CAMBRIA*.TT*"
+    helper_pptfonts "CAMBRIA*.TT*"
     w_register_font cambria.ttc "Cambria & Cambria Math"
     w_register_font cambriab.ttf "Cambria Bold"
     w_register_font cambriai.ttf "Cambria Italic"
@@ -12987,12 +13188,7 @@ w_metadata candara fonts \
 
 load_candara()
 {
-    # https://www.microsoft.com/en-us/download/details.aspx?id=13
-    # Originally at https://download.microsoft.com/download/E/6/7/E675FFFC-2A6D-4AB0-B3EB-27C9F8C8F696/PowerPointViewer.exe
-    w_download_to PowerPointViewer "http://www.business.uwm.edu/gdrive/Dietenberger_E/PowerPointViewer.exe" 249473568eba7a1e4f95498acba594e0f42e6581add4dead70c1dfb908a09423
-    w_try_cabextract -d "$W_TMP" -F "ppviewer.cab" "$W_CACHE/PowerPointViewer/$file1"
-    w_try_cabextract -d "$W_TMP" -F "CANDARA*.TTF" "$W_TMP/ppviewer.cab"
-    w_try_cp_font_files "$W_TMP" "$W_FONTSDIR_UNIX" "CANDARA*.TTF"
+    helper_pptfonts "CANDARA*.TTF"
     w_register_font candara.ttf "Candara"
     w_register_font candarab.ttf "Candara Bold"
     w_register_font candarai.ttf "Candara Italic"
@@ -13011,12 +13207,7 @@ w_metadata consolas fonts \
 
 load_consolas()
 {
-    # https://www.microsoft.com/en-us/download/details.aspx?id=13
-    # Originally at https://download.microsoft.com/download/E/6/7/E675FFFC-2A6D-4AB0-B3EB-27C9F8C8F696/PowerPointViewer.exe
-    w_download_to PowerPointViewer "http://www.business.uwm.edu/gdrive/Dietenberger_E/PowerPointViewer.exe" 249473568eba7a1e4f95498acba594e0f42e6581add4dead70c1dfb908a09423
-    w_try_cabextract -d "$W_TMP" -F "ppviewer.cab" "$W_CACHE/PowerPointViewer/$file1"
-    w_try_cabextract -d "$W_TMP" -F "CONSOLA*.TTF" "$W_TMP/ppviewer.cab"
-    w_try_cp_font_files "$W_TMP" "$W_FONTSDIR_UNIX" "CONSOLA*.TTF"
+    helper_pptfonts "CONSOLA*.TTF"
     w_register_font consola.ttf "Consolas"
     w_register_font consolab.ttf "Consolas Bold"
     w_register_font consolai.ttf "Consolas Italic"
@@ -13035,12 +13226,7 @@ w_metadata constantia fonts \
 
 load_constantia()
 {
-    # https://www.microsoft.com/en-us/download/details.aspx?id=13
-    # Originally at https://download.microsoft.com/download/E/6/7/E675FFFC-2A6D-4AB0-B3EB-27C9F8C8F696/PowerPointViewer.exe
-    w_download_to PowerPointViewer "http://www.business.uwm.edu/gdrive/Dietenberger_E/PowerPointViewer.exe" 249473568eba7a1e4f95498acba594e0f42e6581add4dead70c1dfb908a09423
-    w_try_cabextract -d "$W_TMP" -F "ppviewer.cab" "$W_CACHE/PowerPointViewer/$file1"
-    w_try_cabextract -d "$W_TMP" -F "CONSTAN*.TTF" "$W_TMP/ppviewer.cab"
-    w_try_cp_font_files "$W_TMP" "$W_FONTSDIR_UNIX" "CONSTAN*.TTF"
+    helper_pptfonts "CONSTAN*.TTF"
     w_register_font constan.ttf "Constantia"
     w_register_font constanb.ttf "Constantia Bold"
     w_register_font constani.ttf "Constantia Italic"
@@ -13059,12 +13245,7 @@ w_metadata corbel fonts \
 
 load_corbel()
 {
-    # https://www.microsoft.com/en-us/download/details.aspx?id=13
-    # Originally at https://download.microsoft.com/download/E/6/7/E675FFFC-2A6D-4AB0-B3EB-27C9F8C8F696/PowerPointViewer.exe
-    w_download_to PowerPointViewer "http://www.business.uwm.edu/gdrive/Dietenberger_E/PowerPointViewer.exe" 249473568eba7a1e4f95498acba594e0f42e6581add4dead70c1dfb908a09423
-    w_try_cabextract -d "$W_TMP" -F "ppviewer.cab" "$W_CACHE/PowerPointViewer/$file1"
-    w_try_cabextract -d "$W_TMP" -F "CORBEL*.TTF" "$W_TMP/ppviewer.cab"
-    w_try_cp_font_files "$W_TMP" "$W_FONTSDIR_UNIX" "CORBEL*.TTF"
+    helper_pptfonts "CORBEL*.TTF"
     w_register_font corbel.ttf "Corbel"
     w_register_font corbelb.ttf "Corbel Bold"
     w_register_font corbeli.ttf "Corbel Italic"
@@ -13084,12 +13265,7 @@ w_metadata meiryo fonts \
 
 load_meiryo()
 {
-    # https://www.microsoft.com/en-us/download/details.aspx?id=13
-    # Originally at https://download.microsoft.com/download/E/6/7/E675FFFC-2A6D-4AB0-B3EB-27C9F8C8F696/PowerPointViewer.exe
-    w_download_to PowerPointViewer "http://www.business.uwm.edu/gdrive/Dietenberger_E/PowerPointViewer.exe" 249473568eba7a1e4f95498acba594e0f42e6581add4dead70c1dfb908a09423
-    w_try_cabextract -d "$W_TMP" -F "ppviewer.cab" "$W_CACHE/PowerPointViewer/$file1"
-    w_try_cabextract -d "$W_TMP" -F "MEIRYO*.TTC" "$W_TMP/ppviewer.cab"
-    w_try_cp_font_files "$W_TMP" "$W_FONTSDIR_UNIX" "MEIRYO*.TTC"
+    helper_pptfonts "MEIRYO*.TTC"
     w_register_font meiryo.ttc "Meiryo & Meiryo Italic & Meiryo UI & Meiryo UI Italic"
     w_register_font meiryob.ttc "Meiryo Bold & Meiryo Bold Italic & Meiryo UI Bold & Meiryo UI Bold Italic"
 }
@@ -13111,6 +13287,19 @@ load_pptfonts()
     w_call constantia
     w_call corbel
     w_call meiryo
+}
+
+helper_pptfonts()
+{
+    # download PowerPointViewer, extract the given files, and copy them to $W_FONTSDIR_UNIX
+    # Font registration should still be done by the respective verbs
+    # $1 - font pattern to extract
+
+    pptfont="$1"
+    w_download_to PowerPointViewer "https://web.archive.org/web/20171225132744if_/https://download.microsoft.com/download/E/6/7/E675FFFC-2A6D-4AB0-B3EB-27C9F8C8F696/PowerPointViewer.exe" 249473568eba7a1e4f95498acba594e0f42e6581add4dead70c1dfb908a09423
+    w_try_cabextract -d "$W_TMP" -F "ppviewer.cab" "$W_CACHE/PowerPointViewer/PowerPointViewer.exe"
+    w_try_cabextract -d "$W_TMP" -F "$pptfont" "$W_TMP/ppviewer.cab"
+    w_try_cp_font_files "$W_TMP" "$W_FONTSDIR_UNIX" "$pptfont"
 }
 
 #----------------------------------------------------------------
@@ -21543,7 +21732,11 @@ w_metadata ddr=opengl settings \
 
 load_ddr()
 {
-    winetricks_set_wined3d_var DirectDrawRenderer "$1"
+    if w_wine_version_in ,3.16 ; then
+        winetricks_set_wined3d_var DirectDrawRenderer "$1"
+    else
+        winetricks_set_wined3d_var renderer "$1"
+    fi
 }
 
 #----------------------------------------------------------------
