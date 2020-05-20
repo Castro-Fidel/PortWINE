@@ -11,11 +11,6 @@ pwzen() {
 zenity --progress --title="Settings..." --text="Please wait!" --pulsate --auto-close --auto-kill --width=450
 } 
 ########################################################################
-wine_pids=$(ls -l /proc/*/exe 2>/dev/null | grep -E 'wine(64)?-preloader|wineserver' | perl -pe 's;^.*/proc/(\d+)/exe.*$;$1;g;')
-if ! [ -z "${wine_pids}" ] ; then
-    kill -9 ${wine_pids}
-fi
-########################################################################
 export kill_winedevice=0
 export kill_explorer=0
 ########################################################################
@@ -62,7 +57,7 @@ then
 fi
 read "var_dxvk_on" < "${config_path}/dxvk_on"
 export "var_dxvk_on"
-if [ ! -x "`which "gamemode" 2>/dev/null`" ]
+if [ -x "`which "gamemoderun" 2>/dev/null`" ]
 then
  #   LD_PRELOAD="$LD_PRELOAD:/usr/${LIB}/libgamemodeauto.so" 
     var_gamemode="gamemoderun"
@@ -98,13 +93,14 @@ export urlg="http://portwine-linux.ru/donate"
 
 START_PORTWINE ()
 {
+"${WINESERVER}" -k
 sh "${link}"/port_update 
 if [ "${var_dxvk_on}" -eq "1" ] 
 then
     export DXVK_HUD=0
 elif [ "${var_dxvk_on}" -eq "2" ] 
 then
-    export DXVK_HUD="fps,devinfo"
+    export DXVK_HUD="fps,devinfo,version,frametimes"
 fi
 export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk.conf"
 export def_pfx="${PORT_WINE_PATH}data/dist/share/default_pfx/"
@@ -143,7 +139,7 @@ STOP_PORTWINE ()
 WAIT_WINESERVER
 ADD_IN_STOP_PORTWINE
 sleep 3
-killall -r -s9 winedevice 
+#killall -r -s9 winedevice 
 rm -f "${PORT_WINE_PATH}"/0
 rm -f "${link}"/0
 }
