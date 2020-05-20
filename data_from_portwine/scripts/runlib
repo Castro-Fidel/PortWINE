@@ -95,11 +95,15 @@ export DRI_PRIME=1
 
 export urlg="http://portwine-linux.ru/donate"
 ########################################################################
-
 START_PORTWINE ()
 {
 "${WINESERVER}" -k
 sh "${link}"/port_update 
+if [ -x "`which nvidia-settings 2>/dev/null`" ]
+then
+	nvidia-settings -a [gpu:"${gpu}"]/GPUPowerMizerMode=1 > /dev/null
+	export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+fi
 if [ "${var_dxvk_on}" -eq "1" ] 
 then
     export DXVK_HUD=0
