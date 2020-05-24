@@ -21,7 +21,6 @@ from filelock import FileLock
 CURRENT_PREFIX_VERSION="5.6-GE-2"
 
 PFX="Proton: "
-ld_path_var = "LD_LIBRARY_PATH"
 
 def nonzero(s):
     return len(s) > 0 and s != "0"
@@ -106,25 +105,6 @@ class Proton:
 
     def path(self, d):
         return self.base_dir + d
-
-    def extract_tarball(self):
-        with self.dist_lock:
-            if not os.path.exists(self.dist_dir) or \
-                    not os.path.exists(self.path("dist/version")) or \
-                    not filecmp.cmp(self.version_file, self.path("dist/version")):
-                if os.path.exists(self.dist_dir):
-                    shutil.rmtree(self.dist_dir)
-                tar = None
-                for sf in ["", ".xz", ".bz2", ".gz"]:
-                    if os.path.exists(self.path("proton_dist.tar" + sf)):
-                        tar = tarfile.open(self.path("proton_dist.tar" + sf), mode="r:*")
-                        break
-                if not tar:
-                    log("No proton_dist tarball??")
-                    sys.exit(1)
-                tar.extractall(path=self.dist_dir)
-                tar.close()
-                try_copy(self.version_file, self.dist_dir)
 
     def make_default_prefix(self):
         with self.dist_lock:
@@ -413,17 +393,6 @@ class Session:
 
         self.env.pop("WINEARCH", "")
 
-        if 'ORIG_'+ld_path_var not in os.environ:
-            # Allow wine to restore this when calling an external app.
-            self.env['ORIG_'+ld_path_var] = os.environ.get(ld_path_var, '')
-
-        if ld_path_var in os.environ:
-            self.env[ld_path_var] = g_proton.lib64_dir + ":" + g_proton.lib_dir + ":" + os.environ[ld_path_var]
-        else:
-            self.env[ld_path_var] = g_proton.lib64_dir + ":" + g_proton.lib_dir
-
-        self.env["WINEDLLPATH"] = g_proton.lib64_dir + "/wine:" + g_proton.lib_dir + "/wine"
-
         self.env["GST_PLUGIN_SYSTEM_PATH_1_0"] = g_proton.lib64_dir + "gstreamer-1.0" + ":" + g_proton.lib_dir + "gstreamer-1.0"
         self.env["WINE_GST_REGISTRY_DIR"] = g_compatdata.path("gstreamer-1.0/")
 
@@ -457,15 +426,10 @@ class Session:
                 log("************************************************")
 
         if "PROTON_LOG" in self.env and nonzero(self.env["PROTON_LOG"]):
-            self.env.setdefault("WINEDEBUG", "+timestamp,+pid,+tid,+seh,+debugstr,+loaddll,+mscoree")
+#            self.env.setdefault("WINEDEBUG", "+timestamp,+pid,+tid,+seh,+debugstr,+loaddll,+mscoree")
             self.env.setdefault("DXVK_LOG_LEVEL", "info")
             self.env.setdefault("VKD3D_DEBUG", "warn")
             self.env.setdefault("WINE_MONO_TRACE", "E:System.NotImplementedException")
-
-        #for performance, logging is disabled by default; override with user_settings.py
-        self.env.setdefault("WINEDEBUG", "-all")
-        self.env.setdefault("DXVK_LOG_LEVEL", "none")
-        self.env.setdefault("VKD3D_DEBUG", "none")
 
         #default wine-mono override for FNA games
         self.env.setdefault("WINE_MONO_OVERRIDES", "Microsoft.Xna.Framework.*,Gac=n")
@@ -502,23 +466,6 @@ class Session:
         if "forcelgadd" in self.compat_config:
             self.env["WINE_LARGE_ADDRESS_AWARE"] = "1"
 
-        if "SteamGameId" in self.env:
-            if self.env["WINEDEBUG"] != "-all":
-                lfile_path = os.environ["HOME"] + "/steam-" + os.environ["SteamGameId"] + ".log"
-                if os.path.exists(lfile_path):
-                    os.remove(lfile_path)
-                self.log_file = open(lfile_path, "w+")
-                self.log_file.write("======================\n")
-                with open(g_proton.version_file, "r") as f:
-                    self.log_file.write("Proton: " + f.readline().strip() + "\n")
-                self.log_file.write("SteamGameId: " + self.env["SteamGameId"] + "\n")
-                self.log_file.write("Command: " + str(sys.argv[2:] + self.cmdlineappend) + "\n")
-                self.log_file.write("Options: " + str(self.compat_config) + "\n")
-                self.log_file.write("======================\n")
-                self.log_file.flush()
-        else:
-            self.env["WINEDEBUG"] = "-all"
-
         g_compatdata.setup_prefix()
 
         if "nod3d11" in self.compat_config:
@@ -549,9 +496,7 @@ class Session:
     def dump_dbg_env(self, f):
         f.write("PATH=\"" + self.env["PATH"] + "\" \\\n")
         f.write("\tTERM=\"xterm\" \\\n") #XXX
-        f.write("\tWINEDEBUG=\"-all\" \\\n")
         f.write("\tWINEDLLPATH=\"" + self.env["WINEDLLPATH"] + "\" \\\n")
-        f.write("\t" + ld_path_var + "=\"" + self.env[ld_path_var] + "\" \\\n")
         f.write("\tWINEPREFIX=\"" + self.env["WINEPREFIX"] + "\" \\\n")
         if "WINEESYNC" in self.env:
             f.write("\tWINEESYNC=\"" + self.env["WINEESYNC"] + "\" \\\n")
@@ -654,12 +599,7 @@ class Session:
         subprocess.call(args, env=local_env, stderr=self.log_file, stdout=self.log_file)
 
     def run(self):
-        if "PROTON_DUMP_DEBUG_COMMANDS" in self.env and nonzero(self.env["PROTON_DUMP_DEBUG_COMMANDS"]):
-            try:
-                self.dump_dbg_scripts()
-            except OSError:
-                log("Unable to write debug scripts! " + str(sys.exc_info()[1]))
-        self.run_proc([g_proton.wine_bin, "steam"] + sys.argv[2:] + self.cmdlineappend)
+        self.run_proc([g_proton.wine_bin] + sys.argv[2:] + self.cmdlineappend)
 
 
 if __name__ == "__main__":
@@ -668,8 +608,6 @@ if __name__ == "__main__":
         sys.exit(1)
 
     g_proton = Proton(os.path.dirname(sys.argv[0]))
-
-#    g_proton.extract_tarball()
 
     g_compatdata = CompatData(os.environ["STEAM_COMPAT_DATA_PATH"])
 
