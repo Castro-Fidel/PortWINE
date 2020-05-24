@@ -291,39 +291,11 @@ class CompatData:
             #create font files symlinks
             self.create_fonts_symlinks()
 
-            #copy steam files into place
-            if "STEAM_COMPAT_CLIENT_INSTALL_PATH" in os.environ:
-                #modern steam client sets this
-                steamdir = os.environ["STEAM_COMPAT_CLIENT_INSTALL_PATH"]
-            else:
-                #linux-only fallback, really shouldn't get here
-                steamdir = os.environ["HOME"] + ".steam/root/"
-            dst = self.prefix_dir + "/drive_c/Program Files (x86)/"
-            makedirs(dst + "Steam")
-            filestocopy = ["steamclient.dll",
-                    "steamclient64.dll",
-                    "Steam.dll"]
-            for f in filestocopy:
-                if os.path.isfile(steamdir + "/legacycompat/" + f):
-                    dstfile = dst + "Steam/" + f
-                    if os.path.isfile(dstfile):
-                        os.remove(dstfile)
-                    try_copy(steamdir + "/legacycompat/" + f, dstfile)
-
-            #copy openvr files into place
-            dst = self.prefix_dir + "/drive_c/vrclient/bin/"
-            makedirs(dst)
-            try_copy(g_proton.lib_dir + "wine/fakedlls/vrclient.dll", dst)
-            try_copy(g_proton.lib64_dir + "wine/fakedlls/vrclient_x64.dll", dst)
-
-            try_copy(g_proton.lib_dir + "wine/dxvk/openvr_api_dxvk.dll", self.prefix_dir + "/drive_c/windows/syswow64/")
-            try_copy(g_proton.lib64_dir + "wine/dxvk/openvr_api_dxvk.dll", self.prefix_dir + "/drive_c/windows/system32/")
-
             if "wined3d" in g_session.compat_config:
-                dxvkfiles = ["dxvk_config"]
+                dxvkfiles = []
                 wined3dfiles = ["d3d11", "d3d10", "d3d10core", "d3d10_1", "d3d9"]
             else:
-                dxvkfiles = ["dxvk_config", "d3d11", "d3d10", "d3d10core", "d3d10_1", "d3d9"]
+                dxvkfiles = ["d3d11", "d3d10", "d3d10core", "d3d10_1", "d3d9"]
                 wined3dfiles = []
 
             #if the user asked for dxvk's dxgi (dxgi=n), then copy it into place
@@ -449,10 +421,10 @@ class Session:
         self.check_environment("PROTON_USE_SECCOMP", "seccomp")
 
         if not "noesync" in self.compat_config:
-            self.env["WINEESYNC"] = "1" if "SteamGameId" in self.env else "0"
+            self.env["WINEESYNC"] = "1"
 
         if not "nofsync" in self.compat_config:
-            self.env["WINEFSYNC"] = "1" if "SteamGameId" in self.env else "0"
+            self.env["WINEFSYNC"] = "1"
 
         if "seccomp" in self.compat_config:
             self.env["WINESECCOMP"] = "1"
@@ -615,7 +587,7 @@ if __name__ == "__main__":
 
     g_session.init_wine()
 
-    g_proton.make_default_prefix()
+#    g_proton.make_default_prefix()
 
     g_session.init_session()
 
