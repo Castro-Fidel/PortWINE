@@ -77,21 +77,17 @@ export WINEPREFIX="${PORT_WINE_PATH}/data/pfx"
 export PATH="${WINEDIR}/bin":${PATH}
 export WINESTART="C:\\windows\\command\\start.exe"
 export STEAM_COMPAT_DATA_PATH="${PORT_WINE_PATH}/data/"
-#if [ -d "${PORT_WINE_PATH}/libs" ]
-#then
+if [ -d "${WINELIB}" ]
+then
     export LD_LIBRARY_PATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine:${WINELIB}/pinned_libs_32:${WINELIB}/pinned_libs_64:/usr/lib/x86_64-linux-gnu/libfakeroot:/lib/i386-linux-gnu:/usr/lib/i386-linux-gnu:/usr/local/lib:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/lib:/usr/lib:/usr/lib/i386-linux-gnu/i686:/usr/lib/i386-linux-gnu/sse2:/usr/lib/i386-linux-gnu/i686/sse2:${WINELIB}/i386/lib/i386-linux-gnu:${WINELIB}/i386/lib:${WINELIB}/i386/usr/lib/i386-linux-gnu:${WINELIB}/i386/usr/lib:${WINELIB}/amd64/lib/x86_64-linux-gnu:${WINELIB}/amd64/lib:${WINELIB}/amd64/usr/lib/x86_64-linux-gnu:${WINELIB}/amd64/usr/lib:${WINELIB}/usr/lib/i386-linux-gnu:${WINELIB}/usr/lib/x86_64-linux-gnu:${WINELIB}/amd64/usr/lib:${WINELIB}/lib/i386-linux-gnu:${WINELIB}/lib/x86_64-linux-gnu:${WINELIB}/lib:${LD_LIBRARY_PATH}"
-#else
-#    export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${LD_LIBRARY_PATH}"
-#fi
+    echo "runtime libs is enabled"
+else
+    export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${LD_LIBRARY_PATH}"
+    echo "runtime libs is disabled"
+fi
 ########################################################################
 export DXVK_STATE_CACHE_PATH="${PATH_TO_GAME}"
 export DXVK_STATE_CACHE=1
-export __GL_SHADER_DISK_CACHE_PATH="${PATH_TO_GAME}" 
-export __GL_SHADER_DISK_CACHE=1
-export __GL_SHADER_DISK_CACHE_SIZE=1000000000
-export __GL_THREADED_OPTIMIZATIONS=1
-export mesa_glthread=true
-export DRI_PRIME=1
 
 export urlg="http://portwine-linux.ru/donate"
 ########################################################################
@@ -99,10 +95,30 @@ START_PORTWINE ()
 {
 "${WINESERVER}" -k
 sh "${link}"/port_update 
+export PROTON_NO_FSYNC=0
 if [ -x "`which nvidia-settings 2>/dev/null`" ]
 then
-	nvidia-settings -a [gpu:"${gpu}"]/GPUPowerMizerMode=1 > /dev/null
-	export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+    nvidia-settings -a [gpu:0]/GPUPowerMizerMode=1 > /dev/null
+    export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+    export __GL_SYNC_TO_VBLANK=1
+    export __GL_SHADER_DISK_CACHE_PATH="${PATH_TO_GAME}" 
+    export __GL_SHADER_DISK_CACHE=1
+    export __GL_SHADER_DISK_CACHE_SIZE=1000000000
+    export __GL_THREADED_OPTIMIZATIONS=1
+    export __NV_PRIME_RENDER_OFFLOAD=1
+    export __GLX_VENDOR_LIBRARY_NAME=nvidia
+else
+    export DRI_PRIME=1
+    export vblank_mode=1
+    export mesa_glthread=true
+    local AMD_ATI="$(lspci | grep AMD/ATI)" 
+    if [ ! -z "${AMD_ATI}" ] && [ "${PORTWINE_ACO}" -eq "1" ] 
+    then
+        export RADV_PERFTEST=aco
+        echo "ACO is enabled"
+    else
+        echo "ACO is disabled"
+    fi
 fi
 if [ "${var_dxvk_on}" -eq "1" ] 
 then
