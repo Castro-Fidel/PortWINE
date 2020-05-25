@@ -99,14 +99,14 @@ export PROTON_NO_FSYNC=0
 if [ -x "`which nvidia-settings 2>/dev/null`" ]
 then
     nvidia-settings -a [gpu:0]/GPUPowerMizerMode=1 > /dev/null
-    export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+ #   export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json #Использовать только с примусран
     export __GL_SYNC_TO_VBLANK=1
     export __GL_SHADER_DISK_CACHE_PATH="${PATH_TO_GAME}" 
     export __GL_SHADER_DISK_CACHE=1
     export __GL_SHADER_DISK_CACHE_SIZE=1000000000
     export __GL_THREADED_OPTIMIZATIONS=1
-    export __NV_PRIME_RENDER_OFFLOAD=1
-    export __GLX_VENDOR_LIBRARY_NAME=nvidia
+#    export __NV_PRIME_RENDER_OFFLOAD=1
+#    export __GLX_VENDOR_LIBRARY_NAME=nvidia
 else
     export DRI_PRIME=1
     export vblank_mode=1
@@ -133,6 +133,15 @@ if [ ! -d "${def_pfx}" ]
 then
 	"${PROTONRUN}" "run" | pwzen
 fi
+#if grep ESYNC "${WINEDIR}/lib/wine/ntdll.dll.so"|| grep ESYNC "${WINEDIR}/lib64/wine/ntdll.dll.so" &>/dev/null
+#then
+#	if ! ulimit -n 500000 &>/dev/null
+#	then
+		export PROTON_NO_ESYNC=1
+#	else
+#		export PROTON_NO_ESYNC=0
+#	fi
+#fi
 ADD_IN_START_PORTWINE
 } 
 ########################################################################
