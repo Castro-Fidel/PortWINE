@@ -93,20 +93,28 @@ export urlg="http://portwine-linux.ru/donate"
 ########################################################################
 START_PORTWINE ()
 {
-"${WINESERVER}" -k
 sh "${link}"/port_update 
 export PROTON_NO_FSYNC=0
 if [ -x "`which nvidia-settings 2>/dev/null`" ]
 then
-    nvidia-settings -a [gpu:0]/GPUPowerMizerMode=1 > /dev/null
- #   export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json #Использовать только с примусран
+    export optirun_on=env
+    if [ -x "`which primusrun 2>/dev/null`" ]  
+    then
+        export optirun_on="primusrun"
+        export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json 
+    elif [ -x "`which optirun 2>/dev/null`" ]
+    then
+        export optirun_on="optirun -b primus"
+        export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json 
+    fi
+    export __NV_PRIME_RENDER_OFFLOAD=1
+    export __GLX_VENDOR_LIBRARY_NAME=nvidia
     export __GL_SYNC_TO_VBLANK=1
     export __GL_SHADER_DISK_CACHE_PATH="${PATH_TO_GAME}" 
     export __GL_SHADER_DISK_CACHE=1
     export __GL_SHADER_DISK_CACHE_SIZE=1000000000
     export __GL_THREADED_OPTIMIZATIONS=1
-#    export __NV_PRIME_RENDER_OFFLOAD=1
-#    export __GLX_VENDOR_LIBRARY_NAME=nvidia
+    nvidia-settings -a [gpu:0]/GPUPowerMizerMode=1 > /dev/null
 else
     export DRI_PRIME=1
     export vblank_mode=1
@@ -133,15 +141,18 @@ if [ ! -d "${def_pfx}" ]
 then
 	"${PROTONRUN}" "run" | pwzen
 fi
-#if grep ESYNC "${WINEDIR}/lib/wine/ntdll.dll.so"|| grep ESYNC "${WINEDIR}/lib64/wine/ntdll.dll.so" &>/dev/null
-#then
-#	if ! ulimit -n 500000 &>/dev/null
-#	then
-		export PROTON_NO_ESYNC=1
-#	else
-#		export PROTON_NO_ESYNC=0
-#	fi
+#if ! ulimit -n 500000 &>/dev/null
+#the
+    export PROTON_NO_ESYNC=1
+#else
+#   export PROTON_NO_ESYNC=0
 #fi
+export int_xneur=0
+if [ $(pgrep xneur)>'0' ]
+then
+	killall xneur
+	export int_xneur=1
+fi 
 ADD_IN_START_PORTWINE
 } 
 ########################################################################
@@ -172,7 +183,10 @@ STOP_PORTWINE ()
 {
 WAIT_WINESERVER
 ADD_IN_STOP_PORTWINE
-sleep 3
+if [ "$int_xneur" -eq "1"  ]
+then
+	xneur &
+fi
 #killall -r -s9 winedevice 
 rm -f "${PORT_WINE_PATH}"/0
 rm -f "${link}"/0
