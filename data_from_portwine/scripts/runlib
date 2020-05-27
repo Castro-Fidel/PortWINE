@@ -77,7 +77,9 @@ export WINEPREFIX="${PORT_WINE_PATH}/data/pfx"
 export PATH="${WINEDIR}/bin":${PATH}
 export WINESTART="C:\\windows\\command\\start.exe"
 export STEAM_COMPAT_DATA_PATH="${PORT_WINE_PATH}/data/"
-if [ -d "${WINELIB}" ]
+
+export OS_BASED="$(cat /etc/os-release | grep ID_LIKE | cut -d '=' -f2)"
+if [ -d "${WINELIB}" ] && [ "${OS_BASED}" != "arch" ]
 then
     export LD_LIBRARY_PATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine:${WINELIB}/pinned_libs_32:${WINELIB}/pinned_libs_64:/usr/lib/x86_64-linux-gnu/libfakeroot:/lib/i386-linux-gnu:/usr/lib/i386-linux-gnu:/usr/local/lib:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/lib:/usr/lib:/usr/lib/i386-linux-gnu/i686:/usr/lib/i386-linux-gnu/sse2:/usr/lib/i386-linux-gnu/i686/sse2:${WINELIB}/i386/lib/i386-linux-gnu:${WINELIB}/i386/lib:${WINELIB}/i386/usr/lib/i386-linux-gnu:${WINELIB}/i386/usr/lib:${WINELIB}/amd64/lib/x86_64-linux-gnu:${WINELIB}/amd64/lib:${WINELIB}/amd64/usr/lib/x86_64-linux-gnu:${WINELIB}/amd64/usr/lib:${WINELIB}/usr/lib/i386-linux-gnu:${WINELIB}/usr/lib/x86_64-linux-gnu:${WINELIB}/amd64/usr/lib:${WINELIB}/lib/i386-linux-gnu:${WINELIB}/lib/x86_64-linux-gnu:${WINELIB}/lib:${LD_LIBRARY_PATH}"
     echo "runtime libs is enabled"
@@ -141,12 +143,14 @@ if [ ! -d "${def_pfx}" ]
 then
 	"${PROTONRUN}" "run" | pwzen
 fi
-#if ! ulimit -n 500000 &>/dev/null
-#the
+if [ "$(ulimit -n)" -lt 50000 ] 
+then
     export PROTON_NO_ESYNC=1
-#else
-#   export PROTON_NO_ESYNC=0
-#fi
+    echo "ESYNC is disabled"
+else
+    export PROTON_NO_ESYNC=0
+    echo "ESYNC is enabled"
+fi
 export int_xneur=0
 if [ $(pgrep xneur)>'0' ]
 then
