@@ -70,8 +70,12 @@ export DXVK_HUD="full"
 export WINE_MONO_TRACE="E:System.NotImplementedException"
 
 #"/usr/bin/xterm" -geometry 130x13 -sb -e 'echo "--------------------------------------------------------PORTWINE-LINUX.RU--------------------------------------------------------" && "${PROTONRUN}" "run" "${gamestart}" "${launch_parameters}" &>> "${PORT_WINE_PATH}/${portname}.log"'
-
-${optirun_on} "${var_gamemode}" "${PROTONRUN}" "run" "${gamestart}" ${launch_parameters} >> "${PORT_WINE_PATH}/${portname}.log" 2>&1 
+if [ ! -z ${optirun_on} ]
+then
+    ${optirun_on} "${var_gamemode}" "${PROTONRUN}" "run" "${gamestart}" ${launch_parameters} >> "${PORT_WINE_PATH}/${portname}.log" 2>&1 
+else
+    "${var_gamemode}" "${PROTONRUN}" "run" "${gamestart}" ${launch_parameters} >> "${PORT_WINE_PATH}/${portname}.log" 2>&1 
+fi
 
 KILL9_WINEDEVICE | pwzen
 STOP_PORTWINE | pwzen

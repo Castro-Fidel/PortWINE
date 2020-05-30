@@ -59,10 +59,13 @@ read "var_dxvk_on" < "${config_path}/dxvk_on"
 export "var_dxvk_on"
 if [ -x "`which "gamemoderun" 2>/dev/null`" ]
 then
-    export LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libgamemodeauto.so.0:${LD_PRELOAD}"
-    export var_gamemode=gamemoderun
+    if [ ! -z "${LD_PRELOAD}" ]
+    then
+        export LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libgamemodeauto.so.0:${LD_PRELOAD}"
+    else
+        export LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libgamemodeauto.so.0"
+    fi
 else
-    export var_gamemode="env"
     echo "Gamemod not installed!"
 fi
 ########################################################################
@@ -75,19 +78,32 @@ export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
 export WINESERVER="${WINEDIR}/bin/wineserver"
 export WINEBOOT="${WINEDIR}/bin/wineboot" 
 export WINEPREFIX="${PORT_WINE_PATH}/data/pfx"
-export PATH="${WINEDIR}/bin":${PATH}
+export PATH="${WINEDIR}/bin:${PATH}"
 export WINESTART="C:\\windows\\command\\start.exe"
 export STEAM_COMPAT_DATA_PATH="${PORT_WINE_PATH}/data/"
 
 export OS_BASED="$(cat /etc/os-release | grep ID_LIKE | cut -d '=' -f2)"
 if [ -d "${WINELIB}" ] && [ "${OS_BASED}" != "arch" ]
 then
-    export LD_LIBRARY_PATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine:${WINELIB}/pinned_libs_32:${WINELIB}/pinned_libs_64:/usr/lib/x86_64-linux-gnu/libfakeroot:/lib/i386-linux-gnu:/usr/lib/i386-linux-gnu:/usr/local/lib:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/lib:/usr/lib:/usr/lib/i386-linux-gnu/i686:/usr/lib/i386-linux-gnu/sse2:/usr/lib/i386-linux-gnu/i686/sse2:${WINELIB}/i386/lib/i386-linux-gnu:${WINELIB}/i386/lib:${WINELIB}/i386/usr/lib/i386-linux-gnu:${WINELIB}/i386/usr/lib:${WINELIB}/amd64/lib/x86_64-linux-gnu:${WINELIB}/amd64/lib:${WINELIB}/amd64/usr/lib/x86_64-linux-gnu:${WINELIB}/amd64/usr/lib:${WINELIB}/usr/lib/i386-linux-gnu:${WINELIB}/usr/lib/x86_64-linux-gnu:${WINELIB}/amd64/usr/lib:${WINELIB}/lib/i386-linux-gnu:${WINELIB}/lib/x86_64-linux-gnu:${WINELIB}/lib:${LD_LIBRARY_PATH}"
+        if [ ! -z "${LD_LIBRARY_PATH}" ]
+    then
+        export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${WINELIB}/pinned_libs_32:${WINELIB}/pinned_libs_64:/usr/lib/x86_64-linux-gnu/libfakeroot:/lib/i386-linux-gnu:/usr/lib/i386-linux-gnu:/usr/local/lib:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/lib:/usr/lib:/usr/lib/i386-linux-gnu/i686:/usr/lib/i386-linux-gnu/sse2:/usr/lib/i386-linux-gnu/i686/sse2:${WINELIB}/i386/lib/i386-linux-gnu:${WINELIB}/i386/lib:${WINELIB}/i386/usr/lib/i386-linux-gnu:${WINELIB}/i386/usr/lib:${WINELIB}/amd64/lib/x86_64-linux-gnu:${WINELIB}/amd64/lib:${WINELIB}/amd64/usr/lib/x86_64-linux-gnu:${WINELIB}/amd64/usr/lib:${WINELIB}/usr/lib/i386-linux-gnu:${WINELIB}/usr/lib/x86_64-linux-gnu:${WINELIB}/amd64/usr/lib:${WINELIB}/lib/i386-linux-gnu:${WINELIB}/lib/x86_64-linux-gnu:${WINELIB}/lib:${LD_LIBRARY_PATH}"
+    else
+        export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${WINELIB}/pinned_libs_32:${WINELIB}/pinned_libs_64:/usr/lib/x86_64-linux-gnu/libfakeroot:/lib/i386-linux-gnu:/usr/lib/i386-linux-gnu:/usr/local/lib:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/lib:/usr/lib:/usr/lib/i386-linux-gnu/i686:/usr/lib/i386-linux-gnu/sse2:/usr/lib/i386-linux-gnu/i686/sse2:${WINELIB}/i386/lib/i386-linux-gnu:${WINELIB}/i386/lib:${WINELIB}/i386/usr/lib/i386-linux-gnu:${WINELIB}/i386/usr/lib:${WINELIB}/amd64/lib/x86_64-linux-gnu:${WINELIB}/amd64/lib:${WINELIB}/amd64/usr/lib/x86_64-linux-gnu:${WINELIB}/amd64/usr/lib:${WINELIB}/usr/lib/i386-linux-gnu:${WINELIB}/usr/lib/x86_64-linux-gnu:${WINELIB}/amd64/usr/lib:${WINELIB}/lib/i386-linux-gnu:${WINELIB}/lib/x86_64-linux-gnu:${WINELIB}/lib" 
+    fi
     echo "runtime libs is enabled"
 else
-    export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${LD_LIBRARY_PATH}"
+    if [ ! -z "${LD_LIBRARY_PATH}" ]
+    then
+        export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${LD_LIBRARY_PATH}"
+    else
+        export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib}"
+    fi
     echo "runtime libs is disabled"
 fi
+
+export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/lib/gstreamer-1.0/:${WINEDIR}/lib/lib/gstreamer-1.0/"
+export WINE_GST_REGISTRY_DIR="${PORT_WINE_PATH}/data/gstreamer-1.0/"
 ########################################################################
 export DXVK_STATE_CACHE_PATH="${PATH_TO_GAME}"
 export DXVK_STATE_CACHE=1
@@ -98,7 +114,7 @@ START_PORTWINE ()
 {
 sh "${link}"/port_update 
 export PROTON_NO_FSYNC=0
-export optirun_on=env
+export optirun_on=""
 if [ -x "`which nvidia-settings 2>/dev/null`" ]
 then
     if [ -x "`which primusrun 2>/dev/null`" ]  
@@ -122,6 +138,7 @@ else
     export DRI_PRIME=1
     export vblank_mode=1
     export mesa_glthread=true
+#    export RADV_DEBUG=nocache,nomemorycache
     local AMD_ATI="$(lspci | grep AMD/ATI)" 
     if [ ! -z "${AMD_ATI}" ] && [ "${PORTWINE_ACO}" -eq "1" ] 
     then

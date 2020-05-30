@@ -3,5 +3,10 @@
 . "$(dirname $(readlink -f "$0"))/runlib"
 "${WINESERVER}" -k
 START_PORTWINE
-${optirun_on} "${var_gamemode}" "${PROTONRUN}" "run" "${gamestart}" ${launch_parameters} & KILL9_WINEDEVICE >&2
+if [ ! -z ${optirun_on} ]
+then
+    ${optirun_on} "${PROTONRUN}" "run" "${gamestart}" ${launch_parameters} & KILL9_WINEDEVICE >&2
+else
+    "${PROTONRUN}" "run" "${gamestart}" ${launch_parameters} & KILL9_WINEDEVICE >&2
+fi
 STOP_PORTWINE
