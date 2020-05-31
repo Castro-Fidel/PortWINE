@@ -123,11 +123,12 @@ then
     export __GL_SHADER_DISK_CACHE_SIZE=1000000000
     export __GL_THREADED_OPTIMIZATIONS=1
     nvidia-settings -a [gpu:0]/GPUPowerMizerMode=1 > /dev/null
+    export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk_nvidia.conf"
     if [ ! -z "${WINEDLLOVERRIDES}" ]
     then
-        export WINEDLLOVERRIDES="nvapi,nvapi64=";${WINEDLLOVERRIDES}
+        export WINEDLLOVERRIDES="nvapi=;nvapi64=;${WINEDLLOVERRIDES}"
     else
-        export WINEDLLOVERRIDES="nvapi,nvapi64="
+        export WINEDLLOVERRIDES="nvapi=;nvapi64="
     fi
     echo "runtime libs is disabled"
 else
@@ -136,12 +137,16 @@ else
     export mesa_glthread=true
 #    export RADV_DEBUG=nocache,nomemorycache
     local AMD_ATI="$(lspci | grep AMD/ATI)" 
-    if [ ! -z "${AMD_ATI}" ] && [ "${PORTWINE_ACO}" -eq "1" ] 
+    if [ ! -z "${AMD_ATI}" ]  
     then
-        export RADV_PERFTEST=aco
-        echo "ACO is enabled"
-    else
-        echo "ACO is disabled"
+        export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk_amd.conf"
+        if [ "${PORTWINE_ACO}" -eq "1" ] 
+        then
+            export RADV_PERFTEST=aco
+            echo "ACO is enabled"
+        else
+            echo "ACO is disabled"
+        fi
     fi
 fi
 if [ "${var_dxvk_on}" -eq "1" ] 
@@ -151,7 +156,6 @@ elif [ "${var_dxvk_on}" -eq "2" ]
 then
     export DXVK_HUD="fps,devinfo,version"
 fi
-#export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk.conf"
 export def_pfx="${PORT_WINE_PATH}data/dist/share/default_pfx/"
 if [ ! -d "${def_pfx}" ]
 then
