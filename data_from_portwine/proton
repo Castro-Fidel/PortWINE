@@ -17,6 +17,7 @@ from filelock import FileLock
 
 
 CURRENT_PREFIX_VERSION="5.6-GE-2"
+ld_path_var = "LD_LIBRARY_PATH"
 
 PFX="Proton: "
 
@@ -287,6 +288,15 @@ class CompatData:
 
             #create font files symlinks
             self.create_fonts_symlinks()
+            
+             #copy openvr files into place
+            dst = self.prefix_dir + "/drive_c/vrclient/bin/"
+            makedirs(dst)
+            try_copy(g_proton.lib_dir + "wine/fakedlls/vrclient.dll", dst)
+            try_copy(g_proton.lib64_dir + "wine/fakedlls/vrclient_x64.dll", dst)
+
+            try_copy(g_proton.lib_dir + "wine/dxvk/openvr_api_dxvk.dll", self.prefix_dir + "/drive_c/windows/syswow64/")
+            try_copy(g_proton.lib64_dir + "wine/dxvk/openvr_api_dxvk.dll", self.prefix_dir + "/drive_c/windows/system32/")
 
             if "wined3d" in g_session.compat_config:
                 dxvkfiles = ["dxvk_config"]
@@ -361,6 +371,13 @@ class Session:
             self.env.pop("LC_ALL", "")
 
         self.env.pop("WINEARCH", "")
+        
+        if ld_path_var in os.environ:
+            self.env[ld_path_var] = g_proton.lib64_dir + ":" + g_proton.lib_dir + ":" + os.environ[ld_path_var]
+        else:
+            self.env[ld_path_var] = g_proton.lib64_dir + ":" + g_proton.lib_dir
+
+        self.env["WINEDLLPATH"] = g_proton.lib64_dir + "/wine:" + g_proton.lib_dir + "/wine"
 
         if "PATH" in os.environ:
             self.env["PATH"] = g_proton.bin_dir + ":" + os.environ["PATH"]
@@ -445,6 +462,7 @@ class Session:
         f.write("PATH=\"" + self.env["PATH"] + "\" \\\n")
         f.write("\tTERM=\"xterm\" \\\n") #XXX
         f.write("\tWINEDLLPATH=\"" + self.env["WINEDLLPATH"] + "\" \\\n")
+        f.write("\t" + ld_path_var + "=\"" + self.env[ld_path_var] + "\" \\\n")
         f.write("\tWINEPREFIX=\"" + self.env["WINEPREFIX"] + "\" \\\n")
         if "WINEESYNC" in self.env:
             f.write("\tWINEESYNC=\"" + self.env["WINEESYNC"] + "\" \\\n")
