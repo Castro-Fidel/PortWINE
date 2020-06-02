@@ -154,78 +154,6 @@ class CompatData:
         if old_ver == CURRENT_PREFIX_VERSION:
             return
 
-        log("Upgrading prefix from " + str(old_ver) + " to " + CURRENT_PREFIX_VERSION + " (" + self.base_dir + ")")
-
-        if old_ver is None:
-            return
-
-        if not '-' in old_ver:
-            #How can this happen??
-            log("Prefix has an invalid version?! You may want to back up user files and delete this prefix.")
-            #If it does, just let the Wine upgrade happen and hope it works...
-            return
-
-        try:
-            old_proton_ver, old_prefix_ver = old_ver.split('-')
-            old_proton_maj, old_proton_min = old_proton_ver.split('.')
-            new_proton_ver, new_prefix_ver = CURRENT_PREFIX_VERSION.split('-')
-            new_proton_maj, new_proton_min = new_proton_ver.split('.')
-
-            if int(new_proton_maj) < int(old_proton_maj) or \
-                    (int(new_proton_maj) == int(old_proton_maj) and \
-                     int(new_proton_min) < int(old_proton_min)):
-                log("Removing newer prefix")
-                if old_proton_ver == "3.7" and not os.path.exists(self.tracked_files_file):
-                    #proton 3.7 did not generate tracked_files, so copy it into place first
-                    try_copy(g_proton.path("proton_3.7_tracked_files"), self.tracked_files_file)
-                self.remove_tracked_files()
-                return
-
-            if old_proton_ver == "3.7" and old_prefix_ver == "1":
-                if not os.path.exists(self.prefix_dir + "/drive_c/windows/syswow64/kernel32.dll"):
-                    #shipped a busted 64-bit-only installation on 20180822. detect and wipe clean
-                    log("Detected broken 64-bit-only installation, re-creating prefix.")
-                    shutil.rmtree(self.prefix_dir)
-                    return
-
-            #replace broken .NET installations with wine-mono support
-            if os.path.exists(self.prefix_dir + "/drive_c/windows/Microsoft.NET/NETFXRepair.exe") and \
-                    file_is_wine_fake_dll(self.prefix_dir + "/drive_c/windows/system32/mscoree.dll"):
-                log("Broken .NET installation detected, switching to wine-mono.")
-                #deleting this directory allows wine-mono to work
-                shutil.rmtree(self.prefix_dir + "/drive_c/windows/Microsoft.NET")
-
-            #prior to prefix version 4.11-2, all controllers were xbox controllers. wipe out the old registry entries.
-            if (int(old_proton_maj) < 4 or (int(old_proton_maj) == 4 and int(old_proton_min) == 11)) and \
-                    int(old_prefix_ver) < 2:
-                log("Removing old xinput registry entries.")
-                with open(self.prefix_dir + "system.reg", "r") as reg_in:
-                    with open(self.prefix_dir + "system.reg.new", "w") as reg_out:
-                        for line in reg_in:
-                            if line[0] == '[' and "CurrentControlSet" in line and "IG_" in line:
-                                if "DeviceClasses" in line:
-                                    reg_out.write(line.replace("DeviceClasses", "DeviceClasses_old"))
-                                elif "Enum" in line:
-                                    reg_out.write(line.replace("Enum", "Enum_old"))
-                            else:
-                                reg_out.write(line)
-                try:
-                    os.rename(self.prefix_dir + "system.reg", self.prefix_dir + "system.reg.old")
-                except OSError:
-                    os.remove(self.prefix_dir + "system.reg")
-                    pass
-
-                try:
-                    os.rename(self.prefix_dir + "system.reg.new", self.prefix_dir + "system.reg")
-                except OSError:
-                    log("Unable to write new registry file to " + self.prefix_dir + "system.reg")
-                    pass
-
-        except ValueError:
-            log("Prefix has an invalid version?! You may want to back up user files and delete this prefix.")
-            #Just let the Wine upgrade happen and hope it works...
-            return
-
     def copy_pfx(self):
         with open(self.tracked_files_file, "w") as tracked_files:
             for src_dir, dirs, files in os.walk(g_proton.default_pfx_dir):
@@ -329,9 +257,7 @@ class Session:
         self.log_file = None
         self.env = dict(os.environ)
         self.dlloverrides = {
-#                "vrclient.dll":"" 
-#                "vrclient_x64.dll":"" 
-                "openvr_api_dxvk": "" 
+                "steam.exe": "" 
         }
 
         self.compat_config = set()
@@ -393,18 +319,6 @@ class Session:
     def init_session(self):
         self.env["WINEPREFIX"] = g_compatdata.prefix_dir
 
-        #load environment overrides
-        if os.path.exists(g_proton.user_settings_file):
-            try:
-                import user_settings
-                for key, value in user_settings.user_settings.items():
-                    self.env.setdefault(key, value)
-            except:
-                log("************************************************")
-                log("THERE IS AN ERROR IN YOUR user_settings.py FILE:")
-                log("%s" % sys.exc_info()[1])
-                log("************************************************")
-
         if "PORTWINE_LOG" in os.environ and nonzero(os.environ["PORTWINE_LOG"]):
             self.env.setdefault("WINEDEBUG", "+timestamp,+pid,+tid,+seh,+debugstr,+loaddll,+mscoree")
             self.env.setdefault("DXVK_LOG_LEVEL", "info")
@@ -432,6 +346,7 @@ class Session:
         self.check_environment("PROTON_FORCE_LARGE_ADDRESS_AWARE", "forcelgadd")
         self.check_environment("PROTON_OLD_GL_STRING", "oldglstr")
         self.check_environment("PROTON_USE_SECCOMP", "seccomp")
+        self.check_environment("PORTWINE_NO_VR", "novrclient")
 
         if not "noesync" in self.compat_config:
             self.env["WINEESYNC"] = "1" 
@@ -465,6 +380,11 @@ class Session:
 
         if "nod3d9" in self.compat_config:
             self.dlloverrides["d3d9"] = ""
+            
+        if "novrclient" in self.compat_config:
+            self.dlloverrides["vrclient"] = ""
+            self.dlloverrides["vrclient_x64"] = ""
+            self.dlloverrides["openvr_api_dxvk"] = ""
 
         s = ""
         for dll in self.dlloverrides:
