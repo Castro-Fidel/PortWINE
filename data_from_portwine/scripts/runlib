@@ -107,19 +107,17 @@ if [ -x "`which nvidia-settings 2>/dev/null`" ]; then
     export __GL_SHADER_DISK_CACHE=1
     export __GL_SHADER_DISK_CACHE_SIZE=1000000000
     export __GL_THREADED_OPTIMIZATIONS=1
-    nvidia-settings -a [gpu:0]/GPUPowerMizerMode=1 > /dev/null
     export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk_nvidia.conf"
     if [ ! -z "${WINEDLLOVERRIDES}" ]; then
         export WINEDLLOVERRIDES="nvapi,nvapi64=;${WINEDLLOVERRIDES}"
     else
         export WINEDLLOVERRIDES="nvapi,nvapi64="
     fi
-    echo "runtime libs is disabled"
 else
     export DRI_PRIME=1
     export vblank_mode=0
     export mesa_glthread=true
-    local AMD_ATI="$(lspci | grep AMD/ATI)" 
+    export AMD_ATI="$(lspci | grep AMD/ATI)" 
     if [ ! -z "${AMD_ATI}" ]; then
 #        export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk_amd.conf"
         if [ "${PORTWINE_ACO}" -eq "1" ]; then
