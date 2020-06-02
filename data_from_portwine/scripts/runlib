@@ -54,8 +54,8 @@ fi
 read "var_dxvk_on" < "${config_path}/dxvk_on"
 export "var_dxvk_on"
 ########################################################################
-WINEDIR="${PORT_WINE_PATH}"/data/dist
-WINELIB="${PORT_WINE_PATH}"/data/libs
+export WINEDIR="${PORT_WINE_PATH}"/data/dist
+export WINELIB="${PORT_WINE_PATH}"/data/libs
 export PROTONRUN="${PORT_WINE_PATH}/data/proton"
 export WINEARCH=win64
 export WINELOADER="${WINEDIR}/bin/wine"
@@ -66,8 +66,16 @@ export WINEPREFIX="${PORT_WINE_PATH}/data/pfx"
 export PATH="${WINEDIR}/bin:${PATH}"
 export WINESTART="C:\\windows\\command\\start.exe"
 export STEAM_COMPAT_DATA_PATH="${PORT_WINE_PATH}/data/"
-#export OS_BASED="$(cat /etc/os-release | grep ID_LIKE | cut -d '=' -f2)"
-if [ -d "${WINELIB}" ]; then   #&& [ "${OS_BASED}" != "arch" ]
+########################################################################
+export DXVK_STATE_CACHE_PATH="${PATH_TO_GAME}"
+export DXVK_STATE_CACHE=1
+
+export urlg="http://portwine-linux.ru/donate"
+########################################################################
+START_PORTWINE ()
+{
+sh "${link}"/port_update 
+if [ -d "${WINELIB}" ]; then 
     host_lib_paths=
     /sbin/ldconfig -XNv | grep "/"  | cut -d: -f1 1> "${config_path}"/default_lib_paths
     while read lib_path_prefix; do
@@ -84,21 +92,8 @@ if [ -d "${WINELIB}" ]; then   #&& [ "${OS_BASED}" != "arch" ]
 else
     echo "runtime libs is disabled"
 fi
-export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/lib/gstreamer-1.0/:${WINEDIR}/lib/lib/gstreamer-1.0/"
-export WINE_GST_REGISTRY_DIR="${PORT_WINE_PATH}/data/gstreamer-1.0/"
-########################################################################
-export DXVK_STATE_CACHE_PATH="${PATH_TO_GAME}"
-export DXVK_STATE_CACHE=1
 
-export urlg="http://portwine-linux.ru/donate"
-########################################################################
-START_PORTWINE ()
-{
-sh "${link}"/port_update 
-export DXVK_LOG_LEVEL="none"
-export VKD3D_DEBUG="none"
-export PROTON_NO_FSYNC=0
-export optirun_on=""
+export optirun_on=
 if [ -x "`which nvidia-settings 2>/dev/null`" ]; then
     if [ -x "`which primusrun 2>/dev/null`" ]; then
         export optirun_on="primusrun"
@@ -109,7 +104,7 @@ if [ -x "`which nvidia-settings 2>/dev/null`" ]; then
     fi
     export __NV_PRIME_RENDER_OFFLOAD=1
     export __GLX_VENDOR_LIBRARY_NAME=nvidia
-    export __GL_SYNC_TO_VBLANK=1
+#    export __GL_SYNC_TO_VBLANK=1
     export __GL_SHADER_DISK_CACHE_PATH="${PATH_TO_GAME}" 
     export __GL_SHADER_DISK_CACHE=1
     export __GL_SHADER_DISK_CACHE_SIZE=1000000000
@@ -124,12 +119,12 @@ if [ -x "`which nvidia-settings 2>/dev/null`" ]; then
     echo "runtime libs is disabled"
 else
     export DRI_PRIME=1
-    export vblank_mode=1
+#    export vblank_mode=1
     export mesa_glthread=true
 #    export RADV_DEBUG=nocache,nomemorycache
     local AMD_ATI="$(lspci | grep AMD/ATI)" 
     if [ ! -z "${AMD_ATI}" ]; then
-        export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk_amd.conf"
+#        export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk_amd.conf"
         if [ "${PORTWINE_ACO}" -eq "1" ]; then
             export RADV_PERFTEST=aco
             echo "ACO is enabled"
@@ -143,7 +138,7 @@ if [ "${var_dxvk_on}" -eq "1" ]; then
 elif [ "${var_dxvk_on}" -eq "2" ]; then
     export DXVK_HUD="fps,devinfo,version"
 fi
-export def_pfx="${PORT_WINE_PATH}data/dist/share/default_pfx/"
+export def_pfx="${PORT_WINE_PATH}/data/dist/share/default_pfx/"
 if [ ! -d "${def_pfx}" ]; then
 	"${PROTONRUN}" "run" | pwzen
 fi
@@ -160,12 +155,13 @@ if [ $(pgrep xneur)>'0' ]; then
 	export int_xneur=1
 fi 
 if [ -x "`which "gamemoderun" 2>/dev/null`" ]; then
-    if [ ! -z "${LD_PRELOAD}" ]; then
-        export LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libgamemodeauto.so.0:${LD_PRELOAD}"
-    else
-        export LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libgamemodeauto.so.0"
-    fi
+    sleep 1
+    systemctl --user enable gamemoded.service 
+    systemctl --user restart gamemoded.service
+    export PW_GAMEMODERUN=1
+    echo "Gamemod will be launched."
 else
+    export PW_GAMEMODERUN=0
     echo "Gamemod not installed!"
 fi
 ADD_IN_START_PORTWINE
@@ -193,7 +189,7 @@ fi
 ########################################################################
 STOP_PORTWINE ()
 {
-WAIT_WINESERVER
+#WAIT_WINESERVER
 ADD_IN_STOP_PORTWINE
 if [ "$int_xneur" -eq "1"  ]; then
 	xneur &
