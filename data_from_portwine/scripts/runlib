@@ -67,9 +67,6 @@ export PATH="${WINEDIR}/bin:${PATH}"
 export WINESTART="C:\\windows\\command\\start.exe"
 export STEAM_COMPAT_DATA_PATH="${PORT_WINE_PATH}/data/"
 ########################################################################
-export DXVK_STATE_CACHE_PATH="${PATH_TO_GAME}"
-export DXVK_STATE_CACHE=1
-
 export urlg="http://portwine-linux.ru/donate"
 ########################################################################
 START_PORTWINE ()
@@ -104,7 +101,7 @@ if [ -x "`which nvidia-settings 2>/dev/null`" ]; then
     fi
     export __NV_PRIME_RENDER_OFFLOAD=1
     export __GLX_VENDOR_LIBRARY_NAME=nvidia
-#    export __GL_SYNC_TO_VBLANK=1
+    export __GL_SYNC_TO_VBLANK=0
     export __GL_SHADER_DISK_CACHE_PATH="${PATH_TO_GAME}" 
     export __GL_SHADER_DISK_CACHE=1
     export __GL_SHADER_DISK_CACHE_SIZE=1000000000
@@ -119,9 +116,8 @@ if [ -x "`which nvidia-settings 2>/dev/null`" ]; then
     echo "runtime libs is disabled"
 else
     export DRI_PRIME=1
-#    export vblank_mode=1
+    export vblank_mode=0
     export mesa_glthread=true
-#    export RADV_DEBUG=nocache,nomemorycache
     local AMD_ATI="$(lspci | grep AMD/ATI)" 
     if [ ! -z "${AMD_ATI}" ]; then
 #        export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk_amd.conf"
@@ -133,7 +129,11 @@ else
         fi
     fi
 fi
-if [ "${var_dxvk_on}" -eq "1" ]; then
+export DXVK_STATE_CACHE_PATH="${PATH_TO_GAME}"
+export DXVK_STATE_CACHE=1
+if [ "${var_dxvk_on}" -eq "0" ]; then
+    export DXVK_STATE_CACHE=0
+elif [ "${var_dxvk_on}" -eq "1" ]; then
     export DXVK_HUD=0
 elif [ "${var_dxvk_on}" -eq "2" ]; then
     export DXVK_HUD="fps,devinfo,version"
@@ -142,6 +142,7 @@ export def_pfx="${PORT_WINE_PATH}/data/dist/share/default_pfx/"
 if [ ! -d "${def_pfx}" ]; then
 	"${PROTONRUN}" "run" | pwzen
 fi
+export PROTON_NO_FSYNC=0
 if [ "$(ulimit -n)" -lt 50000 ]; then
     export PROTON_NO_ESYNC=1
     echo "ESYNC is disabled"
