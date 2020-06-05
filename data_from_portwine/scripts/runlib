@@ -21,12 +21,10 @@ export PORT_WINE_PATH="$(pwd)"
 cd "${link}"
 . "${link}"/vars
 export config_path="${PORT_WINE_PATH}/data/tmp"
-if [ ! -d "${config_path}" ]
-then
+if [ ! -d "${config_path}" ]; then
 	mkdir -p "${config_path}"
 fi
-if [ ! -e "${config_path}/${portname}_loc" ]
-then
+if [ ! -e "${config_path}/${portname}_loc" ]; then
 	SET_LANG=`zenity --title  "Install $portname" --text "Select the language\nВыберите язык" --list --radiolist \
 	--column="Set (Выбор)" --column "Language (Язык):" \
 	TRUE "RUS" \
@@ -34,12 +32,10 @@ then
 	echo "${SET_LANG}" > "${config_path}/${portname}_loc"
 fi
 . "${link}"/lang
-if [ ! -e "${config_path}/${portname}_ver" ]
-then
+if [ ! -e "${config_path}/${portname}_ver" ]; then
 	echo "10" > "${config_path}/${portname}_ver"
 fi
-if [ ! -f "${config_path}/dxvk_on" ]
-then
+if [ ! -f "${config_path}/dxvk_on" ]; then
     start_settings=`zenity --title  "${ss_title}" --text "${ss_text}" --list --radiolist \
     --column="${inst_set}" --column "${ss_ver}" --column "${ss_dr}"  --width=600 --height=250 \
     FALSE "OpenGL" "${ss_ogl_2}" \
@@ -58,8 +54,8 @@ fi
 read "var_dxvk_on" < "${config_path}/dxvk_on"
 export "var_dxvk_on"
 ########################################################################
-WINEDIR="${PORT_WINE_PATH}"/data/dist
-WINELIB="${PORT_WINE_PATH}"/data/libs
+export WINEDIR="${PORT_WINE_PATH}"/data/dist
+export WINELIB="${PORT_WINE_PATH}"/data/libs
 export PROTONRUN="${PORT_WINE_PATH}/data/proton"
 export WINEARCH=win64
 export WINELOADER="${WINEDIR}/bin/wine"
@@ -70,88 +66,83 @@ export WINEPREFIX="${PORT_WINE_PATH}/data/pfx"
 export PATH="${WINEDIR}/bin:${PATH}"
 export WINESTART="C:\\windows\\command\\start.exe"
 export STEAM_COMPAT_DATA_PATH="${PORT_WINE_PATH}/data/"
-
-export OS_BASED="$(cat /etc/os-release | grep ID_LIKE | cut -d '=' -f2)"
-if [ -d "${WINELIB}" ] && [ "${OS_BASED}" != "arch" ]
-then
-        if [ ! -z "${LD_LIBRARY_PATH}" ]
-    then
-        export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${WINELIB}/pinned_libs_32:${WINELIB}/pinned_libs_64:/usr/lib/x86_64-linux-gnu/libfakeroot:/lib/i386-linux-gnu:/usr/lib/i386-linux-gnu:/usr/local/lib:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/lib:/usr/lib:/usr/lib/i386-linux-gnu/i686:/usr/lib/i386-linux-gnu/sse2:/usr/lib/i386-linux-gnu/i686/sse2:${WINELIB}/i386/lib/i386-linux-gnu:${WINELIB}/i386/lib:${WINELIB}/i386/usr/lib/i386-linux-gnu:${WINELIB}/i386/usr/lib:${WINELIB}/amd64/lib/x86_64-linux-gnu:${WINELIB}/amd64/lib:${WINELIB}/amd64/usr/lib/x86_64-linux-gnu:${WINELIB}/amd64/usr/lib:${WINELIB}/usr/lib/i386-linux-gnu:${WINELIB}/usr/lib/x86_64-linux-gnu:${WINELIB}/amd64/usr/lib:${WINELIB}/lib/i386-linux-gnu:${WINELIB}/lib/x86_64-linux-gnu:${WINELIB}/lib:${LD_LIBRARY_PATH}"
-    else
-        export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${WINELIB}/pinned_libs_32:${WINELIB}/pinned_libs_64:/usr/lib/x86_64-linux-gnu/libfakeroot:/lib/i386-linux-gnu:/usr/lib/i386-linux-gnu:/usr/local/lib:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/lib:/usr/lib:/usr/lib/i386-linux-gnu/i686:/usr/lib/i386-linux-gnu/sse2:/usr/lib/i386-linux-gnu/i686/sse2:${WINELIB}/i386/lib/i386-linux-gnu:${WINELIB}/i386/lib:${WINELIB}/i386/usr/lib/i386-linux-gnu:${WINELIB}/i386/usr/lib:${WINELIB}/amd64/lib/x86_64-linux-gnu:${WINELIB}/amd64/lib:${WINELIB}/amd64/usr/lib/x86_64-linux-gnu:${WINELIB}/amd64/usr/lib:${WINELIB}/usr/lib/i386-linux-gnu:${WINELIB}/usr/lib/x86_64-linux-gnu:${WINELIB}/amd64/usr/lib:${WINELIB}/lib/i386-linux-gnu:${WINELIB}/lib/x86_64-linux-gnu:${WINELIB}/lib" 
-    fi
-    echo "runtime libs is enabled"
-else
-    if [ ! -z "${LD_LIBRARY_PATH}" ]
-    then
-        export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${LD_LIBRARY_PATH}"
-    else
-        export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib}"
-    fi
-    echo "runtime libs is disabled"
-fi
-
-export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/lib/gstreamer-1.0/:${WINEDIR}/lib/lib/gstreamer-1.0/"
-export WINE_GST_REGISTRY_DIR="${PORT_WINE_PATH}/data/gstreamer-1.0/"
+export PORTWINE_NO_VR=1
 ########################################################################
-export DXVK_STATE_CACHE_PATH="${PATH_TO_GAME}"
-export DXVK_STATE_CACHE=1
-
 export urlg="http://portwine-linux.ru/donate"
 ########################################################################
 START_PORTWINE ()
 {
 sh "${link}"/port_update 
-export PROTON_NO_FSYNC=0
-export optirun_on=""
-if [ -x "`which nvidia-settings 2>/dev/null`" ]
-then
-    if [ -x "`which primusrun 2>/dev/null`" ]  
-    then
+if [ -d "${WINELIB}" ]; then 
+    host_lib_paths=
+    /sbin/ldconfig -XNv | grep "/"  | cut -d: -f1 1> "${config_path}"/default_lib_paths
+    while read lib_path_prefix; do
+    export host_lib_paths=$host_lib_paths$lib_path_prefix:
+    done < "${config_path}"/default_lib_paths
+    host_lib_paths="${WINELIB}/pinned_libs_32:${WINELIB}/pinned_libs_64:$host_lib_paths"
+    portwine_runtime_libs_paths="$host_lib_paths${WINELIB}/lib/i386-linux-gnu:${WINELIB}/usr/lib/i386-linux-gnu:${WINELIB}/lib/x86_64-linux-gnu:${WINELIB}/usr/lib/x86_64-linux-gnu:${WINELIB}/lib:${WINELIB}/usr/lib"
+    if [ ! -z "${LD_LIBRARY_PATH}" ]; then
+        export LD_LIBRARY_PATH="$portwine_runtime_libs_paths:${LD_LIBRARY_PATH-}"
+    else
+        export LD_LIBRARY_PATH="$portwine_runtime_libs_paths"
+    fi
+    echo "runtime libs is enabled"
+else
+    echo "runtime libs is disabled"
+fi
+
+export optirun_on=
+if [ -x "`which nvidia-settings 2>/dev/null`" ]; then
+    if [ -x "`which primusrun 2>/dev/null`" ]; then
         export optirun_on="primusrun"
         export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json 
-    elif [ -x "`which optirun 2>/dev/null`" ]
-    then
+    elif [ -x "`which optirun 2>/dev/null`" ]; then
         export optirun_on="optirun -b primus"
         export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json 
     fi
     export __NV_PRIME_RENDER_OFFLOAD=1
     export __GLX_VENDOR_LIBRARY_NAME=nvidia
-    export __GL_SYNC_TO_VBLANK=1
+    export __GL_SYNC_TO_VBLANK=0
     export __GL_SHADER_DISK_CACHE_PATH="${PATH_TO_GAME}" 
     export __GL_SHADER_DISK_CACHE=1
     export __GL_SHADER_DISK_CACHE_SIZE=1000000000
     export __GL_THREADED_OPTIMIZATIONS=1
-    nvidia-settings -a [gpu:0]/GPUPowerMizerMode=1 > /dev/null
+    export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk_nvidia.conf"
+    if [ ! -z "${WINEDLLOVERRIDES}" ]; then
+        export WINEDLLOVERRIDES="nvapi,nvapi64=;${WINEDLLOVERRIDES}"
+    else
+        export WINEDLLOVERRIDES="nvapi,nvapi64="
+    fi
 else
     export DRI_PRIME=1
-    export vblank_mode=1
+    export vblank_mode=0
     export mesa_glthread=true
-#    export RADV_DEBUG=nocache,nomemorycache
-    local AMD_ATI="$(lspci | grep AMD/ATI)" 
-    if [ ! -z "${AMD_ATI}" ] && [ "${PORTWINE_ACO}" -eq "1" ] 
-    then
-        export RADV_PERFTEST=aco
-        echo "ACO is enabled"
-    else
-        echo "ACO is disabled"
+    export AMD_ATI="$(lspci | grep AMD/ATI)" 
+    if [ ! -z "${AMD_ATI}" ]; then
+#        export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk_amd.conf"
+        if [ "${PORTWINE_ACO}" -eq "1" ]; then
+            export RADV_PERFTEST=aco
+            echo "ACO is enabled"
+        else
+            echo "ACO is disabled"
+        fi
     fi
 fi
-if [ "${var_dxvk_on}" -eq "1" ] 
-then
+export DXVK_STATE_CACHE_PATH="${PATH_TO_GAME}"
+export DXVK_STATE_CACHE=1
+if [ "${var_dxvk_on}" -eq "0" ]; then
+    export DXVK_STATE_CACHE=0
+elif [ "${var_dxvk_on}" -eq "1" ]; then
     export DXVK_HUD=0
-elif [ "${var_dxvk_on}" -eq "2" ] 
-then
+elif [ "${var_dxvk_on}" -eq "2" ]; then
     export DXVK_HUD="fps,devinfo,version,frametimes"
 fi
-#export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk.conf"
-export def_pfx="${PORT_WINE_PATH}data/dist/share/default_pfx/"
-if [ ! -d "${def_pfx}" ]
-then
+export def_pfx="${PORT_WINE_PATH}/data/dist/share/default_pfx/"
+if [ ! -d "${def_pfx}" ]; then
 	"${PROTONRUN}" "run" | pwzen
 fi
-if [ "$(ulimit -n)" -lt 50000 ] 
-then
+export PROTON_NO_FSYNC=0
+if [ "$(ulimit -n)" -lt 50000 ]; then
     export PROTON_NO_ESYNC=1
     echo "ESYNC is disabled"
 else
@@ -159,20 +150,18 @@ else
     echo "ESYNC is enabled"
 fi
 export int_xneur=0
-if [ $(pgrep xneur)>'0' ]
-then
+if [ $(pgrep xneur)>'0' ]; then
 	killall xneur
 	export int_xneur=1
 fi 
-if [ -x "`which "gamemoderun" 2>/dev/null`" ]
-then
-    if [ ! -z "${LD_PRELOAD}" ]
-    then
-        export LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libgamemodeauto.so.0:${LD_PRELOAD}"
-    else
-        export LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libgamemodeauto.so.0"
-    fi
+if [ -x "`which "gamemoderun" 2>/dev/null`" ]; then
+    sleep 1
+    systemctl --user enable gamemoded.service 
+    systemctl --user restart gamemoded.service
+    export PW_GAMEMODERUN=1
+    echo "Gamemod will be launched."
 else
+    export PW_GAMEMODERUN=0
     echo "Gamemod not installed!"
 fi
 ADD_IN_START_PORTWINE
@@ -181,32 +170,16 @@ ADD_IN_START_PORTWINE
 WAIT_WINESERVER ()
 {
 sleep 3
-while [ $(pgrep wineserver)>'0' ]
-do
+while [ $(pgrep wineserver)>'0' ]; do
 	sleep 2
 done
 }
 ########################################################################
-KILL9_WINEDEVICE ()
-{
-if [ "${kill_winedevice}" -eq "1" ] 
-then
-    sleep 10
-    killall -r -s9 winedevice 
-fi
-if [ "${kill_explorer}" -eq "1" ] 
-then
-    sleep 10
-    killall -r -s9 explorer
-fi
-}
-########################################################################
 STOP_PORTWINE ()
 {
-WAIT_WINESERVER
+#WAIT_WINESERVER
 ADD_IN_STOP_PORTWINE
-if [ "$int_xneur" = "1"  ]
-then
+if [ "$int_xneur" = "1"  ]; then
 	xneur &
 fi
 #killall -r -s9 winedevice 
