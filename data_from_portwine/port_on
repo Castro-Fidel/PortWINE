@@ -121,6 +121,7 @@ class CompatData:
         self.prefix_dir = self.path("pfx/")
         self.version_file = self.path("version")
         self.tracked_files_file = self.path("tracked_files")
+#        if "PW_FILELOCK" in os.environ and nonzero(os.environ["PW_FILELOCK"]):
         self.prefix_lock = FileLock(self.path("pfx.lock"), timeout=-1)
 
     def path(self, d):
@@ -319,8 +320,8 @@ class Session:
     def init_session(self):
         self.env["WINEPREFIX"] = g_compatdata.prefix_dir
 
-        if "PORTWINE_LOG" in os.environ and nonzero(os.environ["PORTWINE_LOG"]):
-            self.env.setdefault("WINEDEBUG", "+timestamp,+pid,+tid,+seh,+debugstr,+loaddll,+mscoree")
+        if "PW_LOG" in os.environ and nonzero(os.environ["PW_LOG"]):
+            self.env.setdefault("WINEDEBUG", "fixme-all")
             self.env.setdefault("DXVK_LOG_LEVEL", "info")
             self.env.setdefault("VKD3D_DEBUG", "warn")
             self.env.setdefault("WINE_MONO_TRACE", "E:System.NotImplementedException")
@@ -336,17 +337,17 @@ class Session:
         if "wined3d11" in self.compat_config:
             self.compat_config.add("wined3d")
 
-        if not self.check_environment("PROTON_USE_WINED3D", "wined3d"):
-            self.check_environment("PROTON_USE_WINED3D11", "wined3d")
-        self.check_environment("PROTON_NO_D3D11", "nod3d11")
-        self.check_environment("PROTON_NO_D3D10", "nod3d10")
-        self.check_environment("PROTON_NO_D9VK",  "nod3d9")
-        self.check_environment("PROTON_NO_ESYNC", "noesync")
-        self.check_environment("PROTON_NO_FSYNC", "nofsync")
-        self.check_environment("PROTON_FORCE_LARGE_ADDRESS_AWARE", "forcelgadd")
-        self.check_environment("PROTON_OLD_GL_STRING", "oldglstr")
-        self.check_environment("PROTON_USE_SECCOMP", "seccomp")
-        self.check_environment("PORTWINE_NO_VR", "novrclient")
+        if not self.check_environment("PW_USE_WINED3D", "wined3d"):
+            self.check_environment("PW_USE_WINED3D11", "wined3d")
+        self.check_environment("PW_NO_D3D11", "nod3d11")
+        self.check_environment("PW_NO_D3D10", "nod3d10")
+        self.check_environment("PW_NO_D9VK",  "nod3d9")
+        self.check_environment("PW_NO_ESYNC", "noesync")
+        self.check_environment("PW_NO_FSYNC", "nofsync")
+        self.check_environment("PW_FORCE_LARGE_ADDRESS_AWARE", "forcelgadd")
+        self.check_environment("PW_OLD_GL_STRING", "oldglstr")
+        self.check_environment("PW_USE_SECCOMP", "seccomp")
+        self.check_environment("PW_NO_VR", "novrclient")
 
         if not "noesync" in self.compat_config:
             self.env["WINEESYNC"] = "1" 

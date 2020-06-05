@@ -11,15 +11,13 @@ pwzen() {
 zenity --progress --title="Settings..." --text="Please wait!" --pulsate --auto-close --auto-kill --width=450
 } 
 ########################################################################
-export kill_winedevice=0
-export kill_explorer=0
-########################################################################
 cd "$(dirname "`readlink -f "$0"`")"
 export link="$(pwd)"
 cd "${link}/../../"
 export PORT_WINE_PATH="$(pwd)"
 cd "${link}"
 . "${link}"/vars
+########################################################################
 export config_path="${PORT_WINE_PATH}/data/tmp"
 if [ ! -d "${config_path}" ]; then
 	mkdir -p "${config_path}"
@@ -31,32 +29,15 @@ if [ ! -e "${config_path}/${portname}_loc" ]; then
 	FALSE "ENG" `
 	echo "${SET_LANG}" > "${config_path}/${portname}_loc"
 fi
+########################################################################
 . "${link}"/lang
 if [ ! -e "${config_path}/${portname}_ver" ]; then
 	echo "10" > "${config_path}/${portname}_ver"
 fi
-if [ ! -f "${config_path}/dxvk_on" ]; then
-    start_settings=`zenity --title  "${ss_title}" --text "${ss_text}" --list --radiolist \
-    --column="${inst_set}" --column "${ss_ver}" --column "${ss_dr}"  --width=600 --height=250 \
-    FALSE "OpenGL" "${ss_ogl_2}" \
-    FALSE "DXVK+HUD" "${ss_ogl_3} + HUD" \
-    TRUE "DXVK" "${ss_ogl_3}" `
-    if [ $? = 1 ];then exit 1; fi
-    case $start_settings in
-    "OpenGL") 
-            echo "0" > "${config_path}/dxvk_on" ;;
-    "DXVK") 
-            echo "1" > "${config_path}/dxvk_on" ;;
-    "DXVK+HUD") 
-            echo "2" > "${config_path}/dxvk_on" ;;
-    esac
-fi
-read "var_dxvk_on" < "${config_path}/dxvk_on"
-export "var_dxvk_on"
 ########################################################################
 export WINEDIR="${PORT_WINE_PATH}"/data/dist
 export WINELIB="${PORT_WINE_PATH}"/data/libs
-export PROTONRUN="${PORT_WINE_PATH}/data/proton"
+export port_on_run="${PORT_WINE_PATH}/data/port_on"
 export WINEARCH=win64
 export WINELOADER="${WINEDIR}/bin/wine"
 export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
@@ -66,7 +47,6 @@ export WINEPREFIX="${PORT_WINE_PATH}/data/pfx"
 export PATH="${WINEDIR}/bin:${PATH}"
 export WINESTART="C:\\windows\\command\\start.exe"
 export STEAM_COMPAT_DATA_PATH="${PORT_WINE_PATH}/data/"
-export PORTWINE_NO_VR=1
 ########################################################################
 export urlg="http://portwine-linux.ru/donate"
 ########################################################################
@@ -90,7 +70,69 @@ if [ -d "${WINELIB}" ]; then
 else
     echo "runtime libs is disabled"
 fi
+########################################################################
+if [ ! -f "${config_path}/dxvk_on" ]
+then
+    start_settings=`zenity --title  "${ss_title}" --text "${ss_text}" --list --radiolist \
+    --column="${inst_set}" --column "${ss_ver}" --column "${ss_dr}"  --width=500 --height=220 \
+    TRUE "DXVK" "${ss_ogl_3}" \
+    FALSE "OpenGL" "${ss_ogl_2}" `
+    if [ $? -eq 1 ];then exit 1; fi
+    case $start_settings in
+    "OpenGL") 
+            echo "off" > "${config_path}/dxvk_on" ;;
+    "DXVK") 
+            hud_settings=`zenity --list --title  "HUD" --text "${hud_text}" --list --checklist \
+            --column="${inst_set}" --column="HUD info:" --column="${hud_info}" --width=800 --height=550 \
+            FALSE "fps" "${hud_fps}" \
+            FALSE "devinfo" "${hud_devinfo}" \
+            FALSE "frametimes" "${hud_frametimes}" \
+            FALSE "submissions" "${hud_submissions}" \
+            FALSE "drawcalls" "${hud_drawcalls}" \
+            FALSE "pipelines" "${hud_pipelines}" \
+            FALSE "memory" "${hud_memory}" \
+            FALSE "gpuload" "${hud_gpuload}" \
+            FALSE "version" "${hud_version}" \
+            FALSE "api" "${hud_api}" \
+            FALSE "compiler" "${hud_compiler}" \
+            FALSE "samplers" "${hud_samplers}" `
 
+            if [ ! -z $hud_settings ]; then
+                for hud_set in $hud_settings
+                do
+                    echo "${hud_set}" >> "${config_path}/dxvk_on" 
+                done  
+                sed -i "s/|/,/g" "${config_path}/dxvk_on" 
+            else
+                echo "0" > "${config_path}/dxvk_on"
+            fi ;;
+    esac  
+fi
+read "var_dxvk_on" < "${config_path}/dxvk_on"
+export "var_dxvk_on"
+if [ "${var_dxvk_on}" != "off" ]; then
+    export DXVK_HUD="${var_dxvk_on}"
+    export DXVK_STATE_CACHE_PATH="${PATH_TO_GAME}"
+    export DXVK_STATE_CACHE=1
+    export PW_USE_WINED3D=0
+    export PW_DXGI_FOR_VKD3D=0
+    export PW_NO_D9VK=0
+    export PW_NO_D3D11=0
+    export PW_NO_D3D10=0
+    export DXVK_ASYNC=0
+    echo "Use DXVK mod." 
+    echo "DXVK_HUD=${var_dxvk_on}"
+else
+    export DXVK_STATE_CACHE=0
+    export PW_USE_WINED3D=1
+    export PW_DXGI_FOR_VKD3D=1
+    export PW_NO_D9VK=0
+    export PW_NO_D3D11=0
+    export PW_NO_D3D10=0
+    export PW_OLD_GL_STRING=0
+    echo "Use OpenGL mod." 
+fi
+########################################################################
 export optirun_on=
 if [ -x "`which nvidia-settings 2>/dev/null`" ]; then
     if [ -x "`which primusrun 2>/dev/null`" ]; then
@@ -120,7 +162,7 @@ else
     export AMD_ATI="$(lspci | grep AMD/ATI)" 
     if [ ! -z "${AMD_ATI}" ]; then
 #        export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk_amd.conf"
-        if [ "${PORTWINE_ACO}" = "1" ]; then
+        if [ "${PW_ACO}" = "1" ]; then
             export RADV_PERFTEST=aco
             echo "ACO is enabled"
         else
@@ -128,25 +170,17 @@ else
         fi
     fi
 fi
-export DXVK_STATE_CACHE_PATH="${PATH_TO_GAME}"
-export DXVK_STATE_CACHE=1
-if [ "${var_dxvk_on}" = "0" ]; then
-    export DXVK_STATE_CACHE=0
-elif [ "${var_dxvk_on}" = "1" ]; then
-    export DXVK_HUD=0
-elif [ "${var_dxvk_on}" = "2" ]; then
-    export DXVK_HUD="fps,devinfo,version,frametimes"
-fi
+########################################################################
 export def_pfx="${PORT_WINE_PATH}/data/dist/share/default_pfx/"
 if [ ! -d "${def_pfx}" ]; then
-	"${PROTONRUN}" "run" | pwzen
+	"${port_on_run}" "run" | pwzen
 fi
-export PROTON_NO_FSYNC=0
+export PW_NO_FSYNC=0
 if [ "$(ulimit -n)" -lt 50000 ]; then
-    export PROTON_NO_ESYNC=1
+    export PW_NO_ESYNC=1
     echo "ESYNC is disabled"
 else
-    export PROTON_NO_ESYNC=0
+    export PW_NO_ESYNC=0
     echo "ESYNC is enabled"
 fi
 export int_xneur=0
@@ -154,6 +188,7 @@ if [ $(pgrep xneur)>'0' ]; then
 	killall xneur
 	export int_xneur=1
 fi 
+########################################################################
 if [ -x "`which "gamemoderun" 2>/dev/null`" ]; then
     sleep 1
     systemctl --user enable gamemoded.service 
