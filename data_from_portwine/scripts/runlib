@@ -1,7 +1,7 @@
 #!/bin/bash
 # Author: PortWINE-Linux.ru
 ########################################################################
-[ $(id -u) -eq 0 ] && echo "Do not run this script as root!" && zenity --error --text "Do not run this script as root!" && exit 1
+[ $(id -u) = 0 ] && echo "Do not run this script as root!" && zenity --error --text "Do not run this script as root!" && exit 1
 ########################################################################
 sszen() {
 zenity --progress --title="Settings..." --text="Updating start parameters" --pulsate --auto-close --auto-kill --width=450
@@ -41,7 +41,7 @@ if [ ! -f "${config_path}/dxvk_on" ]; then
     FALSE "OpenGL" "${ss_ogl_2}" \
     FALSE "DXVK+HUD" "${ss_ogl_3} + HUD" \
     TRUE "DXVK" "${ss_ogl_3}" `
-    if [ $? -eq 1 ];then exit 1; fi
+    if [ $? = 1 ];then exit 1; fi
     case $start_settings in
     "OpenGL") 
             echo "0" > "${config_path}/dxvk_on" ;;
@@ -120,7 +120,7 @@ else
     export AMD_ATI="$(lspci | grep AMD/ATI)" 
     if [ ! -z "${AMD_ATI}" ]; then
 #        export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk_amd.conf"
-        if [ "${PORTWINE_ACO}" -eq "1" ]; then
+        if [ "${PORTWINE_ACO}" = "1" ]; then
             export RADV_PERFTEST=aco
             echo "ACO is enabled"
         else
@@ -130,11 +130,11 @@ else
 fi
 export DXVK_STATE_CACHE_PATH="${PATH_TO_GAME}"
 export DXVK_STATE_CACHE=1
-if [ "${var_dxvk_on}" -eq "0" ]; then
+if [ "${var_dxvk_on}" = "0" ]; then
     export DXVK_STATE_CACHE=0
-elif [ "${var_dxvk_on}" -eq "1" ]; then
+elif [ "${var_dxvk_on}" = "1" ]; then
     export DXVK_HUD=0
-elif [ "${var_dxvk_on}" -eq "2" ]; then
+elif [ "${var_dxvk_on}" = "2" ]; then
     export DXVK_HUD="fps,devinfo,version,frametimes"
 fi
 export def_pfx="${PORT_WINE_PATH}/data/dist/share/default_pfx/"
@@ -179,7 +179,7 @@ STOP_PORTWINE ()
 {
 #WAIT_WINESERVER
 ADD_IN_STOP_PORTWINE
-if [ "$int_xneur" -eq "1"  ]; then
+if [ "$int_xneur" = "1"  ]; then
 	xneur &
 fi
 #killall -r -s9 winedevice 
