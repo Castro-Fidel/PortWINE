@@ -3,9 +3,17 @@
 . "$(dirname $(readlink -f "$0"))/runlib"
 "${WINESERVER}" -k
 START_PORTWINE
-if [ ! -z ${optirun_on} ]; then
-    ${optirun_on} "${port_on_run}" "run" "${gamestart}" ${launch_parameters} &>/dev/null
-else
-   "${port_on_run}" "run" "${gamestart}" ${launch_parameters} &>/dev/null
+if [ ! -z "$1" ]; then
+    if [ ! -z ${optirun_on} ]; then
+        ${optirun_on} "${port_on_run}" "run" "$1" &>/dev/null
+    else
+        "${port_on_run}" "run" "$1" &>/dev/null
+    fi
+else  
+    if [ ! -z ${optirun_on} ]; then
+        ${optirun_on} "${port_on_run}" "run" "${gamestart}" ${launch_parameters} &>/dev/null
+    else
+        "${port_on_run}" "run" "${gamestart}" ${launch_parameters} &>/dev/null
+    fi
 fi
 STOP_PORTWINE
