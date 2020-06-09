@@ -35,9 +35,9 @@ if [ ! -e "${config_path}/${portname}_ver" ]; then
 	echo "10" > "${config_path}/${portname}_ver"
 fi
 ########################################################################
+export port_on_run="${PORT_WINE_PATH}/data/port_on"
 export WINEDIR="${PORT_WINE_PATH}"/data/dist
 export WINELIB="${PORT_WINE_PATH}"/data/libs
-export port_on_run="${PORT_WINE_PATH}/data/port_on"
 export WINEARCH=win64
 export WINELOADER="${WINEDIR}/bin/wine"
 export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
@@ -119,7 +119,6 @@ if [ "${var_dxvk_on}" != "off" ]; then
     export PW_NO_D9VK=0
     export PW_NO_D3D11=0
     export PW_NO_D3D10=0
-    export DXVK_ASYNC=0
     echo "Use DXVK mod." 
     echo "DXVK_HUD=${var_dxvk_on}"
 else
@@ -152,6 +151,7 @@ if [ -x "`which nvidia-settings 2>/dev/null`" ]; then
 else
     export DRI_PRIME=1
     export vblank_mode=0
+    export MESA_GLSL_CACHE_DIR="${PATH_TO_GAME}"
     export mesa_glthread=true
     export AMD_ATI="$(lspci | grep AMD/ATI)" 
     if [ ! -z "${AMD_ATI}" ]; then
@@ -162,11 +162,6 @@ else
             echo "ACO is disabled"
         fi
     fi
-fi
-if [ ! -z "${WINEDLLOVERRIDES}" ]; then
-    export WINEDLLOVERRIDES="nvapi,nvapi64=;${WINEDLLOVERRIDES}"
-else
-        export WINEDLLOVERRIDES="nvapi,nvapi64="
 fi
 export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk.conf"
 ########################################################################

@@ -357,6 +357,10 @@ class Session:
         self.check_environment("PW_NO_VR", "novrclient")
         self.check_environment("PW_NO_WINEMFPLAY", "nomfplay")
         self.check_environment("PW_NO_WRITE_WATCH", "nowritewatch")
+        self.check_environment("PW_DXVK_ASYNC", "dxvkasync")
+        self.check_environment("PW_NVAPI_DISABLE", "nonvapi")
+        self.check_environment("PW_WINEDBG_DISABLE", "nowinedbg")
+        self.check_environment("PW_PULSE_LOWLATENCY", "pulselowlat")
 
         if not "noesync" in self.compat_config:
             self.env["WINEESYNC"] = "1" 
@@ -375,6 +379,12 @@ class Session:
 
         if "forcelgadd" in self.compat_config:
             self.env["WINE_LARGE_ADDRESS_AWARE"] = "1"
+        
+        if "dxvkasync" in self.compat_config:
+            self.env["DXVK_ASYNC"] = "1"
+
+        if "pulselowlat" in self.compat_config:
+            self.env["PULSE_LATENCY_MSEC"] = "60"
             
         g_compatdata.setup_prefix()
 
@@ -401,7 +411,14 @@ class Session:
 
         if "nowritewatch" in self.compat_config:
             self.env["WINE_DISABLE_WRITE_WATCH"] = "1"
-            
+        
+        if "nonvapi" in self.compat_config:
+            self.dlloverrides["nvapi"] = "d"
+            self.dlloverrides["nvapi64"] = "d"
+
+        if "nowinedbg" in self.compat_config:
+            self.dlloverrides["winedbg.exe"] = "d"
+
         s = ""
         for dll in self.dlloverrides:
             setting = self.dlloverrides[dll]
