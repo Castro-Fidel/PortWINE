@@ -2,31 +2,30 @@
 # Author: PortWINE-Linux.ru
 . "$(dirname $(readlink -f "$0"))/runlib"
 ########################################################################
-PORTPROTON_NAME=$(zenity --entry --text "Введите название ярлыка:")
+PORTPROTON_NAME=$(zenity --entry --text "${sc_name}")
 if [ $? -eq 1 ];then exit 1; fi
-PORTPROTON_EXE=$(zenity --file-selection --file-filter=""*.exe" "*.bat"" --title="Создаем ярлык. Выберите файл запуска..." --filename="${PORT_WINE_PATH}/data/pfx/drive_c/")
+PORTPROTON_EXE=$(zenity --file-selection --file-filter=""*.exe" "*.bat"" \
+--title="${sc_path}" --filename="${PORT_WINE_PATH}/data/pfx/drive_c/")
 if [ $? -eq 1 ];then exit 1; fi
-PORTPROTON_IMG=$(zenity --file-selection --file-filter=*.png --title="Создаем ярлык. Выберите иконку PNG формата..." --filename="${HOME}/")
+PORTPROTON_PATH="$(dirname "$(readlink -f "${PORTPROTON_EXE}")")"
+if [ -x "`which wrestool 2>/dev/null`" ]; then
+    wrestool -x --output="${PORT_WINE_PATH}/data/img/" -t14 "${PORTPROTON_EXE}"
+fi
+PORTPROTON_IMG=$(zenity --file-selection --file-filter=""*.png" "*.ico"" \
+--title="${sc_img}" --filename="${PORT_WINE_PATH}/data/img/")
 if [ $? -eq 1 ];then exit 1; fi
 ########################################################################
 cp -f "${PORTPROTON_IMG}" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
 name_desktop="${PORTPROTON_NAME}" 
-echo "[Desktop Entry]" \
-> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Name=${PORTPROTON_NAME}" \
+echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Name=${PORTPROTON_NAME}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop" 
+echo "Exec="export PATH_TO_GAME=\""$PORTPROTON_PATH"\" \&\& sh \"${PORT_WINE_PATH}/data/scripts/start\" \"${PORTPROTON_EXE}\""" \
 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Exec="sh \"${PORT_WINE_PATH}/data/scripts/start\" \"${PORTPROTON_EXE}\""" \
->> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Type=Application" \
->> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Categories=Game" \
->> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "StartupNotify=true" \
->> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Path="${PORT_WINE_PATH}/data/scripts/"" \
->> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Icon="${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"" \
->> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Type=Application" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Categories=Game" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "StartupNotify=true" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Path="${PORT_WINE_PATH}/data/scripts/"" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Icon="${PORTPROTON_IMG}"" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 ########################################################################
 `zenity --info --title "Успешно." --text "Ярлык создан в корневом каталоге порта." --no-wrap ` > /dev/null 2>&1  
