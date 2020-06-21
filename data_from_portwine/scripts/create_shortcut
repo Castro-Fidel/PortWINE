@@ -14,12 +14,15 @@ fi
 PORTPROTON_IMG=$(zenity --file-selection --file-filter=""*.png" "*.ico"" \
 --title="${sc_img}" --filename="${PORT_WINE_PATH}/data/img/")
 if [ $? -eq 1 ];then exit 1; fi
+PORTPROTON_CMD=""
+PORTPROTON_CMD=$(zenity --entry --text "${sc_cmd}")
+if [ $? -eq 1 ];then exit 1; fi
 ########################################################################
 cp -f "${PORTPROTON_IMG}" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
 name_desktop="${PORTPROTON_NAME}" 
 echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "Name=${PORTPROTON_NAME}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop" 
-echo "Exec="env export PATH_TO_GAME=\""$PORTPROTON_PATH"\" \&\& \"${PORT_WINE_PATH}/data/scripts/start\" \"${PORTPROTON_EXE}\""" \
+echo "Exec="env PATH_TO_GAME=\""$PORTPROTON_PATH"\" sh \"${PORT_WINE_PATH}/data/scripts/start\" \"${PORTPROTON_EXE}\" ${PORTPROTON_CMD}"" \
 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "Type=Application" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "Categories=Game" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
