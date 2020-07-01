@@ -12,11 +12,11 @@ zenity --progress --title="Settings..." --text="Please wait!" --pulsate --auto-c
 } 
 ########################################################################
 cd "$(dirname "`readlink -f "$0"`")"
-export link="$(pwd)"
-cd "${link}/../../"
+export PORT_SCRIPTS_PATH="$(pwd)"
+cd "${PORT_SCRIPTS_PATH}/../../"
 export PORT_WINE_PATH="$(pwd)"
-cd "${link}"
-. "${link}"/vars
+cd "${PORT_SCRIPTS_PATH}"
+. "${PORT_SCRIPTS_PATH}"/vars
 ########################################################################
 export config_path="${PORT_WINE_PATH}/data/tmp"
 if [ ! -d "${config_path}" ]; then
@@ -30,7 +30,7 @@ if [ ! -e "${config_path}/${portname}_loc" ]; then
 	echo "${SET_LANG}" > "${config_path}/${portname}_loc"
 fi
 ########################################################################
-. "${link}"/lang
+. "${PORT_SCRIPTS_PATH}"/lang
 if [ ! -e "${config_path}/${portname}_ver" ]; then
 	echo "10" > "${config_path}/${portname}_ver"
 fi
@@ -52,7 +52,7 @@ export urlg="http://portwine-linux.ru/donate"
 ########################################################################
 START_PORTWINE ()
 {
-sh "${link}"/port_update 
+sh "${PORT_SCRIPTS_PATH}"/port_update 
 if [ -d "${WINELIB}" ]; then 
     host_lib_paths=
     /sbin/ldconfig -XNv | grep "/"  | cut -d: -f1 1> "${config_path}"/default_lib_paths
@@ -213,5 +213,5 @@ if [ "$int_xneur" = "1"  ]; then
 fi
 #killall -r -s9 winedevice 
 rm -f "${PORT_WINE_PATH}"/0
-rm -f "${link}"/0
+rm -f "${PORT_SCRIPTS_PATH}"/0
 }
