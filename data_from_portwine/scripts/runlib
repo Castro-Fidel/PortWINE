@@ -133,7 +133,8 @@ else
 fi
 ########################################################################
 export optirun_on=
-if [ -x "`which nvidia-settings 2>/dev/null`" ]; then
+export PW_NVIDIA="$(lspci | grep NVIDIA)" 
+if [ ! -z "${PW_NVIDIA}" ]; then
     if [ -x "`which primusrun 2>/dev/null`" ]; then
         export optirun_on="primusrun"
         export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json 
@@ -153,8 +154,8 @@ else
     export vblank_mode=0
     export MESA_GLSL_CACHE_DIR="${PATH_TO_GAME}"
     export mesa_glthread=true
-    export AMD_ATI="$(lspci | grep AMD/ATI)" 
-    if [ ! -z "${AMD_ATI}" ]; then
+    export PW_AMD_ATI="$(lspci | grep AMD/ATI)" 
+    if [ ! -z "${PW_AMD_ATI}" ]; then
         if [ "${PW_ACO}" = "1" ]; then
             export RADV_PERFTEST=aco
             echo "ACO is enabled"
