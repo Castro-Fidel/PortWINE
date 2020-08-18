@@ -132,15 +132,25 @@ else
     echo "Use OpenGL mod." 
 fi
 ########################################################################
+export gpu_card=""
+if [ -x "`which optimus-manager 2>/dev/null`" ]; then
+    export gpu_card=`optimus-manager --status | grep Current | cut -f 2 -d':' | sed -e 's/^[[:space:]]*//'`
+fi
 export optirun_on=
 export PW_NVIDIA="$(lspci | grep NVIDIA)" 
-if [ ! -z "${PW_NVIDIA}" ]; then
+if [[ "$gpu_card" == "nvidia" ]] || [[ ! -z "${PW_NVIDIA}" ]] && [[ "$gpu_card" != "intel" ]]; then
     if [ -x "`which primusrun 2>/dev/null`" ]; then
-        export optirun_on="primusrun"
-        export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json 
+        if [[ "$gpu_card" == "" ]]; then
+          export optirun_on="primusrun"
+        else
+            export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+        fi
     elif [ -x "`which optirun 2>/dev/null`" ]; then
-        export optirun_on="optirun -b primus"
-        export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json 
+        if [[ "$gpu_card" == "" ]]; then
+            export optirun_on="optirun -b primus"
+        else
+            export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+        fi
     fi
     export __NV_PRIME_RENDER_OFFLOAD=1
     export __GLX_VENDOR_LIBRARY_NAME=nvidia
