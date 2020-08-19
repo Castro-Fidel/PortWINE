@@ -133,9 +133,15 @@ else
 fi
 ########################################################################
 export optirun_on=
+export check_optimus_manager=
 export PW_NVIDIA="$(lspci | grep NVIDIA)" 
-if [ ! -z "${PW_NVIDIA}" ]; then
-    if [ -x "`which primusrun 2>/dev/null`" ]; then
+if [ -x "`which optimus-manager 2>/dev/null`" ]; then
+    export check_optimus_manager=`optimus-manager --status | grep Current | cut -f 2 -d':' | sed -e 's/^[[:space:]]*//'`
+fi
+if [ ! -z "${PW_NVIDIA}" ] && [ "${check_optimus_manager}" != "intel" ]; then
+    if [ "${check_optimus_manager}" = "nvidia" ]; then
+        export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+    elif [ -x "`which primusrun 2>/dev/null`" ]; then
         export optirun_on="primusrun"
         export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json 
     elif [ -x "`which optirun 2>/dev/null`" ]; then
