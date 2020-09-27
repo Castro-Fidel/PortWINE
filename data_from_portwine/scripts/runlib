@@ -61,7 +61,7 @@ if [ -d "${WINELIB}" ]; then
     done < "${config_path}"/default_lib_paths
     host_lib_paths="${WINELIB}/pinned_libs_32:${WINELIB}/pinned_libs_64:$host_lib_paths"
     portwine_runtime_libs_paths="$host_lib_paths${WINELIB}/lib/i386-linux-gnu:${WINELIB}/usr/lib/i386-linux-gnu:${WINELIB}/lib/x86_64-linux-gnu:${WINELIB}/usr/lib/x86_64-linux-gnu:${WINELIB}/lib:${WINELIB}/usr/lib"
-    if [ ! -z "${LD_LIBRARY_PATH}" ]; then
+    if [ ! -z $LD_LIBRARY_PATH ]; then
         export LD_LIBRARY_PATH="$portwine_runtime_libs_paths:${LD_LIBRARY_PATH-}"
     else
         export LD_LIBRARY_PATH="$portwine_runtime_libs_paths"
@@ -76,10 +76,10 @@ then
     start_settings=`zenity --title  "${ss_title}" --text "${ss_text}" --list --radiolist \
     --column="${inst_set}" --column "${ss_ver}" --column "${ss_dr}"  --width=500 --height=220 \
     TRUE "DXVK" "${ss_ogl_3}" \
-    FALSE "OpenGL" "${ss_ogl_2}" `
+    FALSE "VKD3D and OpenGL" "${ss_ogl_2}" `
     if [ $? -eq 1 ];then exit 1; fi
     case $start_settings in
-    "OpenGL") 
+    "VKD3D and OpenGL") 
             echo "off" > "${config_path}/dxvk_on" ;;
     "DXVK") 
             hud_settings=`zenity --list --title  "HUD" --text "${hud_text}" --list --checklist \
@@ -108,29 +108,33 @@ then
             fi ;;
     esac  
 fi
-read "var_dxvk_on" < "${config_path}/dxvk_on"
-export "var_dxvk_on"
-if [ "${var_dxvk_on}" != "off" ]; then
-    export DXVK_HUD="${var_dxvk_on}"
-    export DXVK_STATE_CACHE_PATH="${PATH_TO_GAME}"
-    export DXVK_STATE_CACHE=1
-    export PW_USE_WINED3D=0
-    export PW_DXGI_FOR_VKD3D=0
-    export PW_NO_D9VK=0
-    export PW_NO_D3D11=0
-    export PW_NO_D3D10=0
-    echo "Use DXVK mod." 
-    echo "DXVK_HUD=${var_dxvk_on}"
+
+if [ ! -z $dxvk_ogl_var ]; then
+    var_dxvk_on="${dxvk_ogl_var}"
 else
-    export DXVK_STATE_CACHE=0
-    export PW_USE_WINED3D=1
-    export PW_DXGI_FOR_VKD3D=1
-    export PW_NO_D9VK=0
-    export PW_NO_D3D11=0
-    export PW_NO_D3D10=0
-    export PW_OLD_GL_STRING=0
-    echo "Use OpenGL mod." 
+    read "var_dxvk_on" < "${config_path}/dxvk_on"
 fi
+export DXVK_HUD="${var_dxvk_on}"
+echo "DXVK_HUD=${DXVK_HUD}"
+
+if [ "${var_dxvk_on}" != "off" ]; then
+    export PW_USE_WINED3D=0
+    export PW_NO_D3D9=0
+    export PW_NO_D3D10=0
+    export PW_NO_D3D11=0
+    export PW_OLD_GL_STRING=0
+    echo "Use DXVK and D9VK (DX9-DX11 to Vulkan)" 
+else
+    export PW_USE_WINED3D=1
+    export PW_NO_D3D9=0
+    export PW_NO_D3D10=0
+    export PW_NO_D3D11=0
+    export PW_OLD_GL_STRING=0
+    echo "Use OpenGL and VKD3D (DX9-DX11 to OpenGL and DX12 to vulkan)" 
+fi
+
+export DXVK_STATE_CACHE_PATH="${PATH_TO_GAME}"
+export DXVK_STATE_CACHE=1
 ########################################################################
 export optirun_on=
 export check_optimus_manager=
@@ -138,7 +142,7 @@ export PW_NVIDIA="$(lspci | grep NVIDIA)"
 if [ -x "`which optimus-manager 2>/dev/null`" ]; then
     export check_optimus_manager=`optimus-manager --status | grep Current | cut -f 2 -d':' | sed -e 's/^[[:space:]]*//'`
 fi
-if [ ! -z "${PW_NVIDIA}" ] && [ "${check_optimus_manager}" != "intel" ]; then
+if [ ! -z $PW_NVIDIA ] && [ "${check_optimus_manager}" != "intel" ]; then
     if [ "${check_optimus_manager}" = "nvidia" ]; then
         export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
     elif [ -x "`which primusrun 2>/dev/null`" ]; then
@@ -146,6 +150,9 @@ if [ ! -z "${PW_NVIDIA}" ] && [ "${check_optimus_manager}" != "intel" ]; then
         export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json 
     elif [ -x "`which optirun 2>/dev/null`" ]; then
         export optirun_on="optirun -b primus"
+        export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json 
+    elif [ -x "`which prime-run 2>/dev/null`" ]; then
+        export optirun_on="prime-run"
         export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json 
     fi
     export __NV_PRIME_RENDER_OFFLOAD=1
@@ -176,14 +183,6 @@ export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk.conf"
 export def_pfx="${PORT_WINE_PATH}/data/dist/share/default_pfx/"
 if [ ! -d "${def_pfx}" ]; then
 	"${port_on_run}" "run" | pwzen
-fi
-export PW_NO_FSYNC=0
-if [ "$(ulimit -n)" -lt 50000 ]; then
-    export PW_NO_ESYNC=1
-    echo "ESYNC is disabled"
-else
-    export PW_NO_ESYNC=0
-    echo "ESYNC is enabled"
 fi
 export int_xneur=0
 if [ $(pgrep xneur)>'0' ]; then

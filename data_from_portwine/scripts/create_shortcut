@@ -15,14 +15,48 @@ PORTPROTON_IMG=$(zenity --file-selection --file-filter=""*.png" "*.ico"" \
 --title="${sc_img}" --filename="${PORT_WINE_PATH}/data/img/")
 if [ $? -eq 1 ];then exit 1; fi
 PORTPROTON_CMD=""
-PORTPROTON_CMD=$(zenity --entry --text "${sc_cmd}")
-if [ $? -eq 1 ];then exit 1; fi
+#PORTPROTON_CMD=$(zenity --entry --text "${sc_cmd}")
+#if [ $? -eq 1 ];then exit 1; fi
+start_settings=`zenity --title  "${ss_title}" --text "${ss_text}" --list --radiolist \
+    --column="${inst_set}" --column "${ss_ver}" --column "${ss_dr}"  --width=500 --height=220 \
+    TRUE "DXVK" "${ss_ogl_3}" \
+    FALSE "VKD3D and OpenGL" "${ss_ogl_2}" `
+    if [ $? -eq 1 ];then exit 1; fi
+    case $start_settings in
+    "VKD3D and OpenGL") 
+            dxvk_ogl_var="off" ;;
+    "DXVK") 
+            hud_settings=`zenity --list --title  "HUD" --text "${hud_text}" --list --checklist \
+            --column="${inst_set}" --column="HUD info:" --column="${hud_info}" --width=800 --height=550 \
+            FALSE "fps" "${hud_fps}" \
+            FALSE "devinfo" "${hud_devinfo}" \
+            FALSE "frametimes" "${hud_frametimes}" \
+            FALSE "submissions" "${hud_submissions}" \
+            FALSE "drawcalls" "${hud_drawcalls}" \
+            FALSE "pipelines" "${hud_pipelines}" \
+            FALSE "memory" "${hud_memory}" \
+            FALSE "gpuload" "${hud_gpuload}" \
+            FALSE "version" "${hud_version}" \
+            FALSE "api" "${hud_api}" \
+            FALSE "compiler" "${hud_compiler}" \
+            FALSE "samplers" "${hud_samplers}" `
+
+            if [ ! -z $hud_settings ]; then
+                for hud_set in $hud_settings
+                do
+                    export dxvk_ogl_var="${hud_set}"
+                done  
+                export dxvk_ogl_var=${dxvk_ogl_var} | sed -i "s/|/,/g" 
+            else
+                dxvk_ogl_var="0"
+            fi ;;
+    esac  
 ########################################################################
 cp -f "${PORTPROTON_IMG}" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
 name_desktop="${PORTPROTON_NAME}" 
 echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "Name=${PORTPROTON_NAME}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop" 
-echo "Exec="env PATH_TO_GAME=\""$PORTPROTON_PATH"\" sh \"${PORT_SCRIPTS_PATH}/start\" \"${PORTPROTON_EXE}\" ${PORTPROTON_CMD}"" \
+echo "Exec="env dxvk_ogl_var=$dxvk_ogl_var PATH_TO_GAME=\""$PORTPROTON_PATH"\" sh \"${PORT_SCRIPTS_PATH}/start\" \"${PORTPROTON_EXE}\" ${PORTPROTON_CMD}"" \
 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "Type=Application" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "Categories=Game" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
