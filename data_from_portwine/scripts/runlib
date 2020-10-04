@@ -23,8 +23,8 @@ if [ ! -d "${config_path}" ]; then
 	mkdir -p "${config_path}"
 fi
 if [ ! -e "${config_path}/${portname}_loc" ]; then
-	SET_LANG=`zenity --title  "Install $portname" --text "Select the language\nВыберите язык" --list --radiolist \
-	--column="Set (Выбор)" --column "Language (Язык):" \
+	SET_LANG=`zenity --title  "Install $portname" --text "Select the language" --list --radiolist \
+	--column="Set" --column "Language:" \
 	TRUE "RUS" \
 	FALSE "ENG" `
 	echo "${SET_LANG}" > "${config_path}/${portname}_loc"
@@ -66,8 +66,10 @@ if [ -d "${WINELIB}" ]; then
     else
         export LD_LIBRARY_PATH="$portwine_runtime_libs_paths"
     fi
+    echo "########################"
     echo "runtime libs is enabled"
 else
+    echo "########################"
     echo "runtime libs is disabled"
 fi
 ########################################################################
@@ -142,7 +144,7 @@ export PW_NVIDIA="$(lspci | grep NVIDIA)"
 if [ -x "`which optimus-manager 2>/dev/null`" ]; then
     export check_optimus_manager=`optimus-manager --status | grep Current | cut -f 2 -d':' | sed -e 's/^[[:space:]]*//'`
 fi
-if [ ! -z $PW_NVIDIA ] && [ "${check_optimus_manager}" != "intel" ]; then
+if [ ! -z "${PW_NVIDIA}" ] && [ "${check_optimus_manager}" != "intel" ]; then
     if [ "${check_optimus_manager}" = "nvidia" ]; then
         export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
     elif [ -x "`which primusrun 2>/dev/null`" ]; then
@@ -166,8 +168,8 @@ if [ ! -z $PW_NVIDIA ] && [ "${check_optimus_manager}" != "intel" ]; then
 else
     export DRI_PRIME=1
     export vblank_mode=0
-    export MESA_GLSL_CACHE_DIR="${PATH_TO_GAME}"
-    export mesa_glthread=true
+#    export MESA_GLSL_CACHE_DIR="${PATH_TO_GAME}"
+#    export mesa_glthread=true
     export PW_AMD_ATI="$(lspci | grep AMD/ATI)" 
     if [ ! -z "${PW_AMD_ATI}" ]; then
         if [ "${PW_ACO}" = "1" ]; then
@@ -179,6 +181,7 @@ else
     fi
 fi
 export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk.conf"
+echo "########################"
 ########################################################################
 export def_pfx="${PORT_WINE_PATH}/data/dist/share/default_pfx/"
 if [ ! -d "${def_pfx}" ]; then
