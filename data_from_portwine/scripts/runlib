@@ -22,6 +22,9 @@ export config_path="${PORT_WINE_PATH}/data/tmp"
 if [ ! -d "${config_path}" ]; then
 	mkdir -p "${config_path}"
 fi
+if [ ! -d "${HOME}/.PortWINE/tmp" ]; then
+	mkdir -p "${HOME}/.PortWINE/tmp"
+fi
 if [ ! -e "${config_path}/${portname}_loc" ]; then
 	SET_LANG=`zenity --title  "Install $portname" --text "Select the language" --list --radiolist \
 	--column="Set:" --column "Language:" \
@@ -37,7 +40,7 @@ fi
 ########################################################################
 export port_on_run="${PORT_WINE_PATH}/data/port_on"
 export WINEDIR="${PORT_WINE_PATH}"/data/dist
-export WINELIB="${PORT_WINE_PATH}"/data/libs
+export WINELIB="${HOME}/.PortWINE/libs"
 export WINEARCH=win64
 export WINELOADER="${WINEDIR}/bin/wine"
 export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
@@ -53,6 +56,13 @@ export urlg="http://portwine-linux.ru/donate"
 START_PORTWINE ()
 {
 sh "${PORT_SCRIPTS_PATH}"/port_update 
+echo "########################"
+if [ ! -d "${WINELIB}" ]; then 
+    echo "Download and install libraries..."
+    wget -T 2 --output-document="${HOME}/.PortWINE/tmp/libs.tar.xz" http://pubrepo.sllc.cloud/k1/files/dist/libs.tar.xz | sszen &&
+    tar -Jxvf "${HOME}/.PortWINE/tmp/libs.tar.xz" -C "${HOME}/.PortWINE/" | sszen &&
+    rm -f "${HOME}/.PortWINE/tmp/libs.tar.xz"
+fi
 if [ -d "${WINELIB}" ]; then 
     host_lib_paths=
     /sbin/ldconfig -XNv | grep "/"  | cut -d: -f1 1> "${config_path}"/default_lib_paths
@@ -67,10 +77,10 @@ if [ -d "${WINELIB}" ]; then
         export LD_LIBRARY_PATH="$portwine_runtime_libs_paths"
     fi
     echo "########################"
-    echo "runtime libs is enabled"
+    echo "Runtime libraries is enabled"
 else
     echo "########################"
-    echo "runtime libs is disabled"
+    echo "Runtime libraries is disabled"
 fi
 ########################################################################
 if [ ! -f "${config_path}/dxvk_on" ]
@@ -159,7 +169,6 @@ if [ ! -z "${PW_NVIDIA}" ] && [ "${check_optimus_manager}" != "intel" ]; then
     fi
     export __NV_PRIME_RENDER_OFFLOAD=1
     export __GLX_VENDOR_LIBRARY_NAME=nvidia
-    export __GL_SYNC_TO_VBLANK=0
     export __GL_SHADER_DISK_CACHE_PATH="${PATH_TO_GAME}" 
     export __GL_SHADER_DISK_CACHE=1
     export __GL_SHADER_DISK_CACHE_SIZE=1000000000
@@ -167,19 +176,17 @@ if [ ! -z "${PW_NVIDIA}" ] && [ "${check_optimus_manager}" != "intel" ]; then
     export __GL_DXVK_OPTIMIZATIONS=1
 else
     export DRI_PRIME=1
-    export vblank_mode=0
 #    export MESA_GLSL_CACHE_DIR="${PATH_TO_GAME}"
 #    export mesa_glthread=true
-    export PW_AMD_ATI="$(lspci | grep AMD/ATI)" 
-    if [ ! -z "${PW_AMD_ATI}" ]; then
-        if [ "${PW_ACO}" = "1" ]; then
-            export RADV_PERFTEST=aco
-            echo "ACO is enabled"
-        else
-            echo "ACO is disabled"
-        fi
-    fi
 fi
+case "$PW_FORCE_USE_VSYNC" in  # 0-FORCE_OFF, 1-FORCE_ON, 2-BY_DEFAULT
+    "0")
+    export vblank_mode=0
+    export __GL_SYNC_TO_VBLANK=0 ;;
+    "1")
+    export vblank_mode=1
+    export __GL_SYNC_TO_VBLANK=1 ;;  
+esac
 export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk.conf"
 ########################################################################
 export def_pfx="${PORT_WINE_PATH}/data/dist/share/default_pfx/"
@@ -192,15 +199,14 @@ if [ $(pgrep xneur)>'0' ]; then
 	export int_xneur=1
 fi 
 ########################################################################
-if [ -x "`which "gamemoderun" 2>/dev/null`" ]; then
-    sleep 1
+if [ -x "`which "gamemoderun" 2>/dev/null`" ] && [ "$PW_FORCE_DISABLED_GAMEMOD" -eq "0" ]; then
     systemctl --user enable gamemoded.service 
     systemctl --user restart gamemoded.service
     export PW_GAMEMODERUN=1
     echo "Gamemod will be launched."
 else
     export PW_GAMEMODERUN=0
-    echo "Gamemod not installed!"
+    echo "Gamemod is not installed or disabled in vars script: PW_FORCE_DISABLED_GAMEMOD=$PW_FORCE_DISABLED_GAMEMOD"
 fi
 echo "########################"
 ADD_IN_START_PORTWINE
