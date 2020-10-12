@@ -3,18 +3,15 @@
 . "$(dirname $(readlink -f "$0"))/runlib"
 if [ -f "$1" ]; then
     export portwine_exe="$(readlink -f "$1")"
-    export PATH_TO_GAME="$(dirname $(readlink -f "$1"))"
+    export PATH_TO_GAME="$( cd "$( dirname "$1" )" >/dev/null 2>&1 && pwd )"
     START_PORTWINE
     if [ ! -z ${optirun_on} ]; then
         ${optirun_on} "${port_on_run}" "run" "$portwine_exe"
     else
         "${port_on_run}" "run" "$portwine_exe"
     fi
-    STOP_PORTWINE
 else
+    START_PORTWINE
     sh "${PORT_SCRIPTS_PATH}/winefile"
 fi
-
-
-
-
+STOP_PORTWINE
