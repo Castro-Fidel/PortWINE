@@ -123,13 +123,14 @@ def set_dir_casefold_bit(dir_path):
 
 class Proton:
     def __init__(self, base_dir):
-        self.base_dir = os.environ["STEAM_COMPAT_DATA_PATH"]
+        self.base_dir = os.environ["PW_COMPAT_DATA_PATH"]
         self.dist_dir = self.path("dist/")
         self.bin_dir = self.path("dist/bin/")
         self.lib_dir = self.path("dist/lib/")
         self.lib64_dir = self.path("dist/lib64/")
         self.fonts_dir = self.path("dist/share/fonts/")
         self.version_file = self.path("version")
+        self.prefix_dir = self.path("pfx/")
         self.default_pfx_dir = self.path("dist/share/default_pfx/")
         self.user_settings_file = self.path("user_settings.py")
         self.wine_bin = self.bin_dir + "wine"
@@ -154,10 +155,19 @@ class Proton:
                 g_session.run_proc([self.wine_bin, "wineboot"], local_env)
                 g_session.run_proc([self.wineserver_bin, "-w"], local_env)
 
+    def update_prefix(self):
+        with self.dist_lock:
+            local_env = dict(g_session.env)
+            local_env["WINEPREFIX"] = self.prefix_dir
+            local_env["WINEDEBUG"] = "-all"
+            g_session.run_proc([self.wine_bin, "wineboot"], local_env)
+            g_session.run_proc([self.wineserver_bin, "-w"], local_env)
+
 class CompatData:
     def __init__(self, compatdata):
-        self.base_dir = os.environ["STEAM_COMPAT_DATA_PATH"]
+        self.base_dir = os.environ["PW_COMPAT_DATA_PATH"]
         self.prefix_dir = self.path("pfx/")
+        self.default_pfx_dir = self.path("dist/share/default_pfx/")
         self.version_file = self.path("version")
         self.tracked_files_file = self.path("tracked_files")
         self.prefix_lock = FileLock(self.path("pfx.lock"), timeout=-1)
@@ -189,81 +199,15 @@ class CompatData:
         os.remove(self.tracked_files_file)
         os.remove(self.version_file)
 
+
     def upgrade_pfx(self, old_ver):
         if old_ver == CURRENT_PREFIX_VERSION:
             return
-
+        
         log("Upgrading prefix from " + str(old_ver) + " to " + CURRENT_PREFIX_VERSION + " (" + self.base_dir + ")")
+#        subprocess.call([os.environ["WINELOADER"],"wineboot","-u"])
+        g_proton.update_prefix()
 
-        if old_ver is None:
-            return
-
-        if not '-' in old_ver:
-            #How can this happen??
-            log("Prefix has an invalid version?! You may want to back up user files and delete this prefix.")
-            #If it does, just let the Wine upgrade happen and hope it works...
-            return
-
-        try:
-            old_proton_ver, old_prefix_ver = old_ver.split('-')
-            old_proton_maj, old_proton_min = old_proton_ver.split('.')
-            new_proton_ver, new_prefix_ver = CURRENT_PREFIX_VERSION.split('-')
-            new_proton_maj, new_proton_min = new_proton_ver.split('.')
-
-            if int(new_proton_maj) < int(old_proton_maj) or \
-                    (int(new_proton_maj) == int(old_proton_maj) and \
-                     int(new_proton_min) < int(old_proton_min)):
-                log("Removing newer prefix")
-                if old_proton_ver == "3.7" and not os.path.exists(self.tracked_files_file):
-                    #proton 3.7 did not generate tracked_files, so copy it into place first
-                    try_copy(g_proton.path("proton_3.7_tracked_files"), self.tracked_files_file)
-                self.remove_tracked_files()
-                return
-
-            if old_proton_ver == "3.7" and old_prefix_ver == "1":
-                if not os.path.exists(self.prefix_dir + "/drive_c/windows/syswow64/kernel32.dll"):
-                    #shipped a busted 64-bit-only installation on 20180822. detect and wipe clean
-                    log("Detected broken 64-bit-only installation, re-creating prefix.")
-                    shutil.rmtree(self.prefix_dir)
-                    return
-
-            #replace broken .NET installations with wine-mono support
-            if os.path.exists(self.prefix_dir + "/drive_c/windows/Microsoft.NET/NETFXRepair.exe") and \
-                    file_is_wine_builtin_dll(self.prefix_dir + "/drive_c/windows/system32/mscoree.dll"):
-                log("Broken .NET installation detected, switching to wine-mono.")
-                #deleting this directory allows wine-mono to work
-                shutil.rmtree(self.prefix_dir + "/drive_c/windows/Microsoft.NET")
-
-            #prior to prefix version 4.11-2, all controllers were xbox controllers. wipe out the old registry entries.
-            if (int(old_proton_maj) < 4 or (int(old_proton_maj) == 4 and int(old_proton_min) == 11)) and \
-                    int(old_prefix_ver) < 2:
-                log("Removing old xinput registry entries.")
-                with open(self.prefix_dir + "system.reg", "r") as reg_in:
-                    with open(self.prefix_dir + "system.reg.new", "w") as reg_out:
-                        for line in reg_in:
-                            if line[0] == '[' and "CurrentControlSet" in line and "IG_" in line:
-                                if "DeviceClasses" in line:
-                                    reg_out.write(line.replace("DeviceClasses", "DeviceClasses_old"))
-                                elif "Enum" in line:
-                                    reg_out.write(line.replace("Enum", "Enum_old"))
-                            else:
-                                reg_out.write(line)
-                try:
-                    os.rename(self.prefix_dir + "system.reg", self.prefix_dir + "system.reg.old")
-                except OSError:
-                    os.remove(self.prefix_dir + "system.reg")
-                    pass
-
-                try:
-                    os.rename(self.prefix_dir + "system.reg.new", self.prefix_dir + "system.reg")
-                except OSError:
-                    log("Unable to write new registry file to " + self.prefix_dir + "system.reg")
-                    pass
-
-        except ValueError:
-            log("Prefix has an invalid version?! You may want to back up user files and delete this prefix.")
-            #Just let the Wine upgrade happen and hope it works...
-            return
 
     def pfx_copy(self, src, dst, dll_copy=False):
         if os.path.islink(src):
@@ -477,20 +421,6 @@ class Session:
         self.compat_config = set()
         self.cmdlineappend = []
 
-        if "STEAM_COMPAT_CONFIG" in os.environ:
-            config = os.environ["STEAM_COMPAT_CONFIG"]
-
-            while config:
-                (cur, sep, config) = config.partition(',')
-                if cur.startswith("cmdlineappend:"):
-                    while comma_escaped(cur):
-                        (a, b, c) = config.partition(',')
-                        cur = cur[:-1] + ',' + a
-                        config = c
-                    self.cmdlineappend.append(cur[14:].replace('\\\\','\\'))
-                else:
-                    self.compat_config.add(cur)
-
         #turn forcelgadd on by default unless it is disabled in compat config
         if not "noforcelgadd" in self.compat_config:
             self.compat_config.add("forcelgadd")
@@ -660,7 +590,7 @@ class Session:
     def run_proc(self, args, local_env=None):
         if local_env is None:
             local_env = self.env
-        subprocess.call(args, env=local_env)
+        subprocess.call(args, env=local_env) 
 
     def run(self):
         if "PW_GAMEMODERUN" in os.environ and nonzero(os.environ["PW_GAMEMODERUN"]):
@@ -669,13 +599,13 @@ class Session:
             self.run_proc([g_proton.wine_bin] + sys.argv[2:] + sys.argv[3:])
 
 if __name__ == "__main__":
-    if not "STEAM_COMPAT_DATA_PATH" in os.environ:
+    if not "PW_COMPAT_DATA_PATH" in os.environ:
         log("No compat data path?")
         sys.exit(1)
 
     g_proton = Proton(os.path.dirname(sys.argv[0]))
 
-    g_compatdata = CompatData(os.environ["STEAM_COMPAT_DATA_PATH"])
+    g_compatdata = CompatData(os.environ["PW_COMPAT_DATA_PATH"])
 
     g_session = Session()
 
