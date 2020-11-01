@@ -7,10 +7,10 @@ if ! [ -z "${wine_pids}" ] ; then
     kill -9 ${wine_pids}
 fi
 rm -f ${PORT_SCRIPTS_PATH}/winetricks
-"/usr/bin/xterm" -e wget  -T 3 --output-document="${PORT_SCRIPTS_PATH}/winetricks" https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks
+wget -T 3 --output-document=${PORT_SCRIPTS_PATH}/winetricks https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks
 chmod +x "${PORT_SCRIPTS_PATH}/winetricks" 
 sed -i '18a . $(dirname $(readlink -f "$0"))/runlib\nSTART_PORTWINE\nexport WINELOADER="${WINEDIR}/bin/wine" ' "${PORT_SCRIPTS_PATH}/winetricks" 
 sleep 1
 export PW_LOG=1
-"/usr/bin/xterm" -e "sh ${PORT_SCRIPTS_PATH}/winetricks -q --force"
+$PW_TERM "sh ${PORT_SCRIPTS_PATH}/winetricks -q --force"
 STOP_PORTWINE
