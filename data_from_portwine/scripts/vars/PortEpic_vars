@@ -1,0 +1,51 @@
+#!/bin/bash
+# License GPL
+# Author: Tergoev M.A.
+########################################################################
+export portname="PortEpic"
+export gamename="Epic_Games"
+export gamedir="Epic Games/Launcher/Portal/Binaries/Win32/"
+export porturl="http://portwine-linux.ru/epic-games-linux/"
+export PATH_TO_GAME="${PORT_WINE_PATH}/data/pfx/drive_c/Program Files (x86)/${gamedir}"
+export gamestart="${PATH_TO_GAME}/EpicGamesLauncher.exe"
+########################################################################
+#export MESA_GL_VERSION_OVERRIDE=4.4COMPAT
+export STAGING_SHARED_MEMORY=1
+export PROTON_FORCE_LARGE_ADDRESS_AWARE=1
+export PROTON_USE_SECCOMP=0
+export WINEDLLOVERRIDES="winemenubuilder.exe=d"
+export WINEDEBUG="-all"
+export PORTWINE_ACO=0
+########################################################################
+ADD_IN_START_PORTWINE ()
+{
+if [ "${var_dxvk_on}" -eq "0" ]
+then        ###OPENGL###
+    export PROTON_USE_WINED3D=1
+    export PW_DXGI_FOR_VKD3D=1
+    export PROTON_NO_D9VK=0
+    export PROTON_NO_D3D11=0
+    export PROTON_NO_D3D10=0
+    export PROTON_OLD_GL_STRING=0
+else        ###DXVK###
+    export PROTON_USE_WINED3D=0
+    export PW_DXGI_FOR_VKD3D=0
+    export PROTON_NO_D9VK=0
+    export PROTON_NO_D3D11=0
+    export PROTON_NO_D3D10=0
+    export DXVK_ASYNC=0
+fi
+export launch_parameters="-opengl -SkipBuildPatchPrereq"
+cd "${PATH_TO_GAME}"
+}
+########################################################################
+ADD_IN_STOP_PORTWINE ()
+{	
+echo " "
+}
+########################################################################
+ADD_IN_POST_INSTALL ()
+{
+`zenity --info --title "${inst_set_top}" --text "${inst_succ}" --no-wrap ` > /dev/null 2>&1  
+}
+

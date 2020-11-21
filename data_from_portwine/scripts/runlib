@@ -15,8 +15,10 @@ cd "$(dirname "`readlink -f "$0"`")"
 export PORT_SCRIPTS_PATH="$(pwd)"
 cd "${PORT_SCRIPTS_PATH}/../../"
 export PORT_WINE_PATH="$(pwd)"
+read "portname" < "${PORT_WINE_PATH}/data/tmp/portname"
+export portname
 cd "${PORT_SCRIPTS_PATH}"
-. "${PORT_SCRIPTS_PATH}"/vars
+. "${PORT_SCRIPTS_PATH}/vars/${portname}_vars"
 ########################################################################
 export config_path="${PORT_WINE_PATH}/data/tmp"
 if [ ! -d "${config_path}" ]; then
@@ -51,18 +53,21 @@ export WINESTART="C:\\windows\\command\\start.exe"
 export PW_COMPAT_DATA_PATH="${PORT_WINE_PATH}/data/"
 export PW_COMPAT_MEDIA_PATH="${PW_COMPAT_MEDIA_PATH}"
 ########################################################################
-export urlg="http://portwine-linux.ru/donate"
+export urlg="https://portwine-linux.ru/portwine-faq/"
+export PW_FTP_URL="https://portwine-linux.ru/ftp"
 ########################################################################
 export PW_TERM=""
 if [ "${PW_USE_TERMINAL}" = "1"  ]; then
     if [ -x "`which konsole 2>/dev/null`" ]; then
         export PW_TERM="konsole -e"
     elif [ -x "`which xfce4-terminal 2>/dev/null`" ]; then
-        export PW_TERM="xfce4-terminal -e"
+        export PW_TERM="xfce4-terminal -x"
     elif [ -x "`which xterm 2>/dev/null`" ]; then
         export PW_TERM="xterm -e"
     elif [ -x "`which gnome-terminal 2>/dev/null`" ]; then
         export PW_TERM="gnome-terminal -- $SHELL -c" 
+    elif [ -x "`which lxterminal 2>/dev/null`" ]; then
+        export PW_TERM="lxterminal -e" 
     fi
 fi
 ########################################################################
@@ -72,7 +77,7 @@ sh "${PORT_SCRIPTS_PATH}"/port_update
 echo "########################"
 if [ ! -d "${WINELIB}" ]; then 
     echo "Download and install libraries..."
-    wget -T 2 --output-document="${HOME}/.PortWINE/tmp/libs.tar.xz" http://pubrepo.sllc.cloud/k1/files/dist/libs.tar.xz | sszen &&
+    wget -T 2 --output-document="${HOME}/.PortWINE/tmp/libs.tar.xz" "${PW_FTP_URL}"/dist/libs.tar.xz | sszen &&
     tar -Jxvf "${HOME}/.PortWINE/tmp/libs.tar.xz" -C "${HOME}/.PortWINE/" | sszen &&
     rm -f "${HOME}/.PortWINE/tmp/libs.tar.xz"
 fi
@@ -144,10 +149,12 @@ echo "DXVK_HUD=${DXVK_HUD}"
 
 if [ "${var_dxvk_on}" != "off" ]; then
     export PW_USE_WINED3D=0
-    echo "Use DXVK and D9VK (DX9-DX11 to Vulkan)" 
+    echo "Use DXVK and D9VK (DX9-DX11 to Vulkan)"
+    export PW_VKD3D_FEATURE_LEVEL=0
 else
     export PW_USE_WINED3D=1
     echo "Use OpenGL and VKD3D (DX9-DX11 to OpenGL and DX12 to vulkan)" 
+    export PW_VKD3D_FEATURE_LEVEL=1
 fi
 
 export DXVK_STATE_CACHE_PATH="${PATH_TO_GAME}"
@@ -203,6 +210,10 @@ if [ $(pgrep xneur)>'0' ]; then
 	killall xneur
 	export int_xneur=1
 fi 
+export PW_XKBD="$(setxkbmap -query | grep -w ru | awk '{print($2)}')"
+if [ ! -z ${PW_XKBD} ]; then
+    setxkbmap us,ru
+fi
 ########################################################################
 if [ -x "`which "gamemoderun" 2>/dev/null`" ] && [ "$PW_FORCE_DISABLED_GAMEMOD" -eq "0" ]; then
     systemctl --user enable gamemoded.service 
@@ -227,10 +238,13 @@ done
 ########################################################################
 STOP_PORTWINE ()
 {
-#WAIT_WINESERVER
+WAIT_WINESERVER
 ADD_IN_STOP_PORTWINE
 if [ "$int_xneur" = "1"  ]; then
 	xneur &
+fi
+if [ ! -z ${PW_XKBD} ]; then
+    setxkbmap ${PW_XKBD}
 fi
 #killall -r -s9 winedevice 
 rm -f "${PORT_WINE_PATH}"/0
