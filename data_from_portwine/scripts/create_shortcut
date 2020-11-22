@@ -13,8 +13,8 @@ if [ -x "`which wrestool 2>/dev/null`" ]; then
     cp -f "${PORTPROTON_EXE}.ico" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.ico"
 fi
 PORTPROTON_CMD=""
-#PORTPROTON_CMD=$(zenity --entry --text "${sc_cmd}")
-#if [ $? -eq 1 ];then exit 1; fi
+PORTPROTON_CMD=$(zenity --entry --text "${sc_cmd}")
+if [ $? -eq 1 ];then exit 1; fi
 start_settings=`zenity --title  "${ss_title}" --text "${ss_text}" --list --radiolist \
     --column="${inst_set}" --column "${ss_ver}" --column "${ss_dr}"  --width=500 --height=220 \
     TRUE "DXVK" "${ss_ogl_3}" \
@@ -55,7 +55,7 @@ start_settings=`zenity --title  "${ss_title}" --text "${ss_text}" --list --radio
 name_desktop="${PORTPROTON_NAME}" 
 echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "Name=${PORTPROTON_NAME}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop" 
-echo "Exec="env dxvk_ogl_var=$dxvk_ogl_var PATH_TO_GAME=\""$PORTPROTON_PATH"\" sh \"${PORT_SCRIPTS_PATH}/start\" \"${PORTPROTON_EXE}\" ${PORTPROTON_CMD}"" \
+echo "Exec="env dxvk_ogl_var=$dxvk_ogl_var launch_parameters="${PORTPROTON_CMD}" PATH_TO_GAME=\""$PORTPROTON_PATH"\" sh \"${PORT_SCRIPTS_PATH}/start\" \"${PORTPROTON_EXE}\" "" \
 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "Type=Application" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "Categories=Game" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
