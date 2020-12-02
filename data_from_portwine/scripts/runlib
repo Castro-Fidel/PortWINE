@@ -1,6 +1,15 @@
 #!/bin/bash
 # Author: PortWINE-Linux.ru
 ########################################################################
+clear && echo '
+████─████─████─███─█───█─███─█──█─███
+█──█─█──█─█──█──█──█───█──█──██─█─█
+████─█──█─████──█──█─█─█──█──█─██─███
+█────█──█─█─█───█──█████──█──█──█─█
+█────████─█─█───█───█─█──███─█──█─███
+
+'
+########################################################################
 [ $(id -u) = 0 ] && echo "Do not run this script as root!" && zenity --error --text "Do not run this script as root!" && exit 1
 ########################################################################
 sszen() {
@@ -20,29 +29,30 @@ export portname
 cd "${PORT_SCRIPTS_PATH}"
 . "${PORT_SCRIPTS_PATH}/vars/${portname}_vars"
 ########################################################################
-export config_path="${PORT_WINE_PATH}/data/tmp"
-if [ ! -d "${config_path}" ]; then
-	mkdir -p "${config_path}"
+export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
+if [ ! -d "${PORT_WINE_TMP_PATH}" ]; then
+	mkdir -p "${PORT_WINE_TMP_PATH}"
 fi
 if [ ! -d "${HOME}/.PortWINE/tmp" ]; then
 	mkdir -p "${HOME}/.PortWINE/tmp"
 fi
-if [ ! -e "${config_path}/${portname}_loc" ]; then
+if [ ! -e "${PORT_WINE_TMP_PATH}/${portname}_loc" ]; then
 	SET_LANG=`zenity --title  "Install $portname" --text "Select the language" --list --radiolist \
 	--column="Set:" --column "Language:" \
 	TRUE "RUS" \
 	FALSE "ENG" `
-	echo "${SET_LANG}" > "${config_path}/${portname}_loc"
+	echo "${SET_LANG}" > "${PORT_WINE_TMP_PATH}/${portname}_loc"
 fi
 ########################################################################
 . "${PORT_SCRIPTS_PATH}"/lang
-if [ ! -e "${config_path}/${portname}_ver" ]; then
-	echo "10" > "${config_path}/${portname}_ver"
+if [ ! -e "${PORT_WINE_TMP_PATH}/${portname}_ver" ]; then
+	echo "10" > "${PORT_WINE_TMP_PATH}/${portname}_ver"
 fi
 ########################################################################
+export pw_libs_ver="_v2"
 export port_on_run="${PORT_WINE_PATH}/data/port_on"
 export WINEDIR="${PORT_WINE_PATH}"/data/dist
-export WINELIB="${HOME}/.PortWINE/libs"
+export WINELIB="${HOME}/.PortWINE/libs${pw_libs_ver}"
 export WINEARCH=win64
 export WINELOADER="${WINEDIR}/bin/wine"
 export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
@@ -52,11 +62,18 @@ export PATH="${WINEDIR}/bin:${PATH}"
 export WINESTART="C:\\windows\\command\\start.exe"
 export PW_COMPAT_DATA_PATH="${PORT_WINE_PATH}/data/"
 export PW_COMPAT_MEDIA_PATH="${PW_COMPAT_MEDIA_PATH}"
+export PW_RUNTIME="$WINELIB/run.sh"
 ########################################################################
 export urlg="https://portwine-linux.ru/portwine-faq/"
 export PW_FTP_URL="https://portwine-linux.ru/ftp"
 ########################################################################
 export PW_TERM=""
+#if [ ! -f "${PORT_WINE_TMP_PATH}/init_run_suc" ]; then
+#    export PW_USE_TERMINAL="1"
+#fi
+########################################################################
+START_PORTWINE ()
+{
 if [ "${PW_USE_TERMINAL}" = "1"  ]; then
     if [ -x "`which konsole 2>/dev/null`" ]; then
         export PW_TERM="konsole -e"
@@ -70,38 +87,25 @@ if [ "${PW_USE_TERMINAL}" = "1"  ]; then
 #        export PW_TERM="xfce4-terminal -x" #test
     fi
 fi
-########################################################################
-START_PORTWINE ()
-{
 sh "${PORT_SCRIPTS_PATH}"/port_update 
-echo "########################"
+########################################################################
 if [ ! -d "${WINELIB}" ]; then 
     echo "Download and install libraries..."
-    wget -T 2 --output-document="${HOME}/.PortWINE/tmp/libs.tar.xz" "${PW_FTP_URL}"/dist/libs.tar.xz | sszen &&
-    tar -Jxvf "${HOME}/.PortWINE/tmp/libs.tar.xz" -C "${HOME}/.PortWINE/" | sszen &&
-    rm -f "${HOME}/.PortWINE/tmp/libs.tar.xz"
+    wget -T 2 --output-document="${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" "${PW_FTP_URL}"/dist/libs${pw_libs_ver}.tar.xz | sszen &&
+    tar -Jxvf "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" -C "${HOME}/.PortWINE/" | sszen &&
+    rm -f "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz"
+    "${WINELIB}"/setup.sh --force
 fi
 if [ -d "${WINELIB}" ]; then 
-    host_lib_paths=
-    /sbin/ldconfig -XNv | grep "/"  | cut -d: -f1 1> "${config_path}"/default_lib_paths
-    while read lib_path_prefix; do
-    export host_lib_paths=$host_lib_paths$lib_path_prefix:
-    done < "${config_path}"/default_lib_paths
-    host_lib_paths="${WINELIB}/pinned_libs_32:${WINELIB}/pinned_libs_64:$host_lib_paths"
-    portwine_runtime_libs_paths="$host_lib_paths${WINELIB}/lib/i386-linux-gnu:${WINELIB}/usr/lib/i386-linux-gnu:${WINELIB}/lib/x86_64-linux-gnu:${WINELIB}/usr/lib/x86_64-linux-gnu:${WINELIB}/lib:${WINELIB}/usr/lib"
-    if [ ! -z $LD_LIBRARY_PATH ]; then
-        export LD_LIBRARY_PATH="$portwine_runtime_libs_paths:${LD_LIBRARY_PATH-}"
-    else
-        export LD_LIBRARY_PATH="$portwine_runtime_libs_paths"
-    fi
-    echo "########################"
+    echo "######################################################"
     echo "Runtime libraries is enabled"
+#    "${PW_RUNTIME}" --print-steam-runtime-library-paths
 else
-    echo "########################"
+    echo "######################################################"
     echo "Runtime libraries is disabled"
 fi
 ########################################################################
-if [ ! -f "${config_path}/dxvk_on" ]
+if [ ! -f "${PORT_WINE_TMP_PATH}/dxvk_on" ]
 then
     start_settings=`zenity --title  "${ss_title}" --text "${ss_text}" --list --radiolist \
     --column="${inst_set}" --column "${ss_ver}" --column "${ss_dr}"  --width=500 --height=220 \
@@ -110,7 +114,7 @@ then
     if [ $? -eq 1 ];then exit 1; fi
     case $start_settings in
     "VKD3D and OpenGL") 
-            echo "off" > "${config_path}/dxvk_on" ;;
+            echo "off" > "${PORT_WINE_TMP_PATH}/dxvk_on" ;;
     "DXVK") 
             hud_settings=`zenity --list --title  "HUD" --text "${hud_text}" --list --checklist \
             --column="${inst_set}" --column="HUD info:" --column="${hud_info}" --width=800 --height=550 \
@@ -130,11 +134,11 @@ then
             if [ ! -z $hud_settings ]; then
                 for hud_set in $hud_settings
                 do
-                    echo "${hud_set}" >> "${config_path}/dxvk_on" 
+                    echo "${hud_set}" >> "${PORT_WINE_TMP_PATH}/dxvk_on" 
                 done  
-                sed -i "s/|/,/g" "${config_path}/dxvk_on" 
+                sed -i "s/|/,/g" "${PORT_WINE_TMP_PATH}/dxvk_on" 
             else
-                echo "0" > "${config_path}/dxvk_on"
+                echo "0" > "${PORT_WINE_TMP_PATH}/dxvk_on"
             fi ;;
     esac  
 fi
@@ -142,7 +146,7 @@ fi
 if [ ! -z $dxvk_ogl_var ]; then
     var_dxvk_on="${dxvk_ogl_var}"
 else
-    read "var_dxvk_on" < "${config_path}/dxvk_on"
+    read "var_dxvk_on" < "${PORT_WINE_TMP_PATH}/dxvk_on"
 fi
 export DXVK_HUD="${var_dxvk_on}"
 echo "DXVK_HUD=${DXVK_HUD}"
@@ -150,7 +154,6 @@ echo "DXVK_HUD=${DXVK_HUD}"
 if [ "${var_dxvk_on}" != "off" ]; then
     export PW_USE_WINED3D=0
     echo "Use DXVK and D9VK (DX9-DX11 to Vulkan)"
-    export PW_VKD3D_FEATURE_LEVEL=0
 else
     export PW_USE_WINED3D=1
     echo "Use OpenGL and VKD3D (DX9-DX11 to OpenGL and DX12 to vulkan)" 
@@ -201,10 +204,6 @@ case "$PW_FORCE_USE_VSYNC" in  # 0-FORCE_OFF, 1-FORCE_ON, 2-BY_DEFAULT
 esac
 export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk.conf"
 ########################################################################
-export def_pfx="${PORT_WINE_PATH}/data/dist/share/default_pfx/"
-if [ ! -d "${def_pfx}" ]; then
-	"${port_on_run}" "run" | pwzen
-fi
 export int_xneur=0
 if [ $(pgrep xneur)>'0' ]; then
 	killall xneur
@@ -224,7 +223,28 @@ else
     export PW_GAMEMODERUN=0
     echo "Gamemod is not installed or disabled in vars script: PW_FORCE_DISABLED_GAMEMOD=$PW_FORCE_DISABLED_GAMEMOD"
 fi
-echo "########################"
+echo "######################################################"
+########################################################################
+if [ ! -d "${WINEPREFIX}" ] || [ ! -d "${WINEPREFIX}"/dosdevices ] || [ ! -d "${WINEPREFIX}"/drive_c/windows ] || [ ! -f "${WINEPREFIX}"/system.reg ] || [ ! -f "${WINEPREFIX}"/user.reg ] || [ ! -f "${WINEPREFIX}"/userdef.reg ]; then
+    "${PW_RUNTIME}" $PW_TERM "${WINELOADER}" wineboot -u
+fi
+########################################################################
+#if [ ! -f "${PORT_WINE_TMP_PATH}/init_run_suc" ]; then
+#    "${PW_RUNTIME}" "${port_on_run}" "init_run"
+#    if [ -f "${PORT_WINE_TMP_PATH}"/winetricks ]; then
+#        rm -f "${PORT_WINE_TMP_PATH}"/winetricks
+#    fi
+#    wget -T 3 --output-document=${PORT_WINE_TMP_PATH}/winetricks https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks
+#    chmod +x "${PORT_WINE_TMP_PATH}/winetricks"
+#    PW_INIT_RUN 
+#    echo "#####################PW_INIT_RUN######################"
+#    cat "${PORT_WINE_TMP_PATH}/init_run_suc"
+#    echo "######################################################"
+#fi
+########################################################################
+cp -f "${WINEDIR}/lib/wine/fakedlls/dxgi.dll" "${WINEDIR}/lib/wine/dxgi.dll"
+cp -f "${WINEDIR}/lib64/wine/fakedlls/dxgi.dll" "${WINEDIR}/lib64/wine/dxgi.dll"
+
 ADD_IN_START_PORTWINE
 } 
 ########################################################################

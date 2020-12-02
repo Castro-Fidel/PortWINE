@@ -1,25 +1,25 @@
 #!/bin/bash
 # Author: PortWINE-Linux.ru
 
-if [ ! -f "${config_path}/${portname}_ver" ]
+if [ ! -f "${PORT_WINE_TMP_PATH}/${portname}_ver" ]
 then
-	echo "10" > "${config_path}/${portname}_ver"
+	echo "10" > "${PORT_WINE_TMP_PATH}/${portname}_ver"
 fi
 
-if [ ! -f "${config_path}/update_notifier" ]
+if [ ! -f "${PORT_WINE_TMP_PATH}/update_notifier" ]
 then
-	echo "1" > "${config_path}/update_notifier"
+	echo "1" > "${PORT_WINE_TMP_PATH}/update_notifier"
 fi 
-read "update_not" < "${config_path}/update_notifier"
+read "update_not" < "${PORT_WINE_TMP_PATH}/update_notifier"
 if [ "${update_not}" = "1" ] 
 then
-	wget -T 2 --output-document="${config_path}/${portname}_cur_ver" "http://portwine-linux.ru/current_version/${portname}_ver"
+	wget -T 2 --output-document="${PORT_WINE_TMP_PATH}/${portname}_cur_ver" "http://portwine-linux.ru/current_version/${portname}_ver"
 	sleep 1
-	if [ -f "${config_path}/${portname}_ver" ]
+	if [ -f "${PORT_WINE_TMP_PATH}/${portname}_ver" ]
 	then
-		read current_ver < "${config_path}/${portname}_cur_ver"
-		read install_ver < "${config_path}/${portname}_ver"
-		rm -f "${config_path}/${portname}_cur_ver"
+		read current_ver < "${PORT_WINE_TMP_PATH}/${portname}_cur_ver"
+		read install_ver < "${PORT_WINE_TMP_PATH}/${portname}_ver"
+		rm -f "${PORT_WINE_TMP_PATH}/${portname}_cur_ver"
 		if  [ "${current_ver}" -gt "${install_ver}" ]
 		then	
 			xsd=`zenity --title  "${port_upd1}" --text "${port_upd2}" --list --radiolist --height=220 --column="${inst_set}" --column "${port_upd3}" \
@@ -34,7 +34,7 @@ then
 				"${port_upd5}")
 					echo " " ;;	
 				"${port_upd6}")
-				echo "0" > "${config_path}/update_notifier" ;;
+				echo "0" > "${PORT_WINE_TMP_PATH}/update_notifier" ;;
 			esac 
 		fi
 	fi

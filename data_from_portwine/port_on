@@ -15,9 +15,10 @@ import subprocess
 import sys
 import tarfile
 
-from filelock import FileLock
+#To enable debug logging, copy "user_settings.sample.py" to "user_settings.py"
+#and edit it if needed.
 
-CURRENT_PREFIX_VERSION="5.13-1"
+CURRENT_PREFIX_VERSION="5.21-GE-1"
 
 PFX="Proton: "
 ld_path_var = "LD_LIBRARY_PATH"
@@ -29,17 +30,6 @@ def log(msg):
     sys.stderr.write(PFX + msg + os.linesep)
     sys.stderr.flush()
 
-def file_is_wine_fake_dll(path):
-    if not os.path.exists(path):
-        return False
-    try:
-        sfile = open(path, "rb")
-        sfile.seek(0x40)
-        tag = sfile.read(20)
-        return tag == b"Wine placeholder DLL"
-    except IOError:
-        return False
-
 def makedirs(path):
     try:
         os.makedirs(path)
@@ -47,15 +37,23 @@ def makedirs(path):
         #already exists
         pass
 
-def try_copy(src, dst):
+def try_copy(src, dst, add_write_perm=True):
     try:
         if os.path.isdir(dst):
             dstfile = dst + "/" + os.path.basename(src)
             if os.path.lexists(dstfile):
                 os.remove(dstfile)
-        elif os.path.lexists(dst):
-            os.remove(dst)
+        else:
+            dstfile = dst
+            if os.path.lexists(dst):
+                os.remove(dst)
+
         shutil.copy(src, dst)
+
+        if add_write_perm:
+            new_mode = os.lstat(dstfile).st_mode | stat.S_IWUSR | stat.S_IWGRP
+            os.chmod(dstfile, new_mode)
+
     except PermissionError as e:
         if e.errno == errno.EPERM:
             #be forgiving about permissions errors; if it's a real problem, things will explode later anyway
@@ -63,30 +61,28 @@ def try_copy(src, dst):
         else:
             raise
 
-def real_copy(src, dst):
-    if os.path.islink(src):
-        os.symlink(os.readlink(src), dst)
-    else:
-        try_copy(src, dst)
-
-EXT2_IOC_GETFLAGS = 0x80086601
-EXT2_IOC_SETFLAGS = 0x40086602
-
-EXT4_CASEFOLD_FL = 0x40000000
-
-def set_dir_casefold_bit(dir_path):
-    dr = os.open(dir_path, 0o644)
-    if dr < 0:
-        return
+def try_copyfile(src, dst):
     try:
-        dat = array.array('I', [0])
-        if fcntl.ioctl(dr, EXT2_IOC_GETFLAGS, dat, True) >= 0:
-            dat[0] = dat[0] | EXT4_CASEFOLD_FL
-            fcntl.ioctl(dr, EXT2_IOC_SETFLAGS, dat, False)
-    except OSError:
-        #no problem
-        pass
-    os.close(dr)
+        if os.path.isdir(dst):
+            dstfile = dst + "/" + os.path.basename(src)
+            if os.path.lexists(dstfile):
+                os.remove(dstfile)
+        elif os.path.lexists(dst):
+            os.remove(dst)
+        shutil.copyfile(src, dst)
+    except PermissionError as e:
+        if e.errno == errno.EPERM:
+            #be forgiving about permissions errors; if it's a real problem, things will explode later anyway
+            log('Error while copying to \"' + dst + '\": ' + e.strerror)
+        else:
+            raise
+
+def getmtimestr(*path_fragments):
+    path = os.path.join(*path_fragments)
+    try:
+        return str(os.path.getmtime(path))
+    except IOError:
+        return "0"
 
 class Proton:
     def __init__(self, base_dir):
@@ -97,103 +93,21 @@ class Proton:
         self.lib64_dir = self.path("dist/lib64/")
         self.fonts_dir = self.path("dist/share/fonts/")
         self.version_file = self.path("version")
-        self.prefix_dir = self.path("pfx/")
-        self.default_pfx_dir = self.path("dist/share/default_pfx/")
-        self.user_settings_file = self.path("user_settings.py")
         self.wine_bin = self.bin_dir + "wine"
         self.wineserver_bin = self.bin_dir + "wineserver"
         self.gamemoderun = "gamemoderun"
-        self.dist_lock = FileLock(self.path("dist.lock"), timeout=-1)
 
     def path(self, d):
         return self.base_dir + d
-
-    def make_default_prefix(self):
-        with self.dist_lock:
-            local_env = dict(g_session.env)
-            if not os.path.isdir(self.default_pfx_dir):
-                #make default prefix
-                local_env["WINEPREFIX"] = self.default_pfx_dir
-                local_env["WINEDEBUG"] = "-all"
-                g_session.run_proc([self.wine_bin, "wineboot"], local_env)
-                g_session.run_proc([self.wineserver_bin, "-w"], local_env)
 
 class CompatData:
     def __init__(self, compatdata):
         self.base_dir = os.environ["PW_COMPAT_DATA_PATH"]
         self.prefix_dir = self.path("pfx/")
-        self.default_pfx_dir = self.path("dist/share/default_pfx/")
         self.version_file = self.path("version")
-        self.tracked_files_file = self.path("tracked_files")
-        self.prefix_lock = FileLock(self.path("pfx.lock"), timeout=-1)
 
     def path(self, d):
         return self.base_dir + d
-
-    def remove_tracked_files(self):
-        if not os.path.exists(self.tracked_files_file):
-            log("Prefix has no tracked_files??")
-            return
-
-        with open(self.tracked_files_file, "r") as tracked_files:
-            dirs = []
-            for f in tracked_files:
-                path = self.prefix_dir + f.strip()
-                if os.path.exists(path):
-                    if os.path.isfile(path) or os.path.islink(path):
-                        os.remove(path)
-                    else:
-                        dirs.append(path)
-            for d in dirs:
-                try:
-                    os.rmdir(d)
-                except OSError:
-                    #not empty
-                    pass
-
-        os.remove(self.tracked_files_file)
-        os.remove(self.version_file)
-
-    def upgrade_pfx(self, old_ver):
-        #if old_ver == CURRENT_PREFIX_VERSION:
-        #    return
-    
-        #replace broken .NET installations with wine-mono support
-        if os.path.exists(self.prefix_dir + "/drive_c/windows/Microsoft.NET/NETFXRepair.exe") and \
-                file_is_wine_fake_dll(self.prefix_dir + "/drive_c/windows/system32/mscoree.dll"):
-            log("Broken .NET installation detected, switching to wine-mono.")
-            #deleting this directory allows wine-mono to work
-            shutil.rmtree(self.prefix_dir + "/drive_c/windows/Microsoft.NET")
-            
-        #fix mono and gecko
-        if os.path.exists(self.prefix_dir + "/drive_c/windows/mono"):
-            shutil.rmtree(self.prefix_dir + "/drive_c/windows/mono")
-        if os.path.exists(self.prefix_dir + "/drive_c/windows/system32/gecko"):
-            shutil.rmtree(self.prefix_dir + "/drive_c/windows/system32/gecko")
-        if os.path.exists(self.prefix_dir + "/drive_c/windows/syswow64/gecko"):
-            shutil.rmtree(self.prefix_dir + "/drive_c/windows/syswow64/gecko")
-
-    def copy_pfx(self):
-        with open(self.tracked_files_file, "w") as tracked_files:
-            for src_dir, dirs, files in os.walk(g_proton.default_pfx_dir):
-                rel_dir = src_dir.replace(g_proton.default_pfx_dir, "", 1).lstrip('/')
-                if len(rel_dir) > 0:
-                    rel_dir = rel_dir + "/"
-                dst_dir = src_dir.replace(g_proton.default_pfx_dir, self.prefix_dir, 1)
-                if not os.path.exists(dst_dir):
-                    os.makedirs(dst_dir)
-                    tracked_files.write(rel_dir + "\n")
-                for dir_ in dirs:
-                    src_file = os.path.join(src_dir, dir_)
-                    dst_file = os.path.join(dst_dir, dir_)
-                    if os.path.islink(src_file) and not os.path.exists(dst_file):
-                        real_copy(src_file, dst_file)
-                for file_ in files:
-                    src_file = os.path.join(src_dir, file_)
-                    dst_file = os.path.join(dst_dir, file_)
-                    if not os.path.exists(dst_file):
-                        real_copy(src_file, dst_file)
-                        tracked_files.write(rel_dir + file_ + "\n")
 
     def create_fonts_symlinks(self):
         fontsmap = [
@@ -217,63 +131,89 @@ class CompatData:
                 os.symlink(fname, lname)
 
     def setup_prefix(self):
-        with self.prefix_lock:
-            if os.path.exists(self.version_file):
-                with open(self.version_file, "r") as f:
-                    self.upgrade_pfx(f.readline().strip())
-            else:
-                self.upgrade_pfx(None)
+        if not os.path.exists(self.prefix_dir):
+            makedirs(self.prefix_dir + "/drive_c")
+            set_dir_casefold_bit(self.prefix_dir + "/drive_c")
 
-            if not os.path.exists(self.prefix_dir):
-                makedirs(self.prefix_dir + "/drive_c")
-                set_dir_casefold_bit(self.prefix_dir + "/drive_c")
+        use_wined3d = "wined3d" in g_session.compat_config
+        use_dxvk_dxgi = "WINEDLLOVERRIDES" in g_session.env and "dxgi=n" in g_session.env["WINEDLLOVERRIDES"]
 
-            if not os.path.exists(self.prefix_dir + "/user.reg"):
-                self.copy_pfx()
+        builtin_dll_copy = os.environ.get("PROTON_DLL_COPY",
+                #dxsetup redist
+                "d3dcompiler_*.dll," +
+                "d3dcsx*.dll," +
+                "d3dx*.dll," +
+                "x3daudio*.dll," +
+                "xactengine*.dll," +
+                "xapofx*.dll," +
+                "xaudio*.dll," +
+                "xinput*.dll," +
 
-            with open(self.version_file, "w") as f:
-                f.write(CURRENT_PREFIX_VERSION + "\n")
+                #vcruntime redist
+                "atl1*.dll," +
+                "concrt1*.dll," +
+                "msvcp1*.dll," +
+                "msvcr1*.dll," +
+                "vcamp1*.dll," +
+                "vcomp1*.dll," +
+                "vccorlib1*.dll," +
+                "vcruntime1*.dll," +
+                "api-ms-win-crt-conio-l1-1-0.dll," +
+                "api-ms-win-crt-heap-l1-1-0.dll," +
+                "api-ms-win-crt-locale-l1-1-0.dll," +
+                "api-ms-win-crt-math-l1-1-0.dll," +
+                "api-ms-win-crt-runtime-l1-1-0.dll," +
+                "api-ms-win-crt-stdio-l1-1-0.dll," +
+                "ucrtbase.dll," +
 
-            #create font files symlinks
-            self.create_fonts_symlinks()
+                #some games balk at ntdll symlink(?)
+                "ntdll.dll," +
 
-            #copy openvr files into place
-            dst = self.prefix_dir + "/drive_c/vrclient/bin/"
-            makedirs(dst)
-            try_copy(g_proton.lib_dir + "wine/fakedlls/vrclient.dll", dst)
-            try_copy(g_proton.lib64_dir + "wine/fakedlls/vrclient_x64.dll", dst)
-            try_copy(g_proton.lib_dir + "wine/dxvk/openvr_api_dxvk.dll", self.prefix_dir + "/drive_c/windows/syswow64/")
-            try_copy(g_proton.lib64_dir + "wine/dxvk/openvr_api_dxvk.dll", self.prefix_dir + "/drive_c/windows/system32/")
+                #some games require official vulkan loader
+                "vulkan-1.dll"
+                )
 
-            if "wined3d" in g_session.compat_config:
-                dxvkfiles = ["dxvk_config"]
-                wined3dfiles = ["d3d11", "d3d10", "d3d10core", "d3d10_1", "d3d9"]
-            else:
-                dxvkfiles = ["dxvk_config", "d3d11", "d3d10", "d3d10core", "d3d10_1", "d3d9"]
-                wined3dfiles = []
+        #create font files symlinks
+        self.create_fonts_symlinks()
 
-            #if the user asked for dxvk's dxgi (dxgi=n), then copy it into place
-            if "PW_DXGI_NATIVE" in os.environ and "1" in os.environ["PW_DXGI_NATIVE"]:
-                dxvkfiles.append("dxgi")
-            else:
-                wined3dfiles.append("dxgi")
+        #copy openvr files into place
+        dst = self.prefix_dir + "/drive_c/vrclient/bin/"
+        makedirs(dst)
+        try_copy(g_proton.lib_dir + "wine/fakedlls/vrclient.dll", dst)
+        try_copy(g_proton.lib64_dir + "wine/fakedlls/vrclient_x64.dll", dst)
 
-            for f in wined3dfiles:
-                try_copy(g_proton.default_pfx_dir + "drive_c/windows/system32/" + f + ".dll",
-                        self.prefix_dir + "drive_c/windows/system32/" + f + ".dll")
-                try_copy(g_proton.default_pfx_dir + "drive_c/windows/syswow64/" + f + ".dll",
-                        self.prefix_dir + "drive_c/windows/syswow64/" + f + ".dll")
+        try_copy(g_proton.lib_dir + "wine/dxvk/openvr_api_dxvk.dll", self.prefix_dir + "/drive_c/windows/syswow64/")
+        try_copy(g_proton.lib64_dir + "wine/dxvk/openvr_api_dxvk.dll", self.prefix_dir + "/drive_c/windows/system32/")
 
-            for f in dxvkfiles:
-                try_copy(g_proton.lib64_dir + "wine/dxvk/" + f + ".dll",
-                        self.prefix_dir + "drive_c/windows/system32/" + f + ".dll")
-                try_copy(g_proton.lib_dir + "wine/dxvk/" + f + ".dll",
-                        self.prefix_dir + "drive_c/windows/syswow64/" + f + ".dll")
-                g_session.dlloverrides[f] = "n"
-            
-            try_copy(g_proton.lib64_dir + "wine/vkd3d-proton/d3d12.dll",
+        if use_wined3d:
+            dxvkfiles = ["dxvk_config"]
+            wined3dfiles = ["d3d11", "d3d10", "d3d10core", "d3d10_1", "d3d9"]
+        else:
+            dxvkfiles = ["dxvk_config", "d3d11", "d3d10", "d3d10core", "d3d10_1", "d3d9"]
+            wined3dfiles = []
+
+        #if the user asked for dxvk's dxgi (dxgi=n), then copy it into place
+        if use_dxvk_dxgi:
+            dxvkfiles.append("dxgi")
+        else:
+            wined3dfiles.append("dxgi")
+
+        for f in wined3dfiles:
+            try_copy(g_proton.lib64_dir + "wine/" + f + ".dll",
+                    self.prefix_dir + "drive_c/windows/system32/" + f + ".dll")
+            try_copy(g_proton.lib_dir + "wine/" + f + ".dll",
+                    self.prefix_dir + "drive_c/windows/syswow64/" + f + ".dll")
+
+        for f in dxvkfiles:
+            try_copy(g_proton.lib64_dir + "wine/dxvk/" + f + ".dll",
+                    self.prefix_dir + "drive_c/windows/system32/" + f + ".dll")
+            try_copy(g_proton.lib_dir + "wine/dxvk/" + f + ".dll",
+                    self.prefix_dir + "drive_c/windows/syswow64/" + f + ".dll")
+            g_session.dlloverrides[f] = "n"
+
+        try_copy(g_proton.lib64_dir + "wine/vkd3d-proton/d3d12.dll",
                 self.prefix_dir + "drive_c/windows/system32/d3d12.dll")
-            try_copy(g_proton.lib_dir + "wine/vkd3d-proton/d3d12.dll",
+        try_copy(g_proton.lib_dir + "wine/vkd3d-proton/d3d12.dll",
                 self.prefix_dir + "drive_c/windows/syswow64/d3d12.dll")
 
 def comma_escaped(s):
@@ -286,40 +226,13 @@ def comma_escaped(s):
 
 class Session:
     def __init__(self):
-        self.log_file = None
         self.env = dict(os.environ)
         self.dlloverrides = {
-                "steam.exe": "n", 
-                "steam": "n", 
-                "steam2": "n", 
-                "steam_api": "n",
-                "steam_api64": "n",
-                "steamwebrtc": "n",
-                "steamservice": "n",
-                "steamclient": "n",
-                "steamclient64": "n"       
+                "dotnetfx35.exe": "b" #replace the broken installer, as does Windows
         }
 
         self.compat_config = set()
         self.cmdlineappend = []
-
-        if "PW_COMPAT_CONFIG" in os.environ:
-            config = os.environ["PW_COMPAT_CONFIG"]
-
-            while config:
-                (cur, sep, config) = config.partition(',')
-                if cur.startswith("cmdlineappend:"):
-                    while comma_escaped(cur):
-                        (a, b, c) = config.partition(',')
-                        cur = cur[:-1] + ',' + a
-                        config = c
-                    self.cmdlineappend.append(cur[14:].replace('\\\\','\\'))
-                else:
-                    self.compat_config.add(cur)
-
-        #turn forcelgadd on by default unless it is disabled in compat config
-        if not "noforcelgadd" in self.compat_config:
-            self.compat_config.add("forcelgadd")
 
     def init_wine(self):
         if "HOST_LC_ALL" in self.env and len(self.env["HOST_LC_ALL"]) > 0:
@@ -331,6 +244,10 @@ class Session:
             self.env.pop("LC_ALL", "")
 
         self.env.pop("WINEARCH", "")
+
+        if 'ORIG_'+ld_path_var not in os.environ:
+            # Allow wine to restore this when calling an external app.
+            self.env['ORIG_'+ld_path_var] = os.environ.get(ld_path_var, '')
 
         if ld_path_var in os.environ:
             self.env[ld_path_var] = g_proton.lib64_dir + ":" + g_proton.lib_dir + ":" + os.environ[ld_path_var]
@@ -365,8 +282,10 @@ class Session:
     def init_session(self):
         self.env["WINEPREFIX"] = g_compatdata.prefix_dir
 
-        if "PW_LOG" in os.environ and nonzero(os.environ["PW_LOG"]):
-            self.env.setdefault("WINEDEBUG", "fixme-all")
+        #load environment overrides
+
+        if "PW_LOG" in self.env and nonzero(self.env["PW_LOG"]):
+            self.env.setdefault("WINEDEBUG", "+timestamp,+pid,+tid,+seh,+debugstr,+loaddll,+mscoree")
             self.env.setdefault("DXVK_LOG_LEVEL", "info")
             self.env.setdefault("VKD3D_DEBUG", "warn")
             self.env.setdefault("WINE_MONO_TRACE", "E:System.NotImplementedException")
@@ -401,19 +320,29 @@ class Session:
         self.check_environment("PW_PULSE_LOWLATENCY", "pulselowlat")
         self.check_environment("PW_HIDE_NVIDIA_GPU", "hidenvgpu")
         self.check_environment("PW_VKD3D_FEATURE_LEVEL", "vkd3dfl12")
+        
+        if "noesync" in self.compat_config:
+            self.env.pop("WINEESYNC", "")
+        else:
+            self.env["WINEESYNC"] = "1" if "SteamGameId" in self.env else "0"
 
-        if not "noesync" in self.compat_config:
-            self.env["WINEESYNC"] = "1" 
+        if "nofsync" in self.compat_config:
+            self.env.pop("WINEFSYNC", "")
+        else:
+            self.env["WINEFSYNC"] = "1" if "SteamGameId" in self.env else "0"
 
-        if not "nofsync" in self.compat_config:
-            self.env["WINEFSYNC"] = "1"
+        if "nowritewatch" in self.compat_config:
+            self.env["WINE_DISABLE_WRITE_WATCH"] = "1"
 
         if "oldglstr" in self.compat_config:
             #mesa override
             self.env["MESA_EXTENSION_MAX_YEAR"] = "2003"
             #nvidia override
             self.env["__GL_ExtensionStringVersion"] = "17700"
-        
+
+        if "forcelgadd" in self.compat_config:
+            self.env["WINE_LARGE_ADDRESS_AWARE"] = "1"
+
         if "vkd3dfl12" in self.compat_config:
             if not "VKD3D_FEATURE_LEVEL" in self.env:
                 self.env["VKD3D_FEATURE_LEVEL"] = "12_0"
@@ -421,20 +350,14 @@ class Session:
         if "hidenvgpu" in self.compat_config:
             self.env["WINE_HIDE_NVIDIA_GPU"] = "1"
 
-        if "forcelgadd" in self.compat_config:
-            self.env["WINE_LARGE_ADDRESS_AWARE"] = "1"
-        
-        if "dxvkasync" in self.compat_config:
-            self.env["DXVK_ASYNC"] = "1"
-
-        if "pulselowlat" in self.compat_config:
-            self.env["PULSE_LATENCY_MSEC"] = "60"
+        else:
+            self.env["WINEDEBUG"] = "-all"
 
         g_compatdata.setup_prefix()
 
         if "nod3d12" in self.compat_config:
             self.dlloverrides["d3d12"] = ""
-
+            
         if "nod3d11" in self.compat_config:
             self.dlloverrides["d3d11"] = ""
             if "dxgi" in self.dlloverrides:
@@ -449,14 +372,6 @@ class Session:
             self.dlloverrides["d3d9"] = ""
             self.dlloverrides["dxgi"] = ""
             
-        if "novrclient" in self.compat_config:
-            self.dlloverrides["vrclient"] = ""
-            self.dlloverrides["vrclient_x64"] = ""
-            self.dlloverrides["openvr_api_dxvk"] = ""
-
-        if "nomfplay" in self.compat_config:
-            self.dlloverrides["mfplay"] = "n"
-
         if "nowritewatch" in self.compat_config:
             self.env["WINE_DISABLE_WRITE_WATCH"] = "1"
         
@@ -474,9 +389,8 @@ class Session:
                 s = s + ";" + dll + "=" + setting
             else:
                 s = dll + "=" + setting
-                
-        if "WINEDLLOVERRIDES" in os.environ:
-            self.env["WINEDLLOVERRIDES"] = os.environ["WINEDLLOVERRIDES"] + ";" + s
+        if "WINEDLLOVERRIDES" in self.env:
+            self.env["WINEDLLOVERRIDES"] = self.env["WINEDLLOVERRIDES"] + ";" + s
         else:
             self.env["WINEDLLOVERRIDES"] = s
 
@@ -487,9 +401,12 @@ class Session:
 
     def run(self):
         if "PW_GAMEMODERUN" in os.environ and nonzero(os.environ["PW_GAMEMODERUN"]):
-            self.run_proc([g_proton.gamemoderun] + [g_proton.wine_bin] + sys.argv[2:] + sys.argv[3:])
+            self.run_proc([g_proton.gamemoderun] + [g_proton.wine_bin] + sys.argv[2:] + sys.argv[3:] + sys.argv[4:])
         else:
-            self.run_proc([g_proton.wine_bin] + sys.argv[2:] + sys.argv[3:])
+            self.run_proc([g_proton.wine_bin] + sys.argv[2:] + sys.argv[3:] + sys.argv[4:])
+
+    def init_run(self):
+        self.run_proc([g_proton.wine_bin] + " wineboot")
 
 if __name__ == "__main__":
     if not "PW_COMPAT_DATA_PATH" in os.environ:
@@ -497,14 +414,12 @@ if __name__ == "__main__":
         sys.exit(1)
 
     g_proton = Proton(os.path.dirname(sys.argv[0]))
-
+        
     g_compatdata = CompatData(os.environ["PW_COMPAT_DATA_PATH"])
 
     g_session = Session()
 
     g_session.init_wine()
-
-    g_proton.make_default_prefix()
 
     g_session.init_session()
 
@@ -512,6 +427,9 @@ if __name__ == "__main__":
     if sys.argv[1] == "run":
         #start target app
         g_session.run()
+    elif sys.argv[1] == "init_run":
+        #first start
+        g_session.init_run()
     elif sys.argv[1] == "waitforexitandrun":
         #wait for wineserver to shut down
         g_session.run_proc([g_proton.wineserver_bin, "-w"])
@@ -519,11 +437,11 @@ if __name__ == "__main__":
         g_session.run()
     elif sys.argv[1] == "getcompatpath":
         #linux -> windows path
-        path = subprocess.check_output([g_proton.wine_bin, "winepath", "-w", sys.argv[2]], env=g_session.env, stderr=g_session.log_file)
+        path = subprocess.check_output([g_proton.wine_bin, "winepath", "-w", sys.argv[2]], env=g_session.env)
         sys.stdout.buffer.write(path)
     elif sys.argv[1] == "getnativepath":
         #windows -> linux path
-        path = subprocess.check_output([g_proton.wine_bin, "winepath", sys.argv[2]], env=g_session.env, stderr=g_session.log_file)
+        path = subprocess.check_output([g_proton.wine_bin, "winepath", sys.argv[2]], env=g_session.env)
         sys.stdout.buffer.write(path)
     else:
         log("Need a verb.")

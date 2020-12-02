@@ -3,13 +3,8 @@
 . "$(dirname $(readlink -f "$0"))/runlib"
 
 rm -f "${PORT_WINE_PATH}/"*".log" 
-rm -f "${PORT_WINE_PATH}/data/"*".lock"
-
-rm -f "${config_path}/update_notifier"
-
-if [ -d "${PORT_WINE_PATH}/data/__pycache__" ]; then
-	rm -fr "${PORT_WINE_PATH}/data/__pycache__"
-fi
+rm -f "${PORT_WINE_TMP_PATH}/update_notifier"
+rm -f "${PORT_WINE_TMP_PATH}/init_run_suc"
 
 if [ ! -d "/home/${USER}/.local/share/applications" ]
 then
@@ -121,7 +116,6 @@ fi
 if [ -f "${PORT_WINE_PATH}/restart.desktop" ]; then
 	rm "${PORT_WINE_PATH}/restart.desktop"
 fi
-START_PORTWINE
-ADD_IN_POST_INSTALL
 
+update-desktop-database -q "${HOME}/.local/share/applications"
 xdg-open "http://portwine-linux.ru/portwine-faq/" > /dev/null 2>&1 & exit 0  

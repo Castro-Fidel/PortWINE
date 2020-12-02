@@ -6,9 +6,9 @@ if [ -f "$1" ]; then
     export PATH_TO_GAME="$( cd "$( dirname "$1" )" >/dev/null 2>&1 && pwd )"
     START_PORTWINE
     if [ ! -z ${optirun_on} ]; then
-        $PW_TERM ${optirun_on} "${port_on_run}" "run" "$portwine_exe"
+        "${PW_RUNTIME}" $PW_TERM ${optirun_on} "${port_on_run}" "run" "$portwine_exe"
     else
-        $PW_TERM "${port_on_run}" "run" "$portwine_exe"
+        "${PW_RUNTIME}" $PW_TERM "${port_on_run}" "run" "$portwine_exe"
     fi
 else
     START_PORTWINE

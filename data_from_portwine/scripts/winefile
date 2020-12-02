@@ -4,15 +4,15 @@
 "${WINESERVER}" -k
 START_PORTWINE
 if [ -z "${PATH_TO_GAME}" ]; then
-    export DXVK_STATE_CACHE_PATH="${config_path}"
-    export __GL_SHADER_DISK_CACHE_PATH="${config_path}" 
-    export MESA_GLSL_CACHE_DIR="${config_path}"
+    export DXVK_STATE_CACHE_PATH="${PORT_WINE_TMP_PATH}"
+    export __GL_SHADER_DISK_CACHE_PATH="${PORT_WINE_TMP_PATH}" 
+    export MESA_GLSL_CACHE_DIR="${PORT_WINE_TMP_PATH}"
 fi
 echo "${port_deb1}" > "${PORT_WINE_PATH}/${portname}.log"
 echo "${port_deb2}" >> "${PORT_WINE_PATH}/${portname}.log"
 echo "--------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
 echo "PortWINE version:" >> "${PORT_WINE_PATH}/${portname}.log"
-read install_ver < "${config_path}/${portname}_ver"
+read install_ver < "${PORT_WINE_TMP_PATH}/${portname}_ver"
 echo "${portname}-${install_ver}" >> "${PORT_WINE_PATH}/${portname}.log"
 echo "-------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
 echo "var_dxvk_on = ${var_dxvk_on}" >> "${PORT_WINE_PATH}/${portname}.log"
@@ -67,14 +67,14 @@ echo "Version WINE in the Port" >> "${PORT_WINE_PATH}/${portname}.log"
 echo "-------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
 echo "log WINE" >> "${PORT_WINE_PATH}/${portname}.log"
 
-export DXVK_HUD="full"
+export DXVK_HUD="fps"
 export PW_LOG=1
 export PW_WINEDBG_DISABLE=0
 if [ ! -z ${optirun_on} ]
 then
-    $PW_TERM ${optirun_on} "${port_on_run}" "run" "explorer" >> "${PORT_WINE_PATH}/${portname}.log" 2>&1 &
+    "${PW_RUNTIME}" $PW_TERM ${optirun_on} "${port_on_run}" "run" "explorer" >> "${PORT_WINE_PATH}/${portname}.log" 2>&1 &
 else
-    $PW_TERM "${port_on_run}" "run" "explorer" >> "${PORT_WINE_PATH}/${portname}.log" 2>&1 &
+    "${PW_RUNTIME}" $PW_TERM "${port_on_run}" "run" "explorer" >> "${PORT_WINE_PATH}/${portname}.log" 2>&1 &
 fi
 zenity --info --title "DEBUG" --text "${port_debug}" --no-wrap && "${WINESERVER}" -k
 STOP_PORTWINE | pwzen

@@ -45,6 +45,22 @@ ADD_IN_STOP_PORTWINE ()
 echo " "
 }
 ########################################################################
+PW_INIT_RUN ()
+{
+export PW_DLL_INSTALL="vb5run vb6run vcrun6 vcrun6sp6 b1ab1ab1a"
+for dll_install in $PW_DLL_INSTALL
+do
+    echo "######################################################"
+    echo "winetricks -q --force ${dll_install}"
+    "${PW_RUNTIME}" "${PORT_WINE_TMP_PATH}/winetricks" -q --force ${dll_install} 
+    if [ $? -eq 0 ]; then
+        echo "OK: ${dll_install}" >> "${PORT_WINE_TMP_PATH}/init_run_suc"
+    else
+        echo "ERROR: ${dll_install}" >> "${PORT_WINE_TMP_PATH}/init_run_suc"
+    fi
+done
+}
+########################################################################
 ADD_IN_POST_INSTALL ()
 {
 `zenity --info --title "${inst_set_top}" --text "${inst_succ}" --no-wrap ` > /dev/null 2>&1  
