@@ -135,6 +135,9 @@ class CompatData:
             makedirs(self.prefix_dir + "/drive_c")
             set_dir_casefold_bit(self.prefix_dir + "/drive_c")
 
+        if not os.path.exists(self.prefix_dir + "/user.reg"):
+            self.copy_pfx()
+
         use_wined3d = "wined3d" in g_session.compat_config
         use_dxvk_dxgi = "WINEDLLOVERRIDES" in g_session.env and "dxgi=n" in g_session.env["WINEDLLOVERRIDES"]
 
@@ -228,7 +231,7 @@ class Session:
     def __init__(self):
         self.env = dict(os.environ)
         self.dlloverrides = {
-                "dotnetfx35.exe": "b" #replace the broken installer, as does Windows
+                "steam.exe": "n"
         }
 
         self.compat_config = set()
