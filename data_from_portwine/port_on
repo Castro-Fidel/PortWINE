@@ -8,6 +8,7 @@ import filecmp
 import fnmatch
 import json
 import os
+import os.path
 import shutil
 import errno
 import stat
@@ -135,11 +136,7 @@ class CompatData:
             makedirs(self.prefix_dir + "/drive_c")
             set_dir_casefold_bit(self.prefix_dir + "/drive_c")
 
-        if not os.path.exists(self.prefix_dir + "/user.reg"):
-            self.copy_pfx()
-
         use_wined3d = "wined3d" in g_session.compat_config
-        use_dxvk_dxgi = "WINEDLLOVERRIDES" in g_session.env and "dxgi=n" in g_session.env["WINEDLLOVERRIDES"]
 
         builtin_dll_copy = os.environ.get("PROTON_DLL_COPY",
                 #dxsetup redist
@@ -180,44 +177,45 @@ class CompatData:
         self.create_fonts_symlinks()
 
         #copy openvr files into place
-        dst = self.prefix_dir + "/drive_c/vrclient/bin/"
-        makedirs(dst)
-        try_copy(g_proton.lib_dir + "wine/fakedlls/vrclient.dll", dst)
-        try_copy(g_proton.lib64_dir + "wine/fakedlls/vrclient_x64.dll", dst)
+        if os.path.isfile(g_proton.lib_dir + "wine/fakedlls/vrclient.dll"):
+            dst = self.prefix_dir + "/drive_c/vrclient/bin/"
+            makedirs(dst)
+            try_copy(g_proton.lib_dir + "wine/fakedlls/vrclient.dll", dst)
+            try_copy(g_proton.lib64_dir + "wine/fakedlls/vrclient_x64.dll", dst)
 
-        try_copy(g_proton.lib_dir + "wine/dxvk/openvr_api_dxvk.dll", self.prefix_dir + "/drive_c/windows/syswow64/")
-        try_copy(g_proton.lib64_dir + "wine/dxvk/openvr_api_dxvk.dll", self.prefix_dir + "/drive_c/windows/system32/")
+        if os.path.isfile(g_proton.lib_dir + "wine/dxvk/openvr_api_dxvk.dll"):
+            try_copy(g_proton.lib_dir + "wine/dxvk/openvr_api_dxvk.dll", self.prefix_dir + "/drive_c/windows/syswow64/")
+            try_copy(g_proton.lib64_dir + "wine/dxvk/openvr_api_dxvk.dll", self.prefix_dir + "/drive_c/windows/system32/")
 
         if use_wined3d:
-            dxvkfiles = ["dxvk_config"]
+            dxvkfiles = []
             wined3dfiles = ["d3d11", "d3d10", "d3d10core", "d3d10_1", "d3d9"]
+            if os.path.isfile(g_proton.lib64_dir + "wine/dxvk/dxvk_config.dll"):
+                dxvkfiles.append("dxvk_config")
         else:
             dxvkfiles = ["dxvk_config", "d3d11", "d3d10", "d3d10core", "d3d10_1", "d3d9"]
             wined3dfiles = []
 
         #if the user asked for dxvk's dxgi (dxgi=n), then copy it into place
-        if use_dxvk_dxgi:
+        if "PW_DXGI_FROM_DXVK" in os.environ and nonzero(os.environ["PW_DXGI_FROM_DXVK"]):
             dxvkfiles.append("dxgi")
         else:
             wined3dfiles.append("dxgi")
 
         for f in wined3dfiles:
-            try_copy(g_proton.lib64_dir + "wine/" + f + ".dll",
-                    self.prefix_dir + "drive_c/windows/system32/" + f + ".dll")
-            try_copy(g_proton.lib_dir + "wine/" + f + ".dll",
-                    self.prefix_dir + "drive_c/windows/syswow64/" + f + ".dll")
+            try_copy(g_proton.lib64_dir + "wine/" + f + ".dll", self.prefix_dir + "drive_c/windows/system32/" + f + ".dll")
+            try_copy(g_proton.lib_dir + "wine/" + f + ".dll", self.prefix_dir + "drive_c/windows/syswow64/" + f + ".dll")
 
         for f in dxvkfiles:
-            try_copy(g_proton.lib64_dir + "wine/dxvk/" + f + ".dll",
-                    self.prefix_dir + "drive_c/windows/system32/" + f + ".dll")
-            try_copy(g_proton.lib_dir + "wine/dxvk/" + f + ".dll",
-                    self.prefix_dir + "drive_c/windows/syswow64/" + f + ".dll")
-            g_session.dlloverrides[f] = "n"
+            if os.path.isfile(g_proton.lib64_dir + "wine/dxvk/" + f + ".dll"):
+                try_copy(g_proton.lib64_dir + "wine/dxvk/" + f + ".dll", self.prefix_dir + "drive_c/windows/system32/" + f + ".dll")
+                try_copy(g_proton.lib_dir + "wine/dxvk/" + f + ".dll", self.prefix_dir + "drive_c/windows/syswow64/" + f + ".dll")
+                g_session.dlloverrides[f] = "n"
 
-        try_copy(g_proton.lib64_dir + "wine/vkd3d-proton/d3d12.dll",
-                self.prefix_dir + "drive_c/windows/system32/d3d12.dll")
-        try_copy(g_proton.lib_dir + "wine/vkd3d-proton/d3d12.dll",
-                self.prefix_dir + "drive_c/windows/syswow64/d3d12.dll")
+        if os.path.isfile(g_proton.lib64_dir + "wine/vkd3d-proton/d3d12.dll"):
+            try_copy(g_proton.lib64_dir + "wine/vkd3d-proton/d3d12.dll", self.prefix_dir + "drive_c/windows/system32/d3d12.dll")
+        if os.path.isfile(g_proton.lib_dir + "wine/vkd3d-proton/d3d12.dll"):
+            try_copy(g_proton.lib_dir + "wine/vkd3d-proton/d3d12.dll", self.prefix_dir + "drive_c/windows/syswow64/d3d12.dll")
 
 def comma_escaped(s):
     escaped = False
@@ -231,7 +229,8 @@ class Session:
     def __init__(self):
         self.env = dict(os.environ)
         self.dlloverrides = {
-                "steam.exe": "n"
+                "dotnetfx35.exe": "b", #replace the broken installer, as does Windows
+                "mfplay": "n", #disable built-in mfplay             
         }
 
         self.compat_config = set()
@@ -299,40 +298,34 @@ class Session:
         self.env.setdefault("VKD3D_DEBUG", "none")
 
         #default wine-mono override for FNA games
-        self.env.setdefault("WINE_MONO_OVERRIDES", "Microsoft.Xna.Framework.*,Gac=n")
+#        self.env.setdefault("WINE_MONO_OVERRIDES", "Microsoft.Xna.Framework.*,Gac=n")
 
         if "wined3d11" in self.compat_config:
             self.compat_config.add("wined3d")
 
         if not self.check_environment("PW_USE_WINED3D", "wined3d"):
             self.check_environment("PW_USE_WINED3D11", "wined3d")
-        self.check_environment("PW_NO_D3D12", "nod3d12")
-        self.check_environment("PW_NO_D3D11", "nod3d11")
-        self.check_environment("PW_NO_D3D10", "nod3d10")
-        self.check_environment("PW_NO_D3D9",  "nod3d9")
         self.check_environment("PW_NO_ESYNC", "noesync")
         self.check_environment("PW_NO_FSYNC", "nofsync")
         self.check_environment("PW_FORCE_LARGE_ADDRESS_AWARE", "forcelgadd")
         self.check_environment("PW_OLD_GL_STRING", "oldglstr")
-        self.check_environment("PW_NO_VR", "novrclient")
         self.check_environment("PW_NO_WINEMFPLAY", "nomfplay")
         self.check_environment("PW_NO_WRITE_WATCH", "nowritewatch")
         self.check_environment("PW_DXVK_ASYNC", "dxvkasync")
         self.check_environment("PW_NVAPI_DISABLE", "nonvapi")
         self.check_environment("PW_WINEDBG_DISABLE", "nowinedbg")
-        self.check_environment("PW_PULSE_LOWLATENCY", "pulselowlat")
         self.check_environment("PW_HIDE_NVIDIA_GPU", "hidenvgpu")
         self.check_environment("PW_VKD3D_FEATURE_LEVEL", "vkd3dfl12")
         
         if "noesync" in self.compat_config:
             self.env.pop("WINEESYNC", "")
         else:
-            self.env["WINEESYNC"] = "1" if "SteamGameId" in self.env else "0"
+            self.env["WINEESYNC"] = "1"
 
         if "nofsync" in self.compat_config:
             self.env.pop("WINEFSYNC", "")
         else:
-            self.env["WINEFSYNC"] = "1" if "SteamGameId" in self.env else "0"
+            self.env["WINEFSYNC"] = "1"
 
         if "nowritewatch" in self.compat_config:
             self.env["WINE_DISABLE_WRITE_WATCH"] = "1"
@@ -357,23 +350,6 @@ class Session:
             self.env["WINEDEBUG"] = "-all"
 
         g_compatdata.setup_prefix()
-
-        if "nod3d12" in self.compat_config:
-            self.dlloverrides["d3d12"] = ""
-            
-        if "nod3d11" in self.compat_config:
-            self.dlloverrides["d3d11"] = ""
-            if "dxgi" in self.dlloverrides:
-                del self.dlloverrides["dxgi"]
-
-        if "nod3d10" in self.compat_config:
-            self.dlloverrides["d3d10_1"] = ""
-            self.dlloverrides["d3d10"] = ""
-            self.dlloverrides["dxgi"] = ""
-
-        if "nod3d9" in self.compat_config:
-            self.dlloverrides["d3d9"] = ""
-            self.dlloverrides["dxgi"] = ""
             
         if "nowritewatch" in self.compat_config:
             self.env["WINE_DISABLE_WRITE_WATCH"] = "1"

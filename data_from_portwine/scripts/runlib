@@ -24,6 +24,7 @@ pwzen() {
 zenity --progress --title="Settings..." --text="Please wait!" --pulsate --auto-close --auto-kill --width=450
 } 
 ########################################################################
+ulimit -c unlimited
 cd "$(dirname "`readlink -f "$0"`")"
 export PORT_SCRIPTS_PATH="$(pwd)"
 cd "${PORT_SCRIPTS_PATH}/../../"
@@ -53,7 +54,7 @@ if [ ! -e "${PORT_WINE_TMP_PATH}/${portname}_ver" ]; then
 	echo "10" > "${PORT_WINE_TMP_PATH}/${portname}_ver"
 fi
 ########################################################################
-export pw_libs_ver="_v2"
+export pw_libs_ver="_v3"
 export port_on_run="${PORT_WINE_PATH}/data/port_on"
 export WINEDIR="${PORT_WINE_PATH}"/data/dist
 export WINELIB="${HOME}/.PortWINE/libs${pw_libs_ver}"
@@ -114,7 +115,7 @@ then
     start_settings=`zenity --title  "${ss_title}" --text "${ss_text}" --list --radiolist \
     --column="${inst_set}" --column "${ss_ver}" --column "${ss_dr}"  --width=500 --height=220 \
     TRUE "DXVK" "${ss_ogl_3}" \
-    FALSE "VKD3D and OpenGL" "${ss_ogl_2}" `
+    FALSE "VKD3D and OpenGL" "${ss_ogl_2}" ` 
     if [ $? -eq 1 ];then exit 1; fi
     case $start_settings in
     "VKD3D and OpenGL") 
@@ -157,17 +158,20 @@ echo "DXVK_HUD=${DXVK_HUD}"
 
 if [ "${var_dxvk_on}" != "off" ]; then
     export PW_USE_WINED3D=0
-    export WINEDLLOVERRIDES="${WINEDLLOVERRIDES};dxgi=n"
+    export PW_DXGI_FROM_DXVK=1
     echo "Use DXVK and D9VK (DX9-DX11 to Vulkan)"
 
 else
     export PW_USE_WINED3D=1
-    echo "Use OpenGL and VKD3D (DX9-DX11 to OpenGL and DX12 to vulkan)" 
     export PW_VKD3D_FEATURE_LEVEL=1
+    export VKD3D_CONFIG=force_bindless_texel_buffer
+    echo "Use OpenGL and VKD3D (DX9-DX11 to OpenGL and DX12 to vulkan)"
 fi
 
 export DXVK_STATE_CACHE_PATH="${PATH_TO_GAME}"
 export DXVK_STATE_CACHE=1
+export STAGING_SHARED_MEMORY=1
+
 ########################################################################
 export optirun_on=
 export check_optimus_manager=
@@ -231,6 +235,11 @@ else
 fi
 echo "######################################################"
 ########################################################################
+sed -i '/HKCU,Software\\Valve\\Steam/d' "${WINEDIR}/share/wine/wine.inf" &&
+sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}/share/wine/wine.inf" &&
+sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}/share/wine/wine.inf" &&
+sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}/share/wine/wine.inf" &&
+rm -f  "${WINEDIR}"/lib*/wine/*steam*
 if [ ! -d "${WINEPREFIX}" ] || [ ! -d "${WINEPREFIX}"/dosdevices ] || [ ! -d "${WINEPREFIX}"/drive_c/windows ] || [ ! -f "${WINEPREFIX}"/system.reg ] || [ ! -f "${WINEPREFIX}"/user.reg ] || [ ! -f "${WINEPREFIX}"/userdef.reg ]; then
     "${PW_RUNTIME}" $PW_TERM "${WINELOADER}" wineboot -u
 fi
@@ -248,8 +257,8 @@ fi
 #    echo "######################################################"
 #fi
 ########################################################################
-cp -f "${WINEDIR}/lib/wine/fakedlls/dxgi.dll" "${WINEDIR}/lib/wine/dxgi.dll"
-cp -f "${WINEDIR}/lib64/wine/fakedlls/dxgi.dll" "${WINEDIR}/lib64/wine/dxgi.dll"
+#cp -f "${WINEDIR}/lib/wine/fakedlls/dxgi.dll" "${WINEDIR}/lib/wine/dxgi.dll"
+#cp -f "${WINEDIR}/lib64/wine/fakedlls/dxgi.dll" "${WINEDIR}/lib64/wine/dxgi.dll"
 
 ADD_IN_START_PORTWINE
 } 
