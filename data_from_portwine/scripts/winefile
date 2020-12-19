@@ -3,84 +3,11 @@
 . "$(dirname $(readlink -f "$0"))/runlib"
 "${WINESERVER}" -k
 START_PORTWINE
-if [ -z "${PATH_TO_GAME}" ]; then
-    export DXVK_STATE_CACHE_PATH="${PORT_WINE_TMP_PATH}"
-    export __GL_SHADER_DISK_CACHE_PATH="${PORT_WINE_TMP_PATH}" 
-    export MESA_GLSL_CACHE_DIR="${PORT_WINE_TMP_PATH}"
-fi
-echo "${port_deb1}" > "${PORT_WINE_PATH}/${portname}.log"
-echo "${port_deb2}" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "--------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "PortWINE version:" >> "${PORT_WINE_PATH}/${portname}.log"
-read install_ver < "${PORT_WINE_TMP_PATH}/${portname}_ver"
-echo "${portname}-${install_ver}" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "-------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "var_dxvk_on = ${var_dxvk_on}" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "Date and time of start debug for ${portname}" >> "${PORT_WINE_PATH}/${portname}.log"
-date >> "${PORT_WINE_PATH}/${portname}.log"
-echo "-----------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "The installation path of the ${portname}:" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "$PORT_WINE_PATH" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "----------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "Operating system" >> "${PORT_WINE_PATH}/${portname}.log"
-lsb_release -d | sed s/Description/ОС/g >> "${PORT_WINE_PATH}/${portname}.log"
-echo "--------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "Desktop Environment" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "$DESKTOP_SESSION" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "${XDG_CURRENT_DESKTOP}" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "--------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "Kernel" >> "${PORT_WINE_PATH}/${portname}.log"
-uname -r >> "${PORT_WINE_PATH}/${portname}.log"
-echo "-------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "CPU" >> "${PORT_WINE_PATH}/${portname}.log"
-cat /proc/cpuinfo | grep "model name" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "RAM" >> "${PORT_WINE_PATH}/${portname}.log"
-free -m >> "${PORT_WINE_PATH}/${portname}.log"
-echo "-----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "Graphic cards and drivers" >> "${PORT_WINE_PATH}/${portname}.log"
-lspci | grep VGA >> "${PORT_WINE_PATH}/${portname}.log"
-lspci | grep 3D >> "${PORT_WINE_PATH}/${portname}.log"
-if [ -x "`which glxinfo 2>/dev/null`" ]
-then
-	glxinfo | grep OpenGL >> "${PORT_WINE_PATH}/${portname}.log"
-else
-	echo "!!!glxinfo not found!!!"  >> "${PORT_WINE_PATH}/${portname}.log"
-fi
-echo "----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "Vulkan info device name" >> "${PORT_WINE_PATH}/${portname}.log"
-if [ -x "`which vulkaninfo 2>/dev/null`" ]
-then
-	vulkaninfo | grep deviceName >> "${PORT_WINE_PATH}/${portname}.log"
-else
-	echo "!!!vulkaninfo not found!!!"  >> "${PORT_WINE_PATH}/${portname}.log"
-fi
-echo "---------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-if [ ! -x "`which gamemoderun 2>/dev/null`" ]
-then
-	echo "!!!gamemod not found!!!"  >> "${PORT_WINE_PATH}/${portname}.log"
-fi
-echo "--------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "Version WINE in the Port" >> "${PORT_WINE_PATH}/${portname}.log"
-"$WINELOADER" --version 2>&1 | tee -a "${PORT_WINE_PATH}/${portname}.log"
-echo "-------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "log WINE" >> "${PORT_WINE_PATH}/${portname}.log"
-
-export DXVK_HUD="fps"
-export PW_LOG=1
-export PW_WINEDBG_DISABLE=0
+cd "${WINEPREFIX}/drive_c/"
 if [ ! -z ${optirun_on} ]
 then
-    "${PW_RUNTIME}" $PW_TERM ${optirun_on} "${port_on_run}" "run" "explorer" >> "${PORT_WINE_PATH}/${portname}.log" 2>&1 &
+    $PW_TERM "${PW_RUNTIME}" ${optirun_on} "${port_on_run}" "run" "explorer" 
 else
-    "${PW_RUNTIME}" $PW_TERM "${port_on_run}" "run" "explorer" >> "${PORT_WINE_PATH}/${portname}.log" 2>&1 &
+    $PW_TERM "${PW_RUNTIME}" "${port_on_run}" "run" "explorer" 
 fi
-zenity --info --title "DEBUG" --text "${port_debug}" --no-wrap && "${WINESERVER}" -k
-STOP_PORTWINE | pwzen
-
-deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++') 
-echo "$deb_text" > "${PORT_WINE_PATH}/${portname}.log"
-echo "$deb_text" | zenity --text-info --editable \
---width=800 --height=600 \
---title="${portname}.log"
+STOP_PORTWINE 

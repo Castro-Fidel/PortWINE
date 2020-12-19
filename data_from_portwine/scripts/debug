@@ -2,6 +2,10 @@
 # Author: PortWINE-Linux.ru
 . "$(dirname $(readlink -f "$0"))/runlib"
 "${WINESERVER}" -k
+if [ -e "${PORT_WINE_TMP_PATH}/dxvk_on" ]; then
+    rm -f "${PORT_WINE_TMP_PATH}/dxvk_on"
+fi
+export PW_USE_TERMINAL=1
 START_PORTWINE
 echo "${port_deb1}" > "${PORT_WINE_PATH}/${portname}.log"
 echo "${port_deb2}" >> "${PORT_WINE_PATH}/${portname}.log"
@@ -44,12 +48,13 @@ else
 	echo "!!!glxinfo not found!!!"  >> "${PORT_WINE_PATH}/${portname}.log"
 fi
 echo "----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "Vulkan info device name" >> "${PORT_WINE_PATH}/${portname}.log"
-if [ -x "`which vulkaninfo 2>/dev/null`" ]
-then
-	vulkaninfo | grep deviceName >> "${PORT_WINE_PATH}/${portname}.log"
+echo "Vulkan info device name:" >> "${PORT_WINE_PATH}/${portname}.log"
+"${WINELIB}/amd64/usr/bin/vulkaninfo" | grep deviceName >> "${PORT_WINE_PATH}/${portname}.log"
+"${WINELIB}/amd64/usr/bin/vkcube" --c 50 
+if [ $? -eq 0 ]; then 
+	echo "Vulkan cube test passed successfully" >> "${PORT_WINE_PATH}/${portname}.log"
 else
-	echo "!!!vulkaninfo not found!!!"  >> "${PORT_WINE_PATH}/${portname}.log"
+	echo "Vkcube test completed with error" >> "${PORT_WINE_PATH}/${portname}.log"
 fi
 echo "---------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
 if [ ! -x "`which gamemoderun 2>/dev/null`" ]
@@ -60,21 +65,36 @@ echo "--------------------------------------------" >> "${PORT_WINE_PATH}/${port
 echo "Version WINE in the Port" >> "${PORT_WINE_PATH}/${portname}.log"
 "$WINELOADER" --version 2>&1 | tee -a "${PORT_WINE_PATH}/${portname}.log"
 echo "-------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-echo "log WINE" >> "${PORT_WINE_PATH}/${portname}.log"
+echo "log WINE:" >> "${PORT_WINE_PATH}/${portname}.log"
 
 export PW_LOG=1
 export DXVK_HUD="full"
 export PW_WINEDBG_DISABLE=0
 
-if [ ! -z ${optirun_on} ]
-then
-    $PW_TERM ${optirun_on} "${port_on_run}" "run" "${gamestart}" ${launch_parameters} >> "${PORT_WINE_PATH}/${portname}.log" 2>&1 &
-else
-    $PW_TERM "${port_on_run}" "run" "${gamestart}" ${launch_parameters} >> "${PORT_WINE_PATH}/${portname}.log" 2>&1 &
+PW_XTERM="${WINELIB}/amd64/usr/bin/xterm -l -lf ${PORT_WINE_PATH}/${portname}.log.wine -geometry 159x37 -e"
+
+if [ -f "${PORT_WINE_PATH}/${portname}.log.wine" ]; then
+	rm -f "${PORT_WINE_PATH}/${portname}.log.wine"
 fi
+if [ ! -z "${gamename}" ]; then
+	if [ ! -z ${optirun_on} ]
+	then
+		${PW_XTERM} "${PW_RUNTIME}" ${optirun_on} "${port_on_run}" "run" "${gamestart}" ${launch_parameters} 2>&1 &
+	else
+		${PW_XTERM} "${PW_RUNTIME}" "${port_on_run}" "run" "${gamestart}" ${launch_parameters} 2>&1 &
+	fi
+else
+	if [ ! -z ${optirun_on} ]
+	then
+		${PW_XTERM} "${PW_RUNTIME}" ${optirun_on} "${port_on_run}" "run" explorer 2>&1 &
+	else
+		${PW_XTERM} "${PW_RUNTIME}" "${port_on_run}" "run" explorer 2>&1 &
+	fi
+fi 
 zenity --info --title "DEBUG" --text "${port_debug}" --no-wrap && "${WINESERVER}" -k
 STOP_PORTWINE | pwzen
-
+cat "${PORT_WINE_PATH}/${portname}.log.wine" >> "${PORT_WINE_PATH}/${portname}.log"
+rm -f "${PORT_WINE_PATH}/${portname}.log.wine"
 deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++') 
 echo "$deb_text" > "${PORT_WINE_PATH}/${portname}.log"
 echo "$deb_text" | zenity --text-info --editable \

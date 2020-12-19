@@ -7,16 +7,17 @@ if [ -f "$1" ]; then
     export PATH_TO_GAME="$( cd "$( dirname "$1" )" >/dev/null 2>&1 && pwd )"
     cd "$PATH_TO_GAME"
     if [ ! -z ${optirun_on} ]; then
-        "${PW_RUNTIME}" $PW_TERM ${optirun_on} "${port_on_run}" "run" "$portwine_exe"
+        $PW_TERM "${PW_RUNTIME}" ${optirun_on} "${port_on_run}" "run" "$portwine_exe"
     else
-        "${PW_RUNTIME}" $PW_TERM "${port_on_run}" "run" "$portwine_exe"
+        $PW_TERM "${PW_RUNTIME}" "${port_on_run}" "run" "$portwine_exe"
     fi
 else
+    cd "${WINEPREFIX}/drive_c/"
     if [ ! -z ${optirun_on} ]
     then
-        "${PW_RUNTIME}" $PW_TERM ${optirun_on} "${port_on_run}" "run" "explorer" 
+        $PW_TERM "${PW_RUNTIME}" ${optirun_on} "${port_on_run}" "run" "explorer" 
     else
-        "${PW_RUNTIME}" $PW_TERM "${port_on_run}" "run" "explorer" 
+        $PW_TERM "${PW_RUNTIME}" "${port_on_run}" "run" "explorer" 
     fi
 fi
 STOP_PORTWINE

@@ -54,7 +54,7 @@ if [ ! -e "${PORT_WINE_TMP_PATH}/${portname}_ver" ]; then
 	echo "10" > "${PORT_WINE_TMP_PATH}/${portname}_ver"
 fi
 ########################################################################
-export pw_libs_ver="_v3"
+export pw_libs_ver="_v4"
 export port_on_run="${PORT_WINE_PATH}/data/port_on"
 export WINEDIR="${PORT_WINE_PATH}"/data/dist
 export WINELIB="${HOME}/.PortWINE/libs${pw_libs_ver}"
@@ -96,7 +96,7 @@ sh "${PORT_SCRIPTS_PATH}"/port_update
 ########################################################################
 if [ ! -d "${WINELIB}" ]; then 
     echo "Download and install libraries..."
-    wget -T 2 --output-document="${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" "${PW_FTP_URL}"/dist/libs${pw_libs_ver}.tar.xz | sszen &&
+    wget -c -T 2 --output-document="${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" "${PW_FTP_URL}"/dist/libs${pw_libs_ver}.tar.xz | sszen &&
     tar -Jxvf "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" -C "${HOME}/.PortWINE/" | sszen &&
     rm -f "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz"
     "${WINELIB}"/setup.sh --force
@@ -119,7 +119,7 @@ then
     if [ $? -eq 1 ];then exit 1; fi
     case $start_settings in
     "VKD3D and OpenGL") 
-            echo "off" > "${PORT_WINE_TMP_PATH}/dxvk_on" ;;
+            echo "off" > "${PORT_WINE_TMP_PATH}/dxvk_on" ;;   
     "DXVK") 
             hud_settings=`zenity --list --title  "HUD" --text "${hud_text}" --list --checklist \
             --column="${inst_set}" --column="HUD info:" --column="${hud_info}" --width=800 --height=550 \
@@ -155,6 +155,9 @@ else
 fi
 export DXVK_HUD="${var_dxvk_on}"
 echo "DXVK_HUD=${DXVK_HUD}"
+
+cp -f "${WINEDIR}/lib/wine/fakedlls/dxgi.dll" "${WINEDIR}/lib/wine/dxgi.dll"
+cp -f "${WINEDIR}/lib64/wine/fakedlls/dxgi.dll" "${WINEDIR}/lib64/wine/dxgi.dll"
 
 if [ "${var_dxvk_on}" != "off" ]; then
     export PW_USE_WINED3D=0
@@ -241,7 +244,7 @@ sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}/share/wine/wine
 sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}/share/wine/wine.inf" &&
 rm -f  "${WINEDIR}"/lib*/wine/*steam*
 if [ ! -d "${WINEPREFIX}" ] || [ ! -d "${WINEPREFIX}"/dosdevices ] || [ ! -d "${WINEPREFIX}"/drive_c/windows ] || [ ! -f "${WINEPREFIX}"/system.reg ] || [ ! -f "${WINEPREFIX}"/user.reg ] || [ ! -f "${WINEPREFIX}"/userdef.reg ]; then
-    "${PW_RUNTIME}" $PW_TERM "${WINELOADER}" wineboot -u
+    $PW_TERM "${PW_RUNTIME}"  "${WINELOADER}" wineboot -u
 fi
 ########################################################################
 #if [ ! -f "${PORT_WINE_TMP_PATH}/init_run_suc" ]; then
@@ -257,9 +260,6 @@ fi
 #    echo "######################################################"
 #fi
 ########################################################################
-#cp -f "${WINEDIR}/lib/wine/fakedlls/dxgi.dll" "${WINEDIR}/lib/wine/dxgi.dll"
-#cp -f "${WINEDIR}/lib64/wine/fakedlls/dxgi.dll" "${WINEDIR}/lib64/wine/dxgi.dll"
-
 ADD_IN_START_PORTWINE
 } 
 ########################################################################
@@ -267,7 +267,7 @@ WAIT_WINESERVER ()
 {
 sleep 3
 while [ $(pgrep wineserver)>'0' ]; do
-	sleep 2
+	sleep 1
 done
 }
 ########################################################################
