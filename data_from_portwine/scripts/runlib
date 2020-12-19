@@ -156,20 +156,34 @@ fi
 export DXVK_HUD="${var_dxvk_on}"
 echo "DXVK_HUD=${DXVK_HUD}"
 
-cp -f "${WINEDIR}/lib/wine/fakedlls/dxgi.dll" "${WINEDIR}/lib/wine/dxgi.dll"
-cp -f "${WINEDIR}/lib64/wine/fakedlls/dxgi.dll" "${WINEDIR}/lib64/wine/dxgi.dll"
-
 if [ "${var_dxvk_on}" != "off" ]; then
     export PW_USE_WINED3D=0
     export PW_DXGI_FROM_DXVK=1
+    if [ -d "${WINEDIR}_dxvk" ]; then
+        export WINEDIR="${WINEDIR}_dxvk"
+        export WINELOADER="${WINEDIR}/bin/wine"
+        export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
+        export WINESERVER="${WINEDIR}/bin/wineserver"
+        export PATH="${WINEDIR}/bin:${PATH}"
+    fi
     echo "Use DXVK and D9VK (DX9-DX11 to Vulkan)"
 
 else
     export PW_USE_WINED3D=1
     export PW_VKD3D_FEATURE_LEVEL=1
     export VKD3D_CONFIG=force_bindless_texel_buffer
+    if [ -d "${WINEDIR}_vkd3d" ]; then
+        export WINEDIR="${WINEDIR}_vkd3d"
+        export WINELOADER="${WINEDIR}/bin/wine"
+        export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
+        export WINESERVER="${WINEDIR}/bin/wineserver"
+        export PATH="${WINEDIR}/bin:${PATH}"
+    fi
     echo "Use OpenGL and VKD3D (DX9-DX11 to OpenGL and DX12 to vulkan)"
 fi
+
+cp -f "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${WINEDIR}"/lib/wine/dxgi.dll
+cp -f "${WINEDIR}"/lib64/wine/fakedlls/dxgi.dll "${WINEDIR}"/lib64/wine/dxgi.dll
 
 export DXVK_STATE_CACHE_PATH="${PATH_TO_GAME}"
 export DXVK_STATE_CACHE=1
@@ -238,11 +252,11 @@ else
 fi
 echo "######################################################"
 ########################################################################
-sed -i '/HKCU,Software\\Valve\\Steam/d' "${WINEDIR}/share/wine/wine.inf" &&
-sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}/share/wine/wine.inf" &&
-sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}/share/wine/wine.inf" &&
-sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}/share/wine/wine.inf" &&
-rm -f  "${WINEDIR}"/lib*/wine/*steam*
+sed -i '/HKCU,Software\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf &&
+sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf &&
+sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf &&
+sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}"*/share/wine/wine.inf &&
+rm -f  "${WINEDIR}"*/lib*/wine/*steam*
 if [ ! -d "${WINEPREFIX}" ] || [ ! -d "${WINEPREFIX}"/dosdevices ] || [ ! -d "${WINEPREFIX}"/drive_c/windows ] || [ ! -f "${WINEPREFIX}"/system.reg ] || [ ! -f "${WINEPREFIX}"/user.reg ] || [ ! -f "${WINEPREFIX}"/userdef.reg ]; then
     $PW_TERM "${PW_RUNTIME}"  "${WINELOADER}" wineboot -u
 fi
