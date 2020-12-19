@@ -59,11 +59,7 @@ export port_on_run="${PORT_WINE_PATH}/data/port_on"
 export WINEDIR="${PORT_WINE_PATH}"/data/dist
 export WINELIB="${HOME}/.PortWINE/libs${pw_libs_ver}"
 export WINEARCH=win64
-export WINELOADER="${WINEDIR}/bin/wine"
-export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
-export WINESERVER="${WINEDIR}/bin/wineserver"
 export WINEPREFIX="${PORT_WINE_PATH}/data/pfx"
-export PATH="${WINEDIR}/bin:${PATH}"
 export WINESTART="C:\\windows\\command\\start.exe"
 export PW_COMPAT_DATA_PATH="${PORT_WINE_PATH}/data/"
 export PW_COMPAT_MEDIA_PATH="${PW_COMPAT_MEDIA_PATH}"
@@ -161,10 +157,6 @@ if [ "${var_dxvk_on}" != "off" ]; then
     export PW_DXGI_FROM_DXVK=1
     if [ -d "${WINEDIR}_dxvk" ]; then
         export WINEDIR="${WINEDIR}_dxvk"
-        export WINELOADER="${WINEDIR}/bin/wine"
-        export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
-        export WINESERVER="${WINEDIR}/bin/wineserver"
-        export PATH="${WINEDIR}/bin:${PATH}"
     fi
     echo "Use DXVK and D9VK (DX9-DX11 to Vulkan)"
 
@@ -174,13 +166,14 @@ else
     export VKD3D_CONFIG=force_bindless_texel_buffer
     if [ -d "${WINEDIR}_vkd3d" ]; then
         export WINEDIR="${WINEDIR}_vkd3d"
-        export WINELOADER="${WINEDIR}/bin/wine"
-        export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
-        export WINESERVER="${WINEDIR}/bin/wineserver"
-        export PATH="${WINEDIR}/bin:${PATH}"
     fi
     echo "Use OpenGL and VKD3D (DX9-DX11 to OpenGL and DX12 to vulkan)"
 fi
+
+export WINELOADER="${WINEDIR}/bin/wine"
+export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
+export WINESERVER="${WINEDIR}/bin/wineserver"
+export PATH="${WINEDIR}/bin:${PATH}"
 
 cp -f "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${WINEDIR}"/lib/wine/dxgi.dll
 cp -f "${WINEDIR}"/lib64/wine/fakedlls/dxgi.dll "${WINEDIR}"/lib64/wine/dxgi.dll
