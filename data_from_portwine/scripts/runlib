@@ -110,17 +110,43 @@ else
     echo "Runtime libraries is disabled"
 fi
 ########################################################################
+export PW_WINE_VER_DXVK=""
+zen_width=500
+if [ -f "${WINEDIR}"_dxvk/version ]; then
+    read PW_WINE_VER_DXVK < "${WINEDIR}"_dxvk/version
+    PW_WINE_VER_DXVK="     ( wine: $PW_WINE_VER_DXVK )"
+    zen_width=1000
+fi
+export PW_WINE_VER_VKD3D=""
+if [ -f "${WINEDIR}"_vkd3d/version ]; then
+    read PW_WINE_VER_VKD3D < "${WINEDIR}"_vkd3d/version
+    PW_WINE_VER_VKD3D="  ( wine: $PW_WINE_VER_VKD3D )"
+    zen_width=1000
+fi
+for pw_dist in "dxvk" "vkd3d"
+do
+    if [ -d "${WINEDIR}"_"${pw_dist}"/share/wine/ ]; then
+        if [ -d "${WINEDIR}"/share/wine/gecko ]; then
+            rm -fr "${WINEDIR}"_"${pw_dist}"/share/wine/gecko
+            ln -s "${WINEDIR}"/share/wine/gecko "${WINEDIR}"_"${pw_dist}"/share/wine/ 
+        fi 
+        if [ -d "${WINEDIR}"/share/wine/mono ]; then
+            rm -fr "${WINEDIR}"_"${pw_dist}"/share/wine/mono
+            ln -s "${WINEDIR}"/share/wine/mono "${WINEDIR}"_"${pw_dist}"/share/wine/ 
+        fi     
+    fi
+done  
 if [ ! -f "${PORT_WINE_TMP_PATH}/dxvk_on" ]
 then
     start_settings=`zenity --title  "${ss_title}" --text "${ss_text}" --list --radiolist \
-    --column="${inst_set}" --column "${ss_ver}" --column "${ss_dr}"  --width=500 --height=220 \
-    TRUE "DXVK" "${ss_ogl_3}" \
-    FALSE "VKD3D and OpenGL" "${ss_ogl_2}" ` 
+    --column="${inst_set}" --column "${ss_ver}" --column "${ss_dr}"  --width=$zen_width --height=220 \
+    TRUE "DXVK ${PW_WINE_VER_DXVK}" "${ss_ogl_3}" \
+    FALSE "VKD3D ${PW_WINE_VER_VKD3D}" "${ss_ogl_2}" ` 
     if [ $? -eq 1 ];then exit 1; fi
     case $start_settings in
-    "VKD3D and OpenGL") 
+    "VKD3D ${PW_WINE_VER_VKD3D}") 
             echo "off" > "${PORT_WINE_TMP_PATH}/dxvk_on" ;;   
-    "DXVK") 
+    "DXVK ${PW_WINE_VER_DXVK}") 
             hud_settings=`zenity --list --title  "HUD" --text "${hud_text}" --list --checklist \
             --column="${inst_set}" --column="HUD info:" --column="${hud_info}" --width=800 --height=550 \
             FALSE "fps" "${hud_fps}" \
@@ -156,6 +182,15 @@ fi
 export DXVK_HUD="${var_dxvk_on}"
 echo "DXVK_HUD=${DXVK_HUD}"
 
+
+export WINEDIR="${PORT_WINE_PATH}"/data/dist
+export WINELOADER="${WINEDIR}/bin/wine"
+export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
+export WINESERVER="${WINEDIR}/bin/wineserver"
+export PATH="${WINEDIR}/bin:${PATH}"
+
+
+
 if [ "${var_dxvk_on}" != "off" ]; then
     export PW_USE_WINED3D=0
     export PW_DXGI_FROM_DXVK=1
@@ -188,7 +223,6 @@ cp -f "${WINEDIR}"/lib64/wine/fakedlls/dxgi.dll "${WINEDIR}"/lib64/wine/dxgi.dll
 export DXVK_STATE_CACHE_PATH="${PATH_TO_GAME}"
 export DXVK_STATE_CACHE=1
 export STAGING_SHARED_MEMORY=1
-
 ########################################################################
 export optirun_on=
 export check_optimus_manager=
@@ -258,8 +292,19 @@ sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wi
 sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}"*/share/wine/wine.inf &&
 rm -f  "${WINEDIR}"*/lib*/wine/*steam*
 if [ ! -d "${WINEPREFIX}" ] || [ ! -d "${WINEPREFIX}"/dosdevices ] || [ ! -d "${WINEPREFIX}"/drive_c/windows ] || [ ! -f "${WINEPREFIX}"/system.reg ] || [ ! -f "${WINEPREFIX}"/user.reg ] || [ ! -f "${WINEPREFIX}"/userdef.reg ]; then
+    export SYSTEM_LANG="${LANG}"
+    export SYSTEM_LC_ALL="${LC_ALL}"
+    export SYSTEM_LC_CTYPE="${LC_CTYPE}"
+    export LANG="en_US.UTF-8"
+    export LC_ALL="en_US.UTF-8"
+    export LC_CTYPE="en_US.UTF-8"
     $PW_TERM "${PW_RUNTIME}"  "${WINELOADER}" wineboot -u
+    export LANG="${SYSTEM_LANG}"
+    export LC_ALL="${SYSTEM_LC_ALL}"
+    export LC_CTYPE="${SYSTEM_LC_CTYPE}"
 fi
+rm -f "${WINEPREFIX}/drive_c/windows/system32"/steam*
+rm -f "${WINEPREFIX}/drive_c/windows/syswow64"/steam*
 ########################################################################
 #if [ ! -f "${PORT_WINE_TMP_PATH}/init_run_suc" ]; then
 #    "${PW_RUNTIME}" "${port_on_run}" "init_run"
