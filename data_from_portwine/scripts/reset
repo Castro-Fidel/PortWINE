@@ -1,13 +1,9 @@
 #!/bin/bash
 # Author: PortWINE-Linux.ru
 . "$(dirname $(readlink -f "$0"))/runlib"
-"${WINESERVER}" -k
-wine_pids=$(ls -l /proc/*/exe 2>/dev/null | grep -E 'wine(64)?-preloader|wineserver' | perl -pe 's;^.*/proc/(\d+)/exe.*$;$1;g;')
-if ! [ -z "${wine_pids}" ] ; then
-    kill -9 ${wine_pids}
-fi
+KILL_PORTWINE
 if [ -e "${PORT_WINE_TMP_PATH}/dxvk_on" ]; then
     rm -f "${PORT_WINE_TMP_PATH}/dxvk_on"
 fi
 START_PORTWINE
-STOP_PORTWINE | pwzen
+STOP_PORTWINE | sszen

@@ -7,10 +7,16 @@ rm -f "${PORT_WINE_TMP_PATH}/update_notifier"
 rm -f "${PORT_WINE_TMP_PATH}/init_run_suc"
 rm -fr "${PORT_WINE_PATH}/data/pfx/dosdevices" 
 
+if [ -d "${PORT_WINE_PATH}/Settings" ]; then
+	rm -fr "${PORT_WINE_PATH}/Settings"
+fi
+
 if [ ! -d "/home/${USER}/.local/share/applications" ]
 then
 	mkdir -p "/home/${USER}/.local/share/applications"
 fi
+
+
 
 if [ ! -z "${gamename}" ]; then
 	name_desktop="${gamename}" 
@@ -25,7 +31,7 @@ if [ ! -z "${gamename}" ]; then
 	chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" /home/${USER}/.local/share/applications/ 
 else
-    name_desktop="PortProton" 
+	name_desktop="PortProton" 
 	echo "[Desktop Entry]"	 				  > "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Name=${name_desktop}" 				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Exec=env "${PORT_SCRIPTS_PATH}/portproton.sh %U""	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
@@ -37,6 +43,20 @@ else
 	echo "Icon="${PORT_WINE_PATH}/data/img/w.png""   	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" /home/${USER}/.local/share/applications/ 
+
+    name_desktop="Create_shortcut_PP" 
+	echo "[Desktop Entry]"	 				  > "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Name=${name_desktop}" 				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Exec=env "${PORT_SCRIPTS_PATH}/create_shortcut %U""	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Type=Application" 				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Categories=Game"	    				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "StartupNotify=true" 	    			 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "MimeType=application/x-ms-dos-executable;application/x-wine-extension-msp;"  >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Path="${PORT_SCRIPTS_PATH}/""		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Icon="${PORT_WINE_PATH}/data/img/w.png""   	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "NoDisplay=true"   	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" /home/${USER}/.local/share/applications/
 fi
 
 name_desktop="readme" 
@@ -47,22 +67,6 @@ echo "Type=Link"					>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "Icon="${PORT_WINE_PATH}/data/img/readme.png""	>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "URL=${urlg}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
-
-rm -fR "${PORT_WINE_PATH}/Settings"
-mkdir -p "${PORT_WINE_PATH}/Settings"
-
-for name_desktop in "winecfg" "winefile" "winecmd" "winereg" "create_shortcut"
-do
-echo ""[Desktop Entry]"
-"Name=${name_desktop}"
-"Exec=sh "${PORT_SCRIPTS_PATH}/${name_desktop}""
-"Type=Application"
-"Categories=Game"
-"StartupNotify=true"
-"Path="${PORT_SCRIPTS_PATH}/""
-"Icon="${PORT_WINE_PATH}/data/img/s.png""" > "${PORT_WINE_PATH}/Settings/${name_desktop}.desktop"
-chmod u+x "${PORT_WINE_PATH}/Settings/${name_desktop}.desktop"
-done
 
 for name_desktop in "debug" "reset"
 do
@@ -77,31 +81,30 @@ do
 	chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 done
 
-echo ""[Desktop Entry]"
-"Name=winetricks"
-"Exec=sh "${PORT_SCRIPTS_PATH}/remove""
+name_desktop="settings.sh"
+echo ""settings"
+"Name=settings"
+"Exec=sh "${PORT_SCRIPTS_PATH}/${name_desktop}""
 "Type=Application"
 "Categories=Game"
 "StartupNotify=true"
 "Path="${PORT_SCRIPTS_PATH}/""
-"Icon="${PORT_WINE_PATH}/data/img/rm.png""" > "${PORT_WINE_PATH}/Settings/remove.desktop"
-chmod u+x "${PORT_WINE_PATH}/Settings/remove.desktop"
-
-echo ""[Desktop Entry]"
-"Name=winetricks"
-"Exec=sh "${PORT_SCRIPTS_PATH}/winetricks-q-force""
-"Type=Application"
-"Categories=Game"
-"StartupNotify=true"
-"Path="${PORT_SCRIPTS_PATH}/""
-"Icon="${PORT_WINE_PATH}/data/img/s.png""" > "${PORT_WINE_PATH}/Settings/winetricks.desktop"
-chmod u+x "${PORT_WINE_PATH}/Settings/winetricks.desktop"
+"Icon="${PORT_WINE_PATH}/data/img/s.png""" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
+chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 
 chmod u+x "${PORT_SCRIPTS_PATH}/"*
 
 if [ ! -d "${PORT_WINE_PATH}/drive_c" ]; then
 	ln -s "${PORT_WINE_PATH}/data/pfx/drive_c/" "${PORT_WINE_PATH}/drive_c"
 fi
+
+if [ -d "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public" ] && [ ! -L "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public" ]; then
+	cp -fr "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public"/* "${PORT_WINE_PATH}/data/pfx/drive_c/users/steamuser/"
+	rm -fr "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public"
+elif [ -L "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public" ]; then
+	rm -fr "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public"
+fi
+ln -s "${PORT_WINE_PATH}/data/pfx/drive_c/users/steamuser" "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public"
 
 if [ ! -d "${PORT_WINE_PATH}/data/pfx/drive_c/users/${USER}" ]; then
 	ln -s "${PORT_WINE_PATH}/data/pfx/drive_c/users/steamuser" "${PORT_WINE_PATH}/data/pfx/drive_c/users/${USER}"

@@ -1,14 +1,14 @@
 #!/bin/bash
 # Author: PortWINE-Linux.ru
 . "$(dirname $(readlink -f "$0"))/runlib"
-"${WINESERVER}" -k
-if [ -e "${PORT_WINE_TMP_PATH}/dxvk_on" ]; then
-    rm -f "${PORT_WINE_TMP_PATH}/dxvk_on"
-fi
+KILL_PORTWINE
 export PW_USE_TERMINAL=1
 START_PORTWINE
 echo "${port_deb1}" > "${PORT_WINE_PATH}/${portname}.log"
 echo "${port_deb2}" >> "${PORT_WINE_PATH}/${portname}.log"
+echo "--------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+echo "GLIBC version:" >> "${PORT_WINE_PATH}/${portname}.log"
+echo "echo $(ldd --version)" | grep ldd >> "${PORT_WINE_PATH}/${portname}.log"
 echo "--------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
 echo "PortWINE version:" >> "${PORT_WINE_PATH}/${portname}.log"
 read install_ver < "${PORT_WINE_TMP_PATH}/${portname}_ver"
@@ -85,7 +85,7 @@ else
 	fi
 fi 
 zenity --info --title "DEBUG" --text "${port_debug}" --no-wrap && "${WINESERVER}" -k
-STOP_PORTWINE | pwzen
+STOP_PORTWINE | sszen
 cat "${PORT_WINE_PATH}/${portname}.log.wine" >> "${PORT_WINE_PATH}/${portname}.log"
 rm -f "${PORT_WINE_PATH}/${portname}.log.wine"
 deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++') 

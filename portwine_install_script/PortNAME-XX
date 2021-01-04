@@ -111,7 +111,7 @@ export PORT_WINE_PATH="${D_PATH}"
 if [ ! -d "${PORT_WINE_PATH}" ];then
     mkdir -p "$PORT_WINE_PATH"
 else
-    for CLEAN_PORT in "dist" "libs" "tmp" "scripts" "pfx/drive_c/windows"
+    for CLEAN_PORT in "dist" "dist_dxvk" "dist_vkd3d" "libs" "tmp" "scripts"
     do
         if [ -d "${PORT_WINE_PATH}/data/${CLEAN_PORT}" ];then
         	rm -fR "${PORT_WINE_PATH}/data/${CLEAN_PORT}"
@@ -143,7 +143,10 @@ read "update_loc" < "${PORT_WINE_TMP_PATH}/${portname}_loc"
 export update_loc=${update_loc}
 ########################################################################
 cd "${PORT_WINE_PATH}" 
-tail -n +187 "${links}/${setup_script}" > "${PORT_WINE_PATH}/${ARCH_NAME}"
+tail -n +193 "${links}/${setup_script}" > "${PORT_WINE_PATH}/${ARCH_NAME}"
+#if [ -d "${PORT_WINE_PATH}"/data/pfx/ ]; then
+#	mv "${PORT_WINE_PATH}"/data/pfx/*.reg "${PORT_WINE_PATH}"/data/tmp/
+#fi
 if [ "${s_install}" = "1" ]; then
 	tar -Jxvf "${PORT_WINE_PATH}/${ARCH_NAME}" -C "${PORT_WINE_PATH}/"
 else
@@ -151,7 +154,10 @@ else
 fi
 chmod 755 -R "${PORT_WINE_PATH}"
 mv -f "${PORT_WINE_PATH}/${ARCH_NAME}" "${PORT_WINE_PATH}/data/tmp"
-sed -n 1,186p "${links}/${setup_script}" > "${PORT_WINE_PATH}/data/tmp/${setup_script}"
+sed -n 1,192p "${links}/${setup_script}" > "${PORT_WINE_PATH}/data/tmp/${setup_script}"
+#if [ -d "${PORT_WINE_PATH}"/data/tmp/*.reg ]; then
+#	mv -f "${PORT_WINE_PATH}"/data/tmp/*.reg "${PORT_WINE_PATH}"/data/pfx/
+#fi
 ########################################################################
 if [ -d "${PORT_GAMEDIR}_old" ];then
 	rm -fR "${PORT_GAMEDIR}"

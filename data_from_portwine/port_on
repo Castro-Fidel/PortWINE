@@ -135,32 +135,32 @@ class CompatData:
         use_wined3d = "wined3d" in g_session.compat_config
 
         builtin_dll_copy = os.environ.get("PROTON_DLL_COPY",
-                #dxsetup redist
-                "d3dcompiler_*.dll," +
-                "d3dcsx*.dll," +
-                "d3dx*.dll," +
-                "x3daudio*.dll," +
-                "xactengine*.dll," +
-                "xapofx*.dll," +
-                "xaudio*.dll," +
-                "xinput*.dll," +
+                # #dxsetup redist
+                # "d3dcompiler_*.dll," +
+                # "d3dcsx*.dll," +
+                # "d3dx*.dll," +
+                # "x3daudio*.dll," +
+                # "xactengine*.dll," +
+                # "xapofx*.dll," +
+                # "xaudio*.dll," +
+                # "xinput*.dll," +
 
-                #vcruntime redist
-                "atl1*.dll," +
-                "concrt1*.dll," +
-                "msvcp1*.dll," +
-                "msvcr1*.dll," +
-                "vcamp1*.dll," +
-                "vcomp1*.dll," +
-                "vccorlib1*.dll," +
-                "vcruntime1*.dll," +
-                "api-ms-win-crt-conio-l1-1-0.dll," +
-                "api-ms-win-crt-heap-l1-1-0.dll," +
-                "api-ms-win-crt-locale-l1-1-0.dll," +
-                "api-ms-win-crt-math-l1-1-0.dll," +
-                "api-ms-win-crt-runtime-l1-1-0.dll," +
-                "api-ms-win-crt-stdio-l1-1-0.dll," +
-                "ucrtbase.dll," +
+                # #vcruntime redist
+                # "atl1*.dll," +
+                # "concrt1*.dll," +
+                # "msvcp1*.dll," +
+                # "msvcr1*.dll," +
+                # "vcamp1*.dll," +
+                # "vcomp1*.dll," +
+                # "vccorlib1*.dll," +
+                # "vcruntime1*.dll," +
+                # "api-ms-win-crt-conio-l1-1-0.dll," +
+                # "api-ms-win-crt-heap-l1-1-0.dll," +
+                # "api-ms-win-crt-locale-l1-1-0.dll," +
+                # "api-ms-win-crt-math-l1-1-0.dll," +
+                # "api-ms-win-crt-runtime-l1-1-0.dll," +
+                # "api-ms-win-crt-stdio-l1-1-0.dll," +
+                # "ucrtbase.dll," +
 
                 #some games balk at ntdll symlink(?)
                 "ntdll.dll," +
@@ -225,6 +225,7 @@ class Session:
     def __init__(self):
         self.env = dict(os.environ)
         self.dlloverrides = {
+                "winemenubuilder.exe": "",  
                 "dotnetfx35.exe": "b",   #replace the broken installer, as does Windows
                 "mfplay": "n",           #disable built-in mfplay  
                 "steam_api": "n",        #disable built-in steam dll            
@@ -238,14 +239,6 @@ class Session:
         self.cmdlineappend = []
 
     def init_wine(self):
-        if "HOST_LC_ALL" in self.env and len(self.env["HOST_LC_ALL"]) > 0:
-            #steam sets LC_ALL=C to help some games, but Wine requires the real value
-            #in order to do path conversion between win32 and host. steam sets
-            #HOST_LC_ALL to allow us to use the real value.
-            self.env["LC_ALL"] = self.env["HOST_LC_ALL"]
-        else:
-            self.env.pop("LC_ALL", "")
-
         self.env.pop("WINEARCH", "")
 
         if 'ORIG_'+ld_path_var not in os.environ:
@@ -263,10 +256,10 @@ class Session:
         self.env["WINE_GST_REGISTRY_DIR"] = g_compatdata.path("/tmp/gstreamer-1.0/")
 
         if "PW_COMPAT_MEDIA_PATH" in os.environ:
-            self.env["MEDIACONV_AUDIO_DUMP_FILE"] = os.environ["PW_COMPAT_MEDIA_PATH"] + "/tmp/audio.foz"
-            self.env["MEDIACONV_AUDIO_TRANSCODED_FILE"] = os.environ["PW_COMPAT_MEDIA_PATH"] + "/tmp/transcoded_audio.foz"
-            self.env["MEDIACONV_VIDEO_DUMP_FILE"] = os.environ["PW_COMPAT_MEDIA_PATH"] + "/tmp/video.foz"
-            self.env["MEDIACONV_VIDEO_TRANSCODED_FILE"] = os.environ["PW_COMPAT_MEDIA_PATH"] + "/tmp/transcoded_video.foz"
+            self.env["MEDIACONV_AUDIO_DUMP_FILE"] = os.environ["PW_COMPAT_MEDIA_PATH"] + "/audio.foz"
+            self.env["MEDIACONV_AUDIO_TRANSCODED_FILE"] = os.environ["PW_COMPAT_MEDIA_PATH"] + "/transcoded_audio.foz"
+            self.env["MEDIACONV_VIDEO_DUMP_FILE"] = os.environ["PW_COMPAT_MEDIA_PATH"] + "/video.foz"
+            self.env["MEDIACONV_VIDEO_TRANSCODED_FILE"] = os.environ["PW_COMPAT_MEDIA_PATH"] + "/transcoded_video.foz"
 
         if "PATH" in os.environ:
             self.env["PATH"] = g_proton.bin_dir + ":" + os.environ["PATH"]
@@ -286,20 +279,20 @@ class Session:
         self.env["WINEPREFIX"] = g_compatdata.prefix_dir
 
         #load environment overrides
-
-        #for performance, logging is disabled by default; override with user_settings.py
-        self.env.setdefault("WINEDEBUG", "-all")
-        self.env.setdefault("DXVK_LOG_LEVEL", "none")
-        self.env.setdefault("VKD3D_DEBUG", "none")
     
         if "PW_LOG" in os.environ and nonzero(os.environ["PW_LOG"]):
             self.env.setdefault("WINEDEBUG", "+timestamp,+pid,+tid,+seh,+debugstr,+loaddll,+mscoree")
             self.env.setdefault("DXVK_LOG_LEVEL", "info")
             self.env.setdefault("VKD3D_DEBUG", "warn")
-            self.env.setdefault("WINE_MONO_TRACE", "E:System.NotImplementedException")
+            self.env.setdefault("WINE_MONO_TRACE", "E:System.NotImplementedException")       
+        else:
+            self.env.setdefault("WINEDEBUG", "-all")
+            self.env.setdefault("DXVK_LOG_LEVEL", "none")
+            self.env.setdefault("VKD3D_DEBUG", "none")
+            self.env.setdefault("DXVK_LOG_PATH","none")
 
         #default wine-mono override for FNA games
-#        self.env.setdefault("WINE_MONO_OVERRIDES", "Microsoft.Xna.Framework.*,Gac=n")
+        self.env.setdefault("WINE_MONO_OVERRIDES", "Microsoft.Xna.Framework.*,Gac=n")
 
         if "wined3d11" in self.compat_config:
             self.compat_config.add("wined3d")
@@ -317,7 +310,8 @@ class Session:
         self.check_environment("PW_WINEDBG_DISABLE", "nowinedbg")
         self.check_environment("PW_HIDE_NVIDIA_GPU", "hidenvgpu")
         self.check_environment("PW_VKD3D_FEATURE_LEVEL", "vkd3dfl12")
-        
+        self.check_environment("PW_DX12_DISABLED", "nod3d12")
+      
         if "noesync" in self.compat_config:
             self.env.pop("WINEESYNC", "")
         else:
@@ -347,9 +341,6 @@ class Session:
         if "hidenvgpu" in self.compat_config:
             self.env["WINE_HIDE_NVIDIA_GPU"] = "1"
 
-        else:
-            self.env["WINEDEBUG"] = "-all"
-
         g_compatdata.setup_prefix()
             
         if "nowritewatch" in self.compat_config:
@@ -361,6 +352,9 @@ class Session:
 
         if "nowinedbg" in self.compat_config:
             self.dlloverrides["winedbg.exe"] = "d"
+
+        if "nod3d12" in self.compat_config:
+            self.dlloverrides["d3d12"] = "d"
 
         s = ""
         for dll in self.dlloverrides:
