@@ -62,14 +62,15 @@ START_PORTWINE
 $PW_TERM "${PW_RUNTIME}" "${PORT_WINE_TMP_PATH}/winetricks" -q --force
 }
 ##########################
-OUTPUT=$(yad --form \
+OUTPUT=$("${pw_yad}"  --borders=20 --form --center  \
 --title "SETTINGS"  --image "winecfg" --separator=";" \
 --field="WINE:CB" "DXVK ${PW_WINE_VER_DXVK}"!"VKD3D ${PW_WINE_VER_VKD3D}" \
---button='WINECFG'!winecfg!"Run winecfg for $portname":100 \
---button='WINEFILE'!winecfg!'проверка подсказки1':102 \
---button='WINECMD'!winecfg!'проверка подсказки2':104 \
---button='WINEREG'!winecfg!'проверка подсказки3':106 \
---button='WINETRICKS'!winecfg!'проверка подсказки4 - бла бла бла бла бла ла ла ла =)':108 )
+--button='WINECFG'!!"Run winecfg for $portname":100 \
+--button='WINEFILE'!!'проверка подсказки1':102 \
+--button='WINECMD'!!'проверка подсказки2':104 \
+--button='WINEREG'!!'проверка подсказки3':106 \
+--button='WINETRICKS'!!'проверка подсказки4 - бла бла бла бла бла ла ла ла =)':108 )
+
 PW_YAD_SET="$?"
 export VULKAN_MOD=$(echo $OUTPUT | awk 'BEGIN {FS=";" } { print $1 }')
 if [ "${VULKAN_MOD}" = "DXVK ${PW_WINE_VER_DXVK}" ]; then

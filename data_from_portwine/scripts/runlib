@@ -54,7 +54,7 @@ if [ ! -e "${PORT_WINE_TMP_PATH}/${portname}_ver" ]; then
 	echo "10" > "${PORT_WINE_TMP_PATH}/${portname}_ver"
 fi
 ########################################################################
-export pw_libs_ver="_v4"
+export pw_libs_ver="_v5"
 export port_on_run="${PORT_WINE_PATH}/data/port_on"
 export WINEDIR="${PORT_WINE_PATH}"/data/dist
 export WINELIB="${HOME}/.PortWINE/libs${pw_libs_ver}"
@@ -99,6 +99,22 @@ if [ -f "${WINEDIR}"_vkd3d/version ]; then
     zen_width=1000
 fi
 ########################################################################
+if [ ! -e "${WINELIB}/run.sh" ]; then 
+    echo "Download and install libraries..."
+    wget -c -T 2 --output-document="${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" "${PW_FTP_URL}"/dist/libs${pw_libs_ver}.tar.xz | sszen &&
+    tar -Jxvf "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" -C "${HOME}/.PortWINE/" | sszen &&
+    rm -f "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz"
+    "${WINELIB}"/setup.sh --force
+fi
+if [ -e "${WINELIB}/run.sh" ]; then 
+    echo "######################################################"
+    echo "Runtime libraries is enabled"
+    pw_yad="${WINELIB}/usr/bin/yad"
+else
+    echo "######################################################"
+    echo "Runtime libraries is disabled"
+fi
+########################################################################
 START_PORTWINE ()
 {
 if [ "${PW_USE_TERMINAL}" = "1"  ]; then
@@ -115,22 +131,6 @@ if [ "${PW_USE_TERMINAL}" = "1"  ]; then
     fi
 fi
 sh "${PORT_SCRIPTS_PATH}"/port_update 
-########################################################################
-if [ ! -e "${WINELIB}/run.sh" ]; then 
-    echo "Download and install libraries..."
-    wget -c -T 2 --output-document="${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" "${PW_FTP_URL}"/dist/libs${pw_libs_ver}.tar.xz | sszen &&
-    tar -Jxvf "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" -C "${HOME}/.PortWINE/" | sszen &&
-    rm -f "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz"
-    "${WINELIB}"/setup.sh --force
-fi
-if [ -e "${WINELIB}/run.sh" ]; then 
-    echo "######################################################"
-    echo "Runtime libraries is enabled"
-#    "${PW_RUNTIME}" --print-steam-runtime-library-paths
-else
-    echo "######################################################"
-    echo "Runtime libraries is disabled"
-fi
 ########################################################################
 if [ ! -z $dxvk_ogl_var ]; then
     var_dxvk_on="${dxvk_ogl_var}"
@@ -251,14 +251,14 @@ sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}"*/share/wine/wine.inf &
 rm -f  "${WINEDIR}"*/lib*/*steam* &&
 rm -f  "${WINEDIR}"*/lib*/wine/*steam* &&
 rm -f  "${WINEDIR}"*/lib*/wine/fakedlls/*steam* &&
-if [ ! -d "${WINEPREFIX}" ] || [ ! -d "${WINEPREFIX}"/dosdevices ] || [ ! -d "${WINEPREFIX}"/drive_c/windows ] || [ ! -f "${WINEPREFIX}"/system.reg ] || [ ! -f "${WINEPREFIX}"/user.reg ] || [ ! -f "${WINEPREFIX}"/userdef.reg ]; then
-    if [ ! -z "$(cat /etc/locale.gen | grep "^en_US.UTF-8")" ]; then 
-    export PW_LANG_OS="${LANG}"
-    export LANG=en_US.UTF-8
-    fi
-    $PW_TERM "${PW_RUNTIME}"  "${WINELOADER}" wineboot -u &&
-    export LANG="${PW_LANG_OS}"
-fi
+# if [ ! -d "${WINEPREFIX}" ] || [ ! -d "${WINEPREFIX}"/dosdevices ] || [ ! -d "${WINEPREFIX}"/drive_c/windows ] || [ ! -f "${WINEPREFIX}"/system.reg ] || [ ! -f "${WINEPREFIX}"/user.reg ] || [ ! -f "${WINEPREFIX}"/userdef.reg ]; then
+#     if [ ! -z "$(cat /etc/locale.gen | grep "^en_US.UTF-8")" ]; then 
+#     export PW_LANG_OS="${LANG}"
+#     export LANG=en_US.UTF-8
+#     fi
+#     $PW_TERM "${PW_RUNTIME}"  "${WINELOADER}" wineboot -u &&
+#     export LANG="${PW_LANG_OS}"
+# fi
 sed -i '/steamclient/d' "${WINEPREFIX}"/*.reg &&
 sed -i '/SteamPath/d' "${WINEPREFIX}"/*.reg &&
 
