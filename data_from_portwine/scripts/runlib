@@ -68,9 +68,11 @@ fi
 ########################################################################
 export LAUNCH_PARAMETERS=""
 export pw_libs_ver="_v5"
+export pw_gecko_mono_ver="_v1"
 export port_on_run="${PORT_SCRIPTS_PATH}/port_on"
 export WINEDIR="${PORT_WINE_PATH}"/data/dist
 export WINELIB="${HOME}/.PortWINE/libs${pw_libs_ver}"
+export WINE_MONO_GECKO="${HOME}/.PortWINE/mono_gecko${pw_gecko_mono_ver}"
 export WINEARCH=win64
 export WINEPREFIX="${PORT_WINE_PATH}/data/pfx/"
 export PW_COMPAT_DATA_PATH="${PORT_WINE_PATH}/data/"
@@ -82,20 +84,6 @@ export urlg="https://portwine-linux.ru/portwine-faq/"
 export PW_FTP_URL="https://portwine-linux.ru/ftp"
 ########################################################################
 export PW_TERM=""
-for pw_dist in "dxvk" "vkd3d"
-do
-    if [ -d "${WINEDIR}"_"${pw_dist}"/share/wine/ ]; then
-        if [ -d "${WINEDIR}"/share/wine/gecko ]; then
-            rm -fr "${WINEDIR}"_"${pw_dist}"/share/wine/gecko
-            ln -s "${WINEDIR}"/share/wine/gecko "${WINEDIR}"_"${pw_dist}"/share/wine/ 
-        fi 
-        if [ -d "${WINEDIR}"/share/wine/mono ]; then
-            rm -fr "${WINEDIR}"_"${pw_dist}"/share/wine/mono
-            ln -s "${WINEDIR}"/share/wine/mono "${WINEDIR}"_"${pw_dist}"/share/wine/ 
-        fi     
-    fi
-done  
-
 export PW_WINE_VER_DXVK=""
 zen_width=500
 if [ -f "${WINEDIR}"_dxvk/version ]; then
@@ -120,12 +108,44 @@ fi
 if [ -e "${WINELIB}/run.sh" ]; then 
     echo "######################################################"
     echo "Runtime libraries is enabled"
-    pw_yad="${WINELIB}/usr/bin/yad"
-    PW_XTERM="${WINELIB}/amd64/usr/bin/xterm -geometry 159x37 -e"
+    export pw_yad="${WINELIB}/usr/bin/yad"
+    export PW_XTERM="${WINELIB}/amd64/usr/bin/xterm -geometry 159x37 -e"
 else
     echo "######################################################"
     echo "Runtime libraries is disabled"
 fi
+########################################################################
+if [ ! -d "${WINE_MONO_GECKO}/gecko" ] || [ ! -d "${WINE_MONO_GECKO}/mono" ] ; then 
+    echo "######################################################"
+    echo "Download and install wine mono and gecko..."
+    ${PW_XTERM} wget -c -T 2 --output-document="${WINE_MONO_GECKO}.tar.xz" "${PW_FTP_URL}"/dist/mono_gecko${pw_gecko_mono_ver}.tar.xz 
+    ${PW_XTERM} tar -Jxvf "${WINE_MONO_GECKO}.tar.xz" -C "${HOME}/.PortWINE/" 
+    rm -f "${WINE_MONO_GECKO}.tar.xz"
+fi
+if [ ! -d "${WINEDIR}"/share/wine/ ]; then 
+    mkdir -p "${WINEDIR}"/share/wine/
+fi
+if [ -d "${WINEDIR}"/share/wine/gecko ]; then
+    rm -fr "${WINEDIR}"/share/wine/gecko
+fi 
+ln -s "${WINE_MONO_GECKO}"/gecko "${WINEDIR}"/share/wine/      
+if [ -d "${WINEDIR}"/share/wine/mono ]; then
+    rm -fr "${WINEDIR}"/share/wine/mono
+fi
+ln -s "${WINE_MONO_GECKO}"/mono "${WINEDIR}"/share/wine/ 
+for pw_dist in "dxvk" "vkd3d"
+do
+    if [ -d "${WINEDIR}"_"${pw_dist}"/share/wine/ ]; then
+        if [ -d "${WINEDIR}"/share/wine/gecko ]; then
+            rm -fr "${WINEDIR}"_"${pw_dist}"/share/wine/gecko
+            cp -fr "${WINEDIR}"/share/wine/gecko "${WINEDIR}"_"${pw_dist}"/share/wine/ 
+        fi 
+        if [ -d "${WINEDIR}"/share/wine/mono ]; then
+            rm -fr "${WINEDIR}"_"${pw_dist}"/share/wine/mono
+            cp -fr "${WINEDIR}"/share/wine/mono "${WINEDIR}"_"${pw_dist}"/share/wine/ 
+        fi     
+    fi
+done  
 ########################################################################
 if [ ! -z "${gamestart}" ]; then
     export PORTWINE_DB=`echo "${gamestart}" | awk -F '/' 'NF>1{print $NF}' | awk -F '.exe' '{print $1}'`
@@ -174,8 +194,17 @@ if [ "${var_pw_vulkan}" = "0" ]; then
         export WINEDIR="${WINEDIR}_dxvk"
         export MESA_GLSL_CACHE_DIR="${PORT_WINE_TMP_PATH}"
         export mesa_glthread=true
+        export __GL_THREADED_OPTIMIZATIONS=1
+        export __GL_SHARPEN_IGNORE_FILM_GRAIN=0
+        export __GL_LOG_MAX_ANISO=0
+        export __GL_ALLOW_FXAA_USAGE=0
+        export __GL_SHARPEN_ENABLE=1
+        export __GL_SHARPEN_VALUE=0
+        export __GL_SHADER_DISK_CACHE_PATH="${PORT_WINE_TMP_PATH}"
+        export __GL_SHADER_DISK_CACHE=1
+        export __GL_SHADER_DISK_CACHE_SIZE=1000000000
         echo "Use OpenGL"
-    fi
+    fi #Modded by Rus_Nor
 elif [ "${var_pw_vulkan}" = "dxvk" ]; then
     export PW_USE_WINED3D=0
     export PW_DXGI_FROM_DXVK=1
@@ -229,7 +258,6 @@ if [ ! -z "${PW_NVIDIA}" ] && [ "${check_optimus_manager}" != "intel" ]; then
     export __GL_SHADER_DISK_CACHE_SIZE=1000000000
     export __GL_DXVK_OPTIMIZATIONS=1
 else
-    export VK_ICD_FILENAMES
     export DRI_PRIME=1
     export VKD3D_CONFIG=force_bindless_texel_buffer
 fi

@@ -10,6 +10,7 @@ PORTWINE_LAUNCH ()
 KILL_PORTWINE
 START_PORTWINE
 PORTWINE_MSI=`basename "${portwine_exe}" | grep .msi`
+PORTWINE_BAT=`basename "${portwine_exe}" | grep .bat`
 if [ ! -z "${PORTWINE_MSI}" ]; then   
     echo "PORTWINE_MSI=${PORTWINE_MSI}"
     export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
@@ -18,6 +19,15 @@ if [ ! -z "${PORTWINE_MSI}" ]; then
         $PW_TERM "${PW_RUNTIME}" ${optirun_on} "${port_on_run}" "run" msiexec /i "$portwine_exe" 
     else
         $PW_TERM "${PW_RUNTIME}" "${port_on_run}" "run" msiexec /i "$portwine_exe"
+    fi
+elif [ ! -z "${PORTWINE_BAT}" ]; then   
+    echo "PORTWINE_BAT=${PORTWINE_BAT}"
+    export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
+    cd "$PATH_TO_GAME"
+    if [ ! -z ${optirun_on} ]; then
+        $PW_TERM "${PW_RUNTIME}" ${optirun_on} "${port_on_run}" "run" explorer "$portwine_exe" 
+    else
+        $PW_TERM "${PW_RUNTIME}" "${port_on_run}" "run" explorer "$portwine_exe"
     fi
 elif [ ! -z "${portwine_exe}" ]; then
     export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
@@ -168,21 +178,21 @@ if [ ! -z "${portwine_exe}" ]; then
     export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
     cd "$PATH_TO_GAME"
     if [ ! -z ${optirun_on} ]; then
-        $PW_TERM "${PW_RUNTIME}" ${optirun_on} "${port_on_run}" "run" "$portwine_exe" ${LAUNCH_PARAMETERS} 2>&1 &
+        $PW_XTERM "${PW_RUNTIME}" ${optirun_on} "${port_on_run}" "run" "$portwine_exe" 2>&1 &
     else
-        $PW_TERM "${PW_RUNTIME}" "${port_on_run}" "run" "$portwine_exe" ${LAUNCH_PARAMETERS} 2>&1 &
+        $PW_XTERM "${PW_RUNTIME}" "${port_on_run}" "run" "$portwine_exe" 2>&1 &
     fi
 elif [ -z "${gamestart}" ]; then  
     if [ ! -z $optirun_on ]; then
-        $PW_TERM "${PW_RUNTIME}" ${optirun_on} "${port_on_run}" "run" explorer 2>&1 &
+        $PW_XTERM "${PW_RUNTIME}" ${optirun_on} "${port_on_run}" "run" explorer 2>&1 &
     else
-        $PW_TERM "${PW_RUNTIME}" "${port_on_run}" "run" explorer 2>&1 &
+        $PW_XTERM "${PW_RUNTIME}" "${port_on_run}" "run" explorer 2>&1 &
     fi
 else
     if [ ! -z $optirun_on ]; then
-        $PW_TERM "${PW_RUNTIME}" ${optirun_on} "${port_on_run}" "run" "${gamestart}" ${LAUNCH_PARAMETERS} 2>&1 &
+        $PW_XTERM "${PW_RUNTIME}" ${optirun_on} "${port_on_run}" "run" "${gamestart}" 2>&1 &
     else
-        $PW_TERM "${PW_RUNTIME}" "${port_on_run}" "run" "${gamestart}" ${LAUNCH_PARAMETERS} 2>&1 &
+        $PW_XTERM "${PW_RUNTIME}" "${port_on_run}" "run" "${gamestart}" 2>&1 &
     fi
 fi
 zenity --info --title "DEBUG" --text "${port_debug}" --no-wrap && "${WINESERVER}" -k
