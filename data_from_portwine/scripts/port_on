@@ -94,6 +94,7 @@ class Proton:
         self.wine_bin = self.bin_dir + "/wine"
         self.wineserver_bin = self.bin_dir + "/wineserver"
         self.gamemoderun = "gamemoderun"
+        self.pw_launch_parameters = os.environ["LAUNCH_PARAMETERS"]
 
     def path(self, d):
         return self.base_dir + d
@@ -171,47 +172,51 @@ class CompatData:
 
         #create font files symlinks
         self.create_fonts_symlinks()
+        if "var_pw_vulkan" in os.environ and nonzero(os.environ["var_pw_vulkan"]):
+            #copy openvr files into place
+            if os.path.isfile(g_proton.lib_dir + "wine/fakedlls/vrclient.dll"):
+                dst = self.prefix_dir + "/drive_c/vrclient/bin/"
+                makedirs(dst)
+                try_copy(g_proton.lib_dir + "wine/fakedlls/vrclient.dll", dst)
+                try_copy(g_proton.lib64_dir + "wine/fakedlls/vrclient_x64.dll", dst)
 
-        #copy openvr files into place
-        if os.path.isfile(g_proton.lib_dir + "wine/fakedlls/vrclient.dll"):
-            dst = self.prefix_dir + "/drive_c/vrclient/bin/"
-            makedirs(dst)
-            try_copy(g_proton.lib_dir + "wine/fakedlls/vrclient.dll", dst)
-            try_copy(g_proton.lib64_dir + "wine/fakedlls/vrclient_x64.dll", dst)
+            if os.path.isfile(g_proton.lib_dir + "wine/dxvk/openvr_api_dxvk.dll"):
+                try_copy(g_proton.lib_dir + "wine/dxvk/openvr_api_dxvk.dll", self.prefix_dir + "/drive_c/windows/syswow64/")
+                try_copy(g_proton.lib64_dir + "wine/dxvk/openvr_api_dxvk.dll", self.prefix_dir + "/drive_c/windows/system32/")
 
-        if os.path.isfile(g_proton.lib_dir + "wine/dxvk/openvr_api_dxvk.dll"):
-            try_copy(g_proton.lib_dir + "wine/dxvk/openvr_api_dxvk.dll", self.prefix_dir + "/drive_c/windows/syswow64/")
-            try_copy(g_proton.lib64_dir + "wine/dxvk/openvr_api_dxvk.dll", self.prefix_dir + "/drive_c/windows/system32/")
+            if use_wined3d:
+                dxvkfiles = []
+                wined3dfiles = ["d3d11", "d3d10", "d3d10core", "d3d10_1", "d3d9"]
+                if os.path.isfile(g_proton.lib64_dir + "wine/dxvk/dxvk_config.dll"):
+                    dxvkfiles.append("dxvk_config")
+                os.system("echo PW_VULKAN_USE=vkd3d")
+            else:
+                dxvkfiles = ["dxvk_config", "d3d11", "d3d10", "d3d10core", "d3d10_1", "d3d9"]
+                wined3dfiles = []
+                os.system("echo PW_VULKAN_USE=dxvk")
 
-        if use_wined3d:
-            dxvkfiles = []
-            wined3dfiles = ["d3d11", "d3d10", "d3d10core", "d3d10_1", "d3d9"]
-            if os.path.isfile(g_proton.lib64_dir + "wine/dxvk/dxvk_config.dll"):
-                dxvkfiles.append("dxvk_config")
+            #if the user asked for dxvk's dxgi (dxgi=n), then copy it into place
+            if "PW_DXGI_FROM_DXVK" in os.environ and nonzero(os.environ["PW_DXGI_FROM_DXVK"]):
+                dxvkfiles.append("dxgi")
+            else:
+                wined3dfiles.append("dxgi")
+
+            for f in wined3dfiles:
+                try_copy(g_proton.lib64_dir + "wine/" + f + ".dll", self.prefix_dir + "drive_c/windows/system32/" + f + ".dll")
+                try_copy(g_proton.lib_dir + "wine/" + f + ".dll", self.prefix_dir + "drive_c/windows/syswow64/" + f + ".dll")
+
+            for f in dxvkfiles:
+                if os.path.isfile(g_proton.lib64_dir + "wine/dxvk/" + f + ".dll"):
+                    try_copy(g_proton.lib64_dir + "wine/dxvk/" + f + ".dll", self.prefix_dir + "drive_c/windows/system32/" + f + ".dll")
+                    try_copy(g_proton.lib_dir + "wine/dxvk/" + f + ".dll", self.prefix_dir + "drive_c/windows/syswow64/" + f + ".dll")
+                    g_session.dlloverrides[f] = "n"
+
+            if os.path.isfile(g_proton.lib64_dir + "wine/vkd3d-proton/d3d12.dll"):
+                try_copy(g_proton.lib64_dir + "wine/vkd3d-proton/d3d12.dll", self.prefix_dir + "drive_c/windows/system32/d3d12.dll")
+            if os.path.isfile(g_proton.lib_dir + "wine/vkd3d-proton/d3d12.dll"):
+                try_copy(g_proton.lib_dir + "wine/vkd3d-proton/d3d12.dll", self.prefix_dir + "drive_c/windows/syswow64/d3d12.dll")
         else:
-            dxvkfiles = ["dxvk_config", "d3d11", "d3d10", "d3d10core", "d3d10_1", "d3d9"]
-            wined3dfiles = []
-
-        #if the user asked for dxvk's dxgi (dxgi=n), then copy it into place
-        if "PW_DXGI_FROM_DXVK" in os.environ and nonzero(os.environ["PW_DXGI_FROM_DXVK"]):
-            dxvkfiles.append("dxgi")
-        else:
-            wined3dfiles.append("dxgi")
-
-        for f in wined3dfiles:
-            try_copy(g_proton.lib64_dir + "wine/" + f + ".dll", self.prefix_dir + "drive_c/windows/system32/" + f + ".dll")
-            try_copy(g_proton.lib_dir + "wine/" + f + ".dll", self.prefix_dir + "drive_c/windows/syswow64/" + f + ".dll")
-
-        for f in dxvkfiles:
-            if os.path.isfile(g_proton.lib64_dir + "wine/dxvk/" + f + ".dll"):
-                try_copy(g_proton.lib64_dir + "wine/dxvk/" + f + ".dll", self.prefix_dir + "drive_c/windows/system32/" + f + ".dll")
-                try_copy(g_proton.lib_dir + "wine/dxvk/" + f + ".dll", self.prefix_dir + "drive_c/windows/syswow64/" + f + ".dll")
-                g_session.dlloverrides[f] = "n"
-
-        if os.path.isfile(g_proton.lib64_dir + "wine/vkd3d-proton/d3d12.dll"):
-            try_copy(g_proton.lib64_dir + "wine/vkd3d-proton/d3d12.dll", self.prefix_dir + "drive_c/windows/system32/d3d12.dll")
-        if os.path.isfile(g_proton.lib_dir + "wine/vkd3d-proton/d3d12.dll"):
-            try_copy(g_proton.lib_dir + "wine/vkd3d-proton/d3d12.dll", self.prefix_dir + "drive_c/windows/syswow64/d3d12.dll")
+            os.system("echo PW_VULKAN_USE=0 - Vulkan is disabled")
 
 def comma_escaped(s):
     escaped = False
@@ -281,7 +286,7 @@ class Session:
         #load environment overrides
     
         if "PW_LOG" in os.environ and nonzero(os.environ["PW_LOG"]):
-            self.env.setdefault("WINEDEBUG", "+timestamp,+pid,+tid,+seh,+debugstr,+loaddll,+mscoree")
+            self.env.setdefault("WINEDEBUG", "+timestamp,+pid,+tid,+seh,+debugstr,+mscoree")
             self.env.setdefault("DXVK_LOG_LEVEL", "info")
             self.env.setdefault("VKD3D_DEBUG", "warn")
             self.env.setdefault("WINE_MONO_TRACE", "E:System.NotImplementedException")       
@@ -305,7 +310,7 @@ class Session:
         self.check_environment("PW_OLD_GL_STRING", "oldglstr")
         self.check_environment("PW_NO_WINEMFPLAY", "nomfplay")
         self.check_environment("PW_NO_WRITE_WATCH", "nowritewatch")
-        self.check_environment("PW_DXVK_ASYNC", "dxvkasync")
+        self.check_environment("PW_DXVK_NO_ASYNC", "dxvknoasync")
         self.check_environment("PW_NVAPI_DISABLE", "nonvapi")
         self.check_environment("PW_WINEDBG_DISABLE", "nowinedbg")
         self.check_environment("PW_HIDE_NVIDIA_GPU", "hidenvgpu")
@@ -322,6 +327,9 @@ class Session:
         else:
             self.env["WINEFSYNC"] = "1"
 
+        if "dxvknoasync" in self.compat_config:
+            self.env["RADV_DEBUG"] = "llvm"
+        
         if "nowritewatch" in self.compat_config:
             self.env["WINE_DISABLE_WRITE_WATCH"] = "1"
 
@@ -347,14 +355,29 @@ class Session:
             self.env["WINE_DISABLE_WRITE_WATCH"] = "1"
         
         if "nonvapi" in self.compat_config:
-            self.dlloverrides["nvapi"] = "d"
-            self.dlloverrides["nvapi64"] = "d"
+            self.dlloverrides["nvapi"] = ""
+            self.dlloverrides["nvapi64"] = ""
 
         if "nowinedbg" in self.compat_config:
-            self.dlloverrides["winedbg.exe"] = "d"
+            self.dlloverrides["winedbg.exe"] = ""
+        
+        if "var_pw_vulkan" in os.environ and nonzero(os.environ["var_pw_vulkan"]):
+            os.system("echo Use vulkan")
+        else:            
+            self.dlloverrides["vrclient"] = ""
+            self.dlloverrides["openvr_api_dxvk"] = ""
+            self.dlloverrides["dxvk_config"] = ""
+            self.dlloverrides["dxgi"] = "b"
+            self.dlloverrides["d3d11"] = "b"
+            self.dlloverrides["d3d10"] = "b"
+            self.dlloverrides["d3d10core"] = "b"
+            self.dlloverrides["d3d10_1"] = "b"
+            self.dlloverrides["d3d9"] = "b"
+            self.dlloverrides["d3d12"] = "b"
+            os.system("echo All d3d dll use as built-in")            
 
         if "nod3d12" in self.compat_config:
-            self.dlloverrides["d3d12"] = "d"
+            self.dlloverrides["d3d12"] = ""
 
         s = ""
         for dll in self.dlloverrides:
@@ -375,12 +398,9 @@ class Session:
 
     def run(self):
         if "PW_GAMEMODERUN" in os.environ and nonzero(os.environ["PW_GAMEMODERUN"]):
-            self.run_proc([g_proton.gamemoderun] + [g_proton.wine_bin] + sys.argv[2:] + sys.argv[3:] + sys.argv[4:])
+            self.run_proc([g_proton.gamemoderun] + [g_proton.wine_bin] + sys.argv[2:] + [g_proton.pw_launch_parameters])
         else:
-            self.run_proc([g_proton.wine_bin] + sys.argv[2:] + sys.argv[3:] + sys.argv[4:])
-
-    def init_run(self):
-        self.run_proc([g_proton.wine_bin] + " wineboot")
+            self.run_proc([g_proton.wine_bin] + sys.argv[2:] + [g_proton.pw_launch_parameters])
 
 if __name__ == "__main__":
     if not "PW_COMPAT_DATA_PATH" in os.environ:
@@ -401,9 +421,6 @@ if __name__ == "__main__":
     if sys.argv[1] == "run":
         #start target app
         g_session.run()
-    elif sys.argv[1] == "init_run":
-        #first start
-        g_session.init_run()
     elif sys.argv[1] == "waitforexitandrun":
         #wait for wineserver to shut down
         g_session.run_proc([g_proton.wineserver_bin, "-w"])

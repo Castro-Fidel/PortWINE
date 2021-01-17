@@ -6,23 +6,40 @@ rm -f "${PORT_WINE_PATH}/"*".log"
 rm -f "${PORT_WINE_TMP_PATH}/update_notifier"
 rm -f "${PORT_WINE_TMP_PATH}/init_run_suc"
 rm -fr "${PORT_WINE_PATH}/data/pfx/dosdevices" 
+rm -fr "${PORT_WINE_PATH}/data/port_on" 
+rm -fr "${PORT_WINE_PATH}/data/dxvk.conf" 
+rm -f "${PORT_WINE_PATH}/Create_shortcut_PP.desktop"
+rm -f "${PORT_WINE_PATH}/Proton.desktop"
+rm -f "${PORT_WINE_PATH}/settings.desktop"
+rm -f "${PORT_WINE_PATH}/settings.desktop"
+rm -f "${PORT_WINE_PATH}/debug.desktop"
 
 if [ -d "${PORT_WINE_PATH}/Settings" ]; then
 	rm -fr "${PORT_WINE_PATH}/Settings"
 fi
-
+if [ ! -z "${PATH_TO_GAME}" ]; then
+	rm -f "${PATH_TO_GAME}"/*.dxvk-cache
+fi
+if [ -f "${PORT_WINE_PATH}/restart.desktop" ]; then
+	rm "${PORT_WINE_PATH}/restart.desktop"
+fi
 if [ ! -d "/home/${USER}/.local/share/applications" ]
 then
 	mkdir -p "/home/${USER}/.local/share/applications"
+else
+	if [ -e "/home/${USER}/.local/share/applications/Create_shortcut_PP.desktop" ]; then 
+		rm -f "/home/${USER}/.local/share/applications/Create_shortcut_PP.desktop"
+	fi
+	if [ -e "/home/${USER}/.local/share/applications/Proton.desktop" ]; then 
+		rm -f "/home/${USER}/.local/share/applications/Proton.desktop"
+	fi
 fi
 
-
-
-if [ ! -z "${gamename}" ]; then
+if ! [ "${portname}" = "PortProton" ]; then
 	name_desktop="${gamename}" 
 	echo "[Desktop Entry]"	 				  > "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Name=${name_desktop}" 				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Exec=env "${PORT_SCRIPTS_PATH}/start""	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Exec=env "${PORT_SCRIPTS_PATH}/start.sh""	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Type=Application" 				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Categories=Game"	    				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "StartupNotify=true" 	    			 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
@@ -34,27 +51,13 @@ else
 	name_desktop="PortProton" 
 	echo "[Desktop Entry]"	 				  > "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Name=${name_desktop}" 				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Exec=env "${PORT_SCRIPTS_PATH}/portproton.sh %U""	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Exec=env "${PORT_SCRIPTS_PATH}/start.sh %U""	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Type=Application" 				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Categories=Game"	    				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "StartupNotify=true" 	    			 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "MimeType=application/x-ms-dos-executable;application/x-wine-extension-msp;"  >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "MimeType=application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi"  >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Path="${PORT_SCRIPTS_PATH}/""		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Icon="${PORT_WINE_PATH}/data/img/w.png""   	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" /home/${USER}/.local/share/applications/ 
-
-    name_desktop="Create_shortcut_PP" 
-	echo "[Desktop Entry]"	 				  > "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Name=${name_desktop}" 				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Exec=env "${PORT_SCRIPTS_PATH}/create_shortcut %U""	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Type=Application" 				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Categories=Game"	    				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "StartupNotify=true" 	    			 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "MimeType=application/x-ms-dos-executable;application/x-wine-extension-msp;"  >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Path="${PORT_SCRIPTS_PATH}/""		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Icon="${PORT_WINE_PATH}/data/img/w.png""   	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "NoDisplay=true"   	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" /home/${USER}/.local/share/applications/
 fi
@@ -68,7 +71,7 @@ echo "Icon="${PORT_WINE_PATH}/data/img/readme.png""	>> "${PORT_WINE_PATH}/${name
 echo "URL=${urlg}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 
-for name_desktop in "debug" "reset"
+for name_desktop in "reset"
 do
 	echo ""[Desktop Entry]"
 	"Name=${name_desktop}"
@@ -80,17 +83,6 @@ do
 	"Icon="${PORT_WINE_PATH}/data/img/s.png""" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 done
-
-name_desktop="settings"
-echo ""[Desktop Entry]"
-"Name=settings"
-"Exec=env "${PORT_SCRIPTS_PATH}/${name_desktop}.sh""
-"Type=Application"
-"Categories=Game"
-"StartupNotify=true"
-"Path="${PORT_SCRIPTS_PATH}/""
-"Icon="${PORT_WINE_PATH}/data/img/s.png""" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
-chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 
 chmod u+x "${PORT_SCRIPTS_PATH}/"*
 
@@ -112,14 +104,6 @@ fi
 
 sed -i "s/xuser/${USER}/g" "${PORT_WINE_PATH}/data/pfx/"*.reg
 sed -i "s/vagrant/${USER}/g" "${PORT_WINE_PATH}/data/pfx/"*.reg
-
-if [ ! -z "${PATH_TO_GAME}" ]; then
-	rm -f "${PATH_TO_GAME}"/*.dxvk-cache
-fi
-
-if [ -f "${PORT_WINE_PATH}/restart.desktop" ]; then
-	rm "${PORT_WINE_PATH}/restart.desktop"
-fi
 
 if [ "${s_install}" = "1" ]; then
 	echo "Installation completed successfully."

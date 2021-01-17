@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # License GPL
 ########################################################################
 clear && echo '
@@ -10,9 +10,9 @@ clear && echo '
 
 '
 ########################################################################
-export gamedir="DIRNAME"
-export gamename="NAME"
-export portname="PortNAME"
+export gamedir="PortProton"
+export gamename="Proton"
+export portname="PortProton"
 export port_ver=XX
 ########################################################################
 export PROGS_INST=""
@@ -117,15 +117,9 @@ else
         	rm -fR "${PORT_WINE_PATH}/data/${CLEAN_PORT}"
         fi
     done
-	if [ -d "${PORT_WINE_PATH}/data/pfx/drive_c/Games/${gamedir}" ];then
-        export PORT_GAMEDIR="${PORT_WINE_PATH}/data/pfx/drive_c/Games/${gamedir}"
-        mv -f "${PORT_GAMEDIR}" "${PORT_GAMEDIR}_old"
-    elif [ -d "${PORT_WINE_PATH}/data/pfx/drive_c/Program Files/${gamedir}" ];then
-        export PORT_GAMEDIR="${PORT_WINE_PATH}/data/pfx/drive_c/Program Files/${gamedir}"
-        mv -f "${PORT_GAMEDIR}" "${PORT_GAMEDIR}_old"
-    elif [ -d "${PORT_WINE_PATH}/data/pfx/drive_c/Program Files (x86)/${gamedir}" ];then
-        export PORT_GAMEDIR="${PORT_WINE_PATH}/data/pfx/drive_c/Program Files (x86)/${gamedir}"
-        mv -f "${PORT_GAMEDIR}" "${PORT_GAMEDIR}_old"
+	if [ -d "${PORT_WINE_PATH}/data/pfx/" ];then
+        export PORT_PFX="${PORT_WINE_PATH}/data/pfx"
+        mv -f "${PORT_PFX}" "${PORT_PFX}_old"
     fi
 fi
 ########################################################################
@@ -143,10 +137,7 @@ read "update_loc" < "${PORT_WINE_TMP_PATH}/${portname}_loc"
 export update_loc=${update_loc}
 ########################################################################
 cd "${PORT_WINE_PATH}" 
-tail -n +193 "${links}/${setup_script}" > "${PORT_WINE_PATH}/${ARCH_NAME}"
-#if [ -d "${PORT_WINE_PATH}"/data/pfx/ ]; then
-#	mv "${PORT_WINE_PATH}"/data/pfx/*.reg "${PORT_WINE_PATH}"/data/tmp/
-#fi
+tail -n +159 "${links}/${setup_script}" > "${PORT_WINE_PATH}/${ARCH_NAME}"
 if [ "${s_install}" = "1" ]; then
 	tar -Jxvf "${PORT_WINE_PATH}/${ARCH_NAME}" -C "${PORT_WINE_PATH}/"
 else
@@ -154,36 +145,11 @@ else
 fi
 chmod 755 -R "${PORT_WINE_PATH}"
 mv -f "${PORT_WINE_PATH}/${ARCH_NAME}" "${PORT_WINE_PATH}/data/tmp"
-sed -n 1,192p "${links}/${setup_script}" > "${PORT_WINE_PATH}/data/tmp/${setup_script}"
-#if [ -d "${PORT_WINE_PATH}"/data/tmp/*.reg ]; then
-#	mv -f "${PORT_WINE_PATH}"/data/tmp/*.reg "${PORT_WINE_PATH}"/data/pfx/
-#fi
+sed -n 1,158p "${links}/${setup_script}" > "${PORT_WINE_PATH}/data/tmp/${setup_script}"
 ########################################################################
-if [ -d "${PORT_GAMEDIR}_old" ];then
-	rm -fR "${PORT_GAMEDIR}"
-	mv -f "${PORT_GAMEDIR}_old" "${PORT_GAMEDIR}"
-fi
-if [ -d "${PORT_GAMEDIR}" ];then
-	if [ -d "${PORT_GAMEDIR}_rus" ];then
-        rm -fR "${PORT_GAMEDIR}_rus"
-    fi
-    if [ -d "${PORT_GAMEDIR}_eng" ];then
-        rm -fR "${PORT_GAMEDIR}_eng"
-    fi
-elif [ "${update_loc}" = "RUS" ];then
-	if [ -d "${PORT_GAMEDIR}_rus" ];then
-		mv -f "${PORT_GAMEDIR}_rus" "${PORT_GAMEDIR}"
-        if [ -d "${PORT_GAMEDIR}_eng" ];then
-            rm -fR "${PORT_GAMEDIR}_eng"
-        fi
-    fi
-else
-    if [ -d "${PORT_GAMEDIR}_eng" ];then
-		mv -f "${PORT_GAMEDIR}_eng" "${PORT_GAMEDIR}"
-        if [ -d "${PORT_GAMEDIR}_rus" ];then
-            rm -fR "${PORT_GAMEDIR}_rus"
-        fi
-    fi
+if [ -d "${PORT_PFX}_old" ];then
+	rm -fR "${PORT_PFX}"
+	mv -f "${PORT_PFX}_old" "${PORT_PFX}"
 fi
 echo "${portname}" > "${PORT_WINE_PATH}/data/tmp/portname"
 ########################################################################
