@@ -31,7 +31,7 @@ if [ ! -z "${start_progress_yad_pid}" ] ; then
     kill "${start_progress_yad_pid}"
 fi
 }
-########################################################################
+export PW_WINDOWS_VER="7"
 cd "$(dirname "`readlink -f "$0"`")"
 export PORT_SCRIPTS_PATH="$(pwd)"
 cd "${PORT_SCRIPTS_PATH}/../../"
@@ -40,7 +40,6 @@ read "portname" < "${PORT_WINE_PATH}/data/tmp/portname"
 export portname
 cd "${PORT_SCRIPTS_PATH}"
 . "${PORT_SCRIPTS_PATH}/vars/${portname}_vars"
-########################################################################
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 if [ ! -d "${PORT_WINE_TMP_PATH}" ]; then
 	mkdir -p "${PORT_WINE_TMP_PATH}"
@@ -60,31 +59,28 @@ if [ "${portname}" = "PortProton" ]; then
         rm -f "${PORT_WINE_TMP_PATH}/pw_vulkan"
     fi
 fi
-########################################################################
 . "${PORT_SCRIPTS_PATH}"/lang
 if [ ! -e "${PORT_WINE_TMP_PATH}/${portname}_ver" ]; then
 	echo "10" > "${PORT_WINE_TMP_PATH}/${portname}_ver"
 fi
-########################################################################
-export LAUNCH_PARAMETERS=""
 export pw_libs_ver="_v5"
 export pw_gecko_mono_ver="_v1"
-export port_on_run="${PORT_SCRIPTS_PATH}/port_on"
+export PW_VULKAN_DLL="${PORT_WINE_PATH}"/data/vulkan
 export WINEDIR="${PORT_WINE_PATH}"/data/dist
 export WINELIB="${HOME}/.PortWINE/libs${pw_libs_ver}"
 export WINE_MONO_GECKO="${HOME}/.PortWINE/mono_gecko${pw_gecko_mono_ver}"
-export WINEARCH=win64
 export WINEPREFIX="${PORT_WINE_PATH}/data/pfx/"
 export PW_COMPAT_DATA_PATH="${PORT_WINE_PATH}/data/"
 export PW_COMPAT_MEDIA_PATH="${PORT_WINE_TMP_PATH}/"
 export PW_RUNTIME="$WINELIB/run.sh"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
-########################################################################
 export urlg="https://portwine-linux.ru/portwine-faq/"
 export PW_FTP_URL="https://portwine-linux.ru/ftp"
-########################################################################
 export PW_TERM=""
 export PW_WINE_VER_DXVK=""
+if [  -z "${WINEDLLOVERRIDES}" ] ; then
+    export WINEDLLOVERRIDES="winemenubuilder.exe="
+fi
 zen_width=500
 if [ -f "${WINEDIR}"_dxvk/version ]; then
     read PW_WINE_VER_DXVK < "${WINEDIR}"_dxvk/version
@@ -97,7 +93,6 @@ if [ -f "${WINEDIR}"_vkd3d/version ]; then
     PW_WINE_VER_VKD3D="( wine: $PW_WINE_VER_VKD3D )"
     zen_width=1000
 fi
-########################################################################
 if [ ! -e "${WINELIB}/run.sh" ] || [ ! -e "${WINELIB}/usr/bin/yad" ] || [ ! -e "${WINELIB}/amd64/usr/bin/vkcube" ] || [ ! -e "${WINELIB}/amd64/usr/bin/xterm" ]; then 
     echo "Download and install libraries..."
     wget -c -T 2 --output-document="${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" "${PW_FTP_URL}"/dist/libs${pw_libs_ver}.tar.xz | sszen &&
@@ -114,7 +109,6 @@ else
     echo "######################################################"
     echo "Runtime libraries is disabled"
 fi
-########################################################################
 if [ ! -d "${WINE_MONO_GECKO}/gecko" ] || [ ! -d "${WINE_MONO_GECKO}/mono" ] ; then 
     echo "######################################################"
     echo "Download and install wine mono and gecko..."
@@ -145,16 +139,16 @@ do
             cp -fr "${WINEDIR}"/share/wine/mono "${WINEDIR}"_"${pw_dist}"/share/wine/ 
         fi     
     fi
-done  
-########################################################################
+done 
 if [ ! -z "${gamestart}" ]; then
-    export PORTWINE_DB=`echo "${gamestart}" | awk -F '/' 'NF>1{print $NF}' | awk -F '.exe' '{print $1}'`
+    export PORTWINE_DB=`echo "${gamestart}" | awk -F '/' 'NF>1{print $NF}' | sed s/".exe"/""/gi`
 elif [ ! -z "${portwine_exe}" ]; then
-    export PORTWINE_DB=`echo "${portwine_exe}" | awk -F '/' 'NF>1{print $NF}' | awk -F '.exe' '{print $1}'`
+    export PORTWINE_DB=`echo "${portwine_exe}" | awk -F '/' 'NF>1{print $NF}' | sed s/".exe"/""/gi`
     export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
+    export WIN_PATH_TO_GAME=`echo "C:${PATH_TO_GAME}" | sed "s%$WINEPREFIX%%g" | sed "s/drive_c//g" | sed 's#/#\\\#g'`           
 fi
 if [ ! -z "${PORTWINE_DB}" ]; then
-    PORTWINE_DB_FILE=`grep -il "${PORTWINE_DB}" "${PORT_SCRIPTS_PATH}/portwine_db"/* | awk -F '.exe' '{print $1}'`
+    PORTWINE_DB_FILE=`grep -il "#${PORTWINE_DB}" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
     if [ ! -z "${PORTWINE_DB_FILE}" ]; then
         . "${PORTWINE_DB_FILE}"
         echo "Use ${PORTWINE_DB_FILE} db file."
@@ -162,7 +156,7 @@ if [ ! -z "${PORTWINE_DB}" ]; then
         . "${PORT_SCRIPTS_PATH}/portwine_db/default"
         echo "Use default db file."
     fi
-fi
+fi 
 ########################################################################
 START_PORTWINE ()
 {
@@ -180,7 +174,6 @@ if [ "${PW_USE_TERMINAL}" = "1"  ]; then
     fi
 fi
 PW_UPDATE
-########################################################################
 if [ ! -z "${PW_VULKAN_USE}" ]; then
     export var_pw_vulkan="${PW_VULKAN_USE}"
     echo "${var_pw_vulkan}" > "${PORT_WINE_TMP_PATH}/pw_vulkan"
@@ -192,46 +185,161 @@ PW_START_PROGRESS_BAR
 if [ "${var_pw_vulkan}" = "0" ]; then
     if [ -d "${WINEDIR}_dxvk" ]; then
         export WINEDIR="${WINEDIR}_dxvk"
-        export MESA_GLSL_CACHE_DIR="${PORT_WINE_TMP_PATH}"
-        export mesa_glthread=true
-        export __GL_THREADED_OPTIMIZATIONS=1
-        export __GL_SHARPEN_IGNORE_FILM_GRAIN=0
-        export __GL_LOG_MAX_ANISO=0
-        export __GL_ALLOW_FXAA_USAGE=0
-        export __GL_SHARPEN_ENABLE=1
-        export __GL_SHARPEN_VALUE=0
-        export __GL_SHADER_DISK_CACHE_PATH="${PORT_WINE_TMP_PATH}"
-        export __GL_SHADER_DISK_CACHE=1
-        export __GL_SHADER_DISK_CACHE_SIZE=1000000000
-        echo "Use OpenGL"
-    fi #Modded by Rus_Nor
+    fi
+    export MESA_GLSL_CACHE_DIR="${PORT_WINE_TMP_PATH}"
+#    export mesa_glthread=true
+#    export GL_THREADED_OPTIMIZATIONS=1
+    export GL_NO_DSO_FINALIZER=1 #Modded by Rus_Nor
+    export GL_YIELD="NOTHING" #Modded by Rus_Nor
+    export GL_SHARPEN_IGNORE_FILM_GRAIN=0 #Modded by Rus_Nor
+    export GL_SHARPEN_ENABLE=1 #Modded by Rus_Nor
+    export __GL_SHARPEN_VALUE=0 #Modded by Rus_Nor
+    for wine_build_dll in d3d11 d3d10 d3d10core d3d10_1 d3d9 ; do
+        cp -f "${WINEDIR}/lib/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+        cp -f "${WINEDIR}/lib64/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+    done
+    cp -f "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/"
+    cp -f "${WINEDIR}"/lib64/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/system32/"
+    export WINEESYNC=""
+    echo "Use OpenGL"
 elif [ "${var_pw_vulkan}" = "dxvk" ]; then
-    export PW_USE_WINED3D=0
-    export PW_DXGI_FROM_DXVK=1
-    export PW_DX12_DISABLED=1
     if [ -d "${WINEDIR}_dxvk" ]; then
         export WINEDIR="${WINEDIR}_dxvk"
     fi
-    echo "Use DXVK and D9VK (DX9-DX11 to Vulkan)"
+    for wine_dxvk_dll in d3d11 d3d10 d3d10core d3d10_1 d3d9 dxgi ; do
+        if [ -f "${PW_VULKAN_DLL}/dxvk/x32/${wine_dxvk_dll}.dll" ] ; then
+            cp -f "${PW_VULKAN_DLL}/dxvk/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+        fi
+        if [ -f "${PW_VULKAN_DLL}/dxvk/x64/${wine_dxvk_dll}.dll" ] ; then
+            cp -f "${PW_VULKAN_DLL}/dxvk/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+        fi
+        if [ ! -z "${WINEDLLOVERRIDES}" ] ; then
+            export WINEDLLOVERRIDES="${wine_dxvk_dll}=n;${WINEDLLOVERRIDES}"
+        else
+            export WINEDLLOVERRIDES="${wine_dxvk_dll}=n"
+        fi
+    done
+    echo "Use DXVK (DX9-DX11 to Vulkan)"
 else
-    export PW_USE_WINED3D=1
     if [ -d "${WINEDIR}_vkd3d" ]; then
         export WINEDIR="${WINEDIR}_vkd3d"
     fi
+    for wine_vkd3d_dll in d3d12 ; do
+        if [ -f "${PW_VULKAN_DLL}/vkd3d-proton/x86/${wine_vkd3d_dll}.dll" ] ; then
+            cp -f "${PW_VULKAN_DLL}/vkd3d-proton/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+        fi
+        if [ -f "${PW_VULKAN_DLL}/vkd3d-proton/x64/${wine_vkd3d_dll}.dll" ] ; then
+            cp -f "${PW_VULKAN_DLL}/vkd3d-proton/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+        fi
+        if [ ! -z "${WINEDLLOVERRIDES}" ] ; then
+            export WINEDLLOVERRIDES="${wine_vkd3d_dll}=n;${WINEDLLOVERRIDES}"
+        else
+            export WINEDLLOVERRIDES="${wine_vkd3d_dll}=n"
+        fi
+    done    
+    cp -f "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/"
+    cp -f "${WINEDIR}"/lib64/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/system32/"
+    export PW_WINDOWS_VER="10"
     echo "Use VKD3D (DX12 to vulkan)"
+fi
+if [ -f "${PW_VULKAN_DLL}/dxvk/x32/dxvk_config.dll" ] ; then
+    cp -f "${PW_VULKAN_DLL}/dxvk/x32/dxvk_config.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+fi
+if [ -f "${PW_VULKAN_DLL}/dxvk/x64/dxvk_config.dll" ] ; then
+    cp -f "${PW_VULKAN_DLL}/dxvk/x64/dxvk_config.dll" "${WINEPREFIX}/drive_c/windows/system32/"
 fi
 export WINELOADER="${WINEDIR}/bin/wine"
 export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
 export WINESERVER="${WINEDIR}/bin/wineserver"
-export PATH="${WINEDIR}/bin:${PATH}"
+if [ ! -z "${PATH}" ] ; then
+    export PATH="${WINEDIR}/bin:${PATH}"
+else 
+    export PATH="${WINEDIR}/bin"
+fi
+export WINE="${WINELOADER}"
 
-cp -f "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${WINEDIR}"/lib/wine/dxgi.dll
-cp -f "${WINEDIR}"/lib64/wine/fakedlls/dxgi.dll "${WINEDIR}"/lib64/wine/dxgi.dll
+rm -f  "${WINEDIR}"*/lib*/*steam* 
+rm -f  "${WINEDIR}"*/lib*/wine/*steam* 
+rm -f  "${WINEDIR}"*/lib*/wine/fakedlls/*steam* 
+rm -f "${WINEPREFIX}/drive_c/windows/system32"/steam* 
+rm -f "${WINEPREFIX}/drive_c/windows/syswow64"/steam* 
 
-export DXVK_STATE_CACHE_PATH="${PATH_TO_GAME}"
+cp -f "${WINEDIR}/share/fonts/"LiberationSans-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arial.ttf
+cp -f "${WINEDIR}/share/fonts/"LiberationSans-Bold.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arialbd.ttf
+cp -f "${WINEDIR}/share/fonts/"LiberationSerif-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"times.ttf
+cp -f "${WINEDIR}/share/fonts/"LiberationMono-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"cour.ttf
+cp -f "${WINEDIR}/share/fonts/"SourceHanSansSCRegular.otf "${WINEPREFIX}/drive_c/windows/Fonts/"msyh.ttf
+for wine_build_dll in ntdll mf mf3216 mferror mfmediaengine mfplat mfplay mfreadwrite vulkan-1 ; do
+    cp -f "${WINEDIR}/lib/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+    cp -f "${WINEDIR}/lib64/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+done
+export WINEDLLOVERRIDES="mf,mf3216,mferror,mfmediaengine,mfplat,mfplay,mfreadwrite=b;steam_api,steam_api64,steamclient,steamclient64=n;${WINEDLLOVERRIDES}"
+export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/gstreamer-1.0:${WINEDIR}/gstreamer-1.0"
+export WINE_GST_REGISTRY_DIR="${PORT_WINE_TMP_PATH}"
+export MEDIACONV_AUDIO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/audio.foz
+export MEDIACONV_AUDIO_TRANSCODED_FILE="${PORT_WINE_TMP_PATH}"/transcoded_audio.foz
+export MEDIACONV_VIDEO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/video.foz
+export MEDIACONV_VIDEO_TRANSCODED_FILE="${PORT_WINE_TMP_PATH}"/transcoded_video.foz
+
+if [ ! -z "${PW_LOG}" ] && [ "${PW_LOG}" != 0 ] ; then
+    export WINEDEBUG="fixme-all,err+loaddll,err+dll,err+file,err+reg"
+    export DXVK_LOG_LEVEL="info"
+    export VKD3D_DEBUG="warn"
+    export WINE_MONO_TRACE="E:System.NotImplementedException"
+else
+    export WINEDEBUG="-all"
+    export DXVK_LOG_LEVEL="none"
+    export VKD3D_DEBUG="none"
+    export DXVK_LOG_PATH="none"
+fi
+
+#default wine-mono override for FNA games
+export WINE_MONO_OVERRIDES="Microsoft.Xna.Framework.*,Gac=n"
+
+if [ ! -z "${PW_NO_ESYNC}" ] && [ "${PW_NO_ESYNC}" != 0 ] ; then
+    export WINEESYNC=""
+else
+    export WINEESYNC="1"
+fi
+if [ ! -z "${PW_NO_FSYNC}" ] && [ "${PW_NO_FSYNC}" != 0 ] ; then
+    export WINEFSYNC=""
+    export WINEFSYNC_FUTEX2="0"
+else
+    export WINEFSYNC="1"
+    export WINEFSYNC_FUTEX2="1"
+fi
+if [ ! -z "${PW_FORCE_LARGE_ADDRESS_AWARE}" ] && [ "${PW_FORCE_LARGE_ADDRESS_AWARE}" != 0 ] ; then
+    export WINE_LARGE_ADDRESS_AWARE="1"
+fi
+if [ ! -z "${PW_OLD_GL_STRING}" ] && [ "${PW_OLD_GL_STRING}" != 0 ] ; then
+    export MESA_EXTENSION_MAX_YEAR="2003" #mesa override
+    export __GL_ExtensionStringVersion="17700" #nvidia override
+fi
+if [ ! -z "${PW_NO_WRITE_WATCH}" ] && [ "${PW_NO_WRITE_WATCH}" != 0 ] ; then
+    export WINE_DISABLE_WRITE_WATCH="1"
+fi
+if [ ! -z "${PW_DXVK_NO_ASYNC}" ] && [ "${PW_DXVK_NO_ASYNC}" != 0 ] ; then
+    export RADV_DEBUG="llvm"
+fi
+if [ ! -z "${PW_NVAPI_DISABLE}" ] && [ "${PW_NVAPI_DISABLE}" != 0 ] ; then
+    export WINEDLLOVERRIDES="nvapi,nvapi64=;${WINEDLLOVERRIDES}"
+fi
+
+if [ ! -z "${PW_WINEDBG_DISABLE}" ] && [ "${PW_WINEDBG_DISABLE}" != 0 ] ; then
+    export WINEDLLOVERRIDES="winedbg.exe=;${WINEDLLOVERRIDES}"
+fi
+if [ ! -z "${PW_HIDE_NVIDIA_GPU}" ] && [ "${PW_HIDE_NVIDIA_GPU}" != 0 ] ; then
+    export WINE_HIDE_NVIDIA_GPU="1"
+fi
+if [ ! -z "${PW_VKD3D_FEATURE_LEVEL}" ] && [ "${PW_VKD3D_FEATURE_LEVEL}" != 0 ] ; then
+    export VKD3D_FEATURE_LEVEL="12_0"
+fi
+if [ ! -d "${PORT_WINE_TMP_PATH}"/dxvk_cache ] ; then
+    mkdir -p "${PORT_WINE_TMP_PATH}"/dxvk_cache 
+fi
+export DXVK_STATE_CACHE_PATH="${PORT_WINE_TMP_PATH}"/dxvk_cache
 export DXVK_STATE_CACHE=1
 export STAGING_SHARED_MEMORY=1
-########################################################################
 export optirun_on=
 export check_optimus_manager=
 export PW_NVIDIA="$(lspci | grep NVIDIA)" 
@@ -253,13 +361,15 @@ if [ ! -z "${PW_NVIDIA}" ] && [ "${check_optimus_manager}" != "intel" ]; then
     fi
     export __NV_PRIME_RENDER_OFFLOAD=1
     export __GLX_VENDOR_LIBRARY_NAME=nvidia
-    export __GL_SHADER_DISK_CACHE_PATH="${PORT_WINE_TMP_PATH}" 
+    if [ ! -d "${PORT_WINE_TMP_PATH}"/gl_shader_cache ] ; then
+        mkdir -p "${PORT_WINE_TMP_PATH}"/gl_shader_cache 
+    fi
+    export __GL_SHADER_DISK_CACHE_PATH="${PORT_WINE_TMP_PATH}/gl_shader_cache" 
     export __GL_SHADER_DISK_CACHE=1
     export __GL_SHADER_DISK_CACHE_SIZE=1000000000
     export __GL_DXVK_OPTIMIZATIONS=1
 else
     export DRI_PRIME=1
-    export VKD3D_CONFIG=force_bindless_texel_buffer
 fi
 case "$PW_FORCE_USE_VSYNC" in  # 0-FORCE_OFF, 1-FORCE_ON, 2-BY_DEFAULT
     "0")
@@ -270,7 +380,6 @@ case "$PW_FORCE_USE_VSYNC" in  # 0-FORCE_OFF, 1-FORCE_ON, 2-BY_DEFAULT
     export __GL_SYNC_TO_VBLANK=1 ;;  
 esac
 #export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/"
-########################################################################
 export int_xneur=0
 if [ $(pgrep xneur)>'0' ]; then
 	killall xneur
@@ -280,7 +389,6 @@ export PW_XKBD="$(setxkbmap -query | grep -w ru | awk '{print($2)}')"
 if [ ! -z ${PW_XKBD} ]; then
     setxkbmap us,ru
 fi
-########################################################################
 if [ -x "`which "gamemoderun" 2>/dev/null`" ] && [ "$PW_FORCE_DISABLED_GAMEMOD" -eq "0" ]; then
     # systemctl --user enable gamemoded.service 
     # systemctl --user restart gamemoded.service
@@ -291,7 +399,6 @@ else
     echo "Gamemod is not installed or disabled in vars script: PW_FORCE_DISABLED_GAMEMOD=$PW_FORCE_DISABLED_GAMEMOD"
 fi
 echo "######################################################"
-########################################################################
 PW_CREATE_PFX
 RUN_WINETRICKS_FROM_DB 
 ADD_IN_START_PORTWINE
@@ -322,12 +429,12 @@ if [ "$int_xneur" = "1"  ]; then
 fi
 if [ ! -z ${PW_XKBD} ]; then
     setxkbmap ${PW_XKBD}
-fi
-PW_STOP_PROGRESS_BAR
+fi 
 rm -f "${PORT_WINE_PATH}"/1
 rm -f "${PORT_SCRIPTS_PATH}"/1
 rm -f "${PORT_WINE_PATH}"/0
 rm -f "${PORT_SCRIPTS_PATH}"/0
+PW_STOP_PROGRESS_BAR
 }
 ########################################################################
 UPDATE_WINETRICKS ()
@@ -347,11 +454,17 @@ W_TRX_INT_VER="$(cat "${PORT_WINE_TMP_PATH}/winetricks" | grep -i 'WINETRICKS_VE
             chmod u+x "${PORT_WINE_TMP_PATH}/winetricks"
         fi
 fi #modded by Cefeiko
+sed -i '/w_try winetricks_early_wine cmd/d' "${PORT_WINE_TMP_PATH}/winetricks"
 }
 ########################################################################
 RUN_WINETRICKS_FROM_DB ()
 {
-if [ ! -z "${PW_DLL_INSTALL}" ]; then  
+UPDATE_WINETRICKS
+if [ -d "${HOME}/.cache/winetricks/" ] ; then
+    rm -fr "${HOME}/.cache/winetricks/"
+fi
+if [ ! -z "${PW_DLL_INSTALL}" ]; then
+    PW_STOP_PROGRESS_BAR
     export USE_WT_FROM_DB=0
     if [ -e "${WINEPREFIX}/winetricks.log" ] ; then
         for need_install_dll_to_pfx in ${PW_DLL_INSTALL} ; do
@@ -370,25 +483,28 @@ if [ ! -z "${PW_DLL_INSTALL}" ]; then
         ${PW_XTERM} "${PW_RUNTIME}" "${PORT_WINE_TMP_PATH}/winetricks" -q ${PW_DLL_INSTALL}
         PW_START_PROGRESS_BAR
     fi
+    PW_START_PROGRESS_BAR
+fi
+if [[ -z `cat "${WINEPREFIX}/system.reg" | grep "Windows $PW_WINDOWS_VER"` ]] ; then
+    if [ ! -z "${PW_WINDOWS_VER}" ] && [ `echo "$PW_WINDOWS_VER" | sed 's/.*/\L&/'` == "xp" ] ; then
+        export PW_WINDOWS_VER="xp64"
+    fi
+    "${PW_RUNTIME}" "${WINELOADER}" winecfg -v `echo "win${PW_WINDOWS_VER}" | sed 's/.*/\L&/'`
+    echo "Set to win${PW_WINDOWS_VER}"
 fi
 }
 ########################################################################
 PW_UPDATE ()
 {
-    if [ ! -f "${PORT_WINE_TMP_PATH}/${portname}_ver" ]
-then
+if [ ! -f "${PORT_WINE_TMP_PATH}/${portname}_ver" ] ; then
 	echo "10" > "${PORT_WINE_TMP_PATH}/${portname}_ver"
 fi
-
-if [ ! -f "${PORT_WINE_TMP_PATH}/update_notifier" ]
-then
+if [ ! -f "${PORT_WINE_TMP_PATH}/update_notifier" ] ; then
 	echo "1" > "${PORT_WINE_TMP_PATH}/update_notifier"
 fi 
-read "update_not" < "${PORT_WINE_TMP_PATH}/update_notifier"
-if [ "${update_not}" = "1" ] 
-then
-	wget -T 2 --output-document="${PORT_WINE_TMP_PATH}/${portname}_cur_ver" "http://portwine-linux.ru/current_version/${portname}_ver"
-	sleep 1
+read "update_not" < "${PORT_WINE_TMP_PATH}/update_notifier" 
+if [ "${update_not}" = "1" ] ; then
+	wget -T 2 --output-document="${PORT_WINE_TMP_PATH}/${portname}_cur_ver" "${PW_FTP_URL}/current_version/${portname}_ver" &&
 	if [ -f "${PORT_WINE_TMP_PATH}/${portname}_ver" ]
 	then
 		read current_ver < "${PORT_WINE_TMP_PATH}/${portname}_cur_ver"
@@ -430,8 +546,7 @@ else
 		TRUE "${port_time4}" \
 		FALSE "${port_time5}" \
 		FALSE "${port_time6}" `
-		if [ $? = 1 ]
-		then 
+		if [ $? = 1 ] ; then 
 			echo "1" > "${HOME}/.config/.PortTime"
 		else
 		case $xsd2 in
@@ -456,25 +571,71 @@ else
 		fi
 fi 
 }
+########################################################################
 PW_CREATE_PFX ()
 {
-sed -i '/HKCU,Software\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf 
-sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf 
-sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf 
-sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}"*/share/wine/wine.inf 
-sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}"*/share/wine/wine.inf 
+#sed -i '/HKCU,Software\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf 
+#sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf 
+#sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf 
+#sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}"*/share/wine/wine.inf 
+#sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}"*/share/wine/wine.inf 
 
-rm -f  "${WINEDIR}"*/lib*/*steam* 
-rm -f  "${WINEDIR}"*/lib*/wine/*steam* 
-rm -f  "${WINEDIR}"*/lib*/wine/fakedlls/*steam* 
-if [ ! -d "${WINEPREFIX}" ] || [ ! -d "${WINEPREFIX}"/drive_c/windows ]; then
+if [ ! -d "${WINEPREFIX}" ] || [ ! -d "${WINEPREFIX}"/drive_c/windows ] || [ ! -f "${WINEPREFIX}"/user.reg ] || [ ! -f "${WINEPREFIX}"/userdef.reg ] || [ ! -f "${WINEPREFIX}"/system.reg ] ; then
     PW_STOP_PROGRESS_BAR
     ${PW_XTERM} "${PW_RUNTIME}" "${WINELOADER}" wineboot -u 
-    PW_START_PROGRESS_BAR
+    `zenity --info --title "Info..." --text "   Updating prefix completed successfully.\n\n   Restart ${portname}." --no-wrap ` > /dev/null 2>&1  
+    exit 0
 fi
-sed -i '/steamclient/d' "${WINEPREFIX}"/*.reg 
-sed -i '/SteamPath/d' "${WINEPREFIX}"/*.reg 
-
-rm -f "${WINEPREFIX}/drive_c/windows/system32"/steam* 
-rm -f "${WINEPREFIX}/drive_c/windows/syswow64"/steam* 
+#sed -i '/steamclient/d' "${WINEPREFIX}"/*.reg 
+#sed -i '/SteamPath/d' "${WINEPREFIX}"/*.reg 
+}
+########################################################################
+PW_SCRIPTS_UPDATE ()
+{
+if [ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ] ; then
+	echo "1000" > "${PORT_WINE_TMP_PATH}/scripts_ver"
+fi
+wget -T 2 --output-document="${PORT_WINE_TMP_PATH}/scripts_cur_ver" "${PW_FTP_URL}/current_version/scripts_ver"
+if [ "$?" == "0" ] ; then
+    read scripts_current_ver < "${PORT_WINE_TMP_PATH}/scripts_cur_ver"
+    read scripts_install_ver < "${PORT_WINE_TMP_PATH}/scripts_ver"
+    if [ -f "${PORT_WINE_TMP_PATH}/scripts_cur_ver" ] ; then
+        rm -f "${PORT_WINE_TMP_PATH}/scripts_cur_ver"
+    fi
+    if  [ "${scripts_current_ver}" -gt "${scripts_install_ver}" ] ; then	
+        echo "######################################################"
+        echo "Update scripts..."
+        wget -c -T 2 --output-document="${PORT_WINE_TMP_PATH}/scripts.tar.xz" "${PW_FTP_URL}/dist/scripts.tar.xz"
+        tar -Jxvf "${PORT_WINE_TMP_PATH}/scripts.tar.xz" -C "${PORT_WINE_PATH}/data/"
+        if [ "$?" == "0" ] ; then
+            rm -f "${PORT_WINE_TMP_PATH}/scripts.tar.xz"
+            echo "${scripts_current_ver}" > "${PORT_WINE_TMP_PATH}/scripts_ver"
+            `zenity --info --title "Info..." --text "   Updating scripts and database of games\n   and programs completed successfully.\n\n   Restart ${portname}." --no-wrap ` > /dev/null 2>&1  
+            exit 0
+        fi
+    fi
+fi
+}
+########################################################################
+PW_RUN ()
+{
+if [ ! -z "$portwine_exe" ] ; then
+    export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
+    cd "$PATH_TO_GAME"
+else
+    cd "${WINEPREFIX}/drive_c"
+fi
+if [ ! -z "${PW_GAMEMODERUN}" ] && [ "${PW_GAMEMODERUN}" != 0 ] ; then
+    if [ ! -z ${optirun_on} ]; then
+        ${optirun_on}  $PW_TERM "${PW_RUNTIME}" gamemoderun "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} 
+    else
+        $PW_TERM "${PW_RUNTIME}" gamemoderun "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}
+    fi
+else 
+    if [ ! -z ${optirun_on} ]; then
+        ${optirun_on}  $PW_TERM "${PW_RUNTIME}" "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} 
+    else
+        $PW_TERM "${PW_RUNTIME}" "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}
+    fi
+fi
 }

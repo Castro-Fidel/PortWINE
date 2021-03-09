@@ -117,10 +117,13 @@ else
         	rm -fR "${PORT_WINE_PATH}/data/${CLEAN_PORT}"
         fi
     done
-	if [ -d "${PORT_WINE_PATH}/data/pfx/" ];then
+	if [ -d "${PORT_WINE_PATH}/data/pfx/" ] ; then
         export PORT_PFX="${PORT_WINE_PATH}/data/pfx"
         mv -f "${PORT_PFX}" "${PORT_PFX}_old"
     fi
+fi
+if [ -d "${PORT_WINE_PATH}/data/scripts" ] ; then
+    rm -f "${PORT_WINE_PATH}/data/scripts/"* > /dev/null 2>&1
 fi
 ########################################################################
 mkdir -p "${PORT_WINE_PATH}/data/tmp"
@@ -137,7 +140,7 @@ read "update_loc" < "${PORT_WINE_TMP_PATH}/${portname}_loc"
 export update_loc=${update_loc}
 ########################################################################
 cd "${PORT_WINE_PATH}" 
-tail -n +159 "${links}/${setup_script}" > "${PORT_WINE_PATH}/${ARCH_NAME}"
+tail -n +162 "${links}/${setup_script}" > "${PORT_WINE_PATH}/${ARCH_NAME}"
 if [ "${s_install}" = "1" ]; then
 	tar -Jxvf "${PORT_WINE_PATH}/${ARCH_NAME}" -C "${PORT_WINE_PATH}/"
 else
@@ -145,7 +148,7 @@ else
 fi
 chmod 755 -R "${PORT_WINE_PATH}"
 mv -f "${PORT_WINE_PATH}/${ARCH_NAME}" "${PORT_WINE_PATH}/data/tmp"
-sed -n 1,158p "${links}/${setup_script}" > "${PORT_WINE_PATH}/data/tmp/${setup_script}"
+sed -n 1,161p "${links}/${setup_script}" > "${PORT_WINE_PATH}/data/tmp/${setup_script}"
 ########################################################################
 if [ -d "${PORT_PFX}_old" ];then
 	rm -fR "${PORT_PFX}"
@@ -154,5 +157,5 @@ fi
 echo "${portname}" > "${PORT_WINE_PATH}/data/tmp/portname"
 ########################################################################
 cd "${PORT_WINE_PATH}/data/scripts"
-sh "${PORT_WINE_PATH}/data/scripts/setup" && exit 0
+sh "${PORT_WINE_PATH}/data/scripts/setup.sh" && exit 0
 ################################ARCH_BIN################################

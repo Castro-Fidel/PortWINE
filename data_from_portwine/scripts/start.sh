@@ -4,6 +4,7 @@ if [ -f "$1" ]; then
     export portwine_exe="$(readlink -f "$1")"
 fi
 . "$(dirname $(readlink -f "$0"))/runlib"
+PW_SCRIPTS_UPDATE
 ########################################################################
 PORTWINE_LAUNCH ()
 {
@@ -11,44 +12,21 @@ KILL_PORTWINE
 START_PORTWINE
 PORTWINE_MSI=`basename "${portwine_exe}" | grep .msi`
 PORTWINE_BAT=`basename "${portwine_exe}" | grep .bat`
-if [ ! -z "${PORTWINE_MSI}" ]; then   
+if [ ! -z "${PW_VIRTUAL_DESKTOP}" ] && [ "${PW_VIRTUAL_DESKTOP}" == "1" ] ; then
+    pw_screen_resolution=`xrandr --current | grep "*" | awk '{print $1;}' | head -1`
+    PW_RUN explorer "/desktop=portwine,${pw_screen_resolution}" "$portwine_exe"
+elif [ ! -z "${PORTWINE_MSI}" ]; then   
     echo "PORTWINE_MSI=${PORTWINE_MSI}"
-    export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
-    cd "$PATH_TO_GAME"
-    if [ ! -z ${optirun_on} ]; then
-        $PW_TERM "${PW_RUNTIME}" ${optirun_on} "${port_on_run}" "run" msiexec /i "$portwine_exe" 
-    else
-        $PW_TERM "${PW_RUNTIME}" "${port_on_run}" "run" msiexec /i "$portwine_exe"
-    fi
+    PW_RUN msiexec /i "$portwine_exe"
 elif [ ! -z "${PORTWINE_BAT}" ]; then   
     echo "PORTWINE_BAT=${PORTWINE_BAT}"
-    export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
-    cd "$PATH_TO_GAME"
-    if [ ! -z ${optirun_on} ]; then
-        $PW_TERM "${PW_RUNTIME}" ${optirun_on} "${port_on_run}" "run" explorer "$portwine_exe" 
-    else
-        $PW_TERM "${PW_RUNTIME}" "${port_on_run}" "run" explorer "$portwine_exe"
-    fi
+    PW_RUN explorer "$portwine_exe" 
 elif [ ! -z "${portwine_exe}" ]; then
-    export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
-    cd "$PATH_TO_GAME"
-    if [ ! -z ${optirun_on} ]; then
-        $PW_TERM "${PW_RUNTIME}" ${optirun_on} "${port_on_run}" "run" "$portwine_exe" 
-    else
-        $PW_TERM "${PW_RUNTIME}" "${port_on_run}" "run" "$portwine_exe" 
-    fi
+    PW_RUN "$portwine_exe"
 elif [ -z "${gamestart}" ]; then  
-    if [ ! -z $optirun_on ]; then
-        $PW_TERM "${PW_RUNTIME}" ${optirun_on} "${port_on_run}" "run" explorer 
-    else
-        $PW_TERM "${PW_RUNTIME}" "${port_on_run}" "run" explorer
-    fi
+    PW_RUN explorer
 else
-    if [ ! -z $optirun_on ]; then
-        $PW_TERM "${PW_RUNTIME}" ${optirun_on} "${port_on_run}" "run" "${gamestart}"  
-    else
-        $PW_TERM "${PW_RUNTIME}" "${port_on_run}" "run" "${gamestart}"
-    fi
+    PW_RUN "${gamestart}"
 fi
 }
 ########################################################################
@@ -61,7 +39,7 @@ else
     --title="${sc_path}" --filename="${PORT_WINE_PATH}/data/pfx/drive_c/")
     if [ $? -eq 1 ];then exit 1; fi
 fi
-PORTPROTON_NAME="$(basename "${PORTPROTON_EXE}" | sed s/".exe"/""/g )"
+PORTPROTON_NAME="$(basename "${PORTPROTON_EXE}" | sed s/".exe"/""/gi )"
 PORTPROTON_PATH="$( cd "$( dirname "${PORTPROTON_EXE}" )" >/dev/null 2>&1 && pwd )" 
 if [ -x "`which wrestool 2>/dev/null`" ]; then
     wrestool -x --output="${PORTPROTON_PATH}/" -t14 "${PORTPROTON_EXE}"
@@ -69,23 +47,21 @@ if [ -x "`which wrestool 2>/dev/null`" ]; then
     cp -f "${PORTPROTON_EXE}.ico" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.ico"
     rm -f "${PORTPROTON_PATH}/"*.ico
 fi
-PORTPROTON_CMD=""
-PORTPROTON_CMD=$(zenity --entry --text "${sc_cmd}")
 if [ $? -eq 1 ];then exit 1; fi
 export PW_VULKAN_TO_DB=`cat "${PORT_WINE_TMP_PATH}/pw_vulkan"`
 if [ ! -z "${PORTWINE_DB}" ]; then
-    PORTWINE_DB_FILE=`grep -il "${PORTWINE_DB}" "${PORT_SCRIPTS_PATH}/portwine_db"/* | awk -F '.exe' '{print $1}'`
+    PORTWINE_DB_FILE=`grep -il "${PORTWINE_DB}" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
     if [ ! -z "${PORTWINE_DB_FILE}" ] && [ -z "${PW_VULKAN_USE}" ]; then
         echo "export PW_VULKAN_USE=${PW_VULKAN_TO_DB}" >> "${PORTWINE_DB_FILE}"
     elif [ -z "${PORTWINE_DB_FILE}" ]; then
         echo "#!/bin/bash
-#Author: 
+#Author: "${USER}"
 #"${PORTWINE_DB}.exe" 
 #Rating=1-5
 ################################################
-export PW_VULKAN_USE=${PW_VULKAN_TO_DB}
-export LAUNCH_PARAMETERS=\"${PORTPROTON_CMD}\"" > "${PORT_SCRIPTS_PATH}/portwine_db/$PORTWINE_DB"
+export PW_VULKAN_USE=${PW_VULKAN_TO_DB}" > "${PORT_SCRIPTS_PATH}/portwine_db/$PORTWINE_DB"
     fi
+    cat "${PORT_SCRIPTS_PATH}/portwine_db/default" | grep "##" >> "${PORT_SCRIPTS_PATH}/portwine_db/$PORTWINE_DB"
 fi
 name_desktop="${PORTPROTON_NAME}" 
 echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
@@ -108,7 +84,9 @@ xdg-open "${PORT_WINE_PATH}" 2>1 >/dev/null &
 PORTWINE_DEBUG ()
 {
 KILL_PORTWINE
-export PW_USE_TERMINAL=1
+export PW_LOG=1
+export PW_WINEDBG_DISABLE=0
+export PW_XTERM="${WINELIB}/amd64/usr/bin/xterm -l -lf ${PORT_WINE_PATH}/${portname}.log.wine -geometry 159x37 -e"
 START_PORTWINE
 echo "${port_deb1}" > "${PORT_WINE_PATH}/${portname}.log"
 echo "${port_deb2}" >> "${PORT_WINE_PATH}/${portname}.log"
@@ -166,9 +144,7 @@ echo "Version WINE in the Port" >> "${PORT_WINE_PATH}/${portname}.log"
 echo "-------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
 echo "log WINE:" >> "${PORT_WINE_PATH}/${portname}.log"
 
-export PW_LOG=1
 export DXVK_HUD="full"
-export PW_WINEDBG_DISABLE=0
 export PW_XTERM="${WINELIB}/amd64/usr/bin/xterm -l -lf ${PORT_WINE_PATH}/${portname}.log.wine -geometry 159x37 -e"
 
 if [ -f "${PORT_WINE_PATH}/${portname}.log.wine" ]; then
@@ -178,23 +154,26 @@ if [ ! -z "${portwine_exe}" ]; then
     export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
     cd "$PATH_TO_GAME"
     if [ ! -z ${optirun_on} ]; then
-        $PW_XTERM "${PW_RUNTIME}" ${optirun_on} "${port_on_run}" "run" "$portwine_exe" 2>&1 &
+        $PW_XTERM "${WINELOADER}" ${optirun_on} "$portwine_exe" ${LAUNCH_PARAMETERS} 2>&1 &
     else
-        $PW_XTERM "${PW_RUNTIME}" "${port_on_run}" "run" "$portwine_exe" 2>&1 &
+        $PW_XTERM "${WINELOADER}" "$portwine_exe" ${LAUNCH_PARAMETERS} 2>&1 &
     fi
-elif [ -z "${gamestart}" ]; then  
+elif [ -z "${gamestart}" ]; then 
     if [ ! -z $optirun_on ]; then
-        $PW_XTERM "${PW_RUNTIME}" ${optirun_on} "${port_on_run}" "run" explorer 2>&1 &
+        $PW_XTERM "${WINELOADER}" ${optirun_on} explorer 2>&1 &
     else
-        $PW_XTERM "${PW_RUNTIME}" "${port_on_run}" "run" explorer 2>&1 &
+        $PW_XTERM "${WINELOADER}" explorer 2>&1 &
     fi
 else
+    export PATH_TO_GAME="$( cd "$( dirname "${gamestart}" )" >/dev/null 2>&1 && pwd )"
+    cd "$PATH_TO_GAME" 
     if [ ! -z $optirun_on ]; then
-        $PW_XTERM "${PW_RUNTIME}" ${optirun_on} "${port_on_run}" "run" "${gamestart}" 2>&1 &
+        $PW_XTERM "${WINELOADER}" ${optirun_on} "${gamestart}" ${LAUNCH_PARAMETERS} 2>&1 &
     else
-        $PW_XTERM "${PW_RUNTIME}" "${port_on_run}" "run" "${gamestart}" 2>&1 &
+        $PW_XTERM "${WINELOADER}" "${gamestart}" ${LAUNCH_PARAMETERS} 2>&1 &
     fi
 fi
+
 zenity --info --title "DEBUG" --text "${port_debug}" --no-wrap && "${WINESERVER}" -k
 STOP_PORTWINE | sszen
 cat "${PORT_WINE_PATH}/${portname}.log.wine" >> "${PORT_WINE_PATH}/${portname}.log"
@@ -209,37 +188,26 @@ echo "$deb_text" | zenity --text-info --editable \
 PW_WINECFG ()
 {
 START_PORTWINE
-$PW_TERM "${PW_RUNTIME}" "${port_on_run}" "run" "winecfg"
+PW_RUN winecfg
 } 
 ########################################################################
 PW_WINEFILE ()
 {
 START_PORTWINE
-cd "${WINEPREFIX}/drive_c/"
-if [ ! -z ${optirun_on} ]
-then
-    $PW_TERM "${PW_RUNTIME}" ${optirun_on} "${port_on_run}" "run" "explorer" 
-else
-    $PW_TERM "${PW_RUNTIME}" "${port_on_run}" "run" "explorer" 
-fi
+PW_RUN "explorer" 
 }
 ########################################################################
 PW_WINECMD ()
 {
 export PW_USE_TERMINAL=1
 START_PORTWINE
-if [ ! -z ${optirun_on} ]
-then
-    $PW_TERM "${PW_RUNTIME}" "${optirun_on}" "${port_on_run}" "run" "cmd"
-else
-    $PW_TERM "${PW_RUNTIME}" "${port_on_run}" "run" "cmd"
-fi
+PW_RUN "cmd"
 }
 ########################################################################
 PW_WINEREG ()
 {
 START_PORTWINE
-$PW_TERM "${PW_RUNTIME}" "${port_on_run}" "run" "regedit"
+PW_RUN "regedit"
 }
 ########################################################################
 PW_WINETRICKS ()
@@ -247,7 +215,7 @@ PW_WINETRICKS ()
 UPDATE_WINETRICKS
 export PW_USE_TERMINAL=1
 START_PORTWINE
-$PW_TERM "${PW_RUNTIME}" "${PORT_WINE_TMP_PATH}/winetricks" -q --force
+$PW_TERM "${PORT_WINE_TMP_PATH}/winetricks" -q --force
 }
 ########################################################################
 if [ ! -z "${portwine_exe}" ]; then

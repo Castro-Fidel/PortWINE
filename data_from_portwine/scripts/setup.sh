@@ -83,13 +83,10 @@ do
 	"Icon="${PORT_WINE_PATH}/data/img/s.png""" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 done
-
 chmod u+x "${PORT_SCRIPTS_PATH}/"*
-
 if [ ! -d "${PORT_WINE_PATH}/drive_c" ]; then
 	ln -s "${PORT_WINE_PATH}/data/pfx/drive_c/" "${PORT_WINE_PATH}/drive_c"
 fi
-
 if [ -d "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public" ] && [ ! -L "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public" ]; then
 	cp -fr "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public"/* "${PORT_WINE_PATH}/data/pfx/drive_c/users/steamuser/"
 	rm -fr "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public"
@@ -97,14 +94,13 @@ elif [ -L "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public" ]; then
 	rm -fr "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public"
 fi
 ln -s "${PORT_WINE_PATH}/data/pfx/drive_c/users/steamuser" "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public"
-
 if [ ! -d "${PORT_WINE_PATH}/data/pfx/drive_c/users/${USER}" ]; then
 	ln -s "${PORT_WINE_PATH}/data/pfx/drive_c/users/steamuser" "${PORT_WINE_PATH}/data/pfx/drive_c/users/${USER}"
 fi
-
-sed -i "s/xuser/${USER}/g" "${PORT_WINE_PATH}/data/pfx/"*.reg
-sed -i "s/vagrant/${USER}/g" "${PORT_WINE_PATH}/data/pfx/"*.reg
-
+if [ -e "${PORT_WINE_PATH}/data/pfx/system.reg" ] || [ -e "${PORT_WINE_PATH}/data/pfx/user.reg" ] || [ -e "${PORT_WINE_PATH}/data/pfx/userdef.reg" ]; then
+	sed -i "s/xuser/${USER}/g" "${PORT_WINE_PATH}/data/pfx/"*.reg
+	sed -i "s/vagrant/${USER}/g" "${PORT_WINE_PATH}/data/pfx/"*.reg
+fi
 if [ "${s_install}" = "1" ]; then
 	echo "Installation completed successfully."
 else
