@@ -47,7 +47,7 @@ if [ -x "`which wrestool 2>/dev/null`" ]; then
     cp -f "${PORTPROTON_EXE}.ico" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.ico"
     rm -f "${PORTPROTON_PATH}/"*.ico
 fi
-if [ $? -eq 1 ];then exit 1; fi
+if [ $? -eq 1 ] ; then exit 1 ; fi
 export PW_VULKAN_TO_DB=`cat "${PORT_WINE_TMP_PATH}/pw_vulkan"`
 if [ ! -z "${PORTWINE_DB}" ]; then
     PORTWINE_DB_FILE=`grep -il "${PORTWINE_DB}" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
@@ -147,9 +147,7 @@ echo "log WINE:" >> "${PORT_WINE_PATH}/${portname}.log"
 export DXVK_HUD="full"
 export PW_XTERM="${WINELIB}/amd64/usr/bin/xterm -l -lf ${PORT_WINE_PATH}/${portname}.log.wine -geometry 159x37 -e"
 
-if [ -f "${PORT_WINE_PATH}/${portname}.log.wine" ]; then
-	rm -f "${PORT_WINE_PATH}/${portname}.log.wine"
-fi
+try_remove_file "${PORT_WINE_PATH}/${portname}.log.wine"
 if [ ! -z "${portwine_exe}" ]; then
     export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
     cd "$PATH_TO_GAME"
@@ -168,21 +166,19 @@ else
     export PATH_TO_GAME="$( cd "$( dirname "${gamestart}" )" >/dev/null 2>&1 && pwd )"
     cd "$PATH_TO_GAME" 
     if [ ! -z $optirun_on ]; then
-        $PW_XTERM "${WINELOADER}" ${optirun_on} "${gamestart}" ${LAUNCH_PARAMETERS} 2>&1 &
+        ${optirun_on} $PW_XTERM "${PW_RUNTIME}" "${WINELOADER}" "${gamestart}" ${LAUNCH_PARAMETERS} 2>&1 &
     else
-        $PW_XTERM "${WINELOADER}" "${gamestart}" ${LAUNCH_PARAMETERS} 2>&1 &
+        $PW_XTERM "${PW_RUNTIME}" "${WINELOADER}" "${gamestart}" ${LAUNCH_PARAMETERS} 2>&1 &
     fi
 fi
 
 zenity --info --title "DEBUG" --text "${port_debug}" --no-wrap && "${WINESERVER}" -k
 STOP_PORTWINE | sszen
 cat "${PORT_WINE_PATH}/${portname}.log.wine" >> "${PORT_WINE_PATH}/${portname}.log"
-rm -f "${PORT_WINE_PATH}/${portname}.log.wine"
+try_remove_file "${PORT_WINE_PATH}/${portname}.log.wine"
 deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++') 
 echo "$deb_text" > "${PORT_WINE_PATH}/${portname}.log"
-echo "$deb_text" | zenity --text-info --editable \
---width=800 --height=600 \
---title="${portname}.log"
+echo "$deb_text" | zenity --text-info --editable --width=800 --height=600 --title="${portname}.log"
 }
 ########################################################################
 PW_WINECFG ()
@@ -215,7 +211,7 @@ PW_WINETRICKS ()
 UPDATE_WINETRICKS
 export PW_USE_TERMINAL=1
 START_PORTWINE
-$PW_TERM "${PORT_WINE_TMP_PATH}/winetricks" -q --force
+$PW_TERM "${PW_RUNTIME}" "${PORT_WINE_TMP_PATH}/winetricks" -q --force
 }
 ########################################################################
 if [ ! -z "${portwine_exe}" ]; then

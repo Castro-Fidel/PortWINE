@@ -19,12 +19,12 @@ export PROGS_INST=""
 export vexit=0
 for PROGS in "wget" "curl" "tar" 
 do
-	if [ ! -x "`which "${PROGS}" 2>/dev/null`" ];then
+	if [ ! -x "`which "${PROGS}" 2>/dev/null`" ] ; then
 		PROGS_INST="${PROGS_INST} ${PROGS}"
 		vexit=1
 	fi
 done
-if [ "${vexit}" -eq "1" ];then
+if [ "${vexit}" -eq "1" ] ; then
     echo "You will need to install: ${PROGS_INST}, and restart the script" 
     exit 1
 fi
@@ -36,10 +36,10 @@ ARCH_NAME="${setup_script}.tar.xz"
 deflink="/home/${USER}/PortWINE/${portname}"
 [ $(id -u) -eq 0 ] && echo "Do not run the script from the superuser!" && zenity --error --text "Do not run the script from the superuser!" 2> /dev/null  && exit 1
 ########################################################################
-if [ "$1" = "-rus" ]; then
+if [ "$1" = "-rus" ] ; then
 	SET_LANG="Russian"
 	export s_install="1"
-elif [ "$1" = "-eng" ]; then
+elif [ "$1" = "-eng" ] ; then
 	SET_LANG="English"
 	export s_install="1"
 else
@@ -47,7 +47,7 @@ else
 --column="Set:" --column "Language:" \
 	TRUE "Russian" \
 	FALSE "English" ` 2> /dev/null  
-	if [ $? -eq 1 ];then exit 1; fi
+	if [ $? -eq 1 ] ; then exit 1 ; fi
 	case $SET_LANG in
 		"Russian")
 			INFO_TEXT="Вы запустили установщик PortWINE ${gamename} версии ${port_ver}. \n\nЭто не коммерческий продукт и развивается исключительно за идею и Ваши пожертвования. \nВсе права сторонего програмного обеспечения принадлежат их владельцам! \nПродолжая установку вы автоматически соглашаетесь с данными условиями." > /dev/null 2>&1 ;;	
@@ -55,10 +55,10 @@ else
 			INFO_TEXT="You run the installer PortWINE ${gamename} v. ${port_ver}. \n\nThis is not a commercial product and developed exclusively for the idea and donate. \nAll rights to third-party software belong to their respective owners! \nContinuing the installation of you agree to these terms." > /dev/null 2>&1 ;;
 	esac
 	`zenity --info --title "INFO" --text "$INFO_TEXT" --no-wrap ` 2> /dev/null 
-	if [ $? -eq 1 ];then echo "error" && exit 1; fi
+	if [ $? -eq 1 ] ; then echo "error" && exit 1 ; fi
 fi
 ########################################################################
-if [ "${s_install}" = "1" ]; then
+if [ "${s_install}" = "1" ] ; then
 	echo "${portname} is installed in ${deflink}"
 	D_PATH="${deflink}"
 else
@@ -68,7 +68,7 @@ else
 			--column="Выбор" --column "Путь:" \
 			TRUE "${deflink}" \
 			FALSE "Другой путь..." ` 2> /dev/null
-			if [ $? -eq 1 ];then exit 1; fi
+			if [ $? -eq 1 ] ; then exit 1 ; fi
 			case $inst1 in
 				"${deflink}")
 					D_PATH="${deflink}" ;;	
@@ -90,10 +90,10 @@ else
 					D_PATH="${D_PATH}/${portname}" ;;
 			esac ;;
 	esac
-	if [ $? -eq 1 ];then echo "error" && exit 1; fi
+	if [ $? -eq 1 ] ; then echo "error" && exit 1 ; fi
 fi
 ########################################################################
-if [ "${s_install}" != "1" ]; then
+if [ "${s_install}" != "1" ] ; then
 	case $SET_LANG in
 		"Russian")
 			zen() {
@@ -104,16 +104,16 @@ if [ "${s_install}" != "1" ]; then
 			zenity --progress --title="Install..." --text="Install ${portname}" --pulsate --auto-close --auto-kill --width=450 > /dev/null 2>&1  
 			} ;;
 	esac
-	if [ $? -eq 1 ];then echo "error" && exit 1; fi
+	if [ $? -eq 1 ] ; then echo "error" && exit 1 ; fi
 fi
 ########################################################################
 export PORT_WINE_PATH="${D_PATH}"
-if [ ! -d "${PORT_WINE_PATH}" ];then
+if [ ! -d "${PORT_WINE_PATH}" ] ; then
     mkdir -p "$PORT_WINE_PATH"
 else
     for CLEAN_PORT in "dist" "dist_dxvk" "dist_vkd3d" "libs" "tmp" 
     do
-        if [ -d "${PORT_WINE_PATH}/data/${CLEAN_PORT}" ];then
+        if [ -d "${PORT_WINE_PATH}/data/${CLEAN_PORT}" ] ; then
         	rm -fR "${PORT_WINE_PATH}/data/${CLEAN_PORT}"
         fi
     done
@@ -134,14 +134,14 @@ case $SET_LANG in
 	"English")
 		echo "ENG" > "${PORT_WINE_PATH}/data/tmp/${portname}_loc" ;;
 esac
-if [ $? -eq 1 ];then echo "error" && exit 1; fi
+if [ $? -eq 1 ] ; then echo "error" && exit 1 ; fi
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 read "update_loc" < "${PORT_WINE_TMP_PATH}/${portname}_loc"
 export update_loc=${update_loc}
 ########################################################################
 cd "${PORT_WINE_PATH}" 
 tail -n +162 "${links}/${setup_script}" > "${PORT_WINE_PATH}/${ARCH_NAME}"
-if [ "${s_install}" = "1" ]; then
+if [ "${s_install}" = "1" ] ; then
 	tar -Jxvf "${PORT_WINE_PATH}/${ARCH_NAME}" -C "${PORT_WINE_PATH}/"
 else
 	tar -Jxvf "${PORT_WINE_PATH}/${ARCH_NAME}" -C "${PORT_WINE_PATH}/" | zen
@@ -150,7 +150,7 @@ chmod 755 -R "${PORT_WINE_PATH}"
 mv -f "${PORT_WINE_PATH}/${ARCH_NAME}" "${PORT_WINE_PATH}/data/tmp"
 sed -n 1,161p "${links}/${setup_script}" > "${PORT_WINE_PATH}/data/tmp/${setup_script}"
 ########################################################################
-if [ -d "${PORT_PFX}_old" ];then
+if [ -d "${PORT_PFX}_old" ] ; then
 	rm -fR "${PORT_PFX}"
 	mv -f "${PORT_PFX}_old" "${PORT_PFX}"
 fi
