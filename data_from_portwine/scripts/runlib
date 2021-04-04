@@ -277,14 +277,20 @@ fi
         if [ -d "${WINEDIR}_vkd3d" ]; then
             export WINEDIR="${WINEDIR}_vkd3d"
         fi
-        for wine_vkd3d_dll in d3d12 ; do
+        for wine_vkd3d_dll in d3d12 libvkd3d-proton-utils-2 ; do
             try_copy_file "${PW_VULKAN_DLL}/vkd3d-proton/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
             try_copy_file "${PW_VULKAN_DLL}/vkd3d-proton/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
             [ "$?" == 0 ] && var_winedlloverride_update "${wine_vkd3d_dll}=n"
-        done    
-        try_copy_file "${WINEDIR}/lib/wine/fakedlls/dxgi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-        try_copy_file "${WINEDIR}/lib64/wine/fakedlls/dxgi.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-        var_winedlloverride_update "dxgi=b"
+        done
+        if [ ! -z "${PW_DXGI_FROM_DXVK}" ] && [ "${PW_DXGI_FROM_DXVK}" != 0 ] ; then
+            try_copy_file "${PW_VULKAN_DLL}/dxvk/x32/dxgi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+            try_copy_file "${PW_VULKAN_DLL}/dxvk/x64/dxgi.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            var_winedlloverride_update "dxgi=n"
+        else
+            try_copy_file "${WINEDIR}/lib/wine/fakedlls/dxgi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+            try_copy_file "${WINEDIR}/lib64/wine/fakedlls/dxgi.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            var_winedlloverride_update "dxgi=b"
+        fi
         export PW_WINDOWS_VER="10"
         echo "Use VKD3D (DX12 to vulkan)"
     fi
@@ -319,7 +325,7 @@ fi
         [ "$?" == 0 ] && var_winedlloverride_update "${wine_build_dll}=b"
     done
     var_winedlloverride_update "vstdlib_s,tier0_s,steam,steam2,steam_api,steam_api64,steamclient,steamclient64=n"
-    export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/gstreamer-1.0:${WINEDIR}/gstreamer-1.0"
+#    export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/gstreamer-1.0:${WINEDIR}/gstreamer-1.0"
     export WINE_GST_REGISTRY_DIR="${PORT_WINE_TMP_PATH}"
     export MEDIACONV_AUDIO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/audio.foz
     export MEDIACONV_AUDIO_TRANSCODED_FILE="${PORT_WINE_TMP_PATH}"/transcoded_audio.foz
