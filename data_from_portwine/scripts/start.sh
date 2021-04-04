@@ -234,9 +234,7 @@ else
     OUTPUT_START=$("${pw_yad}" --wrap-width=250 --borders=15 --form --center  \
     --title "$portname"  --image "$PW_GUI_ICON_PATH/port_proton.png" --separator=";" \
     --field="WINE:CB" "DXVK ${PW_WINE_VER_DXVK}"!"VKD3D ${PW_WINE_VER_VKD3D}"!"OPENGL ${PW_WINE_VER_DXVK}" \
-    --button='CREATE  SHORTCUT'!!"111":100 \
     --button='DEBUG'!!'проверка подсказки1':102 \
-    --button='LAUNCH'!!'проверка подсказки3':106 \
     --button='WINECFG'!!"Run winecfg for $portname":108 \
     --button='WINEFILE'!!'проверка подсказки1':110 \
     --button='WINECMD'!!'проверка подсказки2':112 \
