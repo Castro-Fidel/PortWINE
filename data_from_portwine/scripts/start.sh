@@ -147,9 +147,9 @@ PORTWINE_DEBUG () {
         export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
         cd "$PATH_TO_GAME"
         if [ ! -z ${optirun_on} ]; then
-            ${optirun_on} $PW_XTERM "${WINELOADER}" explorer "$portwine_exe" ${LAUNCH_PARAMETERS} 2>&1 &
+            ${optirun_on} $PW_XTERM "${WINELOADER}" "$portwine_exe" ${LAUNCH_PARAMETERS[*]}  2>&1 &
         else
-            $PW_XTERM "${WINELOADER}" explorer "$portwine_exe" ${LAUNCH_PARAMETERS} 2>&1 &
+            $PW_XTERM "${WINELOADER}" "$portwine_exe" ${LAUNCH_PARAMETERS[*]}  2>&1 &
         fi
     elif [ -z "${gamestart}" ]; then 
         if [ ! -z $optirun_on ]; then
@@ -161,9 +161,9 @@ PORTWINE_DEBUG () {
         export PATH_TO_GAME="$( cd "$( dirname "${gamestart}" )" >/dev/null 2>&1 && pwd )"
         cd "$PATH_TO_GAME" 
         if [ ! -z $optirun_on ]; then
-            ${optirun_on} $PW_XTERM "${PW_RUNTIME}" "${WINELOADER}" explorer "${gamestart}" ${LAUNCH_PARAMETERS} 2>&1 &
+            ${optirun_on} $PW_XTERM "${PW_RUNTIME}" "${WINELOADER}" "${gamestart}" ${LAUNCH_PARAMETERS[*]}  2>&1 &
         else
-            $PW_XTERM "${PW_RUNTIME}" "${WINELOADER}" explorer "${gamestart}" ${LAUNCH_PARAMETERS} 2>&1 &
+            $PW_XTERM "${PW_RUNTIME}" "${WINELOADER}" "${gamestart}" ${LAUNCH_PARAMETERS[*]}  2>&1 &
         fi
     fi
 

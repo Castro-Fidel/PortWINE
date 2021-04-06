@@ -77,16 +77,14 @@ try_force_link_dir () {
     if [ ! -d "$1" ] ; then	print_info "directory $1 not found for link"
     elif [ -z "$2" ] ; then	print_error "no way to link directory $1"
     else
-        check_target_dir=`echo ${1} | awk -F/ '{print $NF}'`
-        [ -d "${2}${check_target_dir}" ] && rm -fr "${2}${check_target_dir}"
-        ln -s "$1" "$2"
+        ln -sf "$1" "$2"
         [ "$?" != 0 ] && print_error "failed to link directory $1 to $2" || return 0
     fi
     return 1  
 }
 try_download () {
     wget -c -t 3 -T 2 "$1" --output-document="$2"
-    [ "$?" != 0 ] && print_error "failed to download $1. Scipping." && return 1 || return 0 
+    [ "$?" != 0 ] && print_error "failed to download $1. Scipping." && export DOWNLOAD_ERROR=1 && return 1 || export DOWNLOAD_ERROR=0 && return 0 
 }
 create_new_dir () {
     if [ ! -d "$1" ] ; then
@@ -140,8 +138,8 @@ if [ ! -e "${PORT_WINE_TMP_PATH}/${portname}_ver" ]; then
 	echo "10" > "${PORT_WINE_TMP_PATH}/${portname}_ver"
 fi
 
-export pw_libs_ver="_v6"
-export pw_gecko_mono_ver="_v1"
+export pw_libs_ver="_v7"
+export pw_gecko_mono_ver="_v2"
 export PW_VULKAN_DLL="${PORT_WINE_PATH}"/data/vulkan
 export WINEDIR="${PORT_WINE_PATH}"/data/dist
 export WINELIB="${HOME}/.PortWINE/libs${pw_libs_ver}"
@@ -169,12 +167,12 @@ if [ -f "${WINEDIR}"_vkd3d/version ]; then
     PW_WINE_VER_VKD3D="( wine: $PW_WINE_VER_VKD3D )"
     zen_width=1000
 fi
-if [ ! -e "${WINELIB}/run.sh" ] || [ ! -e "${WINELIB}/usr/bin/yad" ] || [ ! -e "${WINELIB}/amd64/usr/bin/vkcube" ] || [ ! -e "${WINELIB}/amd64/usr/bin/xterm" ]; then 
+if [ ! -e "${WINELIB}/run.sh" ] || [ ! -e "${WINELIB}/usr/bin/yad" ] || [ ! -e "${WINELIB}/amd64/usr/bin/vkcube" ] || [ ! -e "${WINELIB}/amd64/usr/bin/xterm" ] || [ -e "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" ] ; then 
     echo "Download and install libraries..."
     try_download "${PW_FTP_URL}/dist/libs${pw_libs_ver}.tar.xz" "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" | sszen &&
-    tar -Jxvf "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" -C "${HOME}/.PortWINE/" | sszen &&
-    rm -f "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz"
-    "${WINELIB}"/setup.sh --force
+    [ "${DOWNLOAD_ERROR}" != 1 ] && tar -Jxvf "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" -C "${HOME}/.PortWINE/" | sszen &&
+    [ "${DOWNLOAD_ERROR}" != 1 ] && rm -f "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz"
+    [ "${DOWNLOAD_ERROR}" != 1 ] && "${WINELIB}"/setup.sh --force
 fi
 if [ -e "${WINELIB}/run.sh" ]; then 
     echo "######################################################"
@@ -185,12 +183,12 @@ else
     echo "######################################################"
     echo "Runtime libraries is disabled"
 fi
-if [ ! -d "${WINE_MONO_GECKO}/gecko" ] || [ ! -d "${WINE_MONO_GECKO}/mono" ] ; then 
+if [ ! -d "${WINE_MONO_GECKO}/gecko" ] || [ ! -d "${WINE_MONO_GECKO}/mono" ] || [ -e "${WINE_MONO_GECKO}.tar.xz" ] ; then 
     echo "######################################################"
     echo "Download and install wine mono and gecko..."
     try_download "${PW_FTP_URL}"/dist/mono_gecko${pw_gecko_mono_ver}.tar.xz  "${WINE_MONO_GECKO}.tar.xz" | sszen &&
-    ${PW_XTERM} tar -Jxvf "${WINE_MONO_GECKO}.tar.xz" -C "${HOME}/.PortWINE/" 
-    try_remove_file "${WINE_MONO_GECKO}.tar.xz"
+    [ "${DOWNLOAD_ERROR}" != 1 ] && ${PW_XTERM} tar -Jxvf "${WINE_MONO_GECKO}.tar.xz" -C "${HOME}/.PortWINE/" 
+    [ "${DOWNLOAD_ERROR}" != 1 ] && try_remove_file "${WINE_MONO_GECKO}.tar.xz"
 fi
 create_new_dir "${WINEDIR}/share/wine/"
 try_force_link_dir "${WINE_MONO_GECKO}"/gecko "${WINEDIR}"/share/wine/      
@@ -261,7 +259,7 @@ fi
         try_copy_file "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/"
         try_copy_file "${WINEDIR}"/lib64/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/system32/"
         var_winedlloverride_update "dxgi=b"
-        export WINEESYNC=""
+        export PW_FORCE_LARGE_ADDRESS_AWARE=0
         echo "Use OpenGL"
     elif [ "${var_pw_vulkan}" = "dxvk" ]; then
         if [ -d "${WINEDIR}_dxvk" ]; then
@@ -358,8 +356,9 @@ fi
         export WINEFSYNC="1"
         export WINEFSYNC_FUTEX2="1"
     fi
-    if [ ! -z "${PW_FORCE_LARGE_ADDRESS_AWARE}" ] && [ "${PW_FORCE_LARGE_ADDRESS_AWARE}" != 0 ] ; then
-        export WINE_LARGE_ADDRESS_AWARE="1"
+    if [ ! -z "${PW_FORCE_LARGE_ADDRESS_AWARE}" ] && [ "${PW_FORCE_LARGE_ADDRESS_AWARE}" != 0 ] 
+    then export WINE_LARGE_ADDRESS_AWARE="1"
+    else export WINE_LARGE_ADDRESS_AWARE="0"
     fi
     if [ ! -z "${PW_OLD_GL_STRING}" ] && [ "${PW_OLD_GL_STRING}" != 0 ] ; then
         export MESA_EXTENSION_MAX_YEAR="2003" #mesa override
@@ -382,6 +381,9 @@ fi
     fi
     if [ ! -z "${PW_VKD3D_FEATURE_LEVEL}" ] && [ "${PW_VKD3D_FEATURE_LEVEL}" != 0 ] ; then
         export VKD3D_FEATURE_LEVEL="12_0"
+    fi
+    if [ ! -z "${PW_HEAP_DELAY_FREE}" ] && [ "${PW_HEAP_DELAY_FREE}" != 0 ] ; then
+        export WINE_HEAP_DELAY_FREE="1"
     fi
 
     create_new_dir "${PORT_WINE_TMP_PATH}/dxvk_cache"
@@ -604,10 +606,9 @@ PW_CREATE_PFX () {
     #sed -i '/HKCU,Software\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf 
     #sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf 
     #sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf 
-    #sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}"*/share/wine/wine.inf 
-    #sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}"*/share/wine/wine.inf 
-
     if [ ! -d "${WINEPREFIX}" ] || [ ! -d "${WINEPREFIX}"/drive_c/windows ] || [ ! -f "${WINEPREFIX}"/user.reg ] || [ ! -f "${WINEPREFIX}"/userdef.reg ] || [ ! -f "${WINEPREFIX}"/system.reg ] ; then
+        sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}"*/share/wine/wine.inf 
+        sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}"*/share/wine/wine.inf 
         PW_STOP_PROGRESS_BAR
         ${PW_XTERM} "${PW_RUNTIME}" "${WINELOADER}" wineboot -u 
         `zenity --info --title "Info..." --text "   Updating prefix completed successfully.\n\n   Restart ${portname}." --no-wrap ` > /dev/null 2>&1  
@@ -653,19 +654,19 @@ PW_RUN () {
 
     if [ ! -z "${PW_GAMEMODERUN}" ] && [ "${PW_GAMEMODERUN}" != 0 ] ; then
         if [ ! -z ${optirun_on} ]; then
-            echo "Full command line: ${optirun_on}  $PW_TERM "${PW_RUNTIME}" gamemoderun "${WINELOADER}" explorer "$@" ${LAUNCH_PARAMETERS[*]}"
-            ${optirun_on}  $PW_TERM "${PW_RUNTIME}" gamemoderun "${WINELOADER}" explorer "$@" ${LAUNCH_PARAMETERS[*]} 
+            echo "Full command line: ${optirun_on}  $PW_TERM "${PW_RUNTIME}" gamemoderun "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}"
+            ${optirun_on}  $PW_TERM "${PW_RUNTIME}" gamemoderun "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} 
         else
-            echo "Full command line: $PW_TERM "${PW_RUNTIME}" gamemoderun "${WINELOADER}" explorer "$@" ${LAUNCH_PARAMETERS[*]}"
-            $PW_TERM "${PW_RUNTIME}" gamemoderun "${WINELOADER}" explorer "$@" ${LAUNCH_PARAMETERS[*]}
+            echo "Full command line: $PW_TERM "${PW_RUNTIME}" gamemoderun "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}"
+            $PW_TERM "${PW_RUNTIME}" gamemoderun "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}
         fi
     else 
         if [ ! -z ${optirun_on} ]; then
-            echo "Full command line: ${optirun_on}  $PW_TERM "${PW_RUNTIME}" "${WINELOADER}" explorer "$@" ${LAUNCH_PARAMETERS[*]}"
-            ${optirun_on}  $PW_TERM "${PW_RUNTIME}" "${WINELOADER}" explorer "$@" ${LAUNCH_PARAMETERS[*]} 
+            echo "Full command line: ${optirun_on}  $PW_TERM "${PW_RUNTIME}" "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}"
+            ${optirun_on}  $PW_TERM "${PW_RUNTIME}" "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} 
         else
-            echo "Full command line: $PW_TERM "${PW_RUNTIME}" "${WINELOADER}" explorer "$@" ${LAUNCH_PARAMETERS[*]}"
-            $PW_TERM "${PW_RUNTIME}" "${WINELOADER}" explorer "$@" ${LAUNCH_PARAMETERS[*]}
+            echo "Full command line: $PW_TERM "${PW_RUNTIME}" "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}"
+            $PW_TERM "${PW_RUNTIME}" "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}
         fi
     fi
 }
