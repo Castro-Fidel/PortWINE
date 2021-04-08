@@ -173,7 +173,8 @@ PORTWINE_DEBUG () {
     try_remove_file "${PORT_WINE_PATH}/${portname}.log.wine"
     deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++') 
     echo "$deb_text" > "${PORT_WINE_PATH}/${portname}.log"
-    echo "$deb_text" | zenity --text-info --editable --width=800 --height=600 --title="${portname}.log"
+    xdg-open "${PORT_WINE_PATH}/${portname}.log"
+    #echo "$deb_text" | zenity --text-info --editable --width=800 --height=600 --title="${portname}.log"
 }
 PW_WINECFG () {
     START_PORTWINE
@@ -206,17 +207,17 @@ if [ ! -z "${portwine_exe}" ]; then
             fi
             OUTPUT_START=$("${pw_yad}" --text-align=center --text "$PW_COMMENT_DB" --wrap-width=150 --borders=15 --form --center  \
             --title "$portname"  --image "$PW_GUI_ICON_PATH/port_proton.png" --separator=";" \
-            --button='CREATE  SHORTCUT'!!"111":100 \
-            --button='DEBUG'!!'проверка подсказки1':102 \
-            --button='LAUNCH'!!'проверка подсказки3':106 )
+            --button='CREATE SHORTCUT'!!"${loc_creat_shortcut}":100 \
+            --button='DEBUG'!!"${loc_debug}":102 \
+            --button='LAUNCH'!!"${loc_launch}":106 )
             PW_YAD_SET="$?"
         else
             OUTPUT_START=$("${pw_yad}" --wrap-width=250 --borders=15 --form --center  \
             --title "$portname"  --image "$PW_GUI_ICON_PATH/port_proton.png" --separator=";" \
             --field="WINE:CB" "DXVK ${PW_WINE_VER_DXVK}"!"VKD3D ${PW_WINE_VER_VKD3D}"!"OPENGL ${PW_WINE_VER_DXVK}" \
-            --button='CREATE  SHORTCUT'!!"111":100 \
-            --button='DEBUG'!!'проверка подсказки1':102 \
-            --button='LAUNCH'!!'проверка подсказки3':106 )
+            --button='CREATE SHORTCUT'!!"${loc_creat_shortcut}":100 \
+            --button='DEBUG'!!"${loc_debug}":102 \
+            --button='LAUNCH'!!"${loc_launch}":106 )
             PW_YAD_SET="$?"
         fi
     elif [ ! -z "${PORTWINE_DB_FILE}" ]; then
@@ -225,21 +226,21 @@ if [ ! -z "${portwine_exe}" ]; then
         OUTPUT_START=$("${pw_yad}" --wrap-width=250 --borders=15 --form --center  \
         --title "$portname"  --image "$PW_GUI_ICON_PATH/port_proton.png" --separator=";" \
         --field="WINE:CB" "DXVK ${PW_WINE_VER_DXVK}"!"VKD3D ${PW_WINE_VER_VKD3D}"!"OPENGL ${PW_WINE_VER_DXVK}" \
-        --button='CREATE  SHORTCUT'!!"111":100 \
-        --button='DEBUG'!!'проверка подсказки1':102 \
-        --button='LAUNCH'!!'проверка подсказки3':106 )
+        --button='CREATE SHORTCUT'!!"${loc_creat_shortcut}":100 \
+        --button='DEBUG'!!"${loc_debug}":102 \
+        --button='LAUNCH'!!"${loc_launch}":106 )
         PW_YAD_SET="$?"
     fi
 else
     OUTPUT_START=$("${pw_yad}" --wrap-width=250 --borders=15 --form --center  \
     --title "$portname"  --image "$PW_GUI_ICON_PATH/port_proton.png" --separator=";" \
     --field="WINE:CB" "DXVK ${PW_WINE_VER_DXVK}"!"VKD3D ${PW_WINE_VER_VKD3D}"!"OPENGL ${PW_WINE_VER_DXVK}" \
-    --button='DEBUG'!!'проверка подсказки1':102 \
-    --button='WINECFG'!!"Run winecfg for $portname":108 \
-    --button='WINEFILE'!!'проверка подсказки1':110 \
-    --button='WINECMD'!!'проверка подсказки2':112 \
-    --button='WINEREG'!!'проверка подсказки3':114 \
-    --button='WINETRICKS'!!'проверка подсказки4 - бла бла бла бла бла ла ла ла =)':116 )
+    --button='DEBUG'!!"${loc_debug}":102 \
+    --button='WINECFG'!!"${loc_winecfg}":108 \
+    --button='WINEFILE'!!"${loc_winefile}":110 \
+    --button='WINECMD'!!"${loc_winecmd}":112 \
+    --button='WINEREG'!!"${loc_winereg}":114 \
+    --button='WINETRICKS'!!"${loc_winetricks}":116 )
     PW_YAD_SET="$?"
 fi
 export VULKAN_MOD=$(echo $OUTPUT_START | awk 'BEGIN {FS=";" } { print $1 }')
