@@ -47,7 +47,7 @@ PORTWINE_CREATE_SHORTCUT () {
     if [ $? -eq 1 ] ; then exit 1 ; fi
     export PW_VULKAN_TO_DB=`cat "${PORT_WINE_TMP_PATH}/pw_vulkan"`
     if [ ! -z "${PORTWINE_DB}" ]; then
-        PORTWINE_DB_FILE=`grep -il "${PORTWINE_DB}" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
+        PORTWINE_DB_FILE=`grep -il "\#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/*`
         if [ ! -z "${PORTWINE_DB_FILE}" ] && [ -z "${PW_VULKAN_USE}" ]; then
             echo "export PW_VULKAN_USE=${PW_VULKAN_TO_DB}" >> "${PORTWINE_DB_FILE}"
         elif [ -z "${PORTWINE_DB_FILE}" ]; then
@@ -57,8 +57,8 @@ PORTWINE_CREATE_SHORTCUT () {
     #Rating=1-5
     ################################################
     export PW_VULKAN_USE=${PW_VULKAN_TO_DB}" > "${PORT_SCRIPTS_PATH}/portwine_db/$PORTWINE_DB"
-        fi
         cat "${PORT_SCRIPTS_PATH}/portwine_db/default" | grep "##" >> "${PORT_SCRIPTS_PATH}/portwine_db/$PORTWINE_DB"
+        fi
     fi
     name_desktop="${PORTPROTON_NAME}" 
     echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
@@ -78,21 +78,25 @@ PORTWINE_CREATE_SHORTCUT () {
     xdg-open "${PORT_WINE_PATH}" 2>1 >/dev/null &
 }
 PORTWINE_DEBUG () {
-    KILL_PORTWINE
+    KILL_PORTWINE 
     export PW_LOG=1
     export PW_WINEDBG_DISABLE=0
-    export PW_XTERM="${WINELIB}/amd64/usr/bin/xterm -l -lf ${PORT_WINE_PATH}/${portname}.log.wine -geometry 159x37 -e"
     START_PORTWINE
     echo "${port_deb1}" > "${PORT_WINE_PATH}/${portname}.log"
     echo "${port_deb2}" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "--------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "GLIBC version:" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "echo $(ldd --version)" | grep ldd >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "--------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "-----------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "PortWINE version:" >> "${PORT_WINE_PATH}/${portname}.log"
     read install_ver < "${PORT_WINE_TMP_PATH}/${portname}_ver"
     echo "${portname}-${install_ver}" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "-------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "----------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    if [ ! -z "${portwine_exe}" ] ; then 
+        echo "Debug for programm:" >> "${PORT_WINE_PATH}/${portname}.log"
+        echo "${portwine_exe}" >> "${PORT_WINE_PATH}/${portname}.log"
+        echo "---------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    fi
+    echo "GLIBC version:" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo `ldd --version | grep -m1 ldd | awk '{print $NF}'` >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "--------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "var_pw_vulkan = ${var_pw_vulkan}" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Date and time of start debug for ${portname}" >> "${PORT_WINE_PATH}/${portname}.log"
@@ -140,41 +144,11 @@ PORTWINE_DEBUG () {
     echo "log WINE:" >> "${PORT_WINE_PATH}/${portname}.log"
 
     export DXVK_HUD="full"
-    export PW_XTERM="${WINELIB}/amd64/usr/bin/xterm -l -lf ${PORT_WINE_PATH}/${portname}.log.wine -geometry 159x37 -e"
 
-    try_remove_file "${PORT_WINE_PATH}/${portname}.log.wine"
-    if [ ! -z "${portwine_exe}" ]; then
-        export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
-        cd "$PATH_TO_GAME"
-        if [ ! -z ${optirun_on} ]; then
-            ${optirun_on} $PW_XTERM "${WINELOADER}" "$portwine_exe" ${LAUNCH_PARAMETERS[*]}  2>&1 &
-        else
-            $PW_XTERM "${WINELOADER}" "$portwine_exe" ${LAUNCH_PARAMETERS[*]}  2>&1 &
-        fi
-    elif [ -z "${gamestart}" ]; then 
-        if [ ! -z $optirun_on ]; then
-            ${optirun_on} $PW_XTERM "${WINELOADER}" explorer 2>&1 &
-        else
-            $PW_XTERM "${WINELOADER}" explorer 2>&1 &
-        fi
-    else
-        export PATH_TO_GAME="$( cd "$( dirname "${gamestart}" )" >/dev/null 2>&1 && pwd )"
-        cd "$PATH_TO_GAME" 
-        if [ ! -z $optirun_on ]; then
-            ${optirun_on} $PW_XTERM "${PW_RUNTIME}" "${WINELOADER}" "${gamestart}" ${LAUNCH_PARAMETERS[*]}  2>&1 &
-        else
-            $PW_XTERM "${PW_RUNTIME}" "${WINELOADER}" "${gamestart}" ${LAUNCH_PARAMETERS[*]}  2>&1 &
-        fi
-    fi
-
-    zenity --info --title "DEBUG" --text "${port_debug}" --no-wrap && "${WINESERVER}" -k
-    STOP_PORTWINE | sszen
-    cat "${PORT_WINE_PATH}/${portname}.log.wine" >> "${PORT_WINE_PATH}/${portname}.log"
-    try_remove_file "${PORT_WINE_PATH}/${portname}.log.wine"
+    PORTWINE_LAUNCH & zenity --info --title "DEBUG" --text "${port_debug}" --no-wrap && KILL_PORTWINE
     deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++') 
     echo "$deb_text" > "${PORT_WINE_PATH}/${portname}.log"
     xdg-open "${PORT_WINE_PATH}/${portname}.log"
-    #echo "$deb_text" | zenity --text-info --editable --width=800 --height=600 --title="${portname}.log"
 }
 PW_WINECFG () {
     START_PORTWINE
@@ -199,6 +173,9 @@ PW_WINETRICKS () {
     START_PORTWINE
     $PW_TERM "${PW_RUNTIME}" "${PORT_WINE_TMP_PATH}/winetricks" -q --force
 }
+PW_EDIT_DB () {
+    xdg-open "${PORTWINE_DB_FILE}"
+}
 if [ ! -z "${portwine_exe}" ]; then
     if [ -z "${PW_GUI_DISABLED_CS}" ] || [ "${PW_GUI_DISABLED_CS}" = 0 ] ; then
         if [ ! -z "${PORTWINE_DB_FILE}" ] && [ ! -z "${PW_VULKAN_USE}" ]; then
@@ -207,6 +184,19 @@ if [ ! -z "${portwine_exe}" ]; then
             fi
             OUTPUT_START=$("${pw_yad}" --text-align=center --text "$PW_COMMENT_DB" --wrap-width=150 --borders=15 --form --center  \
             --title "$portname"  --image "$PW_GUI_ICON_PATH/port_proton.png" --separator=";" \
+            --button='EDIT  DB'!!"${loc_edit_db} ${PORTWINE_DB}":118 \
+            --button='CREATE SHORTCUT'!!"${loc_creat_shortcut}":100 \
+            --button='DEBUG'!!"${loc_debug}":102 \
+            --button='LAUNCH'!!"${loc_launch}":106 )
+            PW_YAD_SET="$?"
+        elif [ ! -z "${PORTWINE_DB_FILE}" ] && [ -z "${PW_VULKAN_USE}" ]; then
+            if [ -z "${PW_COMMENT_DB}" ] ; then
+                PW_COMMENT_DB="PortWINE database file for "\"${PORTWINE_DB}"\" was found."
+            fi
+            OUTPUT_START=$("${pw_yad}" --text-align=center --text "$PW_COMMENT_DB" --wrap-width=150 --borders=15 --form --center  \
+            --title "$portname"  --image "$PW_GUI_ICON_PATH/port_proton.png" --separator=";" \
+            --field="WINE:CB" "DXVK ${PW_WINE_VER_DXVK}"!"VKD3D ${PW_WINE_VER_VKD3D}"!"OPENGL ${PW_WINE_VER_DXVK}" \
+            --button='EDIT  DB'!!"${loc_edit_db} ${PORTWINE_DB}":118 \
             --button='CREATE SHORTCUT'!!"${loc_creat_shortcut}":100 \
             --button='DEBUG'!!"${loc_debug}":102 \
             --button='LAUNCH'!!"${loc_launch}":106 )
@@ -260,6 +250,7 @@ case "$PW_YAD_SET" in
     112) PW_WINECMD ;;
     114) PW_WINEREG ;;
     116) PW_WINETRICKS ;;
+    118) PW_EDIT_DB ;;
 esac
 ########################################################################
 STOP_PORTWINE
