@@ -144,7 +144,7 @@ PORTWINE_DEBUG () {
     echo "log WINE:" >> "${PORT_WINE_PATH}/${portname}.log"
 
     export DXVK_HUD="full"
-
+    
     PORTWINE_LAUNCH & zenity --info --title "DEBUG" --text "${port_debug}" --no-wrap && KILL_PORTWINE
     deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++') 
     echo "$deb_text" > "${PORT_WINE_PATH}/${portname}.log"

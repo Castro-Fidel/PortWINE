@@ -69,7 +69,8 @@ do
 done
 chmod u+x "${PORT_SCRIPTS_PATH}/"*
 
-try_force_link_dir "${PORT_WINE_PATH}/data/pfx/drive_c/" "${PORT_WINE_PATH}/drive_c"
+try_remove_dir "${PORT_WINE_PATH}/data/pfx/drive_c/drive_c"
+try_force_link_dir "${PORT_WINE_PATH}/data/pfx/drive_c/" "${PORT_WINE_PATH}/"
 if [ -d "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public" ] && [ ! -L "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public" ]; then
 	cp -fr "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public"/* "${PORT_WINE_PATH}/data/pfx/drive_c/users/steamuser/"
 	rm -fr "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public"
@@ -81,12 +82,10 @@ ln -s "${PORT_WINE_PATH}/data/pfx/drive_c/users/steamuser" "${PORT_WINE_PATH}/da
 if [ ! -d "${PORT_WINE_PATH}/data/pfx/drive_c/users/${USER}" ]; then
 	ln -s "${PORT_WINE_PATH}/data/pfx/drive_c/users/steamuser" "${PORT_WINE_PATH}/data/pfx/drive_c/users/${USER}"
 fi
-
 if [ -e "${PORT_WINE_PATH}/data/pfx/system.reg" ] || [ -e "${PORT_WINE_PATH}/data/pfx/user.reg" ] || [ -e "${PORT_WINE_PATH}/data/pfx/userdef.reg" ]; then
 	sed -i "s/xuser/${USER}/g" "${PORT_WINE_PATH}/data/pfx/"*.reg
 	sed -i "s/vagrant/${USER}/g" "${PORT_WINE_PATH}/data/pfx/"*.reg
 fi
-
 if [ "${s_install}" = "1" ]; then
 	echo "Installation completed successfully."
 else
