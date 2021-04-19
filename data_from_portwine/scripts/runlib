@@ -15,6 +15,20 @@ if [ "${s_install}" != "1" ] && [ ! -x "`which "zenity" 2>/dev/null`" ];then
     echo "You will need to install: zenity, and restart the port." 
     xdg-open "http://portwine-linux.ru/portwine-faq/" > /dev/null 2>&1 & exit 0
 fi
+pw_default_vars () {
+    export pw_libs_ver="_v8"
+    export mono_ver=6.1.1
+    export gecko_ver=2.47.2
+    export PW_DXVK_VER=1.8.1 
+    export PW_VKD3D_VER=2.2
+    
+    export PW_LOG=0
+    export PW_TERM=""
+    export WINEARCH="win64"
+    export PW_WINDOWS_VER="7"
+    export PW_FORCE_LARGE_ADDRESS_AWARE=1
+    export PW_VULKAN_DLL="${PORT_WINE_PATH}"/data/vulkan
+}
 print_error () {
     echo "ERROR: $@"
 }
@@ -132,18 +146,12 @@ if [ ! -e "${PORT_WINE_TMP_PATH}/${portname}_ver" ]; then
 	echo "10" > "${PORT_WINE_TMP_PATH}/${portname}_ver"
 fi
 
-export pw_libs_ver="_v8"
-export mono_ver="6.1.1"
-export gecko_ver="2.47.2"
-export PW_DXVK_VER=1.8.1 
-export PW_VKD3D_VER=2.2 
+pw_default_vars
 export url_mono="https://github.com/madewokherd/wine-mono/releases/download/wine-mono-${mono_ver}/wine-mono-${mono_ver}-x86.tar.xz"
 export url_gecko_x86="https://dl.winehq.org/wine/wine-gecko/${gecko_ver}/wine-gecko-${gecko_ver}-x86.tar.xz"
 export url_gecko_x86_64="https://dl.winehq.org/wine/wine-gecko/${gecko_ver}/wine-gecko-${gecko_ver}-x86_64.tar.xz"
 export url_dxvk="https://github.com/doitsujin/dxvk/releases/download/v${PW_DXVK_VER}/dxvk-${PW_DXVK_VER}.tar.gz"
 export url_vkd3d="https://github.com/HansKristian-Work/vkd3d-proton/releases/download/v${PW_VKD3D_VER}/vkd3d-proton-${PW_VKD3D_VER}.tar.zst"
-export WINEARCH=win64
-export PW_VULKAN_DLL="${PORT_WINE_PATH}"/data/vulkan
 export WINEDIR="${PORT_WINE_PATH}"/data/dist
 export WINELIB="${HOME}/.PortWINE/libs${pw_libs_ver}"
 export WINEPREFIX="${PORT_WINE_PATH}/data/pfx/"
@@ -152,11 +160,8 @@ export PW_RUNTIME="$WINELIB/run.sh"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
 export urlg="https://portwine-linux.ru/portwine-faq/"
 export PW_FTP_URL="https://portwine-linux.ru/ftp"
-export PW_TERM=""
 export PW_WINE_VER_DXVK=""
-export PW_WINDOWS_VER="7"
-export PW_FORCE_LARGE_ADDRESS_AWARE=1
-export PW_LOG=0
+
 var_winedlloverride_update "winemenubuilder.exe="
 
 zen_width=500
