@@ -195,7 +195,7 @@ if [ ! -z "${portwine_exe}" ]; then
             fi
             OUTPUT_START=$("${pw_yad}" --text-align=center --text "$PW_COMMENT_DB" --wrap-width=150 --borders=15 --form --center  \
             --title "$portname"  --image "$PW_GUI_ICON_PATH/port_proton.png" --separator=";" \
-            --field="WINE:CB" "DXVK ${PW_WINE_VER_DXVK}"!"VKD3D ${PW_WINE_VER_VKD3D}"!"OPENGL ${PW_WINE_VER_DXVK}" \
+            --field="WINE:CB" "DXVK"!"VKD3D"!"OPENGL" \
             --button='EDIT  DB'!!"${loc_edit_db} ${PORTWINE_DB}":118 \
             --button='CREATE SHORTCUT'!!"${loc_creat_shortcut}":100 \
             --button='DEBUG'!!"${loc_debug}":102 \
@@ -204,7 +204,7 @@ if [ ! -z "${portwine_exe}" ]; then
         else
             OUTPUT_START=$("${pw_yad}" --wrap-width=250 --borders=15 --form --center  \
             --title "$portname"  --image "$PW_GUI_ICON_PATH/port_proton.png" --separator=";" \
-            --field="WINE:CB" "DXVK ${PW_WINE_VER_DXVK}"!"VKD3D ${PW_WINE_VER_VKD3D}"!"OPENGL ${PW_WINE_VER_DXVK}" \
+            --field="WINE:CB" "DXVK"!"VKD3D"!"OPENGL" \
             --button='CREATE SHORTCUT'!!"${loc_creat_shortcut}":100 \
             --button='DEBUG'!!"${loc_debug}":102 \
             --button='LAUNCH'!!"${loc_launch}":106 )
@@ -215,7 +215,7 @@ if [ ! -z "${portwine_exe}" ]; then
     else
         OUTPUT_START=$("${pw_yad}" --wrap-width=250 --borders=15 --form --center  \
         --title "$portname"  --image "$PW_GUI_ICON_PATH/port_proton.png" --separator=";" \
-        --field="WINE:CB" "DXVK ${PW_WINE_VER_DXVK}"!"VKD3D ${PW_WINE_VER_VKD3D}"!"OPENGL ${PW_WINE_VER_DXVK}" \
+        --field="WINE:CB" "DXVK"!"VKD3D"!"OPENGL" \
         --button='CREATE SHORTCUT'!!"${loc_creat_shortcut}":100 \
         --button='DEBUG'!!"${loc_debug}":102 \
         --button='LAUNCH'!!"${loc_launch}":106 )
@@ -224,7 +224,7 @@ if [ ! -z "${portwine_exe}" ]; then
 else
     OUTPUT_START=$("${pw_yad}" --wrap-width=250 --borders=15 --form --center  \
     --title "$portname"  --image "$PW_GUI_ICON_PATH/port_proton.png" --separator=";" \
-    --field="WINE:CB" "DXVK ${PW_WINE_VER_DXVK}"!"VKD3D ${PW_WINE_VER_VKD3D}"!"OPENGL ${PW_WINE_VER_DXVK}" \
+    --field="WINE:CB" "DXVK"!"VKD3D"!"OPENGL" \
     --button='DEBUG'!!"${loc_debug}":102 \
     --button='WINECFG'!!"${loc_winecfg}":108 \
     --button='WINEFILE'!!"${loc_winefile}":110 \
@@ -234,9 +234,9 @@ else
     PW_YAD_SET="$?"
 fi
 export VULKAN_MOD=$(echo $OUTPUT_START | awk 'BEGIN {FS=";" } { print $1 }')
-if [ "${VULKAN_MOD}" = "DXVK ${PW_WINE_VER_DXVK}" ]; then
+if [ "${VULKAN_MOD}" = "DXVK" ]; then
     echo "dxvk" > "${PORT_WINE_TMP_PATH}/pw_vulkan"
-elif [ "${VULKAN_MOD}" = "VKD3D ${PW_WINE_VER_VKD3D}" ]; then
+elif [ "${VULKAN_MOD}" = "VKD3D" ]; then
     echo "vkd3d" > "${PORT_WINE_TMP_PATH}/pw_vulkan"
 else   
     echo "0" > "${PORT_WINE_TMP_PATH}/pw_vulkan"

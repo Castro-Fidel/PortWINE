@@ -16,7 +16,7 @@ if [ "${s_install}" != "1" ] && [ ! -x "`which "zenity" 2>/dev/null`" ];then
     xdg-open "http://portwine-linux.ru/portwine-faq/" > /dev/null 2>&1 & exit 0
 fi
 pw_default_vars () {
-    export pw_libs_ver="_v8"
+    export pw_libs_ver="_v9"
     export mono_ver=6.1.1
     export gecko_ver=2.47.2
     export PW_DXVK_VER=1.8.1 
@@ -27,7 +27,6 @@ pw_default_vars () {
     export WINEARCH="win64"
     export PW_WINDOWS_VER="7"
     export PW_FORCE_LARGE_ADDRESS_AWARE=1
-    export PW_VULKAN_DLL="${PORT_WINE_PATH}"/data/vulkan
 }
 print_error () {
     echo "ERROR: $@"
@@ -147,35 +146,21 @@ if [ ! -e "${PORT_WINE_TMP_PATH}/${portname}_ver" ]; then
 fi
 
 pw_default_vars
+var_winedlloverride_update "winemenubuilder.exe="
 export url_mono="https://github.com/madewokherd/wine-mono/releases/download/wine-mono-${mono_ver}/wine-mono-${mono_ver}-x86.tar.xz"
 export url_gecko_x86="https://dl.winehq.org/wine/wine-gecko/${gecko_ver}/wine-gecko-${gecko_ver}-x86.tar.xz"
 export url_gecko_x86_64="https://dl.winehq.org/wine/wine-gecko/${gecko_ver}/wine-gecko-${gecko_ver}-x86_64.tar.xz"
-export url_dxvk="https://github.com/doitsujin/dxvk/releases/download/v${PW_DXVK_VER}/dxvk-${PW_DXVK_VER}.tar.gz"
-export url_vkd3d="https://github.com/HansKristian-Work/vkd3d-proton/releases/download/v${PW_VKD3D_VER}/vkd3d-proton-${PW_VKD3D_VER}.tar.zst"
-export WINEDIR="${PORT_WINE_PATH}"/data/dist
-export WINELIB="${HOME}/.PortWINE/libs${pw_libs_ver}"
-export WINEPREFIX="${PORT_WINE_PATH}/data/pfx/"
-export PW_COMPAT_MEDIA_PATH="${PORT_WINE_TMP_PATH}/"
-export PW_RUNTIME="$WINELIB/run.sh"
-export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
 export urlg="https://portwine-linux.ru/portwine-faq/"
 export PW_FTP_URL="https://portwine-linux.ru/ftp"
-export PW_WINE_VER_DXVK=""
+export WINEDIR="${PORT_WINE_PATH}"/data/dist
+export WINELIB="${HOME}/.PortWINE/libs${pw_libs_ver}"
+export WINEPREFIX="${PORT_WINE_PATH}/data/pfx"
+export PW_COMPAT_MEDIA_PATH="${PORT_WINE_TMP_PATH}"
+export PW_RUNTIME="$WINELIB/run.sh"
+export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
+export PW_VULKAN_DLL="${HOME}/.PortWINE/vulkan"
 
-var_winedlloverride_update "winemenubuilder.exe="
 
-zen_width=500
-if [ -f "${WINEDIR}"_dxvk/version ]; then
-    read PW_WINE_VER_DXVK < "${WINEDIR}"_dxvk/version
-    PW_WINE_VER_DXVK="( wine: $PW_WINE_VER_DXVK )"
-    zen_width=1000
-fi
-export PW_WINE_VER_VKD3D=""
-if [ -f "${WINEDIR}"_vkd3d/version ]; then
-    read PW_WINE_VER_VKD3D < "${WINEDIR}"_vkd3d/version
-    PW_WINE_VER_VKD3D="( wine: $PW_WINE_VER_VKD3D )"
-    zen_width=1000
-fi
 if [ -z "${INSTALLING_PORT}" ] ; then
     if [ ! -e "${WINELIB}/run.sh" ] || [ ! -e "${WINELIB}/usr/bin/yad" ] || [ ! -e "${WINELIB}/amd64/usr/bin/vkcube" ] || [ ! -e "${WINELIB}/amd64/usr/bin/xterm" ] || [ -e "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" ] ; then 
         echo "Download and install libraries..."
@@ -190,6 +175,7 @@ if [ -z "${INSTALLING_PORT}" ] ; then
         try_remove_dir "${WINELIB}/pinned_libs_32"
         try_remove_dir "${WINELIB}/pinned_libs_64"
         export pw_yad="${WINELIB}/usr/bin/yad"
+        export pw_zstd="${WINELIB}/usr/bin/zstd"
         if [ -x "`which xterm 2>/dev/null`" ]; then
             export SYS_XTERM=`which xterm`
             export PW_XTERM="${SYS_XTERM} -geometry 159x37 -e" 
@@ -228,13 +214,6 @@ if [ -z "${INSTALLING_PORT}" ] ; then
     try_force_link_dir "${HOME}/.PortWINE/gecko" "${WINEDIR}"/share/wine/      
     try_force_link_dir "${HOME}/.PortWINE/mono" "${WINEDIR}"/share/wine/ 
 
-    for pw_dist in "dxvk" "vkd3d"
-    do
-        if [ -d "${WINEDIR}"_"${pw_dist}"/share/wine/ ]; then
-            try_force_link_dir "${WINEDIR}"/share/wine/gecko "${WINEDIR}"_"${pw_dist}"/share/wine/ 
-            try_force_link_dir "${WINEDIR}"/share/wine/mono "${WINEDIR}"_"${pw_dist}"/share/wine/     
-        fi
-    done 
     if [ ! -z "${gamestart}" ]; then
         export PORTWINE_DB=`echo "${gamestart}" | awk -F '/' 'NF>1{print $NF}' | sed s/".exe"/""/gi`
     elif [ ! -z "${portwine_exe}" ]; then
@@ -273,13 +252,37 @@ START_PORTWINE ()
         export var_pw_vulkan="${PW_VULKAN_USE}"
         echo "${var_pw_vulkan}" > "${PORT_WINE_TMP_PATH}/pw_vulkan"
     else
-        read "var_pw_vulkan" < "${PORT_WINE_TMP_PATH}/pw_vulkan" && export var_pw_vulkan
+        read "var_pw_vulkan" < "${PORT_WINE_TMP_PATH}/pw_vulkan" && export var_pw_vulkan 
     fi
-    PW_START_PROGRESS_BAR
-    if [ "${var_pw_vulkan}" = "0" ]; then
-        if [ -d "${WINEDIR}_dxvk" ]; then
-            export WINEDIR="${WINEDIR}_dxvk"
+
+    try_remove_dir "${PORT_WINE_PATH}/data/vulkan"
+    create_new_dir "${PW_VULKAN_DLL}"
+
+    export url_dxvk="https://github.com/doitsujin/dxvk/releases/download/v${PW_DXVK_VER}/dxvk-${PW_DXVK_VER}.tar.gz"
+    if [ ! -d "${PW_VULKAN_DLL}/dxvk-${PW_DXVK_VER}" ] ; then
+        try_download "${url_dxvk}" "${PW_VULKAN_DLL}/dxvk-${PW_DXVK_VER}.tar.gz"
+        [ "${DOWNLOAD_ERROR}" != 1 ] && tar -zxvf "${PW_VULKAN_DLL}/dxvk-${PW_DXVK_VER}.tar.gz" -C "${PW_VULKAN_DLL}/"
+        try_remove_file "${PW_VULKAN_DLL}/dxvk-${PW_DXVK_VER}.tar.gz"
+        if [ "${DOWNLOAD_ERROR}" != 0 ] ; then
+            `zenity --error --title "Error..." --text "You will need to change DXVK version in db file!" --no-wrap ` > /dev/null 2>&1
+            PW_EDIT_DB & exit 1
         fi
+    fi
+
+    export url_vkd3d="https://github.com/HansKristian-Work/vkd3d-proton/releases/download/v${PW_VKD3D_VER}/vkd3d-proton-${PW_VKD3D_VER}.tar.zst"
+    if [ ! -d "${PW_VULKAN_DLL}/vkd3d-proton-${PW_VKD3D_VER}" ] ; then
+        try_download "${url_vkd3d}" "${PW_VULKAN_DLL}/vkd3d-proton-${PW_VKD3D_VER}.tar.zst"
+        [ "${DOWNLOAD_ERROR}" != 1 ] && tar -C "${PW_VULKAN_DLL}/" -I "${pw_zstd}" -xvf "${PW_VULKAN_DLL}/vkd3d-proton-${PW_VKD3D_VER}.tar.zst" 
+        try_remove_file "${PW_VULKAN_DLL}/vkd3d-proton-${PW_VKD3D_VER}.tar.zst"
+        if [ "${DOWNLOAD_ERROR}" != 0 ] ; then
+            `zenity --error --title "Error..." --text "You will need to change VKD3D version in db file!" --no-wrap ` > /dev/null 2>&1
+            PW_EDIT_DB & exit 1
+        fi
+    fi
+
+    PW_START_PROGRESS_BAR
+
+    if [ "${var_pw_vulkan}" = "0" ]; then
         export MESA_GLSL_CACHE_DIR="${PORT_WINE_TMP_PATH}"
         export GL_NO_DSO_FINALIZER=1 
         export GL_YIELD="NOTHING" 
@@ -292,35 +295,30 @@ START_PORTWINE ()
         done
         try_copy_file "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/"
         try_copy_file "${WINEDIR}"/lib64/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/system32/"
-        var_winedlloverride_update "dxgi=b"
+        var_winedlloverride_update "dxgi=b;d3d12="
         [ "${PW_MANGOHUD}" == "1" ] && export MANGOHUD_DLSYM=1
         echo "Use OpenGL"
     elif [ "${var_pw_vulkan}" = "dxvk" ]; then
-        if [ -d "${WINEDIR}_dxvk" ]; then
-            export WINEDIR="${WINEDIR}_dxvk"
-        fi
         for wine_dxvk_dll in d3d11 d3d10 d3d10core d3d10_1 d3d9 dxgi ; do
-            try_copy_file "${PW_VULKAN_DLL}/dxvk/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-            try_copy_file "${PW_VULKAN_DLL}/dxvk/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_copy_file "${PW_VULKAN_DLL}/dxvk-${PW_DXVK_VER}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+            try_copy_file "${PW_VULKAN_DLL}/dxvk-${PW_DXVK_VER}/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
             [ "$?" == 0 ] && var_winedlloverride_update "${wine_dxvk_dll}=n"
         done
-        var_winedlloverride_update "d3d12="
+        #var_winedlloverride_update "d3d12="
         [ "${PW_MANGOHUD}" == "1" ] && export MANGOHUD=1
-        echo "Use DXVK (DX9-DX11 to Vulkan)"
-    else
-        if [ -d "${WINEDIR}_vkd3d" ]; then
-            export WINEDIR="${WINEDIR}_vkd3d"
-        fi
+        echo "Use DXVK version ${PW_DXVK_VER} (DX9-DX11 to Vulkan)"
+    else 
         for wine_vkd3d_dll in d3d12 ; do
-            try_copy_file "${PW_VULKAN_DLL}/vkd3d-proton/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-            try_copy_file "${PW_VULKAN_DLL}/vkd3d-proton/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_copy_file "${PW_VULKAN_DLL}/vkd3d-proton-${PW_VKD3D_VER}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+            try_copy_file "${PW_VULKAN_DLL}/vkd3d-proton-${PW_VKD3D_VER}/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
             [ "$?" == 0 ] && var_winedlloverride_update "${wine_vkd3d_dll}=n"
         done
         if [ ! -z "${PW_DXGI_FROM_DXVK}" ] && [ "${PW_DXGI_FROM_DXVK}" != 0 ] ; then
-            var_winedlloverride_update "dxgi=n"
+             
             for wine_dxvk_dll in d3d11 d3d10 d3d10core d3d10_1 d3d9 dxgi ; do
-                try_copy_file "${PW_VULKAN_DLL}/dxvk/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-                try_copy_file "${PW_VULKAN_DLL}/dxvk/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+                try_copy_file "${PW_VULKAN_DLL}/dxvk-${PW_DXVK_VER}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+                try_copy_file "${PW_VULKAN_DLL}/dxvk-${PW_DXVK_VER}/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+                var_winedlloverride_update "${wine_dxvk_dll}=n"
             done
         else
             try_copy_file "${WINEDIR}/lib/wine/fakedlls/dxgi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
@@ -333,39 +331,17 @@ START_PORTWINE ()
         fi
         [ "${PW_MANGOHUD}" == "1" ] && export MANGOHUD=1
         export PW_WINDOWS_VER="10"
-        echo "Use VKD3D (DX12 to vulkan)"
+        echo "Use VKD3D-PROTON version ${PW_VKD3D_VER} (DX12 to vulkan)"
     fi
-    try_copy_file "${PW_VULKAN_DLL}/dxvk/x32/dxvk_config.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-    try_copy_file "${PW_VULKAN_DLL}/dxvk/x64/dxvk_config.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-    [ "$?" == 0 ] && var_winedlloverride_update "dxvk_config.dll=n"
 
     export WINELOADER="${WINEDIR}/bin/wine"
-    export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
+    export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine:${PATH_TO_GAME}"
     export WINESERVER="${WINEDIR}/bin/wineserver"
     if [ ! -z "${PATH}" ] 
     then export PATH="${WINEDIR}/bin:${PATH}"
     else export PATH="${WINEDIR}/bin"
     fi
     export WINE="${WINELOADER}"
-
-    rm -f  "${WINEDIR}"*/lib*/*steam* 
-    rm -f  "${WINEDIR}"*/lib*/wine/*steam* 
-    rm -f  "${WINEDIR}"*/lib*/wine/fakedlls/*steam* 
-    rm -f "${WINEPREFIX}/drive_c/windows/system32"/steam* 
-    rm -f "${WINEPREFIX}/drive_c/windows/syswow64"/steam* 
-
-    try_copy_file "${WINEDIR}/share/fonts/"LiberationSans-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arial.ttf
-    try_copy_file "${WINEDIR}/share/fonts/"LiberationSans-Bold.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arialbd.ttf
-    try_copy_file "${WINEDIR}/share/fonts/"LiberationSerif-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"times.ttf
-    try_copy_file "${WINEDIR}/share/fonts/"LiberationMono-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"cour.ttf
-    try_copy_file "${WINEDIR}/share/fonts/"SourceHanSansSCRegular.otf "${WINEPREFIX}/drive_c/windows/Fonts/"msyh.ttf
-
-    for wine_build_dll in ntdll mf mf3216 mferror mfmediaengine mfplat mfplay mfreadwrite vulkan-1 ; do #sqmapi msmpeg2vdec msmpeg2adec colorcnv
-        try_copy_file "${WINEDIR}/lib/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-        try_copy_file "${WINEDIR}/lib64/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-        [ "$?" == 0 ] && var_winedlloverride_update "${wine_build_dll}=b"
-    done
-    var_winedlloverride_update "steam_api,steam_api64,steamclient,steamclient64=n"
 #    export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/gstreamer-1.0:${WINEDIR}/gstreamer-1.0"
     export WINE_GST_REGISTRY_DIR="${PORT_WINE_TMP_PATH}"
     export MEDIACONV_AUDIO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/audio.foz
@@ -428,7 +404,6 @@ START_PORTWINE ()
     if [ ! -z "${PW_HEAP_DELAY_FREE}" ] && [ "${PW_HEAP_DELAY_FREE}" != 0 ] ; then
         export WINE_HEAP_DELAY_FREE="1"
     fi
-
     create_new_dir "${PORT_WINE_TMP_PATH}/dxvk_cache"
     export DXVK_STATE_CACHE_PATH="${PORT_WINE_TMP_PATH}"/dxvk_cache
     export DXVK_STATE_CACHE=1
@@ -489,7 +464,7 @@ START_PORTWINE ()
         export PW_GAMEMODERUN=0
         echo "Gamemod is not installed or disabled in vars script: PW_FORCE_DISABLED_GAMEMOD=$PW_FORCE_DISABLED_GAMEMOD"
     fi
-    PW_CREATE_PFX
+    PW_INIT_PFX
     RUN_WINETRICKS_FROM_DB 
     ADD_IN_START_PORTWINE
 } 
@@ -537,7 +512,7 @@ UPDATE_WINETRICKS () {
             [ "$DOWNLOAD_ERROR" != "1" ] && W_TRX_INT_VER="$(cat "${PORT_WINE_TMP_PATH}/winetricks" | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')" && print_info "Winetricks version in port has been updated (${W_TRX_INT_VER})" 
             chmod u+x "${PORT_WINE_TMP_PATH}/winetricks"
         fi
-    fi #modded by Cefeiko
+    fi
 }
 
 RUN_WINETRICKS_FROM_DB () {
@@ -614,36 +589,30 @@ PW_UPDATE () {
         echo "${port_time}" > "${HOME}/.config/.PortTime"
     else
         xsd2=`zenity --title  "${port_time1}" --text "${port_time2}" --list --radiolist --height=240 --column="${inst_set3}" --column "${port_time3}" \
-            TRUE "${port_time4}" \
-            FALSE "${port_time5}" \
-            FALSE "${port_time6}" `
-            if [ $? = 1 ] ; then 
-                echo "1" > "${HOME}/.config/.PortTime"
-            else
-                case $xsd2 in
-                    "${port_time4}")
-                        if [ ! -z "$(command -v sensible-browser)" ]; then
-                            sensible-browser "$urlg" &
-                        elif [ ! -z "$(command -v xdg-open)" ]; then
-                            xdg-open "$urlg" &
-                        elif [ ! -z "$(command -v gnome-open)" ]; then
-                            gnome-open "$urlg" &
-                        elif [ ! -z "$(command -v python)" ]; then
-                            python -m webbrowser "$urlg" 
-                        fi &
-                        echo "300" > "${HOME}/.config/.PortTime" 
-                        sleep 5
-                        exit 0 ;;
-                    "${port_time5}")
-                        echo "75" > "${HOME}/.config/.PortTime" ;;
-                    "${port_time6}")
-                        echo "150" > "${HOME}/.config/.PortTime" ;;
-                esac 
-            fi
+        TRUE "${port_time4}" \
+        FALSE "${port_time5}" \
+        FALSE "${port_time6}" `
+        if [ $? = 1 ] ; then 
+            echo "1" > "${HOME}/.config/.PortTime"
+        else
+            case $xsd2 in
+                "${port_time4}")
+                    xdg-open "$urlg" &
+                    echo "300" > "${HOME}/.config/.PortTime" 
+                    exit 0 ;;
+                "${port_time5}")
+                    echo "75" > "${HOME}/.config/.PortTime" ;;
+                "${port_time6}")
+                    echo "150" > "${HOME}/.config/.PortTime" ;;
+            esac 
+        fi
     fi 
 }
 
-PW_CREATE_PFX () {
+PW_INIT_PFX () {
+    rm -f  "${WINEDIR}"*/lib*/*steam* 
+    rm -f  "${WINEDIR}"*/lib*/wine/*steam* 
+    rm -f  "${WINEDIR}"*/lib*/wine/fakedlls/*steam* 
     #sed -i '/HKCU,Software\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf 
     #sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf 
     #sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf 
@@ -655,6 +624,19 @@ PW_CREATE_PFX () {
         `zenity --info --title "Info..." --text "   Updating prefix completed successfully.\n\n   Restart ${portname}." --no-wrap ` > /dev/null 2>&1  
         exit 0
     fi
+    rm -f "${WINEPREFIX}/drive_c/windows/system32"/steam* 
+    rm -f "${WINEPREFIX}/drive_c/windows/syswow64"/steam* 
+    try_copy_file "${WINEDIR}/share/fonts/"LiberationSans-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arial.ttf
+    try_copy_file "${WINEDIR}/share/fonts/"LiberationSans-Bold.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arialbd.ttf
+    try_copy_file "${WINEDIR}/share/fonts/"LiberationSerif-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"times.ttf
+    try_copy_file "${WINEDIR}/share/fonts/"LiberationMono-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"cour.ttf
+    try_copy_file "${WINEDIR}/share/fonts/"SourceHanSansSCRegular.otf "${WINEPREFIX}/drive_c/windows/Fonts/"msyh.ttf
+    for wine_build_dll in ntdll mf mf3216 mferror mfmediaengine mfplat mfplay mfreadwrite vulkan-1 ; do #sqmapi msmpeg2vdec msmpeg2adec colorcnv
+        try_copy_file "${WINEDIR}/lib/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+        try_copy_file "${WINEDIR}/lib64/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+        [ "$?" == 0 ] && var_winedlloverride_update "${wine_build_dll}=b"
+    done
+    var_winedlloverride_update "steam_api,steam_api64,steamclient,steamclient64=n"
     #sed -i '/steamclient/d' "${WINEPREFIX}"/*.reg 
     #sed -i '/SteamPath/d' "${WINEPREFIX}"/*.reg 
     }
@@ -676,7 +658,8 @@ PW_SCRIPTS_UPDATE () {
             if [ "$?" == "0" ] ; then
                 try_remove_file "${PORT_WINE_TMP_PATH}/scripts.tar.xz"
                 echo "${scripts_current_ver}" > "${PORT_WINE_TMP_PATH}/scripts_ver"
-                `zenity --info --title "Info..." --text "${loc_scripts_update}" --no-wrap ` > /dev/null 2>&1  
+                `zenity --info --title "Info..." --text "${loc_scripts_update}" --no-wrap ` > /dev/null 2>&1
+                xdg-open "${PORT_WINE_PATH}/data/changelog"
                 exit 0
             fi
         fi
@@ -692,7 +675,7 @@ PW_RUN () {
     fi
     export RUN_MANGOHUD=""
     [ "${PW_MANGOHUD}" == "1" ] && export RUN_MANGOHUD=mangohud
-    print_var "WINEDIR" "WINEARCH" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME"    
+    print_var "WINEDIR" "WINEARCH" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME"   
     if [ "${PW_LOG}" == 1 ] ; then
         export PW_TERM=""
         export PW_LOG_TO_FILE="${PORT_WINE_PATH}/${portname}.log"
