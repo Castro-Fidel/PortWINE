@@ -22,10 +22,8 @@ PORTWINE_LAUNCH () {
         PW_RUN explorer "$portwine_exe" 
     elif [ ! -z "${portwine_exe}" ]; then
         PW_RUN "$portwine_exe"
-    elif [ -z "${gamestart}" ]; then  
+    else 
         PW_RUN explorer
-    else
-        PW_RUN "${gamestart}"
     fi
 }
 PORTWINE_CREATE_SHORTCUT () {
@@ -41,37 +39,43 @@ PORTWINE_CREATE_SHORTCUT () {
     if [ -x "`which wrestool 2>/dev/null`" ]; then
         wrestool -x --output="${PORTPROTON_PATH}/" -t14 "${PORTPROTON_EXE}"
         cp "$(ls -S -1 "${PORTPROTON_EXE}"*".ico"  | head -n 1)" "${PORTPROTON_EXE}.ico"
-        cp -f "${PORTPROTON_EXE}.ico" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.ico"
+        icotool -x --output="${PORTPROTON_PATH}/" "${PORTPROTON_EXE}.ico"
+        cp "$(ls -S -1 "${PORTPROTON_EXE}"*".png"  | head -n 1)" "${PORTPROTON_EXE}.png"
+        cp -f "${PORTPROTON_EXE}.png" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
         rm -f "${PORTPROTON_PATH}/"*.ico
+        rm -f "${PORTPROTON_PATH}/"*.png
     fi
     if [ $? -eq 1 ] ; then exit 1 ; fi
-    export PW_VULKAN_TO_DB=`cat "${PORT_WINE_TMP_PATH}/pw_vulkan"`
     if [ ! -z "${PORTWINE_DB}" ]; then
         PORTWINE_DB_FILE=`grep -il "\#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/*`
         if [ ! -z "${PORTWINE_DB_FILE}" ] && [ -z "${PW_VULKAN_USE}" ]; then
-            echo "export PW_VULKAN_USE=${PW_VULKAN_TO_DB}" >> "${PORTWINE_DB_FILE}"
+            echo "export PW_VULKAN_USE=${PW_VULKAN_USE}" >> "${PORTWINE_DB_FILE}"
         elif [ -z "${PORTWINE_DB_FILE}" ]; then
             echo "#!/bin/bash
     #Author: "${USER}"
     #"${PORTWINE_DB}.exe" 
     #Rating=1-5
     ################################################
-    export PW_VULKAN_USE=${PW_VULKAN_TO_DB}" > "${PORT_SCRIPTS_PATH}/portwine_db/$PORTWINE_DB"
+    export PW_VULKAN_USE=${PW_VULKAN_USE}" > "${PORT_SCRIPTS_PATH}/portwine_db/$PORTWINE_DB"
         cat "${PORT_SCRIPTS_PATH}/portwine_db/default" | grep "##" >> "${PORT_SCRIPTS_PATH}/portwine_db/$PORTWINE_DB"
         fi
     fi
     name_desktop="${PORTPROTON_NAME}" 
     echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
     echo "Name=${PORTPROTON_NAME}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop" 
-    echo "Exec=env PW_GUI_DISABLED_CS=1 "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${PORTPROTON_EXE}\" "" \
+    if [ -z "${PW_CHECK_AUTOINSTAL}" ]
+    then echo "Exec=env PW_GUI_DISABLED_CS=1 "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${PORTPROTON_EXE}\" "" \
     >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+    else echo "Exec=env "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${PORTPROTON_EXE}\" "" \
+    >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+    fi
     echo "Type=Application" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
     echo "Categories=Game" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
     echo "StartupNotify=true" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
     echo "Path="${PORT_SCRIPTS_PATH}/"" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    echo "Icon="${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.ico"" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+    echo "Icon="${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
     chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    `zenity --question --title "${inst_set}." --text "${ss_done}" --no-wrap ` > /dev/null 2>&1  
+    `zenity --question --title "${inst_set}." --text "${ss_done}" --no-wrap ` &> /dev/null  
     if [ $? -eq "0" ]; then
         cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" /home/${USER}/.local/share/applications/ 
     fi
@@ -97,7 +101,10 @@ PORTWINE_DEBUG () {
     echo "GLIBC version:" >> "${PORT_WINE_PATH}/${portname}.log"
     echo `ldd --version | grep -m1 ldd | awk '{print $NF}'` >> "${PORT_WINE_PATH}/${portname}.log"
     echo "--------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "var_pw_vulkan = ${var_pw_vulkan}" >> "${PORT_WINE_PATH}/${portname}.log"
+    if [ "${PW_VULKAN_USE}" = "0" ]; then echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DX9-11 to OpenGL" >> "${PORT_WINE_PATH}/${portname}.log"
+    elif [ "${PW_VULKAN_USE}" = "dxvk" ]; then  echo "PW_VULKAN_USE=${PW_VULKAN_USE}_v."${PW_DXVK_VER}"" >> "${PORT_WINE_PATH}/${portname}.log"
+    else echo "PW_VULKAN_USE=${PW_VULKAN_USE}_v."${PW_VKD3D_VER}"" >> "${PORT_WINE_PATH}/${portname}.log"
+    fi
     echo "------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Date and time of start debug for ${portname}" >> "${PORT_WINE_PATH}/${portname}.log"
     date >> "${PORT_WINE_PATH}/${portname}.log"
@@ -132,20 +139,32 @@ PORTWINE_DEBUG () {
     else
         echo "Vkcube test completed with error" >> "${PORT_WINE_PATH}/${portname}.log"
     fi
-    echo "---------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     if [ ! -x "`which gamemoderun 2>/dev/null`" ]
     then
+        echo "---------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
         echo "!!!gamemod not found!!!"  >> "${PORT_WINE_PATH}/${portname}.log"
     fi
     echo "--------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Version WINE in the Port" >> "${PORT_WINE_PATH}/${portname}.log"
     "$WINELOADER" --version 2>&1 | tee -a "${PORT_WINE_PATH}/${portname}.log"
     echo "-------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "log WINE:" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "winetricks.log:" >> "${PORT_WINE_PATH}/${portname}.log"
+    cat "${WINEPREFIX}/winetricks.log" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    if [ ! -z "${PORTWINE_DB_FILE}" ]; then
+        echo "Use ${PORTWINE_DB_FILE} db file:" >> "${PORT_WINE_PATH}/${portname}.log"
+        cat "${PORTWINE_DB_FILE}" | sed '/##/d' | awk '{print $1 " " $2}' >> "${PORT_WINE_PATH}/${portname}.log"
+    else
+        echo "Use ${PORT_SCRIPTS_PATH}/portwine_db/default db file:" >> "${PORT_WINE_PATH}/${portname}.log"
+        cat "${PORT_SCRIPTS_PATH}/portwine_db/default" | sed '/##/d' | awk '{print $1 " " $2}' >> "${PORT_WINE_PATH}/${portname}.log"
+    fi
+    echo "-----------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "Log WINE:" >> "${PORT_WINE_PATH}/${portname}.log"
 
     export DXVK_HUD="full"
     
-    PORTWINE_LAUNCH & zenity --info --title "DEBUG" --text "${port_debug}" --no-wrap && KILL_PORTWINE
+    PORTWINE_LAUNCH & 
+    sleep 1 && zenity --info --title "DEBUG" --text "${port_debug}" --no-wrap &> /dev/null && KILL_PORTWINE
     deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++') 
     echo "$deb_text" > "${PORT_WINE_PATH}/${portname}.log"
     xdg-open "${PORT_WINE_PATH}/${portname}.log"
@@ -176,6 +195,12 @@ PW_WINETRICKS () {
 PW_EDIT_DB () {
     xdg-open "${PORTWINE_DB_FILE}"
 }
+PW_AUTO_INSTALL_FROM_DB () {
+    . "$PORT_SCRIPTS_PATH/autoinstall"
+    $PW_YAD_SET
+}
+
+
 if [ ! -z "${portwine_exe}" ]; then
     if [ -z "${PW_GUI_DISABLED_CS}" ] || [ "${PW_GUI_DISABLED_CS}" = 0 ] ; then
         if [ ! -z "${PORTWINE_DB_FILE}" ] && [ ! -z "${PW_VULKAN_USE}" ]; then
@@ -184,10 +209,11 @@ if [ ! -z "${portwine_exe}" ]; then
             fi
             OUTPUT_START=$("${pw_yad}" --text-align=center --text "$PW_COMMENT_DB" --wrap-width=150 --borders=15 --form --center  \
             --title "$portname"  --image "$PW_GUI_ICON_PATH/port_proton.png" --separator=";" \
+            --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
             --button='EDIT  DB'!!"${loc_edit_db} ${PORTWINE_DB}":118 \
             --button='CREATE SHORTCUT'!!"${loc_creat_shortcut}":100 \
             --button='DEBUG'!!"${loc_debug}":102 \
-            --button='LAUNCH'!!"${loc_launch}":106 )
+            --button='LAUNCH'!!"${loc_launch}":106 &> /dev/null )  
             PW_YAD_SET="$?"
         elif [ ! -z "${PORTWINE_DB_FILE}" ] && [ -z "${PW_VULKAN_USE}" ]; then
             if [ -z "${PW_COMMENT_DB}" ] ; then
@@ -195,19 +221,21 @@ if [ ! -z "${portwine_exe}" ]; then
             fi
             OUTPUT_START=$("${pw_yad}" --text-align=center --text "$PW_COMMENT_DB" --wrap-width=150 --borders=15 --form --center  \
             --title "$portname"  --image "$PW_GUI_ICON_PATH/port_proton.png" --separator=";" \
+            --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
             --field="WINE:CB" "DXVK"!"VKD3D"!"OPENGL" \
             --button='EDIT  DB'!!"${loc_edit_db} ${PORTWINE_DB}":118 \
             --button='CREATE SHORTCUT'!!"${loc_creat_shortcut}":100 \
             --button='DEBUG'!!"${loc_debug}":102 \
-            --button='LAUNCH'!!"${loc_launch}":106 )
+            --button='LAUNCH'!!"${loc_launch}":106 &> /dev/null )  
             PW_YAD_SET="$?"
         else
             OUTPUT_START=$("${pw_yad}" --wrap-width=250 --borders=15 --form --center  \
             --title "$portname"  --image "$PW_GUI_ICON_PATH/port_proton.png" --separator=";" \
+            --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
             --field="WINE:CB" "DXVK"!"VKD3D"!"OPENGL" \
             --button='CREATE SHORTCUT'!!"${loc_creat_shortcut}":100 \
             --button='DEBUG'!!"${loc_debug}":102 \
-            --button='LAUNCH'!!"${loc_launch}":106 )
+            --button='LAUNCH'!!"${loc_launch}":106 &> /dev/null )  
             PW_YAD_SET="$?"
         fi
     elif [ ! -z "${PORTWINE_DB_FILE}" ]; then
@@ -215,42 +243,69 @@ if [ ! -z "${portwine_exe}" ]; then
     else
         OUTPUT_START=$("${pw_yad}" --wrap-width=250 --borders=15 --form --center  \
         --title "$portname"  --image "$PW_GUI_ICON_PATH/port_proton.png" --separator=";" \
+        --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
         --field="WINE:CB" "DXVK"!"VKD3D"!"OPENGL" \
         --button='CREATE SHORTCUT'!!"${loc_creat_shortcut}":100 \
         --button='DEBUG'!!"${loc_debug}":102 \
-        --button='LAUNCH'!!"${loc_launch}":106 )
+        --button='LAUNCH'!!"${loc_launch}":106 &> /dev/null ) 
         PW_YAD_SET="$?"
     fi
 else
-    OUTPUT_START=$("${pw_yad}" --wrap-width=250 --borders=15 --form --center  \
-    --title "$portname"  --image "$PW_GUI_ICON_PATH/port_proton.png" --separator=";" \
-    --field="WINE:CB" "DXVK"!"VKD3D"!"OPENGL" \
-    --button='DEBUG'!!"${loc_debug}":102 \
-    --button='WINECFG'!!"${loc_winecfg}":108 \
-    --button='WINEFILE'!!"${loc_winefile}":110 \
-    --button='WINECMD'!!"${loc_winecmd}":112 \
-    --button='WINEREG'!!"${loc_winereg}":114 \
-    --button='WINETRICKS'!!"${loc_winetricks}":116 )
-    PW_YAD_SET="$?"
+    button_click () {
+        echo "$1" > "${PORT_WINE_TMP_PATH}/tmp_yad_form"
+        if [ ! -z `pidof -s yad` ] ; then
+            kill -s SIGUSR1 `pgrep -a yad | grep "\-\-key=${KEY} \-\-notebook" | awk '{print $1}'`
+        fi 
+    } 
+    export -f button_click
+    export KEY=$RANDOM
+
+    "${pw_yad}" --plug=$KEY --tabnum=2 --form --columns=2  --scroll \
+    --field="  Wargaming Game Center"!"$PW_GUI_ICON_PATH/wgc.png":"BTN" '@bash -c "button_click PW_WGC"' & \
+
+    "${pw_yad}" --plug=${KEY} --tabnum=1 --columns=3 --form --separator=";" \
+    --image "$PW_GUI_ICON_PATH/port_proton.png" \
+    --field=":CB" "  DXVK (DX 9-11 to Vulkan)"\!"VKD3D (DX 12 to Vulkan)"\!"OPENGL " \
+    --field=":LBL" "" \
+    --field='DEBUG'!!"${loc_debug}":"BTN" '@bash -c "button_click DEBUG"' \
+    --field='WINECFG'!!"${loc_winecfg}":"BTN" '@bash -c "button_click WINECFG"' \
+    --field=":RO" "        ${portname} ver.: ${install_ver}" \
+    --field=":LBL" "" \
+    --field='WINEFILE'!!"${loc_winefile}":"BTN" '@bash -c "button_click WINEFILE"' \
+    --field='WINECMD'!!"${loc_winecmd}":"BTN" '@bash -c "button_click WINECMD"' \
+    --field=":RO" "          Scripts ver.: ${scripts_install_ver}" \
+    --field=":LBL" "" \
+    --field='WINEREG'!!"${loc_winereg}":"BTN" '@bash -c "button_click WINEREG"' \
+    --field='WINETRICKS'!!"${loc_winetricks}":"BTN" '@bash -c "button_click WINETRICKS"' &> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" & \
+
+    "${pw_yad}" --key=$KEY --notebook --borders=10 --width=800 --height=50 --no-buttons --text-align=center \
+    --on-top --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "$portname" --separator=";" \
+    --tab-pos=right --tab="PORT_PROTON" --tab="AUTOINSTALL" --center 
+
+    export PW_YAD_SET=`cat "${PORT_WINE_TMP_PATH}/tmp_yad_form" | head -n 1 | awk '{print $1}'`
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_yad_form"
+    echo "PW_YAD_SET=${PW_YAD_SET}"
+    export OUTPUT_START=`cat "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" | grep \;\; | awk '{print $1}'`
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan"
+    echo "OUTPUT_START=$OUTPUT_START"
 fi
+
 export VULKAN_MOD=$(echo $OUTPUT_START | awk 'BEGIN {FS=";" } { print $1 }')
-if [ "${VULKAN_MOD}" = "DXVK" ]; then
-    echo "dxvk" > "${PORT_WINE_TMP_PATH}/pw_vulkan"
-elif [ "${VULKAN_MOD}" = "VKD3D" ]; then
-    echo "vkd3d" > "${PORT_WINE_TMP_PATH}/pw_vulkan"
-else   
-    echo "0" > "${PORT_WINE_TMP_PATH}/pw_vulkan"
+if [ "${VULKAN_MOD}" = "DXVK" ] ; then export PW_VULKAN_USE="dxvk"
+elif [ "${VULKAN_MOD}" = "VKD3D" ]; then export PW_VULKAN_USE="vkd3d" 
+elif [ "${VULKAN_MOD}" = "OPENGL" ]; then export PW_VULKAN_USE="0" 
 fi
 case "$PW_YAD_SET" in
     100) PORTWINE_CREATE_SHORTCUT ;;
-    102) PORTWINE_DEBUG ;;
+    DEBUG|102) PORTWINE_DEBUG ;;
     106) PORTWINE_LAUNCH ;;
-    108) PW_WINECFG ;;
-    110) PW_WINEFILE ;;
-    112) PW_WINECMD ;;
-    114) PW_WINEREG ;;
-    116) PW_WINETRICKS ;;
+    WINECFG|108) PW_WINECFG ;;
+    WINEFILE|110) PW_WINEFILE ;;
+    WINECMD|112) PW_WINECMD ;;
+    WINEREG|114) PW_WINEREG ;;
+    WINETRICKS|116) PW_WINETRICKS ;;
     118) PW_EDIT_DB ;;
+    *) PW_AUTO_INSTALL_FROM_DB ;;
 esac
 ########################################################################
 STOP_PORTWINE

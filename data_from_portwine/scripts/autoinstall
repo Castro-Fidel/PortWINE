@@ -1,0 +1,24 @@
+#!/bin/bash
+# Author: Castro-Fidel (PortWINE-Linux.ru)
+########################################################################
+export PW_FORCE_DISABLED_GAMEMOD=0 
+export PW_CHECK_AUTOINSTAL=1
+export PW_VULKAN_USE=0       
+
+PW_WGC () {
+    export LAUNCH_PARAMETERS=("/SILENT" "/SP-")   
+    [ "${update_loc}" = "RUS" ] && export WGC_LOC=RU || export WGC_LOC=EU
+    export PW_AUTOINSTALL_EXE="$WINEPREFIX/drive_c/Wargaming_Game_Center_Install_WoT_RU.exe"
+    START_PORTWINE
+    if try_download "https://redirect.wargaming.net/WGC/Wargaming_Game_Center_Install_WoT_${WGC_LOC}.exe" "${PW_AUTOINSTALL_EXE}"
+    then
+        PW_START_PROGRESS_BAR_CS "Starting WGC installation..."
+        PW_RUN "${PW_AUTOINSTALL_EXE}"
+        portwine_exe="$WINEPREFIX/drive_c/ProgramData/Wargaming.net/GameCenter/wgc.exe"
+        try_remove_file "${PW_AUTOINSTALL_EXE}"
+        KILL_PORTWINE
+        PORTWINE_CREATE_SHORTCUT
+    fi
+    STOP_PORTWINE
+}
+

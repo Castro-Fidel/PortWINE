@@ -16,35 +16,24 @@ try_remove_file "${PORT_WINE_PATH}/restart.desktop"
 
 try_remove_dir "${PORT_WINE_PATH}/data/pfx/dosdevices" 
 try_remove_dir "${PORT_WINE_PATH}/Settings"
+try_remove_dir "$HOME/.PortWINE"
 
 create_new_dir "/home/${USER}/.local/share/applications"
 
-if ! [ "${portname}" = "PortProton" ]; then
-	name_desktop="${gamename}" 
-	echo "[Desktop Entry]"	 				  > "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Name=${name_desktop}" 				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Exec=env "${PORT_SCRIPTS_PATH}/start.sh""	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Type=Application" 				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Categories=Game"	    				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "StartupNotify=true" 	    			 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Path="${PORT_SCRIPTS_PATH}/""		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Icon="${PORT_WINE_PATH}/data/img/w.png""   	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" /home/${USER}/.local/share/applications/ 
-else
-	name_desktop="PortProton" 
-	echo "[Desktop Entry]"	 				  > "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Name=${name_desktop}" 				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Exec=env "${PORT_SCRIPTS_PATH}/start.sh %U""	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Type=Application" 				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Categories=Game"	    				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "StartupNotify=true" 	    			 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "MimeType=application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program"  >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Path="${PORT_SCRIPTS_PATH}/""		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Icon="${PORT_WINE_PATH}/data/img/w.png""   	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" /home/${USER}/.local/share/applications/
-fi
+name_desktop="PortProton" 
+echo "[Desktop Entry]"	 				  > "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Name=${name_desktop}" 				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Exec=env "${PORT_SCRIPTS_PATH}/start.sh %U""	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Type=Application" 				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Categories=Game"	    				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "StartupNotify=true" 	    			 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "MimeType=application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program"  >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Path="${PORT_SCRIPTS_PATH}/""		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Icon="${PORT_WINE_PATH}/data/img/w.png""   	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
+cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" /home/${USER}/.local/share/applications/
+
+update-desktop-database -q "${HOME}/.local/share/applications"
 
 name_desktop="readme" 
 echo "[Desktop Entry]"					 > "${PORT_WINE_PATH}/${name_desktop}.desktop"
@@ -78,14 +67,10 @@ elif [ -L "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public" ]; then
 	rm -fr "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public"
 fi
 ln -s "${PORT_WINE_PATH}/data/pfx/drive_c/users/steamuser" "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public"
-
 if [ ! -d "${PORT_WINE_PATH}/data/pfx/drive_c/users/${USER}" ]; then
 	ln -s "${PORT_WINE_PATH}/data/pfx/drive_c/users/steamuser" "${PORT_WINE_PATH}/data/pfx/drive_c/users/${USER}"
 fi
-if [ -e "${PORT_WINE_PATH}/data/pfx/system.reg" ] || [ -e "${PORT_WINE_PATH}/data/pfx/user.reg" ] || [ -e "${PORT_WINE_PATH}/data/pfx/userdef.reg" ]; then
-	sed -i "s/xuser/${USER}/g" "${PORT_WINE_PATH}/data/pfx/"*.reg
-	sed -i "s/vagrant/${USER}/g" "${PORT_WINE_PATH}/data/pfx/"*.reg
-fi
+pw_clear_pfx
 if [ "${s_install}" = "1" ]; then
 	echo "Installation completed successfully."
 else

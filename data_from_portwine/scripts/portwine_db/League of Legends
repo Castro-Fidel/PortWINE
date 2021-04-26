@@ -1,0 +1,15 @@
+export LAUNCH_PARAMETERS="--launch-product=league_of_legends --launch-patchline=live"
+cd "${PATH_TO_GAME}"
+
+if [ "$(cat /proc/sys/abi/vsyscall32)" -ne 0 ]
+then
+    zenity --question --title="Fix for LoL anti-cheat" \
+           --text='Root rights are required to execute the command:           \n"sysctl -w abi.vsyscall32=0" and "sysctl -p"' --no-wrap
+    if [ "$?" = 1 ]
+    then
+        exit 0
+    fi
+    pkexec sh -c 'sysctl -w abi.vsyscall32=0 && sysctl -p'
+fi
+sh "${PORT_SCRIPTS_PATH}"/fix_start_lol.sh | zenity --progress --title="Start PortLoL" --text="Please wait, launch is in progress, it may take few minutes" --pulsate --auto-close --auto-kill --width=450 &
+}
