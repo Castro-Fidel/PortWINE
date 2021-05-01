@@ -1,14 +1,20 @@
 #!/bin/bash
 # Author: Castro-Fidel (PortWINE-Linux.ru)
 ########################################################################
-export PW_FORCE_DISABLED_GAMEMOD=0 
+export PW_USER_TEMP="$WINEPREFIX/drive_c/users/${USER}/Temp"
+export PW_FORCE_LARGE_ADDRESS_AWARE=0  
+export PW_FORCE_DISABLED_GAMEMOD=1 
 export PW_CHECK_AUTOINSTAL=1
-export PW_VULKAN_USE=0       
+export PW_WINEDBG_DISABLE=1
+export PW_NO_WRITE_WATCH=0          
+export PW_VULKAN_USE=0     
+export PW_NO_FSYNC=1                         
+export PW_NO_ESYNC=1 
 
 PW_WGC () {
     export LAUNCH_PARAMETERS=("/SILENT" "/SP-")   
     [ "${update_loc}" = "RUS" ] && export WGC_LOC=RU || export WGC_LOC=EU
-    export PW_AUTOINSTALL_EXE="$WINEPREFIX/drive_c/Wargaming_Game_Center_Install_WoT_RU.exe"
+    export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/Wargaming_Game_Center_Install_WoT_RU.exe"
     START_PORTWINE
     if try_download "https://redirect.wargaming.net/WGC/Wargaming_Game_Center_Install_WoT_${WGC_LOC}.exe" "${PW_AUTOINSTALL_EXE}"
     then
@@ -22,3 +28,96 @@ PW_WGC () {
     STOP_PORTWINE
 }
 
+PW_ORIGIN () {
+    export LAUNCH_PARAMETERS=("/silent" )
+    export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/OriginSetup.exe"
+    START_PORTWINE
+    if try_download "https://download.dm.origin.com/origin/live/OriginSetup.exe" "${PW_AUTOINSTALL_EXE}"
+    then
+        PW_START_PROGRESS_BAR_BLOCK "Installing the Origin. Please wait..."
+        PW_RUN "${PW_AUTOINSTALL_EXE}"
+        portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/Origin/Origin.exe"
+        PW_STOP_PROGRESS_BAR
+        try_remove_file "${PW_AUTOINSTALL_EXE}"
+        KILL_PORTWINE
+        PORTWINE_CREATE_SHORTCUT
+    fi
+    STOP_PORTWINE
+}
+
+PW_BATTLE_NET () {
+    [ "${update_loc}" = "RUS" ] && export BN_LOC=ruRU || export BN_LOC=enUS
+    export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/Battle.net-Setup-${BN_LOC}.exe"
+    START_PORTWINE
+    if try_download "http://dist.blizzard.com/downloads/bna-installers/322d5bb9ae0318de3d4cde7641c96425/retail.1/Battle.net-Setup-${BN_LOC}.exe" "${PW_AUTOINSTALL_EXE}"
+    then
+        PW_START_PROGRESS_BAR "Installing the Battle Net. Please wait..."
+        PW_RUN "${PW_AUTOINSTALL_EXE}"
+        while [ ! -z `pgrep Battle.net* | head -n 1` ] && [ -z `pgrep Battle.net.exe | head -n 1` ] ; do sleep 2 ; done
+        KILL_PORTWINE      
+        portwine_exe=`find "$WINEPREFIX/drive_c/" -type f -name "Battle.net.exe"`
+        PW_STOP_PROGRESS
+        PORTWINE_CREATE_SHORTCUT
+        try_remove_file "${PW_AUTOINSTALL_EXE}"    
+    fi
+    STOP_PORTWINE
+}
+
+PW_EPIC () {
+    export LAUNCH_PARAMETERS=("/q" )
+    export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/EpicGamesLauncherInstaller.msi"
+    START_PORTWINE
+    if try_download "https://launcher-public-service-prod06.ol.epicgames.com/launcher/api/installer/download/EpicGamesLauncherInstaller.msi" "${PW_AUTOINSTALL_EXE}"
+    then
+        PW_START_PROGRESS_BAR_BLOCK "Installing Epic Games Launcher. Please wait..."
+        PW_RUN msiexec /i "${PW_AUTOINSTALL_EXE}" &
+        sleep 10
+        if [ ! -z `pgrep msiexec* | head -n 1` ] ; then 
+            while [ ! -z `pgrep msiexec* | head -n 1` ] || [ ! -z `pgrep rundll32* | head -n 1` ] ; do 
+                [ ! -z `pgrep rundll32* | head -n 1` ] && kill -n 9 `pgrep rundll32* | head -n 1` && echo "Kill rundll32.exe"
+                sleep 5
+            done
+        fi
+        portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/Epic Games/Launcher/Portal/Binaries/Win32/EpicGamesLauncher.exe"
+        try_remove_file "${PW_AUTOINSTALL_EXE}"
+        KILL_PORTWINE
+        PW_STOP_PROGRESS_BAR
+        PORTWINE_CREATE_SHORTCUT
+    fi
+    STOP_PORTWINE
+}
+
+PW_GOG () {
+    export LAUNCH_PARAMETERS=("/runWithoutUpdating" "/deelevated" )
+    export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/OriginSetup.exe"
+    START_PORTWINE
+    if try_download "https://content-system.gog.com/open_link/download?path=/open/galaxy/client/2.0.35.19/setup_galaxy_2.0.35.19a.exe" "${PW_AUTOINSTALL_EXE}"
+    then
+        PW_START_PROGRESS_BAR_CS "Installing the GOG Galaxy. Please wait..."
+        PW_RUN "${PW_AUTOINSTALL_EXE}"
+        portwine_exe=`find "$WINEPREFIX/drive_c/" -type f -name "GalaxyClient.exe"`
+        try_remove_file "${PW_AUTOINSTALL_EXE}"
+        KILL_PORTWINE
+        PW_STOP_PROGRESS_BAR
+        PORTWINE_CREATE_SHORTCUT
+    fi
+    STOP_PORTWINE
+}
+
+PW_EVE () {
+    export PW_WINDOWS_VER=10
+    export PW_DLL_INSTALL="vcrun2017"
+    export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/EveLauncher-1602194.exe"
+    START_PORTWINE
+    if try_download "https://binaries.eveonline.com/EveLauncher-1602194.exe" "${PW_AUTOINSTALL_EXE}"
+    then
+        PW_START_PROGRESS_BAR_CS "Installing the EVE Launcher. Please wait..."
+        PW_RUN "${PW_AUTOINSTALL_EXE}"
+        portwine_exe=`find "$WINEPREFIX/drive_c/" -type f -name "evelauncher.exe"`
+        try_remove_file "${PW_AUTOINSTALL_EXE}"
+        KILL_PORTWINE
+        PW_STOP_PROGRESS_BAR
+        PORTWINE_CREATE_SHORTCUT
+    fi
+    STOP_PORTWINE
+}

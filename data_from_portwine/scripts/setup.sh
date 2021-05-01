@@ -16,7 +16,7 @@ try_remove_file "${PORT_WINE_PATH}/restart.desktop"
 
 try_remove_dir "${PORT_WINE_PATH}/data/pfx/dosdevices" 
 try_remove_dir "${PORT_WINE_PATH}/Settings"
-try_remove_dir "$HOME/.PortWINE"
+#try_remove_dir "$HOME/.PortWINE"
 
 create_new_dir "/home/${USER}/.local/share/applications"
 
@@ -34,6 +34,7 @@ chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" /home/${USER}/.local/share/applications/
 
 update-desktop-database -q "${HOME}/.local/share/applications"
+xdg-mime default PortProton.desktop "application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program"
 
 name_desktop="readme" 
 echo "[Desktop Entry]"					 > "${PORT_WINE_PATH}/${name_desktop}.desktop"
@@ -58,7 +59,6 @@ do
 done
 chmod u+x "${PORT_SCRIPTS_PATH}/"*
 
-try_remove_dir "${PORT_WINE_PATH}/data/pfx/drive_c/drive_c"
 try_force_link_dir "${PORT_WINE_PATH}/data/pfx/drive_c/" "${PORT_WINE_PATH}/"
 if [ -d "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public" ] && [ ! -L "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public" ]; then
 	cp -fr "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public"/* "${PORT_WINE_PATH}/data/pfx/drive_c/users/steamuser/"
@@ -67,9 +67,6 @@ elif [ -L "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public" ]; then
 	rm -fr "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public"
 fi
 ln -s "${PORT_WINE_PATH}/data/pfx/drive_c/users/steamuser" "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public"
-if [ ! -d "${PORT_WINE_PATH}/data/pfx/drive_c/users/${USER}" ]; then
-	ln -s "${PORT_WINE_PATH}/data/pfx/drive_c/users/steamuser" "${PORT_WINE_PATH}/data/pfx/drive_c/users/${USER}"
-fi
 pw_clear_pfx
 if [ "${s_install}" = "1" ]; then
 	echo "Installation completed successfully."

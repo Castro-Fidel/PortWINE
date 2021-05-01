@@ -16,7 +16,7 @@ if [ "${s_install}" != "1" ] && [ ! -x "`which "zenity" 2>/dev/null`" ];then
     xdg-open "http://portwine-linux.ru/portwine-faq/" > /dev/null 2>&1 & exit 0
 fi
 pw_ping_test () {
-    ping -w1 -c1 github.com &> /dev/null
+    ping -w5 -c1 github.com &> /dev/null
     [ "$?" == "0" ] && return 0 || return 1
 }  
 print_error () {
@@ -81,7 +81,7 @@ try_force_link_dir () {
 }
 try_download () {
     set -o pipefail
-    wget -c -t 3 -T 2 "$1" --output-document="$2" 2>&1 | \
+    wget -c -t 10 -T 1 "$1" --output-document="$2" 2>&1 | \
     sed -u 's/^[a-zA-Z\-].*//; s/.* \{1,2\}\([0-9]\{1,3\}\)%.*/\1\n#Downloading... \1%/; s/^20[0-9][0-9].*/#Done./' | \
     zenity --progress --percentage=0 --title="Download $(basename $1)" --text=Starting... --auto-close --auto-kill --width=500 --height=90
     [ "${PIPESTATUS[0]}" != 0 ] && print_error "failed to download $1. Scipping." && return 1 || return 0 
@@ -108,10 +108,6 @@ unpack_tar_xz () {
     tar -Jxvf "$1" -C "$2" | sszen 
     [ "${PIPESTATUS[0]}" != 0 ] && print_error "File unpacking error." && return 1 || return 0 
 }
-#pw_restart () {
-#    exit 0 & 
-#    /bin/bash -C $pw_full_start_command
-#}
 pw_mangohud_check () {
     export RUN_MANGOHUD=""
     export MANGOHUD=0
@@ -140,145 +136,16 @@ PW_START_PROGRESS_BAR_CS () {
     --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 &
     echo ""
 }
-PW_START_PROGRESS_BAR_BLOK () {
+PW_START_PROGRESS_BAR_BLOCK () {
     "${pw_yad}" --progress --progress-text="$@" --pulsate \
     --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 &
     echo ""
 }
 PW_STOP_PROGRESS_BAR () {
     while [ ! -z "`pgrep -a yad | grep "\-\-progress" | awk '{print $1}'`" ] 
-    do kill -9 [ "`pgrep -a yad | grep "\-\-progress" | awk '{print $1}'`" ]
+    do kill -n 9 `pgrep -a yad | grep "\-\-progress" | awk '{print $1}' | head -n 1`
     done
 }
-cd "$(dirname "`readlink -f "$0"`")" && export PORT_SCRIPTS_PATH="$(pwd)"
-cd "${PORT_SCRIPTS_PATH}/../../" && export PORT_WINE_PATH="$(pwd)"
-export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
-read "portname" < "${PORT_WINE_TMP_PATH}/portname" && export portname
-cd "${PORT_SCRIPTS_PATH}" 
-. "${PORT_SCRIPTS_PATH}/var"  
-create_new_dir "${PORT_WINE_TMP_PATH}"
-create_new_dir "${HOME}/.PortWINE/tmp"
-try_remove_dir "${PORT_SCRIPTS_PATH}/vars"
-
-if [ ! -e "${PORT_WINE_TMP_PATH}/${portname}_loc" ]; then
-	SET_LANG=`zenity --title  "Install $portname" --text "Select the language" --list --radiolist \
-	--column="Set:" --column "Language:" \
-	TRUE "RUS" \
-	FALSE "ENG" `
-	echo "${SET_LANG}" > "${PORT_WINE_TMP_PATH}/${portname}_loc"
-fi
-
-. "${PORT_SCRIPTS_PATH}"/lang
-
-if [ ! -e "${PORT_WINE_TMP_PATH}/${portname}_ver" ]; then
-	echo "10" > "${PORT_WINE_TMP_PATH}/${portname}_ver"
-fi
-
-var_winedlloverride_update "winemenubuilder.exe="
-export url_mono="https://github.com/madewokherd/wine-mono/releases/download/wine-mono-${mono_ver}/wine-mono-${mono_ver}-x86.tar.xz"
-export url_gecko_x86="https://dl.winehq.org/wine/wine-gecko/${gecko_ver}/wine-gecko-${gecko_ver}-x86.tar.xz"
-export url_gecko_x86_64="https://dl.winehq.org/wine/wine-gecko/${gecko_ver}/wine-gecko-${gecko_ver}-x86_64.tar.xz"
-export urlg="https://portwine-linux.ru/portwine-faq/"
-export PW_FTP_URL="https://portwine-linux.ru/ftp"
-export WINEDIR="${PORT_WINE_PATH}"/data/dist
-export WINELIB="${HOME}/.PortWINE/libs${pw_libs_ver}"
-export WINEPREFIX="${PORT_WINE_PATH}/data/pfx"
-export PW_COMPAT_MEDIA_PATH="${PORT_WINE_TMP_PATH}"
-export PW_RUNTIME="$WINELIB/run.sh"
-export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
-export PW_VULKAN_DLL="${HOME}/.PortWINE/vulkan"
-export PW_DXVK_VER="${PW_DEF_DXVK_VER}"
-export PW_VKD3D_VER="${PW_DEF_VKD3D_VER}"
-export install_ver=`cat "${PORT_WINE_TMP_PATH}/${portname}_ver" | head -n 1`
-export scripts_install_ver=`cat "${PORT_WINE_TMP_PATH}/scripts_ver" | head -n 1`
-
-if [ -z "${INSTALLING_PORT}" ] ; then
-    if [ ! -e "${WINELIB}/run.sh" ] || [ ! -e "${WINELIB}/usr/bin/yad" ] || [ ! -e "${WINELIB}/amd64/usr/bin/vkcube" ] || [ ! -e "${WINELIB}/amd64/usr/bin/xterm" ] || [ -e "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" ] ; then 
-        print_info "Download and install libraries..."
-        if try_download "https://github.com/Castro-Fidel/PortWINE/releases/download/libs${pw_libs_ver}/libs${pw_libs_ver}.tar.xz" "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" ; then
-            if unpack_tar_xz "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" "${HOME}/.PortWINE/" ; then 
-                try_remove_file "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz"
-            else   
-                try_remove_dir "${HOME}/.PortWINE/libs${pw_libs_ver}"
-                try_remove_file "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz"
-                `zenity --error --title "Error..." --text "Failed to download runtime libraries.\nCheck internet connection and restart PortProton" --no-wrap ` > /dev/null 2>&1
-                exit 0
-            fi
-        else
-            `zenity --error --title "Error..." --text "Failed to download runtime libraries.\nCheck internet connection and restart PortProton" --no-wrap ` > /dev/null 2>&1
-            exit 1
-        fi
-    fi
-    if [ -e "${WINELIB}/run.sh" ]; then 
-        echo "######################################################"
-        echo "Runtime libraries is enabled"
-        try_remove_dir "${WINELIB}/pinned_libs_32"
-        try_remove_dir "${WINELIB}/pinned_libs_64"
-        export pw_yad="${WINELIB}/usr/bin/yad"
-        export pw_zstd="${WINELIB}/usr/bin/zstd"
-        if [ -x "`which xterm 2>/dev/null`" ]; then
-            export SYS_XTERM=`which xterm`
-            export PW_XTERM="${SYS_XTERM} -geometry 159x37 -e" 
-        else
-            export PW_XTERM="${WINELIB}/amd64/usr/bin/xterm -geometry 159x37 -e"        
-        fi
-    else
-        echo "######################################################"
-        echo "Runtime libraries is disabled"
-    fi
-    if [ ! -d "${HOME}/.PortWINE/mono/wine-mono-${mono_ver}" ] ; then 
-        echo "######################################################"
-        print_info "Download and install wine mono..."
-        if try_download "${url_mono}" "${HOME}/.PortWINE/tmp/wine-mono-${mono_ver}-x86.tar.xz" ; then
-            create_new_dir "${HOME}/.PortWINE/mono"
-            if ! unpack_tar_xz "${HOME}/.PortWINE/tmp/wine-mono-${mono_ver}-x86.tar.xz" "${HOME}/.PortWINE/mono/"
-            then try_remove_dir "${HOME}/.PortWINE/mono/wine-mono-${mono_ver}-x86"
-            fi
-            try_remove_file "${HOME}/.PortWINE/tmp/wine-mono-${mono_ver}-x86.tar.xz" 
-        fi
-    fi
-    if [ ! -d "${HOME}/.PortWINE/gecko/wine-gecko-${gecko_ver}-x86" ] ; then 
-        echo "######################################################"
-        echo "Download and install wine gecko x86..."
-        if try_download "${url_gecko_x86}" "${HOME}/.PortWINE/tmp/wine-gecko-${gecko_ver}-x86.tar.xz" ; then
-            create_new_dir "${HOME}/.PortWINE/gecko"
-            if ! unpack_tar_xz "${HOME}/.PortWINE/tmp/wine-gecko-${gecko_ver}-x86.tar.xz" "${HOME}/.PortWINE/gecko/"
-            then try_remove_dir "${HOME}/.PortWINE/gecko/wine-gecko-${gecko_ver}-x86"
-            fi
-            try_remove_file "${HOME}/.PortWINE/tmp/wine-gecko-${gecko_ver}-x86.tar.xz"
-        fi
-    fi
-        if [ ! -d "${HOME}/.PortWINE/gecko/wine-gecko-${gecko_ver}-x86_64" ] ; then 
-        echo "######################################################"
-        echo "Download and install wine gecko x86_64..."
-        if try_download "${url_gecko_x86_64}" "${HOME}/.PortWINE/tmp/wine-gecko-${gecko_ver}-x86_64.tar.xz" ; then
-            create_new_dir "${HOME}/.PortWINE/gecko"
-            if ! unpack_tar_xz "${HOME}/.PortWINE/tmp/wine-gecko-${gecko_ver}-x86_64.tar.xz" "${HOME}/.PortWINE/gecko/"
-            then try_remove_dir "${HOME}/.PortWINE/gecko/wine-gecko-${gecko_ver}-x86_64"
-            fi
-            try_remove_file "${HOME}/.PortWINE/tmp/wine-gecko-${gecko_ver}-x86_64.tar.xz"
-        fi
-    fi
-    create_new_dir "${WINEDIR}/share/wine/"
-    try_force_link_dir "${HOME}/.PortWINE/gecko" "${WINEDIR}"/share/wine/      
-    try_force_link_dir "${HOME}/.PortWINE/mono" "${WINEDIR}"/share/wine/ 
-
-    if [ ! -z "${portwine_exe}" ]; then
-        export PORTWINE_DB=`echo "${portwine_exe}" | awk -F '/' 'NF>1{print $NF}' | sed s/".exe"/""/gi`
-        export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
-        export WIN_PATH_TO_GAME=`echo "C:${PATH_TO_GAME}" | sed "s%$WINEPREFIX%%g" | sed "s/drive_c//g" | sed 's#/#\\\#g'`           
-    fi
-    if [ ! -z "${PORTWINE_DB}" ]; then
-        PORTWINE_DB_FILE=`grep -ilw "#${PORTWINE_DB}" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
-        if [ ! -z "${PORTWINE_DB_FILE}" ]; then
-            . "${PORTWINE_DB_FILE}"
-            echo "Use ${PORTWINE_DB_FILE} db file."
-        else
-            . "${PORT_SCRIPTS_PATH}/portwine_db/default"
-            echo "Use default db file."
-        fi
-    fi
-fi
 START_PORTWINE ()
     {
     if [ -x "`which konsole 2>/dev/null`" ]; then export PW_TERM="konsole --nofork -e"
@@ -288,8 +155,6 @@ START_PORTWINE ()
     else export PW_TERM="${PW_XTERM}"
     fi
 
-    [ -z "${INSTALLING_PORT}" ] && PW_UPDATE
-    
     try_remove_dir "${PORT_WINE_PATH}/data/vulkan"
     create_new_dir "${PW_VULKAN_DLL}"
 
@@ -395,8 +260,13 @@ START_PORTWINE ()
     if [ ! -z "${PW_VKD3D_FEATURE_LEVEL}" ] && [ "${PW_VKD3D_FEATURE_LEVEL}" != 0 ] ; then
         export VKD3D_FEATURE_LEVEL="12_0"
     fi
-    if [ ! -z "${PW_HEAP_DELAY_FREE}" ] && [ "${PW_HEAP_DELAY_FREE}" != 0 ] ; then
-        export WINE_HEAP_DELAY_FREE="1"
+    if [ ! -z "${PW_HEAP_DELAY_FREE}" ] && [ "${PW_HEAP_DELAY_FREE}" != 0 ]
+    then export WINE_HEAP_DELAY_FREE="1"
+    else export WINE_HEAP_DELAY_FREE="0"
+    fi
+    if [ ! -z "${PW_WINE_ALLOW_XIM}" ] && [ "${PW_WINE_ALLOW_XIM}" != 0 ]
+    then export WINE_ALLOW_XIM="1"
+    else export WINE_ALLOW_XIM="0"
     fi
     if [ ! -z "${PW_DXR_ON}" ] && [ "${PW_DXR_ON}" != 0 ] ; then
         var_vkd3d_config_update dxr
@@ -626,31 +496,39 @@ PW_INIT_PFX () {
     if [ ! -d "${WINEPREFIX}" ] || [ ! -d "${WINEPREFIX}"/drive_c/windows ] || [ ! -f "${WINEPREFIX}"/user.reg ] || [ ! -f "${WINEPREFIX}"/userdef.reg ] || [ ! -f "${WINEPREFIX}"/system.reg ] ; then
         sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}"*/share/wine/wine.inf 
         sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}"*/share/wine/wine.inf 
+        create_new_dir "${WINEPREFIX}/drive_c/windows/syswow64/"
+        create_new_dir "${WINEPREFIX}/drive_c/windows/system32/"
+        cp -f "${WINEDIR}/lib/wine/fakedlls/"*.* "${WINEPREFIX}/drive_c/windows/syswow64/"
+        cp -f "${WINEDIR}/lib/wine/"*.* "${WINEPREFIX}/drive_c/windows/syswow64/"
+        cp -f "${WINEDIR}/lib64/wine/fakedlls/"*.* "${WINEPREFIX}/drive_c/windows/system32/"
+        cp -f "${WINEDIR}/lib64/wine/"*.* "${WINEPREFIX}/drive_c/windows/system32/"
+
         PW_STOP_PROGRESS_BAR
-        PW_START_PROGRESS_BAR_BLOK "Updating prefix... Please wait..."
+        PW_START_PROGRESS_BAR_BLOCK "Updating prefix... Please wait..."
         "${PW_RUNTIME}" "${WINELOADER}" wineboot -u
         PW_STOP_PROGRESS_BAR
         PW_START_PROGRESS_BAR_CS "Initialization prefix..."
     fi
+    if [ ! -d "${PORT_WINE_PATH}/data/pfx/drive_c/users/${USER}" ]; then
+	    try_force_link_dir "${PORT_WINE_PATH}/data/pfx/drive_c/users/steamuser" "${PORT_WINE_PATH}/data/pfx/drive_c/users/${USER}"
+    fi
     rm -f "${WINEPREFIX}/drive_c/windows/system32"/steam* 
     rm -f "${WINEPREFIX}/drive_c/windows/syswow64"/steam* 
+
+    create_new_dir "${WINEPREFIX}/drive_c/windows/Fonts/"
     try_copy_file "${WINEDIR}/share/fonts/"LiberationSans-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arial.ttf
     try_copy_file "${WINEDIR}/share/fonts/"LiberationSans-Bold.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arialbd.ttf
     try_copy_file "${WINEDIR}/share/fonts/"LiberationSerif-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"times.ttf
     try_copy_file "${WINEDIR}/share/fonts/"LiberationMono-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"cour.ttf
     try_copy_file "${WINEDIR}/share/fonts/"SourceHanSansSCRegular.otf "${WINEPREFIX}/drive_c/windows/Fonts/"msyh.ttf
-    for wine_build_dll in ntdll mf mf3216 mferror mfmediaengine mfplat mfplay mfreadwrite vulkan-1 ; do #sqmapi msmpeg2vdec msmpeg2adec colorcnv
-        try_copy_file "${WINEDIR}/lib/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-        try_copy_file "${WINEDIR}/lib64/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-        [ "$?" == 0 ] && var_winedlloverride_update "${wine_build_dll}=b"
-    done
     var_winedlloverride_update "steam_api,steam_api64,steamclient,steamclient64=n"
     #sed -i '/steamclient/d' "${WINEPREFIX}"/*.reg 
     #sed -i '/SteamPath/d' "${WINEPREFIX}"/*.reg 
     
     export TOTAL_VRAM=`"${WINELIB}/amd64/usr/bin/glxinfo" -B | grep Total | awk -F: '{print $2}' | awk '{print $1}'`
     echo "TOTAL_VRAM=${TOTAL_VRAM}"
-
+    try_copy_file "${WINEDIR}/lib/wine/dxvk/dxvk_config.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+    try_copy_file "${WINEDIR}/lib64/wine/dxvk/dxvk_config.dll" "${WINEPREFIX}/drive_c/windows/system32/"
     if [ "${PW_VULKAN_USE}" = "0" ]; then
         export MESA_GLSL_CACHE_DIR="${PORT_WINE_TMP_PATH}"
         export GL_NO_DSO_FINALIZER=1 
@@ -700,7 +578,6 @@ PW_INIT_PFX () {
         echo "Use VKD3D-PROTON version ${PW_VKD3D_VER} (DX12 to vulkan)"
     fi
     }
-
 PW_SCRIPTS_UPDATE () {
     if [ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ] ; then
         echo "1000" > "${PORT_WINE_TMP_PATH}/scripts_ver"
@@ -717,8 +594,11 @@ PW_SCRIPTS_UPDATE () {
             if [ "$?" == "0" ] ; then
                 try_remove_file "${PORT_WINE_TMP_PATH}/scripts.tar.xz"
                 echo "${scripts_current_ver}" > "${PORT_WINE_TMP_PATH}/scripts_ver"
-                `zenity --info --title "Info..." --text "${loc_scripts_update}" --no-wrap ` > /dev/null 2>&1
-                xdg-open "${PORT_WINE_PATH}/data/changelog"
+                yad --title="Changelog" --borders=10 \
+                --text="Скрипты были успешно обновлены.\nДля продолжения запуска порта нажмите ОК." \
+                --text-align=center --text-info --show-uri --wrap --center --width=1200 --height=550 \
+                --filename="${PORT_WINE_PATH}/data/changelog"
+                [ "$?" == 0 ] && /bin/bash -c ${pw_full_command_line[*]} & 
                 exit 0
             fi
         fi
@@ -755,3 +635,135 @@ PW_RUN () {
         fi
     fi
 }
+
+cd "$(dirname "`readlink -f "$0"`")" && export PORT_SCRIPTS_PATH="$(pwd)"
+cd "${PORT_SCRIPTS_PATH}/../../" && export PORT_WINE_PATH="$(pwd)"
+export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
+read "portname" < "${PORT_WINE_TMP_PATH}/portname" && export portname
+cd "${PORT_SCRIPTS_PATH}" 
+. "${PORT_SCRIPTS_PATH}/var"  
+create_new_dir "${PORT_WINE_TMP_PATH}"
+create_new_dir "${HOME}/.PortWINE/tmp"
+try_remove_dir "${PORT_SCRIPTS_PATH}/vars"
+
+if [ ! -e "${PORT_WINE_TMP_PATH}/${portname}_loc" ]; then
+	SET_LANG=`zenity --title  "Install $portname" --text "Select the language" --list --radiolist \
+	--column="Set:" --column "Language:" \
+	TRUE "RUS" \
+	FALSE "ENG" `
+	echo "${SET_LANG}" > "${PORT_WINE_TMP_PATH}/${portname}_loc"
+fi
+
+. "${PORT_SCRIPTS_PATH}"/lang
+
+if [ ! -e "${PORT_WINE_TMP_PATH}/${portname}_ver" ]; then
+	echo "10" > "${PORT_WINE_TMP_PATH}/${portname}_ver"
+fi
+
+var_winedlloverride_update "winemenubuilder.exe="
+export url_mono="https://github.com/madewokherd/wine-mono/releases/download/wine-mono-${mono_ver}/wine-mono-${mono_ver}-x86.tar.xz"
+export url_gecko_x86="https://dl.winehq.org/wine/wine-gecko/${gecko_ver}/wine-gecko-${gecko_ver}-x86.tar.xz"
+export url_gecko_x86_64="https://dl.winehq.org/wine/wine-gecko/${gecko_ver}/wine-gecko-${gecko_ver}-x86_64.tar.xz"
+export urlg="https://portwine-linux.ru/portwine-faq/"
+export PW_FTP_URL="https://portwine-linux.ru/ftp"
+export WINEDIR="${PORT_WINE_PATH}"/data/dist
+export WINELIB="${HOME}/.PortWINE/libs${pw_libs_ver}"
+export WINEPREFIX="${PORT_WINE_PATH}/data/pfx"
+export PW_COMPAT_MEDIA_PATH="${PORT_WINE_TMP_PATH}"
+export PW_RUNTIME="$WINELIB/run.sh"
+export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
+export PW_VULKAN_DLL="${HOME}/.PortWINE/vulkan"
+export PW_DXVK_VER="${PW_DEF_DXVK_VER}"
+export PW_VKD3D_VER="${PW_DEF_VKD3D_VER}"
+export install_ver=`cat "${PORT_WINE_TMP_PATH}/${portname}_ver" | head -n 1`
+export scripts_install_ver=`cat "${PORT_WINE_TMP_PATH}/scripts_ver" | head -n 1`
+
+if [ -z "${INSTALLING_PORT}" ] ; then
+    if [ ! -e "${WINELIB}/run.sh" ] || [ ! -e "${WINELIB}/usr/bin/yad" ] || [ ! -e "${WINELIB}/amd64/usr/bin/vkcube" ] || [ ! -e "${WINELIB}/amd64/usr/bin/xterm" ] || [ -e "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" ] ; then 
+        print_info "Download and install libraries..."
+        if try_download "https://github.com/Castro-Fidel/PortWINE/releases/download/libs${pw_libs_ver}/libs${pw_libs_ver}.tar.xz" "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" ; then
+            if unpack_tar_xz "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" "${HOME}/.PortWINE/" ; then 
+                try_remove_file "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz"
+            else   
+                try_remove_dir "${HOME}/.PortWINE/libs${pw_libs_ver}"
+                try_remove_file "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz"
+                `zenity --error --title "Error..." --text "Failed to download runtime libraries.\nCheck internet connection and restart PortProton" --no-wrap ` > /dev/null 2>&1
+                exit 0
+            fi
+        else
+            `zenity --error --title "Error..." --text "Failed to download runtime libraries.\nCheck internet connection and restart PortProton" --no-wrap ` > /dev/null 2>&1
+            exit 1
+        fi
+    fi
+    if [ -e "${WINELIB}/run.sh" ]; then 
+        echo "######################################################"
+        echo "Runtime libraries is enabled"
+        try_remove_dir "${WINELIB}/pinned_libs_32"
+        try_remove_dir "${WINELIB}/pinned_libs_64"
+        export pw_yad="${WINELIB}/usr/bin/yad"
+        export pw_zstd="${WINELIB}/usr/bin/zstd"
+        if [ -x "`which xterm 2>/dev/null`" ]; then
+            export SYS_XTERM=`which xterm`
+            export PW_XTERM="${SYS_XTERM} -geometry 159x37 -e" 
+        else
+            export PW_XTERM="${WINELIB}/amd64/usr/bin/xterm -geometry 159x37 -e"        
+        fi
+    else
+        echo "######################################################"
+        echo "Runtime libraries is disabled"
+    fi
+    if [ ! -d "${HOME}/.PortWINE/mono/wine-mono-${mono_ver}" ] ; then 
+        echo "######################################################"
+        print_info "Download and install wine mono..."
+        if try_download "${url_mono}" "${HOME}/.PortWINE/tmp/wine-mono-${mono_ver}-x86.tar.xz" ; then
+            create_new_dir "${HOME}/.PortWINE/mono"
+            if ! unpack_tar_xz "${HOME}/.PortWINE/tmp/wine-mono-${mono_ver}-x86.tar.xz" "${HOME}/.PortWINE/mono/"
+            then try_remove_dir "${HOME}/.PortWINE/mono/wine-mono-${mono_ver}-x86"
+            fi
+            try_remove_file "${HOME}/.PortWINE/tmp/wine-mono-${mono_ver}-x86.tar.xz" 
+        fi
+    fi
+    if [ ! -d "${HOME}/.PortWINE/gecko/wine-gecko-${gecko_ver}-x86" ] ; then 
+        echo "######################################################"
+        echo "Download and install wine gecko x86..."
+        if try_download "${url_gecko_x86}" "${HOME}/.PortWINE/tmp/wine-gecko-${gecko_ver}-x86.tar.xz" ; then
+            create_new_dir "${HOME}/.PortWINE/gecko"
+            if ! unpack_tar_xz "${HOME}/.PortWINE/tmp/wine-gecko-${gecko_ver}-x86.tar.xz" "${HOME}/.PortWINE/gecko/"
+            then try_remove_dir "${HOME}/.PortWINE/gecko/wine-gecko-${gecko_ver}-x86"
+            fi
+            try_remove_file "${HOME}/.PortWINE/tmp/wine-gecko-${gecko_ver}-x86.tar.xz"
+        fi
+    fi
+        if [ ! -d "${HOME}/.PortWINE/gecko/wine-gecko-${gecko_ver}-x86_64" ] ; then 
+        echo "######################################################"
+        echo "Download and install wine gecko x86_64..."
+        if try_download "${url_gecko_x86_64}" "${HOME}/.PortWINE/tmp/wine-gecko-${gecko_ver}-x86_64.tar.xz" ; then
+            create_new_dir "${HOME}/.PortWINE/gecko"
+            if ! unpack_tar_xz "${HOME}/.PortWINE/tmp/wine-gecko-${gecko_ver}-x86_64.tar.xz" "${HOME}/.PortWINE/gecko/"
+            then try_remove_dir "${HOME}/.PortWINE/gecko/wine-gecko-${gecko_ver}-x86_64"
+            fi
+            try_remove_file "${HOME}/.PortWINE/tmp/wine-gecko-${gecko_ver}-x86_64.tar.xz"
+        fi
+    fi
+    create_new_dir "${WINEDIR}/share/wine/"
+    try_force_link_dir "${HOME}/.PortWINE/gecko" "${WINEDIR}"/share/wine/      
+    try_force_link_dir "${HOME}/.PortWINE/mono" "${WINEDIR}"/share/wine/ 
+
+    if [ ! -z "${portwine_exe}" ]; then
+        export PORTWINE_DB=`echo "${portwine_exe}" | awk -F '/' 'NF>1{print $NF}' | sed s/".exe"/""/gi`
+        export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
+        export WIN_PATH_TO_GAME=`echo "C:${PATH_TO_GAME}" | sed "s%$WINEPREFIX%%g" | sed "s/drive_c//g" | sed 's#/#\\\#g'`           
+    fi
+    if [ ! -z "${PORTWINE_DB}" ]; then
+        PORTWINE_DB_FILE=`grep -ilw "#${PORTWINE_DB}" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
+        if [ ! -z "${PORTWINE_DB_FILE}" ]; then
+            . "${PORTWINE_DB_FILE}"
+            echo "Use ${PORTWINE_DB_FILE} db file."
+        else
+            . "${PORT_SCRIPTS_PATH}/portwine_db/default"
+            echo "Use default db file."
+        fi
+    fi
+fi
+
+[ -z "${INSTALLING_PORT}" ] && PW_UPDATE

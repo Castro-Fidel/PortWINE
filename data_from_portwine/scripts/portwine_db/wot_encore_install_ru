@@ -1,0 +1,41 @@
+#!/bin/bash
+    #Author: user
+    #wot_encore_install_ru.exe 
+    #Rating=1-5
+    ################################################
+    export PW_VULKAN_USE=dxvk
+    export PW_USE_TERMINAL=1
+    export WINEPREFIX="${PORT_WINE_PATH}/data/pfx_dotnet"
+    export PW_DLL_INSTALL="dotnet40 vcrun2017 vcrun6 mfc42 vb6run physx"
+    export PW_COMMENT_DB="World Of Tanks EnCore Installer"
+    ## export DXVK_HUD=fps,devinfo
+    ## export PW_MANGOHUD=1
+#####################examples###########################
+PW_INSTALL_DOTNET40 () {
+    export DN=dotNetFx40_Full_x86_x64.exe
+    export mscor=mscorsvw.exe
+    export KILL_MSCOR=0
+    export DN_INST_SUCC=0
+
+    while [ ! -z "`ps -ax | grep PortProton | grep -m1 'start.sh' | awk '{print $1}'`" ] ; do
+        echo "PID parrent start.sh was found"
+        sleep 5
+        while [ ! -z `pidof -s $DN` ] ; do
+            echo "$DN is runing.. Wait..."
+            sleep 5
+            export DN_INST_SUCC=1
+        done
+        while [ ! -z `pgrep "${mscor}" | head -n 1` ] && [ -z `pidof -s $DN` ] ; do
+            echo "$mscor was found. Kill it..."
+            kill -n 9 `pgrep "${mscor}" | head -n 1`
+            sleep 1
+            export KILL_MSCOR=1
+        done
+        if [ "$KILL_MSCOR" != 0 ] && [ "$DN_INST_SUCC" != 0 ] && [ -z `pidof -s $DN` ] && [ -z `pgrep "${mscor}" | head -n 1` ]; then
+            echo "All $mscor killed" 
+            break
+        fi
+    done
+}
+PW_INSTALL_DOTNET40 &
+
