@@ -60,13 +60,6 @@ done
 chmod u+x "${PORT_SCRIPTS_PATH}/"*
 
 try_force_link_dir "${PORT_WINE_PATH}/data/pfx/drive_c/" "${PORT_WINE_PATH}/"
-if [ -d "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public" ] && [ ! -L "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public" ]; then
-	cp -fr "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public"/* "${PORT_WINE_PATH}/data/pfx/drive_c/users/steamuser/"
-	rm -fr "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public"
-elif [ -L "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public" ]; then
-	rm -fr "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public"
-fi
-ln -s "${PORT_WINE_PATH}/data/pfx/drive_c/users/steamuser" "${PORT_WINE_PATH}/data/pfx/drive_c/users/Public"
 pw_clear_pfx
 if [ "${s_install}" = "1" ]; then
 	echo "Installation completed successfully."

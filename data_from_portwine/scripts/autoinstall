@@ -107,15 +107,16 @@ PW_GOG () {
 PW_EVE () {
     export PW_WINDOWS_VER=10
     export PW_DLL_INSTALL="vcrun2017"
-    export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/EveLauncher-1602194.exe"
+    export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/EveLauncher-1892908.exe"
     START_PORTWINE
-    if try_download "https://binaries.eveonline.com/EveLauncher-1602194.exe" "${PW_AUTOINSTALL_EXE}"
+    if try_download "https://binaries.eveonline.com/EveLauncher-1892908.exe" "${PW_AUTOINSTALL_EXE}"
     then
-        PW_START_PROGRESS_BAR_CS "Installing the EVE Launcher. Please wait..."
-        PW_RUN "${PW_AUTOINSTALL_EXE}"
-        portwine_exe=`find "$WINEPREFIX/drive_c/" -type f -name "evelauncher.exe"`
+        PW_START_PROGRESS_BAR_BLOCK "Installing the EVE Launcher. Please wait..."
+        dd if="${PW_AUTOINSTALL_EXE}" of="${PW_AUTOINSTALL_EXE}".7z bs=1M skip=31646603 count=196171208 iflag=skip_bytes,count_bytes
+        "$pw_7z" x "${PW_AUTOINSTALL_EXE}".7z -o"$WINEPREFIX/drive_c/Games/EVE Online"
         try_remove_file "${PW_AUTOINSTALL_EXE}"
-        KILL_PORTWINE
+        try_remove_file "${PW_AUTOINSTALL_EXE}".7z 
+        portwine_exe="$WINEPREFIX/drive_c/Games/EVE Online/Launcher/evelauncher.exe"
         PW_STOP_PROGRESS_BAR
         PORTWINE_CREATE_SHORTCUT
     fi

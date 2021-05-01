@@ -149,9 +149,9 @@ PW_STOP_PROGRESS_BAR () {
 START_PORTWINE ()
     {
     if [ -x "`which konsole 2>/dev/null`" ]; then export PW_TERM="konsole --nofork -e"
-    elif [ -x "`which xterm 2>/dev/null`" ]; then export PW_TERM="${PW_XTERM}"
-    elif [ -x "`which gnome-terminal 2>/dev/null`" ]; then export PW_TERM="gnome-terminal -- $SHELL -c" 
+#    elif [ -x "`which gnome-terminal 2>/dev/null`" ]; then export PW_TERM="gnome-terminal -- /bin/bash" ???
     elif [ -x "`which lxterminal 2>/dev/null`" ]; then export PW_TERM="lxterminal -e"
+    elif [ -x "`which xterm 2>/dev/null`" ]; then export PW_TERM="${PW_XTERM}"
     else export PW_TERM="${PW_XTERM}"
     fi
 
@@ -386,6 +386,10 @@ UPDATE_WINETRICKS () {
             fi
         fi
     fi
+    if  [ -f "${PORT_WINE_TMP_PATH}/winetricks" ] ; then
+        sed -i 's/w_metadata vcrun2015 dlls \\/w_metadata !dont_use_2015! dlls \\/' "${PORT_WINE_TMP_PATH}/winetricks"
+        sed -i 's/w_metadata vcrun2017 dlls \\/w_metadata !dont_use_2017! dlls \\/' "${PORT_WINE_TMP_PATH}/winetricks"
+    fi
 }
 
 RUN_WINETRICKS_FROM_DB () {
@@ -396,7 +400,15 @@ RUN_WINETRICKS_FROM_DB () {
         export USE_WT_FROM_DB=0
         if [ -e "${WINEPREFIX}/winetricks.log" ] ; then
             for need_install_dll_to_pfx in ${PW_DLL_INSTALL} ; do
-                grep "${need_install_dll_to_pfx}" "${WINEPREFIX}/winetricks.log"
+                if [ "${need_install_dll_to_pfx}" == "vcrun2015" ] || [ "${need_install_dll_to_pfx}" == "vcrun2017" ] ; then
+                    need_install_dll_to_pfx="vcrun2019"
+                    sed -i '/vcrun2015/d' "${WINEPREFIX}/winetricks.log"
+                    sed -i '/vcrun2017/d' "${WINEPREFIX}/winetricks.log"
+                elif [ "${need_install_dll_to_pfx}" == "vcrun2019" ] ; then
+                    sed -i '/vcrun2015/d' "${WINEPREFIX}/winetricks.log"
+                    sed -i '/vcrun2017/d' "${WINEPREFIX}/winetricks.log"
+                fi
+                grep "${need_install_dll_to_pfx}" "${WINEPREFIX}/winetricks.log"                    
                 if [ "$?" == "1" ] ; then
                     if [ -z "${PW_DLL_NEED_INSTALL}" ]
                     then export PW_DLL_NEED_INSTALL="${need_install_dll_to_pfx}"
@@ -447,6 +459,10 @@ PW_UPDATE () {
                 case $xsd in
                     "${port_upd4}")
                         KILL_PORTWINE
+                        # if try_download https://portwine-linux.ru/ftp/portwine/PortProton-$current_ver "${HOME}/.PortWINE/tmp/PortProton-$current_ver" ; then
+                        #     sh "${HOME}/.PortWINE/tmp/PortProton-$current_ver" 
+                        #     try_remove_file "${HOME}/.PortWINE/tmp/PortProton-$current_ver"
+                        # fi &
                         xdg-open $porturl 
                         exit 0 ;;
                     "${port_upd5}")
@@ -493,11 +509,16 @@ PW_INIT_PFX () {
     #sed -i '/HKCU,Software\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf 
     #sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf 
     #sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf 
-    if [ ! -d "${WINEPREFIX}" ] || [ ! -d "${WINEPREFIX}"/drive_c/windows ] || [ ! -f "${WINEPREFIX}"/user.reg ] || [ ! -f "${WINEPREFIX}"/userdef.reg ] || [ ! -f "${WINEPREFIX}"/system.reg ] ; then
+    if [ ! -d "${WINEPREFIX}" ] || [ ! -d "${WINEPREFIX}"/drive_c/windows ] || \
+       [ ! -f "${WINEPREFIX}"/user.reg ] || [ ! -f "${WINEPREFIX}"/userdef.reg ] || \
+       [ ! -f "${WINEPREFIX}"/system.reg ] ; 
+    then
         sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}"*/share/wine/wine.inf 
         sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}"*/share/wine/wine.inf 
+        try_remove_file "${WINEPREFIX}/winetricks.log"
         create_new_dir "${WINEPREFIX}/drive_c/windows/syswow64/"
         create_new_dir "${WINEPREFIX}/drive_c/windows/system32/"
+        cp -fr "${WINEDIR}/share/default_pfx/"* "${WINEPREFIX}"
         cp -f "${WINEDIR}/lib/wine/fakedlls/"*.* "${WINEPREFIX}/drive_c/windows/syswow64/"
         cp -f "${WINEDIR}/lib/wine/"*.* "${WINEPREFIX}/drive_c/windows/syswow64/"
         cp -f "${WINEDIR}/lib64/wine/fakedlls/"*.* "${WINEPREFIX}/drive_c/windows/system32/"
@@ -577,7 +598,8 @@ PW_INIT_PFX () {
         export PW_WINDOWS_VER="10"
         echo "Use VKD3D-PROTON version ${PW_VKD3D_VER} (DX12 to vulkan)"
     fi
-    }
+}
+
 PW_SCRIPTS_UPDATE () {
     if [ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ] ; then
         echo "1000" > "${PORT_WINE_TMP_PATH}/scripts_ver"
@@ -589,12 +611,13 @@ PW_SCRIPTS_UPDATE () {
         if [ ! -z "${scripts_current_ver}" ] && [ "${scripts_current_ver}" -gt "${scripts_install_ver}" ] ; then	
             echo "######################################################"
             echo "Update scripts..."
+            try_remove_file "${PORT_WINE_TMP_PATH}/scripts.tar.xz"
             try_download "${PW_FTP_URL}/dist/scripts.tar.xz" "${PORT_WINE_TMP_PATH}/scripts.tar.xz"
             tar -Jxvf "${PORT_WINE_TMP_PATH}/scripts.tar.xz" -C "${PORT_WINE_PATH}/data/"
             if [ "$?" == "0" ] ; then
                 try_remove_file "${PORT_WINE_TMP_PATH}/scripts.tar.xz"
                 echo "${scripts_current_ver}" > "${PORT_WINE_TMP_PATH}/scripts_ver"
-                yad --title="Changelog" --borders=10 \
+                "${pw_yad}" --title="Changelog" --borders=10 \
                 --text="Скрипты были успешно обновлены.\nДля продолжения запуска порта нажмите ОК." \
                 --text-align=center --text-info --show-uri --wrap --center --width=1200 --height=550 \
                 --filename="${PORT_WINE_PATH}/data/changelog"
@@ -679,7 +702,9 @@ export install_ver=`cat "${PORT_WINE_TMP_PATH}/${portname}_ver" | head -n 1`
 export scripts_install_ver=`cat "${PORT_WINE_TMP_PATH}/scripts_ver" | head -n 1`
 
 if [ -z "${INSTALLING_PORT}" ] ; then
-    if [ ! -e "${WINELIB}/run.sh" ] || [ ! -e "${WINELIB}/usr/bin/yad" ] || [ ! -e "${WINELIB}/amd64/usr/bin/vkcube" ] || [ ! -e "${WINELIB}/amd64/usr/bin/xterm" ] || [ -e "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" ] ; then 
+    if [ ! -e "${WINELIB}/run.sh" ] || [ ! -e "${WINELIB}/usr/bin/yad" ] || [ ! -e "${WINELIB}/usr/lib/p7zip/7zr" ] \
+    || [ ! -e "${WINELIB}/amd64/usr/bin/vkcube" ] || [ ! -e "${WINELIB}/amd64/usr/bin/xterm" ] || \
+    [ -e "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" ] ; then 
         print_info "Download and install libraries..."
         if try_download "https://github.com/Castro-Fidel/PortWINE/releases/download/libs${pw_libs_ver}/libs${pw_libs_ver}.tar.xz" "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" ; then
             if unpack_tar_xz "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" "${HOME}/.PortWINE/" ; then 
@@ -702,6 +727,7 @@ if [ -z "${INSTALLING_PORT}" ] ; then
         try_remove_dir "${WINELIB}/pinned_libs_64"
         export pw_yad="${WINELIB}/usr/bin/yad"
         export pw_zstd="${WINELIB}/usr/bin/zstd"
+        export pw_7z="${WINELIB}/usr/lib/p7zip/7zr"
         if [ -x "`which xterm 2>/dev/null`" ]; then
             export SYS_XTERM=`which xterm`
             export PW_XTERM="${SYS_XTERM} -geometry 159x37 -e" 
@@ -767,3 +793,4 @@ if [ -z "${INSTALLING_PORT}" ] ; then
 fi
 
 [ -z "${INSTALLING_PORT}" ] && PW_UPDATE
+[ -z "${INSTALLING_PORT}" ] && PW_SCRIPTS_UPDATE

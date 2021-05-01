@@ -5,7 +5,6 @@ if [ -f "$1" ]; then
     export portwine_exe="$(readlink -f "$1")"
 fi
 . "$(dirname $(readlink -f "$0"))/runlib"
-PW_SCRIPTS_UPDATE
 
 PORTWINE_LAUNCH () {
     KILL_PORTWINE
@@ -167,7 +166,7 @@ PORTWINE_DEBUG () {
     sleep 1 && zenity --info --title "DEBUG" --text "${port_debug}" --no-wrap &> /dev/null && KILL_PORTWINE
     deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++') 
     echo "$deb_text" > "${PORT_WINE_PATH}/${portname}.log"
-    yad --title="${portname}.log" --borders=10 --no-buttons --text-align=center \
+    "$pw_yad" --title="${portname}.log" --borders=10 --no-buttons --text-align=center \
     --text-info --show-uri --wrap --center --width=1200 --height=550 \
     --filename="${PORT_WINE_PATH}/${portname}.log"
 }
@@ -204,7 +203,7 @@ PW_AUTO_INSTALL_FROM_DB () {
 
 
 if [ ! -z "${portwine_exe}" ]; then
-    if [ -z "${PW_GUI_DISABLED_CS}" ] || [ "${PW_GUI_DISABLED_CS}" = 0 ] ; then
+    if [ -z "${PW_GUI_DISABLED_CS}" ] || [ "${PW_GUI_DISABLED_CS}" = 0 ] || [ -z "${PW_VULKAN_USE}" ]; then
         if [ ! -z "${PORTWINE_DB_FILE}" ] && [ ! -z "${PW_VULKAN_USE}" ]; then
             if [ -z "${PW_COMMENT_DB}" ] ; then
                 PW_COMMENT_DB="PortWINE database file for "\"${PORTWINE_DB}"\" was found."
@@ -265,7 +264,7 @@ else
     export -f button_click
 
     open_changelog () {
-        yad --title="Changelog" --borders=10 --no-buttons --text-align=center \
+        "${pw_yad}" --title="Changelog" --borders=10 --no-buttons --text-align=center \
         --text-info --show-uri --wrap --center --width=1200 --height=550 \
         --filename="${PORT_WINE_PATH}/data/changelog"
     }
