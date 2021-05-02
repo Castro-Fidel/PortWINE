@@ -7,16 +7,13 @@ try_remove_file "${PORT_WINE_TMP_PATH}/init_run_suc"
 
 try_remove_file "${PORT_WINE_PATH}/data/port_on" 
 try_remove_file "${PORT_WINE_PATH}/data/dxvk.conf" 
-try_remove_file "${PORT_WINE_PATH}/Create_shortcut_PP.desktop"
-try_remove_file "${PORT_WINE_PATH}/Proton.desktop"
-try_remove_file "${PORT_WINE_PATH}/settings.desktop"
 try_remove_file "${PORT_WINE_PATH}/settings.desktop"
 try_remove_file "${PORT_WINE_PATH}/debug.desktop"
 try_remove_file "${PORT_WINE_PATH}/restart.desktop"
 
 try_remove_dir "${PORT_WINE_PATH}/data/pfx/dosdevices" 
 try_remove_dir "${PORT_WINE_PATH}/Settings"
-#try_remove_dir "$HOME/.PortWINE"
+try_remove_dir "${PORT_SCRIPTS_PATH}/vars"
 
 create_new_dir "/home/${USER}/.local/share/applications"
 

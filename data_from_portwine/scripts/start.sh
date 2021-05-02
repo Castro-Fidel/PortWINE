@@ -167,7 +167,7 @@ PORTWINE_DEBUG () {
     deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++') 
     echo "$deb_text" > "${PORT_WINE_PATH}/${portname}.log"
     "$pw_yad" --title="${portname}.log" --borders=10 --no-buttons --text-align=center \
-    --text-info --show-uri --wrap --center --width=1200 --height=550 \
+    --text-info --show-uri --wrap --center --width=1200 --height=550  --uri-color=red \
     --filename="${PORT_WINE_PATH}/${portname}.log"
 }
 PW_WINECFG () {
@@ -265,7 +265,7 @@ else
 
     open_changelog () {
         "${pw_yad}" --title="Changelog" --borders=10 --no-buttons --text-align=center \
-        --text-info --show-uri --wrap --center --width=1200 --height=550 \
+        --text-info --show-uri --wrap --center --width=1200 --height=550 --uri-color=red \
         --filename="${PORT_WINE_PATH}/data/changelog"
     }
     export -f open_changelog
