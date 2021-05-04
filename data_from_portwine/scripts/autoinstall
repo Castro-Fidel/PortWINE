@@ -2,17 +2,17 @@
 # Author: Castro-Fidel (PortWINE-Linux.ru)
 ########################################################################
 export PW_USER_TEMP="$WINEPREFIX/drive_c/users/${USER}/Temp"
-export PW_FORCE_LARGE_ADDRESS_AWARE=0  
-export PW_FORCE_DISABLED_GAMEMOD=1 
+export PW_FORCE_LARGE_ADDRESS_AWARE=0
+export PW_FORCE_DISABLED_GAMEMOD=1
 export PW_CHECK_AUTOINSTAL=1
 export PW_WINEDBG_DISABLE=1
-export PW_NO_WRITE_WATCH=0          
-export PW_VULKAN_USE=0     
-export PW_NO_FSYNC=1                         
-export PW_NO_ESYNC=1 
+export PW_NO_WRITE_WATCH=0
+export PW_VULKAN_USE=0
+export PW_NO_FSYNC=1
+export PW_NO_ESYNC=1
 
 PW_WGC () {
-    export LAUNCH_PARAMETERS=("/SILENT" "/SP-")   
+    export LAUNCH_PARAMETERS=("/SILENT" "/SP-")
     [ "${update_loc}" = "RUS" ] && export WGC_LOC=RU || export WGC_LOC=EU
     export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/Wargaming_Game_Center_Install_WoT_RU.exe"
     START_PORTWINE
@@ -112,10 +112,13 @@ PW_EVE () {
     if try_download "https://binaries.eveonline.com/EveLauncher-1892908.exe" "${PW_AUTOINSTALL_EXE}"
     then
         PW_START_PROGRESS_BAR_BLOCK "Installing the EVE Launcher. Please wait..."
-        dd if="${PW_AUTOINSTALL_EXE}" of="${PW_AUTOINSTALL_EXE}".7z bs=1M skip=31646603 count=196171208 iflag=skip_bytes,count_bytes
-        "$pw_7z" x "${PW_AUTOINSTALL_EXE}".7z -o"$WINEPREFIX/drive_c/Games/EVE Online"
-        try_remove_file "${PW_AUTOINSTALL_EXE}"
-        try_remove_file "${PW_AUTOINSTALL_EXE}".7z 
+        if [ ! -f "$WINEPREFIX/drive_c/Games/EVE Online/Launcher/evelauncher.exe" ] ; then
+            try_remove_dir "$WINEPREFIX/drive_c/Games/EVE Online"
+            dd if="${PW_AUTOINSTALL_EXE}" of="${PW_AUTOINSTALL_EXE}".7z bs=1M skip=31646603 count=196171208 iflag=skip_bytes,count_bytes
+            "$pw_7z" x "${PW_AUTOINSTALL_EXE}".7z -o"$WINEPREFIX/drive_c/Games/EVE Online"
+            try_remove_file "${PW_AUTOINSTALL_EXE}"
+            try_remove_file "${PW_AUTOINSTALL_EXE}".7z
+        fi
         portwine_exe="$WINEPREFIX/drive_c/Games/EVE Online/Launcher/evelauncher.exe"
         PW_STOP_PROGRESS_BAR
         PORTWINE_CREATE_SHORTCUT

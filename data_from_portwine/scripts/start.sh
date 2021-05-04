@@ -13,13 +13,13 @@ PORTWINE_LAUNCH () {
     PORTWINE_BAT=`basename "${portwine_exe}" | grep .bat`
     if [ ! -z "${PW_VIRTUAL_DESKTOP}" ] && [ "${PW_VIRTUAL_DESKTOP}" == "1" ] ; then
         pw_screen_resolution=`xrandr --current | grep "*" | awk '{print $1;}' | head -1`
-        PW_RUN explorer "/desktop=portwine,${pw_screen_resolution}" "$WINE_WIN_START" /b /unix "$portwine_exe"
+        PW_RUN explorer "/desktop=portwine,${pw_screen_resolution}" "$WINE_WIN_START" /unix "$portwine_exe"
     elif [ ! -z "${PORTWINE_MSI}" ]; then
         PW_RUN msiexec /i "$portwine_exe"
     elif [ ! -z "${PORTWINE_BAT}" ] || [ ! -z "${portwine_exe}" ]; then
-        PW_RUN "$WINE_WIN_START" /b /unix "$portwine_exe"
+        PW_RUN "$WINE_WIN_START" /unix "$portwine_exe"
     else
-        PW_RUN "$WINE_WIN_START" /b explorer
+        PW_RUN "$WINE_WIN_START" explorer
     fi
 }
 PORTWINE_CREATE_SHORTCUT () {
@@ -168,11 +168,11 @@ PORTWINE_DEBUG () {
 }
 PW_WINECFG () {
     START_PORTWINE
-    PW_RUN "$WINE_WIN_START" /b winecfg
+    PW_RUN "$WINE_WIN_START" winecfg
 }
 PW_WINEFILE () {
     START_PORTWINE
-    PW_RUN "$WINE_WIN_START" /b explorer
+    PW_RUN "$WINE_WIN_START" explorer
 }
 PW_WINECMD () {
     export PW_USE_TERMINAL=1
@@ -181,7 +181,7 @@ PW_WINECMD () {
 }
 PW_WINEREG () {
     START_PORTWINE
-    PW_RUN "$WINE_WIN_START" /b regedit
+    PW_RUN "$WINE_WIN_START" regedit
 }
 PW_WINETRICKS () {
     UPDATE_WINETRICKS
@@ -303,8 +303,8 @@ else
 fi
 if [ ! -z "${VULKAN_MOD}" ] ; then
     if [ "${VULKAN_MOD}" = "DXVK" ] ; then export PW_VULKAN_USE="dxvk"
-    elif [ "${VULKAN_MOD}" = "VKD3D" ]; then export PW_VULKAN_USE="vkd3d" 
-    elif [ "${VULKAN_MOD}" = "OPENGL" ]; then export PW_VULKAN_USE="0" 
+    elif [ "${VULKAN_MOD}" = "VKD3D" ]; then export PW_VULKAN_USE="vkd3d"
+    elif [ "${VULKAN_MOD}" = "OPENGL" ]; then export PW_VULKAN_USE="0"
     fi
 fi
 case "$PW_YAD_SET" in

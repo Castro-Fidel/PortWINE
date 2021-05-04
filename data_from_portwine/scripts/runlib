@@ -16,9 +16,9 @@ if [ "${s_install}" != "1" ] && [ ! -x "`which "zenity" 2>/dev/null`" ];then
     xdg-open "http://portwine-linux.ru/portwine-faq/" > /dev/null 2>&1 & exit 0
 fi
 pw_ping_test () {
-    ping -w5 -c1 github.com &> /dev/null
+    ping -w3 -c1 github.com &> /dev/null
     [ "$?" == "0" ] && return 0 || return 1
-}  
+}
 print_error () {
     echo "ERROR: $@"
 }
@@ -363,7 +363,6 @@ START_PORTWINE ()
     create_new_dir "${PORT_WINE_TMP_PATH}/dxvk_cache"
     export DXVK_STATE_CACHE_PATH="${PORT_WINE_TMP_PATH}"/dxvk_cache
     export DXVK_STATE_CACHE=1
-    export STAGING_SHARED_MEMORY=1
     export optirun_on=""
     export check_optimus_manager=
     export PW_NVIDIA="$(lspci | grep NVIDIA)"
@@ -492,18 +491,18 @@ RUN_WINETRICKS_FROM_DB () {
                     sed -i '/vcrun2015/d' "${WINEPREFIX}/winetricks.log"
                     sed -i '/vcrun2017/d' "${WINEPREFIX}/winetricks.log"
                 fi
-                grep "${need_install_dll_to_pfx}" "${WINEPREFIX}/winetricks.log"                    
+                grep "${need_install_dll_to_pfx}" "${WINEPREFIX}/winetricks.log"
                 if [ "$?" == "1" ] ; then
                     if [ -z "${PW_DLL_NEED_INSTALL}" ]
                     then export PW_DLL_NEED_INSTALL="${need_install_dll_to_pfx}"
                     else export PW_DLL_NEED_INSTALL="${need_install_dll_to_pfx} ${PW_DLL_NEED_INSTALL}"
                     fi
                     export USE_WT_FROM_DB=1
-                fi  
+                fi
             done
         else
             export PW_DLL_NEED_INSTALL="${PW_DLL_INSTALL}"
-            export USE_WT_FROM_DB=1 
+            export USE_WT_FROM_DB=1
         fi
         if [ "${USE_WT_FROM_DB}" == "1" ] ; then
             UPDATE_WINETRICKS
@@ -547,7 +546,7 @@ PW_UPDATE () {
     fi 
     read "update_not" < "${PORT_WINE_TMP_PATH}/update_notifier" 
     if [ "${update_not}" = "1" ] ; then
-        echo `curl -s --list-only "${PW_FTP_URL}/current_version/${portname}_ver"` > "${PORT_WINE_TMP_PATH}/${portname}_cur_ver"   
+        echo `curl -s --list-only "${PW_FTP_URL}/current_version/${portname}_ver"` > "${PORT_WINE_TMP_PATH}/${portname}_cur_ver"
         if [ -f "${PORT_WINE_TMP_PATH}/${portname}_ver" ] ; then
             read current_ver < "${PORT_WINE_TMP_PATH}/${portname}_cur_ver"
             try_remove_file "${PORT_WINE_TMP_PATH}/${portname}_cur_ver"
@@ -697,17 +696,18 @@ PW_INIT_PFX () {
         export PW_WINDOWS_VER="10"
         echo "Use VKD3D-PROTON version ${PW_VKD3D_VER} (DX12 to vulkan)"
     fi
+    PW_OTHER_FIXES
 }
 
 PW_SCRIPTS_UPDATE () {
     if [ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ] ; then
         echo "1000" > "${PORT_WINE_TMP_PATH}/scripts_ver"
     fi
-    echo `curl -s --list-only "${PW_FTP_URL}/current_version/scripts_ver"` > "${PORT_WINE_TMP_PATH}/scripts_cur_ver"   
+    echo `curl -s --list-only "${PW_FTP_URL}/current_version/scripts_ver"` > "${PORT_WINE_TMP_PATH}/scripts_cur_ver"
     if [ "$?" == "0" ] ; then
         read scripts_current_ver < "${PORT_WINE_TMP_PATH}/scripts_cur_ver"
         try_remove_file "${PORT_WINE_TMP_PATH}/scripts_cur_ver"
-        if [ ! -z "${scripts_current_ver}" ] && [ "${scripts_current_ver}" -gt "${scripts_install_ver}" ] ; then	
+        if [ ! -z "${scripts_current_ver}" ] && [ "${scripts_current_ver}" -gt "${scripts_install_ver}" ] ; then
             echo "######################################################"
             echo "Update scripts..."
             try_remove_file "${PORT_WINE_TMP_PATH}/scripts.tar.xz"
@@ -719,11 +719,11 @@ PW_SCRIPTS_UPDATE () {
                     "${pw_yad}" --title="Changelog" --borders=10 \
                     --text="Скрипты были успешно обновлены.\nДля продолжения запуска порта нажмите ОК." \
                     --text-align=center --text-info --show-uri --wrap --center --width=1200 --height=550 \
-                    --filename="${PORT_WINE_PATH}/data/changelog" --uri-color=red 
-                    [ "$?" == 0 ] && /bin/bash -c ${pw_full_command_line[*]} & 
+                    --filename="${PORT_WINE_PATH}/data/changelog" --uri-color=red
+                    [ "$?" == 0 ] && /bin/bash -c ${pw_full_command_line[*]} &
                     exit 0
                 fi
-            else 
+            else
                 zenity_error_download && PW_SCRIPTS_UPDATE
             fi
         fi
@@ -734,7 +734,7 @@ PW_RUN () {
     if [ ! -z "$portwine_exe" ] ; then
         export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
         cd "$PATH_TO_GAME"
-    else 
+    else
         cd "${WINEPREFIX}/drive_c"
     fi
     pw_mangohud_check
@@ -745,7 +745,7 @@ PW_RUN () {
         if [ ! -z "${PW_GAMEMODERUN}" ] && [ "${PW_GAMEMODERUN}" != 0 ] ; then
             echo "Full command line:  $PW_TERM ${optirun_on} "${PW_RUNTIME}" gamemoderun ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}" "&>>${PW_LOG_TO_FILE}"
             $PW_TERM ${optirun_on} "${PW_RUNTIME}" gamemoderun ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} &>>"${PW_LOG_TO_FILE}"
-        else 
+        else
             echo "Full command line: $PW_TERM ${optirun_on} "${PW_RUNTIME}" ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}" "&>>${PW_LOG_TO_FILE}"
             $PW_TERM ${optirun_on} "${PW_RUNTIME}" ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} &>>"${PW_LOG_TO_FILE}"
         fi
@@ -754,7 +754,7 @@ PW_RUN () {
         if [ ! -z "${PW_GAMEMODERUN}" ] && [ "${PW_GAMEMODERUN}" != 0 ] ; then
             echo "Full command line: $PW_TERM ${optirun_on} "${PW_RUNTIME}" gamemoderun ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}" 
             $PW_TERM ${optirun_on} "${PW_RUNTIME}" gamemoderun ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}
-        else 
+        else
             echo "Full command line: $PW_TERM ${optirun_on} "${PW_RUNTIME}" ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}"
             $PW_TERM ${optirun_on} "${PW_RUNTIME}" ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} 
         fi
@@ -777,6 +777,7 @@ if [ ! -f "${PORT_WINE_TMP_PATH}/${portname}_loc" ] ; then
 fi
 . "${PORT_SCRIPTS_PATH}"/lang
 
+unset MANGOHUD PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_CHECK_AUTOINSTAL
 var_winedlloverride_update "winemenubuilder.exe="
 export url_mono="https://github.com/madewokherd/wine-mono/releases/download/wine-mono-${mono_ver}/wine-mono-${mono_ver}-x86.tar.xz"
 export url_gecko_x86="https://dl.winehq.org/wine/wine-gecko/${gecko_ver}/wine-gecko-${gecko_ver}-x86.tar.xz"
@@ -795,22 +796,12 @@ export PW_DXVK_VER="${PW_DEF_DXVK_VER}"
 export PW_VKD3D_VER="${PW_DEF_VKD3D_VER}"
 export install_ver=`cat "${PORT_WINE_TMP_PATH}/${portname}_ver" | head -n 1`
 export scripts_install_ver=`cat "${PORT_WINE_TMP_PATH}/scripts_ver" | head -n 1`
-export PW_FORCE_DISABLED_GAMEMOD=0
-export PW_FORCE_LARGE_ADDRESS_AWARE=
-export PW_CHECK_AUTOINSTAL=
-export PW_WINEDBG_DISABLE=1
-export PW_NO_WRITE_WATCH=
-export WINEDLLOVERRIDES=
-export PW_VULKAN_USE=
-export PW_NO_FSYNC=
-export PW_NO_ESYNC=
-export MANGOHUD=
 
 if [ -z "${INSTALLING_PORT}" ] ; then
     PW_LOAD_LIBS
     PW_DOWNLOAD_MONO
     PW_DOWNLOAD_GECKO
-    PW_INIT_DB
     PW_UPDATE
     PW_SCRIPTS_UPDATE
+    PW_INIT_DB
 fi
