@@ -157,11 +157,11 @@ PW_LOAD_LIBS () {
         if try_download "https://github.com/Castro-Fidel/PortWINE/releases/download/libs${pw_libs_ver}/libs${pw_libs_ver}.tar.xz" "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" ; then
             if unpack_tar_xz "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" "${HOME}/.PortWINE/" ; then 
                 try_remove_file "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz"
-            else   
+            else
                 try_remove_dir "${HOME}/.PortWINE/libs${pw_libs_ver}"
                 try_remove_file "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz"
                 `zenity --error --title "Error..." \
-                --text "Failed to download runtime libraries.\nCheck internet connection and press OK" \
+                --text "Failed to install runtime libraries.\nCheck internet connection and press OK" \
                 --no-wrap ` > /dev/null 2>&1 && PW_LOAD_LIBS
             fi
         else
@@ -177,64 +177,64 @@ PW_LOAD_LIBS () {
     export pw_7z="${WINELIB}/usr/lib/p7zip/7zr"
     if [ -x "`which xterm 2>/dev/null`" ]; then
         export SYS_XTERM=`which xterm`
-        export PW_XTERM="${SYS_XTERM} -geometry 159x37 -e" 
+        export PW_XTERM="${SYS_XTERM} -geometry 159x37 -e"
     else
-        export PW_XTERM="${WINELIB}/amd64/usr/bin/xterm -geometry 159x37 -e"        
+        export PW_XTERM="${WINELIB}/amd64/usr/bin/xterm -geometry 159x37 -e"
     fi
 }
 
-PW_DOWNLOAD_MONO () { 
-    if [ ! -d "${HOME}/.PortWINE/mono/wine-mono-${mono_ver}" ] ; then 
+PW_DOWNLOAD_MONO () {
+    if [ ! -d "${HOME}/.PortWINE/mono/wine-mono-${mono_ver}" ] ; then
         echo "######################################################"
         print_info "Download and install wine mono..."
         if try_download "${url_mono}" "${HOME}/.PortWINE/tmp/wine-mono-${mono_ver}-x86.tar.xz" ; then
             create_new_dir "${HOME}/.PortWINE/mono"
             if ! unpack_tar_xz "${HOME}/.PortWINE/tmp/wine-mono-${mono_ver}-x86.tar.xz" "${HOME}/.PortWINE/mono/"
-            then 
+            then
                 try_remove_dir "${HOME}/.PortWINE/mono/wine-mono-${mono_ver}-x86"
                 zenity_error_download && PW_DOWNLOAD_MONO
             fi
             try_remove_file "${HOME}/.PortWINE/tmp/wine-mono-${mono_ver}-x86.tar.xz"
-        else 
-            zenity_error_download && PW_DOWNLOAD_MONO  
+        else
+            zenity_error_download && PW_DOWNLOAD_MONO
         fi
     fi
 }
 PW_DOWNLOAD_GECKO () {
-    if [ ! -d "${HOME}/.PortWINE/gecko/wine-gecko-${gecko_ver}-x86" ] ; then 
+    if [ ! -d "${HOME}/.PortWINE/gecko/wine-gecko-${gecko_ver}-x86" ] ; then
         echo "######################################################"
         echo "Download and install wine gecko x86..."
         if try_download "${url_gecko_x86}" "${HOME}/.PortWINE/tmp/wine-gecko-${gecko_ver}-x86.tar.xz" ; then
             create_new_dir "${HOME}/.PortWINE/gecko"
             if ! unpack_tar_xz "${HOME}/.PortWINE/tmp/wine-gecko-${gecko_ver}-x86.tar.xz" "${HOME}/.PortWINE/gecko/"
-            then 
+            then
                 try_remove_dir "${HOME}/.PortWINE/gecko/wine-gecko-${gecko_ver}-x86"
                 zenity_error_download && PW_DOWNLOAD_GECKO
             fi
             try_remove_file "${HOME}/.PortWINE/tmp/wine-gecko-${gecko_ver}-x86.tar.xz"
-        else 
+        else
             zenity_error_download && PW_DOWNLOAD_GECKO
         fi
     fi
-        if [ ! -d "${HOME}/.PortWINE/gecko/wine-gecko-${gecko_ver}-x86_64" ] ; then 
+        if [ ! -d "${HOME}/.PortWINE/gecko/wine-gecko-${gecko_ver}-x86_64" ] ; then
         echo "######################################################"
         echo "Download and install wine gecko x86_64..."
         if try_download "${url_gecko_x86_64}" "${HOME}/.PortWINE/tmp/wine-gecko-${gecko_ver}-x86_64.tar.xz" ; then
             create_new_dir "${HOME}/.PortWINE/gecko"
             if ! unpack_tar_xz "${HOME}/.PortWINE/tmp/wine-gecko-${gecko_ver}-x86_64.tar.xz" "${HOME}/.PortWINE/gecko/"
-            then 
+            then
                 try_remove_dir "${HOME}/.PortWINE/gecko/wine-gecko-${gecko_ver}-x86_64"
                 zenity_error_download && PW_DOWNLOAD_GECKO
             fi
             try_remove_file "${HOME}/.PortWINE/tmp/wine-gecko-${gecko_ver}-x86_64.tar.xz"
-        else 
-            zenity_error_download && PW_DOWNLOAD_GECKO            
+        else
+            zenity_error_download && PW_DOWNLOAD_GECKO
         fi
     fi
     create_new_dir "${WINEDIR}/share/wine/"
-    try_force_link_dir "${HOME}/.PortWINE/gecko" "${WINEDIR}"/share/wine/      
-    try_force_link_dir "${HOME}/.PortWINE/mono" "${WINEDIR}"/share/wine/ 
-}  
+    try_force_link_dir "${HOME}/.PortWINE/gecko" "${WINEDIR}"/share/wine/
+    try_force_link_dir "${HOME}/.PortWINE/mono" "${WINEDIR}"/share/wine/
+}
 START_PORTWINE ()
     {
     if [ -x "`which konsole 2>/dev/null`" ]; then export PW_TERM="konsole --nofork -e"
@@ -254,11 +254,11 @@ START_PORTWINE ()
                 tar -zxvf "${PW_VULKAN_DLL}/dxvk-${PW_DXVK_VER}.tar.gz" -C "${PW_VULKAN_DLL}/"
                 try_remove_file "${PW_VULKAN_DLL}/dxvk-${PW_DXVK_VER}.tar.gz"
             else
-                try_remove_file "${PW_VULKAN_DLL}/dxvk-${PW_DXVK_VER}.tar.gz"                
+                try_remove_file "${PW_VULKAN_DLL}/dxvk-${PW_DXVK_VER}.tar.gz"
                 `zenity --error --title "Error..." --text "You will need check internet connettion,\nor change DXVK version in db file!" --no-wrap ` > /dev/null 2>&1
                 PW_EDIT_DB & exit 1
             fi
-        else 
+        else
             export PW_DXVK_VER="${PW_DEF_DXVK_VER}"
         fi
     fi
@@ -275,7 +275,7 @@ START_PORTWINE ()
                 PW_EDIT_DB & exit 1
             fi
         else
-            export PW_VKD3D_VER="${PW_DEF_VKD3D_VER}" 
+            export PW_VKD3D_VER="${PW_DEF_VKD3D_VER}"
         fi
     fi
 
@@ -284,7 +284,7 @@ START_PORTWINE ()
     export WINELOADER="${WINEDIR}/bin/wine"
     export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine:${PATH_TO_GAME}"
     export WINESERVER="${WINEDIR}/bin/wineserver"
-    if [ ! -z "${PATH}" ] 
+    if [ ! -z "${PATH}" ]
     then export PATH="${WINEDIR}/bin:${PATH}"
     else export PATH="${WINEDIR}/bin"
     fi
@@ -311,7 +311,7 @@ START_PORTWINE ()
     #default wine-mono override for FNA games
     export WINE_MONO_OVERRIDES="Microsoft.Xna.Framework.*,Gac=n"
 
-    if [ ! -z "${PW_NO_ESYNC}" ] && [ "${PW_NO_ESYNC}" != 0 ] 
+    if [ ! -z "${PW_NO_ESYNC}" ] && [ "${PW_NO_ESYNC}" != 0 ]
     then export WINEESYNC="0"
     else export WINEESYNC="1"
     fi
@@ -322,7 +322,7 @@ START_PORTWINE ()
         export WINEFSYNC="1"
         export WINEFSYNC_FUTEX2="1"
     fi
-    if [ ! -z "${PW_FORCE_LARGE_ADDRESS_AWARE}" ] && [ "${PW_FORCE_LARGE_ADDRESS_AWARE}" != 0 ] 
+    if [ ! -z "${PW_FORCE_LARGE_ADDRESS_AWARE}" ] && [ "${PW_FORCE_LARGE_ADDRESS_AWARE}" != 0 ]
     then export WINE_LARGE_ADDRESS_AWARE="1"
     else export WINE_LARGE_ADDRESS_AWARE="0"
     fi
@@ -359,14 +359,14 @@ START_PORTWINE ()
     fi
     if [ ! -z "${PW_DXR_ON}" ] && [ "${PW_DXR_ON}" != 0 ] ; then
         var_vkd3d_config_update dxr
-    fi 
+    fi
     create_new_dir "${PORT_WINE_TMP_PATH}/dxvk_cache"
     export DXVK_STATE_CACHE_PATH="${PORT_WINE_TMP_PATH}"/dxvk_cache
     export DXVK_STATE_CACHE=1
     export STAGING_SHARED_MEMORY=1
     export optirun_on=""
     export check_optimus_manager=
-    export PW_NVIDIA="$(lspci | grep NVIDIA)" 
+    export PW_NVIDIA="$(lspci | grep NVIDIA)"
     if [ -x "`which optimus-manager 2>/dev/null`" ]; then
         export check_optimus_manager=`optimus-manager --status | grep Current | cut -f 2 -d':' | sed -e 's/^[[:space:]]*//'`
     fi
@@ -375,20 +375,20 @@ START_PORTWINE ()
             export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
         elif [ -x "`which primusrun 2>/dev/null`" ]; then
             export optirun_on="primusrun"
-            export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json 
+            export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
         elif [ -x "`which optirun 2>/dev/null`" ]; then
             export optirun_on="optirun -b primus"
-            export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json 
+            export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
         elif [ -x "`which prime-run 2>/dev/null`" ]; then
             export optirun_on="prime-run"
-            export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json 
+            export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
         fi
         export __NV_PRIME_RENDER_OFFLOAD=1
         export __GLX_VENDOR_LIBRARY_NAME=nvidia
         if [ ! -d "${PORT_WINE_TMP_PATH}"/gl_shader_cache ] ; then
-            mkdir -p "${PORT_WINE_TMP_PATH}"/gl_shader_cache 
+            mkdir -p "${PORT_WINE_TMP_PATH}"/gl_shader_cache
         fi
-        export __GL_SHADER_DISK_CACHE_PATH="${PORT_WINE_TMP_PATH}/gl_shader_cache" 
+        export __GL_SHADER_DISK_CACHE_PATH="${PORT_WINE_TMP_PATH}/gl_shader_cache"
         export __GL_SHADER_DISK_CACHE=1
         export __GL_SHADER_DISK_CACHE_SIZE=1000000000
         export __GL_DXVK_OPTIMIZATIONS=1
@@ -401,14 +401,14 @@ START_PORTWINE ()
         export __GL_SYNC_TO_VBLANK=0 ;;
         "1")
         export vblank_mode=1
-        export __GL_SYNC_TO_VBLANK=1 ;;  
+        export __GL_SYNC_TO_VBLANK=1 ;;
     esac
     export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk.conf"
     export int_xneur=0
     if [ $(pgrep xneur)>'0' ]; then
         killall xneur
         export int_xneur=1
-    fi 
+    fi
     export PW_XKBD="$(setxkbmap -query | grep -w ru | awk '{print($2)}')"
     if [ ! -z ${PW_XKBD} ]; then
         setxkbmap us,ru
@@ -421,9 +421,9 @@ START_PORTWINE ()
         echo "Gamemod is not installed or disabled in vars script: PW_FORCE_DISABLED_GAMEMOD=$PW_FORCE_DISABLED_GAMEMOD"
     fi
     PW_INIT_PFX
-    RUN_WINETRICKS_FROM_DB 
+    RUN_WINETRICKS_FROM_DB
     ADD_IN_START_PORTWINE
-} 
+}
 
 WAIT_WINESERVER () {
     sleep 3
@@ -434,10 +434,10 @@ WAIT_WINESERVER () {
 
 KILL_PORTWINE () {
     wine_pids=`ls -l /proc/*/exe 2>/dev/null | grep -ie ${portname} | grep -E 'wine(64)?-preloader| ' | awk -F/ '{print $3}'`
-    if  [ ! -z "${wine_pids}" ] ; then 
+    if  [ ! -z "${wine_pids}" ] ; then
         for pw_kill_pids in ${wine_pids} ; do
-            if [ "`ps cax | grep ${pw_kill_pids}`" ] ; then 
-                kill -n 9 ${pw_kill_pids} 
+            if [ "`ps cax | grep ${pw_kill_pids}`" ] ; then
+                kill -n 9 ${pw_kill_pids}
             fi
         done
     fi
@@ -451,7 +451,7 @@ STOP_PORTWINE () {
     fi
     if [ ! -z ${PW_XKBD} ]; then
         setxkbmap ${PW_XKBD}
-    fi 
+    fi
     PW_STOP_PROGRESS_BAR
     try_remove_file "${PORT_SCRIPTS_PATH}/0"
     try_remove_file "${PORT_SCRIPTS_PATH}/1"
@@ -525,7 +525,7 @@ PW_INIT_DB () {
     if [ ! -z "${portwine_exe}" ]; then
         export PORTWINE_DB=`echo "${portwine_exe}" | awk -F '/' 'NF>1{print $NF}' | sed s/".exe"/""/gi`
         export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
-        export WIN_PATH_TO_GAME=`echo "C:${PATH_TO_GAME}" | sed "s%$WINEPREFIX%%g" | sed "s/drive_c//g" | sed 's#/#\\\#g'`           
+        export WIN_PATH_TO_GAME=`echo "C:${PATH_TO_GAME}" | sed "s%$WINEPREFIX%%g" | sed "s/drive_c//g" | sed 's#/#\\\#g'`
     fi
     if [ ! -z "${PORTWINE_DB}" ]; then
         PORTWINE_DB_FILE=`grep -ilw "#${PORTWINE_DB}" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
@@ -645,7 +645,7 @@ PW_INIT_PFX () {
     var_winedlloverride_update "steam_api,steam_api64,steamclient,steamclient64=n"
     #sed -i '/steamclient/d' "${WINEPREFIX}"/*.reg 
     #sed -i '/SteamPath/d' "${WINEPREFIX}"/*.reg 
-    
+
     export TOTAL_VRAM=`"${WINELIB}/amd64/usr/bin/glxinfo" -B | grep Total | awk -F: '{print $2}' | awk '{print $1}'`
     echo "TOTAL_VRAM=${TOTAL_VRAM}"
     try_copy_file "${WINEDIR}/lib/wine/dxvk/dxvk_config.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
@@ -671,16 +671,15 @@ PW_INIT_PFX () {
             try_copy_file "${PW_VULKAN_DLL}/dxvk-${PW_DXVK_VER}/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
             [ "$?" == 0 ] && var_winedlloverride_update "${wine_dxvk_dll}=n"
         done
-        #var_winedlloverride_update "d3d12="
+        var_winedlloverride_update "d3d12="
         echo "Use DXVK version ${PW_DXVK_VER} (DX9-DX11 to Vulkan)"
-    else 
+    else
         for wine_vkd3d_dll in d3d12 ; do
             try_copy_file "${PW_VULKAN_DLL}/vkd3d-proton-${PW_VKD3D_VER}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
             try_copy_file "${PW_VULKAN_DLL}/vkd3d-proton-${PW_VKD3D_VER}/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
             [ "$?" == 0 ] && var_winedlloverride_update "${wine_vkd3d_dll}=n"
         done
         if [ ! -z "${PW_DXGI_FROM_DXVK}" ] && [ "${PW_DXGI_FROM_DXVK}" != 0 ] ; then
-             
             for wine_dxvk_dll in d3d11 d3d10 d3d10core d3d10_1 d3d9 dxgi ; do
                 try_copy_file "${PW_VULKAN_DLL}/dxvk-${PW_DXVK_VER}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
                 try_copy_file "${PW_VULKAN_DLL}/dxvk-${PW_DXVK_VER}/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
@@ -764,12 +763,12 @@ PW_RUN () {
 #####MAIN#####
 cd "$(dirname "`readlink -f "$0"`")" && export PORT_SCRIPTS_PATH="$(pwd)"
 cd "${PORT_SCRIPTS_PATH}/../../" && export PORT_WINE_PATH="$(pwd)"
-export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp" 
+export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 create_new_dir "${PORT_WINE_TMP_PATH}"
 create_new_dir "${HOME}/.PortWINE/tmp"
 read "portname" < "${PORT_WINE_TMP_PATH}/portname" && export portname
-cd "${PORT_SCRIPTS_PATH}" 
-. "${PORT_SCRIPTS_PATH}/var"  
+cd "${PORT_SCRIPTS_PATH}"
+. "${PORT_SCRIPTS_PATH}/var"
 
 if [ ! -f "${PORT_WINE_TMP_PATH}/${portname}_loc" ] ; then
 	SET_LANG=`zenity --title  "Install $portname" --text "Select the language" --list --radiolist \
@@ -788,6 +787,7 @@ export WINEDIR="${PORT_WINE_PATH}"/data/dist
 export WINELIB="${HOME}/.PortWINE/libs${pw_libs_ver}"
 export WINEPREFIX="${PORT_WINE_PATH}/data/pfx"
 export PW_COMPAT_MEDIA_PATH="${PORT_WINE_TMP_PATH}"
+export WINE_WIN_START="${WINEPREFIX}/drive_c/windows/system32/start.exe"
 export PW_RUNTIME="$WINELIB/run.sh"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
 export PW_VULKAN_DLL="${HOME}/.PortWINE/vulkan"
@@ -795,6 +795,16 @@ export PW_DXVK_VER="${PW_DEF_DXVK_VER}"
 export PW_VKD3D_VER="${PW_DEF_VKD3D_VER}"
 export install_ver=`cat "${PORT_WINE_TMP_PATH}/${portname}_ver" | head -n 1`
 export scripts_install_ver=`cat "${PORT_WINE_TMP_PATH}/scripts_ver" | head -n 1`
+export PW_FORCE_DISABLED_GAMEMOD=0
+export PW_FORCE_LARGE_ADDRESS_AWARE=
+export PW_CHECK_AUTOINSTAL=
+export PW_WINEDBG_DISABLE=1
+export PW_NO_WRITE_WATCH=
+export WINEDLLOVERRIDES=
+export PW_VULKAN_USE=
+export PW_NO_FSYNC=
+export PW_NO_ESYNC=
+export MANGOHUD=
 
 if [ -z "${INSTALLING_PORT}" ] ; then
     PW_LOAD_LIBS

@@ -13,17 +13,13 @@ PORTWINE_LAUNCH () {
     PORTWINE_BAT=`basename "${portwine_exe}" | grep .bat`
     if [ ! -z "${PW_VIRTUAL_DESKTOP}" ] && [ "${PW_VIRTUAL_DESKTOP}" == "1" ] ; then
         pw_screen_resolution=`xrandr --current | grep "*" | awk '{print $1;}' | head -1`
-        PW_RUN explorer "/desktop=portwine,${pw_screen_resolution}" "$portwine_exe"
-    elif [ ! -z "${PORTWINE_MSI}" ]; then   
-        echo "PORTWINE_MSI=${PORTWINE_MSI}"
+        PW_RUN explorer "/desktop=portwine,${pw_screen_resolution}" "$WINE_WIN_START" /b /unix "$portwine_exe"
+    elif [ ! -z "${PORTWINE_MSI}" ]; then
         PW_RUN msiexec /i "$portwine_exe"
-    elif [ ! -z "${PORTWINE_BAT}" ]; then   
-        echo "PORTWINE_BAT=${PORTWINE_BAT}"
-        PW_RUN explorer "$portwine_exe" 
-    elif [ ! -z "${portwine_exe}" ]; then
-        PW_RUN "$portwine_exe"
-    else 
-        PW_RUN explorer
+    elif [ ! -z "${PORTWINE_BAT}" ] || [ ! -z "${portwine_exe}" ]; then
+        PW_RUN "$WINE_WIN_START" /b /unix "$portwine_exe"
+    else
+        PW_RUN "$WINE_WIN_START" /b explorer
     fi
 }
 PORTWINE_CREATE_SHORTCUT () {
@@ -35,7 +31,7 @@ PORTWINE_CREATE_SHORTCUT () {
         if [ $? -eq 1 ];then exit 1; fi
     fi
     PORTPROTON_NAME="$(basename "${PORTPROTON_EXE}" | sed s/".exe"/""/gi )"
-    PORTPROTON_PATH="$( cd "$( dirname "${PORTPROTON_EXE}" )" >/dev/null 2>&1 && pwd )" 
+    PORTPROTON_PATH="$( cd "$( dirname "${PORTPROTON_EXE}" )" >/dev/null 2>&1 && pwd )"
     if [ -x "`which wrestool 2>/dev/null`" ]; then
         wrestool -x --output="${PORTPROTON_PATH}/" -t14 "${PORTPROTON_EXE}"
         cp "$(ls -S -1 "${PORTPROTON_EXE}"*".ico"  | head -n 1)" "${PORTPROTON_EXE}.ico"
@@ -59,9 +55,9 @@ PORTWINE_CREATE_SHORTCUT () {
             cat "${PORT_SCRIPTS_PATH}/portwine_db/default" | grep "##" >> "${PORT_SCRIPTS_PATH}/portwine_db/$PORTWINE_DB"
         fi
     fi
-name_desktop="${PORTPROTON_NAME}" 
+name_desktop="${PORTPROTON_NAME}"
     echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    echo "Name=${PORTPROTON_NAME}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop" 
+    echo "Name=${PORTPROTON_NAME}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
     if [ -z "${PW_CHECK_AUTOINSTAL}" ]
     then echo "Exec=env PW_GUI_DISABLED_CS=1 "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${PORTPROTON_EXE}\" "" \
     >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
@@ -74,14 +70,14 @@ name_desktop="${PORTPROTON_NAME}"
     echo "Path="${PORT_SCRIPTS_PATH}/"" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
     echo "Icon="${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
     chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    `zenity --question --title "${inst_set}." --text "${ss_done}" --no-wrap ` &> /dev/null  
+    `zenity --question --title "${inst_set}." --text "${ss_done}" --no-wrap ` &> /dev/null
     if [ $? -eq "0" ]; then
-        cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" /home/${USER}/.local/share/applications/ 
+        cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" /home/${USER}/.local/share/applications/
     fi
     xdg-open "${PORT_WINE_PATH}" 2>1 >/dev/null &
 }
 PORTWINE_DEBUG () {
-    KILL_PORTWINE 
+    KILL_PORTWINE
     export PW_LOG=1
     export PW_WINEDBG_DISABLE=0
     START_PORTWINE
@@ -92,7 +88,7 @@ PORTWINE_DEBUG () {
     read install_ver < "${PORT_WINE_TMP_PATH}/${portname}_ver"
     echo "${portname}-${install_ver}" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "----------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    if [ ! -z "${portwine_exe}" ] ; then 
+    if [ ! -z "${portwine_exe}" ] ; then
         echo "Debug for programm:" >> "${PORT_WINE_PATH}/${portname}.log"
         echo "${portwine_exe}" >> "${PORT_WINE_PATH}/${portname}.log"
         echo "---------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
@@ -132,8 +128,8 @@ PORTWINE_DEBUG () {
     echo "----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Vulkan info device name:" >> "${PORT_WINE_PATH}/${portname}.log"
     "${WINELIB}/amd64/usr/bin/vulkaninfo" | grep deviceName >> "${PORT_WINE_PATH}/${portname}.log"
-    "${WINELIB}/amd64/usr/bin/vkcube" --c 50 
-    if [ $? -eq 0 ]; then 
+    "${WINELIB}/amd64/usr/bin/vkcube" --c 50
+    if [ $? -eq 0 ]; then
         echo "Vulkan cube test passed successfully" >> "${PORT_WINE_PATH}/${portname}.log"
     else
         echo "Vkcube test completed with error" >> "${PORT_WINE_PATH}/${portname}.log"
@@ -161,8 +157,8 @@ PORTWINE_DEBUG () {
     echo "Log WINE:" >> "${PORT_WINE_PATH}/${portname}.log"
 
     export DXVK_HUD="full"
-    
-    PORTWINE_LAUNCH & 
+
+    PORTWINE_LAUNCH &
     sleep 1 && zenity --info --title "DEBUG" --text "${port_debug}" --no-wrap &> /dev/null && KILL_PORTWINE
     deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++') 
     echo "$deb_text" > "${PORT_WINE_PATH}/${portname}.log"
@@ -172,20 +168,20 @@ PORTWINE_DEBUG () {
 }
 PW_WINECFG () {
     START_PORTWINE
-    PW_RUN winecfg
-} 
+    PW_RUN "$WINE_WIN_START" /b winecfg
+}
 PW_WINEFILE () {
     START_PORTWINE
-    PW_RUN "explorer" 
+    PW_RUN "$WINE_WIN_START" /b explorer
 }
 PW_WINECMD () {
     export PW_USE_TERMINAL=1
     START_PORTWINE
-    PW_RUN "cmd"
+    PW_RUN cmd
 }
 PW_WINEREG () {
     START_PORTWINE
-    PW_RUN "regedit"
+    PW_RUN "$WINE_WIN_START" /b regedit
 }
 PW_WINETRICKS () {
     UPDATE_WINETRICKS
@@ -200,8 +196,6 @@ PW_AUTO_INSTALL_FROM_DB () {
     . "$PORT_SCRIPTS_PATH/autoinstall"
     $PW_YAD_SET
 }
-
-
 if [ ! -z "${portwine_exe}" ]; then
     if [ -z "${PW_GUI_DISABLED_CS}" ] || [ "${PW_GUI_DISABLED_CS}" = 0 ] || [ -z "${PW_VULKAN_USE}" ]; then
         if [ ! -z "${PORTWINE_DB_FILE}" ] && [ ! -z "${PW_VULKAN_USE}" ]; then
