@@ -265,7 +265,7 @@ else
     export -f open_changelog
 
     export KEY=$RANDOM
-    "${pw_yad}" --plug=$KEY --tabnum=2 --form --columns=2  --scroll \
+    "${pw_yad}" --plug=$KEY --tabnum=3 --form --columns=2  --scroll \
     --field="   Wargaming Game Center"!"$PW_GUI_ICON_PATH/wgc.png":"BTN" '@bash -c "button_click PW_WGC"' \
     --field="   Battle.net Launcher"!"$PW_GUI_ICON_PATH/battle_net.png":"BTN" '@bash -c "button_click PW_BATTLE_NET"' \
     --field="   Epic Games Launcher"!"$PW_GUI_ICON_PATH/epicgames.png":"BTN" '@bash -c "button_click PW_EPIC"' \
@@ -273,24 +273,36 @@ else
     --field="   EVE Online Launcher"!"$PW_GUI_ICON_PATH/eve.png":"BTN" '@bash -c "button_click PW_EVE"' \
     --field="   Origin Launcher"!"$PW_GUI_ICON_PATH/origin.png":"BTN" '@bash -c "button_click PW_ORIGIN"' & \
 
+    "${pw_yad}" --plug=${KEY} --tabnum=2 --columns=3 --form --separator=";" \
+    --image "$PW_GUI_ICON_PATH/port_proton.png" \
+    --field=":CB" "  DXVK (DX 9-11 to Vulkan)"\!"VKD3D (DX 12 to Vulkan)"\!"OPENGL " \
+    --field=":LBL" "" \
+    --field='WINECFG'!!"${loc_winecfg}":"BTN" '@bash -c "button_click WINECFG"' \
+    --field='WINEREG'!!"${loc_winereg}":"BTN" '@bash -c "button_click WINEREG"' \
+    --field="${portname}-${install_ver} (${scripts_install_ver})"!!"":"FBTN" '@bash -c "open_changelog"' \
+    --field=":LBL" "" \
+    --field='WINECMD'!!"${loc_winecmd}":"BTN" '@bash -c "button_click WINECMD"' \
+    --field='WINETRICKS'!!"${loc_winetricks}":"BTN" '@bash -c "button_click WINETRICKS"' \
+    --field="F.A.Q."!!"":"FBTN" '@bash -c "xdg-open https://portwine-linux.ru/portwine-faq/ ; button_click"' \
+    --field=":LBL" "" \
+    --field='REINSTALL'!!"${loc_reinstall}":"BTN" '@bash -c "button_click PW_REINSTALL"' \
+    --field='CLEAR PFX'!!"${loc_clear}":"BTN" '@bash -c "button_click PW_CLEAR_PFX"' &> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" & \
+
     "${pw_yad}" --plug=${KEY} --tabnum=1 --columns=3 --form --separator=";" \
     --image "$PW_GUI_ICON_PATH/port_proton.png" \
     --field=":CB" "  DXVK (DX 9-11 to Vulkan)"\!"VKD3D (DX 12 to Vulkan)"\!"OPENGL " \
     --field=":LBL" "" \
-    --field='DEBUG'!!"${loc_debug}":"BTN" '@bash -c "button_click DEBUG"' \
-    --field='WINECFG'!!"${loc_winecfg}":"BTN" '@bash -c "button_click WINECFG"' \
+    --field='WINEFILE'!!"${loc_winefile}":"BTN" '@bash -c "button_click WINEFILE"' \
     --field="${portname}-${install_ver} (${scripts_install_ver})"!!"":"FBTN" '@bash -c "open_changelog"' \
     --field=":LBL" "" \
-    --field='WINEFILE'!!"${loc_winefile}":"BTN" '@bash -c "button_click WINEFILE"' \
-    --field='WINECMD'!!"${loc_winecmd}":"BTN" '@bash -c "button_click WINECMD"' \
+    --field='DEBUG'!!"${loc_debug}":"BTN" '@bash -c "button_click DEBUG"' \
     --field="F.A.Q."!!"":"FBTN" '@bash -c "xdg-open https://portwine-linux.ru/portwine-faq/ ; button_click"' \
-    --field=":LBL" "" \
-    --field='WINEREG'!!"${loc_winereg}":"BTN" '@bash -c "button_click WINEREG"' \
-    --field='WINETRICKS'!!"${loc_winetricks}":"BTN" '@bash -c "button_click WINETRICKS"' &> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" & \
+    --field=":LBL" "" &> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" \
+    --field='STOP'!!"${loc_stop}":"BTN" '@bash -c "button_click PW_STOP"' &> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" & \
 
     "${pw_yad}" --key=$KEY --notebook --borders=10 --width=1000 --height=168 --no-buttons --text-align=center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "$portname" --separator=";" \
-    --tab-pos=right --tab="PORT_PROTON" --tab="AUTOINSTALL" --center 
+    --tab-pos=right --tab="PORT_PROTON" --tab="SETTINGS" --tab="AUTOINSTALL" --center 
 
     if [ -f "${PORT_WINE_TMP_PATH}/tmp_yad_form" ] ; then
         export PW_YAD_SET=`cat "${PORT_WINE_TMP_PATH}/tmp_yad_form" | head -n 1 | awk '{print $1}'`
