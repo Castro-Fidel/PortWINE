@@ -29,13 +29,15 @@ print_var () {
     for vp in $@ ; do echo "${vp}=${!vp}" ; done 
 }
 try_copy_file () {
-    if [ ! -f "$1" ] ; then	print_info "file $1 not found for copy"
-    elif [ -z "$2" ] ; then	print_error "no way to copy file $1"
+    if [ ! -f "$1" ] ; then	print_info "file $1 not found for copy" && return 1
+    elif [ -z "$2" ] ; then	print_error "no way to copy file $1" && return 1
     else
         cp -f "$1" "$2"
-        [ "$?" != 0 ] && print_error "failed to copy file $1 to $2" || return 0
+        if [ "$?" != 0 ]
+        then print_error "failed to copy file $1 to $2" || return 1
+        else print_info "copy file $1 to $2 was successful" || return 0
+        fi
     fi
-    return 1  
 }
 try_copy_dir () {
     if [ ! -d "$1" ] ; then	print_info "directory $1 not found for copy"
@@ -122,7 +124,7 @@ pw_mangohud_check () {
         else
             export MANGOHUD=1
         fi
-    fi 
+    fi
 }
 pw_clear_pfx () {
     try_remove_file "${WINEPREFIX}/system.reg"
@@ -133,7 +135,7 @@ pw_clear_pfx () {
 }
 sszen() {
     zenity --progress --title="Settings..." --text="Updating parameters" --pulsate --auto-close --width=500 --height=90 --no-cancel
-} 
+}
 PW_START_PROGRESS_BAR_CS () {
     "${pw_yad}" --progress --progress-text="$@" --pulsate --close-on-unfocus \
     --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 &
@@ -288,6 +290,10 @@ START_PORTWINE ()
     then export PATH="${WINEDIR}/bin:${PATH}"
     else export PATH="${WINEDIR}/bin"
     fi
+    if [ ! -z "${LD_LIBRARY_PATH}" ]
+    then export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${LD_LIBRARY_PATH}"
+    else export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib"
+    fi
     export WINE="${WINELOADER}"
 #    export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/gstreamer-1.0:${WINEDIR}/gstreamer-1.0"
     export WINE_GST_REGISTRY_DIR="${PORT_WINE_TMP_PATH}"
@@ -345,9 +351,6 @@ START_PORTWINE ()
     fi
     if [ ! -z "${PW_HIDE_NVIDIA_GPU}" ] && [ "${PW_HIDE_NVIDIA_GPU}" != 0 ] ; then
         export WINE_HIDE_NVIDIA_GPU="1"
-    fi
-    if [ ! -z "${PW_VKD3D_FEATURE_LEVEL}" ] && [ "${PW_VKD3D_FEATURE_LEVEL}" != 0 ] ; then
-        export VKD3D_FEATURE_LEVEL="12_0"
     fi
     if [ ! -z "${PW_HEAP_DELAY_FREE}" ] && [ "${PW_HEAP_DELAY_FREE}" != 0 ]
     then export WINE_HEAP_DELAY_FREE="1"
@@ -605,21 +608,19 @@ PW_INIT_PFX () {
     rm -f  "${WINEDIR}"*/lib*/*steam*
     rm -f  "${WINEDIR}"*/lib*/wine/*steam*
     rm -f  "${WINEDIR}"*/lib*/wine/fakedlls/*steam*
-    #sed -i '/HKCU,Software\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf
-    #sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf
-    #sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf
-    create_new_dir "${WINEPREFIX}/drive_c"
-    create_new_dir "${WINEPREFIX}/dosdevices"
-    [ ! -d "${WINEPREFIX}/dosdevices/c:" ] && try_force_link_dir "${WINEPREFIX}/drive_c/" "${WINEPREFIX}/dosdevices/c:"
-    [ ! -d "${WINEPREFIX}/dosdevices/z:" ] && try_force_link_dir "/" "${WINEPREFIX}/dosdevices/z:"
     if [ ! -d "${WINEPREFIX}" ] || [ ! -d "${WINEPREFIX}"/drive_c/windows ] || \
-       [ ! -f "${WINEPREFIX}"/user.reg ] || [ ! -f "${WINEPREFIX}"/userdef.reg ] || \
-       [ ! -f "${WINEPREFIX}"/system.reg ]
+       [ ! -d "${WINEPREFIX}/dosdevices" ] || [ ! -f "${WINEPREFIX}"/userdef.reg ] || \
+       [ ! -f "${WINEPREFIX}"/system.reg ] || [ ! -f "${WINEPREFIX}"/user.reg ]
     then
-
-        sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}"*/share/wine/wine.inf
-        sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}"*/share/wine/wine.inf
-        try_remove_file "${WINEPREFIX}/winetricks.log"
+        pw_clear_pfx
+        create_new_dir "${WINEPREFIX}"
+        if [ -d "${WINEDIR}/share/default_pfx/" ] ; then
+            cp -fr "${WINEDIR}/share/default_pfx/"* "${WINEPREFIX}"
+        fi
+        create_new_dir "${WINEPREFIX}/drive_c"
+        create_new_dir "${WINEPREFIX}/dosdevices"
+        [ ! -d "${WINEPREFIX}/dosdevices/c:" ] && try_force_link_dir "${WINEPREFIX}/drive_c/" "${WINEPREFIX}/dosdevices/c:"
+        [ ! -d "${WINEPREFIX}/dosdevices/z:" ] && try_force_link_dir "/" "${WINEPREFIX}/dosdevices/z:"
         create_new_dir "${WINEPREFIX}/drive_c/windows/syswow64/"
         create_new_dir "${WINEPREFIX}/drive_c/windows/system32/"
         PW_STOP_PROGRESS_BAR
@@ -634,8 +635,6 @@ PW_INIT_PFX () {
     if [ ! -d "${PORT_WINE_PATH}/data/pfx/drive_c/users/${USER}" ]; then
 	    try_force_link_dir "${PORT_WINE_PATH}/data/pfx/drive_c/users/steamuser" "${PORT_WINE_PATH}/data/pfx/drive_c/users/${USER}"
     fi
-    rm -f "${WINEPREFIX}/drive_c/windows/system32"/steam*
-    rm -f "${WINEPREFIX}/drive_c/windows/syswow64"/steam*
 
     create_new_dir "${WINEPREFIX}/drive_c/windows/Fonts/"
     try_copy_file "${WINEDIR}/share/fonts/"LiberationSans-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arial.ttf
@@ -644,8 +643,6 @@ PW_INIT_PFX () {
     try_copy_file "${WINEDIR}/share/fonts/"LiberationMono-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"cour.ttf
     try_copy_file "${WINEDIR}/share/fonts/"SourceHanSansSCRegular.otf "${WINEPREFIX}/drive_c/windows/Fonts/"msyh.ttf
     var_winedlloverride_update "steam_api,steam_api64,steamclient,steamclient64=n"
-    #sed -i '/steamclient/d' "${WINEPREFIX}"/*.reg 
-    #sed -i '/SteamPath/d' "${WINEPREFIX}"/*.reg 
 
     export TOTAL_VRAM=`"${WINELIB}/amd64/usr/bin/glxinfo" -B | grep Total | awk -F: '{print $2}' | awk '{print $1}'`
     echo "TOTAL_VRAM=${TOTAL_VRAM}"
@@ -659,18 +656,26 @@ PW_INIT_PFX () {
         export GL_SHARPEN_ENABLE=1 
         export __GL_SHARPEN_VALUE=0 
         for wine_build_dll in d3d11 d3d10 d3d10core d3d10_1 d3d9 ; do
-            try_copy_file "${WINEDIR}/lib/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-            try_copy_file "${WINEDIR}/lib64/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            if ! try_copy_file "${WINEDIR}/lib/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+            then try_copy_file "${WINEDIR}/lib/wine/i386-windows/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+            fi
+            if ! try_copy_file "${WINEDIR}/lib64/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            then try_copy_file "${WINEDIR}/lib64/wine/x86_64-windows/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            fi
         done
-        try_copy_file "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/"
-        try_copy_file "${WINEDIR}"/lib64/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/system32/"
+        if ! try_copy_file "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/"
+        then try_copy_file "${WINEDIR}"/lib/wine/i386-windows/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/"
+        fi
+        if ! try_copy_file "${WINEDIR}"/lib64/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/system32/"
+        then try_copy_file "${WINEDIR}"/lib64/wine/x86_64-windows/dxgi.dll "${WINEPREFIX}/drive_c/windows/system32/"
+        fi
         var_winedlloverride_update "dxgi=b;d3d12="
         echo "Use OpenGL"
     elif [ "${PW_VULKAN_USE}" = "dxvk" ]; then
         for wine_dxvk_dll in d3d11 d3d10 d3d10core d3d10_1 d3d9 dxgi ; do
             try_copy_file "${PW_VULKAN_DLL}/dxvk-${PW_DXVK_VER}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
             try_copy_file "${PW_VULKAN_DLL}/dxvk-${PW_DXVK_VER}/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-            [ "$?" == 0 ] && var_winedlloverride_update "${wine_dxvk_dll}=n"
+            var_winedlloverride_update "${wine_dxvk_dll}=n"
         done
         var_winedlloverride_update "d3d12="
         echo "Use DXVK version ${PW_DXVK_VER} (DX9-DX11 to Vulkan)"
@@ -678,7 +683,7 @@ PW_INIT_PFX () {
         for wine_vkd3d_dll in d3d12 ; do
             try_copy_file "${PW_VULKAN_DLL}/vkd3d-proton-${PW_VKD3D_VER}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
             try_copy_file "${PW_VULKAN_DLL}/vkd3d-proton-${PW_VKD3D_VER}/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-            [ "$?" == 0 ] && var_winedlloverride_update "${wine_vkd3d_dll}=n"
+            var_winedlloverride_update "${wine_vkd3d_dll}=n"
         done
         if [ ! -z "${PW_DXGI_FROM_DXVK}" ] && [ "${PW_DXGI_FROM_DXVK}" != 0 ] ; then
             for wine_dxvk_dll in d3d11 d3d10 d3d10core d3d10_1 d3d9 dxgi ; do
@@ -687,14 +692,23 @@ PW_INIT_PFX () {
                 var_winedlloverride_update "${wine_dxvk_dll}=n"
             done
         else
-            try_copy_file "${WINEDIR}/lib/wine/fakedlls/dxgi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-            try_copy_file "${WINEDIR}/lib64/wine/fakedlls/dxgi.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            if ! try_copy_file "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/"
+            then try_copy_file "${WINEDIR}"/lib/wine/i386-windows/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/"
+            fi
+            if ! try_copy_file "${WINEDIR}"/lib64/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/system32/"
+            then try_copy_file "${WINEDIR}"/lib64/wine/x86_64-windows/dxgi.dll "${WINEPREFIX}/drive_c/windows/system32/"
+            fi
             var_winedlloverride_update "dxgi=b"
             for wine_build_dll in d3d11 d3d10 d3d10core d3d10_1 d3d9 ; do
-                try_copy_file "${WINEDIR}/lib/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-                try_copy_file "${WINEDIR}/lib64/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+                if ! try_copy_file "${WINEDIR}/lib/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+                then try_copy_file "${WINEDIR}/lib/wine/i386-windows/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+                fi
+                if ! try_copy_file "${WINEDIR}/lib64/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+                then try_copy_file "${WINEDIR}/lib64/wine/x86_64-windows/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+                fi
             done
         fi
+        export VKD3D_FEATURE_LEVEL="12_0"
         export PW_WINDOWS_VER="10"
         echo "Use VKD3D-PROTON version ${PW_VKD3D_VER} (DX12 to vulkan)"
     fi

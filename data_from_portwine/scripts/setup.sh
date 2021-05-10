@@ -5,13 +5,13 @@
 try_remove_file "${PORT_WINE_TMP_PATH}/update_notifier"
 try_remove_file "${PORT_WINE_TMP_PATH}/init_run_suc"
 
-try_remove_file "${PORT_WINE_PATH}/data/port_on" 
-try_remove_file "${PORT_WINE_PATH}/data/dxvk.conf" 
+try_remove_file "${PORT_WINE_PATH}/data/port_on"
+try_remove_file "${PORT_WINE_PATH}/data/dxvk.conf"
 try_remove_file "${PORT_WINE_PATH}/settings.desktop"
 try_remove_file "${PORT_WINE_PATH}/debug.desktop"
 try_remove_file "${PORT_WINE_PATH}/restart.desktop"
 
-try_remove_dir "${PORT_WINE_PATH}/data/pfx/dosdevices" 
+try_remove_dir "${PORT_WINE_PATH}/data/pfx/dosdevices"
 try_remove_dir "${PORT_WINE_PATH}/Settings"
 try_remove_dir "${PORT_SCRIPTS_PATH}/vars"
 
@@ -57,7 +57,7 @@ done
 chmod u+x "${PORT_SCRIPTS_PATH}/"*
 
 try_force_link_dir "${PORT_WINE_PATH}/data/pfx/drive_c/" "${PORT_WINE_PATH}/"
-#pw_clear_pfx
+
 if [ "${s_install}" = "1" ]; then
 	echo "Installation completed successfully."
 else
