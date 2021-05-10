@@ -602,38 +602,40 @@ PW_UPDATE () {
 }
 
 PW_INIT_PFX () {
-    rm -f  "${WINEDIR}"*/lib*/*steam* 
-    rm -f  "${WINEDIR}"*/lib*/wine/*steam* 
-    rm -f  "${WINEDIR}"*/lib*/wine/fakedlls/*steam* 
-    #sed -i '/HKCU,Software\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf 
-    #sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf 
-    #sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf 
+    rm -f  "${WINEDIR}"*/lib*/*steam*
+    rm -f  "${WINEDIR}"*/lib*/wine/*steam*
+    rm -f  "${WINEDIR}"*/lib*/wine/fakedlls/*steam*
+    #sed -i '/HKCU,Software\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf
+    #sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf
+    #sed -i '/HKLM,Software\\Wow6432Node\\Valve\\Steam/d' "${WINEDIR}"*/share/wine/wine.inf
+    create_new_dir "${WINEPREFIX}/drive_c"
+    create_new_dir "${WINEPREFIX}/dosdevices"
+    [ ! -d "${WINEPREFIX}/dosdevices/c:" ] && try_force_link_dir "${WINEPREFIX}/drive_c/" "${WINEPREFIX}/dosdevices/c:"
+    [ ! -d "${WINEPREFIX}/dosdevices/z:" ] && try_force_link_dir "/" "${WINEPREFIX}/dosdevices/z:"
     if [ ! -d "${WINEPREFIX}" ] || [ ! -d "${WINEPREFIX}"/drive_c/windows ] || \
        [ ! -f "${WINEPREFIX}"/user.reg ] || [ ! -f "${WINEPREFIX}"/userdef.reg ] || \
-       [ ! -f "${WINEPREFIX}"/system.reg ] ; 
+       [ ! -f "${WINEPREFIX}"/system.reg ]
     then
-        sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}"*/share/wine/wine.inf 
-        sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}"*/share/wine/wine.inf 
+
+        sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}"*/share/wine/wine.inf
+        sed -i '/HKCR,steam\\shell\\open\\command/d' "${WINEDIR}"*/share/wine/wine.inf
         try_remove_file "${WINEPREFIX}/winetricks.log"
         create_new_dir "${WINEPREFIX}/drive_c/windows/syswow64/"
         create_new_dir "${WINEPREFIX}/drive_c/windows/system32/"
-        cp -fr "${WINEDIR}/share/default_pfx/"* "${WINEPREFIX}"
-        cp -f "${WINEDIR}/lib/wine/fakedlls/"*.* "${WINEPREFIX}/drive_c/windows/syswow64/"
-        cp -f "${WINEDIR}/lib/wine/"*.* "${WINEPREFIX}/drive_c/windows/syswow64/"
-        cp -f "${WINEDIR}/lib64/wine/fakedlls/"*.* "${WINEPREFIX}/drive_c/windows/system32/"
-        cp -f "${WINEDIR}/lib64/wine/"*.* "${WINEPREFIX}/drive_c/windows/system32/"
-
         PW_STOP_PROGRESS_BAR
         PW_START_PROGRESS_BAR_BLOCK "Updating prefix... Please wait..."
+        KILL_PORTWINE
         "${PW_RUNTIME}" "${WINELOADER}" wineboot -u
+        WAIT_WINESERVER
+        KILL_PORTWINE
         PW_STOP_PROGRESS_BAR
         PW_START_PROGRESS_BAR_CS "Initialization prefix..."
     fi
     if [ ! -d "${PORT_WINE_PATH}/data/pfx/drive_c/users/${USER}" ]; then
 	    try_force_link_dir "${PORT_WINE_PATH}/data/pfx/drive_c/users/steamuser" "${PORT_WINE_PATH}/data/pfx/drive_c/users/${USER}"
     fi
-    rm -f "${WINEPREFIX}/drive_c/windows/system32"/steam* 
-    rm -f "${WINEPREFIX}/drive_c/windows/syswow64"/steam* 
+    rm -f "${WINEPREFIX}/drive_c/windows/system32"/steam*
+    rm -f "${WINEPREFIX}/drive_c/windows/syswow64"/steam*
 
     create_new_dir "${WINEPREFIX}/drive_c/windows/Fonts/"
     try_copy_file "${WINEDIR}/share/fonts/"LiberationSans-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arial.ttf
