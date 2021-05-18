@@ -157,7 +157,7 @@ PW_LOAD_LIBS () {
     [ -e "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" ] ; then 
         print_info "Download and install libraries..."
         if try_download "https://github.com/Castro-Fidel/PortWINE/releases/download/libs${pw_libs_ver}/libs${pw_libs_ver}.tar.xz" "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" ; then
-            if unpack_tar_xz "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" "${HOME}/.PortWINE/" ; then 
+            if unpack_tar_xz "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" "${HOME}/.PortWINE/" ; then
                 try_remove_file "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz"
             else
                 try_remove_dir "${HOME}/.PortWINE/libs${pw_libs_ver}"
@@ -172,16 +172,14 @@ PW_LOAD_LIBS () {
             --no-wrap ` > /dev/null 2>&1 && PW_LOAD_LIBS
         fi
     fi
-    try_remove_dir "${WINELIB}/pinned_libs_32"
-    try_remove_dir "${WINELIB}/pinned_libs_64"
-    export pw_yad="${WINELIB}/usr/bin/yad"
-    export pw_zstd="${WINELIB}/usr/bin/zstd"
-    export pw_7z="${WINELIB}/usr/lib/p7zip/7zr"
+    export pw_yad="${WINELIB}/runtime/bin/yad"
+    export pw_zstd="${WINELIB}/runtime/bin/zstd"
+    export pw_7z="${WINELIB}/runtime/lib/p7zip/7zr"
     if [ -x "`which xterm 2>/dev/null`" ]; then
         export SYS_XTERM=`which xterm`
         export PW_XTERM="${SYS_XTERM} -geometry 159x37 -e"
     else
-        export PW_XTERM="${WINELIB}/amd64/usr/bin/xterm -geometry 159x37 -e"
+        export PW_XTERM="${WINELIB}/runtime/bin/xterm -geometry 159x37 -e"
     fi
 }
 
@@ -511,7 +509,7 @@ RUN_WINETRICKS_FROM_DB () {
             UPDATE_WINETRICKS
             PW_STOP_PROGRESS_BAR
             print_info "Need to install DLL in prefix: ${PW_DLL_NEED_INSTALL}"
-            ${PW_TERM} "${PW_RUNTIME}" "${PORT_WINE_TMP_PATH}/winetricks" -q --force ${PW_DLL_NEED_INSTALL}
+            ${PW_TERM} ${PW_RUNTIME} "${PORT_WINE_TMP_PATH}/winetricks" -q -r --force ${PW_DLL_NEED_INSTALL}
         fi
         PW_START_PROGRESS_BAR_CS "Start ${portname}... Please wait..."
     fi
@@ -519,7 +517,7 @@ RUN_WINETRICKS_FROM_DB () {
         if [ ! -z "${PW_WINDOWS_VER}" ] && [ `echo "$PW_WINDOWS_VER" | sed 's/.*/\L&/'` == "xp" ] ; then
             export PW_WINDOWS_VER="xp64"
         fi
-        "${PW_RUNTIME}" "${WINELOADER}" winecfg -v `echo "win${PW_WINDOWS_VER}" | sed 's/.*/\L&/'`
+        ${PW_RUNTIME} "${WINELOADER}" winecfg -v `echo "win${PW_WINDOWS_VER}" | sed 's/.*/\L&/'`
         echo "Set to win${PW_WINDOWS_VER}"
     fi
 }
@@ -626,7 +624,7 @@ PW_INIT_PFX () {
         PW_STOP_PROGRESS_BAR
         PW_START_PROGRESS_BAR_BLOCK "Updating prefix... Please wait..."
         KILL_PORTWINE
-        "${PW_RUNTIME}" "${WINELOADER}" wineboot -u
+        ${PW_RUNTIME} "${WINELOADER}" wineboot -u
         WAIT_WINESERVER
         KILL_PORTWINE
         PW_STOP_PROGRESS_BAR
@@ -759,20 +757,20 @@ PW_RUN () {
         export PW_TERM=""
         export PW_LOG_TO_FILE="${PORT_WINE_PATH}/${portname}.log"
         if [ ! -z "${PW_GAMEMODERUN}" ] && [ "${PW_GAMEMODERUN}" != 0 ] ; then
-            echo "Full command line:  $PW_TERM ${optirun_on} "${PW_RUNTIME}" gamemoderun ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}" "&>>${PW_LOG_TO_FILE}"
-            $PW_TERM ${optirun_on} "${PW_RUNTIME}" gamemoderun ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} &>>"${PW_LOG_TO_FILE}"
+            echo "Full command line:  $PW_TERM ${optirun_on} ${PW_RUNTIME} gamemoderun ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}" "&>>${PW_LOG_TO_FILE}"
+            $PW_TERM ${optirun_on} ${PW_RUNTIME} gamemoderun ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} &>>"${PW_LOG_TO_FILE}"
         else
-            echo "Full command line: $PW_TERM ${optirun_on} "${PW_RUNTIME}" ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}" "&>>${PW_LOG_TO_FILE}"
-            $PW_TERM ${optirun_on} "${PW_RUNTIME}" ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} &>>"${PW_LOG_TO_FILE}"
+            echo "Full command line: $PW_TERM ${optirun_on} ${PW_RUNTIME} ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}" "&>>${PW_LOG_TO_FILE}"
+            $PW_TERM ${optirun_on} ${PW_RUNTIME} ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} &>>"${PW_LOG_TO_FILE}"
         fi
     else
         [ "${PW_USE_TERMINAL}" != "1" ] && export PW_TERM=""
         if [ ! -z "${PW_GAMEMODERUN}" ] && [ "${PW_GAMEMODERUN}" != 0 ] ; then
-            echo "Full command line: $PW_TERM ${optirun_on} "${PW_RUNTIME}" gamemoderun ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}" 
-            $PW_TERM ${optirun_on} "${PW_RUNTIME}" gamemoderun ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}
+            echo "Full command line: $PW_TERM ${optirun_on} ${PW_RUNTIME} gamemoderun ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}"
+            $PW_TERM ${optirun_on} ${PW_RUNTIME} gamemoderun ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}
         else
-            echo "Full command line: $PW_TERM ${optirun_on} "${PW_RUNTIME}" ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}"
-            $PW_TERM ${optirun_on} "${PW_RUNTIME}" ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} 
+            echo "Full command line: $PW_TERM ${optirun_on} ${PW_RUNTIME} ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}"
+            $PW_TERM ${optirun_on} ${PW_RUNTIME} ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}
         fi
     fi
 }
@@ -805,7 +803,7 @@ export WINELIB="${HOME}/.PortWINE/libs${pw_libs_ver}"
 export WINEPREFIX="${PORT_WINE_PATH}/data/pfx"
 export PW_COMPAT_MEDIA_PATH="${PORT_WINE_TMP_PATH}"
 export WINE_WIN_START="${WINEPREFIX}/drive_c/windows/system32/start.exe"
-export PW_RUNTIME="$WINELIB/run.sh"
+export PW_RUNTIME="${WINELIB}/run-in-soldier --remove-game-overlay --share-home --runtime=runtime --"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
 export PW_VULKAN_DLL="${HOME}/.PortWINE/vulkan"
 export PW_DXVK_VER="${PW_DEF_DXVK_VER}"

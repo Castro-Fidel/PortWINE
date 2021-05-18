@@ -187,7 +187,7 @@ PW_WINETRICKS () {
     UPDATE_WINETRICKS
     export PW_USE_TERMINAL=1
     START_PORTWINE
-    $PW_TERM "${PW_RUNTIME}" "${PORT_WINE_TMP_PATH}/winetricks" -q --force
+    "${PORT_WINE_TMP_PATH}/winetricks" -qr --force
 }
 PW_EDIT_DB () {
     xdg-open "${PORTWINE_DB_FILE}"
@@ -253,8 +253,8 @@ else
         [ ! -z "$1" ] && echo "$1" > "${PORT_WINE_TMP_PATH}/tmp_yad_form"
         if [ ! -z `pidof -s yad` ] ; then
             kill -s SIGUSR1 `pgrep -a yad | grep "\-\-key=${KEY} \-\-notebook" | awk '{print $1}'`
-        fi 
-    } 
+        fi
+    }
     export -f button_click
 
     open_changelog () {
