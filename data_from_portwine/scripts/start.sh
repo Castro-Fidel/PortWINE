@@ -187,7 +187,7 @@ PW_WINETRICKS () {
     UPDATE_WINETRICKS
     export PW_USE_TERMINAL=1
     START_PORTWINE
-    "${PORT_WINE_TMP_PATH}/winetricks" -qr --force
+    "${PORT_WINE_TMP_PATH}/winetricks" -q -r --force
 }
 PW_EDIT_DB () {
     xdg-open "${PORTWINE_DB_FILE}"

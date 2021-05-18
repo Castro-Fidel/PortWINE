@@ -459,11 +459,11 @@ STOP_PORTWINE () {
 
 UPDATE_WINETRICKS () {
     W_TRX_URL="https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks"
-    W_TRX_EXT_VER="$(curl -s --list-only ${W_TRX_URL} | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')"
+    pw_ping_test && W_TRX_EXT_VER="$(curl -s --list-only ${W_TRX_URL} | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')"
     print_info "Version winetricks on server: ${W_TRX_EXT_VER}"
     W_TRX_INT_VER="$(cat "${PORT_WINE_TMP_PATH}/winetricks" | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')"
     print_info "Version winetricks in port: ${W_TRX_INT_VER}"
-    if [ ! -f "${PORT_WINE_TMP_PATH}/winetricks" ] || [ "$W_TRX_INT_VER" != "$W_TRX_EXT_VER" ] ; then
+    if [ ! -f "${PORT_WINE_TMP_PATH}/winetricks" ] && [ ! -z "$W_TRX_EXT_VER" ] || [ "$W_TRX_INT_VER" != "$W_TRX_EXT_VER" ] && [ ! -z "$W_TRX_EXT_VER" ]; then
         if try_download "${W_TRX_URL}" "${PORT_WINE_TMP_PATH}/winetricks_new" ; then
             mv -f "${PORT_WINE_TMP_PATH}/winetricks_new" "${PORT_WINE_TMP_PATH}/winetricks"
             W_TRX_INT_VER="$(cat "${PORT_WINE_TMP_PATH}/winetricks" | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')" && print_info "Winetricks version in port has been updated (${W_TRX_INT_VER})" 
@@ -547,7 +547,7 @@ PW_UPDATE () {
     fi 
     read "update_not" < "${PORT_WINE_TMP_PATH}/update_notifier" 
     if [ "${update_not}" = "1" ] ; then
-        echo `curl -s --list-only "${PW_FTP_URL}/current_version/${portname}_ver"` > "${PORT_WINE_TMP_PATH}/${portname}_cur_ver"
+        pw_ping_test && echo `curl -s --list-only "${PW_FTP_URL}/current_version/${portname}_ver"` > "${PORT_WINE_TMP_PATH}/${portname}_cur_ver"
         if [ -f "${PORT_WINE_TMP_PATH}/${portname}_ver" ] ; then
             read current_ver < "${PORT_WINE_TMP_PATH}/${portname}_cur_ver"
             try_remove_file "${PORT_WINE_TMP_PATH}/${portname}_cur_ver"
@@ -717,7 +717,7 @@ PW_SCRIPTS_UPDATE () {
     if [ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ] ; then
         echo "1000" > "${PORT_WINE_TMP_PATH}/scripts_ver"
     fi
-    echo `curl -s --list-only "${PW_FTP_URL}/current_version/scripts_ver"` > "${PORT_WINE_TMP_PATH}/scripts_cur_ver"
+    pw_ping_test && echo `curl -s --list-only "${PW_FTP_URL}/current_version/scripts_ver"` > "${PORT_WINE_TMP_PATH}/scripts_cur_ver"
     if [ "$?" == "0" ] ; then
         read scripts_current_ver < "${PORT_WINE_TMP_PATH}/scripts_cur_ver"
         try_remove_file "${PORT_WINE_TMP_PATH}/scripts_cur_ver"
