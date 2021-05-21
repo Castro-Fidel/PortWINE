@@ -88,6 +88,10 @@ try_download () {
     zenity --progress --percentage=0 --title="Download $(basename $1)" --text=Starting... --auto-close --auto-kill --width=500 --height=90
     [ "${PIPESTATUS[0]}" != 0 ] && print_error "failed to download $1. Scipping." && return 1 || return 0 
 }
+try_download_silent () {
+    wget -c -t 5 -T 2 "$1" --output-document="$2"
+    [ "$?" != 0 ] && print_error "failed to download $1. Scipping." && return 1 || return 0 
+}
 zenity_error_download () {
     `zenity --error --title "Error..." --text "You will need to check internet connettion,\nand press OK for repeet download" --no-wrap ` > /dev/null 2>&1
 }
@@ -282,7 +286,7 @@ START_PORTWINE ()
     PW_START_PROGRESS_BAR_CS "Start ${portname}... Please wait..."
 
     export WINELOADER="${WINEDIR}/bin/wine"
-    export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine:${PATH_TO_GAME}"
+    export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
     export WINESERVER="${WINEDIR}/bin/wineserver"
     if [ ! -z "${PATH}" ]
     then export PATH="${WINEDIR}/bin:${PATH}"
@@ -413,7 +417,7 @@ START_PORTWINE ()
     if [ ! -z ${PW_XKBD} ]; then
         setxkbmap us,ru
     fi
-    if [ -x "`which "gamemoderun" 2>/dev/null`" ] && [ "$PW_FORCE_DISABLED_GAMEMOD" -eq "0" ]; then
+    if [ -x "`which "gamemoderun" 2>/dev/null`" ] && [ "$PW_FORCE_DISABLED_GAMEMOD" != "1" ]; then
         export PW_GAMEMODERUN=1
         echo "Gamemod will be launched."
     else
@@ -459,7 +463,7 @@ STOP_PORTWINE () {
 
 UPDATE_WINETRICKS () {
     W_TRX_URL="https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks"
-    pw_ping_test && W_TRX_EXT_VER="$(curl -s --list-only ${W_TRX_URL} | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')"
+    W_TRX_EXT_VER="$(curl -s --list-only ${W_TRX_URL} | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')"
     print_info "Version winetricks on server: ${W_TRX_EXT_VER}"
     W_TRX_INT_VER="$(cat "${PORT_WINE_TMP_PATH}/winetricks" | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')"
     print_info "Version winetricks in port: ${W_TRX_INT_VER}"
@@ -509,7 +513,7 @@ RUN_WINETRICKS_FROM_DB () {
             UPDATE_WINETRICKS
             PW_STOP_PROGRESS_BAR
             print_info "Need to install DLL in prefix: ${PW_DLL_NEED_INSTALL}"
-            ${PW_TERM} ${PW_RUNTIME} "${PORT_WINE_TMP_PATH}/winetricks" -q -r --force ${PW_DLL_NEED_INSTALL}
+            ${PW_TERM} "${PORT_WINE_TMP_PATH}/winetricks" -q --force ${PW_DLL_NEED_INSTALL}
         fi
         PW_START_PROGRESS_BAR_CS "Start ${portname}... Please wait..."
     fi
@@ -544,15 +548,14 @@ PW_UPDATE () {
     fi
     if [ ! -f "${PORT_WINE_TMP_PATH}/update_notifier" ] ; then
         echo "1" > "${PORT_WINE_TMP_PATH}/update_notifier"
-    fi 
+    fi
     read "update_not" < "${PORT_WINE_TMP_PATH}/update_notifier" 
     if [ "${update_not}" = "1" ] ; then
-        pw_ping_test && echo `curl -s --list-only "${PW_FTP_URL}/current_version/${portname}_ver"` > "${PORT_WINE_TMP_PATH}/${portname}_cur_ver"
-        if [ -f "${PORT_WINE_TMP_PATH}/${portname}_ver" ] ; then
+        if try_download_silent "${PW_FTP_URL}/current_version/${portname}_ver" "${PORT_WINE_TMP_PATH}/${portname}_cur_ver" ; then
             read current_ver < "${PORT_WINE_TMP_PATH}/${portname}_cur_ver"
             try_remove_file "${PORT_WINE_TMP_PATH}/${portname}_cur_ver"
             if  [ ! -z "${current_ver}" ] && [ "${current_ver}" -gt "${install_ver}" ] ; then	
-                xsd=`zenity --title  "${port_upd1}" --text "${port_upd2}" --list --radiolist --height=220 --column="${inst_set}" --column "${port_upd3}" \
+                xsd=`zenity --title  "${port_upd1}" --text "${port_upd2}" --list --radiolist --height=230 --column="${inst_set}" --column "${port_upd3}" \
                 TRUE "${port_upd4}" \
                 FALSE "${port_upd5}" \
                 FALSE "${port_upd6}" `
@@ -581,7 +584,7 @@ PW_UPDATE () {
         port_time=$((${port_time}-1))
         echo "${port_time}" > "${HOME}/.config/.PortTime"
     else
-        xsd2=`zenity --title  "${port_time1}" --text "${port_time2}" --list --radiolist --height=240 --column="${inst_set3}" --column "${port_time3}" \
+        xsd2=`zenity --title  "${port_time1}" --text "${port_time2}" --list --radiolist --height=230 --column="${inst_set3}" --column "${port_time3}" \
         TRUE "${port_time4}" \
         FALSE "${port_time5}" \
         FALSE "${port_time6}" `
@@ -603,6 +606,7 @@ PW_UPDATE () {
 }
 
 PW_INIT_PFX () {
+    try_remove_file "${HOME}/.PortWINE/libs_v14/runtime/bin/wget"
     rm -f  "${WINEDIR}"*/lib*/*steam*
     rm -f  "${WINEDIR}"*/lib*/wine/*steam*
     rm -f  "${WINEDIR}"*/lib*/wine/fakedlls/*steam*
@@ -636,7 +640,7 @@ PW_INIT_PFX () {
     if [ ! -d "${PORT_WINE_PATH}/drive_c" ]; then
 	    try_force_link_dir "${PORT_WINE_PATH}/data/pfx/drive_c/" "${PORT_WINE_PATH}/"
     fi
-
+    create_new_dir "${WINEPREFIX}/drive_c/users/Public/Documents/Steam"
     create_new_dir "${WINEPREFIX}/drive_c/windows/Fonts/"
     try_copy_file "${WINEDIR}/share/fonts/"LiberationSans-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arial.ttf
     try_copy_file "${WINEDIR}/share/fonts/"LiberationSans-Bold.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arialbd.ttf
@@ -645,7 +649,7 @@ PW_INIT_PFX () {
     try_copy_file "${WINEDIR}/share/fonts/"SourceHanSansSCRegular.otf "${WINEPREFIX}/drive_c/windows/Fonts/"msyh.ttf
     var_winedlloverride_update "steam_api,steam_api64,steamclient,steamclient64=n"
 
-    export TOTAL_VRAM=`"${WINELIB}/amd64/usr/bin/glxinfo" -B | grep Total | awk -F: '{print $2}' | awk '{print $1}'`
+    export TOTAL_VRAM=`"${WINELIB}/runtime/bin/glxinfo" -B | grep Total | awk -F: '{print $2}' | awk '{print $1}'`
     echo "TOTAL_VRAM=${TOTAL_VRAM}"
     try_copy_file "${WINEDIR}/lib/wine/dxvk/dxvk_config.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
     try_copy_file "${WINEDIR}/lib64/wine/dxvk/dxvk_config.dll" "${WINEPREFIX}/drive_c/windows/system32/"
@@ -720,28 +724,45 @@ PW_SCRIPTS_UPDATE () {
     if [ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ] ; then
         echo "1000" > "${PORT_WINE_TMP_PATH}/scripts_ver"
     fi
-    pw_ping_test && echo `curl -s --list-only "${PW_FTP_URL}/current_version/scripts_ver"` > "${PORT_WINE_TMP_PATH}/scripts_cur_ver"
-    if [ "$?" == "0" ] ; then
-        read scripts_current_ver < "${PORT_WINE_TMP_PATH}/scripts_cur_ver"
-        try_remove_file "${PORT_WINE_TMP_PATH}/scripts_cur_ver"
-        if [ ! -z "${scripts_current_ver}" ] && [ "${scripts_current_ver}" -gt "${scripts_install_ver}" ] ; then
-            echo "######################################################"
-            echo "Update scripts..."
-            try_remove_file "${PORT_WINE_TMP_PATH}/scripts.tar.xz"
-            if try_download "${PW_FTP_URL}/dist/scripts.tar.xz" "${PORT_WINE_TMP_PATH}/scripts.tar.xz" ; then
-                tar -Jxvf "${PORT_WINE_TMP_PATH}/scripts.tar.xz" -C "${PORT_WINE_PATH}/data/"
-                if [ "$?" == "0" ] ; then
-                    try_remove_file "${PORT_WINE_TMP_PATH}/scripts.tar.xz"
-                    echo "${scripts_current_ver}" > "${PORT_WINE_TMP_PATH}/scripts_ver"
-                    "${pw_yad}" --title="Changelog" --borders=10 \
-                    --text="Скрипты были успешно обновлены.\nДля продолжения запуска порта нажмите ОК." \
-                    --text-align=center --text-info --show-uri --wrap --center --width=1200 --height=550 \
-                    --filename="${PORT_WINE_PATH}/data/changelog" --uri-color=red
-                    [ "$?" == 0 ] && /bin/bash -c ${pw_full_command_line[*]} &
-                    exit 0
-                fi
-            else
-                zenity_error_download && PW_SCRIPTS_UPDATE
+    export scripts_install_ver=`cat "${PORT_WINE_TMP_PATH}/scripts_ver" | head -n 1`
+    if [ ! -f "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ] ; then
+            echo "1" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
+    fi
+    read "scripts_update_not" < "${PORT_WINE_TMP_PATH}/scripts_update_notifier" 
+    if [ "${scripts_update_not}" = "1" ] ; then
+        if try_download_silent "${PW_FTP_URL}/current_version/scripts_ver" "${PORT_WINE_TMP_PATH}/scripts_cur_ver" ; then
+            read scripts_current_ver < "${PORT_WINE_TMP_PATH}/scripts_cur_ver"
+            try_remove_file "${PORT_WINE_TMP_PATH}/scripts_cur_ver"
+            if [ ! -z "${scripts_current_ver}" ] && [ "${scripts_current_ver}" -gt "${scripts_install_ver}" ] ; then
+                xcsd=`zenity --title  "${scripts_upd1}" --text "${scripts_upd2}" --list --radiolist --height=230 --column="${inst_set}" --column "${scripts_upd3}" \
+                TRUE "${scripts_upd4}" \
+                FALSE "${scripts_upd5}" \
+                FALSE "${scripts_upd6}"`
+                case $xcsd in
+                    "${scripts_upd4}")
+                        echo "######################################################"
+                        echo "Update scripts..."
+                        try_remove_file "${PORT_WINE_TMP_PATH}/scripts.tar.xz"
+                        if try_download_silent "${PW_FTP_URL}/dist/scripts.tar.xz" "${PORT_WINE_TMP_PATH}/scripts.tar.xz" ; then
+                            tar -Jxvf "${PORT_WINE_TMP_PATH}/scripts.tar.xz" -C "${PORT_WINE_PATH}/data/"
+                            if [ "$?" == "0" ] ; then
+                                try_remove_file "${PORT_WINE_TMP_PATH}/scripts.tar.xz"
+                                echo "${scripts_current_ver}" > "${PORT_WINE_TMP_PATH}/scripts_ver"
+                                "${pw_yad}" --title="Changelog" --borders=10 \
+                                --text="Скрипты были успешно обновлены.\nДля продолжения запуска порта нажмите ОК." \
+                                --text-align=center --text-info --show-uri --wrap --center --width=1200 --height=550 \
+                                --filename="${PORT_WINE_PATH}/data/changelog" --uri-color=red
+                                [ "$?" == 0 ] && /bin/bash -c ${pw_full_command_line[*]} &
+                                exit 0
+                            fi
+                        else
+                            zenity_error_download && PW_SCRIPTS_UPDATE
+                        fi ;;
+                    "${scripts_upd5}")
+                        echo " " ;;
+                    "${scripts_upd6}")
+                    echo "0" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ;;
+                esac
             fi
         fi
     fi
@@ -760,18 +781,22 @@ PW_RUN () {
         export PW_TERM=""
         export PW_LOG_TO_FILE="${PORT_WINE_PATH}/${portname}.log"
         if [ ! -z "${PW_GAMEMODERUN}" ] && [ "${PW_GAMEMODERUN}" != 0 ] ; then
-            echo "Full command line:  $PW_TERM ${optirun_on} ${PW_RUNTIME} gamemoderun ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}" "&>>${PW_LOG_TO_FILE}"
-            $PW_TERM ${optirun_on} ${PW_RUNTIME} gamemoderun ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} &>>"${PW_LOG_TO_FILE}"
+            echo "Use logging with gamemode"
+            echo "Full command line:  $PW_TERM ${optirun_on} gamemoderun ${PW_RUNTIME} ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}" "&>>${PW_LOG_TO_FILE}"
+            $PW_TERM ${optirun_on} gamemoderun ${PW_RUNTIME} ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} &>>"${PW_LOG_TO_FILE}"
         else
+            echo "Use logging without gamemode"
             echo "Full command line: $PW_TERM ${optirun_on} ${PW_RUNTIME} ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}" "&>>${PW_LOG_TO_FILE}"
             $PW_TERM ${optirun_on} ${PW_RUNTIME} ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} &>>"${PW_LOG_TO_FILE}"
         fi
     else
         [ "${PW_USE_TERMINAL}" != "1" ] && export PW_TERM=""
         if [ ! -z "${PW_GAMEMODERUN}" ] && [ "${PW_GAMEMODERUN}" != 0 ] ; then
-            echo "Full command line: $PW_TERM ${optirun_on} ${PW_RUNTIME} gamemoderun ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}"
-            $PW_TERM ${optirun_on} ${PW_RUNTIME} gamemoderun ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}
+            echo "Use gamemode without terminal"
+            echo "Full command line: $PW_TERM ${optirun_on} gamemoderun ${PW_RUNTIME} ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}"
+            $PW_TERM ${optirun_on} gamemoderun ${PW_RUNTIME} ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}
         else
+            echo "Don\`t use gamemode without terminal"
             echo "Full command line: $PW_TERM ${optirun_on} ${PW_RUNTIME} ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}"
             $PW_TERM ${optirun_on} ${PW_RUNTIME} ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}
         fi
@@ -805,14 +830,18 @@ export WINEDIR="${PORT_WINE_PATH}"/data/dist
 export WINELIB="${HOME}/.PortWINE/libs${pw_libs_ver}"
 export WINEPREFIX="${PORT_WINE_PATH}/data/pfx"
 export PW_COMPAT_MEDIA_PATH="${PORT_WINE_TMP_PATH}"
-export WINE_WIN_START="${WINEPREFIX}/drive_c/windows/system32/start.exe"
-export PW_RUNTIME="${WINELIB}/run-in-soldier --remove-game-overlay --share-home --filesystem="${PORT_WINE_PATH}" --runtime=runtime --"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
 export PW_VULKAN_DLL="${HOME}/.PortWINE/vulkan"
 export PW_DXVK_VER="${PW_DEF_DXVK_VER}"
 export PW_VKD3D_VER="${PW_DEF_VKD3D_VER}"
 export install_ver=`cat "${PORT_WINE_TMP_PATH}/${portname}_ver" | head -n 1`
-export scripts_install_ver=`cat "${PORT_WINE_TMP_PATH}/scripts_ver" | head -n 1`
+if [ ! -z "${PW_FORCE_DISABLED_RUNTIME}" ] && [ "${PW_FORCE_DISABLED_RUNTIME}" != 0 ] ; then
+    export PW_RUNTIME=""
+    echo "RUNTIME is disabled"
+else
+    export PW_RUNTIME="${WINELIB}/run-in-soldier --remove-game-overlay --share-home --filesystem="${PORT_WINE_PATH}" --runtime=runtime --"
+    echo "RUNTIME is enabled"
+fi
 
 if [ -z "${INSTALLING_PORT}" ] ; then
     PW_LOAD_LIBS

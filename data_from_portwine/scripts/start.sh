@@ -13,13 +13,13 @@ PORTWINE_LAUNCH () {
     PORTWINE_BAT=`basename "${portwine_exe}" | grep .bat`
     if [ ! -z "${PW_VIRTUAL_DESKTOP}" ] && [ "${PW_VIRTUAL_DESKTOP}" == "1" ] ; then
         pw_screen_resolution=`xrandr --current | grep "*" | awk '{print $1;}' | head -1`
-        PW_RUN explorer "/desktop=portwine,${pw_screen_resolution}" "$WINE_WIN_START" /unix "$portwine_exe"
+        PW_RUN explorer "/desktop=portwine,${pw_screen_resolution}" "$portwine_exe"
     elif [ ! -z "${PORTWINE_MSI}" ]; then
         PW_RUN msiexec /i "$portwine_exe"
     elif [ ! -z "${PORTWINE_BAT}" ] || [ ! -z "${portwine_exe}" ]; then
-        PW_RUN "$WINE_WIN_START" /unix "$portwine_exe"
+        PW_RUN "$portwine_exe"
     else
-        PW_RUN "$WINE_WIN_START" explorer
+        PW_RUN explorer
     fi
 }
 PORTWINE_CREATE_SHORTCUT () {
@@ -124,11 +124,11 @@ PORTWINE_DEBUG () {
     free -m >> "${PORT_WINE_PATH}/${portname}.log"
     echo "-----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Graphic cards and drivers" >> "${PORT_WINE_PATH}/${portname}.log"
-    "${WINELIB}/amd64/usr/bin/glxinfo" -B >> "${PORT_WINE_PATH}/${portname}.log"
+    "${WINELIB}/runtime/bin/glxinfo" -B >> "${PORT_WINE_PATH}/${portname}.log"
     echo "----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Vulkan info device name:" >> "${PORT_WINE_PATH}/${portname}.log"
-    "${WINELIB}/amd64/usr/bin/vulkaninfo" | grep deviceName >> "${PORT_WINE_PATH}/${portname}.log"
-    "${WINELIB}/amd64/usr/bin/vkcube" --c 50
+    "${WINELIB}/runtime/bin/vulkaninfo" | grep deviceName >> "${PORT_WINE_PATH}/${portname}.log"
+    "${WINELIB}/runtime/bin/vkcube" --c 50
     if [ $? -eq 0 ]; then
         echo "Vulkan cube test passed successfully" >> "${PORT_WINE_PATH}/${portname}.log"
     else
@@ -141,17 +141,17 @@ PORTWINE_DEBUG () {
     fi
     echo "--------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Version WINE in the Port" >> "${PORT_WINE_PATH}/${portname}.log"
-    "$WINELOADER" --version 2>&1 | tee -a "${PORT_WINE_PATH}/${portname}.log"
+    ${PW_RUNTIME} "$WINELOADER" --version 2>&1 | tee -a "${PORT_WINE_PATH}/${portname}.log"
     echo "-------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "winetricks.log:" >> "${PORT_WINE_PATH}/${portname}.log"
     cat "${WINEPREFIX}/winetricks.log" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     if [ ! -z "${PORTWINE_DB_FILE}" ]; then
         echo "Use ${PORTWINE_DB_FILE} db file:" >> "${PORT_WINE_PATH}/${portname}.log"
-        cat "${PORTWINE_DB_FILE}" | sed '/##/d' | awk '{print $1 " " $2}' >> "${PORT_WINE_PATH}/${portname}.log"
+        cat "${PORTWINE_DB_FILE}" | sed '/##/d' >> "${PORT_WINE_PATH}/${portname}.log"
     else
         echo "Use ${PORT_SCRIPTS_PATH}/portwine_db/default db file:" >> "${PORT_WINE_PATH}/${portname}.log"
-        cat "${PORT_SCRIPTS_PATH}/portwine_db/default" | sed '/##/d' | awk '{print $1 " " $2}' >> "${PORT_WINE_PATH}/${portname}.log"
+        cat "${PORT_SCRIPTS_PATH}/portwine_db/default" | sed '/##/d' >> "${PORT_WINE_PATH}/${portname}.log"
     fi
     echo "-----------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Log WINE:" >> "${PORT_WINE_PATH}/${portname}.log"
@@ -168,11 +168,11 @@ PORTWINE_DEBUG () {
 }
 PW_WINECFG () {
     START_PORTWINE
-    PW_RUN "$WINE_WIN_START" winecfg
+    PW_RUN winecfg
 }
 PW_WINEFILE () {
     START_PORTWINE
-    PW_RUN "$WINE_WIN_START" explorer
+    PW_RUN explorer
 }
 PW_WINECMD () {
     export PW_USE_TERMINAL=1
@@ -181,13 +181,13 @@ PW_WINECMD () {
 }
 PW_WINEREG () {
     START_PORTWINE
-    PW_RUN "$WINE_WIN_START" regedit
+    PW_RUN regedit
 }
 PW_WINETRICKS () {
     UPDATE_WINETRICKS
     export PW_USE_TERMINAL=1
     START_PORTWINE
-    "${PORT_WINE_TMP_PATH}/winetricks" -q -r --force
+    ${PW_TERM} "${PORT_WINE_TMP_PATH}/winetricks" -q --force
 }
 PW_EDIT_DB () {
     xdg-open "${PORTWINE_DB_FILE}"
