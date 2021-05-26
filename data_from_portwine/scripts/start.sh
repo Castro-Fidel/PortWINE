@@ -30,7 +30,11 @@ PORTWINE_CREATE_SHORTCUT () {
         --title="${sc_path}" --filename="${PORT_WINE_PATH}/data/pfx/drive_c/")
         if [ $? -eq 1 ];then exit 1; fi
     fi
-    PORTPROTON_NAME="$(basename "${PORTPROTON_EXE}" | sed s/".exe"/""/gi )"
+    if [ ! -z "${PORTWINE_CREATE_SHORTCUT_NAME}" ] ; then
+        export PORTPROTON_NAME="${PORTWINE_CREATE_SHORTCUT_NAME}"
+    else
+        PORTPROTON_NAME="$(basename "${PORTPROTON_EXE}" | sed s/".exe"/""/gi )"
+    fi
     PORTPROTON_PATH="$( cd "$( dirname "${PORTPROTON_EXE}" )" >/dev/null 2>&1 && pwd )"
     if [ -x "`which wrestool 2>/dev/null`" ]; then
         wrestool -x --output="${PORTPROTON_PATH}/" -t14 "${PORTPROTON_EXE}"
@@ -80,13 +84,21 @@ PORTWINE_DEBUG () {
     KILL_PORTWINE
     export PW_LOG=1
     export PW_WINEDBG_DISABLE=0
-    START_PORTWINE
     echo "${port_deb1}" > "${PORT_WINE_PATH}/${portname}.log"
     echo "${port_deb2}" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "-----------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "-------------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "PortWINE version:" >> "${PORT_WINE_PATH}/${portname}.log"
     read install_ver < "${PORT_WINE_TMP_PATH}/${portname}_ver"
     echo "${portname}-${install_ver}" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "------------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "Scripts version:" >> "${PORT_WINE_PATH}/${portname}.log"
+    cat "${PORT_WINE_TMP_PATH}/scripts_ver" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "-----------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    if [ ! -z "${PW_FORCE_DISABLED_RUNTIME}" ] && [ "${PW_FORCE_DISABLED_RUNTIME}" != 0 ] ; then
+        echo "RUNTIME is disabled" >> "${PORT_WINE_PATH}/${portname}.log"
+    else
+        echo "RUNTIME is enabled" >> "${PORT_WINE_PATH}/${portname}.log"
+    fi
     echo "----------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     if [ ! -z "${portwine_exe}" ] ; then
         echo "Debug for programm:" >> "${PORT_WINE_PATH}/${portname}.log"
@@ -124,11 +136,11 @@ PORTWINE_DEBUG () {
     free -m >> "${PORT_WINE_PATH}/${portname}.log"
     echo "-----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Graphic cards and drivers" >> "${PORT_WINE_PATH}/${portname}.log"
-    "${WINELIB}/runtime/bin/glxinfo" -B >> "${PORT_WINE_PATH}/${portname}.log"
+    "${PW_WINELIB}/runtime/bin/glxinfo" -B >> "${PORT_WINE_PATH}/${portname}.log"
     echo "----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Vulkan info device name:" >> "${PORT_WINE_PATH}/${portname}.log"
-    "${WINELIB}/runtime/bin/vulkaninfo" | grep deviceName >> "${PORT_WINE_PATH}/${portname}.log"
-    "${WINELIB}/runtime/bin/vkcube" --c 50
+    "${PW_WINELIB}/runtime/bin/vulkaninfo" | grep deviceName >> "${PORT_WINE_PATH}/${portname}.log"
+    "${PW_WINELIB}/runtime/bin/vkcube" --c 50
     if [ $? -eq 0 ]; then
         echo "Vulkan cube test passed successfully" >> "${PORT_WINE_PATH}/${portname}.log"
     else
@@ -141,7 +153,10 @@ PORTWINE_DEBUG () {
     fi
     echo "--------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Version WINE in the Port" >> "${PORT_WINE_PATH}/${portname}.log"
-    ${PW_RUNTIME} "$WINELOADER" --version 2>&1 | tee -a "${PORT_WINE_PATH}/${portname}.log"
+    if [ -f "${WINEDIR}/version" ]
+    then cat "${WINEDIR}/version" >> "${PORT_WINE_PATH}/${portname}.log"
+    else ${PW_RUNTIME} "$WINELOADER" --version 2>&1 | tee -a "${PORT_WINE_PATH}/${portname}.log"
+    fi
     echo "-------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "winetricks.log:" >> "${PORT_WINE_PATH}/${portname}.log"
     cat "${WINEPREFIX}/winetricks.log" >> "${PORT_WINE_PATH}/${portname}.log"
