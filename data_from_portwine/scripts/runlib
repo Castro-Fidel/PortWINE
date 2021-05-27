@@ -135,6 +135,7 @@ pw_clear_pfx () {
     try_remove_file "${WINEPREFIX}/userdef.reg"
     try_remove_file "${WINEPREFIX}/winetricks.log"
     try_remove_file "${WINEPREFIX}/.update-timestamp"
+    rm -f "${PORT_WINE_TMP_PATH}"/*.bin
     try_remove_dir "${WINEPREFIX}/drive_c/windows/"
 }
 sszen() {
@@ -238,9 +239,6 @@ PW_DOWNLOAD_GECKO () {
             zenity_error_download && PW_DOWNLOAD_GECKO
         fi
     fi
-    create_new_dir "${WINEDIR}/share/wine/"
-    try_force_link_dir "${HOME}/.PortWINE/gecko" "${WINEDIR}"/share/wine/
-    try_force_link_dir "${HOME}/.PortWINE/mono" "${WINEDIR}"/share/wine/
 }
 START_PORTWINE ()
     {
@@ -255,6 +253,11 @@ START_PORTWINE ()
     export WINELOADER="${WINEDIR}/bin/wine"
     export WINESERVER="${WINEDIR}/bin/wineserver"
     export WINEDLLPATH="${WINEDIR}/lib/wine"
+    create_new_dir "${WINEDIR}/share/wine/"
+    try_remove_dir"${WINEDIR}"/share/wine/gecko
+    try_remove_dir"${WINEDIR}"/share/wine/mono
+    try_force_link_dir "${HOME}/.PortWINE/gecko" "${WINEDIR}"/share/wine/
+    try_force_link_dir "${HOME}/.PortWINE/mono" "${WINEDIR}"/share/wine/
     for pw_winedllpath in "${WINEDIR}/lib/wine/i386-windows" "${WINEDIR}/lib64/wine" "${WINEDIR}/lib64/wine/x86_64-windows" "${WINEDIR}/lib/wine/x86_64-windows"; do
         if [ -d "${pw_winedllpath}" ]
         then export WINEDLLPATH="${pw_winedllpath}:${WINEDLLPATH}"
@@ -293,12 +296,12 @@ START_PORTWINE ()
     export MEDIACONV_AUDIO_TRANSCODED_FILE="${PORT_WINE_TMP_PATH}"/transcoded_audio.foz
     export MEDIACONV_VIDEO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/video.foz
     export MEDIACONV_VIDEO_TRANSCODED_FILE="${PORT_WINE_TMP_PATH}"/transcoded_video.foz
-    export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/gstreamer-1.0:${WINEDIR}/lib/gstreamer-1.0"
+    export GST_PLUGIN_PATH_1_0="${WINEDIR}/lib64/gstreamer-1.0:${WINEDIR}/lib/gstreamer-1.0"
     export STAGING_SHARED_MEMORY=1
     export PW_FORCE_LARGE_ADDRESS_AWARE=1
 
     if [ ! -z "${PW_LOG}" ] && [ "${PW_LOG}" != 0 ] ; then
-        export WINEDEBUG="fixme-all,err+loaddll,err+dll,err+file,err+reg"
+        export WINEDEBUG="fixme+all,err+loaddll,err+dll,err+file,err+reg"
         export DXVK_LOG_LEVEL="info"
         export VKD3D_DEBUG="warn"
         export WINE_MONO_TRACE="E:System.NotImplementedException"
@@ -477,6 +480,9 @@ UPDATE_WINETRICKS () {
 
 RUN_WINETRICKS_FROM_DB () {
     UPDATE_WINETRICKS
+    if [ ! -z "${PW_MUST_HAVE_DLL}" ]
+    then export PW_DLL_INSTALL="${PW_MUST_HAVE_DLL} ${PW_DLL_INSTALL}"
+    fi
     if [ ! -z "${PW_DLL_INSTALL}" ]; then
         PW_STOP_PROGRESS_BAR
         export PW_DLL_NEED_INSTALL=""
