@@ -17,7 +17,7 @@ PORTWINE_LAUNCH () {
     elif [ ! -z "${PORTWINE_MSI}" ]; then
         PW_RUN msiexec /i "$portwine_exe"
     elif [ ! -z "${PORTWINE_BAT}" ] || [ ! -z "${portwine_exe}" ]; then
-        PW_RUN "$portwine_exe"
+        PW_RUN ${WINE_WIN_START} "$portwine_exe"
     else
         PW_RUN explorer
     fi
@@ -94,7 +94,7 @@ PORTWINE_DEBUG () {
     echo "Scripts version:" >> "${PORT_WINE_PATH}/${portname}.log"
     cat "${PORT_WINE_TMP_PATH}/scripts_ver" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "-----------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    if [ ! -z "${PW_FORCE_DISABLED_RUNTIME}" ] && [ "${PW_FORCE_DISABLED_RUNTIME}" != 0 ] ; then
+    if [ "${PW_USE_RUNTIME}" = 0 ] ; then
         echo "RUNTIME is disabled" >> "${PORT_WINE_PATH}/${portname}.log"
     else
         echo "RUNTIME is enabled" >> "${PORT_WINE_PATH}/${portname}.log"
@@ -223,7 +223,7 @@ if [ ! -z "${portwine_exe}" ]; then
             --button='EDIT  DB'!!"${loc_edit_db} ${PORTWINE_DB}":118 \
             --button='CREATE SHORTCUT'!!"${loc_creat_shortcut}":100 \
             --button='DEBUG'!!"${loc_debug}":102 \
-            --button='LAUNCH'!!"${loc_launch}":106 )  
+            --button='LAUNCH'!!"${loc_launch}":106 )
             PW_YAD_SET="$?"
         elif [ ! -z "${PORTWINE_DB_FILE}" ] && [ -z "${PW_VULKAN_USE}" ]; then
             if [ -z "${PW_COMMENT_DB}" ] ; then
@@ -236,7 +236,7 @@ if [ ! -z "${portwine_exe}" ]; then
             --button='EDIT  DB'!!"${loc_edit_db} ${PORTWINE_DB}":118 \
             --button='CREATE SHORTCUT'!!"${loc_creat_shortcut}":100 \
             --button='DEBUG'!!"${loc_debug}":102 \
-            --button='LAUNCH'!!"${loc_launch}":106 )  
+            --button='LAUNCH'!!"${loc_launch}":106 )
             PW_YAD_SET="$?"
             export VULKAN_MOD=`echo "$OUTPUT_START" | awk '{print $1}'`
         else
@@ -246,7 +246,7 @@ if [ ! -z "${portwine_exe}" ]; then
             --field="Run with :CB" "DXVK (DX 9-11 to Vulkan)"\!"VKD3D (DX 12 to Vulkan)"\!"OPENGL " \
             --button='CREATE SHORTCUT'!!"${loc_creat_shortcut}":100 \
             --button='DEBUG'!!"${loc_debug}":102 \
-            --button='LAUNCH'!!"${loc_launch}":106 )  
+            --button='LAUNCH'!!"${loc_launch}":106 )
             PW_YAD_SET="$?"
             export VULKAN_MOD=`echo "$OUTPUT_START" | awk '{print $1}'`
         fi

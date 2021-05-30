@@ -136,7 +136,9 @@ pw_clear_pfx () {
     try_remove_file "${WINEPREFIX}/winetricks.log"
     try_remove_file "${WINEPREFIX}/.update-timestamp"
     rm -f "${PORT_WINE_TMP_PATH}"/*.bin
+    rm -f "${PORT_WINE_TMP_PATH}"/*.foz
     try_remove_dir "${WINEPREFIX}/drive_c/windows/"
+    try_remove_dir  "${PORT_WINE_TMP_PATH}/mesa_shader_cache"
 }
 sszen() {
     zenity --progress --title="Settings..." --text="Updating parameters" --pulsate --auto-close --width=500 --height=90 --no-cancel
@@ -258,30 +260,16 @@ START_PORTWINE ()
     try_remove_dir"${WINEDIR}"/share/wine/mono
     try_force_link_dir "${HOME}/.PortWINE/gecko" "${WINEDIR}"/share/wine/
     try_force_link_dir "${HOME}/.PortWINE/mono" "${WINEDIR}"/share/wine/
-    for pw_winedllpath in "${WINEDIR}/lib/wine/i386-windows" "${WINEDIR}/lib64/wine" "${WINEDIR}/lib64/wine/x86_64-windows" "${WINEDIR}/lib/wine/x86_64-windows"; do
-        if [ -d "${pw_winedllpath}" ]
-        then export WINEDLLPATH="${pw_winedllpath}:${WINEDLLPATH}"
-        fi
-    done
-    if [ ! -z "${PW_SYS_PATH}" ]
-    then export PATH="${PW_SYS_PATH}"
-    else export PW_SYS_PATH="${PATH}"
-    fi
-    if [ ! -z "${PW_LDL_PATH}" ]
-    then export LD_LIBRARY_PATH="${PW_SYS_PATH}"
-    else export PW_LDL_PATH="${LD_LIBRARY_PATH}"
+    if [ -d ${PATH_TO_GAME} ]
+    then export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine:${PATH_TO_GAME}"
+    else export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
     fi
     if [ ! -z "${PATH}" ]
     then export PATH="${WINEDIR}/bin:${PATH}"
     else export PATH="${WINEDIR}/bin"
     fi
-    export LD_LIBRARY_PATH="${WINEDIR}/lib"
-    for pw_ld_library_path in "${WINEDIR}/lib/wine/i386-unix" "${WINEDIR}/lib64" "${WINEDIR}/lib64/wine/x86_64-unix" ; do
-    if [ -d "${pw_ld_library_path}" ]
-    then export LD_LIBRARY_PATH="${pw_ld_library_path}:${LD_LIBRARY_PATH}"
-    fi
-    done
-    if [ ! -z "${PW_FORCE_DISABLED_RUNTIME}" ] && [ "${PW_FORCE_DISABLED_RUNTIME}" != 0 ] ; then
+    #export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib"
+    if [ "${PW_USE_RUNTIME}" = 0 ] ; then
         export PW_RUNTIME=""
         echo "RUNTIME is disabled"
     else
@@ -364,7 +352,7 @@ START_PORTWINE ()
     create_new_dir "${PORT_WINE_TMP_PATH}/dxvk_cache"
     export DXVK_STATE_CACHE_PATH="${PORT_WINE_TMP_PATH}"/dxvk_cache
     export DXVK_STATE_CACHE=1
-    export optirun_on=""
+       export optirun_on=""
     export check_optimus_manager=
     export PW_NVIDIA="$(lspci | grep NVIDIA)"
     if [ -x "`which optimus-manager 2>/dev/null`" ]; then
@@ -373,9 +361,18 @@ START_PORTWINE ()
     if [ ! -z "${PW_NVIDIA}" ] && [ "${check_optimus_manager}" != "intel" ]; then
         if [ "${check_optimus_manager}" = "nvidia" ]; then
             export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
-        else
-            export __NV_PRIME_RENDER_OFFLOAD=1
+        elif [ -x "`which primusrun 2>/dev/null`" ]; then
+            export optirun_on="primusrun"
+            export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+        elif [ -x "`which optirun 2>/dev/null`" ]; then
+            export optirun_on="optirun -b primus"
+            export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+        elif [ -x "`which prime-run 2>/dev/null`" ]; then
+            export optirun_on="prime-run"
+            export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
         fi
+        export __NV_PRIME_RENDER_OFFLOAD=1
+        export __GLX_VENDOR_LIBRARY_NAME=nvidia
         if [ ! -d "${PORT_WINE_TMP_PATH}"/gl_shader_cache ] ; then
             mkdir -p "${PORT_WINE_TMP_PATH}"/gl_shader_cache
         fi
@@ -404,12 +401,12 @@ START_PORTWINE ()
     if [ ! -z ${PW_XKBD} ]; then
         setxkbmap us,ru
     fi
-    if [ -x "`which "gamemoderun" 2>/dev/null`" ] && [ "$PW_FORCE_DISABLED_GAMEMOD" != "1" ]; then
+    if [ -x "`which "gamemoderun" 2>/dev/null`" ] && [ "$PW_USE_GAMEMODE" = "1" ]; then
         export PW_GAMEMODERUN=1
         echo "Gamemod will be launched."
     else
         export PW_GAMEMODERUN=0
-        echo "Gamemod is not installed or disabled in vars script: PW_FORCE_DISABLED_GAMEMOD=$PW_FORCE_DISABLED_GAMEMOD"
+        echo "Gamemod is not installed or disabled in vars script: PW_USE_GAMEMODE=$PW_USE_GAMEMODE"
     fi
     PW_INIT_PFX
     RUN_WINETRICKS_FROM_DB
@@ -449,14 +446,6 @@ STOP_PORTWINE () {
     PW_STOP_PROGRESS_BAR
     try_remove_file "${PORT_SCRIPTS_PATH}/0"
     try_remove_file "${PORT_SCRIPTS_PATH}/1"
-    if [ ! -z "${PW_SYS_PATH}" ] ; then
-        export PATH="${PW_SYS_PATH}"
-        unset PW_SYS_PATH
-    fi
-    if [ ! -z "${PW_LDL_PATH}" ] ; then
-        export LD_LIBRARY_PATH="${PW_SYS_PATH}"
-        unset PW_LDL_PATH
-    fi
 }
 
 UPDATE_WINETRICKS () {

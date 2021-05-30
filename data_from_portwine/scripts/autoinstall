@@ -3,7 +3,7 @@
 ########################################################################
 export PW_USER_TEMP="$WINEPREFIX/drive_c/users/${USER}/Temp"
 export PW_FORCE_LARGE_ADDRESS_AWARE=0
-export PW_FORCE_DISABLED_GAMEMOD=1
+export PW_USE_GAMEMODE=0
 export PW_CHECK_AUTOINSTAL=1
 export PW_WINEDBG_DISABLE=1
 export PW_NO_WRITE_WATCH=0
@@ -19,6 +19,23 @@ PW_WGC () {
     START_PORTWINE
     if try_download "https://redirect.wargaming.net/WGC/Wargaming_Game_Center_Install_WoT_${WGC_LOC}.exe" "${PW_AUTOINSTALL_EXE}"
     then
+        while true ; do
+            if [ "${PW_USE_RUNTIME}" = 0 ]
+            then echo "PW_USE_RUNTIME: `echo $PW_USE_RUNTIME`" & break
+            fi
+            if  [ -z `pgrep wgc.exe` ] ; then
+                echo -e "PID WGC not found"
+                sleep 2
+            else
+                echo -e "PID WGC: `pgrep wgc.exe` \nPID Cont: `pidof -s bwrap`"
+                    while   [ ! -z `pgrep wgc.exe` ]; do
+                        echo -e "PID WGC found: `pgrep wgc.exe` \nPID_Status: `echo $?`"
+                        sleep 2
+                        KILL_PORTWINE
+                    done
+                break
+            fi
+        done &
         PW_START_PROGRESS_BAR_CS "Starting WGC installation..."
         PW_RUN "${PW_AUTOINSTALL_EXE}"
         portwine_exe="$WINEPREFIX/drive_c/ProgramData/Wargaming.net/GameCenter/wgc_api/wgc_api.exe"
