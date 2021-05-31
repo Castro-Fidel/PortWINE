@@ -118,8 +118,8 @@ unpack_tar_xz () {
 }
 pw_mangohud_check () {
     export RUN_MANGOHUD=""
-    export MANGOHUD=0
-    export MANGOHUD_DLSYM=0
+    unset MANGOHUD
+    unset MANGOHUD_DLSYM
     if [ -x "`which mangohud 2>/dev/null`" ] && [ "${PW_MANGOHUD}" == "1" ] ; then
         if [ "${PW_VULKAN_USE}" = "0" ]; then
             export MANGOHUD_DLSYM=1
@@ -127,6 +127,8 @@ pw_mangohud_check () {
         else
             export MANGOHUD=1
         fi
+    else
+        export DISABLE_MANGOHUD=1
     fi
 }
 pw_clear_pfx () {
@@ -135,10 +137,35 @@ pw_clear_pfx () {
     try_remove_file "${WINEPREFIX}/userdef.reg"
     try_remove_file "${WINEPREFIX}/winetricks.log"
     try_remove_file "${WINEPREFIX}/.update-timestamp"
+    try_remove_file "${WINEPREFIX}/drive_c/.windows-serial"
+    try_remove_dir "${WINEPREFIX}/drive_c/windows/"
+    try_remove_dir "${WINEPREFIX}/drive_c/ProgramData/Setup"
+    try_remove_dir "${WINEPREFIX}/drive_c/ProgramData/Windows"
+    try_remove_dir "${WINEPREFIX}/drive_c/ProgramData/WindowsTask"
+    try_remove_dir "${WINEPREFIX}/drive_c/ProgramData/Package Cache"
+    try_remove_dir "${WINEPREFIX}/drive_c/users/Public/Local Settings/Application Data/Microsoft"
+    try_remove_dir "${WINEPREFIX}/drive_c/users/Public/Local Settings/Application Data/Temp"
+    try_remove_dir "${WINEPREFIX}/drive_c/users/Public/Local Settings/Temporary Internet Files"
+    try_remove_dir "${WINEPREFIX}/drive_c/users/Public/Application Data/Microsoft"
+    try_remove_dir "${WINEPREFIX}/drive_c/users/Public/Application Data/wine_gecko"
+    try_remove_dir "${WINEPREFIX}/drive_c/users/Public/Temp"
+    try_remove_dir "${WINEPREFIX}/drive_c/users/steamuser/Local Settings/Application Data/Microsoft"
+    try_remove_dir "${WINEPREFIX}/drive_c/users/steamuser/Local Settings/Application Data/Temp"
+    try_remove_dir "${WINEPREFIX}/drive_c/users/steamuser/Local Settings/Temporary Internet Files"
+    try_remove_dir "${WINEPREFIX}/drive_c/users/steamuser/Application Data/Microsoft"
+    try_remove_dir "${WINEPREFIX}/drive_c/users/steamuser/Application Data/wine_gecko"
+    try_remove_dir "${WINEPREFIX}/drive_c/users/steamuser/Temp"
+    try_remove_dir "${WINEPREFIX}/drive_c/Program Files/Internet Explorer"
+    try_remove_dir "${WINEPREFIX}/drive_c/Program Files/Windows Media Player"
+    try_remove_dir "${WINEPREFIX}/drive_c/Program Files/Windows NT"
+    try_remove_dir "${WINEPREFIX}/drive_c/Program Files/Common Files"
+    try_remove_dir "${WINEPREFIX}/drive_c/Program Files (x86)/Internet Explorer"
+    try_remove_dir "${WINEPREFIX}/drive_c/Program Files (x86)/Common Files"
+    try_remove_dir "${WINEPREFIX}/drive_c/Program Files (x86)/Windows Media Player"
+    try_remove_dir "${WINEPREFIX}/drive_c/Program Files (x86)/Windows NT"
+    try_remove_dir  "${PORT_WINE_TMP_PATH}/mesa_shader_cache"
     rm -f "${PORT_WINE_TMP_PATH}"/*.bin
     rm -f "${PORT_WINE_TMP_PATH}"/*.foz
-    try_remove_dir "${WINEPREFIX}/drive_c/windows/"
-    try_remove_dir  "${PORT_WINE_TMP_PATH}/mesa_shader_cache"
 }
 sszen() {
     zenity --progress --title="Settings..." --text="Updating parameters" --pulsate --auto-close --width=500 --height=90 --no-cancel
@@ -268,12 +295,26 @@ START_PORTWINE ()
     then export PATH="${WINEDIR}/bin:${PATH}"
     else export PATH="${WINEDIR}/bin"
     fi
-    #export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib"
+    export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib"
     if [ "${PW_USE_RUNTIME}" = 0 ] ; then
         export PW_RUNTIME=""
         echo "RUNTIME is disabled"
     else
-        export PW_RUNTIME="${PW_WINELIB}/run-in-soldier --remove-game-overlay --share-home --filesystem="${PORT_WINE_PATH}" --runtime=runtime --"
+        export PW_RUNTIME="${PW_WINELIB}/run-in-soldier --share-home --filesystem="${PORT_WINE_PATH}" --runtime=runtime --"
+        unset PRESSURE_VESSEL_FILESYSTEMS_RO
+        unset PRESSURE_VESSEL_FILESYSTEMS_RW
+        for PWRTMRO in ${PW_RT_MOUNT_RO[*]} ; do
+            if [ ! -z "${PRESSURE_VESSEL_FILESYSTEMS_RO}" ]
+            then export PRESSURE_VESSEL_FILESYSTEMS_RO="${PRESSURE_VESSEL_FILESYSTEMS_RO}:${PWRTMRO}"
+            else export PRESSURE_VESSEL_FILESYSTEMS_RO="${PWRTMRO}"
+            fi
+        done
+        for PWRTMRW in ${PW_RT_MOUNT_RW[*]} ; do
+            if [ ! -z "${PRESSURE_VESSEL_FILESYSTEMS_RW}" ]
+            then export PRESSURE_VESSEL_FILESYSTEMS_RW="${PRESSURE_VESSEL_FILESYSTEMS_RW}:${PWRTMRW}"
+            else export PRESSURE_VESSEL_FILESYSTEMS_RW="${PWRTMRW}"
+            fi
+        done
         ln -sf "${WINEDIR}"/lib64/*so* "${PW_WINELIB}/runtime/lib/x86_64-linux-gnu/"
         ln -sf "${WINEDIR}"/lib/*so* "${PW_WINELIB}/runtime/lib/i386-linux-gnu/"
         echo "RUNTIME is enabled"
@@ -352,7 +393,7 @@ START_PORTWINE ()
     create_new_dir "${PORT_WINE_TMP_PATH}/dxvk_cache"
     export DXVK_STATE_CACHE_PATH="${PORT_WINE_TMP_PATH}"/dxvk_cache
     export DXVK_STATE_CACHE=1
-       export optirun_on=""
+    export optirun_on=""
     export check_optimus_manager=
     export PW_NVIDIA="$(lspci | grep NVIDIA)"
     if [ -x "`which optimus-manager 2>/dev/null`" ]; then
@@ -449,7 +490,7 @@ STOP_PORTWINE () {
 }
 
 UPDATE_WINETRICKS () {
-    W_TRX_URL="https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks"
+    W_TRX_URL="https://raw.githubusercontent.com/GloriousEggroll/protonfixes/master/winetricks"
     W_TRX_EXT_VER="$(curl -s --list-only ${W_TRX_URL} | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')"
     print_info "Version winetricks on server: ${W_TRX_EXT_VER}"
     W_TRX_INT_VER="$(cat "${PORT_WINE_TMP_PATH}/winetricks" | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')"
@@ -594,14 +635,13 @@ PW_UPDATE () {
 }
 
 PW_INIT_PFX () {
-    try_remove_file "${HOME}/.PortWINE/libs_v14/runtime/bin/wget"
-    rm -f  "${WINEDIR}"*/lib*/*steam*
-    rm -f  "${WINEDIR}"*/lib*/wine/*steam*
-    rm -f  "${WINEDIR}"*/lib*/wine/fakedlls/*steam*
     if [ ! -d "${WINEPREFIX}" ] || [ ! -d "${WINEPREFIX}"/drive_c/windows ] || \
        [ ! -d "${WINEPREFIX}/dosdevices" ] || [ ! -f "${WINEPREFIX}"/userdef.reg ] || \
        [ ! -f "${WINEPREFIX}"/system.reg ] || [ ! -f "${WINEPREFIX}"/user.reg ]
     then
+        rm -f  "${WINEDIR}"*/lib*/*steam*
+        rm -f  "${WINEDIR}"*/lib*/wine/*steam*
+        rm -f  "${WINEDIR}"*/lib*/wine/*/*steam*
         pw_clear_pfx
         create_new_dir "${WINEPREFIX}"
         if [ -d "${WINEDIR}/share/default_pfx/" ] ; then
@@ -621,6 +661,12 @@ PW_INIT_PFX () {
         KILL_PORTWINE
         PW_STOP_PROGRESS_BAR
         PW_START_PROGRESS_BAR_CS "Initialization prefix..."
+        create_new_dir "${WINEPREFIX}/drive_c/windows/Fonts/"
+        try_copy_file "${WINEDIR}/share/fonts/"LiberationSans-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arial.ttf
+        try_copy_file "${WINEDIR}/share/fonts/"LiberationSans-Bold.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arialbd.ttf
+        try_copy_file "${WINEDIR}/share/fonts/"LiberationSerif-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"times.ttf
+        try_copy_file "${WINEDIR}/share/fonts/"LiberationMono-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"cour.ttf
+        try_copy_file "${WINEDIR}/share/fonts/"SourceHanSansSCRegular.otf "${WINEPREFIX}/drive_c/windows/Fonts/"msyh.ttf
     fi
     [ ! -d "${WINEPREFIX}/dosdevices/c:" ] && try_force_link_dir "${WINEPREFIX}/drive_c/" "${WINEPREFIX}/dosdevices/c:"
     [ ! -d "${WINEPREFIX}/dosdevices/z:" ] && try_force_link_dir "/" "${WINEPREFIX}/dosdevices/z:"
@@ -631,16 +677,11 @@ PW_INIT_PFX () {
 	    try_force_link_dir "${PORT_WINE_PATH}/data/pfx/drive_c/" "${PORT_WINE_PATH}/"
     fi
     create_new_dir "${WINEPREFIX}/drive_c/users/Public/Documents/Steam"
-    create_new_dir "${WINEPREFIX}/drive_c/windows/Fonts/"
-    try_copy_file "${WINEDIR}/share/fonts/"LiberationSans-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arial.ttf
-    try_copy_file "${WINEDIR}/share/fonts/"LiberationSans-Bold.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arialbd.ttf
-    try_copy_file "${WINEDIR}/share/fonts/"LiberationSerif-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"times.ttf
-    try_copy_file "${WINEDIR}/share/fonts/"LiberationMono-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"cour.ttf
-    try_copy_file "${WINEDIR}/share/fonts/"SourceHanSansSCRegular.otf "${WINEPREFIX}/drive_c/windows/Fonts/"msyh.ttf
+    create_new_dir "${WINEPREFIX}/drive_c/users/steamuser/Documents/Steam"
     var_winedlloverride_update "steam_api,steam_api64,steamclient,steamclient64=n"
 
-    export TOTAL_VRAM=`"${PW_WINELIB}/runtime/bin/glxinfo" -B | grep Total | awk -F: '{print $2}' | awk '{print $1}'`
-    echo "TOTAL_VRAM=${TOTAL_VRAM}"
+    # export TOTAL_VRAM=`"${PW_WINELIB}/runtime/bin/glxinfo" -B | grep Total | awk -F: '{print $2}' | awk '{print $1}'`
+    # echo "TOTAL_VRAM=${TOTAL_VRAM}"
     echo "Try copy native DXGI"
     if ! try_copy_file "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/"
     then try_copy_file "${WINEDIR}"/lib/wine/i386-windows/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/"
@@ -685,6 +726,7 @@ PW_INIT_PFX () {
         for wine_vkd3d_dll in d3d12 libvkd3d-proton-utils-3 ; do
             try_copy_file "${WINEDIR}/lib/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
             try_copy_file "${WINEDIR}/lib64/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            var_winedlloverride_update "${wine_vkd3d_dll}=n"
         done
         echo "Use DXVK + VKD3D-PROTON"
     fi
@@ -700,7 +742,7 @@ PW_SCRIPTS_UPDATE () {
     if [ ! -f "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ] ; then
             echo "1" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     fi
-    read "scripts_update_not" < "${PORT_WINE_TMP_PATH}/scripts_update_notifier" 
+    read "scripts_update_not" < "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     if [ "${scripts_update_not}" = "1" ] ; then
         if try_download_silent "${PW_FTP_URL}/current_version/scripts_ver" "${PORT_WINE_TMP_PATH}/scripts_cur_ver" ; then
             read scripts_current_ver < "${PORT_WINE_TMP_PATH}/scripts_cur_ver"
@@ -743,7 +785,7 @@ PW_SCRIPTS_UPDATE () {
 PW_RUN () {
     if [ ! -z "$portwine_exe" ] ; then
         export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
-        cd "$PATH_TO_GAME"
+        cd "${PATH_TO_GAME}"
     else
         cd "${WINEPREFIX}/drive_c"
     fi
