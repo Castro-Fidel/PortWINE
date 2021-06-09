@@ -1341,13 +1341,17 @@ w_download_to()
                         ;;
                 esac
 
-                if test ! "${WINETRICKS_CONTINUE_DOWNLOAD}" ; then
+                if test "${WINETRICKS_FORCE}" != 1; then
                     case ${LANG} in
                         pl*) w_warn "Niezgodność sum kontrolnych dla ${_W_cache}/${_W_file}, pobieram ponownie" ;;
                         ru*) w_warn "Контрольная сумма файла ${_W_cache}/${_W_file} не совпадает, попытка повторной загрузки" ;;
                         *) w_warn "Checksum for ${_W_cache}/${_W_file} did not match, retrying download" ;;
                     esac
                     mv -f "${_W_cache}/${_W_file}" "${_W_cache}/${_W_file}".bak
+                else
+                    w_warn "Checksum for ${_W_cache}/${_W_file} did not match, but --force was used, so ignoring and trying anyway."
+                    checksum_ok=1
+                    break
                 fi
             else
                 # file exists, no checksum known, declare success and exit loop
@@ -1408,7 +1412,7 @@ w_download_to()
             winetricks_wget_progress \
                 -O "${_W_file}" \
                 -nd \
-                -c\
+                -c \
                 --read-timeout 300 \
                 --retry-connrefused \
                 --timeout "${WINETRICKS_DOWNLOADER_TIMEOUT}" \
@@ -5567,18 +5571,18 @@ Angegebene Verben ausführen.
 Jedes Verb installiert eine Anwendung oder ändert eine Einstellung.
 
 Optionen:
-    --country=CC      Set country code to CC and don't detect your IP address
+    --country=CC      Ländercode auf CC setzen und IP Adresse nicht auslesen
 -f, --force           Nicht prüfen ob Pakete bereits installiert wurden
     --gui             GUI Diagnosen anzeigen, auch wenn von der Kommandozeile gestartet
     --isolate         Jedes Programm oder Spiel in eigener Bottle (WINEPREFIX) installieren
-    --self-update     Update this application to the last version
-    --update-rollback Rollback the last self update
+    --self-update     Dieses Programm auf die neueste Version aktualisieren
+    --update-rollback Rollback des letzten Self Update
 -k, --keep_isos       ISOs local speichern (erlaubt spätere Installation ohne Disk)
     --no-clean        Temp Verzeichnisse nicht löschen (nützlich beim debuggen)
 -q, --unattended      Keine Fragen stellen, alles automatisch installieren
 -r, --ddrescue        Alternativer Zugriffsmodus (hilft bei zerkratzten Disks)
--t  --torify          Run downloads under torify, if available
-    --verify          Wenn Möglisch automatische GUI Tests für Verben starten
+-t  --torify          Wenn möglich Downloads unter torify ausführen
+    --verify          Wenn möglich automatische GUI Tests für Verben starten
 -v, --verbose         Alle ausgeführten Kommandos anzeigen
 -h, --help            Diese Hilfemeldung anzeigen
 -V, --version         Programmversion anzeigen und Beenden
@@ -6056,7 +6060,7 @@ w_metadata comctl32 dlls \
     publisher="Microsoft" \
     year="2001" \
     media="download" \
-    file1="cc32inst.exe" \
+    file1="CC32inst.exe" \
     installed_file1="${W_SYSTEM32_DLLS_WIN}/comctl32.dll"
 
 load_comctl32()
@@ -6069,7 +6073,7 @@ load_comctl32()
 
     w_download https://downloads.sourceforge.net/project/pocmin/Win%2095_98%20Controls/Win%2095_98%20Controls/CC32inst.exe d68c0cca721870aed39f5f2efd80dfb74f3db66d5f9a49e7578b18279edfa4a7
 
-    w_try "${WINE}" "${W_CACHE}"/comctl32/cc32inst.exe "/T:${W_TMP_WIN}" /c ${W_OPT_UNATTENDED:+/q}
+    w_try "${WINE}" "${W_CACHE}/${W_PACKAGE}/${file1}" "/T:${W_TMP_WIN}" /c ${W_OPT_UNATTENDED:+/q}
     w_try_unzip "${W_TMP}" "${W_TMP}"/comctl32.exe
     w_try "${WINE}" "${W_TMP}"/x86/50ComUpd.Exe "/T:${W_TMP_WIN}" /c ${W_OPT_UNATTENDED:+/q}
     w_try cp "${W_TMP}"/comcnt.dll "${W_SYSTEM32_DLLS}"/comctl32.dll
@@ -8636,7 +8640,7 @@ load_dotnet11()
     w_package_unsupported_win64
 
     # https://www.microsoft.com/en-us/download/details.aspx?id=26
-    w_download https://download.microsoft.com/download/a/a/c/aac39226-8825-44ce-90e3-bf8203e74006/dotnetfx.exe ba0e58ec93f2ffd54fc7c627eeca9502e11ab3c6fc85dcbeff113bd61d995bce
+    w_download https://web.archive.org/web/20210505032023/http://download.microsoft.com/download/a/a/c/aac39226-8825-44ce-90e3-bf8203e74006/dotnetfx.exe ba0e58ec93f2ffd54fc7c627eeca9502e11ab3c6fc85dcbeff113bd61d995bce
 
     w_call remove_mono
     w_call corefonts
@@ -8993,11 +8997,11 @@ load_dotnet20sp2()
 
     if [ "${W_ARCH}" = "win32" ]; then
         # https://www.microsoft.com/en-us/download/details.aspx?id=1639
-        w_download https://download.microsoft.com/download/c/6/e/c6e88215-0178-4c6c-b5f3-158ff77b1f38/NetFx20SP2_x86.exe 6e3f363366e7d0219b7cb269625a75d410a5c80d763cc3d73cf20841084e851f
+        w_download https://web.archive.org/web/20210329003118/http://download.microsoft.com/download/c/6/e/c6e88215-0178-4c6c-b5f3-158ff77b1f38/NetFx20SP2_x86.exe 6e3f363366e7d0219b7cb269625a75d410a5c80d763cc3d73cf20841084e851f
         exe="NetFx20SP2_x86.exe"
     elif [ "${W_ARCH}" = "win64" ]; then
         # https://www.microsoft.com/en-us/download/details.aspx?id=1639
-        w_download https://download.microsoft.com/download/c/6/e/c6e88215-0178-4c6c-b5f3-158ff77b1f38/NetFx20SP2_x64.exe
+        w_download https://web.archive.org/web/20210328110521/http://download.microsoft.com/download/c/6/e/c6e88215-0178-4c6c-b5f3-158ff77b1f38/NetFx20SP2_x64.exe 430315c97c57ac158e7311bbdbb7130de3e88dcf5c450a25117c74403e558fbe
         exe="NetFx20SP2_x64.exe"
     fi
 
@@ -9375,7 +9379,7 @@ w_metadata dotnet45 dlls \
 load_dotnet45()
 {
     w_package_broken "https://bugs.winehq.org/show_bug.cgi?id=49532" 5.12 5.18
-    w_package_broken "https://bugs.winehq.org/show_bug.cgi?id=49897" 5.18
+    w_package_broken "https://bugs.winehq.org/show_bug.cgi?id=49897" 5.18 6.6
 
     w_package_warn_win64
 
@@ -9425,7 +9429,7 @@ w_metadata dotnet452 dlls \
 load_dotnet452()
 {
     w_package_broken "https://bugs.winehq.org/show_bug.cgi?id=49532" 5.12 5.18
-    w_package_broken "https://bugs.winehq.org/show_bug.cgi?id=49897" 5.18
+    w_package_broken "https://bugs.winehq.org/show_bug.cgi?id=49897" 5.18 6.6
 
     w_package_warn_win64
 
@@ -9669,7 +9673,7 @@ w_metadata dotnet48 dlls \
 load_dotnet48()
 {
     w_package_broken "https://bugs.winehq.org/show_bug.cgi?id=49532" 5.12 5.18
-    w_package_broken "https://bugs.winehq.org/show_bug.cgi?id=49897" 5.18
+    w_package_broken "https://bugs.winehq.org/show_bug.cgi?id=49897" 5.18 6.6
 
     w_package_warn_win64
 
@@ -10220,6 +10224,22 @@ load_galliumnine07()
     helper_galliumnine "${file1}"
 }
 
+w_metadata galliumnine08 dlls \
+    title="Gallium Nine Standalone (v0.8)" \
+    publisher="Gallium Nine Team" \
+    year="2021" \
+    media="download" \
+    file1="gallium-nine-standalone-v0.8.tar.gz" \
+    installed_file1="${W_SYSTEM32_DLLS_WIN}/d3d9-nine.dll" \
+    installed_file2="${W_SYSTEM32_DLLS_WIN}/ninewinecfg.exe" \
+    homepage="https://github.com/iXit/wine-nine-standalone"
+
+load_galliumnine08()
+{
+    w_download "https://github.com/iXit/wine-nine-standalone/releases/download/v0.8/gallium-nine-standalone-v0.8.tar.gz" 8d73dcf78e4b5edf7a3aea8c339459b5138acd1c957c91c5c06432cb2fc51893
+    helper_galliumnine "${file1}"
+}
+
 w_metadata galliumnine dlls \
     title="Gallium Nine Standalone (latest)" \
     publisher="Gallium Nine Team" \
@@ -10380,10 +10400,13 @@ load_gmdls()
 
     w_try_cabextract -d "${W_TMP}" -F DirectX.cab "${W_CACHE}"/directx9/directx_apr2006_redist.exe
     w_try_cabextract -d "${W_TMP}" -F gm16.dls "${W_TMP}"/DirectX.cab
+
+    # When running in a 64bit prefix, syswow64/drivers doesn't exist
+    w_try mkdir -p "${W_SYSTEM32_DLLS}"/drivers
     w_try mv "${W_TMP}"/gm16.dls "${W_SYSTEM32_DLLS}"/drivers/gm.dls
+
     if test "${W_ARCH}" = "win64"; then
-        w_try_cd "${W_SYSTEM64_DLLS}"/drivers
-        w_try ln -s ../../syswow64/drivers/gm.dls
+        w_try ln -s "${W_SYSTEM32_DLLS}"/drivers/gm.dls "${W_SYSTEM64_DLLS}"/drivers
     fi
 }
 
@@ -10710,7 +10733,7 @@ load_jet40()
     # https://support.microsoft.com/kb/239114
     # See also https://bugs.winehq.org/show_bug.cgi?id=6085
     # FIXME: "failed with error 2"
-    w_download https://download.microsoft.com/download/4/3/9/4393c9ac-e69e-458d-9f6d-2fe191c51469/jet40sp8_9xnt.exe b060246cd499085a31f15873689d5fa7df817e407c8261a5c71fa6b9f7042560
+    w_download https://web.archive.org/web/20210225171713/http://download.microsoft.com/download/4/3/9/4393c9ac-e69e-458d-9f6d-2fe191c51469/Jet40SP8_9xNT.exe b060246cd499085a31f15873689d5fa7df817e407c8261a5c71fa6b9f7042560
 
     w_try_cd "${W_CACHE}/${W_PACKAGE}"
     w_try "${WINE}" jet40sp8_9xnt.exe ${W_OPT_UNATTENDED:+/q}
@@ -11304,7 +11327,7 @@ load_msxml4()
     # MS07-042: https://www.microsoft.com/en-us/download/details.aspx?id=2386
     # w_download https://download.microsoft.com/download/9/4/2/9422e6b6-08ee-49cb-9f05-6c6ee755389e/msxml4-KB936181-enu.exe 1ce9ff868816cfc9bf33e93fdf1552afce5b491443892babb521e74c05e45242
     # SP3 (2009): https://www.microsoft.com/en-us/download/details.aspx?id=15697
-    w_download https://download.microsoft.com/download/A/2/D/A2D8587D-0027-4217-9DAD-38AFDB0A177E/msxml.msi 47c2ae679c37815da9267c81fc3777de900ad2551c11c19c2840938b346d70bb
+    w_download https://web.archive.org/web/20210506101448/http://download.microsoft.com/download/A/2/D/A2D8587D-0027-4217-9DAD-38AFDB0A177E/msxml.msi 47c2ae679c37815da9267c81fc3777de900ad2551c11c19c2840938b346d70bb
     w_override_dlls native,builtin msxml4
     w_try_cd "${W_CACHE}/${W_PACKAGE}"
     w_try "${WINE}" msiexec /i msxml.msi ${W_OPT_UNATTENDED:+/q}
@@ -12228,7 +12251,7 @@ load_vb6run()
 {
     # https://support.microsoft.com/kb/290887
     if test ! -f "${W_CACHE}"/vb6run/vbrun60sp6.exe; then
-        w_download https://download.microsoft.com/download/5/a/d/5ad868a0-8ecd-4bb0-a882-fe53eb7ef348/VB6.0-KB290887-X86.exe 467b5a10c369865f2021d379fc0933cb382146b702bbca4bcb703fc86f4322bb
+        w_download https://lon-01.lo4d.com/files/visual-basic-runtime-files/VB6.0-KB290887-X86.exe 467b5a10c369865f2021d379fc0933cb382146b702bbca4bcb703fc86f4322bb
 
         w_try "${WINE}" "${W_CACHE}"/vb6run/VB6.0-KB290887-X86.exe "/T:${W_TMP_WIN}" /c ${W_OPT_UNATTENDED:+/q}
         if test ! -f "${W_TMP}"/vbrun60sp6.exe; then
@@ -12260,7 +12283,7 @@ winetricks_vcrun6_helper() {
     if test ! -f "${W_CACHE}"/vcrun6/vcredist.exe; then
         w_download_to vcrun6 https://download.microsoft.com/download/vc60pro/Update/2/W9XNT4/EN-US/VC6RedistSetup_deu.exe c2eb91d9c4448d50e46a32fecbcc3b418706d002beab9b5f4981de552098cee7
 
-        w_try "${WINE}" "${W_CACHE}"/vcrun6/vc6redistsetup_deu.exe "/T:${W_TMP_WIN}" /c ${W_OPT_UNATTENDED:+/q}
+        w_try "${WINE}" "${W_CACHE}"/vcrun6/VC6RedistSetup_deu.exe "/T:${W_TMP_WIN}" /c ${W_OPT_UNATTENDED:+/q}
         if test ! -f "${W_TMP}"/vcredist.exe; then
             w_die vcredist.exe not found
         fi
@@ -12273,7 +12296,7 @@ w_metadata vcrun6 dlls \
     publisher="Microsoft" \
     year="2000" \
     media="download" \
-    file1="vc6redistsetup_deu.exe" \
+    file1="VC6RedistSetup_deu.exe" \
     installed_file1="${W_SYSTEM32_DLLS_WIN}/mfc42.dll"
 
 load_vcrun6()
@@ -12305,7 +12328,7 @@ w_metadata mfc42 dlls \
     publisher="Microsoft" \
     year="2000" \
     media="download" \
-    file1="../vcrun6/vc6redistsetup_deu.exe" \
+    file1="../vcrun6/VC6RedistSetup_deu.exe" \
     installed_file1="${W_SYSTEM32_DLLS_WIN}/mfc42u.dll"
 
 load_mfc42()
@@ -12320,7 +12343,7 @@ w_metadata msvcirt dlls \
     publisher="Microsoft" \
     year="2000" \
     media="download" \
-    file1="../vcrun6/vc6redistsetup_deu.exe" \
+    file1="../vcrun6/VC6RedistSetup_deu.exe" \
     installed_file1="${W_SYSTEM32_DLLS_WIN}/msvcirt.dll"
 
 load_msvcirt()
@@ -12341,16 +12364,16 @@ w_metadata vcrun6sp6 dlls \
     publisher="Microsoft" \
     year="2004" \
     media="download" \
-    file1="Vs6sp6.exe" \
+    file1="VS6SP6.EXE" \
     installed_file1="${W_SYSTEM32_DLLS_WIN}/mfc42.dll"
 
 load_vcrun6sp6()
 {
-    w_download https://download.microsoft.com/download/1/9/f/19fe4660-5792-4683-99e0-8d48c22eed74/Vs6sp6.exe 7fa1d1778824b55a5fceb02f45c399b5d4e4dce7403661e67e587b5f455edbf3
+    w_download https://www.ddsystem.com.br/update/setup/vb6+sp6/VS6SP6.EXE 7fa1d1778824b55a5fceb02f45c399b5d4e4dce7403661e67e587b5f455edbf3
 
     # No EULA is presented when passing command-line extraction arguments,
     # so we'll simplify extraction with cabextract.
-    w_try_cabextract "${W_CACHE}"/vcrun6sp6/Vs6sp6.exe -d "${W_TMP}" -F vcredist.exe
+    w_try_cabextract "${W_CACHE}/${W_PACKAGE}/${file1}" -d "${W_TMP}" -F vcredist.exe
     w_try_cd "${W_TMP}"
 
     # Delete some fake DLLs to avoid vcredist installer warnings
@@ -12430,7 +12453,9 @@ load_vcrun2005()
     # 2011/06: Security update, see
     # https://technet.microsoft.com/library/security/ms11-025 or
     # https://support.microsoft.com/kb/2538242
-    w_download https://download.microsoft.com/download/8/B/4/8B42259F-5D70-43F4-AC2E-4B208FD8D66A/vcredist_x86.EXE 4ee4da0fe62d5fa1b5e80c6e6d88a4a2f8b3b140c35da51053d0d7b72a381d29
+    # Originally: 4ee4da0fe62d5fa1b5e80c6e6d88a4a2f8b3b140c35da51053d0d7b72a381d29
+    # 2021/05/25: 8648c5fc29c44b9112fe52f9a33f80e7fc42d10f3b5b42b2121542a13e44adfd
+    w_download https://download.microsoft.com/download/8/B/4/8B42259F-5D70-43F4-AC2E-4B208FD8D66A/vcredist_x86.EXE 8648c5fc29c44b9112fe52f9a33f80e7fc42d10f3b5b42b2121542a13e44adfd
 
     # For native to be used, msvc* dlls must either be set to native only, OR
     # set to native, builtin and remove wine's builtin manifest. Setting to native only breaks several apps,
@@ -12445,7 +12470,9 @@ load_vcrun2005()
     w_try "${WINE}" "${file1}" ${W_OPT_UNATTENDED:+/q}
 
     if [ "${W_ARCH}" = "win64" ] ;then
-        w_download https://download.microsoft.com/download/8/B/4/8B42259F-5D70-43F4-AC2E-4B208FD8D66A/vcredist_x64.EXE 0551a61c85b718e1fa015b0c3e3f4c4eea0637055536c00e7969286b4fa663e0
+        # Originally: 0551a61c85b718e1fa015b0c3e3f4c4eea0637055536c00e7969286b4fa663e0
+        # 2021/05/25: 4487570bd86e2e1aac29db2a1d0a91eb63361fcaac570808eb327cd4e0e2240d
+        w_download https://download.microsoft.com/download/8/B/4/8B42259F-5D70-43F4-AC2E-4B208FD8D66A/vcredist_x64.EXE 4487570bd86e2e1aac29db2a1d0a91eb63361fcaac570808eb327cd4e0e2240d
         w_try "${WINE}" vcredist_x64.exe ${W_OPT_UNATTENDED:+/q}
     fi
 }
@@ -12460,7 +12487,7 @@ w_metadata mfc80 dlls \
 
 load_mfc80()
 {
-    w_download_to vcrun2005 https://download.microsoft.com/download/8/B/4/8B42259F-5D70-43F4-AC2E-4B208FD8D66A/vcredist_x86.EXE 4ee4da0fe62d5fa1b5e80c6e6d88a4a2f8b3b140c35da51053d0d7b72a381d29
+    w_download_to vcrun2005 https://download.microsoft.com/download/8/B/4/8B42259F-5D70-43F4-AC2E-4B208FD8D66A/vcredist_x86.EXE 8648c5fc29c44b9112fe52f9a33f80e7fc42d10f3b5b42b2121542a13e44adfd
 
     w_try_cabextract --directory="${W_TMP}/win32" "${W_CACHE}"/vcrun2005/vcredist_x86.EXE -F 'vcredist.msi'
     w_try_cabextract --directory="${W_TMP}/win32" "${W_TMP}/win32/vcredist.msi"
@@ -12471,7 +12498,7 @@ load_mfc80()
     w_try cp "${W_TMP}/win32"/mfcm80u.dll.8.0.50727.6195.9BAE13A2_E7AF_D6C3_FF1F_C8B3B9A1E18E "${W_SYSTEM32_DLLS}"/mfcm80u.dll
 
     if [ "${W_ARCH}" = "win64" ]; then
-        w_download_to vcrun2005 https://download.microsoft.com/download/8/B/4/8B42259F-5D70-43F4-AC2E-4B208FD8D66A/vcredist_x64.EXE 0551a61c85b718e1fa015b0c3e3f4c4eea0637055536c00e7969286b4fa663e0
+        w_download_to vcrun2005 https://download.microsoft.com/download/8/B/4/8B42259F-5D70-43F4-AC2E-4B208FD8D66A/vcredist_x64.EXE 4487570bd86e2e1aac29db2a1d0a91eb63361fcaac570808eb327cd4e0e2240d
 
         w_try_cabextract --directory="${W_TMP}/win64" "${W_CACHE}"/vcrun2005/vcredist_x64.EXE -F 'vcredist.msi'
         w_try_cabextract --directory="${W_TMP}/win64" "${W_TMP}/win64/vcredist.msi"
@@ -12498,7 +12525,9 @@ load_vcrun2008()
     # June 2011 security update, see
     # https://technet.microsoft.com/library/security/ms11-025 or
     # https://support.microsoft.com/kb/2538242
-    w_download https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x86.exe 6b3e4c51c6c0e5f68c8a72b497445af3dbf976394cbb62aa23569065c28deeb6
+    # Originally: 6b3e4c51c6c0e5f68c8a72b497445af3dbf976394cbb62aa23569065c28deeb6
+    # 2021/05/23: 8742bcbf24ef328a72d2a27b693cc7071e38d3bb4b9b44dec42aa3d2c8d61d92
+    w_download https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x86.exe 8742bcbf24ef328a72d2a27b693cc7071e38d3bb4b9b44dec42aa3d2c8d61d92
 
     # For native to be used, msvc* dlls must either be set to native only, OR
     # set to native, builtin and remove wine's builtin manifest. Setting to native only breaks several apps,
@@ -12516,7 +12545,8 @@ load_vcrun2008()
         win64)
             # Also install the 64-bit version
             # 2016/11/15: b811f2c047a3e828517c234bd4aa4883e1ec591d88fad21289ae68a6915a6665
-            w_download https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x64.exe b811f2c047a3e828517c234bd4aa4883e1ec591d88fad21289ae68a6915a6665
+            # 2021/05/23: c5e273a4a16ab4d5471e91c7477719a2f45ddadb76c7f98a38fa5074a6838654
+            w_download https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x64.exe c5e273a4a16ab4d5471e91c7477719a2f45ddadb76c7f98a38fa5074a6838654
             w_try "${WINE}" vcredist_x64.exe ${W_OPT_UNATTENDED:+/q}
             ;;
     esac
@@ -12532,7 +12562,7 @@ w_metadata mfc90 dlls \
 
 load_mfc90()
 {
-    w_download_to vcrun2008 https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x86.exe 6b3e4c51c6c0e5f68c8a72b497445af3dbf976394cbb62aa23569065c28deeb6
+    w_download_to vcrun2008 https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x86.exe 8742bcbf24ef328a72d2a27b693cc7071e38d3bb4b9b44dec42aa3d2c8d61d92
 
     w_try_cabextract --directory="${W_TMP}/win32" "${W_CACHE}"/vcrun2008/vcredist_x86.exe -F 'vc_red.cab'
     w_try_cabextract --directory="${W_TMP}/win32" "${W_TMP}/win32/vc_red.cab"
@@ -12543,7 +12573,7 @@ load_mfc90()
     w_try cp "${W_TMP}/win32"/mfcm90u.dll.30729.6161.Microsoft_VC90_MFC_x86.QFE "${W_SYSTEM32_DLLS}"/mfcm90u.dll
 
     if [ "${W_ARCH}" = "win64" ]; then
-        w_download_to vcrun2008 https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x64.exe b811f2c047a3e828517c234bd4aa4883e1ec591d88fad21289ae68a6915a6665
+        w_download_to vcrun2008 https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x64.exe c5e273a4a16ab4d5471e91c7477719a2f45ddadb76c7f98a38fa5074a6838654
 
         w_try_cabextract --directory="${W_TMP}/win64" "${W_CACHE}"/vcrun2008/vcredist_x64.exe -F 'vc_red.cab'
         w_try_cabextract --directory="${W_TMP}/win64" "${W_TMP}/win64/vc_red.cab"
@@ -12568,7 +12598,9 @@ w_metadata vcrun2010 dlls \
 load_vcrun2010()
 {
     # See https://www.microsoft.com/en-us/download/details.aspx?id=5555
-    w_download https://download.microsoft.com/download/5/B/C/5BC5DBB3-652D-4DCE-B14A-475AB85EEF6E/vcredist_x86.exe 8162b2d665ca52884507ede19549e99939ce4ea4a638c537fa653539819138c8
+    # Originally: 8162b2d665ca52884507ede19549e99939ce4ea4a638c537fa653539819138c8
+    # 2021/04/24: 31d32fa39d52cac9a765a43660431f7a127eee784b54b2f5e2af3e2b763a1af8
+    w_download https://download.microsoft.com/download/5/B/C/5BC5DBB3-652D-4DCE-B14A-475AB85EEF6E/vcredist_x86.exe 31d32fa39d52cac9a765a43660431f7a127eee784b54b2f5e2af3e2b763a1af8
 
     w_override_dlls native,builtin msvcp100 msvcr100 vcomp100 atl100
     w_try_cd "${W_CACHE}/${W_PACKAGE}"
@@ -12578,7 +12610,9 @@ load_vcrun2010()
         win64)
             # Also install the 64-bit version
             # https://www.microsoft.com/en-us/download/details.aspx?id=13523
-            w_download https://download.microsoft.com/download/A/8/0/A80747C3-41BD-45DF-B505-E9710D2744E0/vcredist_x64.exe c6cd2d3f0b11dc2a604ffdc4dd97861a83b77e21709ba71b962a47759c93f4c8
+            # Originally: c6cd2d3f0b11dc2a604ffdc4dd97861a83b77e21709ba71b962a47759c93f4c8
+            # 2021/04/24: 2fddbc3aaaab784c16bc673c3bae5f80929d5b372810dbc28649283566d33255
+            w_download https://download.microsoft.com/download/A/8/0/A80747C3-41BD-45DF-B505-E9710D2744E0/vcredist_x64.exe 2fddbc3aaaab784c16bc673c3bae5f80929d5b372810dbc28649283566d33255
             w_try "${WINE}" vcredist_x64.exe ${W_OPT_UNATTENDED:+/q}
             ;;
     esac
@@ -12594,7 +12628,7 @@ w_metadata mfc100 dlls \
 
 load_mfc100()
 {
-    w_download_to vcrun2010 https://download.microsoft.com/download/5/B/C/5BC5DBB3-652D-4DCE-B14A-475AB85EEF6E/vcredist_x86.exe 8162b2d665ca52884507ede19549e99939ce4ea4a638c537fa653539819138c8
+    w_download_to vcrun2010 https://download.microsoft.com/download/5/B/C/5BC5DBB3-652D-4DCE-B14A-475AB85EEF6E/vcredist_x86.exe 31d32fa39d52cac9a765a43660431f7a127eee784b54b2f5e2af3e2b763a1af8
 
     w_try_cabextract --directory="${W_TMP}/win32" "${W_CACHE}"/vcrun2010/vcredist_x86.exe -F '*.cab'
     w_try_cabextract --directory="${W_TMP}/win32" "${W_TMP}/win32/vc_red.cab"
@@ -12605,7 +12639,7 @@ load_mfc100()
     w_try cp "${W_TMP}/win32"/F_CENTRAL_mfcm100u_x86 "${W_SYSTEM32_DLLS}"/mfcm100u.dll
 
     if [ "${W_ARCH}" = "win64" ]; then
-        w_download_to vcrun2010 https://download.microsoft.com/download/A/8/0/A80747C3-41BD-45DF-B505-E9710D2744E0/vcredist_x64.exe c6cd2d3f0b11dc2a604ffdc4dd97861a83b77e21709ba71b962a47759c93f4c8
+        w_download_to vcrun2010 https://download.microsoft.com/download/A/8/0/A80747C3-41BD-45DF-B505-E9710D2744E0/vcredist_x64.exe 2fddbc3aaaab784c16bc673c3bae5f80929d5b372810dbc28649283566d33255
 
         w_try_cabextract --directory="${W_TMP}/win64" "${W_CACHE}"/vcrun2010/vcredist_x64.exe -F '*.cab'
         w_try_cabextract --directory="${W_TMP}/win64" "${W_TMP}/win64/vc_red.cab"
@@ -12763,21 +12797,26 @@ load_vcrun2015()
 
     w_override_dlls native,builtin api-ms-win-crt-private-l1-1-0 api-ms-win-crt-conio-l1-1-0 api-ms-win-crt-convert-l1-1-0 api-ms-win-crt-environment-l1-1-0 api-ms-win-crt-filesystem-l1-1-0 api-ms-win-crt-heap-l1-1-0 api-ms-win-crt-locale-l1-1-0 api-ms-win-crt-math-l1-1-0 api-ms-win-crt-multibyte-l1-1-0 api-ms-win-crt-process-l1-1-0 api-ms-win-crt-runtime-l1-1-0 api-ms-win-crt-stdio-l1-1-0 api-ms-win-crt-string-l1-1-0 api-ms-win-crt-utility-l1-1-0 api-ms-win-crt-time-l1-1-0 atl140 concrt140 msvcp140 msvcr140 ucrtbase vcomp140 vcruntime140
 
-    # Otherwise ucrtbase doesn't get replaced
+    if w_workaround_wine_bug 50894 "Working around failing wusa.exe lookup via C:\windows\SysNative"; then
+        w_set_winver winxp
+    fi
+
+    # Setup will refuse to install ucrtbase because builtin's version number is higher, so manually replace it
     # See https://bugs.winehq.org/show_bug.cgi?id=46317
-    w_set_winver winxp
-    w_try rm -f "${W_SYSTEM32_DLLS}"/ucrtbase.dll
+    w_try_cabextract --directory="${W_TMP}/win32"  "${W_CACHE}"/vcrun2015/vc_redist.x86.exe -F 'a10'
+    w_try_cabextract --directory="${W_SYSTEM32_DLLS}" "${W_TMP}/win32/a10" -F 'ucrtbase.dll'
 
     w_try_cd "${W_CACHE}"/"${W_PACKAGE}"
     w_try "${WINE}" vc_redist.x86.exe ${W_OPT_UNATTENDED:+/q}
 
     case "${W_ARCH}" in
         win64)
-            # Also remove the 64-bit version
-            w_try rm -f "${W_SYSTEM64_DLLS}"/ucrtbase.dll
             # Also install the 64-bit version
             # 2015/10/12: 5eea714e1f22f1875c1cb7b1738b0c0b1f02aec5ecb95f0fdb1c5171c6cd93a3
             w_download https://download.microsoft.com/download/9/3/F/93FCF1E7-E6A4-478B-96E7-D4B285925B00/vc_redist.x64.exe 5eea714e1f22f1875c1cb7b1738b0c0b1f02aec5ecb95f0fdb1c5171c6cd93a3
+            # Also replace 64-bit ucrtbase.dll
+            w_try_cabextract --directory="${W_TMP}/win64"  "${W_CACHE}"/vcrun2015/vc_redist.x64.exe -F 'a10'
+            w_try_cabextract --directory="${W_SYSTEM64_DLLS}" "${W_TMP}/win64/a10" -F 'ucrtbase.dll'
             w_try "${WINE}" vc_redist.x64.exe ${W_OPT_UNATTENDED:+/q}
             ;;
     esac
@@ -12839,24 +12878,29 @@ load_vcrun2017()
 
     w_override_dlls native,builtin api-ms-win-crt-private-l1-1-0 api-ms-win-crt-conio-l1-1-0 api-ms-win-crt-heap-l1-1-0 api-ms-win-crt-locale-l1-1-0 api-ms-win-crt-math-l1-1-0 api-ms-win-crt-runtime-l1-1-0 api-ms-win-crt-stdio-l1-1-0 api-ms-win-crt-time-l1-1-0 atl140 concrt140 msvcp140 msvcp140_1 msvcp140_2 msvcr140 ucrtbase vcomp140 vcruntime140
 
-    # Otherwise ucrtbase doesn't get replaced
+   if w_workaround_wine_bug 50894 "Working around failing wusa.exe lookup via C:\windows\SysNative"; then
+        w_set_winver winxp
+    fi
+
+    # Setup will refuse to install ucrtbase because builtin's version number is higher, so manually replace it
     # See https://bugs.winehq.org/show_bug.cgi?id=46317
-    w_set_winver winxp
-    w_try rm -f "${W_SYSTEM32_DLLS}"/ucrtbase.dll
+    w_try_cabextract --directory="${W_TMP}/win32"  "${W_CACHE}"/vcrun2017/vc_redist.x86.exe -F 'a10'
+    w_try_cabextract --directory="${W_SYSTEM32_DLLS}" "${W_TMP}/win32/a10" -F 'ucrtbase.dll'
 
     w_try_cd "${W_CACHE}/${W_PACKAGE}"
     w_try "${WINE}" vc_redist.x86.exe ${W_OPT_UNATTENDED:+/q}
 
     case "${W_ARCH}" in
         win64)
-            # Also remove the 64-bit version
-            w_try rm -f "${W_SYSTEM64_DLLS}"/ucrtbase.dll
             # Also install the 64-bit version
             # https://support.microsoft.com/en-gb/help/2977003/the-latest-supported-visual-c-downloads
             # 2017/10/02: 7434bf559290cccc3dd3624f10c9e6422cce9927d2231d294114b2f929f0e465
             # 2019/03/17: b192e143d55257a0a2f76be42e44ff8ee14014f3b1b196c6e59829b6b3ec453c
             # 2019/08/14: 5b0cbb977f2f5253b1ebe5c9d30edbda35dbd68fb70de7af5faac6423db575b5
             w_download https://aka.ms/vs/15/release/vc_redist.x64.exe 5b0cbb977f2f5253b1ebe5c9d30edbda35dbd68fb70de7af5faac6423db575b5
+            # Also replace 64-bit ucrtbase.dll
+            w_try_cabextract --directory="${W_TMP}/win64"  "${W_CACHE}"/vcrun2017/vc_redist.x64.exe -F 'a10'
+            w_try_cabextract --directory="${W_SYSTEM64_DLLS}" "${W_TMP}/win64/a10" -F 'ucrtbase.dll'
             w_try "${WINE}" vc_redist.x64.exe ${W_OPT_UNATTENDED:+/q}
             ;;
     esac
@@ -12885,22 +12929,28 @@ load_vcrun2019()
     # 2020/10/03: caa38fd474164a38ab47ac1755c8ccca5ccfacfa9a874f62609e6439924e87ec
     # 2020/11/13: 50a3e92ade4c2d8f310a2812d46322459104039b9deadbd7fdd483b5c697c0c8
     # 2021/03/09: 4521ed84b9b1679a706e719423d54ef5e413dc50dde1cf362232d7359d7e89c4
-    w_download https://aka.ms/vs/16/release/vc_redist.x86.exe 4521ed84b9b1679a706e719423d54ef5e413dc50dde1cf362232d7359d7e89c4
+    # 2021/03/28: e830c313aa99656748f9d2ed582c28101eaaf75f5377e3fb104c761bf3f808b2
+    # 2021/04/05: e830c313aa99656748f9d2ed582c28101eaaf75f5377e3fb104c761bf3f808b2
+    # 2021/04/13: 14563755ac24a874241935ef2c22c5fce973acb001f99e524145113b2dc638c1
 
     w_override_dlls native,builtin api-ms-win-crt-private-l1-1-0 api-ms-win-crt-conio-l1-1-0 api-ms-win-crt-heap-l1-1-0 api-ms-win-crt-locale-l1-1-0 api-ms-win-crt-math-l1-1-0 api-ms-win-crt-runtime-l1-1-0 api-ms-win-crt-stdio-l1-1-0 api-ms-win-crt-time-l1-1-0 atl140 concrt140 msvcp140 msvcp140_1 msvcp140_2 msvcr140 ucrtbase vcomp140 vcruntime140
 
-    # Otherwise ucrtbase doesn't get replaced
+    w_download https://aka.ms/vs/16/release/vc_redist.x86.exe 91c21c93a88dd82e8ae429534dacbc7a4885198361eae18d82920c714e328cf9
+
+    if w_workaround_wine_bug 50894 "Working around failing wusa.exe lookup via C:\windows\SysNative"; then
+        w_set_winver winxp
+    fi
+
+    # Setup will refuse to install ucrtbase because builtin's version number is higher, so manually replace it
     # See https://bugs.winehq.org/show_bug.cgi?id=46317
-    w_set_winver winxp
-    w_try rm -f "${W_SYSTEM32_DLLS}"/ucrtbase.dll
+    w_try_cabextract --directory="${W_TMP}/win32"  "${W_CACHE}"/vcrun2019/vc_redist.x86.exe -F 'a10'
+    w_try_cabextract --directory="${W_SYSTEM32_DLLS}" "${W_TMP}/win32/a10" -F 'ucrtbase.dll'
 
     w_try_cd "${W_CACHE}"/"${W_PACKAGE}"
     w_try "${WINE}" vc_redist.x86.exe ${W_OPT_UNATTENDED:+/q}
 
     case "${W_ARCH}" in
         win64)
-            # Also remove the 64-bit version
-            w_try rm -f "${W_SYSTEM64_DLLS}"/ucrtbase.dll
             # Also install the 64-bit version
             # 2019/12/26: 40ea2955391c9eae3e35619c4c24b5aaf3d17aeaa6d09424ee9672aa9372aeed
             # 2020/03/23: b6c82087a2c443db859fdbeaae7f46244d06c3f2a7f71c35e50358066253de52
@@ -12909,11 +12959,17 @@ load_vcrun2019()
             # 2020/10/03: 4b5890eb1aefdf8dfa3234b5032147eb90f050c5758a80901b201ae969780107
             # 2020/11/13: b1a32c71a6b7d5978904fb223763263ea5a7eb23b2c44a0d60e90d234ad99178
             # 2021/03/09: f299953673de262fefad9dd19bfbe6a5725a03ae733bebfec856f1306f79c9f7
+            # 2021/03/28: b6c82087a2c443db859fdbeaae7f46244d06c3f2a7f71c35e50358066253de52
+            # 2021/04/05: 015edd4e5d36e053b23a01adb77a2b12444d3fb6eccefe23e3a8cd6388616a16
+            # 2021/04/13: 52b196bbe9016488c735e7b41805b651261ffa5d7aa86eb6a1d0095be83687b2
 
             # vcruntime140_1 is only shipped on x64:
             w_override_dlls native,builtin vcruntime140_1
 
-            w_download https://aka.ms/vs/16/release/vc_redist.x64.exe f299953673de262fefad9dd19bfbe6a5725a03ae733bebfec856f1306f79c9f7
+            w_download https://web.archive.org/web/20210412133744if_/https://download.visualstudio.microsoft.com/download/pr/366c0fb9-fe05-4b58-949a-5bc36e50e370/015edd4e5d36e053b23a01adb77a2b12444d3fb6eccefe23e3a8cd6388616a16/vc_redist.x64.exe 015edd4e5d36e053b23a01adb77a2b12444d3fb6eccefe23e3a8cd6388616a16
+            # Also replace 64-bit ucrtbase.dll
+            w_try_cabextract --directory="${W_TMP}/win64"  "${W_CACHE}"/vcrun2019/vc_redist.x64.exe -F 'a10'
+            w_try_cabextract --directory="${W_SYSTEM64_DLLS}" "${W_TMP}/win64/a10" -F 'ucrtbase.dll'
             w_try "${WINE}" vc_redist.x64.exe ${W_OPT_UNATTENDED:+/q}
             ;;
     esac
@@ -12938,7 +12994,7 @@ load_vjrun20()
     w_call dotnet20
 
     # See https://www.microsoft.com/en-us/download/details.aspx?id=18084
-    w_download https://download.microsoft.com/download/9/2/3/92338cd0-759f-4815-8981-24b437be74ef/vjredist.exe cf8f3dd4ad41453a302870b74de1c6489e7ed255ad3f652ce4af0b424a933b41
+    w_download https://web.archive.org/web/20200803205240/https://download.microsoft.com/download/9/2/3/92338cd0-759f-4815-8981-24b437be74ef/vjredist.exe cf8f3dd4ad41453a302870b74de1c6489e7ed255ad3f652ce4af0b424a933b41
     w_try_cd "${W_CACHE}"/"${W_PACKAGE}"
     w_try "${WINE}" vjredist.exe ${W_OPT_UNATTENDED:+/q /C:"install /qnt"}
 }
@@ -13021,83 +13077,6 @@ REGEDIT4
 
 _EOF_
     w_try_regedit "${W_TMP_WIN}"\\winevulkan.reg
-}
-
-#----------------------------------------------------------------
-
-w_metadata vulkanrt dlls \
-    title="Vulkan Runtime (latest)" \
-    publisher="LunarG" \
-    year="2020" \
-    media="download" \
-    file1="vulkan-rt.exe" \
-    installed_exe1="${W_SYSTEM32_DLLS_WIN}/vulkaninfo.exe"
-
-load_vulkanrt()
-{
-    # https://vulkan.lunarg.com/sdk/home
-
-    # Thankfully, they provide a sha256, see https://github.com/Winetricks/winetricks/issues/1368
-    _W_vulkan_shafile="vulkan-RT-sha.txt"
-    # Don't cache the shasum, we want to check it each time it's run. If the sha doesn't change, it won't download the binary again.
-    w_download_to "${W_TMP_EARLY}" "https://sdk.lunarg.com/sdk/sha/latest/windows/vulkan-RT-sha.txt?Human=true;u=" "" "${_W_vulkan_shafile}"
-    _W_vulkan_sha256="$(cut -d ' ' -f1 "${W_TMP}/${_W_vulkan_shafile}")"
-    w_download "https://sdk.lunarg.com/sdk/download/latest/windows/vulkan-rt.exe?Human=true;u=" "${_W_vulkan_sha256}" "${file1}"
-
-    w_try_cd "${W_CACHE}/${W_PACKAGE}"
-    w_try "${WINE}" "${file1}" ${W_OPT_UNATTENDED:+/S}
-}
-
-#----------------------------------------------------------------
-
-w_metadata vulkansdk apps \
-    title="Vulkan SDK (latest) (developers only)" \
-    publisher="LunarG" \
-    year="2018" \
-    media="download" \
-    file1="vulkan-sdk.exe" \
-    installed_file1="C:/VulkanSDK/latest/vulkan.ico"
-
-load_vulkansdk()
-{
-    # https://vulkan.lunarg.com/sdk/home
-
-    _W_vulkan_version="${file1%-*.exe}"
-    _W_vulkan_version="${_W_vulkan_version#*-}"
-
-    # Thankfully, they provide a sha256, see https://github.com/Winetricks/winetricks/issue
-    _W_vulkan_shafile="vulkan-sha.txt"
-    # Don't cache the shasum, we want to check it each time it's run. If the sha doesn't change, it won't download the binary again.
-    w_download_to "${W_TMP}" "https://sdk.lunarg.com/sdk/sha/latest/windows/vulkan-sha.txt?Human=true;u=" "" "${_W_vulkan_shafile}"
-    _W_vulkan_sha256="$(cut -d ' ' -f1 "${W_TMP}/${_W_vulkan_shafile}")"
-    w_download "https://sdk.lunarg.com/sdk/download/latest/windows/vulkan-sdk.exe?Human=true;u=" "${_W_vulkan_sha256}" "${file1}"
-
-    w_try_cd "${W_CACHE}/${W_PACKAGE}"
-    w_try "${WINE}" "${file1}" ${W_OPT_UNATTENDED:+/S}
-    echo "Creating C:\\windows\\winevulkan.json winevulkan json file"
-    cat > "${W_WINDIR_UNIX}"/winevulkan.json <<_EOF_
-{
-    "file_format_version": "1.0.0",
-    "ICD": {
-        "library_path": "c:\\\\windows\\\\system32\\\\winevulkan.dll",
-        "api_version": "${_W_vulkan_version}"
-    }
-}
-_EOF_
-    echo "Creating winevulkan registry settings"
-    cat > "${W_TMP}"/winevulkan.reg <<_EOF_
-REGEDIT4
-
-[HKEY_LOCAL_MACHINE\\SOFTWARE\\Khronos\\Vulkan\\Drivers\\]
-"C:\\\\Windows\\\\winevulkan.json"=dword:00000000
-
-_EOF_
-    w_try_regedit "${W_TMP_WIN}"\\winevulkan.reg
-
-    w_try_cd "${W_DRIVE_C}/VulkanSDK"
-    # We're assuming here that only the sdks are installed here. This is really only for the installed_file check,
-    # as there are no files with non-versioned filenames installed
-    w_try ln -sf "$(find . -maxdepth 1 -mindepth 1 -type d | grep -v latest | sort -V | tail -n 1)" latest
 }
 
 #----------------------------------------------------------------
@@ -13481,7 +13460,7 @@ w_metadata xna31 dlls \
 load_xna31()
 {
     w_call dotnet20sp2
-    w_download https://download.microsoft.com/download/5/9/1/5912526C-B950-4662-99B6-119A83E60E5C/xnafx31_redist.msi 187e7e6b08fe35428d945612a7d258bfed25fad53cc54882983abdc73fe60f91
+    w_download https://web.archive.org/web/20120325004645/https://download.microsoft.com/download/5/9/1/5912526C-B950-4662-99B6-119A83E60E5C/xnafx31_redist.msi 187e7e6b08fe35428d945612a7d258bfed25fad53cc54882983abdc73fe60f91
     w_try_cd "${W_CACHE}/${W_PACKAGE}"
     w_try "${WINE}" msiexec ${W_OPT_UNATTENDED:+/quiet} /i "${file1}"
 }
@@ -14269,7 +14248,8 @@ w_metadata lucida fonts \
 
 load_lucida()
 {
-    w_download "https://ftpmirror.your.org/pub/misc/ftp.microsoft.com/bussys/winnt/winnt-public/fixes/usa/NT40TSE/hotfixes-postSP3/Euro-fix/eurofixi.exe" 41f272a33521f6e15f2cce9ff1e049f2badd5ff0dc327fc81b60825766d5b6c7
+    # The site supports https with Let's Encrypt, but that cert fails with curl (which breaks src/linkcheck.sh)
+    w_download "http://ftpmirror.your.org/pub/misc/ftp.microsoft.com/bussys/winnt/winnt-public/fixes/usa/NT40TSE/hotfixes-postSP3/Euro-fix/eurofixi.exe" 41f272a33521f6e15f2cce9ff1e049f2badd5ff0dc327fc81b60825766d5b6c7
     w_try_cabextract -d "${W_TMP}" -F "lucon.ttf" "${W_CACHE}"/lucida/eurofixi.exe
     w_try_cp_font_files "${W_TMP}" "${W_FONTSDIR_UNIX}"
     w_register_font lucon.ttf "Lucida Console"
@@ -14310,7 +14290,7 @@ w_metadata sourcehansans fonts \
 
 load_sourcehansans()
 {
-    w_download "https://github.com/adobe-fonts/source-han-sans/releases/download/2.001R/SourceHanSans.ttc" 9e94fe493685a7c99ce61e4488169007e3b97badb9f1ef43d3c13da501463780
+    w_download "https://github.com/adobe-fonts/source-han-sans/releases/download/2.002R/SourceHanSans.ttc" 8c06d305a45d56fbc81ec67ca0afa552fbae1e69d4d42b49016a9ace677f89d8
     w_try cp "${W_CACHE}/${W_PACKAGE}/${file1}" "${W_TMP}/sourcehansans.ttc"
     w_try_cp_font_files "${W_TMP}" "${W_FONTSDIR_UNIX}" "*.ttc"
 
@@ -14506,16 +14486,16 @@ load_wenquanyizenhei()
 w_metadata unifont fonts \
     title="Unifont alternative to Arial Unicode MS" \
     publisher="Roman Czyborra / GNU" \
-    year="2019" \
+    year="2021" \
     media="download" \
-    file1="unifont-12.1.02.ttf" \
+    file1="unifont-13.0.06.ttf" \
     installed_file1="${W_FONTSDIR_WIN}/unifont.ttf"
 
 load_unifont()
 {
-    # The GNU Unifont provides glyphs for just about everything in common language.  It is intended for multilingual usage.
-    # See http://unifoundry.com/unifont.html for project page
-    w_download "http://unifoundry.com/pub/unifont/unifont-12.1.02/font-builds/unifont-12.1.02.ttf" da4961540b9d02e01fb8755924db730db233c360b20ee321fda8ab7d0b9ca549
+    # The GNU Unifont provides glyphs for just about everything in common language. It is intended for multilingual usage.
+    # See https://unifoundry.com/unifont/index.html for project page.
+    w_download "https://unifoundry.com/pub/unifont/unifont-13.0.06/font-builds/unifont-13.0.06.ttf" d73c0425811ffd366b0d1973e9338bac26fe7cf085760a12e10c61241915e742
     w_try cp "${W_CACHE}/${W_PACKAGE}/${file1}" "${W_TMP}/unifont.ttf"
     w_try_cp_font_files "${W_TMP}" "${W_FONTSDIR_UNIX}"
 
@@ -16231,7 +16211,8 @@ load_steam()
 {
     # 2016/10/28: 029f918a29b2b311711788e8a477c8de529c11d7dba3caf99cbbde5a983efdad
     # 2018/06/01: 3bc6942fe09f10ed3447bccdcf4a70ed369366fef6b2c7f43b541f1a3c5d1c51
-    w_download http://media.steampowered.com/client/installer/SteamSetup.exe 3bc6942fe09f10ed3447bccdcf4a70ed369366fef6b2c7f43b541f1a3c5d1c51
+    # 2021/03/27: 874788b45dfc043289ba05387e83f27b4a046004a88a4c5ee7c073187ff65b9d
+    w_download http://media.steampowered.com/client/installer/SteamSetup.exe 874788b45dfc043289ba05387e83f27b4a046004a88a4c5ee7c073187ff65b9d
     w_try_cd "${W_CACHE}/${W_PACKAGE}"
 
     if [ -n "${W_OPT_UNATTENDED}" ]; then
@@ -16266,6 +16247,9 @@ load_steam()
     if w_workaround_wine_bug 44985 "Disabling libglesv2 to make Store and Library function correctly."; then
         w_override_dlls disabled libglesv2
     fi
+
+    # Otherwise Steam Store and Library don't show
+    w_call corefonts
 }
 
 #----------------------------------------------------------------

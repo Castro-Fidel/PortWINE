@@ -13,30 +13,23 @@ export PW_NO_ESYNC=1
 unset PORTWINE_CREATE_SHORTCUT_NAME
 
 PW_WGC () {
-    export LAUNCH_PARAMETERS=("/SILENT" "/SP-")
+    export LAUNCH_PARAMETERS=("/VERYSILENT")
     [ "${update_loc}" = "RUS" ] && export WGC_LOC=RU || export WGC_LOC=EU
-    export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/Wargaming_Game_Center_Install_WoT_RU.exe"
+    export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/Wargaming_Game_Center_Install_WoT_${WGC_LOC}.exe"
     START_PORTWINE
     if try_download "https://redirect.wargaming.net/WGC/Wargaming_Game_Center_Install_WoT_${WGC_LOC}.exe" "${PW_AUTOINSTALL_EXE}"
     then
+        PW_START_PROGRESS_BAR_BLOCK "Starting WGC installation..."
         while true ; do
-            if [ "${PW_USE_RUNTIME}" = 0 ]
-            then echo "PW_USE_RUNTIME: `echo $PW_USE_RUNTIME`" & break
-            fi
+            if [ "$PW_USE_RUNTIME" != 1 ] ; then echo "PW_USE_RUNTIME: `echo $PW_USE_RUNTIME`" & break ; fi 
             if  [ -z `pgrep wgc.exe` ] ; then
                 echo -e "PID WGC not found"
                 sleep 2
             else
-                echo -e "PID WGC: `pgrep wgc.exe` \nPID Cont: `pidof -s bwrap`"
-                    while   [ ! -z `pgrep wgc.exe` ]; do
-                        echo -e "PID WGC found: `pgrep wgc.exe` \nPID_Status: `echo $?`"
-                        sleep 2
-                        KILL_PORTWINE
-                    done
+                KILL_PORTWINE
                 break
             fi
         done &
-        PW_START_PROGRESS_BAR_CS "Starting WGC installation..."
         PW_RUN "${PW_AUTOINSTALL_EXE}"
         portwine_exe="$WINEPREFIX/drive_c/ProgramData/Wargaming.net/GameCenter/wgc_api/wgc_api.exe"
         export PORTWINE_CREATE_SHORTCUT_NAME="Wargaming Game Center"
@@ -141,6 +134,40 @@ PW_EVE () {
         portwine_exe="$WINEPREFIX/drive_c/Games/EVE Online/Launcher/evelauncher.exe"
         PW_STOP_PROGRESS_BAR
         PORTWINE_CREATE_SHORTCUT
+    fi
+    STOP_PORTWINE
+}
+
+PW_UBC () {
+	export LAUNCH_PARAMETERS=("/S" "/D=c:\Program Files (x86)\Ubisoft Game Launcher")
+    export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/UbisoftConnectInstaller.exe"
+    START_PORTWINE
+    if try_download "https://ubistatic3-a.akamaihd.net/orbit/launcher_installer/UbisoftConnectInstaller.exe" "${PW_AUTOINSTALL_EXE}"
+    then
+		PW_START_PROGRESS_BAR_CS "Installing the Ubisoft Connect. Please wait..."
+		PW_RUN "${PW_AUTOINSTALL_EXE}"
+		portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/Ubisoft Game Launcher/UbisoftConnect.exe"
+		try_remove_file "${PW_AUTOINSTALL_EXE}"
+		KILL_PORTWINE
+		PW_STOP_PROGRESS_BAR
+		PORTWINE_CREATE_SHORTCUT
+    fi
+    STOP_PORTWINE
+}
+
+PW_STEAM () {
+	export LAUNCH_PARAMETERS=("/S" "/D=c:\Program Files (x86)\Steam")
+    export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/SteamSetup.exe"
+    START_PORTWINE
+    if try_download "https://cdn.cloudflare.steamstatic.com/client/installer/SteamSetup.exe" "${PW_AUTOINSTALL_EXE}"
+    then
+		PW_START_PROGRESS_BAR_CS "Installing the Steam. Please wait..."
+		PW_RUN "${PW_AUTOINSTALL_EXE}"
+		portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/Steam/Steam.exe"
+		try_remove_file "${PW_AUTOINSTALL_EXE}"
+		KILL_PORTWINE
+		PW_STOP_PROGRESS_BAR
+		PORTWINE_CREATE_SHORTCUT
     fi
     STOP_PORTWINE
 }

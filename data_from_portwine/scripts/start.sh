@@ -192,7 +192,8 @@ PW_WINEFILE () {
 PW_WINECMD () {
     export PW_USE_TERMINAL=1
     START_PORTWINE
-    PW_RUN cmd
+    cd "${WINEPREFIX}/drive_c"
+    ${PW_RUNTIME} xterm -e env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" "${WINELOADER}" cmd
 }
 PW_WINEREG () {
     START_PORTWINE
@@ -202,7 +203,7 @@ PW_WINETRICKS () {
     UPDATE_WINETRICKS
     export PW_USE_TERMINAL=1
     START_PORTWINE
-    ${PW_TERM} "${PORT_WINE_TMP_PATH}/winetricks" -q --force
+    ${PW_TERM} "${PORT_WINE_TMP_PATH}/winetricks" -q
 }
 PW_EDIT_DB () {
     xdg-open "${PORTWINE_DB_FILE}"
@@ -285,6 +286,8 @@ else
     --field="   Battle.net Launcher"!"$PW_GUI_ICON_PATH/battle_net.png":"BTN" '@bash -c "button_click PW_BATTLE_NET"' \
     --field="   Epic Games Launcher"!"$PW_GUI_ICON_PATH/epicgames.png":"BTN" '@bash -c "button_click PW_EPIC"' \
     --field="   GoG Galaxy Launcher"!"$PW_GUI_ICON_PATH/gog.png":"BTN" '@bash -c "button_click PW_GOG"' \
+    --field="   Ubisoft Game Launcher"!"$PW_GUI_ICON_PATH/ubc.png":"BTN" '@bash -c "button_click PW_UBC"' \
+    --field="   Steam Client Launcher"!"$PW_GUI_ICON_PATH/steam.png":"BTN" '@bash -c "button_click PW_STEAM"' \
     --field="   EVE Online Launcher"!"$PW_GUI_ICON_PATH/eve.png":"BTN" '@bash -c "button_click PW_EVE"' \
     --field="   Origin Launcher"!"$PW_GUI_ICON_PATH/origin.png":"BTN" '@bash -c "button_click PW_ORIGIN"' & \
 
