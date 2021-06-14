@@ -12,6 +12,23 @@ export PW_NO_FSYNC=1
 export PW_NO_ESYNC=1
 unset PORTWINE_CREATE_SHORTCUT_NAME
 
+pw_kill_autostart () {
+    if [ "$PW_USE_RUNTIME" != 1 ]
+    then echo "PW_USE_RUNTIME: `echo $PW_USE_RUNTIME`"
+    else
+        sleep 10
+        while true ; do
+            if  [ -z `pgrep "$1" | head -n 1` ] && [ ! -z `pgrep wrap | head -n 1` ]; then
+                echo -e "PID "$1" not found"
+                sleep 1
+            else
+                KILL_PORTWINE
+                break
+            fi
+        done
+    fi
+}
+
 PW_WGC () {
     export LAUNCH_PARAMETERS=("/VERYSILENT")
     [ "${update_loc}" = "RUS" ] && export WGC_LOC=RU || export WGC_LOC=EU
@@ -20,16 +37,7 @@ PW_WGC () {
     if try_download "https://redirect.wargaming.net/WGC/Wargaming_Game_Center_Install_WoT_${WGC_LOC}.exe" "${PW_AUTOINSTALL_EXE}"
     then
         PW_START_PROGRESS_BAR_BLOCK "Starting WGC installation..."
-        while true ; do
-            if [ "$PW_USE_RUNTIME" != 1 ] ; then echo "PW_USE_RUNTIME: `echo $PW_USE_RUNTIME`" & break ; fi 
-            if  [ -z `pgrep wgc.exe` ] ; then
-                echo -e "PID WGC not found"
-                sleep 2
-            else
-                KILL_PORTWINE
-                break
-            fi
-        done &
+        pw_kill_autostart wgc.exe &
         PW_RUN "${PW_AUTOINSTALL_EXE}"
         portwine_exe="$WINEPREFIX/drive_c/ProgramData/Wargaming.net/GameCenter/wgc_api/wgc_api.exe"
         export PORTWINE_CREATE_SHORTCUT_NAME="Wargaming Game Center"
@@ -47,6 +55,7 @@ PW_ORIGIN () {
     if try_download "https://download.dm.origin.com/origin/live/OriginSetup.exe" "${PW_AUTOINSTALL_EXE}"
     then
         PW_START_PROGRESS_BAR_BLOCK "Installing the Origin. Please wait..."
+        pw_kill_autostart Origin.exe &
         PW_RUN "${PW_AUTOINSTALL_EXE}"
         portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/Origin/Origin.exe"
         PW_STOP_PROGRESS_BAR
@@ -64,9 +73,8 @@ PW_BATTLE_NET () {
     if try_download "http://dist.blizzard.com/downloads/bna-installers/322d5bb9ae0318de3d4cde7641c96425/retail.1/Battle.net-Setup-${BN_LOC}.exe" "${PW_AUTOINSTALL_EXE}"
     then
         PW_START_PROGRESS_BAR "Installing the Battle Net. Please wait..."
+        pw_kill_autostart Battle.net.exe &
         PW_RUN "${PW_AUTOINSTALL_EXE}"
-        while [ ! -z `pgrep Battle.net* | head -n 1` ] && [ -z `pgrep Battle.net.exe | head -n 1` ] ; do sleep 2 ; done
-        KILL_PORTWINE
         portwine_exe=`find "$WINEPREFIX/drive_c/" -type f -name "Battle.net.exe"`
         PW_STOP_PROGRESS
         PORTWINE_CREATE_SHORTCUT
@@ -82,10 +90,11 @@ PW_EPIC () {
     if try_download "https://launcher-public-service-prod06.ol.epicgames.com/launcher/api/installer/download/EpicGamesLauncherInstaller.msi" "${PW_AUTOINSTALL_EXE}"
     then
         PW_START_PROGRESS_BAR_BLOCK "Installing Epic Games Launcher. Please wait..."
+        pw_kill_autostart EpicGamesLauncher.exe
         PW_RUN msiexec /i "${PW_AUTOINSTALL_EXE}" &
         sleep 10
         if [ ! -z `pgrep msiexec* | head -n 1` ] ; then
-            while [ ! -z `pgrep msiexec* | head -n 1` ] || [ ! -z `pgrep rundll32* | head -n 1` ] ; do
+            while [ ! -z `pgrep msiexec* | head -n 1` ] || [ ! -z `pgrep rundll32* | head -n 1` ] || [ ! -z `pgrep wrap | head -n 1` ]; do
                 [ ! -z `pgrep rundll32* | head -n 1` ] && kill -n 9 `pgrep rundll32* | head -n 1` && echo "Kill rundll32.exe"
                 sleep 5
             done
@@ -106,6 +115,7 @@ PW_GOG () {
     if try_download "https://content-system.gog.com/open_link/download?path=/open/galaxy/client/2.0.35.19/setup_galaxy_2.0.35.19a.exe" "${PW_AUTOINSTALL_EXE}"
     then
         PW_START_PROGRESS_BAR_CS "Installing the GOG Galaxy. Please wait..."
+        pw_kill_autostart GalaxyClient.exe &
         PW_RUN "${PW_AUTOINSTALL_EXE}"
         portwine_exe=`find "$WINEPREFIX/drive_c/" -type f -name "GalaxyClient.exe"`
         try_remove_file "${PW_AUTOINSTALL_EXE}"
@@ -145,6 +155,7 @@ PW_UBC () {
     if try_download "https://ubistatic3-a.akamaihd.net/orbit/launcher_installer/UbisoftConnectInstaller.exe" "${PW_AUTOINSTALL_EXE}"
     then
 		PW_START_PROGRESS_BAR_CS "Installing the Ubisoft Connect. Please wait..."
+        pw_kill_autostart UbisoftConnect.exe &
 		PW_RUN "${PW_AUTOINSTALL_EXE}"
 		portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/Ubisoft Game Launcher/UbisoftConnect.exe"
 		try_remove_file "${PW_AUTOINSTALL_EXE}"
@@ -162,8 +173,12 @@ PW_STEAM () {
     if try_download "https://cdn.cloudflare.steamstatic.com/client/installer/SteamSetup.exe" "${PW_AUTOINSTALL_EXE}"
     then
 		PW_START_PROGRESS_BAR_CS "Installing the Steam. Please wait..."
+        pw_kill_autostart steam.exe &
 		PW_RUN "${PW_AUTOINSTALL_EXE}"
-		portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/Steam/Steam.exe"
+        if [ -f "$WINEPREFIX/drive_c/Program Files (x86)/Steam/Steam.exe" ]
+        then mv -f "$WINEPREFIX/drive_c/Program Files (x86)/Steam/Steam.exe" "$WINEPREFIX/drive_c/Program Files (x86)/Steam/steam.exe"
+        fi
+		portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/Steam/steam.exe"
 		try_remove_file "${PW_AUTOINSTALL_EXE}"
 		KILL_PORTWINE
 		PW_STOP_PROGRESS_BAR

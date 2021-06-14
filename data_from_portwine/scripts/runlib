@@ -186,9 +186,9 @@ PW_STOP_PROGRESS_BAR () {
     done
 }
 PW_LOAD_LIBS () {
-    if [ ! -e "${PW_WINELIB}/runtime/bin/yad" ] || [ ! -e "${PW_WINELIB}/runtime/lib/p7zip/7zr" ] \
+    if [ ! -e "${PW_WINELIB}/runtime/bin/yad" ] || [ ! -e "${PW_WINELIB}/runtime/lib/p7zip/7z" ] \
     || [ ! -e "${PW_WINELIB}/runtime/bin/vkcube" ] || [ ! -e "${PW_WINELIB}/runtime/bin/xterm" ] || \
-    [ -e "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" ] ; then 
+    [ -e "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" ] ; then
         print_info "Download and install libraries..."
         if try_download "https://github.com/Castro-Fidel/PortWINE/releases/download/libs${pw_libs_ver}/libs${pw_libs_ver}.tar.xz" "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" ; then
             if unpack_tar_xz "${HOME}/.PortWINE/tmp/libs${pw_libs_ver}.tar.xz" "${HOME}/.PortWINE/" ; then
@@ -208,7 +208,7 @@ PW_LOAD_LIBS () {
     fi
     export pw_yad="${PW_WINELIB}/runtime/bin/yad"
     export pw_zstd="${PW_WINELIB}/runtime/bin/zstd"
-    export pw_7z="${PW_WINELIB}/runtime/lib/p7zip/7zr"
+    export pw_7z="${PW_WINELIB}/runtime/lib/p7zip/7z"
     if [ -x "`which xterm 2>/dev/null`" ]; then
         export SYS_XTERM=`which xterm`
         export PW_XTERM="${SYS_XTERM} -geometry 159x37 -e"
@@ -277,6 +277,11 @@ START_PORTWINE ()
     elif [ -x "`which xterm 2>/dev/null`" ]; then export PW_TERM="${PW_XTERM}"
     else export PW_TERM="${PW_XTERM}"
     fi
+    if [ ! -f "${HOME}/.Xresources" ]; then
+        cp -f "${PORT_SCRIPTS_PATH}/.Xresources" "${HOME}"
+        xrdb -merge "${HOME}/.Xresources"
+    fi
+
     PW_START_PROGRESS_BAR_CS "Start ${portname}... Please wait..."
 
     export WINE_GST_REGISTRY_DIR="${PORT_WINE_TMP_PATH}"
@@ -317,7 +322,7 @@ START_PORTWINE ()
         --"
         export PRESSURE_VESSEL_VARIABLE_DIR="${PW_WINELIB}/runtime"
         export PRESSURE_VESSEL_REMOVE_GAME_OVERLAY=1
-        # export PRESSURE_VESSEL_IMPORT_VULKAN_LAYERS=1
+        export PRESSURE_VESSEL_IMPORT_VULKAN_LAYERS=1
         export PRESSURE_VESSEL_GC_RUNTIMES=0
         export PRESSURE_VESSEL_GC_LEGACY_RUNTIMES=0
         export PRESSURE_VESSEL_RUNTIME_BASE="${PW_WINELIB}"
@@ -552,6 +557,7 @@ RUN_WINETRICKS_FROM_DB () {
         if [ "${USE_WT_FROM_DB}" == "1" ] ; then
             PW_STOP_PROGRESS_BAR
             print_info "Try to install DLL in prefix: ${PW_DLL_NEED_INSTALL}"
+            chmod -R 775 "${HOME}/.cache/winetricks"
             ${PW_RUNTIME} xterm -e env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" "${PORT_WINE_TMP_PATH}/winetricks" -q ${PW_DLL_NEED_INSTALL}
         fi
         PW_START_PROGRESS_BAR_CS "Start ${portname}... Please wait..."
