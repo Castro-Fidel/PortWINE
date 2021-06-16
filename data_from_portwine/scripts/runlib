@@ -207,6 +207,7 @@ PW_LOAD_LIBS () {
         fi
     fi
     export pw_yad="${PW_WINELIB}/runtime/bin/yad"
+    export pw_yad_new="${PW_WINELIB}/runtime/bin/yad_new"
     export pw_zstd="${PW_WINELIB}/runtime/bin/zstd"
     export pw_7z="${PW_WINELIB}/runtime/lib/p7zip/7z"
     if [ -x "`which xterm 2>/dev/null`" ]; then
@@ -269,8 +270,33 @@ PW_DOWNLOAD_GECKO () {
         fi
     fi
 }
-START_PORTWINE ()
-    {
+PW_TRAY_ICON () {
+    if [ -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ] ; then
+        tray_icon_click() { 
+        echo ""
+        }
+        export -f tray_icon_click
+        tray_icon_click_exit() { 
+            KILL_PORTWINE
+            if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ] 
+            then kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`"
+            fi
+        }
+        export -f tray_icon_click_exit
+
+        "${pw_yad_new}" --notification --no-middle --text="PortProton" \
+        --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
+        --image="$PW_GUI_ICON_PATH/port_proton.png" \
+        --command="bash -c tray_icon_click" \
+        --tooltip="PortProton" \
+        --menu="| \
+        <<< CHANGE LOG >>>!bash -c open_changelog!texture| \
+            --------------------------------------| \
+        <<<   FORCE EXIT   >>>!bash -c tray_icon_click_exit!exit|"
+    fi
+}
+START_PORTWINE () {
+    PW_TRAY_ICON &
     if [ -x "`which konsole 2>/dev/null`" ]; then export PW_TERM="konsole --nofork -e"
 #    elif [ -x "`which gnome-terminal 2>/dev/null`" ]; then export PW_TERM="gnome-terminal -- /bin/bash" ???
     elif [ -x "`which lxterminal 2>/dev/null`" ]; then export PW_TERM="lxterminal -e"
@@ -489,6 +515,7 @@ KILL_PORTWINE () {
         kill -n 9 `pgrep -a bwrap | grep ${portname} | head -n 1 | awk '{print $1}'`
     fi
 }
+export -f KILL_PORTWINE
 
 STOP_PORTWINE () {
     WAIT_WINESERVER
@@ -502,6 +529,10 @@ STOP_PORTWINE () {
     PW_STOP_PROGRESS_BAR
     try_remove_file "${PORT_SCRIPTS_PATH}/0"
     try_remove_file "${PORT_SCRIPTS_PATH}/1"
+    KILL_PORTWINE
+    if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ] 
+    then kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`"
+    fi
 }
 
 UPDATE_WINETRICKS () {
@@ -690,11 +721,12 @@ PW_INIT_PFX () {
     if [ ! -d "${PORT_WINE_PATH}/data/pfx/drive_c/users/${USER}" ]; then
 	    try_force_link_dir "${PORT_WINE_PATH}/data/pfx/drive_c/users/steamuser" "${PORT_WINE_PATH}/data/pfx/drive_c/users/${USER}"
     fi
-    if [ ! -d "${PORT_WINE_PATH}/drive_c" ]; then
-	    try_force_link_dir "${PORT_WINE_PATH}/data/pfx/drive_c/" "${PORT_WINE_PATH}/"
-    fi
+    [ ! -d "${PORT_WINE_PATH}/drive_c" ] && try_force_link_dir "${PORT_WINE_PATH}/data/pfx/drive_c/" "${PORT_WINE_PATH}/"
     create_new_dir "${WINEPREFIX}/drive_c/users/Public/Documents/Steam"
     create_new_dir "${WINEPREFIX}/drive_c/users/steamuser/Documents/Steam"
+    if [ ! -d "${WINEPREFIX}/drive_c/users/steamuser/My Documents" ]
+    then try_force_link_dir "${WINEPREFIX}/drive_c/users/steamuser/Documents" "${WINEPREFIX}/drive_c/users/steamuser/My Documents"
+    fi
     var_winedlloverride_update "steam_api,steam_api64,steamclient,steamclient64=n"
 
     # export TOTAL_VRAM=`"${PW_WINELIB}/runtime/bin/glxinfo" -B | grep Total | awk -F: '{print $2}' | awk '{print $1}'`
@@ -834,7 +866,7 @@ PW_RUN () {
         fi
     fi
 }
-#####MAIN#####
+###MAIN###
 cd "$(dirname "`readlink -f "$0"`")" && export PORT_SCRIPTS_PATH="$(pwd)"
 cd "${PORT_SCRIPTS_PATH}/../../" && export PORT_WINE_PATH="$(pwd)"
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"

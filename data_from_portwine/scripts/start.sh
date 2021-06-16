@@ -7,7 +7,6 @@ fi
 . "$(dirname $(readlink -f "$0"))/runlib"
 
 PORTWINE_LAUNCH () {
-    KILL_PORTWINE
     START_PORTWINE
     PORTWINE_MSI=`basename "${portwine_exe}" | grep .msi`
     PORTWINE_BAT=`basename "${portwine_exe}" | grep .bat`
@@ -212,6 +211,7 @@ PW_AUTO_INSTALL_FROM_DB () {
     . "$PORT_SCRIPTS_PATH/autoinstall"
     $PW_YAD_SET
 }
+###MAIN###
 if [ ! -z "${portwine_exe}" ]; then
     if [ -z "${PW_GUI_DISABLED_CS}" ] || [ "${PW_GUI_DISABLED_CS}" = 0 ] || [ -z "${PW_VULKAN_USE}" ]; then
         if [ ! -z "${PORTWINE_DB_FILE}" ] && [ ! -z "${PW_VULKAN_USE}" ]; then
