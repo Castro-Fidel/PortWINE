@@ -1412,7 +1412,7 @@ w_download_to()
             winetricks_wget_progress \
                 -O "${_W_file}" \
                 -nd \
-                -c \
+                -c\
                 --read-timeout 300 \
                 --retry-connrefused \
                 --timeout "${WINETRICKS_DOWNLOADER_TIMEOUT}" \
@@ -8392,6 +8392,24 @@ load_dxvk181()
     helper_dxvk_d9vk "${file1}" "5.14" "1.2.140" "dxgi,d3d9,d3d10core,d3d11"
 }
 
+w_metadata dxvk190 dlls \
+    title="Vulkan-based D3D9/D3D10/D3D11 implementation for Linux / Wine (1.9)" \
+    publisher="Philip Rebohle" \
+    year="2017" \
+    media="download" \
+    file1="dxvk-1.9.tar.gz" \
+    installed_file1="${W_SYSTEM32_DLLS_WIN}/d3d9.dll" \
+    installed_file2="${W_SYSTEM32_DLLS_WIN}/d3d10core.dll" \
+    installed_file3="${W_SYSTEM32_DLLS_WIN}/d3d11.dll" \
+    installed_file4="${W_SYSTEM32_DLLS_WIN}/dxgi.dll"
+
+load_dxvk190()
+{
+    # https://github.com/doitsujin/dxvk
+    w_download "https://github.com/doitsujin/dxvk/releases/download/v1.9/dxvk-1.9.tar.gz" 433868f8783887192a04b788203d6b4effe3168be762dd60df1c1b564421a6ed
+    helper_dxvk_d9vk "${file1}" "5.14" "1.2.140" "dxgi,d3d9,d3d10core,d3d11"
+}
+
 #----------------------------------------------------------------
 
 w_metadata dxvk dlls \
@@ -12932,19 +12950,17 @@ load_vcrun2019()
     # 2021/03/28: e830c313aa99656748f9d2ed582c28101eaaf75f5377e3fb104c761bf3f808b2
     # 2021/04/05: e830c313aa99656748f9d2ed582c28101eaaf75f5377e3fb104c761bf3f808b2
     # 2021/04/13: 14563755ac24a874241935ef2c22c5fce973acb001f99e524145113b2dc638c1
+    # 2021/06/06: 91c21c93a88dd82e8ae429534dacbc7a4885198361eae18d82920c714e328cf9
 
-    w_override_dlls native,builtin api-ms-win-crt-private-l1-1-0 api-ms-win-crt-conio-l1-1-0 api-ms-win-crt-heap-l1-1-0 api-ms-win-crt-locale-l1-1-0 api-ms-win-crt-math-l1-1-0 api-ms-win-crt-runtime-l1-1-0 api-ms-win-crt-stdio-l1-1-0 api-ms-win-crt-time-l1-1-0 atl140 concrt140 msvcp140 msvcp140_1 msvcp140_2 msvcr140 ucrtbase vcomp140 vcruntime140
+    w_warn "ucrtbase.dll is no longer included in vcrun2019. For details see: https://github.com/Winetricks/winetricks/issues/1770"
+
+    w_override_dlls native,builtin api-ms-win-crt-private-l1-1-0 api-ms-win-crt-conio-l1-1-0 api-ms-win-crt-heap-l1-1-0 api-ms-win-crt-locale-l1-1-0 api-ms-win-crt-math-l1-1-0 api-ms-win-crt-runtime-l1-1-0 api-ms-win-crt-stdio-l1-1-0 api-ms-win-crt-time-l1-1-0 atl140 concrt140 msvcp140 msvcp140_1 msvcp140_2 msvcr140 vcomp140 vcruntime140
 
     w_download https://aka.ms/vs/16/release/vc_redist.x86.exe 91c21c93a88dd82e8ae429534dacbc7a4885198361eae18d82920c714e328cf9
 
     if w_workaround_wine_bug 50894 "Working around failing wusa.exe lookup via C:\windows\SysNative"; then
         w_set_winver winxp
     fi
-
-    # Setup will refuse to install ucrtbase because builtin's version number is higher, so manually replace it
-    # See https://bugs.winehq.org/show_bug.cgi?id=46317
-    w_try_cabextract --directory="${W_TMP}/win32"  "${W_CACHE}"/vcrun2019/vc_redist.x86.exe -F 'a10'
-    w_try_cabextract --directory="${W_SYSTEM32_DLLS}" "${W_TMP}/win32/a10" -F 'ucrtbase.dll'
 
     w_try_cd "${W_CACHE}"/"${W_PACKAGE}"
     w_try "${WINE}" vc_redist.x86.exe ${W_OPT_UNATTENDED:+/q}
@@ -12962,14 +12978,12 @@ load_vcrun2019()
             # 2021/03/28: b6c82087a2c443db859fdbeaae7f46244d06c3f2a7f71c35e50358066253de52
             # 2021/04/05: 015edd4e5d36e053b23a01adb77a2b12444d3fb6eccefe23e3a8cd6388616a16
             # 2021/04/13: 52b196bbe9016488c735e7b41805b651261ffa5d7aa86eb6a1d0095be83687b2
+            # 2021/06/06: a1592d3da2b27230c087a3b069409c1e82c2664b0d4c3b511701624702b2e2a3
 
             # vcruntime140_1 is only shipped on x64:
             w_override_dlls native,builtin vcruntime140_1
 
-            w_download https://web.archive.org/web/20210412133744if_/https://download.visualstudio.microsoft.com/download/pr/366c0fb9-fe05-4b58-949a-5bc36e50e370/015edd4e5d36e053b23a01adb77a2b12444d3fb6eccefe23e3a8cd6388616a16/vc_redist.x64.exe 015edd4e5d36e053b23a01adb77a2b12444d3fb6eccefe23e3a8cd6388616a16
-            # Also replace 64-bit ucrtbase.dll
-            w_try_cabextract --directory="${W_TMP}/win64"  "${W_CACHE}"/vcrun2019/vc_redist.x64.exe -F 'a10'
-            w_try_cabextract --directory="${W_SYSTEM64_DLLS}" "${W_TMP}/win64/a10" -F 'ucrtbase.dll'
+            w_download https://aka.ms/vs/16/release/vc_redist.x64.exe a1592d3da2b27230c087a3b069409c1e82c2664b0d4c3b511701624702b2e2a3
             w_try "${WINE}" vc_redist.x64.exe ${W_OPT_UNATTENDED:+/q}
             ;;
     esac
@@ -14283,15 +14297,16 @@ load_opensymbol()
 w_metadata sourcehansans fonts \
     title="Source Han Sans fonts" \
     publisher="Adobe" \
-    year="2019" \
+    year="2021" \
     media="download" \
-    file1="SourceHanSans.ttc" \
+    file1="SourceHanSans.ttc.zip" \
     installed_file1="${W_FONTSDIR_WIN}/sourcehansans.ttc"
 
 load_sourcehansans()
 {
-    w_download "https://github.com/adobe-fonts/source-han-sans/releases/download/2.002R/SourceHanSans.ttc" 8c06d305a45d56fbc81ec67ca0afa552fbae1e69d4d42b49016a9ace677f89d8
-    w_try cp "${W_CACHE}/${W_PACKAGE}/${file1}" "${W_TMP}/sourcehansans.ttc"
+    w_download "https://github.com/adobe-fonts/source-han-sans/releases/download/2.004R/SourceHanSans.ttc.zip" 6f59118a9adda5a7fe4e9e6bb538309f7e1d3c5411f9a9d32af32a79501b7e4f
+    w_try_unzip "${W_TMP}" "${W_CACHE}/${W_PACKAGE}/${file1}"
+    w_try mv "${W_TMP}/SourceHanSans.ttc" "${W_TMP}/sourcehansans.ttc"
     w_try_cp_font_files "${W_TMP}" "${W_FONTSDIR_UNIX}" "*.ttc"
 
     # Simplified Chinese
@@ -16215,29 +16230,7 @@ load_steam()
     w_download http://media.steampowered.com/client/installer/SteamSetup.exe 874788b45dfc043289ba05387e83f27b4a046004a88a4c5ee7c073187ff65b9d
     w_try_cd "${W_CACHE}/${W_PACKAGE}"
 
-    if [ -n "${W_OPT_UNATTENDED}" ]; then
-            w_ahk_do "
-            run, SteamSetup.exe
-            SetTitleMatchMode, 2
-            WinWait, Steam, Using Steam
-            sleep 1000
-            ControlClick, Button2
-            WinWait, Steam, Select the language
-            sleep 1000
-            ControlClick, Button2
-            WinWait, Steam, Choose the folder
-            sleep 1000
-            ControlClick, Button2
-            WinWait, Steam, Steam has been installed
-            sleep 1000
-            ControlClick, Button4
-            sleep 1000
-            ControlClick, Button2
-            WinWaitClose
-            "
-    else
-            w_try "${WINE}" SteamSetup.exe
-    fi
+    w_try "${WINE}" SteamSetup.exe ${W_OPT_UNATTENDED:+ /S}
 
     # Not all users need this disabled, but let's play it safe for now
     if w_workaround_wine_bug 22053 "Disabling gameoverlayrenderer to prevent game crashes on some machines."; then
@@ -16377,7 +16370,7 @@ load_vc2005expresssp1()
             w_warn "Installer currently fails"
     fi
     w_download https://download.microsoft.com/download/7/7/3/7737290f-98e8-45bf-9075-85cc6ae34bf1/VS80sp1-KB926748-X86-INTL.exe a959d1ea52674b5338473be32a1370f9ec80df84629a2ed3471aa911b42d9e50
-    w_try ${WINE} "${W_CACHE}"/vc2005expresssp1/VS80sp1-KB926748-X86-INTL.exe
+    w_try ${WINE} "${W_CACHE}"/vc2005expresssp1/VS80sp1-KB926748-X86-INTL.exe ${W_OPT_UNATTENDED:+/q}
 }
 
 #----------------------------------------------------------------
@@ -22192,6 +22185,29 @@ load_rtlm()
 {
     winetricks_set_wined3d_var RenderTargetLockMode "$1"
 }
+
+#----------------------------------------------------------------
+
+w_metadata set_mididevice settings \
+    title="Set MIDImap device to the value specified in the MIDI_DEVICE environment variable"
+
+load_set_mididevice()
+{
+    if [ -z "${MIDI_DEVICE}" ]; then
+        MIDI_DEVICE=$(w_question "Please specify MIDImap device: ")
+        [ -z "${MIDI_DEVICE}" ] && w_die "Please specify device in MIDI_DEVICE environment variable."
+    fi
+
+    echo "Setting MIDI device to \"${MIDI_DEVICE}\""
+    cat > "${W_TMP}"/set-mididevice.reg <<_EOF_
+REGEDIT4
+
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Multimedia\MIDIMap]
+"CurrentInstrument"="${MIDI_DEVICE}"
+_EOF_
+    w_try_regedit "${W_TMP_WIN}"\\set-mididevice.reg
+}
+
 #----------------------------------------------------------------
 
 w_metadata videomemorysize=default settings \
