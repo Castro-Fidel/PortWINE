@@ -280,7 +280,41 @@ else
     }
     export -f open_changelog
 
+    gui_clear_pfx () {
+        if gui_question "${port_clear_pfx}" ; then
+            pw_clear_pfx
+        fi
+    }
+    export -f gui_clean_pfx
+
+    gui_rm_portproton () {
+        if gui_question "${port_del2}" ; then
+            rm -fr "${PORT_WINE_PATH}"
+            rm -fr "${HOME}/.PortWINE"
+            rm -f `grep -il PortProton "${HOME}/.local/share/applications"/*`
+            update-desktop-database -q "${HOME}/.local/share/applications"
+        fi
+    }
+    export -f gui_rm_portproton
+
+    gui_wine_uninstaller () {
+        START_PORTWINE
+        PW_RUN uninstaller
+    }
+    export -f gui_wine_uninstaller
+
+    gui_open_var () {
+        xdg-open "${PORT_SCRIPTS_PATH}/var"
+    }
+    export -f gui_open_var
+
     export KEY=$RANDOM
+    "${pw_yad}" --plug=$KEY --tabnum=3 --form --columns=2 \
+    --field="CLEAR PREFIX":"BTN" '@bash -c "button_click gui_clear_pfx"'  \
+    --field="EDIT SCRIPT VAR":"BTN" '@bash -c "button_click gui_open_var"' \
+    --field="WINE UNINSTALLER":"BTN" '@bash -c "button_click gui_wine_uninstaller"' \
+    --field="REMOVE PORTPROTON":"BTN" '@bash -c "button_click gui_rm_portproton"' & \
+
     "${pw_yad}" --plug=$KEY --tabnum=2 --form --columns=2  --scroll \
     --field="   Wargaming Game Center"!"$PW_GUI_ICON_PATH/wgc.png":"BTN" '@bash -c "button_click PW_WGC"' \
     --field="   Battle.net Launcher"!"$PW_GUI_ICON_PATH/battle_net.png":"BTN" '@bash -c "button_click PW_BATTLE_NET"' \
@@ -308,7 +342,7 @@ else
 
     "${pw_yad}" --key=$KEY --notebook --borders=10 --width=1000 --height=168 --no-buttons --text-align=center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "$portname" --separator=";" \
-    --tab-pos=right --tab="PORT_PROTON" --tab="AUTOINSTALL" --center 
+    --tab-pos=right --tab="PORT_PROTON" --tab="AUTOINSTALL" --tab="    SETTINGS" --center
 
     if [ -f "${PORT_WINE_TMP_PATH}/tmp_yad_form" ] ; then
         export PW_YAD_SET=`cat "${PORT_WINE_TMP_PATH}/tmp_yad_form" | head -n 1 | awk '{print $1}'`

@@ -131,6 +131,10 @@ pw_mangohud_check () {
         export DISABLE_MANGOHUD=1
     fi
 }
+gui_question () {
+    `zenity --question --title "${inst_set}." --text "$1" --no-wrap ` &> /dev/null
+     [ $? -eq "0" ] && return 0 || return 1
+}
 pw_clear_pfx () {
     try_remove_file "${WINEPREFIX}/system.reg"
     try_remove_file "${WINEPREFIX}/user.reg"
@@ -290,9 +294,8 @@ PW_TRAY_ICON () {
         --command="bash -c tray_icon_click" \
         --tooltip="PortProton" \
         --menu="| \
-        <<< CHANGE LOG >>>!bash -c open_changelog!texture| \
-            --------------------------------------| \
-        <<<   FORCE EXIT   >>>!bash -c tray_icon_click_exit!exit|"
+        <<< CHANGE LOG >>>!bash -c open_changelog!"$PW_GUI_ICON_PATH/port_changelog.png"| \
+        <<<   FORCE EXIT   >>>!bash -c tray_icon_click_exit!"$PW_GUI_ICON_PATH/port_exit.png"|"
     fi
 }
 START_PORTWINE () {
@@ -555,7 +558,7 @@ UPDATE_WINETRICKS () {
 }
 
 RUN_WINETRICKS_FROM_DB () {
-    UPDATE_WINETRICKS
+    #UPDATE_WINETRICKS
     if [ ! -z "${PW_MUST_HAVE_DLL}" ]
     then export PW_DLL_INSTALL="${PW_MUST_HAVE_DLL} ${PW_DLL_INSTALL}"
     fi
