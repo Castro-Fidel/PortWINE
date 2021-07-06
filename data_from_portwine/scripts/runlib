@@ -276,11 +276,11 @@ PW_DOWNLOAD_GECKO () {
 }
 PW_TRAY_ICON () {
     if [ -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ] ; then
-        tray_icon_click() { 
+        tray_icon_click() {
         echo ""
         }
         export -f tray_icon_click
-        tray_icon_click_exit() { 
+        tray_icon_click_exit() {
             KILL_PORTWINE
             if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ] 
             then kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`"
@@ -414,7 +414,12 @@ START_PORTWINE () {
         export RADV_DEBUG="llvm"
         var_vkd3d_config_update single_queue
     fi
-    if [ ! -z "${PW_NVAPI_DISABLE}" ] && [ "${PW_NVAPI_DISABLE}" != 0 ] ; then
+    if [ ! -z "${PW_USE_NVAPI}" ] && [ "${PW_USE_NVAPI}" == 1 ] && [ -d "${WINEDIR}/lib/wine/nvapi/" ]
+    then
+        try_copy_file "${WINEDIR}/lib/wine/nvapi/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+        try_copy_file "${WINEDIR}/lib64/wine/nvapi/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+        var_winedlloverride_update "nvapi,nvapi64=n"
+    else
         var_winedlloverride_update "nvapi,nvapi64="
     fi
     if [ ! -z "${PW_WINEDBG_DISABLE}" ] && [ "${PW_WINEDBG_DISABLE}" != 0 ] ; then
@@ -558,7 +563,7 @@ UPDATE_WINETRICKS () {
 }
 
 RUN_WINETRICKS_FROM_DB () {
-    #UPDATE_WINETRICKS
+    UPDATE_WINETRICKS
     if [ ! -z "${PW_MUST_HAVE_DLL}" ]
     then export PW_DLL_INSTALL="${PW_MUST_HAVE_DLL} ${PW_DLL_INSTALL}"
     fi
@@ -746,7 +751,6 @@ PW_INIT_PFX () {
     if [ "${PW_VULKAN_USE}" = "0" ] ; then
         export MESA_GLSL_CACHE_DIR="${PORT_WINE_TMP_PATH}"
         export __GLX_VENDOR_LIBRARY_NAME=nvidia
-        export GL_NO_DSO_FINALIZER=1
         export GL_YIELD="NOTHING"
         for wine_build_dll in d3d11 d3d10 d3d10core d3d10_1 d3d9 ; do
             if ! try_copy_file "${WINEDIR}/lib/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
@@ -764,8 +768,8 @@ PW_INIT_PFX () {
             try_copy_file "${WINEDIR}/lib/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
             try_copy_file "${WINEDIR}/lib64/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
             var_winedlloverride_update "${wine_vkd3d_dll}=n"
-            var_winedlloverride_update="dxgi=b"
         done
+        var_winedlloverride_update "dxgi=b"
         export VKD3D_FEATURE_LEVEL="12_0"
         echo "Use VKD3D-PROTON only (DX12 to vulkan)"
     else
