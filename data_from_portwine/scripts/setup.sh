@@ -5,7 +5,6 @@
 try_remove_file "${PORT_WINE_TMP_PATH}/update_notifier"
 try_remove_file "${PORT_WINE_TMP_PATH}/init_run_suc"
 
-try_remove_file "${PORT_WINE_PATH}/data/port_on"
 try_remove_file "${PORT_WINE_PATH}/settings.desktop"
 try_remove_file "${PORT_WINE_PATH}/debug.desktop"
 try_remove_file "${PORT_WINE_PATH}/reset.desktop"

@@ -131,6 +131,12 @@ pw_mangohud_check () {
         export DISABLE_MANGOHUD=1
     fi
 }
+pw_vkbasalt_check () {
+    export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
+    if [ -d "/home/${USER}/.local/share/reshade/Shaders/" ]
+    then sed -i "s%/xuser/%/${USER}/%" "${VKBASALT_CONFIG_FILE}"
+    fi
+}
 gui_question () {
     `zenity --question --title "${inst_set}." --text "$1" --no-wrap ` &> /dev/null
      [ $? -eq "0" ] && return 0 || return 1
@@ -277,7 +283,7 @@ PW_DOWNLOAD_GECKO () {
 PW_TRAY_ICON () {
     if [ -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ] ; then
         tray_icon_click() {
-        echo ""
+            echo ""
         }
         export -f tray_icon_click
         tray_icon_click_exit() {
@@ -294,8 +300,8 @@ PW_TRAY_ICON () {
         --command="bash -c tray_icon_click" \
         --tooltip="PortProton" \
         --menu="| \
-        <<< CHANGE LOG >>>!bash -c open_changelog!"$PW_GUI_ICON_PATH/port_changelog.png"| \
-        <<<   FORCE EXIT   >>>!bash -c tray_icon_click_exit!"$PW_GUI_ICON_PATH/port_exit.png"|"
+<<< CHANGE LOG >>>!bash -c open_changelog!"$PW_GUI_ICON_PATH/port_changelog.png"| \
+<<<   FORCE EXIT   >>>!bash -c tray_icon_click_exit!"$PW_GUI_ICON_PATH/port_exit.png"|"
     fi
 }
 START_PORTWINE () {
@@ -324,17 +330,17 @@ START_PORTWINE () {
     export WINE="${WINEDIR}/bin/wine"
     export WINELOADER="${WINEDIR}/bin/wine"
     export WINESERVER="${WINEDIR}/bin/wineserver"
-    export WINEDLLPATH="${WINEDIR}/lib/wine"
-    export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib"
+    export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
 
     create_new_dir "${WINEDIR}/share/wine/"
     try_remove_dir "${WINEDIR}"/share/wine/gecko
     try_remove_dir "${WINEDIR}"/share/wine/mono
     try_force_link_dir "${HOME}/.PortWINE/gecko" "${WINEDIR}"/share/wine/
     try_force_link_dir "${HOME}/.PortWINE/mono" "${WINEDIR}"/share/wine/
-    if [ -d "${PATH_TO_GAME}" ]
-    then export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine:${PATH_TO_GAME}"
-    else export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
+
+    if [ ! -z "${LD_LIBRARY_PATH}" ]
+    then export LD_LIBRARY_PATH="${WINEDIR}/lib64/:${WINEDIR}/lib/:${LD_LIBRARY_PATH}"
+    else export LD_LIBRARY_PATH="${WINEDIR}/lib64/:${WINEDIR}/lib/"
     fi
     if [ ! -z "${PATH}" ]
     then export PATH="${WINEDIR}/bin:${PATH}"
@@ -344,7 +350,7 @@ START_PORTWINE () {
         export PW_RUNTIME=""
         echo "RUNTIME is disabled"
     else
-        export PW_AND_RUNTIME_LIBRARY_PATH="/overrides/lib/x86_64-linux-gnu:/overrides/lib/x86_64-linux-gnu/aliases:/overrides/lib/i386-linux-gnu:/overrides/lib/i386-linux-gnu/aliases:"
+        export PW_AND_RUNTIME_LIBRARY_PATH="/overrides/lib/x86_64-linux-gnu/:/overrides/lib/x86_64-linux-gnu/aliases/:/overrides/lib/i386-linux-gnu/:/overrides/lib/i386-linux-gnu/aliases/:"
         export PW_RUNTIME="${PW_WINELIB}/pressure-vessel/bin/pressure-vessel-unruntime \
         --share-home \
         --runtime=${PW_WINELIB}/runtime \
@@ -850,6 +856,7 @@ PW_RUN () {
         cd "${WINEPREFIX}/drive_c"
     fi
     pw_mangohud_check
+    pw_vkbasalt_check
     print_var "WINEDIR" "WINEARCH" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_VULKAN_USE" "VKD3D_CONFIG"
     if [ "${PW_LOG}" == 1 ] ; then
         export PW_LOG_TO_FILE="${PORT_WINE_PATH}/${portname}.log"
