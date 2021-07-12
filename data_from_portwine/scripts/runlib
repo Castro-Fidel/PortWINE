@@ -132,14 +132,18 @@ pw_mangohud_check () {
     fi
 }
 pw_vkbasalt_check () {
-    if [ -d "/home/${USER}/.local/share/reshade/Shaders/" ]; then 
+    if [ -d "${HOME}/.local/share/reshade/Shaders/" ]; then
         export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
-        sed -i "s%/xuser/%/${USER}/%" "${VKBASALT_CONFIG_FILE}"
-    elif [ -d "/usr/share/reshade/Shaders/" ]; then
+        [[ xuser = `cat "${VKBASALT_CONFIG_FILE}" | grep -om1 xuser` ]] && sed -i "s%/xuser/%/${USER}/%" "${VKBASALT_CONFIG_FILE}" 
+    elif [ -d "/usr/share/reshade" ]; then
         export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
-        sed -i "s%/home/xuser/.local/%/usr/%" "${VKBASALT_CONFIG_FILE}"
+        mkdir -p "${HOME}/.local/share/reshade"
+        cp -fR /usr/share/reshade "${HOME}/.local/share"
+        [[ xuser = `cat "${VKBASALT_CONFIG_FILE}" | grep -om1 xuser` ]] && sed -i "s%/xuser/%/${USER}/%" "${VKBASALT_CONFIG_FILE}"
+        [[ Shaders = `cat "${VKBASALT_CONFIG_FILE}" | grep -om1 Shaders` ]] && sed -i "s%/Shaders/%/shaders/%" "${VKBASALT_CONFIG_FILE}"
+        [[ Textures = `cat "${VKBASALT_CONFIG_FILE}" | grep -om1 Textures` ]] && sed -i 's%/Textures$%/textures%' "${VKBASALT_CONFIG_FILE}"
     fi
-}
+} 
 gui_question () {
     `zenity --question --title "${inst_set}." --text "$1" --no-wrap ` &> /dev/null
      [ $? -eq "0" ] && return 0 || return 1
@@ -362,10 +366,18 @@ START_PORTWINE () {
         echo "RUNTIME is disabled"
     else
         export PW_AND_RUNTIME_LIBRARY_PATH="/overrides/lib/x86_64-linux-gnu/:/overrides/lib/x86_64-linux-gnu/aliases/:/overrides/lib/i386-linux-gnu/:/overrides/lib/i386-linux-gnu/aliases/:"
-        export PW_RUNTIME="${PW_WINELIB}/pressure-vessel/bin/pressure-vessel-unruntime \
-        --share-home \
-        --runtime=${PW_WINELIB}/runtime \
-        --"
+        if [ ! -z "${PW_SANDBOX_HOME_PATH}" ] && [ -d "${PW_SANDBOX_HOME_PATH}" ]; then
+            export PW_RUNTIME="${PW_WINELIB}/pressure-vessel/bin/pressure-vessel-unruntime \
+            --unshare-home \
+            --home="${PW_SANDBOX_HOME_PATH}" \
+            --runtime=${PW_WINELIB}/runtime \
+            --"
+        else
+            export PW_RUNTIME="${PW_WINELIB}/pressure-vessel/bin/pressure-vessel-unruntime \
+            --share-home \
+            --runtime=${PW_WINELIB}/runtime \
+            --"
+        fi
         export PRESSURE_VESSEL_VARIABLE_DIR="${PW_WINELIB}/runtime"
         export PRESSURE_VESSEL_REMOVE_GAME_OVERLAY=0
         export PRESSURE_VESSEL_IMPORT_VULKAN_LAYERS=1
