@@ -285,7 +285,7 @@ else
             pw_clear_pfx
         fi
     }
-    export -f gui_clean_pfx
+    export -f gui_clear_pfx
 
     gui_rm_portproton () {
         if gui_question "${port_del2}" ; then

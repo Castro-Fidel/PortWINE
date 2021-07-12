@@ -132,9 +132,12 @@ pw_mangohud_check () {
     fi
 }
 pw_vkbasalt_check () {
-    export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
-    if [ -d "/home/${USER}/.local/share/reshade/Shaders/" ]
-    then sed -i "s%/xuser/%/${USER}/%" "${VKBASALT_CONFIG_FILE}"
+    if [ -d "/home/${USER}/.local/share/reshade/Shaders/" ]; then 
+        export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
+        sed -i "s%/xuser/%/${USER}/%" "${VKBASALT_CONFIG_FILE}"
+    elif [ -d "/usr/share/reshade/Shaders/" ]; then
+        export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
+        sed -i "s%/home/xuser/.local/%/usr/%" "${VKBASALT_CONFIG_FILE}"
     fi
 }
 gui_question () {
@@ -176,6 +179,13 @@ pw_clear_pfx () {
     try_remove_dir "${PORT_WINE_TMP_PATH}/mesa_shader_cache"
     rm -f "${PORT_WINE_TMP_PATH}"/*.bin
     rm -f "${PORT_WINE_TMP_PATH}"/*.foz
+}
+check_user_conf () {
+    if [ ! -f "${USER_CONF}" ]; then
+        echo "#!/bin/bash" > "${USER_CONF}"
+        echo "# User overides db and var settings..." >> "${USER_CONF}"
+        chmod u+x "${USER_CONF}"
+    fi
 }
 sszen() {
     zenity --progress --title="Settings..." --text="Updating parameters" --pulsate --auto-close --width=500 --height=90 --no-cancel
@@ -306,6 +316,7 @@ PW_TRAY_ICON () {
 }
 START_PORTWINE () {
     PW_TRAY_ICON &
+    . "${USER_CONF}"
     if [ -x "`which konsole 2>/dev/null`" ]; then export PW_TERM="konsole --nofork -e"
 #    elif [ -x "`which gnome-terminal 2>/dev/null`" ]; then export PW_TERM="gnome-terminal -- /bin/bash" ???
     elif [ -x "`which lxterminal 2>/dev/null`" ]; then export PW_TERM="lxterminal -e"
@@ -356,7 +367,7 @@ START_PORTWINE () {
         --runtime=${PW_WINELIB}/runtime \
         --"
         export PRESSURE_VESSEL_VARIABLE_DIR="${PW_WINELIB}/runtime"
-        export PRESSURE_VESSEL_REMOVE_GAME_OVERLAY=1
+        export PRESSURE_VESSEL_REMOVE_GAME_OVERLAY=0
         export PRESSURE_VESSEL_IMPORT_VULKAN_LAYERS=1
         export PRESSURE_VESSEL_GC_RUNTIMES=0
         export PRESSURE_VESSEL_GC_LEGACY_RUNTIMES=0
@@ -493,9 +504,11 @@ START_PORTWINE () {
         killall xneur
         export int_xneur=1
     fi
-    export PW_XKBD="$(setxkbmap -query | grep -w ru | awk '{print($2)}')"
-    if [ ! -z ${PW_XKBD} ]; then
-        setxkbmap us,ru
+    if [ ! -z "${PW_XKBD_RU_HACK}" ] && [ "${PW_XKBD_RU_HACK}" == 1 ]; then
+        export PW_XKBD="$(setxkbmap -query | grep -w ru | awk '{print($2)}')"
+        if [ ! -z ${PW_XKBD} ]; then
+            setxkbmap us,ru
+        fi
     fi
     if [ -x "`which "gamemoderun" 2>/dev/null`" ] && [ "$PW_USE_GAMEMODE" = "1" ]; then
         export PW_GAMEMODERUN=1
@@ -810,9 +823,11 @@ PW_SCRIPTS_UPDATE () {
     fi
     read "scripts_update_not" < "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     if [ "${scripts_update_not}" = "1" ] ; then
-        if try_download_silent "${PW_FTP_URL}/current_version/scripts_ver" "${PORT_WINE_TMP_PATH}/scripts_cur_ver" ; then
-            read scripts_current_ver < "${PORT_WINE_TMP_PATH}/scripts_cur_ver"
+        if try_download_silent "https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine/scripts/var" "${PORT_WINE_TMP_PATH}/scripts_cur_ver" ; then         
+            scripts_current_ver=`cat "${PORT_WINE_TMP_PATH}/scripts_cur_ver" | grep SCRIPTS_VERSION | awk -F "=" '{print $2}'`
             try_remove_file "${PORT_WINE_TMP_PATH}/scripts_cur_ver"
+            echo "Scripts version in github = ${scripts_current_ver}"
+            echo "Scripts version local = ${scripts_install_ver}"
             if [ ! -z "${scripts_current_ver}" ] && [ "${scripts_current_ver}" -gt "${scripts_install_ver}" ] ; then
                 xcsd=`zenity --title  "${scripts_upd1}" --text "${scripts_upd2}" --list --radiolist --height=230 --column="${inst_set}" --column "${scripts_upd3}" \
                 TRUE "${scripts_upd4}" \
@@ -822,11 +837,13 @@ PW_SCRIPTS_UPDATE () {
                     "${scripts_upd4}")
                         echo "######################################################"
                         echo "Update scripts..."
-                        try_remove_file "${PORT_WINE_TMP_PATH}/scripts.tar.xz"
-                        if try_download_silent "${PW_FTP_URL}/dist/scripts.tar.xz" "${PORT_WINE_TMP_PATH}/scripts.tar.xz" ; then
-                            tar -Jxvf "${PORT_WINE_TMP_PATH}/scripts.tar.xz" -C "${PORT_WINE_PATH}/data/"
+                        try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
+                        if try_download_silent "https://github.com/Castro-Fidel/PortWINE/archive/refs/heads/master.tar.gz" "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" ; then
+                            tar -xvzf "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" -C "${PORT_WINE_TMP_PATH}" 
                             if [ "$?" == "0" ] ; then
-                                try_remove_file "${PORT_WINE_TMP_PATH}/scripts.tar.xz"
+                                cp -fr "${PORT_WINE_TMP_PATH}/PortWINE-master/data_from_portwine/"* "${PORT_WINE_PATH}/data/"
+                                try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
+                                try_remove_dir "${PORT_WINE_TMP_PATH}/PortWINE-master/data_from_portwine/"
                                 echo "${scripts_current_ver}" > "${PORT_WINE_TMP_PATH}/scripts_ver"
                                 "${pw_yad}" --title="Changelog" --borders=10 \
                                 --text="Скрипты были успешно обновлены.\nДля продолжения запуска порта нажмите ОК." \
@@ -905,6 +922,8 @@ export PW_WINELIB="${HOME}/.PortWINE/libs${pw_libs_ver}"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
 export install_ver=`cat "${PORT_WINE_TMP_PATH}/${portname}_ver" | head -n 1`
 export WINETRICKS_DOWNLOADER="curl"
+export USER_CONF="${PORT_WINE_PATH}/data/user.conf"
+check_user_conf
 
 if [ -z "${INSTALLING_PORT}" ] ; then
     PW_LOAD_LIBS
