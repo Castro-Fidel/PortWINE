@@ -120,28 +120,20 @@ pw_mangohud_check () {
     export RUN_MANGOHUD=""
     unset MANGOHUD
     unset MANGOHUD_DLSYM
-    if [ -x "`which mangohud 2>/dev/null`" ] && [ "${PW_MANGOHUD}" == "1" ] ; then
+    if [ "${PW_MANGOHUD}" == "1" ] ; then
         if [ "${PW_VULKAN_USE}" = "0" ]; then
-            export MANGOHUD_DLSYM=1
-            export RUN_MANGOHUD=mangohud
+            export RUN_MANGOHUD="mangohud --dlsym"
         else
-            export MANGOHUD=1
+            export RUN_MANGOHUD="mangohud"
         fi
     else
         export DISABLE_MANGOHUD=1
     fi
 }
 pw_vkbasalt_check () {
-    if [ -d "${HOME}/.local/share/reshade/Shaders/" ]; then
-        export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
-        [[ xuser = `cat "${VKBASALT_CONFIG_FILE}" | grep -om1 xuser` ]] && sed -i "s%/xuser/%/${USER}/%" "${VKBASALT_CONFIG_FILE}" 
-    elif [ -d "/usr/share/reshade" ]; then
-        export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
-        mkdir -p "${HOME}/.local/share/reshade"
-        cp -fR /usr/share/reshade "${HOME}/.local/share"
-        [[ xuser = `cat "${VKBASALT_CONFIG_FILE}" | grep -om1 xuser` ]] && sed -i "s%/xuser/%/${USER}/%" "${VKBASALT_CONFIG_FILE}"
-        [[ Shaders = `cat "${VKBASALT_CONFIG_FILE}" | grep -om1 Shaders` ]] && sed -i "s%/Shaders/%/shaders/%" "${VKBASALT_CONFIG_FILE}"
-        [[ Textures = `cat "${VKBASALT_CONFIG_FILE}" | grep -om1 Textures` ]] && sed -i 's%/Textures$%/textures%' "${VKBASALT_CONFIG_FILE}"
+    if [ ! -z "${ENABLE_VKBASALT}" ] && [ "${ENABLE_VKBASALT}" == 1 ]
+    then export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
+    else export DISABLE_VKBASALT=1
     fi
 } 
 gui_question () {
@@ -320,7 +312,6 @@ PW_TRAY_ICON () {
 }
 START_PORTWINE () {
     PW_TRAY_ICON &
-    . "${USER_CONF}"
     if [ -x "`which konsole 2>/dev/null`" ]; then export PW_TERM="konsole --nofork -e"
 #    elif [ -x "`which gnome-terminal 2>/dev/null`" ]; then export PW_TERM="gnome-terminal -- /bin/bash" ???
     elif [ -x "`which lxterminal 2>/dev/null`" ]; then export PW_TERM="lxterminal -e"
@@ -890,22 +881,22 @@ PW_RUN () {
     if [ "${PW_LOG}" == 1 ] ; then
         export PW_LOG_TO_FILE="${PORT_WINE_PATH}/${portname}.log"
         if [ ! -z "${PW_GAMEMODERUN}" ] && [ "${PW_GAMEMODERUN}" != 0 ] ; then
-            echo "Full command line:  $PW_TERM ${optirun_on} gamemoderun ${RUN_MANGOHUD} ${PW_RUNTIME} env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}" "&>>${PW_LOG_TO_FILE}"
-            ${optirun_on} gamemoderun ${RUN_MANGOHUD} ${PW_RUNTIME} env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} &>>"${PW_LOG_TO_FILE}"
+            echo "Full command line:  $PW_TERM ${optirun_on} gamemoderun ${PW_RUNTIME} env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}" "&>>${PW_LOG_TO_FILE}"
+            ${optirun_on} gamemoderun ${PW_RUNTIME} env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} &>>"${PW_LOG_TO_FILE}"
         else
-            echo "Full command line: $PW_TERM ${optirun_on} ${RUN_MANGOHUD} ${PW_RUNTIME} env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}" "&>>${PW_LOG_TO_FILE}"
-            ${optirun_on} ${PW_RUNTIME} ${RUN_MANGOHUD} env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} &>>"${PW_LOG_TO_FILE}"
+            echo "Full command line: $PW_TERM ${optirun_on} ${PW_RUNTIME} env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}" "&>>${PW_LOG_TO_FILE}"
+            ${optirun_on} ${PW_RUNTIME} env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} &>>"${PW_LOG_TO_FILE}"
         fi
     else
         [ "${PW_USE_TERMINAL}" != "1" ] && export PW_TERM=""
         if [ ! -z "${PW_GAMEMODERUN}" ] && [ "${PW_GAMEMODERUN}" != 0 ] ; then
             echo "Use gamemode without terminal"
-            echo "Full command line: $PW_TERM ${optirun_on} gamemoderun ${RUN_MANGOHUD} ${PW_RUNTIME} env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}"
-            $PW_TERM ${optirun_on} gamemoderun  ${PW_RUNTIME} ${RUN_MANGOHUD} env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}
+            echo "Full command line: $PW_TERM ${optirun_on} gamemoderun ${PW_RUNTIME} env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}"
+            $PW_TERM ${optirun_on} gamemoderun ${PW_RUNTIME} env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}
         else
             echo "Don\`t use gamemode without terminal"
-            echo "Full command line: $PW_TERM ${optirun_on} ${RUN_MANGOHUD} ${PW_RUNTIME} env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}"
-            $PW_TERM ${optirun_on} ${RUN_MANGOHUD} ${PW_RUNTIME} env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}
+            echo "Full command line: $PW_TERM ${optirun_on} ${PW_RUNTIME} env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}"
+            $PW_TERM ${optirun_on} ${PW_RUNTIME} env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}
         fi
     fi
 }
@@ -938,10 +929,12 @@ export USER_CONF="${PORT_WINE_PATH}/data/user.conf"
 check_user_conf
 
 if [ -z "${INSTALLING_PORT}" ] ; then
+    . "${USER_CONF}"
     PW_LOAD_LIBS
     PW_DOWNLOAD_MONO
     PW_DOWNLOAD_GECKO
     PW_UPDATE
     PW_SCRIPTS_UPDATE
     PW_INIT_DB
+    . "${USER_CONF}"
 fi
