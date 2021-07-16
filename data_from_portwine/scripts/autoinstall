@@ -186,3 +186,24 @@ PW_STEAM () {
     fi
     STOP_PORTWINE
 }
+
+PW_OSU () {
+    export WINEPREFIX="${PORT_WINE_PATH}/data/pfx_dotnet"
+    export PW_DLL_INSTALL="dotnet40"
+    mkdir -p "${WINEPREFIX}/drive_c/Program Files (x86)/OSU/"
+    export PW_AUTOINSTALL_EXE="${WINEPREFIX}/drive_c/Program Files (x86)/OSU/osu!.exe"
+    START_PORTWINE
+    if try_download "https://m1.ppy.sh/r/osu!install.exe" "${PW_AUTOINSTALL_EXE}"
+    then
+        PW_START_PROGRESS_BAR_BLOCK "Installing the OSU!. Please wait..."
+        if  [ -f "${PORT_WINE_PATH}/data/pfx_dotnet/drive_c/Program Files (x86)/OSU/osu!install.exe" ]; then
+            mv -f  "${PORT_WINE_PATH}/data/pfx_dotnet/drive_c/Program Files (x86)/OSU/osu!install.exe" "${PORT_WINE_PATH}/data/pfx_dotnet/drive_c/Program Files (x86)/OSU/osu!.exe"
+        fi
+        portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/OSU/osu!.exe"
+        PORTWINE_CREATE_SHORTCUT
+		PW_RUN "${PW_AUTOINSTALL_EXE}"
+        PW_STOP_PROGRESS_BAR
+        KILL_PORTWINE
+    fi
+    STOP_PORTWINE
+}
