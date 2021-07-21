@@ -118,13 +118,10 @@ unpack_tar_xz () {
 }
 pw_mangohud_check () {
     export RUN_MANGOHUD=""
-    unset MANGOHUD
-    unset MANGOHUD_DLSYM
     if [ "${PW_MANGOHUD}" == "1" ] ; then
-        if [ "${PW_VULKAN_USE}" = "0" ]; then
-            export RUN_MANGOHUD="mangohud --dlsym"
-        else
-            export RUN_MANGOHUD="mangohud"
+        if [ "${PW_VULKAN_USE}" = "0" ]
+        then export RUN_MANGOHUD="mangohud --dlsym"
+        else export RUN_MANGOHUD="mangohud"
         fi
     else
         export DISABLE_MANGOHUD=1
@@ -901,6 +898,7 @@ PW_RUN () {
     fi
 }
 ###MAIN###
+unset MANGOHUD MANGOHUD_DLSYM PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_CHECK_AUTOINSTAL
 cd "$(dirname "`readlink -f "$0"`")" && export PORT_SCRIPTS_PATH="$(pwd)"
 cd "${PORT_SCRIPTS_PATH}/../../" && export PORT_WINE_PATH="$(pwd)"
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
@@ -917,7 +915,6 @@ if [ ! -f "${PORT_WINE_TMP_PATH}/${portname}_loc" ] ; then
 fi
 . "${PORT_SCRIPTS_PATH}"/lang
 
-unset MANGOHUD PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_CHECK_AUTOINSTAL
 var_winedlloverride_update "winemenubuilder.exe="
 export urlg="https://portwine-linux.ru/portwine-faq/"
 export PW_FTP_URL="https://portwine-linux.ru/ftp"
