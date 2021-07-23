@@ -2,6 +2,7 @@
 # Author: Castro-Fidel (PortWINE-Linux.ru)
 ########################################################################
 KILL_PORTWINE
+sleep 3
 export PW_USER_TEMP="$WINEPREFIX/drive_c/users/${USER}/Temp"
 export PW_FORCE_LARGE_ADDRESS_AWARE=0
 export PW_USE_GAMEMODE=0
@@ -91,11 +92,12 @@ PW_EPIC () {
     if try_download "https://launcher-public-service-prod06.ol.epicgames.com/launcher/api/installer/download/EpicGamesLauncherInstaller.msi" "${PW_AUTOINSTALL_EXE}"
     then
         PW_START_PROGRESS_BAR_BLOCK "Installing Epic Games Launcher. Please wait..."
-        pw_kill_autostart EpicGamesLauncher.exe
+        pw_kill_autostart EpicGamesLauncher.exe &
         PW_RUN msiexec /i "${PW_AUTOINSTALL_EXE}" &
         sleep 10
         if [ ! -z `pgrep msiexec* | head -n 1` ] ; then
-            while [ ! -z `pgrep msiexec* | head -n 1` ] || [ ! -z `pgrep rundll32* | head -n 1` ] || [ ! -z `pgrep wrap | head -n 1` ]; do
+            while [ ! -z `pgrep msiexec* | head -n 1` ] || [ ! -z `pgrep rundll32* | head -n 1` ] || [ ! -z `pgrep -a wrap | grep ${portname} | head -n 1` ]
+            do
                 [ ! -z `pgrep rundll32* | head -n 1` ] && kill -n 9 `pgrep rundll32* | head -n 1` && echo "Kill rundll32.exe"
                 sleep 5
             done

@@ -593,7 +593,6 @@ RUN_WINETRICKS_FROM_DB () {
         if [ ! -e "${WINEPREFIX}/winetricks.log" ] ; then
             touch "${WINEPREFIX}/winetricks.log"
         fi
-        try_remove_dir "${HOME}/.cache/winetricks/vcrun2019/"
         for need_install_dll_to_pfx in ${PW_DLL_INSTALL} ; do
             if [ "${need_install_dll_to_pfx}" == "vcrun2015" ] || [ "${need_install_dll_to_pfx}" == "vcrun2017" ] ; then
                 need_install_dll_to_pfx="vcrun2019"
@@ -616,7 +615,7 @@ RUN_WINETRICKS_FROM_DB () {
             PW_STOP_PROGRESS_BAR
             print_info "Try to install DLL in prefix: ${PW_DLL_NEED_INSTALL}"
             chmod -R 775 "${HOME}/.cache/winetricks"
-            ${PW_RUNTIME} xterm -e env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" "${PORT_WINE_TMP_PATH}/winetricks" -q ${PW_DLL_NEED_INSTALL}
+            ${PW_RUNTIME} xterm -e env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" "${PORT_WINE_TMP_PATH}/winetricks" -q -f ${PW_DLL_NEED_INSTALL}
         fi
         PW_START_PROGRESS_BAR_CS "Start ${portname}... Please wait..."
     fi
