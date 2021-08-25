@@ -588,15 +588,54 @@ pw_kill_autostart () {
 }
 
 edit_db_from_gui () {
-    if [ -z "`cat "${PORTWINE_DB_FILE}" | grep "export ${1}="`" ] ; then
-        echo "export ${1}=${!1}" >> "${PORTWINE_DB_FILE}"
-    elif [ "`cat "${PORTWINE_DB_FILE}" | grep "export ${1}=" | grep -v "#"`" ] ; then
-        if [ "`cat "${PORTWINE_DB_FILE}" | grep "export ${1}=" | grep -v "#"`" != "export ${1}=${!1}" ] ; then
-            sed -ri "s/^export ${1}=.*/export ${1}=${!1}/" "${PORTWINE_DB_FILE}"
+    for mod_db in $@ ; do 
+        echo "${mod_db}=${!mod_db}"
+        if [ -z "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}="`" ] ; then
+            echo "export ${mod_db}=${!mod_db}" >> "${PORTWINE_DB_FILE}"
+        elif [ "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}=" | grep -v "#"`" ] ; then
+            if [ "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}=" | grep -v "#"`" != "export ${mod_db}=${!mod_db}" ] ; then
+                sed -ri "s/^export ${mod_db}=.*/export ${mod_db}=${!mod_db}/" "${PORTWINE_DB_FILE}"
+            fi
+        elif [ "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}="`" != "export ${mod_db}=${!mod_db}" ] ; then
+            sed -ri "s/.*export ${mod_db}=.*/export ${mod_db}=${!mod_db}/g" "${PORTWINE_DB_FILE}"
         fi
-    elif [ "`cat "${PORTWINE_DB_FILE}" | grep "export ${1}="`" != "export ${1}=${!1}" ] ; then
-        sed -ri "s/.*export ${1}=.*/export ${1}=${!1}/g" "${PORTWINE_DB_FILE}"
-    fi
+    done
+}
+
+pw_gui_for_edit_db () {
+    unset ADD_CHK_BOX_EDIT_DB
+    edit_db_field_add () {
+        for int_to_boole in $@ ; do
+            if [ "${!int_to_boole}" == "1" ] ; then
+                export ${int_to_boole}="TRUE"
+            else
+                export ${int_to_boole}="FALSE"
+            fi
+            ADD_CHK_BOX_EDIT_DB="${ADD_CHK_BOX_EDIT_DB} --field="${int_to_boole}:CHK" "${!int_to_boole}""
+        done
+    }
+    edit_db_field_add $@
+    output_yad_edit_db=`"${pw_yad}" --title "EDIT_DB" --text-align=center --text "Change settings in database file for ${PORTWINE_DB}\n" \
+    --columns=4 --form --separator=" " --borders=10 --center  ${ADD_CHK_BOX_EDIT_DB} `
+    YAD_STATUS="$?"
+    [ "$YAD_STATUS" == "1" ] && exit 0 
+    [ "$YAD_STATUS" == "252" ] && xdg-open "${PORTWINE_DB_FILE}" & exit 0
+    export output_yad_edit_db=($output_yad_edit_db)
+    export bool_from_yad=0
+    edit_db_field_read () {
+        for boole_to_int in $@ ; do
+            export ${boole_to_int}=${output_yad_edit_db[$bool_from_yad]}
+            if [ "${!boole_to_int}" == "TRUE" ] ; then
+                export ${boole_to_int}="1"
+            else
+                export ${boole_to_int}="0"
+            fi
+            export bool_from_yad=$(( ${bool_from_yad} + 1 ))
+        done
+    }
+    edit_db_field_read $@
+    edit_db_from_gui $@
+    return 0
 }
 
 pw_check_and_download_wine () {

@@ -201,7 +201,11 @@ pw_winetricks () {
 }
 
 pw_edit_db () {
-    xdg-open "${PORTWINE_DB_FILE}"
+    pw_gui_for_edit_db ENABLE_VKBASALT PW_NO_ESYNC PW_NO_FSYNC PW_DXR_ON PW_VULKAN_NO_ASYNC PW_USE_NVAPI \
+    PW_OLD_GL_STRING PW_HIDE_NVIDIA_GPU PW_FORCE_USE_VSYNC PW_VIRTUAL_DESKTOP PW_WINEDBG_DISABLE PW_USE_TERMINAL \
+    PW_WINE_ALLOW_XIM PW_HEAP_DELAY_FREE PW_NO_WRITE_WATCH PW_GUI_DISABLED_CS
+    [ "$?" == 0 ] && /bin/bash -c ${pw_full_command_line[*]} & 
+    exit 0
 }
 
 pw_autoinstall_from_db () {
@@ -249,7 +253,8 @@ if [ ! -z "${portwine_exe}" ]; then
         --button='CREATE SHORTCUT'!!"${loc_creat_shortcut}":100 \
         --button='DEBUG'!!"${loc_debug}":102 \
         --button='LAUNCH'!!"${loc_launch}":106 )
-        PW_YAD_SET="$?"
+        export PW_YAD_SET="$?" 
+        if [ "$PW_YAD_SET" == "1" ] || [ "$PW_YAD_SET" == "252" ] ; then exit 0 ; fi
         export VULKAN_MOD=`echo "${OUTPUT_START}" | grep \;\; | awk -F";" '{print $1}' | awk '{print $1}'`
         export PW_WINE_VER=`echo "${OUTPUT_START}" | grep \;\; | awk -F";" '{print $2}' | awk '{print $1}'`
     elif [ ! -z "${PORTWINE_DB_FILE}" ]; then
@@ -335,6 +340,8 @@ else
     "${pw_yad}" --key=$KEY --notebook --borders=10 --width=1000 --height=168 --no-buttons --text-align=center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "$portname" --separator=";" \
     --tab-pos=right --tab="PORT_PROTON" --tab="AUTOINSTALL" --tab="    SETTINGS" --center
+    YAD_STATUS="$?"
+    if [ "$YAD_STATUS" == "1" ] || [ "$YAD_STATUS" == "252" ] ; then exit 0 ; fi
 
     if [ -f "${PORT_WINE_TMP_PATH}/tmp_yad_form" ] ; then
         export PW_YAD_SET=`cat "${PORT_WINE_TMP_PATH}/tmp_yad_form" | head -n 1 | awk '{print $1}'`
@@ -355,6 +362,7 @@ if [ ! -z "${VULKAN_MOD}" ] ; then
 fi
 
 init_wine_ver 
+
 if [ -z "${PW_DISABLED_CREAT_DB}" ] ; then 
     if [ ! -z "${PORTWINE_DB}" ] ; then
         PORTWINE_DB_FILE=`grep -il "\#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/*`
@@ -367,8 +375,7 @@ if [ -z "${PW_DISABLED_CREAT_DB}" ] ; then
             export PORTWINE_DB_FILE="${PORT_SCRIPTS_PATH}/portwine_db/${PORTWINE_DB}"
         fi
 
-        edit_db_from_gui PW_VULKAN_USE
-        edit_db_from_gui PW_WINE_USE
+        edit_db_from_gui PW_VULKAN_USE PW_WINE_USE
 
         PW_DB_TMP=`cat "${PORTWINE_DB_FILE}"` 
         echo "${PW_DB_TMP}" | awk '! a[$0]++' > "${PORTWINE_DB_FILE}"
