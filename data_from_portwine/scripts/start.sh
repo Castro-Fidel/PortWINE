@@ -374,12 +374,7 @@ if [ -z "${PW_DISABLED_CREAT_DB}" ] ; then
             cat "${PORT_SCRIPTS_PATH}/portwine_db/default" | grep "##" >> "${PORT_SCRIPTS_PATH}/portwine_db/$PORTWINE_DB"
             export PORTWINE_DB_FILE="${PORT_SCRIPTS_PATH}/portwine_db/${PORTWINE_DB}"
         fi
-
         edit_db_from_gui PW_VULKAN_USE PW_WINE_USE
-
-        PW_DB_TMP=`cat "${PORTWINE_DB_FILE}"` 
-        echo "${PW_DB_TMP}" | awk '! a[$0]++' > "${PORTWINE_DB_FILE}"
-        unset PW_DB_TMP
     fi
 fi
 case "$PW_YAD_SET" in
