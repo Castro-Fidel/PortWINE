@@ -148,11 +148,11 @@ pw_vkbasalt_check () {
         fi
         sed -ri "s/casSharpness = .*/casSharpness = ${PW_VKBASALT_FFX_CAS}/g" "${PORT_WINE_PATH}/data/vkBasalt.conf"
         export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
-    else 
+    else
         export DISABLE_VKBASALT=1
     fi
 
-} 
+}
 
 gui_question () {
     `zenity --question --title "${inst_set}." --text "$1" --no-wrap ` &> /dev/null
@@ -259,7 +259,7 @@ pw_start_progress_bar_block () {
 }
 
 pw_stop_progress_bar () {
-    while [ ! -z "`pgrep -a yad | grep "\-\-progress" | awk '{print $1}'`" ] 
+    while [ ! -z "`pgrep -a yad | grep "\-\-progress" | awk '{print $1}'`" ]
     do kill -n 9 `pgrep -a yad | grep "\-\-progress" | awk '{print $1}' | head -n 1` &> /dev/null
     done
 }
@@ -404,11 +404,11 @@ stop_portwine () {
     try_remove_file "${PORT_SCRIPTS_PATH}/0"
     try_remove_file "${PORT_SCRIPTS_PATH}/1"
     kill_portwine
-    if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ] 
+    if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ]
     then kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`"
     fi
-    if [  ! -z "`ls "${WINEPREFIX}"/drive_c/users/steamuser/Temp/ | head -n 1`" ] 
-    then 
+    if [  ! -z "`ls "${WINEPREFIX}"/drive_c/users/steamuser/Temp/ | head -n 1`" ]
+    then
         chmod -R 755 "${WINEPREFIX}"/drive_c/users/steamuser/Temp/
         rm -fr "${WINEPREFIX}"/drive_c/users/steamuser/Temp/*
     fi
@@ -422,7 +422,7 @@ pw_tray_icon () {
         export -f tray_icon_click
         tray_icon_click_exit() {
             kill_portwine
-            if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ] 
+            if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ]
             then kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`"
             fi
             killall start.sh
@@ -528,7 +528,7 @@ pw_scripts_update () {
     fi
     read "scripts_update_not" < "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     if [ "${scripts_update_not}" = "1" ] ; then
-        if try_download_silent "https://github.com/Castro-Fidel/PortWINE/raw/master/data_from_portwine/scripts/var" "${PORT_WINE_TMP_PATH}/scripts_cur_ver" ; then         
+        if try_download_silent "https://github.com/Castro-Fidel/PortWINE/raw/master/data_from_portwine/scripts/var" "${PORT_WINE_TMP_PATH}/scripts_cur_ver" ; then
             export scripts_current_ver=`cat "${PORT_WINE_TMP_PATH}/scripts_cur_ver" | grep SCRIPTS_NEXT_VERSION | awk -F "=" '{print $2}'`
             try_remove_file "${PORT_WINE_TMP_PATH}/scripts_cur_ver"
             echo "Scripts version in github = ${scripts_current_ver}"
@@ -544,7 +544,7 @@ pw_scripts_update () {
                         echo "Update scripts..."
                         try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
                         if try_download "https://github.com/Castro-Fidel/PortWINE/archive/refs/heads/master.tar.gz" "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" ; then
-                            tar -xvzf "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" -C "${PORT_WINE_TMP_PATH}" 
+                            tar -xvzf "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" -C "${PORT_WINE_TMP_PATH}"
                             if [ "$?" == "0" ] ; then
                                 cp -fr "${PORT_WINE_TMP_PATH}/PortWINE-master/data_from_portwine/"* "${PORT_WINE_PATH}/data/"
                                 try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
@@ -553,7 +553,7 @@ pw_scripts_update () {
                                 "${pw_yad}" --title="Changelog" --borders=10 \
                                 --text="Скрипты были успешно обновлены.\nДля продолжения запуска порта нажмите ОК." \
                                 --text-align=center --text-info --show-uri --wrap --center --width=1200 --height=550 \
-                                --filename="${PORT_WINE_PATH}/data/changelog" --uri-color=red                               
+                                --filename="${PORT_WINE_PATH}/data/changelog" --uri-color=red
                                 [ "$?" == 0 ] && /bin/bash -c ${pw_full_command_line[*]} &
                                 exit 0
                             fi
@@ -576,7 +576,7 @@ pw_kill_autostart () {
     else
         sleep 10
         while true ; do
-            if  [ -z `pgrep "$1" | head -n 1` ] && [ ! -z `pgrep wrap | head -n 1` ]; then
+            if  [ -z "`ps aux | grep "$1" | head -n 1 | awk '{print $2}'`" ] && [ ! -z "`pgrep wrap | head -n 1`" ]; then
                 echo -e "PID "$1" not found"
                 sleep 1
             else
@@ -588,7 +588,7 @@ pw_kill_autostart () {
 }
 
 edit_db_from_gui () {
-    for mod_db in $@ ; do 
+    for mod_db in $@ ; do
         echo "${mod_db}=${!mod_db}"
         if [ -z "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}="`" ] ; then
             echo "export ${mod_db}=${!mod_db}" >> "${PORTWINE_DB_FILE}"
@@ -618,9 +618,9 @@ pw_gui_for_edit_db () {
     output_yad_edit_db=`"${pw_yad}" --title "EDIT_DB" --text-align=center --text "Change settings in database file for ${PORTWINE_DB}\n" \
     --columns=4 --form --separator=" " --borders=10 --center  ${ADD_CHK_BOX_EDIT_DB} `
     YAD_STATUS="$?"
-    if [ "$YAD_STATUS" == "1" ] ; then exit 0 
-    elif [ "$YAD_STATUS" == "252" ] ; then 
-        xdg-open "${PORTWINE_DB_FILE}" & 
+    if [ "$YAD_STATUS" == "1" ] ; then exit 0
+    elif [ "$YAD_STATUS" == "252" ] ; then
+        xdg-open "${PORTWINE_DB_FILE}" &
         exit 0
     fi
     export output_yad_edit_db=($output_yad_edit_db)
@@ -638,7 +638,7 @@ pw_gui_for_edit_db () {
     }
     edit_db_field_read $@
     edit_db_from_gui $@
-    PW_DB_TMP=`cat "${PORTWINE_DB_FILE}"` 
+    PW_DB_TMP=`cat "${PORTWINE_DB_FILE}"`
     echo "${PW_DB_TMP}" | awk '! a[$0]++' > "${PORTWINE_DB_FILE}"
     unset PW_DB_TMP
     return 0
@@ -662,7 +662,7 @@ pw_check_and_download_wine () {
                     try_remove_file "${PORT_WINE_PATH}/data/tmp/Proton-${PW_PROTON_GE_VER}.tar.gz"
                     try_remove_dir "${PORT_WINE_PATH}/data/tmp/Proton-${PW_PROTON_GE_VER}"
                     try_remove_dir "${PORT_WINE_PATH}/data/dist/proton_ge"
-                
+
                     `zenity --error --title "Error..." \
                     --text "Failed to download WINE: proton_ge.\nCheck internet connection and press OK" \
                     --no-wrap ` > /dev/null 2>&1 && pw_check_and_download_wine
@@ -675,4 +675,3 @@ pw_check_and_download_wine () {
         fi
     fi
 }
-  

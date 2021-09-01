@@ -50,7 +50,7 @@ portwine_create_shortcut () {
     echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
     echo "Name=${PORTPROTON_NAME}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
     if [ -z "${PW_CHECK_AUTOINSTAL}" ]
-    then echo "Exec=env PW_GUI_DISABLED_CS=1 "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${PORTPROTON_EXE}\" "" \
+    then echo "Exec=env "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${PORTPROTON_EXE}\" "" \
     >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
     else echo "Exec=env "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${PORTPROTON_EXE}\" "" \
     >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
@@ -204,7 +204,7 @@ pw_edit_db () {
     pw_gui_for_edit_db ENABLE_VKBASALT PW_NO_ESYNC PW_NO_FSYNC PW_DXR_ON PW_VULKAN_NO_ASYNC PW_USE_NVAPI \
     PW_OLD_GL_STRING PW_HIDE_NVIDIA_GPU PW_FORCE_USE_VSYNC PW_VIRTUAL_DESKTOP PW_WINEDBG_DISABLE PW_USE_TERMINAL \
     PW_WINE_ALLOW_XIM PW_HEAP_DELAY_FREE PW_NO_WRITE_WATCH PW_GUI_DISABLED_CS
-    [ "$?" == 0 ] && /bin/bash -c ${pw_full_command_line[*]} & 
+    [ "$?" == 0 ] && /bin/bash -c ${pw_full_command_line[*]} &
     exit 0
 }
 
@@ -214,15 +214,15 @@ pw_autoinstall_from_db () {
 }
 
 ###MAIN###
-if [ ! -z "${PORTWINE_DB_FILE}" ] ; then 
+if [ ! -z "${PORTWINE_DB_FILE}" ] ; then
     export YAD_EDIT_DB="--button=EDIT  DB!!${loc_edit_db} ${PORTWINE_DB}:118"
     [ -z "${PW_COMMENT_DB}" ] && PW_COMMENT_DB="PortWINE database file for "\"${PORTWINE_DB}"\" was found."
     if [ -z "${PW_VULKAN_USE}" ] || [ -z "${PW_WINE_USE}" ] ; then
         unset PW_GUI_DISABLED_CS
-        [ -z "${PW_VULKAN_USE}" ] && export PW_VULKAN_USE=dxvk 
+        [ -z "${PW_VULKAN_USE}" ] && export PW_VULKAN_USE=dxvk
         [ -z "${PW_WINE_USE}" ] && export PW_WINE_USE=proton_steam
     fi
-    case "${PW_VULKAN_USE}" in      
+    case "${PW_VULKAN_USE}" in
         "vkd3d")
             export PW_DEFAULT_VULKAN_USE='VKD3D  (DX 12 to Vulkan)\!DXVK  (DX 9-11 to Vulkan)\!OPENGL ' ;;
         "0")
@@ -253,7 +253,7 @@ if [ ! -z "${portwine_exe}" ]; then
         --button='CREATE SHORTCUT'!!"${loc_creat_shortcut}":100 \
         --button='DEBUG'!!"${loc_debug}":102 \
         --button='LAUNCH'!!"${loc_launch}":106 )
-        export PW_YAD_SET="$?" 
+        export PW_YAD_SET="$?"
         if [ "$PW_YAD_SET" == "1" ] || [ "$PW_YAD_SET" == "252" ] ; then exit 0 ; fi
         export VULKAN_MOD=`echo "${OUTPUT_START}" | grep \;\; | awk -F";" '{print $1}' | awk '{print $1}'`
         export PW_WINE_VER=`echo "${OUTPUT_START}" | grep \;\; | awk -F";" '{print $2}' | awk '{print $1}'`
@@ -320,6 +320,8 @@ else
     --field="   Steam Client Launcher"!"$PW_GUI_ICON_PATH/steam.png":"BTN" '@bash -c "button_click PW_STEAM"' \
     --field="   EVE Online Launcher"!"$PW_GUI_ICON_PATH/eve.png":"BTN" '@bash -c "button_click PW_EVE"' \
     --field="   Origin Launcher"!"$PW_GUI_ICON_PATH/origin.png":"BTN" '@bash -c "button_click PW_ORIGIN"' \
+    --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/Bethesda.png":"BTN" '@bash -c "button_click PW_BETHESDA"' \
+    --field="   Rockstar Games Launcher"!"$PW_GUI_ICON_PATH/Rockstar.png":"BTN" '@bash -c "button_click PW_ROCKSTAR"' \
     --field="   OSU"!"$PW_GUI_ICON_PATH/osu.png":"BTN" '@bash -c "button_click PW_OSU"' & \
 
     "${pw_yad}" --plug=${KEY} --tabnum=1 --columns=3 --form --separator=";" \
