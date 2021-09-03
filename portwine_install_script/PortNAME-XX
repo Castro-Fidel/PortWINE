@@ -21,28 +21,28 @@ export PROGS_INST=""
 export vexit=0
 export minimum_ldd_ver="2.21"
 ########################################################################
-export local_script_hash=$(sha256sum "$0" | awk '{print $1}')
-export remote_script_hash=`curl -s --list-only "${PW_FTP_URL}/portwine/${portname}-${port_ver}.sha256sum" | awk '{print $1}'`
-if [ "${local_script_hash}" != "${remote_script_hash}" ] ; then
-	echo "\033[31mHash sum does not match, please download the ${portname}-${port_ver} again.\033[0m"
-	zenity --error --no-wrap --text "Hash sum does not match, please download the ${portname}-${port_ver} again." 2> /dev/null  
-	exit 1
-fi	
-export system_ldd_ver=`ldd --version | grep -m1 ldd | awk '{print $NF}'` 
-if [ `echo ${system_ldd_ver} | tr -d .` -lt `echo ${minimum_ldd_ver} | tr -d .` ] ; then
-	echo "\033[31mYour system doesn\`t support ${portname}.\nGlibc version required >= ${minimum_ldd_ver}\nGlibc in your system = ${system_ldd_ver}\033[0m"
-	zenity --error --no-wrap --text "Your system doesn\`t support ${portname}.\nGlibc version required >= ${minimum_ldd_ver}\nGlibc in your system = ${system_ldd_ver}" 2> /dev/null  
-	exit 1
-fi
-for PROGS in "wget" "curl" "tar" 
+for PROGS in "wget" "curl" "tar" "sha256sum" "awk"
 do
 	if [ ! -x "`which "${PROGS}" 2>/dev/null`" ] ; then
 		PROGS_INST="${PROGS_INST} ${PROGS}" && vexit=1
 	fi
 done
 if [ "${vexit}" -eq "1" ] ; then
-    echo "You will need to install: ${PROGS_INST}, and restart the script" 
+    echo "You will need to install: ${PROGS_INST}, and restart the script"
     exit 1
+fi
+export local_script_hash=$(sha256sum "$0" | awk '{print $1}')
+export remote_script_hash=`curl -s --list-only "${PW_FTP_URL}/portwine/${portname}-${port_ver}.sha256sum" | awk '{print $1}'`
+if [ "${local_script_hash}" != "${remote_script_hash}" ] ; then
+	echo "\033[31mHash sum does not match, please download the ${portname}-${port_ver} again.\033[0m"
+	zenity --error --no-wrap --text "Hash sum does not match, please download the ${portname}-${port_ver} again." 2> /dev/null
+	exit 1
+fi
+export system_ldd_ver=`ldd --version | grep -m1 ldd | awk '{print $NF}'`
+if [ `echo ${system_ldd_ver} | tr -d .` -lt `echo ${minimum_ldd_ver} | tr -d .` ] ; then
+	echo "\033[31mYour system doesn\`t support ${portname}.\nGlibc version required >= ${minimum_ldd_ver}\nGlibc in your system = ${system_ldd_ver}\033[0m"
+	zenity --error --no-wrap --text "Your system doesn\`t support ${portname}.\nGlibc version required >= ${minimum_ldd_ver}\nGlibc in your system = ${system_ldd_ver}" 2> /dev/null  
+	exit 1
 fi
 ########################################################################
 cd "$(dirname "`readlink -f "$0"`")"

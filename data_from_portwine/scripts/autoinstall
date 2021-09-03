@@ -234,3 +234,22 @@ PW_ROCKSTAR () {
     fi
     stop_portwine
 }
+
+PW_MYGAMES () {
+    export LAUNCH_PARAMETERS=("")
+    export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/MyGamesLoader.exe"
+    start_portwine
+    if try_download "https://static.gc.my.games/MyGamesLoader.exe" "${PW_AUTOINSTALL_EXE}"
+    then
+        pw_start_progress_bar_block "Installing the My.Games. Please wait..."
+        pw_kill_autostart GameCenter.exe &
+        pw_run "${PW_AUTOINSTALL_EXE}"
+        portwine_exe="$WINEPREFIX/drive_c/users/steamuser/AppData/Local/GameCenter/GameCenter.exe"
+        try_remove_file "${PW_AUTOINSTALL_EXE}"
+        kill_portwine
+        pw_stop_progress_bar
+        export PORTWINE_CREATE_SHORTCUT_NAME="MY.GAMES"
+        portwine_create_shortcut
+    fi
+    stop_portwine
+}

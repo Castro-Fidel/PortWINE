@@ -322,6 +322,7 @@ else
     --field="   Origin Launcher"!"$PW_GUI_ICON_PATH/origin.png":"BTN" '@bash -c "button_click PW_ORIGIN"' \
     --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/Bethesda.png":"BTN" '@bash -c "button_click PW_BETHESDA"' \
     --field="   Rockstar Games Launcher"!"$PW_GUI_ICON_PATH/Rockstar.png":"BTN" '@bash -c "button_click PW_ROCKSTAR"' \
+    --field="   My.Games Launcher"!"$PW_GUI_ICON_PATH/mygames.png":"BTN" '@bash -c "button_click PW_MYGAMES"' \
     --field="   OSU"!"$PW_GUI_ICON_PATH/osu.png":"BTN" '@bash -c "button_click PW_OSU"' & \
 
     "${pw_yad}" --plug=${KEY} --tabnum=1 --columns=3 --form --separator=";" \
@@ -363,9 +364,9 @@ if [ ! -z "${VULKAN_MOD}" ] ; then
     fi
 fi
 
-init_wine_ver 
+init_wine_ver
 
-if [ -z "${PW_DISABLED_CREAT_DB}" ] ; then 
+if [ -z "${PW_DISABLED_CREAT_DB}" ] ; then
     if [ ! -z "${PORTWINE_DB}" ] ; then
         PORTWINE_DB_FILE=`grep -il "\#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/*`
         if [ -z "${PORTWINE_DB_FILE}" ] ; then
