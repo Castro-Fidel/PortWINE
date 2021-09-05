@@ -204,8 +204,10 @@ pw_edit_db () {
     pw_gui_for_edit_db ENABLE_VKBASALT PW_NO_ESYNC PW_NO_FSYNC PW_DXR_ON PW_VULKAN_NO_ASYNC PW_USE_NVAPI \
     PW_OLD_GL_STRING PW_HIDE_NVIDIA_GPU PW_FORCE_USE_VSYNC PW_VIRTUAL_DESKTOP PW_WINEDBG_DISABLE PW_USE_TERMINAL \
     PW_WINE_ALLOW_XIM PW_HEAP_DELAY_FREE PW_NO_WRITE_WATCH PW_GUI_DISABLED_CS
-    [ "$?" == 0 ] && /bin/bash -c ${pw_full_command_line[*]} &
-    exit 0
+    if [ "$?" == 0 ] ; then
+        /bin/bash -c ${pw_full_command_line[*]} &
+        exit 0
+    fi
 }
 
 pw_autoinstall_from_db () {
@@ -223,18 +225,13 @@ if [ ! -z "${PORTWINE_DB_FILE}" ] ; then
         [ -z "${PW_WINE_USE}" ] && export PW_WINE_USE=proton_steam
     fi
     case "${PW_VULKAN_USE}" in
-        "vkd3d")
-            export PW_DEFAULT_VULKAN_USE='VKD3D  (DX 12 to Vulkan)\!DXVK  (DX 9-11 to Vulkan)\!OPENGL ' ;;
-        "0")
-            export PW_DEFAULT_VULKAN_USE='OPENGL \!DXVK  (DX 9-11 to Vulkan)\!VKD3D  (DX 12 to Vulkan)' ;;
-        *)
-            export PW_DEFAULT_VULKAN_USE='DXVK  (DX 9-11 to Vulkan)\!VKD3D  (DX 12 to Vulkan)\!OPENGL ' ;;
+        "vkd3d") export PW_DEFAULT_VULKAN_USE='VKD3D  (DX 12 to Vulkan)\!DXVK  (DX 9-11 to Vulkan)\!OPENGL ' ;;
+            "0") export PW_DEFAULT_VULKAN_USE='OPENGL \!DXVK  (DX 9-11 to Vulkan)\!VKD3D  (DX 12 to Vulkan)' ;;
+              *) export PW_DEFAULT_VULKAN_USE='DXVK  (DX 9-11 to Vulkan)\!VKD3D  (DX 12 to Vulkan)\!OPENGL ' ;;
     esac
     case "${PW_WINE_USE}" in
-        "proton_ge")
-            export PW_DEFAULT_WINE_USE='PROTON_GE   (FSR included)\!PROTON_STEAM' ;;
-        *)
-            export PW_DEFAULT_WINE_USE='PROTON_STEAM\!PROTON_GE   (FSR included)' ;;
+        "proton_ge") export PW_DEFAULT_WINE_USE='PROTON_GE   (FSR included)\!PROTON_STEAM' ;;
+                  *) export PW_DEFAULT_WINE_USE='PROTON_STEAM\!PROTON_GE   (FSR included)' ;;
     esac
 else
     export PW_DEFAULT_VULKAN_USE='DXVK  (DX 9-11 to Vulkan)\!VKD3D  (DX 12 to Vulkan)\!OPENGL '
