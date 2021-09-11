@@ -1,0 +1,18 @@
+#!/bin/bash
+# Author: Castro-Fidel (PortWINE-Linux.ru)
+########################################################################
+export LAUNCH_PARAMETERS=("/VERYSILENT")
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/setup_galaxy_2.0.41.150.exe"
+start_portwine
+if try_download "https://content-system.gog.com/open_link/download?path=/open/galaxy/client/2.0.41.150/setup_galaxy_2.0.41.150.exe" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_start_progress_bar_block "Installing the GOG Galaxy. Please wait..."
+    pw_kill_autostart GalaxyClient.* &
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/GOG Galaxy/GalaxyClient.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    kill_portwine
+    pw_stop_progress_bar
+    portwine_create_shortcut
+fi
+stop_portwine

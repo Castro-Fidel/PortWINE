@@ -211,8 +211,23 @@ pw_edit_db () {
 }
 
 pw_autoinstall_from_db () {
-    . "$PORT_SCRIPTS_PATH/autoinstall"
-    $PW_YAD_SET
+    kill_portwine
+    sleep 3
+    export PW_USER_TEMP="$WINEPREFIX/drive_c/users/${USER}/Temp"
+    export PW_FORCE_LARGE_ADDRESS_AWARE=0
+    export PW_USE_GAMEMODE=0
+    export PW_CHECK_AUTOINSTAL=1
+    export PW_GUI_DISABLED_CS=1
+    export PW_WINEDBG_DISABLE=1
+    export PW_NO_WRITE_WATCH=0
+    export PW_VULKAN_USE=0
+    unset PW_WINE_VER
+    export PW_WINE_USE=proton_steam
+    export PW_NO_FSYNC=1
+    export PW_NO_ESYNC=1
+    unset PORTWINE_CREATE_SHORTCUT_NAME
+    export PW_DISABLED_CREAT_DB=1
+    . "${PORT_SCRIPTS_PATH}/pw_autoinstall/${PW_YAD_SET}"
 }
 
 ###MAIN###
@@ -287,6 +302,7 @@ else
             rm -f `grep -il PortProton "${HOME}/.local/share/applications"/*`
             update-desktop-database -q "${HOME}/.local/share/applications"
         fi
+        exit 0
     }
     export -f gui_rm_portproton
 
@@ -308,7 +324,7 @@ else
     --field="WINE UNINSTALLER":"BTN" '@bash -c "button_click gui_wine_uninstaller"' \
     --field="REMOVE PORTPROTON":"BTN" '@bash -c "button_click gui_rm_portproton"' & \
 
-    "${pw_yad}" --plug=$KEY --tabnum=2 --form --columns=2  --scroll \
+    "${pw_yad}" --plug=$KEY --tabnum=2 --form --columns=3  --scroll  --height=500 \
     --field="   Wargaming Game Center"!"$PW_GUI_ICON_PATH/wgc.png":"BTN" '@bash -c "button_click PW_WGC"' \
     --field="   Battle.net Launcher"!"$PW_GUI_ICON_PATH/battle_net.png":"BTN" '@bash -c "button_click PW_BATTLE_NET"' \
     --field="   Epic Games Launcher"!"$PW_GUI_ICON_PATH/epicgames.png":"BTN" '@bash -c "button_click PW_EPIC"' \
@@ -320,7 +336,10 @@ else
     --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/Bethesda.png":"BTN" '@bash -c "button_click PW_BETHESDA"' \
     --field="   Rockstar Games Launcher"!"$PW_GUI_ICON_PATH/Rockstar.png":"BTN" '@bash -c "button_click PW_ROCKSTAR"' \
     --field="   My.Games Launcher"!"$PW_GUI_ICON_PATH/mygames.png":"BTN" '@bash -c "button_click PW_MYGAMES"' \
-    --field="   OSU"!"$PW_GUI_ICON_PATH/osu.png":"BTN" '@bash -c "button_click PW_OSU"' & \
+    --field="   OSU"!"$PW_GUI_ICON_PATH/osu.png":"BTN" '@bash -c "button_click PW_OSU"' \
+    --field="   Glyph Client"!"$PW_GUI_ICON_PATH/glyph.png":"BTN" '@bash -c "button_click  PW_GLYPH"' \
+    --field="   Ankama Launcher"!"$PW_GUI_ICON_PATH/ankama.png":"BTN" '@bash -c "button_click PW_ANKAMA"' \
+    --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png":"BTN" '@bash -c "button_click  PW_GAMEFORGE"' & \
 
     "${pw_yad}" --plug=${KEY} --tabnum=1 --columns=3 --form --separator=";" \
     --image "$PW_GUI_ICON_PATH/port_proton.png" \
@@ -377,6 +396,7 @@ if [ -z "${PW_DISABLED_CREAT_DB}" ] ; then
         edit_db_from_gui PW_VULKAN_USE PW_WINE_USE
     fi
 fi
+echo "PW_YAD_SET=$PW_YAD_SET"
 case "$PW_YAD_SET" in
     1|252) exit 0 ;;
     100) portwine_create_shortcut ;;
@@ -388,6 +408,10 @@ case "$PW_YAD_SET" in
     WINEREG|114) pw_winereg ;;
     WINETRICKS|116) pw_winetricks ;;
     118) pw_edit_db ;;
+    gui_clear_pfx) gui_clear_pfx ;;
+    gui_open_var) gui_open_var ;;
+    gui_wine_uninstaller) gui_wine_uninstaller ;;
+    gui_rm_portproton) gui_rm_portproton ;;
     *) pw_autoinstall_from_db ;;
 esac
 

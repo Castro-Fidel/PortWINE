@@ -407,10 +407,12 @@ stop_portwine () {
     if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ]
     then kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`"
     fi
-    if [  ! -z "`ls "${WINEPREFIX}"/drive_c/users/steamuser/Temp/ | head -n 1`" ]
-    then
+    if [  ! -z "`ls "${WINEPREFIX}"/drive_c/users/steamuser/Temp/ | head -n 1`" ] ; then
         chmod -R 755 "${WINEPREFIX}"/drive_c/users/steamuser/Temp/
         rm -fr "${WINEPREFIX}"/drive_c/users/steamuser/Temp/*
+    fi
+    if [  ! -z "`ls "${WINEPREFIX}"/drive_c/ | grep -m 1 ".tmp"`" ] ; then
+        rm -f "${WINEPREFIX}"/drive_c/*.tmp
     fi
 }
 
@@ -576,7 +578,7 @@ pw_kill_autostart () {
     else
         sleep 10
         while true ; do
-            if  [ -z "`ps aux | grep "$1" | grep -v grep | head -n 1 | awk '{print $2}'`" ] && [ ! -z "`pgrep wrap | head -n 1`" ]; then
+            if  [ -z "`ps aux | grep -m 1 "$1" | grep -v grep | awk '{print $2}'`" ] && [ ! -z "`pgrep wrap | head -n 1`" ]; then
                 echo -e "PID "$1" not found"
                 sleep 1
             else
@@ -584,6 +586,9 @@ pw_kill_autostart () {
                 break
             fi
         done
+    fi
+    if [  ! -z "`ls "${WINEPREFIX}"/drive_c/ | grep -m 1 ".tmp"`" ] ; then
+        rm -f "${WINEPREFIX}"/drive_c/*.tmp
     fi
 }
 
@@ -615,10 +620,11 @@ pw_gui_for_edit_db () {
     }
     edit_db_field_add $@
     output_yad_edit_db=`"${pw_yad}" --title "EDIT_DB" --text-align=center --text "Change settings in database file for ${PORTWINE_DB}\n" \
-    --columns=4 --form --separator=" " --borders=10 --center  ${ADD_CHK_BOX_EDIT_DB} `
+    --columns=4 --form --separator=" " --borders=10 --center  ${ADD_CHK_BOX_EDIT_DB} \
+    --button="CANCEL":1 --button="OPEN DB FILE":150 --button="SAVE CHANGES":0 `
     YAD_STATUS="$?"
-    if [ "$YAD_STATUS" == "1" ] ; then exit 0
-    elif [ "$YAD_STATUS" == "252" ] ; then
+    if [ "$YAD_STATUS" == "1" ] || [ "$YAD_STATUS" == "252" ] ; then exit 0
+    elif [ "$YAD_STATUS" == "150" ] ; then
         xdg-open "${PORTWINE_DB_FILE}" &
         exit 0
     fi

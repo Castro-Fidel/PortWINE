@@ -1,0 +1,37 @@
+#!/bin/bash
+# Author: chal55rus (Sergey P.), cefeiko, Castro-Fidel (PortWINE-Linux.ru)
+##########################################################################
+pw_shutdown_please () {
+    if [ "$PW_USE_RUNTIME" != 1 ]
+    then echo "PW_USE_RUNTIME: `echo $PW_USE_RUNTIME`"
+    else
+        sleep 10
+        while true ; do
+            if  [ -z "`ps aux | grep -v grep | grep -wm 1 "$1" | awk '{print $2}'`" ] && [ ! -z "`pgrep wrap | head -n 1`" ]; then
+                echo -e "PID "$1" not found"
+                sleep 1
+            else
+                killall -s TERM gfclient.exe
+                killall -s TERM GameforgeInstaller.exe
+                break
+            fi
+        done
+    fi
+}
+
+export LAUNCH_PARAMETERS=("")
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/GameforgeInstaller.exe"
+start_portwine
+if try_download "https://raw.githubusercontent.com/WarfaceZ/lutris-clients/master/GameforgeInstaller.exe" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_start_progress_bar_block "Gameforge-Client. Please wait..."
+    pw_shutdown_please SparkWebHelper.exe &
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/GameforgeClient/gfclient.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    kill_portwine
+    pw_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="GameforgeClient"
+    portwine_create_shortcut
+fi
+stop_portwine

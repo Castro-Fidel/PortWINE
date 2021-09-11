@@ -1,0 +1,18 @@
+#!/bin/bash
+# Author: Castro-Fidel (PortWINE-Linux.ru)
+########################################################################
+export LAUNCH_PARAMETERS=("/silent" )
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/OriginSetup.exe"
+start_portwine
+if try_download "https://download.dm.origin.com/origin/live/OriginSetup.exe" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_start_progress_bar_block "Installing the Origin. Please wait..."
+    pw_kill_autostart Origin.exe &
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/Origin/Origin.exe"
+    pw_stop_progress_bar
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    kill_portwine
+    portwine_create_shortcut
+fi
+stop_portwine 

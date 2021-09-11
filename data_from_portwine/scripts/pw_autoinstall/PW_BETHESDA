@@ -1,0 +1,19 @@
+#!/bin/bash
+# Author: chal55rus (Sergey P.)
+########################################################################
+export LAUNCH_PARAMETERS=("/VERYSILENT" )
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/BethesdaNetLauncher_Setup.exe"
+start_portwine
+if try_download "https://download.cdp.bethesda.net/BethesdaNetLauncher_Setup.exe" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_start_progress_bar_block "Installing the BethesdaNetLauncher. Please wait..."
+    pw_kill_autostart BethesdaNetLauncher.exe &
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/Bethesda.net Launcher/BethesdaNetLauncher.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    kill_portwine
+    pw_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="Bethesda.net"
+    portwine_create_shortcut
+fi
+stop_portwine

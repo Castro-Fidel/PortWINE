@@ -1,0 +1,19 @@
+#!/bin/bash
+# Author: cefeiko
+########################################################################
+export LAUNCH_PARAMETERS=("/VERYSILENT")
+[ "${update_loc}" = "RUS" ] && export WGC_LOC=RU || export WGC_LOC=EU
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/Wargaming_Game_Center_Install_WoT_${WGC_LOC}.exe"
+start_portwine
+if try_download "https://redirect.wargaming.net/WGC/Wargaming_Game_Center_Install_WoT_${WGC_LOC}.exe" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_start_progress_bar_block "Starting WGC installation..."
+    pw_kill_autostart wgc.exe &
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/ProgramData/Wargaming.net/GameCenter/wgc_api/wgc_api.exe"
+    export PORTWINE_CREATE_SHORTCUT_NAME="Wargaming Game Center"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    kill_portwine
+    portwine_create_shortcut
+fi
+stop_portwine

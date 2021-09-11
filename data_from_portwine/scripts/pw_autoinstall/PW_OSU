@@ -1,0 +1,21 @@
+#!/bin/bash
+# Author: cefeiko
+########################################################################
+export WINEPREFIX="${PORT_WINE_PATH}/data/pfx_dotnet"
+export PW_DLL_INSTALL="dotnet40"
+mkdir -p "${WINEPREFIX}/drive_c/Program Files (x86)/OSU/"
+export PW_AUTOINSTALL_EXE="${WINEPREFIX}/drive_c/Program Files (x86)/OSU/osu!.exe"
+start_portwine
+if try_download "https://m1.ppy.sh/r/osu!install.exe" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_start_progress_bar_block "Installing the OSU!. Please wait..."
+    if  [ -f "${PORT_WINE_PATH}/data/pfx_dotnet/drive_c/Program Files (x86)/OSU/osu!install.exe" ]; then
+        mv -f  "${PORT_WINE_PATH}/data/pfx_dotnet/drive_c/Program Files (x86)/OSU/osu!install.exe" "${PORT_WINE_PATH}/data/pfx_dotnet/drive_c/Program Files (x86)/OSU/osu!.exe"
+    fi
+    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/OSU/osu!.exe"
+    portwine_create_shortcut
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    pw_stop_progress_bar
+    kill_portwine
+fi
+stop_portwine
