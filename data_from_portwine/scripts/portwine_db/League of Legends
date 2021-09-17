@@ -1,14 +1,15 @@
 #!/bin/bash
 #Author: xuser
 #LeagueClient.exe
+#RiotClientServices.exe
 #Rating=1-5
 #####################examples###########################
-##export PW_COMMENT_DB="blablabla"
+export PW_COMMENT_DB="Check openssl in your system!"
 ##export PW_WINDOWS_VER=10                        # Set windows version 10, 7 or XP
 ##export PW_DLL_INSTALL="vcrun2017"               # Install DDL in port prefix (used winetricks)
 ##export WINEDLLOVERRIDES="blabla=n,b"
-export LAUNCH_PARAMETERS="('--launch-product=league_of_legends' '--launch-patchline=live')"                # Additional launch options
-export PW_WINE_USE=proton_ge
+export LAUNCH_PARAMETERS=("--launch-product=league_of_legends" "--launch-patchline=live")                # Additional launch options
+export PW_WINE_USE=PROTON_GE
 export PW_VULKAN_USE=dxvk
 ##export PW_DXR_ON=1
 ##export PW_VULKAN_NO_ASYNC=1                     # Disabled ASYNC for VULKAN
@@ -21,17 +22,42 @@ export PW_VULKAN_USE=dxvk
 ##export ENABLE_VKBASALT=1
 ##export PW_VKBASALT_EFFECTS="FakeHDR:cas"        # Use Reshade in others games (dx9-12 to vulkan only)
 ##export PW_VKBASALT_FFX_CAS="0.75"               # FidelityFX Contrast Adaptive Sharpening (min 0 - max 1)
-##export PW_NO_FSYNC=1                            # Do not use futex-based in-process synchronization primitives. (Automatically disabled on systems with no FUTEX_WAIT_MULTIPLE support.
-##export PW_NO_ESYNC=0                            # Do not use eventfd-based in-process synchronization primitives
+export PW_NO_FSYNC=1                            # Do not use futex-based in-process synchronization primitives. (Automatically disabled on systems with no FUTEX_WAIT_MULTIPLE support.
+export PW_NO_ESYNC=1                            # Do not use eventfd-based in-process synchronization primitives
 ##export PULSE_LATENCY_MSEC=60                    # Fix crackling audio in games
 ##export PW_NO_WRITE_WATCH=1                      # Disable support for memory write watches in ntdll. This is a very dangerous hack and should only be applied if you have verified that the game can operate without write watches. This improves performance for some very specific games (e.g. CoreRT-based games).
 ##export PW_HEAP_DELAY_FREE=1
 ##export PW_WINE_ALLOW_XIM=1                      # Disable XIM support until libx11 >= 1.7 is widespread
-export WINEARCH=win32                           # defaut = win64
-export WINEPREFIX="${PORT_WINE_PATH}/data/pfx_x86"
+export WINEARCH=win32                             # defaut = win64
+export WINEPREFIX="${PORT_WINE_PATH}/data/pfx_lol"
+export PW_MONO_VER="6.3.0"
+export PW_GECKO_VER="2.47.2"
 ##export PW_WINEDBG_DISABLE=1                     # Disabled WINEDBG
 ##export PW_USE_TERMINAL=1                        # Force run in terminal
 ##export PW_GUI_DISABLED_CS=1                     # 1 = disabled GUI
+
+check_port_for_lol () {
+    process=LeagueClientUx.exe
+    uxpid=$(timeout 2m sh -c "until pidof ${process}; do sleep 1; done")
+    if [[ ! -n $uxpid ]]; then
+        echo "Could not find process ${process}"
+        exit 1
+    fi
+    echo "LeagueClientUx pid: ${uxpid}"
+    port=$(xargs -0 < /proc/${uxpid}/cmdline | sed -n 's/.*--app-port=\([[:digit:]]*\).*/\1/p')
+    if [[ ! -n $port ]]; then
+        echo "Could not find port"
+        exit 1
+    fi
+    echo "Waiting for port ${port}"
+    kill -STOP ${uxpid}
+    timeout 5m sh -c "
+    until openssl s_client -connect :${port} <<< Q > /dev/null 2>&1; do
+    sleep 1
+    done"
+    kill -CONT ${uxpid}
+}
+
 add_in_start_portwine () {
     if [ "$(cat /proc/sys/abi/vsyscall32)" -ne 0 ] ; then
         zenity --question --title="Fix for LoL anti-cheat" \
@@ -39,4 +65,5 @@ add_in_start_portwine () {
         [ "$?" = 1 ] && exit 0
         pkexec sh -c 'sysctl -w abi.vsyscall32=0 && sysctl -p'
     fi
+    check_port_for_lol &
 }

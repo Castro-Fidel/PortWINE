@@ -3,18 +3,8 @@
 . "$(dirname $(readlink -f "$0"))/runlib"
 
 try_remove_file "${PORT_WINE_TMP_PATH}/update_notifier"
-try_remove_file "${PORT_WINE_TMP_PATH}/init_run_suc"
-
-try_remove_file "${PORT_WINE_PATH}/settings.desktop"
-try_remove_file "${PORT_WINE_PATH}/debug.desktop"
-try_remove_file "${PORT_WINE_PATH}/reset.desktop"
-
-try_remove_dir "${PORT_WINE_PATH}/data/pfx/dosdevices"
-try_remove_dir "${PORT_WINE_PATH}/Settings"
 try_remove_dir "${PORT_SCRIPTS_PATH}/vars"
-
 create_new_dir "/home/${USER}/.local/share/applications"
-
 name_desktop="PortProton"
 echo "[Desktop Entry]"	 					  > "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "Name=${name_desktop}" 				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
@@ -47,5 +37,4 @@ else
 	`zenity --info --title "${inst_set_top}" --text "${inst_succ}" --no-wrap ` > /dev/null 2>&1
 	xdg-open "http://portwine-linux.ru/portwine-faq/" > /dev/null 2>&1 & exit 0
 fi
-
 unset INSTALLING_PORT

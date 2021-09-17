@@ -40,6 +40,8 @@ start_portwine () {
     export MEDIACONV_VIDEO_TRANSCODED_FILE="${PORT_WINE_TMP_PATH}"/transcoded_video.foz
     export STAGING_SHARED_MEMORY=1
     export PW_FORCE_LARGE_ADDRESS_AWARE=1
+    export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
+
     create_new_dir "${WINEDIR}/share/wine/"
     try_remove_dir "${WINEDIR}"/share/wine/gecko
     try_remove_dir "${WINEDIR}"/share/wine/mono
@@ -254,7 +256,7 @@ start_portwine () {
     if [ ! -d "${WINEPREFIX}/drive_c/users/steamuser/My Documents" ]
     then try_force_link_dir "${WINEPREFIX}/drive_c/users/steamuser/Documents" "${WINEPREFIX}/drive_c/users/steamuser/My Documents"
     fi
-    var_winedlloverride_update "steam_api,steam_api64,steamclient,steamclient64=n"
+    var_winedlloverride_update "steam_api,steam_api64,steamclient,steamclient64=n;lsteamclient,GameOverlayRenderer,GameOverlayRenderer64,winemenubuilder.exe="
 
     # export TOTAL_VRAM=`"${PW_WINELIB}/runtime/bin/glxinfo" -B | grep Total | awk -F: '{print $2}' | awk '{print $1}'`
     # echo "TOTAL_VRAM=${TOTAL_VRAM}"
@@ -373,7 +375,7 @@ start_portwine () {
                 cabextract_fix
             fi
             ${pw_runtime} xterm -e env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" "${PORT_WINE_TMP_PATH}/winetricks" -q -f ${PW_DLL_NEED_INSTALL}
-            if [ "${PW_WINE_USE}" != "proton_steam" ] ; then
+            if [ "${PW_WINE_VER_FROM_DB}" != "PROTON_STEAM" ] ; then
                 /bin/bash -c ${pw_full_command_line[*]} &
                 exit 0
             fi
@@ -425,15 +427,28 @@ pw_run () {
 }
 
 ###MAIN###
+[ $(id -u) -eq 0 ] && echo "Do not run the script from the superuser!" && zenity --error --text "Do not run the script from the superuser!" 2> /dev/null  && exit 1
 unset MANGOHUD MANGOHUD_DLSYM PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_GUI_DISABLED_CS
 unset PW_CHECK_AUTOINSTAL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PORTWINE_DB_FILE PW_DISABLED_CREAT_DB PW_YAD_SET
+export portname=PortProton
 
 cd "$(dirname "`readlink -f "$0"`")" && export PORT_SCRIPTS_PATH="$(pwd)"
 cd "${PORT_SCRIPTS_PATH}/../../" && export PORT_WINE_PATH="$(pwd)"
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
+if [ -d "${PORT_WINE_PATH}/data/dist" ] ; then
+    chmod -R 755 "${PORT_WINE_PATH}/data/dist"
+    orig_IFS="$IFS"
+    IFS=$'\n'
+    for dist_dir in $(ls -1 "${PORT_WINE_PATH}/data/dist/") ; do
+        dist_dir_new=`echo "${dist_dir}" | awk '$1=$1' | sed -e s/[[:blank:]]/_/g`
+        if [ ! -d "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}" ] ; then
+            mv -- "${PORT_WINE_PATH}/data/dist/$dist_dir" "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}"
+        fi
+    done
+    IFS="$orig_IFS"
+fi
 create_new_dir "${PORT_WINE_TMP_PATH}"
 create_new_dir "${HOME}/.PortWINE/tmp"
-read "portname" < "${PORT_WINE_TMP_PATH}/portname" && export portname
 cd "${PORT_SCRIPTS_PATH}"
 . "${PORT_SCRIPTS_PATH}/var"
 
@@ -446,7 +461,6 @@ if [ ! -f "${PORT_WINE_TMP_PATH}/${portname}_loc" ] ; then
 fi
 . "${PORT_SCRIPTS_PATH}"/lang
 
-var_winedlloverride_update "winemenubuilder.exe="
 export urlg="https://portwine-linux.ru/portwine-faq/"
 export PW_FTP_URL="https://portwine-linux.ru/ftp"
 export PW_WINELIB="${HOME}/.PortWINE/libs${PW_LIBS_VER}"
@@ -458,11 +472,10 @@ check_user_conf
 
 if [ -z "${INSTALLING_PORT}" ] ; then
     . "${USER_CONF}"
+    pw_port_update
     pw_download_libs
     pw_download_mono
     pw_download_gecko
-    pw_update_notifier
-    pw_scripts_update
     pw_init_db
     . "${USER_CONF}"
 fi

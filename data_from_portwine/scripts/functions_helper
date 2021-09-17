@@ -78,14 +78,14 @@ try_force_link_dir () {
 
 try_download () {
     set -o pipefail
-    wget -c -t 5 -T 2 "$1" --output-document="$2" 2>&1 | \
+    wget -c -t 5 -T 20 "$1" --output-document="$2" 2>&1 | \
     sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
     zenity --progress --percentage=0 --title="Download $(basename $1)" --text=Starting... --auto-close --auto-kill --width=500 --height=90
     [ "${PIPESTATUS[0]}" != 0 ] && print_error "failed to download $1. Scipping." && return 1 || return 0
 }
 
 try_download_silent () {
-    wget -c -t 5 -T 2 "$1" --output-document="$2"
+    wget -c -t 5 -T 20 "$1" --output-document="$2"
     [ "$?" != 0 ] && print_error "failed to download $1. Scipping." && return 1 || return 0
 }
 
@@ -122,6 +122,12 @@ unpack_tar_xz () {
 unpack_tar_gz () {
     set -o pipefail
     tar -xzvf "$1" -C "$2" | sszen
+    [ "${PIPESTATUS[0]}" != 0 ] && print_error "File unpacking error." && return 1 || return 0
+}
+
+unpack_tar () {
+    set -o pipefail
+    tar -xvf "$1" -C "$2" | sszen
     [ "${PIPESTATUS[0]}" != 0 ] && print_error "File unpacking error." && return 1 || return 0
 }
 
@@ -205,11 +211,8 @@ check_user_conf () {
 }
 
 init_wine_ver () {
-    if [ ! -z "${PW_WINE_VER}" ] && [ `echo "${PW_WINE_VER}" | grep "PROTON_GE"` ] 
-    then export PW_WINE_USE=proton_ge
-    elif [ ! -z "${PW_WINE_VER}" ] && [ `echo "${PW_WINE_VER}" | grep "PROTON_STEAM"` ] 
-    then export PW_WINE_USE=proton_steam
-    fi
+    [ ! -z "${PW_WINE_VER}" ] && export PW_WINE_USE=`echo "${PW_WINE_VER}" | tr [[:lower:]] [[:upper:]]`
+    [ ! -z "${PW_WINE_USE}" ] && export PW_WINE_USE=`echo "${PW_WINE_USE}" | tr [[:lower:]] [[:upper:]]`
     unset PW_WINE_VER
     export WINEDIR="${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}"
     export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/gstreamer-1.0:${WINEDIR}/lib/gstreamer-1.0"
@@ -234,6 +237,27 @@ init_wine_ver () {
     then export PATH="${WINEDIR}/bin:${PATH}"
     else export PATH="${WINEDIR}/bin"
     fi
+
+    if [ -d "${WINEDIR}/files" ] ; then
+        chmod -R 755 "${WINEDIR}"
+        for clear_dist_files in `ls "${WINEDIR}" | sed -e "s/^files$//g" | sed -e "s/^version$//g"` ; do 
+            rm -fr "${WINEDIR}/$clear_dist_files"
+        done
+        mv -f "${WINEDIR}/files"/* "${WINEDIR}/"
+        rm -fr "${WINEDIR}/files"
+    elif [ -f "${WINEDIR}/proton_dist.tar" ] ; then
+        unpack_tar "${WINEDIR}/proton_dist.tar" "${WINEDIR}/"
+        for clear_dist_files in `ls "${WINEDIR}" | sed -e "s/^bin$//g" | sed -e "s/^lib$//g" | sed -e "s/^lib64$//g" | sed -e "s/^share$//g" | sed -e "s/^version$//g"` ; do 
+            rm -fr "${WINEDIR}/$clear_dist_files"
+        done
+    fi
+
+    for copy_proton_dll in "dxvk" "vkd3d-proton" ; do
+        if [ ! -d "${WINEDIR}/lib/wine/${copy_proton_dll}/" ] ; then
+            try_copy_dir "${PORT_WINE_PATH}/data/dist/PROTON_STEAM/lib/wine/${copy_proton_dll}" "${WINEDIR}/lib/wine/"
+            try_copy_dir "${PORT_WINE_PATH}/data/dist/PROTON_STEAM/lib64/wine/${copy_proton_dll}" "${WINEDIR}/lib64/wine/"
+        fi
+    done
 }
 
 cabextract_fix () {
@@ -445,35 +469,33 @@ pw_tray_icon () {
 pw_init_db () {
     if [ ! -z "${portwine_exe}" ]; then
         export PORTWINE_DB=`echo "${portwine_exe}" | awk -F '/' 'NF>1{print $NF}' | sed s/".exe"/""/gi`
-#        export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
-#        export WIN_PATH_TO_GAME=`echo "C:${PATH_TO_GAME}" | sed "s%$WINEPREFIX%%g" | sed "s/drive_c//g" | sed 's#/#\\\#g'`
-    fi
-    if [ ! -z "${PORTWINE_DB}" ]; then
         PORTWINE_DB_FILE=`grep -ilw "#${PORTWINE_DB}" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
         if [ ! -z "${PORTWINE_DB_FILE}" ]; then
             . "${PORTWINE_DB_FILE}"
             echo "Use ${PORTWINE_DB_FILE} db file."
-        else
-            . "${PORT_SCRIPTS_PATH}/portwine_db/default"
-            echo "Use default db file."
-        fi
+            init_wine_ver
+        fi       
     fi
-    init_wine_ver
+#        export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
+#        export WIN_PATH_TO_GAME=`echo "C:${PATH_TO_GAME}" | sed "s%$WINEPREFIX%%g" | sed "s/drive_c//g" | sed 's#/#\\\#g'`
 }
 
-pw_update_notifier () {
-    if [ ! -f "${PORT_WINE_TMP_PATH}/${portname}_ver" ] ; then
-        echo "10" > "${PORT_WINE_TMP_PATH}/${portname}_ver"
-    fi
-    if [ ! -f "${PORT_WINE_TMP_PATH}/update_notifier" ] ; then
-        echo "1" > "${PORT_WINE_TMP_PATH}/update_notifier"
-    fi
-    read "update_not" < "${PORT_WINE_TMP_PATH}/update_notifier"
-    if [ "${update_not}" = "1" ] ; then
-        if try_download_silent "${PW_FTP_URL}/current_version/${portname}_ver" "${PORT_WINE_TMP_PATH}/${portname}_cur_ver" ; then
-            read current_ver < "${PORT_WINE_TMP_PATH}/${portname}_cur_ver"
-            try_remove_file "${PORT_WINE_TMP_PATH}/${portname}_cur_ver"
-            if  [ ! -z "${current_ver}" ] && [ "${current_ver}" -gt "${install_ver}" ] ; then
+pw_port_update () {
+    ###PORT UPDATE###
+    if try_download_silent "https://github.com/Castro-Fidel/PortWINE/raw/master/data_from_portwine/scripts/var" "${PORT_WINE_TMP_PATH}/curent_var_ver" ; then
+        if [ ! -f "${PORT_WINE_TMP_PATH}/${portname}_ver" ] ; then
+            echo "10" > "${PORT_WINE_TMP_PATH}/${portname}_ver"
+        fi
+        export port_install_ver=`cat "${PORT_WINE_TMP_PATH}/${portname}_ver" | head -n 1`
+        if [ ! -f "${PORT_WINE_TMP_PATH}/update_notifier" ] ; then
+            echo "1" > "${PORT_WINE_TMP_PATH}/update_notifier"
+        fi
+        read "update_not" < "${PORT_WINE_TMP_PATH}/update_notifier"
+        if [ "${update_not}" = "1" ] ; then
+            export port_current_ver=`cat "${PORT_WINE_TMP_PATH}/curent_var_ver" | grep PORT_NEXT_VERSION | awk -F "=" '{print $2}'`
+            echo "Port version in github = ${port_current_ver}"
+            echo "Port version local = ${port_install_ver}"
+            if  [ ! -z "${port_current_ver}" ] && [ "${port_current_ver}" -gt "${port_install_ver}" ] ; then
                 xsd=`zenity --title  "${port_upd1}" --text "${port_upd2}" --list --radiolist --height=240 --column="${inst_set}" --column "${port_upd3}" \
                 TRUE "${port_upd4}" \
                 FALSE "${port_upd5}" \
@@ -490,49 +512,44 @@ pw_update_notifier () {
                 esac
             fi
         fi
-    fi
-    if [ ! -f "${HOME}/.config/.PortTime" ] ; then
-        echo "10" > "${HOME}/.config/.PortTime"
-    fi
-    read "port_time" < "${HOME}/.config/.PortTime"
-    if [ "${port_time}" -gt "1" ] ; then
-        port_time=$((${port_time}-1))
-        echo "${port_time}" > "${HOME}/.config/.PortTime"
-    else
-        xsd2=`zenity --title  "${port_time1}" --text "${port_time2}" --list --radiolist --height=230 --column="${inst_set3}" --column "${port_time3}" \
-        TRUE "${port_time4}" \
-        FALSE "${port_time5}" \
-        FALSE "${port_time6}" `
-        if [ $? = 1 ] ; then
-            echo "1" > "${HOME}/.config/.PortTime"
-        else
-            case $xsd2 in
-                "${port_time4}")
-                    xdg-open "$urlg" &
-                    echo "300" > "${HOME}/.config/.PortTime"
-                    exit 0 ;;
-                "${port_time5}")
-                    echo "75" > "${HOME}/.config/.PortTime" ;;
-                "${port_time6}")
-                    echo "150" > "${HOME}/.config/.PortTime" ;;
-            esac
+        if [ ! -f "${HOME}/.config/.PortTime" ] ; then
+            echo "10" > "${HOME}/.config/.PortTime"
         fi
-    fi
-}
-
-pw_scripts_update () {
-    if [ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ] ; then
-        echo "2000" > "${PORT_WINE_TMP_PATH}/scripts_ver"
-    fi
-    export scripts_install_ver=`cat "${PORT_WINE_TMP_PATH}/scripts_ver" | head -n 1`
-    if [ ! -f "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ] ; then
-            echo "1" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
-    fi
-    read "scripts_update_not" < "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
-    if [ "${scripts_update_not}" = "1" ] ; then
-        if try_download_silent "https://github.com/Castro-Fidel/PortWINE/raw/master/data_from_portwine/scripts/var" "${PORT_WINE_TMP_PATH}/scripts_cur_ver" ; then
-            export scripts_current_ver=`cat "${PORT_WINE_TMP_PATH}/scripts_cur_ver" | grep SCRIPTS_NEXT_VERSION | awk -F "=" '{print $2}'`
-            try_remove_file "${PORT_WINE_TMP_PATH}/scripts_cur_ver"
+        read "port_time" < "${HOME}/.config/.PortTime"
+        if [ "${port_time}" -gt "1" ] ; then
+            port_time=$((${port_time}-1))
+            echo "${port_time}" > "${HOME}/.config/.PortTime"
+        else
+            xsd2=`zenity --title  "${port_time1}" --text "${port_time2}" --list --radiolist --height=230 --column="${inst_set3}" --column "${port_time3}" \
+            TRUE "${port_time4}" \
+            FALSE "${port_time5}" \
+            FALSE "${port_time6}" `
+            if [ $? = 1 ] ; then
+                echo "1" > "${HOME}/.config/.PortTime"
+            else
+                case $xsd2 in
+                    "${port_time4}")
+                        xdg-open "$urlg" &
+                        echo "300" > "${HOME}/.config/.PortTime"
+                        exit 0 ;;
+                    "${port_time5}")
+                        echo "75" > "${HOME}/.config/.PortTime" ;;
+                    "${port_time6}")
+                        echo "150" > "${HOME}/.config/.PortTime" ;;
+                esac
+            fi
+        fi
+        ###SCRIPTS UPDATE###
+        if [ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ] ; then
+            echo "2000" > "${PORT_WINE_TMP_PATH}/scripts_ver"
+        fi
+        export scripts_install_ver=`cat "${PORT_WINE_TMP_PATH}/scripts_ver" | head -n 1`
+        if [ ! -f "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ] ; then
+                echo "1" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
+        fi
+        read "scripts_update_not" < "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
+        if [ "${scripts_update_not}" = "1" ] ; then
+            export scripts_current_ver=`cat "${PORT_WINE_TMP_PATH}/curent_var_ver" | grep SCRIPTS_NEXT_VERSION | awk -F "=" '{print $2}'`
             echo "Scripts version in github = ${scripts_current_ver}"
             echo "Scripts version local = ${scripts_install_ver}"
             if [ ! -z "${scripts_current_ver}" ] && [ "${scripts_current_ver}" -gt "${scripts_install_ver}" ] ; then
@@ -552,10 +569,8 @@ pw_scripts_update () {
                                 try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
                                 try_remove_dir "${PORT_WINE_TMP_PATH}/PortWINE-master/"
                                 echo "${scripts_current_ver}" > "${PORT_WINE_TMP_PATH}/scripts_ver"
-                                "${pw_yad}" --title="Changelog" --borders=10 \
-                                --text="Скрипты были успешно обновлены.\nДля продолжения запуска порта нажмите ОК." \
-                                --text-align=center --text-info --show-uri --wrap --center --width=1200 --height=550 \
-                                --filename="${PORT_WINE_PATH}/data/changelog" --uri-color=red
+                                zenity --title="Changelog" --text-info --width=1200 --height=550 \
+                                --filename="${PORT_WINE_PATH}/data/changelog"
                                 [ "$?" == 0 ] && /bin/bash -c ${pw_full_command_line[*]} &
                                 exit 0
                             fi
@@ -569,6 +584,7 @@ pw_scripts_update () {
                 esac
             fi
         fi
+        try_remove_file "${PORT_WINE_TMP_PATH}/curent_var_ver"
     fi
 }
 
@@ -649,33 +665,57 @@ pw_gui_for_edit_db () {
 }
 
 pw_check_and_download_wine () {
-    if [ "${1}" == "proton_ge" ] ; then
-        if [ "`cat "${PORT_WINE_PATH}"/data/dist/proton_ge/version | head -n 1`" != "${PW_PROTON_GE_VER}" ]
-        then try_remove_dir "${PORT_WINE_PATH}/data/dist/proton_ge/"
+    [ ! -d "${PORT_WINE_PATH}/data/dist/" ] && create_new_dir "${PORT_WINE_PATH}/data/dist"
+    if [ "${1}" == "PROTON_GE" ] ; then
+        if [ "`cat "${PORT_WINE_PATH}"/data/dist/PROTON_GE/version | head -n 1`" != "${PW_PROTON_GE_VER}" ]
+        then try_remove_dir "${PORT_WINE_PATH}/data/dist/PROTON_GE/"
         fi
-        if [ ! -d "${PORT_WINE_PATH}/data/dist/proton_ge" ] ; then
-            print_info "Download and install proton_ge..."
-            if try_download "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/${PW_PROTON_GE_VER}/Proton-${PW_PROTON_GE_VER}.tar.gz" "${PORT_WINE_PATH}/data/tmp/Proton-${PW_PROTON_GE_VER}.tar.gz" ; then
-                if unpack_tar_gz "${PORT_WINE_PATH}/data/tmp/Proton-${PW_PROTON_GE_VER}.tar.gz" "${PORT_WINE_PATH}/data/tmp/" ; then
-                    mv -f "${PORT_WINE_PATH}/data/tmp/Proton-${PW_PROTON_GE_VER}/files" "${PORT_WINE_PATH}/data/dist/proton_ge"
-                    echo "${PW_PROTON_GE_VER}" > "${PORT_WINE_PATH}/data/dist/proton_ge/version"
-                    try_remove_file "${PORT_WINE_PATH}/data/tmp/Proton-${PW_PROTON_GE_VER}.tar.gz"
-                    try_remove_dir "${PORT_WINE_PATH}/data/tmp/Proton-${PW_PROTON_GE_VER}"
-                    try_remove_dir "${PORT_WINE_PATH}/data/dist/proton_ge/share/default_pfx/"
+        if [ ! -d "${PORT_WINE_PATH}/data/dist/PROTON_GE" ] ; then
+            print_info "Download and install PROTON_GE..."
+            if try_download "https://github.com/Castro-Fidel/wine_builds/releases/download/${PW_PROTON_GE_VER}/${PW_PROTON_GE_VER}.tar.xz" "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}.tar.xz" ; then
+                if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
+                    echo "${PW_PROTON_GE_VER}" > "${PORT_WINE_PATH}/data/dist/PROTON_GE/version"
+                    try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}.tar.xz"
+                    try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}"
                 else
-                    try_remove_file "${PORT_WINE_PATH}/data/tmp/Proton-${PW_PROTON_GE_VER}.tar.gz"
-                    try_remove_dir "${PORT_WINE_PATH}/data/tmp/Proton-${PW_PROTON_GE_VER}"
-                    try_remove_dir "${PORT_WINE_PATH}/data/dist/proton_ge"
+                    try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}.tar.xz"
+                    try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}"
+                    try_remove_dir "${PORT_WINE_PATH}/data/dist/PROTON_GE"
 
                     `zenity --error --title "Error..." \
-                    --text "Failed to download WINE: proton_ge.\nCheck internet connection and press OK" \
+                    --text "Failed to download WINE: PROTON_GE.\nCheck internet connection and press OK" \
                     --no-wrap ` > /dev/null 2>&1 && pw_check_and_download_wine
                 fi
             else
                 `zenity --error --title "Error..." \
-                --text "Failed to download WINE: proton_ge.\nCheck internet connection and press OK" \
+                --text "Failed to download WINE: PROTON_GE.\nCheck internet connection and press OK" \
                 --no-wrap ` > /dev/null 2>&1 && pw_check_and_download_wine
             fi
+        fi
+    fi
+    if [ "`cat "${PORT_WINE_PATH}"/data/dist/PROTON_STEAM/version | head -n 1`" != "${PW_PROTON_STEAM_VER}" ]
+    then try_remove_dir "${PORT_WINE_PATH}/data/dist/PROTON_STEAM/"
+    fi
+    if [ ! -d "${PORT_WINE_PATH}/data/dist/PROTON_STEAM" ] ; then
+        print_info "Download and install PROTON_STEAM..."
+        if try_download "https://github.com/Castro-Fidel/wine_builds/releases/download/${PW_PROTON_STEAM_VER}/${PW_PROTON_STEAM_VER}.tar.xz" "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}.tar.xz" ; then
+            if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
+                echo "${PW_PROTON_STEAM_VER}" > "${PORT_WINE_PATH}/data/dist/PROTON_STEAM/version"
+                try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}.tar.xz"
+                try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}"
+            else
+                try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}.tar.xz"
+                try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}"
+                try_remove_dir "${PORT_WINE_PATH}/data/dist/PROTON_STEAM"
+
+                `zenity --error --title "Error..." \
+                --text "Failed to download WINE: PROTON_STEAM.\nCheck internet connection and press OK" \
+                --no-wrap ` > /dev/null 2>&1 && pw_check_and_download_wine
+            fi
+        else
+            `zenity --error --title "Error..." \
+            --text "Failed to download WINE: PROTON_STEAM.\nCheck internet connection and press OK" \
+            --no-wrap ` > /dev/null 2>&1 && pw_check_and_download_wine
         fi
     fi
 }
