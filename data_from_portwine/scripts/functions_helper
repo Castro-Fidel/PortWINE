@@ -90,7 +90,8 @@ try_download_silent () {
 }
 
 zenity_error_download () {
-    `zenity --error --title "Error..." --text "You will need to check internet connettion,\nand press OK for repeet download" --no-wrap ` > /dev/null 2>&1
+    `zenity --error --title "Error..." --text "You will need to check internet connettion,\nand press OK for repeet download" --no-wrap `
+    [ "$?" != 0 ] && exit 1 || return 0
 }
 
 create_new_dir () {
@@ -291,22 +292,18 @@ pw_stop_progress_bar () {
 pw_download_libs () {
     if [ ! -e "${PW_WINELIB}/runtime/bin/yad" ] || [ ! -e "${PW_WINELIB}/runtime/lib/p7zip/7z" ] \
     || [ ! -e "${PW_WINELIB}/runtime/bin/vkcube" ] || [ ! -e "${PW_WINELIB}/runtime/bin/xterm" ] || \
-    [ -e "${HOME}/.PortWINE/tmp/libs${PW_LIBS_VER}.tar.xz" ] ; then
+    [ -e "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" ] ; then
         print_info "Download and install libraries..."
-        if try_download "https://github.com/Castro-Fidel/PortWINE/releases/download/libs${PW_LIBS_VER}/libs${PW_LIBS_VER}.tar.xz" "${HOME}/.PortWINE/tmp/libs${PW_LIBS_VER}.tar.xz" ; then
-            if unpack_tar_xz "${HOME}/.PortWINE/tmp/libs${PW_LIBS_VER}.tar.xz" "${HOME}/.PortWINE/" ; then
-                try_remove_file "${HOME}/.PortWINE/tmp/libs${PW_LIBS_VER}.tar.xz"
+        if try_download "https://github.com/Castro-Fidel/PortWINE/releases/download/libs${PW_LIBS_VER}/libs${PW_LIBS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" ; then
+            if unpack_tar_xz "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/" ; then
+                try_remove_file "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz"
             else
-                try_remove_dir "${HOME}/.PortWINE/libs${PW_LIBS_VER}"
-                try_remove_file "${HOME}/.PortWINE/tmp/libs${PW_LIBS_VER}.tar.xz"
-                `zenity --error --title "Error..." \
-                --text "Failed to install runtime libraries.\nCheck internet connection and press OK" \
-                --no-wrap ` > /dev/null 2>&1 && pw_download_libs
+                try_remove_dir "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
+                try_remove_file "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz"
+                zenity_error_download && pw_download_libs
             fi
         else
-            `zenity --error --title "Error..." \
-            --text "Failed to download runtime libraries.\nCheck internet connection and press OK" \
-            --no-wrap ` > /dev/null 2>&1 && pw_download_libs
+            zenity_error_download && pw_download_libs
         fi
     fi
     export pw_yad="${PW_WINELIB}/runtime/bin/yad"
@@ -322,18 +319,18 @@ pw_download_libs () {
 }
 
 pw_download_mono () {
-    if [ ! -d "${HOME}/.PortWINE/mono/wine-mono-${PW_MONO_VER}" ] ; then
+    if [ ! -d "${PORT_WINE_TMP_PATH}/mono/wine-mono-${PW_MONO_VER}" ] ; then
         export url_mono="https://github.com/madewokherd/wine-mono/releases/download/wine-mono-${PW_MONO_VER}/wine-mono-${PW_MONO_VER}-x86.tar.xz"
         echo "######################################################"
         print_info "Download and install wine mono..."
-        if try_download "${url_mono}" "${HOME}/.PortWINE/tmp/wine-mono-${PW_MONO_VER}-x86.tar.xz" ; then
-            create_new_dir "${HOME}/.PortWINE/mono"
-            if ! unpack_tar_xz "${HOME}/.PortWINE/tmp/wine-mono-${PW_MONO_VER}-x86.tar.xz" "${HOME}/.PortWINE/mono/"
+        if try_download "${url_mono}" "${PORT_WINE_TMP_PATH}/wine-mono-${PW_MONO_VER}-x86.tar.xz" ; then
+            create_new_dir "${PORT_WINE_TMP_PATH}/mono"
+            if ! unpack_tar_xz "${PORT_WINE_TMP_PATH}/wine-mono-${PW_MONO_VER}-x86.tar.xz" "${PORT_WINE_TMP_PATH}/mono/"
             then
-                try_remove_dir "${HOME}/.PortWINE/mono/wine-mono-${PW_MONO_VER}-x86"
+                try_remove_dir "${PORT_WINE_TMP_PATH}/mono/wine-mono-${PW_MONO_VER}-x86"
                 zenity_error_download && pw_download_mono
             fi
-            try_remove_file "${HOME}/.PortWINE/tmp/wine-mono-${PW_MONO_VER}-x86.tar.xz"
+            try_remove_file "${PORT_WINE_TMP_PATH}/wine-mono-${PW_MONO_VER}-x86.tar.xz"
         else
             zenity_error_download && pw_download_mono
         fi
@@ -341,34 +338,34 @@ pw_download_mono () {
 }
 
 pw_download_gecko () {
-    if [ ! -d "${HOME}/.PortWINE/gecko/wine-gecko-${PW_GECKO_VER}-x86" ] ; then
+    if [ ! -d "${PORT_WINE_TMP_PATH}/gecko/wine-gecko-${PW_GECKO_VER}-x86" ] ; then
         export url_gecko_x86="https://dl.winehq.org/wine/wine-gecko/${PW_GECKO_VER}/wine-gecko-${PW_GECKO_VER}-x86.tar.xz"
         echo "######################################################"
-        echo "Download and install wine gecko x86..."
-        if try_download "${url_gecko_x86}" "${HOME}/.PortWINE/tmp/wine-gecko-${PW_GECKO_VER}-x86.tar.xz" ; then
-            create_new_dir "${HOME}/.PortWINE/gecko"
-            if ! unpack_tar_xz "${HOME}/.PortWINE/tmp/wine-gecko-${PW_GECKO_VER}-x86.tar.xz" "${HOME}/.PortWINE/gecko/"
+        print_info "Download and install wine gecko x86..."
+        if try_download "${url_gecko_x86}" "${PORT_WINE_TMP_PATH}/wine-gecko-${PW_GECKO_VER}-x86.tar.xz" ; then
+            create_new_dir "${PORT_WINE_TMP_PATH}/gecko"
+            if ! unpack_tar_xz "${PORT_WINE_TMP_PATH}/wine-gecko-${PW_GECKO_VER}-x86.tar.xz" "${PORT_WINE_TMP_PATH}/gecko/"
             then
-                try_remove_dir "${HOME}/.PortWINE/gecko/wine-gecko-${PW_GECKO_VER}-x86"
+                try_remove_dir "${PORT_WINE_TMP_PATH}/gecko/wine-gecko-${PW_GECKO_VER}-x86"
                 zenity_error_download && pw_download_gecko
             fi
-            try_remove_file "${HOME}/.PortWINE/tmp/wine-gecko-${PW_GECKO_VER}-x86.tar.xz"
+            try_remove_file "${PORT_WINE_TMP_PATH}/wine-gecko-${PW_GECKO_VER}-x86.tar.xz"
         else
             zenity_error_download && pw_download_gecko
         fi
     fi
-    if [ ! -d "${HOME}/.PortWINE/gecko/wine-gecko-${PW_GECKO_VER}-x86_64" ] ; then
+    if [ ! -d "${PORT_WINE_TMP_PATH}/gecko/wine-gecko-${PW_GECKO_VER}-x86_64" ] ; then
         export url_gecko_x86_64="https://dl.winehq.org/wine/wine-gecko/${PW_GECKO_VER}/wine-gecko-${PW_GECKO_VER}-x86_64.tar.xz"
         echo "######################################################"
-        echo "Download and install wine gecko x86_64..."
-        if try_download "${url_gecko_x86_64}" "${HOME}/.PortWINE/tmp/wine-gecko-${PW_GECKO_VER}-x86_64.tar.xz" ; then
-            create_new_dir "${HOME}/.PortWINE/gecko"
-            if ! unpack_tar_xz "${HOME}/.PortWINE/tmp/wine-gecko-${PW_GECKO_VER}-x86_64.tar.xz" "${HOME}/.PortWINE/gecko/"
+        print_info "Download and install wine gecko x86_64..."
+        if try_download "${url_gecko_x86_64}" "${PORT_WINE_TMP_PATH}/wine-gecko-${PW_GECKO_VER}-x86_64.tar.xz" ; then
+            create_new_dir "${PORT_WINE_TMP_PATH}/gecko"
+            if ! unpack_tar_xz "${PORT_WINE_TMP_PATH}/wine-gecko-${PW_GECKO_VER}-x86_64.tar.xz" "${PORT_WINE_TMP_PATH}/gecko/"
             then
-                try_remove_dir "${HOME}/.PortWINE/gecko/wine-gecko-${PW_GECKO_VER}-x86_64"
+                try_remove_dir "${PORT_WINE_TMP_PATH}/gecko/wine-gecko-${PW_GECKO_VER}-x86_64"
                 zenity_error_download && pw_download_gecko
             fi
-            try_remove_file "${HOME}/.PortWINE/tmp/wine-gecko-${PW_GECKO_VER}-x86_64.tar.xz"
+            try_remove_file "${PORT_WINE_TMP_PATH}/wine-gecko-${PW_GECKO_VER}-x86_64.tar.xz"
         else
             zenity_error_download && pw_download_gecko
         fi
@@ -472,7 +469,7 @@ pw_init_db () {
         PORTWINE_DB_FILE=`grep -ilw "#${PORTWINE_DB}" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
         if [ ! -z "${PORTWINE_DB_FILE}" ]; then
             . "${PORTWINE_DB_FILE}"
-            echo "Use ${PORTWINE_DB_FILE} db file."
+            print_info "Use ${PORTWINE_DB_FILE} db file."
             init_wine_ver
         fi       
     fi
@@ -493,8 +490,8 @@ pw_port_update () {
         read "update_not" < "${PORT_WINE_TMP_PATH}/update_notifier"
         if [ "${update_not}" = "1" ] ; then
             export port_current_ver=`cat "${PORT_WINE_TMP_PATH}/curent_var_ver" | grep PORT_NEXT_VERSION | awk -F "=" '{print $2}'`
-            echo "Port version in github = ${port_current_ver}"
-            echo "Port version local = ${port_install_ver}"
+            print_info "Port version in github = ${port_current_ver}"
+            print_info "Port version local = ${port_install_ver}"
             if  [ ! -z "${port_current_ver}" ] && [ "${port_current_ver}" -gt "${port_install_ver}" ] ; then
                 xsd=`zenity --title  "${port_upd1}" --text "${port_upd2}" --list --radiolist --height=240 --column="${inst_set}" --column "${port_upd3}" \
                 TRUE "${port_upd4}" \
@@ -550,8 +547,8 @@ pw_port_update () {
         read "scripts_update_not" < "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
         if [ "${scripts_update_not}" = "1" ] ; then
             export scripts_current_ver=`cat "${PORT_WINE_TMP_PATH}/curent_var_ver" | grep SCRIPTS_NEXT_VERSION | awk -F "=" '{print $2}'`
-            echo "Scripts version in github = ${scripts_current_ver}"
-            echo "Scripts version local = ${scripts_install_ver}"
+            print_info "Scripts version in github = ${scripts_current_ver}"
+            print_info "Scripts version local = ${scripts_install_ver}"
             if [ ! -z "${scripts_current_ver}" ] && [ "${scripts_current_ver}" -gt "${scripts_install_ver}" ] ; then
                 xcsd=`zenity --title  "${scripts_upd1}" --text "${scripts_upd2}" --list --radiolist --height=240 --column="${inst_set}" --column "${scripts_upd3}" \
                 TRUE "${scripts_upd4}" \
@@ -560,7 +557,7 @@ pw_port_update () {
                 case $xcsd in
                     "${scripts_upd4}")
                         echo "######################################################"
-                        echo "Update scripts..."
+                        print_info "Update scripts..."
                         try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
                         if try_download "https://github.com/Castro-Fidel/PortWINE/archive/refs/heads/master.tar.gz" "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" ; then
                             tar -xvzf "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" -C "${PORT_WINE_TMP_PATH}"
@@ -590,7 +587,7 @@ pw_port_update () {
 
 pw_kill_autostart () {
     if [ "$PW_USE_RUNTIME" != 1 ]
-    then echo "PW_USE_RUNTIME: `echo $PW_USE_RUNTIME`"
+    then print_info "PW_USE_RUNTIME=$PW_USE_RUNTIME"
     else
         sleep 10
         while true ; do
@@ -682,14 +679,10 @@ pw_check_and_download_wine () {
                     try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}"
                     try_remove_dir "${PORT_WINE_PATH}/data/dist/PROTON_GE"
 
-                    `zenity --error --title "Error..." \
-                    --text "Failed to download WINE: PROTON_GE.\nCheck internet connection and press OK" \
-                    --no-wrap ` > /dev/null 2>&1 && pw_check_and_download_wine
+                    zenity_error_download && pw_check_and_download_wine
                 fi
             else
-                `zenity --error --title "Error..." \
-                --text "Failed to download WINE: PROTON_GE.\nCheck internet connection and press OK" \
-                --no-wrap ` > /dev/null 2>&1 && pw_check_and_download_wine
+                zenity_error_download && pw_check_and_download_wine
             fi
         fi
     fi
@@ -708,14 +701,10 @@ pw_check_and_download_wine () {
                 try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}"
                 try_remove_dir "${PORT_WINE_PATH}/data/dist/PROTON_STEAM"
 
-                `zenity --error --title "Error..." \
-                --text "Failed to download WINE: PROTON_STEAM.\nCheck internet connection and press OK" \
-                --no-wrap ` > /dev/null 2>&1 && pw_check_and_download_wine
+                zenity_error_download && pw_check_and_download_wine
             fi
         else
-            `zenity --error --title "Error..." \
-            --text "Failed to download WINE: PROTON_STEAM.\nCheck internet connection and press OK" \
-            --no-wrap ` > /dev/null 2>&1 && pw_check_and_download_wine
+            zenity_error_download && pw_check_and_download_wine
         fi
     fi
 }

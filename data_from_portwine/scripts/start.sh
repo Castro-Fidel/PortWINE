@@ -128,6 +128,7 @@ portwine_start_debug () {
     free -m >> "${PORT_WINE_PATH}/${portname}.log"
     echo "-----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Graphic cards and drivers" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo `lspci | grep -i vga` >> "${PORT_WINE_PATH}/${portname}.log"
     "${PW_WINELIB}/runtime/bin/glxinfo" -B >> "${PORT_WINE_PATH}/${portname}.log"
     echo "----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Vulkan info device name:" >> "${PORT_WINE_PATH}/${portname}.log"
@@ -307,7 +308,7 @@ else
     gui_rm_portproton () {
         if gui_question "${port_del2}" ; then
             rm -fr "${PORT_WINE_PATH}"
-            rm -fr "${HOME}/.PortWINE"
+            rm -fr "${PORT_WINE_TMP_PATH}"
             rm -f `grep -il PortProton "${HOME}/.local/share/applications"/*`
             update-desktop-database -q "${HOME}/.local/share/applications"
         fi

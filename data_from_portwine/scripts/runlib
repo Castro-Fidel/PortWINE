@@ -45,8 +45,8 @@ start_portwine () {
     create_new_dir "${WINEDIR}/share/wine/"
     try_remove_dir "${WINEDIR}"/share/wine/gecko
     try_remove_dir "${WINEDIR}"/share/wine/mono
-    try_force_link_dir "${HOME}/.PortWINE/gecko" "${WINEDIR}"/share/wine/
-    try_force_link_dir "${HOME}/.PortWINE/mono" "${WINEDIR}"/share/wine/
+    try_force_link_dir "${PORT_WINE_TMP_PATH}/gecko" "${WINEDIR}"/share/wine/
+    try_force_link_dir "${PORT_WINE_TMP_PATH}/mono" "${WINEDIR}"/share/wine/
 
     if [ "${PW_USE_RUNTIME}" = 0 ] ; then
         export pw_runtime=""
@@ -448,7 +448,11 @@ if [ -d "${PORT_WINE_PATH}/data/dist" ] ; then
     IFS="$orig_IFS"
 fi
 create_new_dir "${PORT_WINE_TMP_PATH}"
-create_new_dir "${HOME}/.PortWINE/tmp"
+if [ -d "${HOME}/.PortWINE/" ] ; then
+    try_remove_dir "${HOME}/.PortWINE/tmp"
+    mv -f "${HOME}/.PortWINE"/* "${PORT_WINE_TMP_PATH}"
+    try_remove_dir "${HOME}/.PortWINE/"
+fi 
 cd "${PORT_SCRIPTS_PATH}"
 . "${PORT_SCRIPTS_PATH}/var"
 
@@ -463,7 +467,7 @@ fi
 
 export urlg="https://portwine-linux.ru/portwine-faq/"
 export PW_FTP_URL="https://portwine-linux.ru/ftp"
-export PW_WINELIB="${HOME}/.PortWINE/libs${PW_LIBS_VER}"
+export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
 export install_ver=`cat "${PORT_WINE_TMP_PATH}/${portname}_ver" | head -n 1`
 export WINETRICKS_DOWNLOADER="curl"
