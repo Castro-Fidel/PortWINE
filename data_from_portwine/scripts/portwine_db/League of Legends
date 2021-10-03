@@ -2,6 +2,8 @@
 #Author: xuser
 #LeagueClient.exe
 #RiotClientServices.exe
+#Install League of Legends ru.exe
+#Install League of Legends euw.exe
 #Rating=1-5
 #####################examples###########################
 export PW_COMMENT_DB="Check openssl in your system!"
@@ -28,8 +30,8 @@ export PW_NO_ESYNC=1                            # Do not use eventfd-based in-pr
 ##export PW_NO_WRITE_WATCH=1                      # Disable support for memory write watches in ntdll. This is a very dangerous hack and should only be applied if you have verified that the game can operate without write watches. This improves performance for some very specific games (e.g. CoreRT-based games).
 ##export PW_HEAP_DELAY_FREE=1
 ##export PW_WINE_ALLOW_XIM=1                      # Disable XIM support until libx11 >= 1.7 is widespread
-export WINEARCH=win32                             # defaut = win64
-export WINEPREFIX="${PORT_WINE_PATH}/data/pfx_lol"
+##export WINEARCH=win32                             # defaut = win64
+##export WINEPREFIX="${PORT_WINE_PATH}/data/pfx_lol"
 export PW_MONO_VER="6.3.0"
 export PW_GECKO_VER="2.47.2"
 ##export PW_WINEDBG_DISABLE=1                     # Disabled WINEDBG
@@ -38,20 +40,20 @@ export PW_GECKO_VER="2.47.2"
 
 check_port_for_lol () {
     process=LeagueClientUx.exe
-    uxpid=$(timeout 2m sh -c "until pidof ${process}; do sleep 1; done")
-    if [[ ! -n $uxpid ]]; then
+    uxpid=$(timeout 2m /bin/bash -c "until pidof ${process}; do sleep 1; done")
+    if [ ! -n $uxpid ]; then
         echo "Could not find process ${process}"
         exit 1
     fi
     echo "LeagueClientUx pid: ${uxpid}"
     port=$(xargs -0 < /proc/${uxpid}/cmdline | sed -n 's/.*--app-port=\([[:digit:]]*\).*/\1/p')
-    if [[ ! -n $port ]]; then
+    if [ ! -n $port ]; then
         echo "Could not find port"
         exit 1
     fi
     echo "Waiting for port ${port}"
     kill -STOP ${uxpid}
-    timeout 5m sh -c "
+    timeout 5m /bin/bash -c "
     until openssl s_client -connect :${port} <<< Q > /dev/null 2>&1; do
     sleep 1
     done"
@@ -63,7 +65,7 @@ add_in_start_portwine () {
         zenity --question --title="Fix for LoL anti-cheat" \
         --text='Root rights are required to execute the command:           \n"sysctl -w abi.vsyscall32=0" and "sysctl -p"' --no-wrap
         [ "$?" = 1 ] && exit 0
-        pkexec sh -c 'sysctl -w abi.vsyscall32=0 && sysctl -p'
+        pkexec /bin/bash -c 'sysctl -w abi.vsyscall32=0 && sysctl -p'
     fi
     check_port_for_lol &
 }
