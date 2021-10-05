@@ -33,20 +33,19 @@ start_portwine () {
 
     pw_start_progress_bar_cs "Start ${portname}... Please wait..."
 
-    export WINE_GST_REGISTRY_DIR="${PORT_WINE_TMP_PATH}"
-    export MEDIACONV_AUDIO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/audio.foz
-    export MEDIACONV_AUDIO_TRANSCODED_FILE="${PORT_WINE_TMP_PATH}"/transcoded_audio.foz
-    export MEDIACONV_VIDEO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/video.foz
-    export MEDIACONV_VIDEO_TRANSCODED_FILE="${PORT_WINE_TMP_PATH}"/transcoded_video.foz
+    if [ "${PW_USE_GSTREAMER}" = 1 ] ; then 
+        export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/gstreamer-1.0:${WINEDIR}/lib/gstreamer-1.0"
+        export GST_DEBUG="WARNING:0"
+        export WINE_GST_REGISTRY_DIR="${PORT_WINE_TMP_PATH}"
+        export MEDIACONV_AUDIO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/audio.foz
+        export MEDIACONV_AUDIO_TRANSCODED_FILE="${PORT_WINE_TMP_PATH}"/transcoded_audio.foz
+        export MEDIACONV_VIDEO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/video.foz
+        export MEDIACONV_VIDEO_TRANSCODED_FILE="${PORT_WINE_TMP_PATH}"/transcoded_video.foz
+    else
+        var_winedlloverride_update "winegstreamer="
+    fi
     export STAGING_SHARED_MEMORY=1
     export PW_FORCE_LARGE_ADDRESS_AWARE=1
-    export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
-
-    create_new_dir "${WINEDIR}/share/wine/"
-    try_remove_dir "${WINEDIR}"/share/wine/gecko
-    try_remove_dir "${WINEDIR}"/share/wine/mono
-    try_force_link_dir "${PORT_WINE_TMP_PATH}/gecko" "${WINEDIR}"/share/wine/
-    try_force_link_dir "${PORT_WINE_TMP_PATH}/mono" "${WINEDIR}"/share/wine/
 
     if [ "${PW_USE_RUNTIME}" = 0 ] ; then
         export pw_runtime=""
@@ -103,7 +102,6 @@ start_portwine () {
         export VKD3D_DEBUG="none"
         export DXVK_LOG_PATH="none"
     fi
-    export GST_DEBUG="WARNING:0"
 
     #default wine-mono override for FNA games
     export WINE_MONO_OVERRIDES="Microsoft.Xna.Framework.*,Gac=n"
@@ -466,7 +464,6 @@ fi
 . "${PORT_SCRIPTS_PATH}"/lang
 
 export urlg="https://portwine-linux.ru/portwine-faq/"
-export PW_FTP_URL="https://portwine-linux.ru/ftp"
 export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
 export install_ver=`cat "${PORT_WINE_TMP_PATH}/${portname}_ver" | head -n 1`
