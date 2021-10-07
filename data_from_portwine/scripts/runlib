@@ -19,6 +19,7 @@ fi
 
 start_portwine () {
     pw_check_and_download_wine "${PW_WINE_USE}" 
+    init_wine_ver
     pw_tray_icon &
     if [ -x "`which konsole 2>/dev/null`" ]; then export PW_TERM="konsole --nofork -e"
 #    elif [ -x "`which gnome-terminal 2>/dev/null`" ]; then export PW_TERM="gnome-terminal -- /bin/bash" ???
@@ -397,7 +398,9 @@ start_portwine () {
 
 pw_run () {
     if [ ! -z "$portwine_exe" ] ; then
-        export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
+        if [ -z "$PATH_TO_GAME" ] ; then
+            export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
+        fi
         cd "${PATH_TO_GAME}"
     else
         cd "${WINEPREFIX}/drive_c"

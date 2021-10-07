@@ -5,7 +5,7 @@ if [ -f "$1" ]; then
     export portwine_exe="$(readlink -f "$1")"
 fi
 . "$(dirname $(readlink -f "$0"))/runlib"
-kill_portwine
+kill_portwine 
 
 portwine_launch () {
     start_portwine
@@ -43,8 +43,6 @@ portwine_create_shortcut () {
         icotool -x --output="${PORTPROTON_PATH}/" "${PORTPROTON_EXE}.ico"
         cp "$(ls -S -1 "${PORTPROTON_EXE}"*".png"  | head -n 1)" "${PORTPROTON_EXE}.png"
         cp -f "${PORTPROTON_EXE}.png" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
-        rm -f "${PORTPROTON_PATH}/"*.ico
-        rm -f "${PORTPROTON_PATH}/"*.png
     fi
     name_desktop="${PORTPROTON_NAME}"
     echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
