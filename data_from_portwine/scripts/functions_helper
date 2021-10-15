@@ -67,13 +67,12 @@ try_force_link_file () {
 }
 
 check_symlink () {
-    if [ ! -z `file "$1" | grep "symbolic link to" | grep -v "broken"` ] ; then
-        `file "$1"`
+    CHK_SYMLINK_FILE=`file "$1"`
+    if [ ! -z `echo "$CHK_SYMLINK_FILE" | grep -v "broken" | grep "symbolic link to" | awk '{print $1}'` ] ; then
         return 0
-    elif [ ! -z `file "$1" | grep "broken symbolic link to"` ] ; then
-        `file "$1"`
-        print_info "remove broken symlink: $1"
-        rm -fr "$1"
+    elif [ ! -z `echo "$CHK_SYMLINK_FILE" | grep "broken symbolic link to" | awk '{print $1}'` ] ; then
+        print_error "remove broken symlink: $CHK_SYMLINK_FILE"
+        rm -fr "$CHK_SYMLINK_FILE"
         return 1
     else
         return 1
@@ -92,8 +91,8 @@ try_force_link_dir () {
 
 try_download () {
     set -o pipefail
-    wget -c -t 1 -T 20 "$1" --output-document="$2" 2>&1 | \
-    sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
+    wget -c -t 5 -T 2 "$1" --output-document="$2" 2>&1 | \
+    tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
     zenity --progress --percentage=0 --title="Download $(basename $1)" --text=Starting... --auto-close --auto-kill --width=500 --height=90
     [ "${PIPESTATUS[0]}" != 0 ] && print_error "failed to download $1. Scipping." && return 1 || return 0
 }
@@ -159,7 +158,7 @@ pw_mangohud_check () {
 }
 
 pw_vkbasalt_check () {
-    if [ ! -z "${ENABLE_VKBASALT}" ] && [ "${ENABLE_VKBASALT}" == 1 ] ; then
+    if [[ ! -z "${ENABLE_VKBASALT}" && "${ENABLE_VKBASALT}" == 1 ]] ; then
         if [ -z "${PW_VKBASALT_EFFECTS}" ] ; then
             export PW_VKBASALT_EFFECTS="FakeHDR:cas" 
         fi
@@ -252,13 +251,20 @@ init_wine_ver () {
     else export PATH="${WINEDIR}/bin"
     fi
 
-    if [ -d "${WINEDIR}/files" ] ; then
+    if [[ -d "${WINEDIR}/files" && ! -d "${WINEDIR}/dist" ]] ; then
         chmod -R 755 "${WINEDIR}"
         for clear_dist_files in `ls "${WINEDIR}" | sed -e "s/^files$//g" | sed -e "s/^version$//g"` ; do 
             rm -fr "${WINEDIR}/$clear_dist_files"
         done
         mv -f "${WINEDIR}/files"/* "${WINEDIR}/"
         rm -fr "${WINEDIR}/files"
+    elif [[ ! -d "${WINEDIR}/files" && -d "${WINEDIR}/dist" ]] ; then
+            chmod -R 755 "${WINEDIR}"
+        for clear_dist_files in `ls "${WINEDIR}" | sed -e "s/^dist$//g" | sed -e "s/^version$//g"` ; do 
+            rm -fr "${WINEDIR}/$clear_dist_files"
+        done
+        mv -f "${WINEDIR}/dist"/* "${WINEDIR}/"
+        rm -fr "${WINEDIR}/dist"
     elif [ -f "${WINEDIR}/proton_dist.tar" ] ; then
         unpack_tar "${WINEDIR}/proton_dist.tar" "${WINEDIR}/"
         for clear_dist_files in `ls "${WINEDIR}" | sed -e "s/^bin$//g" | sed -e "s/^lib$//g" | sed -e "s/^lib64$//g" | sed -e "s/^share$//g" | sed -e "s/^version$//g"` ; do 
@@ -277,7 +283,7 @@ init_wine_ver () {
         if [ ! -d "${WINEDIR}/share/wine/${mono_gecko_chk}" ] ; then
             try_remove_dir "${WINEDIR}/share/wine/${mono_gecko_chk}"
             try_force_link_dir "${PORT_WINE_TMP_PATH}/${mono_gecko_chk}" "${WINEDIR}"/share/wine/
-        elif [ -d "${WINEDIR}/share/wine/${mono_gecko_chk}" ] && [ ! `check_symlink "${WINEDIR}/share/wine/${mono_gecko_chk}"` ] ; then  
+        elif ! check_symlink "${WINEDIR}/share/wine/${mono_gecko_chk}" && [[ -d "${WINEDIR}/share/wine/${mono_gecko_chk}" ]]  ; then  
             cp -fr "${WINEDIR}/share/wine/${mono_gecko_chk}" "${PORT_WINE_TMP_PATH}"
             rm -fr "${WINEDIR}/share/wine/${mono_gecko_chk}"
             try_force_link_dir "${PORT_WINE_TMP_PATH}/${mono_gecko_chk}" "${WINEDIR}"/share/wine/
@@ -314,9 +320,14 @@ pw_stop_progress_bar () {
 }
 
 pw_download_libs () {
-    if [ ! -e "${PW_WINELIB}/runtime/bin/yad" ] || [ ! -e "${PW_WINELIB}/runtime/lib/p7zip/7z" ] \
-    || [ ! -e "${PW_WINELIB}/runtime/bin/vkcube" ] || [ ! -e "${PW_WINELIB}/runtime/bin/xterm" ] || \
-    [ -e "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" ] ; then
+    if [ ! -z "`ls ${PORT_WINE_TMP_PATH} | grep libs_v | grep -v libs${PW_LIBS_VER}`" ] ; then
+        for RM_LIBS in `ls ${PORT_WINE_TMP_PATH} | grep libs_v | grep -v libs${PW_LIBS_VER}`
+        do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_LIBS}"
+        done
+    fi
+    if [[ ! -e "${PW_WINELIB}/runtime/bin/yad" || ! -e "${PW_WINELIB}/runtime/lib/p7zip/7z" \
+    || ! -e "${PW_WINELIB}/runtime/bin/vkcube" || ! -e "${PW_WINELIB}/runtime/bin/xterm" || \
+    -e "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" ]] ; then
         print_info "Download and install libraries..."
         if try_download "https://github.com/Castro-Fidel/PortWINE/releases/download/libs${PW_LIBS_VER}/libs${PW_LIBS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" ; then
             if unpack_tar_xz "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/" ; then
@@ -404,7 +415,7 @@ update_winetricks () {
     print_info "Version winetricks on server: ${W_TRX_EXT_VER}"
     W_TRX_INT_VER="$(cat "${PORT_WINE_TMP_PATH}/winetricks" | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')"
     print_info "Version winetricks in port: ${W_TRX_INT_VER}"
-    if [ ! -f "${PORT_WINE_TMP_PATH}/winetricks" ] && [ ! -z "$W_TRX_EXT_VER" ] || [ "$W_TRX_INT_VER" != "$W_TRX_EXT_VER" ] && [ ! -z "$W_TRX_EXT_VER" ]; then
+    if [[ ! -f "${PORT_WINE_TMP_PATH}/winetricks" && ! -z "$W_TRX_EXT_VER" ]] || [[ "$W_TRX_INT_VER" != "$W_TRX_EXT_VER" && ! -z "$W_TRX_EXT_VER" ]]; then
         if try_download "${W_TRX_URL}" "${PORT_WINE_TMP_PATH}/winetricks_new" ; then
             mv -f "${PORT_WINE_TMP_PATH}/winetricks_new" "${PORT_WINE_TMP_PATH}/winetricks"
             W_TRX_INT_VER="$(cat "${PORT_WINE_TMP_PATH}/winetricks" | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')" && print_info "Winetricks version in port has been updated (${W_TRX_INT_VER})" 
@@ -461,6 +472,7 @@ stop_portwine () {
     if [  ! -z "`ls "${WINEPREFIX}"/drive_c/ | grep -m 1 ".tmp"`" ] ; then
         rm -f "${WINEPREFIX}"/drive_c/*.tmp
     fi
+    exit 0
 }
 
 pw_tray_icon () {
@@ -475,6 +487,7 @@ pw_tray_icon () {
             then kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`"
             fi
             kill -9 `pgrep -a start.sh | awk '/PortWINE/ && /PortProton/' | awk '{print $1}'`
+            exit 0
         }
         export -f tray_icon_click_exit
 
@@ -518,7 +531,7 @@ pw_port_update () {
             export port_current_ver=`cat "${PORT_WINE_TMP_PATH}/curent_var_ver" | grep PORT_NEXT_VERSION | awk -F "=" '{print $2}'`
             print_info "Port version in github = ${port_current_ver}"
             print_info "Port version local = ${port_install_ver}"
-            if  [ ! -z "${port_current_ver}" ] && [ "${port_current_ver}" -gt "${port_install_ver}" ] ; then
+            if  [[ ! -z "${port_current_ver}" && "${port_current_ver}" -gt "${port_install_ver}" ]] ; then
                 xsd=`zenity --title  "${port_upd1}" --text "${port_upd2}" --list --radiolist --height=240 --column="${inst_set}" --column "${port_upd3}" \
                 TRUE "${port_upd4}" \
                 FALSE "${port_upd5}" \
@@ -575,7 +588,7 @@ pw_port_update () {
             export scripts_current_ver=`cat "${PORT_WINE_TMP_PATH}/curent_var_ver" | grep SCRIPTS_NEXT_VERSION | awk -F "=" '{print $2}'`
             print_info "Scripts version in github = ${scripts_current_ver}"
             print_info "Scripts version local = ${scripts_install_ver}"
-            if [ ! -z "${scripts_current_ver}" ] && [ "${scripts_current_ver}" -gt "${scripts_install_ver}" ] ; then
+            if [[ ! -z "${scripts_current_ver}" && "${scripts_current_ver}" -gt "${scripts_install_ver}" ]] ; then
                 xcsd=`zenity --title  "${scripts_upd1}" --text "${scripts_upd2}" --list --radiolist --height=240 --column="${inst_set}" --column "${scripts_upd3}" \
                 TRUE "${scripts_upd4}" \
                 FALSE "${scripts_upd5}" \
@@ -617,7 +630,7 @@ pw_kill_autostart () {
     else
         sleep 10
         while true ; do
-            if  [ -z "`ps aux | grep -m 1 "$1" | grep -v grep | awk '{print $2}'`" ] && [ ! -z "`pgrep wrap | head -n 1`" ]; then
+            if  [[ -z "`ps aux | grep -m 1 "$1" | grep -v grep | awk '{print $2}'`" && ! -z "`pgrep wrap | head -n 1`" ]] ; then
                 echo -e "PID "$1" not found"
                 sleep 1
             else
@@ -662,7 +675,7 @@ pw_gui_for_edit_db () {
     --columns=4 --form --separator=" " --borders=10 --center  ${ADD_CHK_BOX_EDIT_DB} \
     --button="CANCEL":1 --button="OPEN DB FILE":150 --button="SAVE CHANGES":0 `
     YAD_STATUS="$?"
-    if [ "$YAD_STATUS" == "1" ] || [ "$YAD_STATUS" == "252" ] ; then exit 0
+    if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0
     elif [ "$YAD_STATUS" == "150" ] ; then
         xdg-open "${PORTWINE_DB_FILE}" &
         exit 0
@@ -681,9 +694,9 @@ pw_gui_for_edit_db () {
     }
     edit_db_field_read $@
     edit_db_from_gui $@
-    PW_DB_TMP=`cat "${PORTWINE_DB_FILE}"`
-    echo "${PW_DB_TMP}" | awk '! a[$0]++' > "${PORTWINE_DB_FILE}"
-    unset PW_DB_TMP
+    # PW_DB_TMP=`cat "${PORTWINE_DB_FILE}"`
+    # echo "${PW_DB_TMP}" | awk '! a[$0]++' > "${PORTWINE_DB_FILE}"
+    # unset PW_DB_TMP
     return 0
 }
 
@@ -734,3 +747,48 @@ pw_check_and_download_wine () {
         fi
     fi
 }
+
+gui_proton_downloader () {
+    set -o pipefail
+    export PROTON_GE_GIT=($(curl -s "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases" | grep "browser_download_url.*\.tar\.gz" | cut -d \" -f 4))
+    [ "${PIPESTATUS[0]}" != 0 ] && exit 1
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+    for PGEGIT in ${PROTON_GE_GIT[@]} ; do
+        echo ${PGEGIT} | awk -F/ '{print $NF}' | sed 's/.tar.gz//' >> "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+    done
+    sed -i '/Proton-6.5-GE-2/,$d' "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+    sed -i '/github-action/d' "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+    for INSTALLING_VERSION_IN_DIST in `ls "${PORT_WINE_PATH}/data/dist/"` ; do 
+        sed -i "/${INSTALLING_VERSION_IN_DIST}/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git" 
+    done
+    VERSION_PROTON_GIT=`yad --list --cheklist --separator="" --listen --width=400 --height=600 --center --borders=15 \
+    --column "Select WINE for download:" --title "Download..." < "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"`
+    if [ "${PIPESTATUS[0]}" != 0 ]; then
+        /bin/bash -c ${pw_full_command_line[*]} &
+        exit 0
+    fi
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+
+    for PGEGIT2 in ${PROTON_GE_GIT[@]} ; do
+        if [ ! -z `echo ${PGEGIT2} | grep "$VERSION_PROTON_GIT"` ] ; then
+            export URL_VERSION_PROTON_GIT="${PGEGIT2}"
+        fi
+    done
+
+    print_info "Download and install ${VERSION_PROTON_GIT}..."
+    if try_download "${URL_VERSION_PROTON_GIT}" "${PORT_WINE_PATH}/data/tmp/${VERSION_PROTON_GIT}.tar.gz" ; then
+        if unpack_tar_gz "${PORT_WINE_PATH}/data/tmp/${VERSION_PROTON_GIT}.tar.gz" "${PORT_WINE_PATH}/data/dist/" ; then
+            try_remove_file "${PORT_WINE_PATH}/data/tmp/${VERSION_PROTON_GIT}.tar.gz"
+        else
+            try_remove_file "${PORT_WINE_PATH}/data/tmp/${VERSION_PROTON_GIT}.tar.gz"
+            try_remove_dir "${PORT_WINE_PATH}/data/dist/${VERSION_PROTON_GIT}"
+
+            zenity_error_download && gui_proton_downloader
+        fi
+    else
+        zenity_error_download && gui_proton_downloader
+    fi
+    /bin/bash -c ${pw_full_command_line[*]} &
+    exit 0
+}
+export -f gui_proton_downloader

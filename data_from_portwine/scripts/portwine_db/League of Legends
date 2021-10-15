@@ -3,19 +3,24 @@
 #LeagueClient.exe
 #RiotClientServices.exe
 #Install League of Legends ru.exe
+#Install League of Legends nu.exe
 #Install League of Legends euw.exe
+#live.na.exe
 #Rating=1-5
 #####################examples###########################
-export PW_COMMENT_DB="Check openssl in your system!"
+export TEXT_OPSSL=""
+[[ -z `which openssl` ]] && export TEXT_OPSSL="Install openssl in your system!!!\n"
+export PW_COMMENT_DB="${TEXT_OPSSL}Dwnload and start League of Legend can take a long time"
 ##export PW_WINDOWS_VER=10                        # Set windows version 10, 7 or XP
 ##export PW_DLL_INSTALL="vcrun2017"               # Install DDL in port prefix (used winetricks)
 ##export WINEDLLOVERRIDES="blabla=n,b"
 export LAUNCH_PARAMETERS=("--launch-product=league_of_legends" "--launch-patchline=live")                # Additional launch options
-export PW_WINE_USE=PROTON_GE
+export PW_WINE_USE=WINE_LOL_GE_6.16-2
 export PW_VULKAN_USE=dxvk
+export PW_MUST_HAVE_DLL=""
 ##export PW_DXR_ON=1
 ##export PW_VULKAN_NO_ASYNC=1                     # Disabled ASYNC for VULKAN
-##export PW_USE_NVAPI=0
+##export PW_USE_NVAPI_AND_DLSS=0
 ##export PW_OLD_GL_STRING=1
 ##export PW_HIDE_NVIDIA_GPU=1
 ##export PW_FORCE_USE_VSYNC=0                     # Vsync: 0-FORCE_OFF, 1-FORCE_ON, 2-BY_DEFAULT
@@ -39,12 +44,13 @@ export PW_GECKO_VER="2.47.2"
 ##export PW_GUI_DISABLED_CS=1                     # 1 = disabled GUI
 
 check_port_for_lol () {
+    pw_start_progress_bar_block "Download and start League of Legend. Please wait. It can take a long time!"
     process=LeagueClientUx.exe
-    uxpid=$(timeout 2m /bin/bash -c "until pidof ${process}; do sleep 1; done")
-    if [ ! -n $uxpid ]; then
-        echo "Could not find process ${process}"
-        exit 1
-    fi
+    while [[ -z `pidof ${process}` ]] ; do
+        echo "PID ${process} not found"
+        sleep 1
+    done
+    uxpid=`pidof ${process}`
     echo "LeagueClientUx pid: ${uxpid}"
     port=$(xargs -0 < /proc/${uxpid}/cmdline | sed -n 's/.*--app-port=\([[:digit:]]*\).*/\1/p')
     if [ ! -n $port ]; then
@@ -53,11 +59,12 @@ check_port_for_lol () {
     fi
     echo "Waiting for port ${port}"
     kill -STOP ${uxpid}
-    timeout 5m /bin/bash -c "
-    until openssl s_client -connect :${port} <<< Q > /dev/null 2>&1; do
+    timeout 200m /bin/bash -c "
+    until openssl s_client -connect :${port} <<< Q > /dev/null 2>&1 ; do
     sleep 1
     done"
     kill -CONT ${uxpid}
+    pw_stop_progress_bar
 }
 
 add_in_start_portwine () {

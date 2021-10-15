@@ -1,0 +1,38 @@
+#!/bin/bash
+# Author: Castro-Fidel (PortWINE-Linux.ru)
+########################################################################
+export LAUNCH_PARAMETERS=("/q" )
+export PW_AUTOINSTALL_EXE="${WINEPREFIX}/drive_c/live.na.exe"
+export LAUNCH_PARAMETERS=("--launch-product=league_of_legends" "--launch-patchline=live")
+export VERSION_WINE_FOR_LOL="WINE_LOL_GE_6.16-2"
+export PW_MUST_HAVE_DLL=""
+if [ ! -d "${PORT_WINE_PATH}/data/dist/${VERSION_WINE_FOR_LOL}" ] ; then
+    if try_download "https://github.com/Castro-Fidel/wine_builds/releases/download/WINE_LOL_GE_6.16-2/${VERSION_WINE_FOR_LOL}.tar.xz" \
+    "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_FOR_LOL}.tar.xz" ; then
+        if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_FOR_LOL}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
+            try_remove_file "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_FOR_LOL}.tar.xz"
+            UNPACK_STATUS=0
+        else
+            try_remove_file "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_FOR_LOL}.tar.xz"
+            try_remove_dir "${PORT_WINE_PATH}/data/dist/${VERSION_WINE_FOR_LOL}"
+        fi
+    fi
+    [[ "${UNPACK_STATUS}" != 0 ]] && exit 1
+fi
+export PW_WINE_USE=WINE_LOL_GE_6.16-2
+export PW_VULKAN_USE=dxvk
+start_portwine
+if try_download "https://lol.secure.dyn.riotcdn.net/channels/public/x/installer/current/live.na.exe" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_start_progress_bar_block "Installing League of Legends. Please wait..."
+    zenity --info --width=500 --text "You must click the install button without changing the settings!"   
+    pw_kill_autostart RiotClientServices.exe &
+    pw_run "${PW_AUTOINSTALL_EXE}" 
+    portwine_exe="$WINEPREFIX/drive_c/Riot Games/Riot Client/RiotClientServices.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    kill_portwine
+    pw_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="League of Legend"
+    portwine_create_shortcut
+fi
+stop_portwine

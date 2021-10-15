@@ -11,12 +11,12 @@ portwine_launch () {
     start_portwine
     PORTWINE_MSI=`basename "${portwine_exe}" | grep .msi`
     PORTWINE_BAT=`basename "${portwine_exe}" | grep .bat`
-    if [ ! -z "${PW_VIRTUAL_DESKTOP}" ] && [ "${PW_VIRTUAL_DESKTOP}" == "1" ] ; then
+    if [[ ! -z "${PW_VIRTUAL_DESKTOP}" && "${PW_VIRTUAL_DESKTOP}" == "1" ]] ; then
         pw_screen_resolution=`xrandr --current | grep "*" | awk '{print $1;}' | head -1`
         pw_run explorer "/desktop=portwine,${pw_screen_resolution}" "$portwine_exe"
     elif [ ! -z "${PORTWINE_MSI}" ]; then
         pw_run msiexec /i "$portwine_exe"
-    elif [ ! -z "${PORTWINE_BAT}" ] || [ ! -z "${portwine_exe}" ]; then
+    elif [[ ! -z "${PORTWINE_BAT}" || ! -z "${portwine_exe}" ]] ; then
         pw_run ${WINE_WIN_START} "$portwine_exe"
     else
         pw_run explorer
@@ -200,9 +200,9 @@ pw_winetricks () {
 }
 
 pw_edit_db () {
-    pw_gui_for_edit_db ENABLE_VKBASALT PW_NO_ESYNC PW_NO_FSYNC PW_DXR_ON PW_VULKAN_NO_ASYNC PW_USE_NVAPI \
+    pw_gui_for_edit_db ENABLE_VKBASALT PW_NO_ESYNC PW_NO_FSYNC PW_DXR_ON PW_VULKAN_NO_ASYNC PW_USE_NVAPI_AND_DLSS \
     PW_OLD_GL_STRING PW_HIDE_NVIDIA_GPU PW_FORCE_USE_VSYNC PW_VIRTUAL_DESKTOP PW_WINEDBG_DISABLE PW_USE_TERMINAL \
-    PW_WINE_ALLOW_XIM PW_HEAP_DELAY_FREE PW_NO_WRITE_WATCH PW_GUI_DISABLED_CS PW_USE_GSTREAMER 
+    PW_WINE_ALLOW_XIM PW_HEAP_DELAY_FREE PW_NO_WRITE_WATCH PW_GUI_DISABLED_CS PW_USE_GSTREAMER
     if [ "$?" == 0 ] ; then
         /bin/bash -c ${pw_full_command_line[*]} &
         exit 0
@@ -239,7 +239,7 @@ done
 if [ ! -z "${PORTWINE_DB_FILE}" ] ; then
     export YAD_EDIT_DB="--button=EDIT  DB!!${loc_edit_db} ${PORTWINE_DB}:118"
     [ -z "${PW_COMMENT_DB}" ] && PW_COMMENT_DB="PortWINE database file for "\"${PORTWINE_DB}"\" was found."
-    if [ -z "${PW_VULKAN_USE}" ] || [ -z "${PW_WINE_USE}" ] ; then
+    if [[ -z "${PW_VULKAN_USE}" || -z "${PW_WINE_USE}" ]] ; then
         unset PW_GUI_DISABLED_CS
         [ -z "${PW_VULKAN_USE}" ] && export PW_VULKAN_USE=dxvk
         [ -z "${PW_WINE_USE}" ] && export PW_WINE_USE=PROTON_STEAM
@@ -262,9 +262,9 @@ else
     unset PW_GUI_DISABLED_CS
 fi
 if [ ! -z "${portwine_exe}" ]; then
-    if [ -z "${PW_GUI_DISABLED_CS}" ] || [ "${PW_GUI_DISABLED_CS}" = 0 ] ; then
+    if [[ -z "${PW_GUI_DISABLED_CS}" || "${PW_GUI_DISABLED_CS}" = 0 ]] ; then
         OUTPUT_START=$("${pw_yad}" --text-align=center --text "$PW_COMMENT_DB" --wrap-width=150 --borders=15 --form --center  \
-        --title "$portname"  --image "$PW_GUI_ICON_PATH/port_proton.png" --separator=";" \
+        --title "${portname}-${install_ver} (${scripts_install_ver})"  --image "$PW_GUI_ICON_PATH/port_proton.png" --separator=";" \
         --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
         --field="Run with :CB" "${PW_DEFAULT_VULKAN_USE}" \
         --field="Run with :CB" "${PW_DEFAULT_WINE_USE}" \
@@ -274,7 +274,7 @@ if [ ! -z "${portwine_exe}" ]; then
         --button='DEBUG'!!"${loc_debug}":102 \
         --button='LAUNCH'!!"${loc_launch}":106 )
         export PW_YAD_SET="$?"
-        if [ "$PW_YAD_SET" == "1" ] || [ "$PW_YAD_SET" == "252" ] ; then exit 0 ; fi
+        if [[ "$PW_YAD_SET" == "1" || "$PW_YAD_SET" == "252" ]] ; then exit 0 ; fi
         export VULKAN_MOD=`echo "${OUTPUT_START}" | grep \;\; | awk -F";" '{print $1}' | awk '{print $1}'`
         export PW_WINE_VER=`echo "${OUTPUT_START}" | grep \;\; | awk -F";" '{print $2}' | awk '{print $1}'`
     elif [ ! -z "${PORTWINE_DB_FILE}" ]; then
@@ -347,6 +347,7 @@ else
     --field="   OSU"!"$PW_GUI_ICON_PATH/osu.png":"BTN" '@bash -c "button_click PW_OSU"' \
     --field="   Glyph Client"!"$PW_GUI_ICON_PATH/glyph.png":"BTN" '@bash -c "button_click  PW_GLYPH"' \
     --field="   Ankama Launcher"!"$PW_GUI_ICON_PATH/ankama.png":"BTN" '@bash -c "button_click PW_ANKAMA"' \
+    --field="   League of Legends"!"$PW_GUI_ICON_PATH/lol.png":"BTN" '@bash -c "button_click PW_LOL"' \
     --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png":"BTN" '@bash -c "button_click  PW_GAMEFORGE"' & \
 
     "${pw_yad}" --plug=${KEY} --tabnum=1 --columns=3 --form --separator=";" \
@@ -359,16 +360,16 @@ else
     --field=":LBL" "" \
     --field='WINEFILE'!!"${loc_winefile}":"BTN" '@bash -c "button_click WINEFILE"' \
     --field='WINECMD'!!"${loc_winecmd}":"BTN" '@bash -c "button_click WINECMD"' \
-    --field="${portname}-${install_ver} (${scripts_install_ver})"!!"":"FBTN" '@bash -c "open_changelog"' \
+    --field="GET  OTHER  WINE"!!"":"FBTN" '@bash -c "button_click gui_proton_downloader"' \
     --field=":LBL" "" \
     --field='WINEREG'!!"${loc_winereg}":"BTN" '@bash -c "button_click WINEREG"' \
     --field='WINETRICKS'!!"${loc_winetricks}":"BTN" '@bash -c "button_click WINETRICKS"' &> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" & \
 
     "${pw_yad}" --key=$KEY --notebook --borders=10 --width=1000 --height=168 --no-buttons --text-align=center \
-    --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "$portname" --separator=";" \
+    --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "${portname}-${install_ver} (${scripts_install_ver})" --separator=";" \
     --tab-pos=right --tab="PORT_PROTON" --tab="AUTOINSTALL" --tab="    SETTINGS" --center
     YAD_STATUS="$?"
-    if [ "$YAD_STATUS" == "1" ] || [ "$YAD_STATUS" == "252" ] ; then exit 0 ; fi
+    if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
 
     if [ -f "${PORT_WINE_TMP_PATH}/tmp_yad_form" ] ; then
         export PW_YAD_SET=`cat "${PORT_WINE_TMP_PATH}/tmp_yad_form" | head -n 1 | awk '{print $1}'`
@@ -420,6 +421,7 @@ case "$PW_YAD_SET" in
     gui_open_var) gui_open_var ;;
     gui_wine_uninstaller) gui_wine_uninstaller ;;
     gui_rm_portproton) gui_rm_portproton ;;
+    gui_proton_downloader) gui_proton_downloader ;;
     *) pw_autoinstall_from_db ;;
 esac
 
