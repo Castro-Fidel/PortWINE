@@ -781,9 +781,10 @@ gui_proton_downloader () {
     export PROTON_PW_GIT=($(curl -s "https://api.github.com/repos/Castro-Fidel/wine_builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4))
     try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
     for PPWGIT in ${PROTON_PW_GIT[@]} ; do
-        echo $PPWGIT
         echo ${PPWGIT} | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
     done
+    sed -i '/PROTON_GE/d' "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+
     for INSTALLING_VERSION_IN_DIST in `ls "${PORT_WINE_PATH}/data/dist/"` ; do
         sed -i "/${INSTALLING_VERSION_IN_DIST}/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
         sed -i "/${INSTALLING_VERSION_IN_DIST}/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
@@ -792,28 +793,27 @@ gui_proton_downloader () {
 
     #GUI
     export KEY_WINE=$RANDOM
-    "${pw_yad}" --plug=$KEY_WINE --tabnum=2 --list --cheklist --separator="" --listen \
-    --column "Select WINE for download:" < "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git" &> "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set" &
-
-    "${pw_yad}" --plug=$KEY_WINE --tabnum=1 --list --cheklist --separator="" --listen \
-    --column "Select WINE for download:" < "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git" &> "${PORT_WINE_TMP_PATH}/tmp_proton_set" &
-
-    "${pw_yad}" --key=$KEY_WINE --notebook --width=500 --height=600 --text-align=center --center \
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set"
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_set"
+    `"${pw_yad}" --plug=$KEY_WINE --tabnum=2 --list --cheklist --separator="" --listen \
+    --column "Select WINE for download:" < "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git" 1> "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set"` &
+    `"${pw_yad}" --plug=$KEY_WINE --tabnum=1 --list --cheklist --separator="" --listen \
+    --column "Select WINE for download:" < "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git" 1> "${PORT_WINE_TMP_PATH}/tmp_proton_set"` &
+    `"${pw_yad}" --key=$KEY_WINE --notebook --width=500 --height=600 --text-align=center --center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "Download..." --separator="" \
-    --tab-pos=top --tab="PROTON-GE" --tab="PROTON-PW"
+    --tab-pos=top --tab="PROTON-GE" --tab="PROTON-PW"`
     YAD_WINE_STATUS="$?"
     if [[ "$YAD_WINE_STATUS" == "1" || "$YAD_WINE_STATUS" == "252" ]] ; then
         /bin/bash -c ${pw_full_command_line[*]} &
         exit 0
     fi
 
-    if [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_proton_set"` ] ; then
-        export VERSION_WINE_GIT=`cat "${PORT_WINE_TMP_PATH}/tmp_proton_set"`
-    elif [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set"` ] ; then
-        export VERSION_WINE_GIT=`cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set"`
+    if [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_proton_set" | awk '{print $1}'` ] ; then
+        export VERSION_WINE_GIT="`cat "${PORT_WINE_TMP_PATH}/tmp_proton_set"`"
+    elif [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set" | awk '{print $1}'` ] ; then
+        export VERSION_WINE_GIT="`cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set"`"
     fi
 
-    echo "$VERSION_WINE_GIT"
     try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
     try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
     try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_set"
