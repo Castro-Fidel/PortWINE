@@ -89,9 +89,21 @@ try_force_link_dir () {
     return 1
 }
 
+check_process () {
+    [ ! -n "`ps cax | grep "$1" | awk '{print $1}'`" ] && return 0 || return 1 
+}
+
 try_download () {
     set -o pipefail
     wget -c -t 5 -T 3 "$1" --output-document="$2" 2>&1 | \
+    tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
+    zenity --progress --percentage=0 --title="Download $(basename $1)" --text=Starting... --auto-close --auto-kill --width=500 --height=90
+    [ "${PIPESTATUS[0]}" != 0 ] && print_error "failed to download $1. Scipping." && return 1 || return 0
+}
+
+try_download_to_path () {
+    set -o pipefail
+    wget -c -t 5 -T 3 "$1" --directory-prefix="$2" 2>&1 | \
     tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
     zenity --progress --percentage=0 --title="Download $(basename $1)" --text=Starting... --auto-close --auto-kill --width=500 --height=90
     [ "${PIPESTATUS[0]}" != 0 ] && print_error "failed to download $1. Scipping." && return 1 || return 0
@@ -272,8 +284,14 @@ init_wine_ver () {
         done
     fi
 
+    if [[ ! -d "${WINEDIR}/lib64/" && -d "${WINEDIR}/lib/wine/x86_64-unix" ]] ; then
+        create_new_dir "${WINEDIR}/lib64/wine"
+        mv -f "${WINEDIR}/lib/wine/x86_64-unix" "${WINEDIR}/lib64/wine/"
+        mv -f "${WINEDIR}/lib/wine/x86_64-windows" "${WINEDIR}/lib64/wine/"
+    fi
+
     for copy_proton_dll in "dxvk" "vkd3d-proton" ; do
-        if [ ! -d "${WINEDIR}/lib/wine/${copy_proton_dll}/" ] ; then
+        if [[ ! -d "${WINEDIR}/lib/wine/${copy_proton_dll}/" || ! -d "${WINEDIR}/lib64/wine/${copy_proton_dll}/" ]] ; then
             try_copy_dir "${PORT_WINE_PATH}/data/dist/PROTON_STEAM/lib/wine/${copy_proton_dll}" "${WINEDIR}/lib/wine/"
             try_copy_dir "${PORT_WINE_PATH}/data/dist/PROTON_STEAM/lib64/wine/${copy_proton_dll}" "${WINEDIR}/lib64/wine/"
         fi
@@ -303,19 +321,19 @@ sszen() {
 
 pw_start_progress_bar_cs () {
     "${pw_yad}" --progress --progress-text="$@" --pulsate --close-on-unfocus \
-    --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 &
+    --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 > /dev/null 2>&1 &
     echo ""
 }
 
 pw_start_progress_bar_block () {
     "${pw_yad}" --progress --progress-text="$@" --pulsate \
-    --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 &
+    --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 > /dev/null 2>&1 &
     echo ""
 }
 
 pw_stop_progress_bar () {
     while [ ! -z "`pgrep -a yad | grep "\-\-progress" | awk '{print $1}'`" ]
-    do kill -n 9 `pgrep -a yad | grep "\-\-progress" | awk '{print $1}' | head -n 1` &> /dev/null
+    do kill -n 9 `pgrep -a yad | grep "\-\-progress" | awk '{print $1}' | head -n 1` > /dev/null 2>&1
     done
 }
 
@@ -749,42 +767,77 @@ pw_check_and_download_wine () {
 }
 
 gui_proton_downloader () {
-    set -o pipefail
+    export PORT_WINE_TMP_PATH="${HOME}"
+    pw_start_progress_bar_block "Check new version WINE from GitHub"
+    #PROTON_GE
     export PROTON_GE_GIT=($(curl -s "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases" | grep "browser_download_url.*\.tar\.gz" | cut -d \" -f 4))
-    [ "${PIPESTATUS[0]}" != 0 ] && exit 1
     try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
     for PGEGIT in ${PROTON_GE_GIT[@]} ; do
         echo ${PGEGIT} | awk -F/ '{print $NF}' | sed 's/.tar.gz//' >> "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
     done
     sed -i '/Proton-6.5-GE-2/,$d' "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
     sed -i '/github-action/d' "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
-    for INSTALLING_VERSION_IN_DIST in `ls "${PORT_WINE_PATH}/data/dist/"` ; do 
-        sed -i "/${INSTALLING_VERSION_IN_DIST}/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git" 
+
+    #PROTON_PW
+    export PROTON_PW_GIT=($(curl -s "https://api.github.com/repos/Castro-Fidel/wine_builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4))
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
+    for PPWGIT in ${PROTON_PW_GIT[@]} ; do
+        echo $PPWGIT
+        echo ${PPWGIT} | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
     done
-    VERSION_PROTON_GIT=`"${pw_yad_new}" --list --cheklist --separator="" --listen --width=400 --height=600 --center --borders=15 \
-    --column "Select WINE for download:" --title "Download..." < "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"`
-    if [ "${PIPESTATUS[0]}" != 0 ]; then
+    for INSTALLING_VERSION_IN_DIST in `ls "${PORT_WINE_PATH}/data/dist/"` ; do
+        sed -i "/${INSTALLING_VERSION_IN_DIST}/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+        sed -i "/${INSTALLING_VERSION_IN_DIST}/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
+    done
+    pw_stop_progress_bar
+
+    #GUI
+    export KEY_WINE=$RANDOM
+    "${pw_yad}" --plug=$KEY_WINE --tabnum=2 --list --cheklist --separator="" --listen \
+    --column "Select WINE for download:" < "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git" &> "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set" &
+
+    "${pw_yad}" --plug=$KEY_WINE --tabnum=1 --list --cheklist --separator="" --listen \
+    --column "Select WINE for download:" < "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git" &> "${PORT_WINE_TMP_PATH}/tmp_proton_set" &
+
+    `yad --key=$KEY_WINE --notebook --width=500 --height=600 --text-align=center --center \
+    --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "Download..." --separator="" \
+    --tab-pos=top --tab="PROTON-GE" --tab="PROTON-PW"`
+    YAD_WINE_STATUS="$?"
+    if [[ "$YAD_WINE_STATUS" == "1" || "$YAD_WINE_STATUS" == "252" ]] ; then
         /bin/bash -c ${pw_full_command_line[*]} &
         exit 0
     fi
-    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
 
-    for PGEGIT2 in ${PROTON_GE_GIT[@]} ; do
-        if [ ! -z `echo ${PGEGIT2} | grep "$VERSION_PROTON_GIT"` ] ; then
-            export URL_VERSION_PROTON_GIT="${PGEGIT2}"
+    if [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_proton_set"` ] ; then
+        export VERSION_WINE_GIT=`cat "${PORT_WINE_TMP_PATH}/tmp_proton_set"`
+    elif [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set"` ] ; then
+        export VERSION_WINE_GIT=`cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set"`
+    fi
+
+    echo "$VERSION_WINE_GIT"
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_set"
+
+    for GIVE_WINE_URL in ${PROTON_GE_GIT[@]} ${PROTON_PW_GIT[@]} ; do
+        if [ ! -z `echo ${GIVE_WINE_URL} | grep "$VERSION_WINE_GIT"` ] ; then
+            export URL_VERSION_PROTON_GIT="${GIVE_WINE_URL}"
         fi
     done
 
-    print_info "Download and install ${VERSION_PROTON_GIT}..."
-    if try_download "${URL_VERSION_PROTON_GIT}" "${PORT_WINE_PATH}/data/tmp/${VERSION_PROTON_GIT}.tar.gz" ; then
-        if unpack_tar_gz "${PORT_WINE_PATH}/data/tmp/${VERSION_PROTON_GIT}.tar.gz" "${PORT_WINE_PATH}/data/dist/" ; then
-            try_remove_file "${PORT_WINE_PATH}/data/tmp/${VERSION_PROTON_GIT}.tar.gz"
-        else
-            try_remove_file "${PORT_WINE_PATH}/data/tmp/${VERSION_PROTON_GIT}.tar.gz"
-            try_remove_dir "${PORT_WINE_PATH}/data/dist/${VERSION_PROTON_GIT}"
-
-            zenity_error_download && gui_proton_downloader
-        fi
+    print_info "Download and install ${VERSION_WINE_GIT}..."
+    if try_download_to_path "${URL_VERSION_PROTON_GIT}" "${PORT_WINE_PATH}/data/tmp/" ; then
+        for archive_type in "gz" "xz" ; do
+            if [ -f "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}" ] ; then
+                if unpack_tar_${archive_type} "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}" "${PORT_WINE_PATH}/data/dist/" ; then
+                    try_remove_file "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}"
+                else
+                    try_remove_file "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}"
+                    try_remove_dir "${PORT_WINE_PATH}/data/dist/${VERSION_WINE_GIT}"
+                    zenity_error_download && gui_proton_downloader
+                fi
+            fi
+        done
     else
         zenity_error_download && gui_proton_downloader
     fi

@@ -31,7 +31,7 @@ echo "Icon="${PORT_WINE_PATH}/data/img/readme.png""	>> "${PORT_WINE_PATH}/${name
 echo "URL=${urlg}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 
-if [ "${s_install}" = "1" ]; then
+if [ "${silent_install}" = "1" ]; then
 	echo "Installation completed successfully."
 else
 	`zenity --info --title "${inst_set_top}" --text "${inst_succ}" --no-wrap ` > /dev/null 2>&1

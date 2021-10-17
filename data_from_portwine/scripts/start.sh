@@ -202,7 +202,7 @@ pw_winetricks () {
 pw_edit_db () {
     pw_gui_for_edit_db ENABLE_VKBASALT PW_NO_ESYNC PW_NO_FSYNC PW_DXR_ON PW_VULKAN_NO_ASYNC PW_USE_NVAPI_AND_DLSS \
     PW_OLD_GL_STRING PW_HIDE_NVIDIA_GPU PW_FORCE_USE_VSYNC PW_VIRTUAL_DESKTOP PW_WINEDBG_DISABLE PW_USE_TERMINAL \
-    PW_WINE_ALLOW_XIM PW_HEAP_DELAY_FREE PW_NO_WRITE_WATCH PW_GUI_DISABLED_CS PW_USE_GSTREAMER
+    PW_WINE_ALLOW_XIM PW_HEAP_DELAY_FREE PW_NO_WRITE_WATCH PW_GUI_DISABLED_CS PW_USE_GSTREAMER PW_USE_RUNTIME
     if [ "$?" == 0 ] ; then
         /bin/bash -c ${pw_full_command_line[*]} &
         exit 0
@@ -250,15 +250,15 @@ if [ ! -z "${PORTWINE_DB_FILE}" ] ; then
               *) export PW_DEFAULT_VULKAN_USE='DXVK  (DX 9-11 to Vulkan)\!VKD3D  (DX 12 to Vulkan)\!OPENGL ' ;;
     esac
     case "${PW_WINE_USE}" in
-        "PROTON_GE") export PW_DEFAULT_WINE_USE="PROTON_GE\!PROTON_STEAM${DIST_ADD_TO_GUI}" ;;
-        "PROTON_STEAM") export PW_DEFAULT_WINE_USE="PROTON_STEAM\!PROTON_GE${DIST_ADD_TO_GUI}" ;;
+        "PROTON_GE") export PW_DEFAULT_WINE_USE="PROTON_GE  (${PW_GE_VER})\!PROTON_STEAM  (${PW_STEAM_VER})${DIST_ADD_TO_GUI}" ;;
+        "PROTON_STEAM") export PW_DEFAULT_WINE_USE="PROTON_STEAM  (${PW_STEAM_VER})\!PROTON_GE  (${PW_GE_VER})${DIST_ADD_TO_GUI}" ;;
         *)
             export DIST_ADD_TO_GUI=`echo ${DIST_ADD_TO_GUI} | sed -e s/"\!${PW_WINE_USE}$//g"`
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}\!PROTON_STEAM\!PROTON_GE${DIST_ADD_TO_GUI}" ;;
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}\!PROTON_STEAM  (${PW_STEAM_VER})\!PROTON_GE  (${PW_GE_VER})${DIST_ADD_TO_GUI}" ;;
     esac
 else
     export PW_DEFAULT_VULKAN_USE='DXVK  (DX 9-11 to Vulkan)\!VKD3D  (DX 12 to Vulkan)\!OPENGL '
-    export PW_DEFAULT_WINE_USE="PROTON_STEAM\!PROTON_GE${DIST_ADD_TO_GUI}"
+    export PW_DEFAULT_WINE_USE="PROTON_STEAM  (${PW_STEAM_VER})\!PROTON_GE  (${PW_GE_VER})${DIST_ADD_TO_GUI}"
     unset PW_GUI_DISABLED_CS
 fi
 if [ ! -z "${portwine_exe}" ]; then
@@ -330,7 +330,7 @@ else
     --field="CLEAR PREFIX":"BTN" '@bash -c "button_click gui_clear_pfx"'  \
     --field="EDIT SCRIPT VAR":"BTN" '@bash -c "button_click gui_open_var"' \
     --field="WINE UNINSTALLER":"BTN" '@bash -c "button_click gui_wine_uninstaller"' \
-    --field="REMOVE PORTPROTON":"BTN" '@bash -c "button_click gui_rm_portproton"' & \
+    --field="REMOVE PORTPROTON":"BTN" '@bash -c "button_click gui_rm_portproton"' &
 
     "${pw_yad}" --plug=$KEY --tabnum=2 --form --columns=3  --scroll  --height=500 \
     --field="   Wargaming Game Center"!"$PW_GUI_ICON_PATH/wgc.png":"BTN" '@bash -c "button_click PW_WGC"' \
@@ -348,7 +348,7 @@ else
     --field="   Glyph Client"!"$PW_GUI_ICON_PATH/glyph.png":"BTN" '@bash -c "button_click  PW_GLYPH"' \
     --field="   Ankama Launcher"!"$PW_GUI_ICON_PATH/ankama.png":"BTN" '@bash -c "button_click PW_ANKAMA"' \
     --field="   League of Legends"!"$PW_GUI_ICON_PATH/lol.png":"BTN" '@bash -c "button_click PW_LOL"' \
-    --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png":"BTN" '@bash -c "button_click  PW_GAMEFORGE"' & \
+    --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png":"BTN" '@bash -c "button_click  PW_GAMEFORGE"' & 
 
     "${pw_yad}" --plug=${KEY} --tabnum=1 --columns=3 --form --separator=";" \
     --image "$PW_GUI_ICON_PATH/port_proton.png" \
@@ -356,14 +356,14 @@ else
     --field=":LBL" "" \
     --field='DEBUG'!!"${loc_debug}":"BTN" '@bash -c "button_click DEBUG"' \
     --field='WINECFG'!!"${loc_winecfg}":"BTN" '@bash -c "button_click WINECFG"' \
-    --field=":CB" "PROTON_STEAM\!PROTON_GE${DIST_ADD_TO_GUI}" \
+    --field=":CB" "PROTON_STEAM  (${PW_STEAM_VER})\!PROTON_GE  (${PW_GE_VER})${DIST_ADD_TO_GUI}" \
     --field=":LBL" "" \
     --field='WINEFILE'!!"${loc_winefile}":"BTN" '@bash -c "button_click WINEFILE"' \
     --field='WINECMD'!!"${loc_winecmd}":"BTN" '@bash -c "button_click WINECMD"' \
     --field="GET  OTHER  WINE"!!"":"FBTN" '@bash -c "button_click gui_proton_downloader"' \
     --field=":LBL" "" \
     --field='WINEREG'!!"${loc_winereg}":"BTN" '@bash -c "button_click WINEREG"' \
-    --field='WINETRICKS'!!"${loc_winetricks}":"BTN" '@bash -c "button_click WINETRICKS"' &> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" & \
+    --field='WINETRICKS'!!"${loc_winetricks}":"BTN" '@bash -c "button_click WINETRICKS"' &> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" &
 
     "${pw_yad}" --key=$KEY --notebook --borders=10 --width=1000 --height=168 --no-buttons --text-align=center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "${portname}-${install_ver} (${scripts_install_ver})" --separator=";" \

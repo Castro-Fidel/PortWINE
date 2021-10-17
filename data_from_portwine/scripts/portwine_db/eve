@@ -13,6 +13,8 @@ export WINEDLLOVERRIDES="concrt140,msvcp140,msvcp140_1,msvcp140_2,d3dcompiler_47
 
 ##export PW_FORCE_USE_VSYNC=2                     # Vsync: 0-FORCE_OFF, 1-FORCE_ON, 2-BY_DEFAULT
 ##export ENABLE_VKBASALT=1
+export PW_VKBASALT_EFFECTS="cas:FilmGrain2"
+export PW_VKBASALT_FFX_CAS="0.5"
 
 ##export PW_NO_FSYNC=1                            # Do not use futex-based in-process synchronization primitives. (Automatically disabled on systems with no FUTEX_WAIT_MULTIPLE support.
 ##export PW_NO_ESYNC=1                            # Do not use eventfd-based in-process synchronization primitives
@@ -32,4 +34,20 @@ export WINEDLLOVERRIDES="concrt140,msvcp140,msvcp140_1,msvcp140_2,d3dcompiler_47
 ##export PW_LOG=0                                 # Enable debug mode fo terminal
 ##export PW_GUI_DISABLED_CS=1                     # 1 = disabled GUI
 
-##add_in_start_portwine () { commands ; }
+eve_fix () {
+    export EVE_SHADER_CASH="$WINEPREFIX/drive_c/Games/EVE Online/SharedCache"
+    if [[ ! -f "$EVE_SHADER_CASH/tq/bin64/launchdarkly_client.pyd" ]] ; then
+    sleep 30
+        while check_process evelauncher.exe && [[ ! -f "$EVE_SHADER_CASH/tq/bin64/launchdarkly_client.pyd" ]]
+        do sleep 1
+        done
+    fi
+    sleep 2
+    try_remove_file "$EVE_SHADER_CASH/tq/launchdarkly_client.pyd"
+    try_copy_file "$EVE_SHADER_CASH/tq/bin64/launchdarkly_client.pyd" "$EVE_SHADER_CASH/tq/"
+    chmod 444 "$EVE_SHADER_CASH/tq/launchdarkly_client.pyd"
+}
+
+add_in_start_portwine () { 
+    eve_fix &
+}
