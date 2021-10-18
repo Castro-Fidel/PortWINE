@@ -245,9 +245,9 @@ if [ ! -z "${PORTWINE_DB_FILE}" ] ; then
         [ -z "${PW_WINE_USE}" ] && export PW_WINE_USE=PROTON_STEAM
     fi
     case "${PW_VULKAN_USE}" in
-        "vkd3d") export PW_DEFAULT_VULKAN_USE='VKD3D  (DX 12 to Vulkan)\!DXVK  (DX 9-11 to Vulkan)\!OPENGL ' ;;
-            "0") export PW_DEFAULT_VULKAN_USE='OPENGL \!DXVK  (DX 9-11 to Vulkan)\!VKD3D  (DX 12 to Vulkan)' ;;
-              *) export PW_DEFAULT_VULKAN_USE='DXVK  (DX 9-11 to Vulkan)\!VKD3D  (DX 12 to Vulkan)\!OPENGL ' ;;
+        "dxvk") export PW_DEFAULT_VULKAN_USE='DXVK (DX 9-11 to Vulkan)\!VULKAN (DXVK and VKD3D)\!OPENGL ' ;;
+            "0") export PW_DEFAULT_VULKAN_USE='OPENGL \!VULKAN (DXVK and VKD3D)\!DXVK  (DX 9-11 to Vulkan)' ;;
+              *) export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)\!DXVK  (DX 9-11 to Vulkan)\!OPENGL ' ;;
     esac
     case "${PW_WINE_USE}" in
         "PROTON_GE") export PW_DEFAULT_WINE_USE="PROTON_GE  (${PW_GE_VER})\!PROTON_STEAM  (${PW_STEAM_VER})${DIST_ADD_TO_GUI}" ;;
@@ -257,7 +257,7 @@ if [ ! -z "${PORTWINE_DB_FILE}" ] ; then
             export PW_DEFAULT_WINE_USE="${PW_WINE_USE}\!PROTON_STEAM  (${PW_STEAM_VER})\!PROTON_GE  (${PW_GE_VER})${DIST_ADD_TO_GUI}" ;;
     esac
 else
-    export PW_DEFAULT_VULKAN_USE='DXVK  (DX 9-11 to Vulkan)\!VKD3D  (DX 12 to Vulkan)\!OPENGL '
+    export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)\!DXVK  (DX 9-11 to Vulkan)\!OPENGL '
     export PW_DEFAULT_WINE_USE="PROTON_STEAM  (${PW_STEAM_VER})\!PROTON_GE  (${PW_GE_VER})${DIST_ADD_TO_GUI}"
     unset PW_GUI_DISABLED_CS
 fi
@@ -352,7 +352,7 @@ else
 
     "${pw_yad}" --plug=${KEY} --tabnum=1 --columns=3 --form --separator=";" \
     --image "$PW_GUI_ICON_PATH/port_proton.png" \
-    --field=":CB" "  DXVK  (DX 9-11 to Vulkan)"\!"VKD3D  (DX 12 to Vulkan)"\!"OPENGL " \
+    --field=":CB" "VULKAN (DXVK and VKD3D)\!DXVK  (DX 9-11 to Vulkan)\!OPENGL" \
     --field=":LBL" "" \
     --field='DEBUG'!!"${loc_debug}":"BTN" '@bash -c "button_click DEBUG"' \
     --field='WINECFG'!!"${loc_winecfg}":"BTN" '@bash -c "button_click WINECFG"' \
@@ -384,7 +384,7 @@ else
 fi
 if [ ! -z "${VULKAN_MOD}" ] ; then
     if [ "${VULKAN_MOD}" = "DXVK" ] ; then export PW_VULKAN_USE="dxvk"
-    elif [ "${VULKAN_MOD}" = "VKD3D" ]; then export PW_VULKAN_USE="vkd3d"
+    elif [ "${VULKAN_MOD}" = "VULKAN" ]; then export PW_VULKAN_USE="1"
     elif [ "${VULKAN_MOD}" = "OPENGL" ]; then export PW_VULKAN_USE="0"
     fi
 fi

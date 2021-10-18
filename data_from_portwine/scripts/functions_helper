@@ -160,10 +160,10 @@ unpack_tar () {
 pw_mangohud_check () {
     export RUN_MANGOHUD=""
     if [ "${PW_MANGOHUD}" == "1" ] ; then
-        if [ "${PW_VULKAN_USE}" = "0" ]
-        then export RUN_MANGOHUD="mangohud --dlsym"
-        else export RUN_MANGOHUD="mangohud"
-        fi
+        #if [ "${PW_VULKAN_USE}" = "0" ] ; then 
+            export RUN_MANGOHUD="mangohud --dlsym"
+        #else export RUN_MANGOHUD="mangohud"
+        #fi
     else
         export DISABLE_MANGOHUD=1
     fi
@@ -563,33 +563,6 @@ pw_port_update () {
                         echo " " ;;
                     "${port_upd6}")
                     echo "0" > "${PORT_WINE_TMP_PATH}/update_notifier" ;;
-                esac
-            fi
-        fi
-        if [ ! -f "${HOME}/.config/.PortTime" ] ; then
-            echo "10" > "${HOME}/.config/.PortTime"
-        fi
-        read "port_time" < "${HOME}/.config/.PortTime"
-        if [ "${port_time}" -gt "1" ] ; then
-            port_time=$((${port_time}-1))
-            echo "${port_time}" > "${HOME}/.config/.PortTime"
-        else
-            xsd2=`zenity --title  "${port_time1}" --text "${port_time2}" --list --radiolist --height=230 --column="${inst_set3}" --column "${port_time3}" \
-            TRUE "${port_time4}" \
-            FALSE "${port_time5}" \
-            FALSE "${port_time6}" `
-            if [ $? = 1 ] ; then
-                echo "1" > "${HOME}/.config/.PortTime"
-            else
-                case $xsd2 in
-                    "${port_time4}")
-                        xdg-open "$urlg" &
-                        echo "300" > "${HOME}/.config/.PortTime"
-                        exit 0 ;;
-                    "${port_time5}")
-                        echo "75" > "${HOME}/.config/.PortTime" ;;
-                    "${port_time6}")
-                        echo "150" > "${HOME}/.config/.PortTime" ;;
                 esac
             fi
         fi
