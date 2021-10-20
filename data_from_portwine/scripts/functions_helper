@@ -172,7 +172,7 @@ pw_mangohud_check () {
 pw_vkbasalt_check () {
     if [[ ! -z "${ENABLE_VKBASALT}" && "${ENABLE_VKBASALT}" == 1 ]] ; then
         if [ -z "${PW_VKBASALT_EFFECTS}" ] ; then
-            export PW_VKBASALT_EFFECTS="FakeHDR:cas" 
+            export PW_VKBASALT_EFFECTS="cas:FilmGrain2" 
         fi
         sed -ri "s/effects = .*/effects = ${PW_VKBASALT_EFFECTS}/g" "${PORT_WINE_PATH}/data/vkBasalt.conf"
         if [ -z "${PW_VKBASALT_FFX_CAS}" ] ; then
@@ -180,6 +180,7 @@ pw_vkbasalt_check () {
         fi
         sed -ri "s/casSharpness .*/casSharpness = ${PW_VKBASALT_FFX_CAS}/g" "${PORT_WINE_PATH}/data/vkBasalt.conf"
         export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
+        sed -i s/'> = 0.05;'/'> = 0.035;'/ "${PW_WINELIB}/runtime/local/share/reshade/shaders/FilmGrain2.fx"
     else
         export DISABLE_VKBASALT=1
     fi
@@ -246,13 +247,12 @@ init_wine_ver () {
     export WINESERVER="${WINEDIR}/bin/wineserver"
     export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
 
-    if [ ! -z ${LD_LIBRARY_PATH_TMP} ]
-    then export LD_LIBRARY_PATH="${LD_LIBRARY_PATH_TMP}"
-    else export LD_LIBRARY_PATH_TMP=${LD_LIBRARY_PATH}
-    fi
-    if [ ! -z "${LD_LIBRARY_PATH}" ]
-    then export LD_LIBRARY_PATH="${WINEDIR}/lib64/:${WINEDIR}/lib/:${LD_LIBRARY_PATH}"
-    else export LD_LIBRARY_PATH="${WINEDIR}/lib64/:${WINEDIR}/lib/"
+    if [[ ! -z "${LD_LIBRARY_PATH}" ]] ; then 
+        if [[ -z "`echo ${LD_LIBRARY_PATH} | grep "${WINEDIR}/lib64:${WINEDIR}/lib"`" ]] ; then
+            export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${LD_LIBRARY_PATH}"
+        fi
+    else 
+        export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib"
     fi
     if [ ! -z ${PATH_TMP} ]
     then export PATH="${PATH_TMP}"
@@ -658,19 +658,26 @@ pw_gui_for_edit_db () {
             then export ${int_to_boole}="TRUE"
             else export ${int_to_boole}="FALSE"
             fi
-            ADD_CHK_BOX_EDIT_DB="${ADD_CHK_BOX_EDIT_DB} --field="${int_to_boole}:CHK" "${!int_to_boole}""
+            TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
+            ADD_CHK_BOX_EDIT_DB+="--field=${int_to_boole}!${!TMP_HELP_FOR_GUI}:CHK%${!int_to_boole}%"
+            echo "$ADD_CHK_BOX_EDIT_DB"
+            echo "${int_to_boole}=${!int_to_boole}"
         done
     }
     edit_db_field_add $@
-    output_yad_edit_db=`"${pw_yad}" --title "EDIT_DB" --text-align=center --text "Change settings in database file for ${PORTWINE_DB}\n" \
-    --columns=4 --form --separator=" " --borders=10 --center  ${ADD_CHK_BOX_EDIT_DB} \
-    --button="CANCEL":1 --button="OPEN DB FILE":150 --button="SAVE CHANGES":0 `
+    export old_IFS=$IFS
+    export IFS="%" 
+    output_yad_edit_db=`"${pw_yad_new}" --title "EDIT_DB" --text-align=center --text "Change settings in database file for ${PORTWINE_DB}\n" \
+    --columns=4 --form --separator=" " --borders=10 --center ${ADD_CHK_BOX_EDIT_DB} \
+    --button="CANCEL":1 --button="OPEN DB FILE":150 --button="SAVE CHANGES":0`
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0
     elif [ "$YAD_STATUS" == "150" ] ; then
         xdg-open "${PORTWINE_DB_FILE}" &
         exit 0
     fi
+    export IFS=$old_IFS
+    echo "$output_yad_edit_db"
     export output_yad_edit_db=($output_yad_edit_db)
     export bool_from_yad=0
     edit_db_field_read () {

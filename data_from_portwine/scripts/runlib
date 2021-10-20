@@ -62,24 +62,35 @@ start_portwine () {
         fi
         echo "RUNTIME is disabled"
     else
-        export PW_AND_RUNTIME_LIBRARY_PATH="/overrides/lib/x86_64-linux-gnu/:/overrides/lib/x86_64-linux-gnu/aliases/:/overrides/lib/i386-linux-gnu/:/overrides/lib/i386-linux-gnu/aliases/:"
+        declare -a container_args=()
+        ld_preload="$LD_PRELOAD"
+        for word in $ld_preload; do
+            if [ -n "$word" ]; then
+                container_args+=("--ld-preload=$word")
+            fi
+        done
+        export PW_AND_RUNTIME_LIBRARY_PATH="/overrides/lib/x86_64-linux-gnu:/overrides/lib/i386-linux-gnu:"
         if [[ ! -z "${PW_SANDBOX_HOME_PATH}" && -d "${PW_SANDBOX_HOME_PATH}" ]]; then
             export pw_runtime="${PW_WINELIB}/pressure-vessel/bin/pressure-vessel-unruntime \
             --unshare-home \
             --home="${PW_SANDBOX_HOME_PATH}" \
             --runtime=${PW_WINELIB}/runtime \
+            --env-if-host=LD_PRELOAD=$LD_PRELOAD "${container_args[@]}" \
             --"
         else
             export pw_runtime="${PW_WINELIB}/pressure-vessel/bin/pressure-vessel-unruntime \
             --share-home \
             --runtime=${PW_WINELIB}/runtime \
+            --env-if-host=LD_PRELOAD=$LD_PRELOAD "${container_args[@]}" \
             --"
         fi
+
+        export PRESSURE_VESSEL_COPY_RUNTIME=0
         export PRESSURE_VESSEL_VARIABLE_DIR="${PW_WINELIB}/runtime"
         export PRESSURE_VESSEL_REMOVE_GAME_OVERLAY=0
         export PRESSURE_VESSEL_IMPORT_VULKAN_LAYERS=1
         export PRESSURE_VESSEL_GC_RUNTIMES=0
-        export PRESSURE_VESSEL_GC_LEGACY_RUNTIMES=0
+        export PRESSURE_VESSEL_GC_LEGACY_RUNTIMES=1
         export PRESSURE_VESSEL_RUNTIME_BASE="${PW_WINELIB}"
         export PRESSURE_VESSEL_PREFIX="${PW_WINELIB}/pressure-vessel"
         unset PRESSURE_VESSEL_FILESYSTEMS_RO
@@ -98,9 +109,6 @@ start_portwine () {
         done
         if [ ! -f "${PW_WINELIB}/runtime/etc/os-release" ]
         then try_force_link_file "${PW_WINELIB}/runtime/lib/os-release" "${PW_WINELIB}/runtime/etc/os-release"
-        fi
-        if [ ! -d "${PW_WINELIB}/runtime/share/nvidia" ]
-        then create_new_dir "${PW_WINELIB}/runtime/share/nvidia"
         fi
         echo "RUNTIME is enabled"
     fi

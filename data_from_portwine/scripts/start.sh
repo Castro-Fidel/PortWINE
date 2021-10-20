@@ -160,6 +160,10 @@ portwine_start_debug () {
 
     portwine_launch &
     sleep 1 && zenity --info --title "DEBUG" --text "${port_debug}" --no-wrap &> /dev/null && kill_portwine
+    sed -i '%/gstreamer-1.0/%d' "${PORT_WINE_PATH}/${portname}.log"
+    sed -i '/winemenubuilder.exe/d' "${PORT_WINE_PATH}/${portname}.log"
+    sed -i '/nsiproxy/d' "${PORT_WINE_PATH}/${portname}.log"
+    sed -i '/.fx$/d' "${PORT_WINE_PATH}/${portname}.log"
     deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++') 
     echo "$deb_text" > "${PORT_WINE_PATH}/${portname}.log"
     "$pw_yad" --title="${portname}.log" --borders=10 --no-buttons --text-align=center \
