@@ -660,8 +660,6 @@ pw_gui_for_edit_db () {
             fi
             TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
             ADD_CHK_BOX_EDIT_DB+="--field=${int_to_boole}!${!TMP_HELP_FOR_GUI}:CHK%${!int_to_boole}%"
-            echo "$ADD_CHK_BOX_EDIT_DB"
-            echo "${int_to_boole}=${!int_to_boole}"
         done
     }
     edit_db_field_add $@
@@ -677,7 +675,6 @@ pw_gui_for_edit_db () {
         exit 0
     fi
     export IFS=$old_IFS
-    echo "$output_yad_edit_db"
     export output_yad_edit_db=($output_yad_edit_db)
     export bool_from_yad=0
     edit_db_field_read () {
@@ -824,3 +821,66 @@ gui_proton_downloader () {
     exit 0
 }
 export -f gui_proton_downloader
+
+gui_vkBasalt () {
+    KEY_FX_GUI=$RANDOM
+    FILE_VKBASALT_CONF="${PORT_WINE_PATH}/data/vkBasalt.conf"
+    LIST_FX=(`grep ".fx$" "${FILE_VKBASALT_CONF}" | awk '{print $1}'`)
+    GET_FX_IN_FILE=(`echo ${PW_VKBASALT_EFFECTS} | sed s/"cas:"// | sed s/":"/" "/g`)
+    unset ADD_GUI_FX GUI_FX_RESULT
+    for add_list_fx in ${LIST_FX[@]} ; do
+        if [[ ! -z `echo " ${GET_FX_IN_FILE[@]} " | grep " ${add_list_fx} "` ]] ; then
+            ADD_GUI_FX+=("--field $add_list_fx:CHK TRUE")
+        else
+            ADD_GUI_FX+=("--field $add_list_fx:CHK FALSE")
+        fi
+    done
+    if [[ ! -z "${PW_VKBASALT_FFX_CAS}" ]] ; then
+        VKBASALT_FFX_CAS_GUI=`bc -s <<< "${PW_VKBASALT_FFX_CAS}*100" | sed 's/\..*//'`
+    else
+        VKBASALT_FFX_CAS_GUI=75
+    fi
+    "${pw_yad_new}" --plug=$KEY_FX_GUI --tabnum="1" --form --columns=5 --separator=" " \
+    ${ADD_GUI_FX[@]} 1> "${PORT_WINE_TMP_PATH}/tmp_yad_basalt_set" &
+
+    "${pw_yad_new}" --plug=$KEY_FX_GUI --tabnum="2" --separator=" " --form \
+    --field="AMD FidelityFX - Contrast Adaptive Sharpening":SCL "${VKBASALT_FFX_CAS_GUI}" \
+    1> "${PORT_WINE_TMP_PATH}/tmp_yad_cas_set" &
+
+    "${pw_yad_new}" --paned --key="$KEY_FX_GUI" --height="600" --title="vkBasalt" --center --borders=10 \
+    --button="CANCEL":1 --button="DISABLED  VKBASALT":180 --button="ENABLED  VKBASALT":182
+    YAD_VKBASALT_STATUS="$?"
+    case "${YAD_VKBASALT_STATUS}" in
+        1|252)
+            /bin/bash -c ${pw_full_command_line[*]} &
+            exit 0 ;;
+        180)
+            export ENABLE_VKBASALT=0 ;;
+        182)
+            export ENABLE_VKBASALT=1 ;;
+    esac
+
+    YAD_BASALT_SET=`cat "${PORT_WINE_TMP_PATH}/tmp_yad_basalt_set"`
+    YAD_CAS_SET=`cat "${PORT_WINE_TMP_PATH}/tmp_yad_cas_set" | sed s/" "//g`
+
+    INT_COUNT_FX=0
+    for read_list_fx in ${YAD_BASALT_SET} ; do
+        if [[ "$read_list_fx" == "TRUE" ]] ; then
+            export GUI_FX_RESULT+=":${LIST_FX[$INT_COUNT_FX]}"
+        fi
+        export INT_COUNT_FX=$(( ${INT_COUNT_FX} + 1 ))
+    done
+    GUI_FX_RESULT="cas${GUI_FX_RESULT}"
+    export PW_VKBASALT_EFFECTS="${GUI_FX_RESULT}"       
+
+    if [[ "$YAD_CAS_SET" == "0" ]] ; then
+        export PW_VKBASALT_FFX_CAS="0"
+    elif [[ "$YAD_CAS_SET" == "100" ]] ; then
+        export PW_VKBASALT_FFX_CAS="1"
+    else
+        export PW_VKBASALT_FFX_CAS="0`bc -s <<< "scale=2; $YAD_CAS_SET/100"`"
+    fi
+    edit_db_from_gui PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS ENABLE_VKBASALT
+    /bin/bash -c ${pw_full_command_line[*]} &
+    exit 0
+}

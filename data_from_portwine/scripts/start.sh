@@ -61,7 +61,7 @@ portwine_create_shortcut () {
     chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
     `zenity --question --title "${inst_set}." --text "${ss_done}" --no-wrap ` &> /dev/null
     if [ $? -eq "0" ]; then
-        cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" /home/${USER}/.local/share/applications/
+        cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" ${HOME}/.local/share/applications/
     fi
     xdg-open "${PORT_WINE_PATH}" 2>1 >/dev/null &
 }
@@ -204,9 +204,9 @@ pw_winetricks () {
 }
 
 pw_edit_db () {
-    pw_gui_for_edit_db ENABLE_VKBASALT PW_NO_ESYNC PW_NO_FSYNC PW_DXR_ON PW_VULKAN_NO_ASYNC PW_USE_NVAPI_AND_DLSS \
+    pw_gui_for_edit_db PW_MANGOHUD ENABLE_VKBASALT PW_NO_ESYNC PW_NO_FSYNC PW_DXR_ON PW_VULKAN_NO_ASYNC PW_USE_NVAPI_AND_DLSS \
     PW_OLD_GL_STRING PW_HIDE_NVIDIA_GPU PW_FORCE_USE_VSYNC PW_VIRTUAL_DESKTOP PW_WINEDBG_DISABLE PW_USE_TERMINAL \
-    PW_WINE_ALLOW_XIM PW_HEAP_DELAY_FREE PW_NO_WRITE_WATCH PW_GUI_DISABLED_CS PW_USE_GSTREAMER PW_USE_RUNTIME
+    PW_WINE_ALLOW_XIM PW_HEAP_DELAY_FREE PW_NO_WRITE_WATCH PW_GUI_DISABLED_CS PW_USE_GSTREAMER PW_USE_RUNTIME 
     if [ "$?" == 0 ] ; then
         /bin/bash -c ${pw_full_command_line[*]} &
         exit 0
@@ -241,7 +241,6 @@ do
     export DIST_ADD_TO_GUI="${DIST_ADD_TO_GUI}\!${DAIG}"
 done
 if [ ! -z "${PORTWINE_DB_FILE}" ] ; then
-    export YAD_EDIT_DB="--button=EDIT  DB!!${loc_edit_db} ${PORTWINE_DB}:118"
     [ -z "${PW_COMMENT_DB}" ] && PW_COMMENT_DB="PortWINE database file for "\"${PORTWINE_DB}"\" was found."
     if [[ -z "${PW_VULKAN_USE}" || -z "${PW_WINE_USE}" ]] ; then
         unset PW_GUI_DISABLED_CS
@@ -273,7 +272,8 @@ if [ ! -z "${portwine_exe}" ]; then
         --field="Run with :CB" "${PW_DEFAULT_VULKAN_USE}" \
         --field="Run with :CB" "${PW_DEFAULT_WINE_USE}" \
         --field=":LBL" "" \
-        "${YAD_EDIT_DB}" \
+        --button='VKBASALT'!!"${ENABLE_VKBASALT_INFO}":120 \
+        --button='EDIT  DB'!!"${loc_edit_db} ${PORTWINE_DB}":118 \
         --button='CREATE SHORTCUT'!!"${loc_creat_shortcut}":100 \
         --button='DEBUG'!!"${loc_debug}":102 \
         --button='LAUNCH'!!"${loc_launch}":106 )
@@ -426,6 +426,7 @@ case "$PW_YAD_SET" in
     gui_wine_uninstaller) gui_wine_uninstaller ;;
     gui_rm_portproton) gui_rm_portproton ;;
     gui_proton_downloader) gui_proton_downloader ;;
+    120) gui_vkBasalt ;;
     *) pw_autoinstall_from_db ;;
 esac
 
