@@ -200,7 +200,7 @@ pw_winetricks () {
     init_wine_ver
     cabextract_fix
     start_portwine
-    ${PW_TERM} "${PORT_WINE_TMP_PATH}/winetricks" -q -f
+    ${PW_TERM} "${PORT_WINE_TMP_PATH}/winetricks" -q -r
 }
 
 pw_edit_db () {
