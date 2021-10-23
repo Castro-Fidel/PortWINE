@@ -38,7 +38,7 @@ start_portwine () {
         xrdb -merge "${HOME}/.Xresources"
     fi
 
-    pw_start_progress_bar_cs "Start ${portname}... Please wait..."
+    pw_start_progress_bar_block "Start ${portname}... Please wait..."
 
     if [ "${PW_USE_GSTREAMER}" = 1 ] ; then 
         if [ -d "${WINEDIR}/lib64/gstreamer-1.0" ] ; then
@@ -235,7 +235,7 @@ start_portwine () {
         echo "Gamemod will be launched."
     else
         export PW_GAMEMODERUN=0
-        echo "Gamemod is not installed or disabled in vars script: PW_USE_GAMEMODE=$PW_USE_GAMEMODE"
+        echo "Gamemod is not installed or disabled in vars script or db file: PW_USE_GAMEMODE=$PW_USE_GAMEMODE"
     fi
     #init_pfx
     if [[ ! -d "${WINEPREFIX}" || ! -d "${WINEPREFIX}"/drive_c/windows || ! -d "${WINEPREFIX}/dosdevices" || ! -f "${WINEPREFIX}"/userdef.reg || ! -f "${WINEPREFIX}"/system.reg || ! -f "${WINEPREFIX}"/user.reg ]]
@@ -260,9 +260,9 @@ start_portwine () {
         ${pw_runtime} env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -u
         wait_wineserver
         kill_portwine
-        pw_stop_progress_bar
-        pw_start_progress_bar_cs "Initialization prefix..."
     fi
+    pw_stop_progress_bar
+    pw_start_progress_bar_cs "Initialization prefix..."
     [ ! -d "${WINEPREFIX}/dosdevices/c:" ] && try_force_link_dir "${WINEPREFIX}/drive_c/" "${WINEPREFIX}/dosdevices/c:"
     [ ! -d "${WINEPREFIX}/dosdevices/z:" ] && try_force_link_dir "/" "${WINEPREFIX}/dosdevices/z:"
     create_new_dir "${WINEPREFIX}/drive_c/users/steamuser"
@@ -351,7 +351,6 @@ start_portwine () {
     then export PW_DLL_INSTALL="${PW_MUST_HAVE_DLL} ${PW_DLL_INSTALL}"
     fi
     if [ ! -z "${PW_DLL_INSTALL}" ]; then
-        pw_stop_progress_bar
         export PW_DLL_NEED_INSTALL=""
         export USE_WT_FROM_DB=0
         if [ ! -e "${WINEPREFIX}/winetricks.log" ] ; then
@@ -392,7 +391,6 @@ start_portwine () {
                 exit 0
             fi
         fi
-        pw_start_progress_bar_cs "Start ${portname}... Please wait..."
     fi
     if [[ -z `cat "${WINEPREFIX}/system.reg" | grep "Windows $PW_WINDOWS_VER"` ]] ; then
         if [[ ! -z "${PW_WINDOWS_VER}" && `echo "$PW_WINDOWS_VER" | sed 's/.*/\L&/'` == "xp" ]] ; then
@@ -404,6 +402,8 @@ start_portwine () {
         wait_wineserver
     fi
     add_in_start_portwine
+    pw_stop_progress_bar
+    pw_start_progress_bar_cs "Start ${portname}... Please wait..."
 }
 
 pw_run () {

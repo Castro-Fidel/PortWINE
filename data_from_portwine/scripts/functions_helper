@@ -433,21 +433,19 @@ update_winetricks () {
     print_info "Version winetricks on server: ${W_TRX_EXT_VER}"
     W_TRX_INT_VER="$(cat "${PORT_WINE_TMP_PATH}/winetricks" | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')"
     print_info "Version winetricks in port: ${W_TRX_INT_VER}"
-    if [[ ! -f "${PORT_WINE_TMP_PATH}/winetricks" && ! -z "$W_TRX_EXT_VER" ]] || [[ "$W_TRX_INT_VER" != "$W_TRX_EXT_VER" && ! -z "$W_TRX_EXT_VER" ]]; then
+    #if [[ ! -f "${PORT_WINE_TMP_PATH}/winetricks" && ! -z "$W_TRX_EXT_VER" ]] || [[ "$W_TRX_INT_VER" != "$W_TRX_EXT_VER" && ! -z "$W_TRX_EXT_VER" ]]; then
         if try_download "${W_TRX_URL}" "${PORT_WINE_TMP_PATH}/winetricks_new" ; then
             mv -f "${PORT_WINE_TMP_PATH}/winetricks_new" "${PORT_WINE_TMP_PATH}/winetricks"
             W_TRX_INT_VER="$(cat "${PORT_WINE_TMP_PATH}/winetricks" | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')" && print_info "Winetricks version in port has been updated (${W_TRX_INT_VER})" 
             chmod u+x "${PORT_WINE_TMP_PATH}/winetricks"
         fi
-    fi
+    #fi
     if  [ -f "${PORT_WINE_TMP_PATH}/winetricks" ] ; then
         sed -i 's/w_metadata vcrun2015 dlls \\/w_metadata !dont_use_2015! dlls \\/' "${PORT_WINE_TMP_PATH}/winetricks"
         sed -i 's/w_metadata vcrun2017 dlls \\/w_metadata !dont_use_2017! dlls \\/' "${PORT_WINE_TMP_PATH}/winetricks"
         #HOTFIX SHA256SUM FOR VC_RUN2019
-        sed -i 's/vc_redist.x86.exe 1acd8d5ea1cdc3eb2eb4c87be3ab28722d0825c15449e5c9ceef95d897de52fa/vc_redist.x86.exe \
-        80c7969f4e05002a0cd820b746e0acb7406d4b85e52ef096707315b390927824/g' "${PORT_WINE_TMP_PATH}/winetricks"
-        sed -i 's/vc_redist.x64.exe 003063723b2131da23f40e2063fb79867bae275f7b5c099dbd1792e25845872b/vc_redist.x64.exe \
-        9b9dd72c27ab1db081de56bb7b73bee9a00f60d14ed8e6fde45dab3e619b5f04/g' "${PORT_WINE_TMP_PATH}/winetricks"
+        sed -i 's/vc_redist.x86.exe 1acd8d5ea1cdc3eb2eb4c87be3ab28722d0825c15449e5c9ceef95d897de52fa/vc_redist.x86.exe 80c7969f4e05002a0cd820b746e0acb7406d4b85e52ef096707315b390927824/g' "${PORT_WINE_TMP_PATH}/winetricks"
+        sed -i 's/vc_redist.x64.exe 003063723b2131da23f40e2063fb79867bae275f7b5c099dbd1792e25845872b/vc_redist.x64.exe 9b9dd72c27ab1db081de56bb7b73bee9a00f60d14ed8e6fde45dab3e619b5f04/g' "${PORT_WINE_TMP_PATH}/winetricks"
 
     fi
 }
@@ -834,10 +832,11 @@ gui_vkBasalt () {
     GET_FX_IN_FILE=(`echo ${PW_VKBASALT_EFFECTS} | sed s/"cas:"// | sed s/":"/" "/g`)
     unset ADD_GUI_FX GUI_FX_RESULT
     for add_list_fx in ${LIST_FX[@]} ; do
+        PW_VKBASALT_GUI_HELP="PW_${add_list_fx}_INFO"
         if [[ ! -z `echo " ${GET_FX_IN_FILE[@]} " | grep " ${add_list_fx} "` ]] ; then
-            ADD_GUI_FX+=("--field $add_list_fx:CHK TRUE")
+            ADD_GUI_FX+="--field=$add_list_fx!${!PW_VKBASALT_GUI_HELP}:CHK%TRUE%"
         else
-            ADD_GUI_FX+=("--field $add_list_fx:CHK FALSE")
+            ADD_GUI_FX+="--field=$add_list_fx!${!PW_VKBASALT_GUI_HELP}:CHK%FALSE%"
         fi
     done
     if [[ ! -z "${PW_VKBASALT_FFX_CAS}" ]] ; then
@@ -845,15 +844,18 @@ gui_vkBasalt () {
     else
         VKBASALT_FFX_CAS_GUI=75
     fi
+    export old_IFS=$IFS
+    export IFS="%" 
     "${pw_yad_new}" --plug=$KEY_FX_GUI --tabnum="1" --form --columns=5 --separator=" " \
-    ${ADD_GUI_FX[@]} 1> "${PORT_WINE_TMP_PATH}/tmp_yad_basalt_set" &
+    ${ADD_GUI_FX} 1> "${PORT_WINE_TMP_PATH}/tmp_yad_basalt_set" &
+    export IFS="${old_IFS}" 
 
     "${pw_yad_new}" --plug=$KEY_FX_GUI --tabnum="2" --separator=" " --form \
     --field="AMD FidelityFX - Contrast Adaptive Sharpening":SCL "${VKBASALT_FFX_CAS_GUI}" \
     1> "${PORT_WINE_TMP_PATH}/tmp_yad_cas_set" &
 
     "${pw_yad_new}" --paned --key="$KEY_FX_GUI" --height="600" --title="vkBasalt" --center --borders=10 \
-    --button="CANCEL":1 --button="DISABLED  VKBASALT":180 --button="ENABLED  VKBASALT":182
+    --separator=" " --button="CANCEL":1 --button="DISABLED  VKBASALT":180 --button="ENABLED  VKBASALT":182
     YAD_VKBASALT_STATUS="$?"
     case "${YAD_VKBASALT_STATUS}" in
         1|252)
@@ -864,7 +866,6 @@ gui_vkBasalt () {
         182)
             export ENABLE_VKBASALT=1 ;;
     esac
-
     YAD_BASALT_SET=`cat "${PORT_WINE_TMP_PATH}/tmp_yad_basalt_set"`
     YAD_CAS_SET=`cat "${PORT_WINE_TMP_PATH}/tmp_yad_cas_set" | sed s/" "//g`
 
