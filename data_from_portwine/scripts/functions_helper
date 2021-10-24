@@ -247,22 +247,6 @@ init_wine_ver () {
     export WINESERVER="${WINEDIR}/bin/wineserver"
     export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
 
-    if [[ ! -z "${LD_LIBRARY_PATH}" ]] ; then 
-        if [[ -z "`echo ${LD_LIBRARY_PATH} | grep "${WINEDIR}/lib64:${WINEDIR}/lib"`" ]] ; then
-            export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${LD_LIBRARY_PATH}"
-        fi
-    else 
-        export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib"
-    fi
-    if [ ! -z ${PATH_TMP} ]
-    then export PATH="${PATH_TMP}"
-    else export PATH_TMP="${PATH}"
-    fi
-    if [ ! -z "${PATH}" ]
-    then export PATH="${WINEDIR}/bin:${PATH}"
-    else export PATH="${WINEDIR}/bin"
-    fi
-
     if [[ -d "${WINEDIR}/files" && ! -d "${WINEDIR}/dist" ]] ; then
         chmod -R 755 "${WINEDIR}"
         for clear_dist_files in `ls "${WINEDIR}" | sed -e "s/^files$//g" | sed -e "s/^version$//g"` ; do 
@@ -307,6 +291,7 @@ init_wine_ver () {
             try_force_link_dir "${PORT_WINE_TMP_PATH}/${mono_gecko_chk}" "${WINEDIR}"/share/wine/
         fi
     done
+    return 0
 }
 
 cabextract_fix () {
@@ -335,6 +320,7 @@ pw_stop_progress_bar () {
     while [ ! -z "`pgrep -a yad | grep "\-\-progress" | awk '{print $1}'`" ]
     do kill -n 9 `pgrep -a yad | grep "\-\-progress" | awk '{print $1}' | head -n 1` > /dev/null 2>&1
     done
+    return 0
 }
 
 pw_download_libs () {
@@ -450,10 +436,10 @@ update_winetricks () {
     fi
 }
 wait_wineserver () {
-    sleep 3
     while [ ! -z "$(ls -l /proc/*/exe 2>/dev/null | grep -ie ${portname} | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}')" ] ; do
         sleep 1
     done
+    return 0
 }
 
 kill_portwine () {
@@ -468,11 +454,12 @@ kill_portwine () {
     if [ ! -z `pgrep -a bwrap | grep ${portname} | head -n 1 | awk '{print $1}'` ] ; then
         kill -n 9 `pgrep -a bwrap | grep ${portname} | head -n 1 | awk '{print $1}'`
     fi
+    return 0
 }
 export -f kill_portwine
 
-stop_portwine () {
-    wait_wineserver
+stop_portwine () { 
+    wait_wineserver &&
     add_in_stop_portwine
     if [ "$int_xneur" = "1"  ]; then
         xneur &
@@ -483,7 +470,7 @@ stop_portwine () {
     pw_stop_progress_bar
     try_remove_file "${PORT_SCRIPTS_PATH}/0"
     try_remove_file "${PORT_SCRIPTS_PATH}/1"
-    kill_portwine
+    kill_portwine &&
     if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ]
     then kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`"
     fi
@@ -491,37 +478,41 @@ stop_portwine () {
         chmod -R 755 "${WINEPREFIX}"/drive_c/users/steamuser/Temp/
         rm -fr "${WINEPREFIX}"/drive_c/users/steamuser/Temp/*
     fi
-    if [  ! -z "`ls "${WINEPREFIX}"/drive_c/ | grep -m 1 ".tmp"`" ] ; then
-        rm -f "${WINEPREFIX}"/drive_c/*.tmp
-    fi
     exit 0
 }
+open_changelog () {
+    "${pw_yad}" --title="Changelog" --borders=10 --no-buttons --text-align=center \
+    --text-info --show-uri --wrap --center --width=1200 --height=550 --uri-color=red \
+    --filename="${PORT_WINE_PATH}/data/changelog"
+}
+export -f open_changelog
 
 pw_tray_icon () {
-    if [ -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ] ; then
-        tray_icon_click() {
-            echo ""
-        }
-        export -f tray_icon_click
-        tray_icon_click_exit() {
-            kill_portwine
-            if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ]
-            then kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`"
-            fi
-            kill -9 `pgrep -a start.sh | awk '/PortWINE/ && /PortProton/' | awk '{print $1}'`
-            exit 0
-        }
-        export -f tray_icon_click_exit
-
-        "${pw_yad_new}" --notification --no-middle --text="PortProton" \
-        --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
-        --image="$PW_GUI_ICON_PATH/port_proton.png" \
-        --command="bash -c tray_icon_click" \
-        --tooltip="PortProton" \
-        --menu="| \
-<<< CHANGE LOG >>>!bash -c open_changelog!"$PW_GUI_ICON_PATH/port_changelog.png"| \
-<<<   FORCE EXIT   >>>!bash -c tray_icon_click_exit!"$PW_GUI_ICON_PATH/port_exit.png"|"
+    if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ] ; then
+        kill -n 9 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`"
     fi
+    tray_icon_click() {
+        echo ""
+    }
+    export -f tray_icon_click
+    tray_icon_click_exit() {
+        kill_portwine &&
+        if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ]
+        then kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`"
+        fi
+        kill -n 9 `pgrep -a start.sh | awk '/PortWINE/ && /PortProton/' | awk '{print $1}'`
+        exit 0
+    }
+    export -f tray_icon_click_exit
+
+    "${pw_yad_new}" --notification --no-middle --text="PortProton" \
+    --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
+    --image="$PW_GUI_ICON_PATH/port_proton.png" \
+    --command="bash -c tray_icon_click" \
+    --tooltip="PortProton" \
+    --menu="| \
+<<< CHANGE LOG >>>!bash -c open_changelog!"$PW_GUI_ICON_PATH/port_changelog.png"| \
+<<<   FORCE EXIT   >>>!bash -c tray_icon_click_exit!"$PW_GUI_ICON_PATH/port_exit.png"|" &
 }
 
 pw_init_db () {
@@ -530,8 +521,8 @@ pw_init_db () {
         PORTWINE_DB_FILE=`grep -ilw "#${PORTWINE_DB}" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
         if [ ! -z "${PORTWINE_DB_FILE}" ]; then
             . "${PORTWINE_DB_FILE}"
+            init_wine_ver &&
             print_info "Use ${PORTWINE_DB_FILE} db file."
-            init_wine_ver
         fi
     fi
 #        export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
@@ -540,6 +531,10 @@ pw_init_db () {
 
 pw_port_update () {
     ###PORT UPDATE###
+    if [ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ] ; then
+        echo "2000" > "${PORT_WINE_TMP_PATH}/scripts_ver"
+    fi
+    export scripts_install_ver=`cat "${PORT_WINE_TMP_PATH}/scripts_ver" | head -n 1`
     if try_download_silent "https://github.com/Castro-Fidel/PortWINE/raw/master/data_from_portwine/scripts/var" "${PORT_WINE_TMP_PATH}/curent_var_ver" ; then
         if [ ! -f "${PORT_WINE_TMP_PATH}/${portname}_ver" ] ; then
             echo "10" > "${PORT_WINE_TMP_PATH}/${portname}_ver"
@@ -560,7 +555,7 @@ pw_port_update () {
                 FALSE "${port_upd6}" `
                 case $xsd in
                     "${port_upd4}")
-                        kill_portwine
+                        kill_portwine &&
                         xdg-open $PORTWINE_URL
                         exit 0 ;;
                     "${port_upd5}")
@@ -571,10 +566,6 @@ pw_port_update () {
             fi
         fi
         ###SCRIPTS UPDATE###
-        if [ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ] ; then
-            echo "2000" > "${PORT_WINE_TMP_PATH}/scripts_ver"
-        fi
-        export scripts_install_ver=`cat "${PORT_WINE_TMP_PATH}/scripts_ver" | head -n 1`
         if [ ! -f "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ] ; then
                 echo "1" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
         fi
@@ -628,7 +619,7 @@ pw_kill_autostart () {
                 echo -e "PID "$1" not found"
                 sleep 1
             else
-                kill_portwine
+                kill_portwine &&
                 break
             fi
         done
@@ -654,6 +645,13 @@ edit_db_from_gui () {
 }
 
 pw_gui_for_edit_db () {
+    KEY_EDIT_DB_GUI=$RANDOM
+    if [[ -n "`echo "${MANGOHUD_CONFIG}" | grep "fps_limit"`" ]] ; then
+        FPS_LIMIT_VAR="`echo ${MANGOHUD_CONFIG} | sed 's/.*fps_limit=//g' | awk -F, '{print $1}'`"
+    else
+        FPS_LIMIT_VAR=0
+    fi
+    echo "FPS_LIMIT_VAR=$FPS_LIMIT_VAR"
     unset ADD_CHK_BOX_EDIT_DB
     edit_db_field_add () {
         for int_to_boole in $@ ; do
@@ -666,20 +664,26 @@ pw_gui_for_edit_db () {
         done
     }
     edit_db_field_add $@
-    export old_IFS=$IFS
-    export IFS="%" 
-    output_yad_edit_db=`"${pw_yad_new}" --title "EDIT_DB" --text-align=center --text "Change settings in database file for ${PORTWINE_DB}\n" \
-    --columns=4 --form --separator=" " --borders=10 --center ${ADD_CHK_BOX_EDIT_DB} \
-    --button="CANCEL":1 --button="OPEN DB FILE":150 --button="SAVE CHANGES":0`
+    old_IFS=$IFS
+    IFS="%" 
+    "${pw_yad_new}" --plug=$KEY_EDIT_DB_GUI --tabnum="1" --form --separator=" " --columns=4 ${ADD_CHK_BOX_EDIT_DB} \
+    1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db" & 
+    IFS=$old_IFS
+
+    "${pw_yad_new}" --plug=$KEY_EDIT_DB_GUI --tabnum="2" --form --separator=" " --columns=1 \
+    --field="MANGOHUD FPS LIMIT (0-disabled):SCL" ${FPS_LIMIT_VAR} 1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" & 
+
+    "${pw_yad_new}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="330" \
+    --text "Change settings in database file for ${PORTWINE_DB}\n" --separator=" " --borders=10 --center \
+    --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --button="CANCEL":1 --button="OPEN DB FILE":150 --button="SAVE CHANGES":0
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0
     elif [ "$YAD_STATUS" == "150" ] ; then
         xdg-open "${PORTWINE_DB_FILE}" &
         exit 0
     fi
-    export IFS=$old_IFS
-    export output_yad_edit_db=($output_yad_edit_db)
-    export bool_from_yad=0
+    output_yad_edit_db=(`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db"`)
+    bool_from_yad=0
     edit_db_field_read () {
         for boole_to_int in $@ ; do
             export ${boole_to_int}=${output_yad_edit_db[$bool_from_yad]}
@@ -692,6 +696,15 @@ pw_gui_for_edit_db () {
     }
     edit_db_field_read $@
     edit_db_from_gui $@
+
+    FPS_LIMIT="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit"`"
+    if [ "${FPS_LIMIT}" == 0 ] ; then
+        export MANGOHUD_CONFIG=font_size=24,position=top-left,toggle_hud=Shift_R+F12,no_display,resolution,wine,gpu_name,vulkan_driver,gpu_stats,vkbasalt
+    else
+        export MANGOHUD_CONFIG=font_size=24,position=top-left,toggle_hud=Shift_R+F12,no_display,resolution,wine,gpu_name,vulkan_driver,gpu_stats,vkbasalt,fps_limit=${FPS_LIMIT}
+        export PW_MANGOHUD=1
+    fi
+    edit_db_from_gui PW_MANGOHUD MANGOHUD_CONFIG
     # PW_DB_TMP=`cat "${PORTWINE_DB_FILE}"`
     # echo "${PW_DB_TMP}" | awk '! a[$0]++' > "${PORTWINE_DB_FILE}"
     # unset PW_DB_TMP
@@ -766,8 +779,8 @@ gui_proton_downloader () {
     sed -i '/PROTON_GE/d' "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
 
     for INSTALLING_VERSION_IN_DIST in `ls "${PORT_WINE_PATH}/data/dist/"` ; do
-        sed -i "/${INSTALLING_VERSION_IN_DIST}/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
-        sed -i "/${INSTALLING_VERSION_IN_DIST}/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
+        sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+        sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
     done
     pw_stop_progress_bar
 
@@ -855,7 +868,8 @@ gui_vkBasalt () {
     1> "${PORT_WINE_TMP_PATH}/tmp_yad_cas_set" &
 
     "${pw_yad_new}" --paned --key="$KEY_FX_GUI" --height="600" --title="vkBasalt" --center --borders=10 \
-    --separator=" " --button="CANCEL":1 --button="DISABLED  VKBASALT":180 --button="ENABLED  VKBASALT":182
+    --separator=" " --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
+    --button="CANCEL":1 --button="DISABLED  VKBASALT":180 --button="ENABLED  VKBASALT":182
     YAD_VKBASALT_STATUS="$?"
     case "${YAD_VKBASALT_STATUS}" in
         1|252)

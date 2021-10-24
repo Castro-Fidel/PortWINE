@@ -186,6 +186,7 @@ pw_winecmd () {
     start_portwine
     cd "${WINEPREFIX}/drive_c"
     ${pw_runtime} xterm -e env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" "${WINELOADER}" cmd
+    stop_portwine
 }
 
 pw_winereg () {
@@ -201,6 +202,7 @@ pw_winetricks () {
     cabextract_fix
     start_portwine
     ${PW_TERM} "${PORT_WINE_TMP_PATH}/winetricks" -q -r
+    stop_portwine
 }
 
 pw_edit_db () {
@@ -238,7 +240,7 @@ PW_ALL_DIST=`ls "${PORT_WINE_PATH}/data/dist/" | sed -e s/"PROTON_GE$//g" | sed 
 unset DIST_ADD_TO_GUI
 for DAIG in ${PW_ALL_DIST}
 do
-    export DIST_ADD_TO_GUI="${DIST_ADD_TO_GUI}\!${DAIG}"
+    export DIST_ADD_TO_GUI="${DIST_ADD_TO_GUI}!${DAIG}"
 done
 if [ ! -z "${PORTWINE_DB_FILE}" ] ; then
     [ -z "${PW_COMMENT_DB}" ] && PW_COMMENT_DB="PortWINE database file for "\"${PORTWINE_DB}"\" was found."
@@ -248,24 +250,24 @@ if [ ! -z "${PORTWINE_DB_FILE}" ] ; then
         [ -z "${PW_WINE_USE}" ] && export PW_WINE_USE=PROTON_STEAM
     fi
     case "${PW_VULKAN_USE}" in
-        "dxvk") export PW_DEFAULT_VULKAN_USE='DXVK (DX 9-11 to Vulkan)\!VULKAN (DXVK and VKD3D)\!OPENGL ' ;;
-            "0") export PW_DEFAULT_VULKAN_USE='OPENGL \!VULKAN (DXVK and VKD3D)\!DXVK  (DX 9-11 to Vulkan)' ;;
-              *) export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)\!DXVK  (DX 9-11 to Vulkan)\!OPENGL ' ;;
+        "dxvk") export PW_DEFAULT_VULKAN_USE='DXVK (DX 9-11 to Vulkan)!VULKAN (DXVK and VKD3D)!OPENGL ' ;;
+            "0") export PW_DEFAULT_VULKAN_USE='OPENGL !VULKAN (DXVK and VKD3D)!DXVK  (DX 9-11 to Vulkan)' ;;
+              *) export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!DXVK  (DX 9-11 to Vulkan)!OPENGL ' ;;
     esac
     case "${PW_WINE_USE}" in
-        "PROTON_GE") export PW_DEFAULT_WINE_USE="PROTON_GE  (${PW_GE_VER})\!PROTON_STEAM  (${PW_STEAM_VER})${DIST_ADD_TO_GUI}" ;;
-        "PROTON_STEAM") export PW_DEFAULT_WINE_USE="PROTON_STEAM  (${PW_STEAM_VER})\!PROTON_GE  (${PW_GE_VER})${DIST_ADD_TO_GUI}" ;;
+        "PROTON_GE") export PW_DEFAULT_WINE_USE="PROTON_GE  (${PW_GE_VER})!PROTON_STEAM  (${PW_STEAM_VER})${DIST_ADD_TO_GUI}" ;;
+        "PROTON_STEAM") export PW_DEFAULT_WINE_USE="PROTON_STEAM  (${PW_STEAM_VER})!PROTON_GE  (${PW_GE_VER})${DIST_ADD_TO_GUI}" ;;
         *)
             export DIST_ADD_TO_GUI=`echo ${DIST_ADD_TO_GUI} | sed -e s/"\!${PW_WINE_USE}$//g"`
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}\!PROTON_STEAM  (${PW_STEAM_VER})\!PROTON_GE  (${PW_GE_VER})${DIST_ADD_TO_GUI}" ;;
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!PROTON_STEAM  (${PW_STEAM_VER})!PROTON_GE  (${PW_GE_VER})${DIST_ADD_TO_GUI}" ;;
     esac
 else
-    export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)\!DXVK  (DX 9-11 to Vulkan)\!OPENGL '
-    export PW_DEFAULT_WINE_USE="PROTON_STEAM  (${PW_STEAM_VER})\!PROTON_GE  (${PW_GE_VER})${DIST_ADD_TO_GUI}"
+    export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!DXVK  (DX 9-11 to Vulkan)!OPENGL '
+    export PW_DEFAULT_WINE_USE="PROTON_STEAM  (${PW_STEAM_VER})!PROTON_GE  (${PW_GE_VER})${DIST_ADD_TO_GUI}"
     unset PW_GUI_DISABLED_CS
 fi
 if [ ! -z "${portwine_exe}" ]; then
-    if [[ -z "${PW_GUI_DISABLED_CS}" || "${PW_GUI_DISABLED_CS}" = 0 ]] ; then
+    if [[ -z "${PW_GUI_DISABLED_CS}" || "${PW_GUI_DISABLED_CS}" == 0 ]] ; then
         OUTPUT_START=$("${pw_yad}" --text-align=center --text "$PW_COMMENT_DB" --wrap-width=150 --borders=15 --form --center  \
         --title "${portname}-${install_ver} (${scripts_install_ver})"  --image "$PW_GUI_ICON_PATH/port_proton.png" --separator=";" \
         --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
@@ -292,13 +294,6 @@ else
         fi
     }
     export -f button_click
-
-    open_changelog () {
-        "${pw_yad}" --title="Changelog" --borders=10 --no-buttons --text-align=center \
-        --text-info --show-uri --wrap --center --width=1200 --height=550 --uri-color=red \
-        --filename="${PORT_WINE_PATH}/data/changelog"
-    }
-    export -f open_changelog
 
     gui_clear_pfx () {
         if gui_question "${port_clear_pfx}" ; then
@@ -356,11 +351,11 @@ else
 
     "${pw_yad}" --plug=${KEY} --tabnum=1 --columns=3 --form --separator=";" \
     --image "$PW_GUI_ICON_PATH/port_proton.png" \
-    --field=":CB" "VULKAN (DXVK and VKD3D)\!DXVK  (DX 9-11 to Vulkan)\!OPENGL" \
+    --field=":CB" "VULKAN (DXVK and VKD3D)!DXVK  (DX 9-11 to Vulkan)!OPENGL" \
     --field=":LBL" "" \
     --field='DEBUG'!!"${loc_debug}":"BTN" '@bash -c "button_click DEBUG"' \
     --field='WINECFG'!!"${loc_winecfg}":"BTN" '@bash -c "button_click WINECFG"' \
-    --field=":CB" "PROTON_STEAM  (${PW_STEAM_VER})\!PROTON_GE  (${PW_GE_VER})${DIST_ADD_TO_GUI}" \
+    --field=":CB" "PROTON_STEAM  (${PW_STEAM_VER})!PROTON_GE  (${PW_GE_VER})${DIST_ADD_TO_GUI}" \
     --field=":LBL" "" \
     --field='WINEFILE'!!"${loc_winefile}":"BTN" '@bash -c "button_click WINEFILE"' \
     --field='WINECMD'!!"${loc_winecmd}":"BTN" '@bash -c "button_click WINECMD"' \
@@ -427,7 +422,5 @@ case "$PW_YAD_SET" in
     gui_rm_portproton) gui_rm_portproton ;;
     gui_proton_downloader) gui_proton_downloader ;;
     120) gui_vkBasalt ;;
-    *) pw_autoinstall_from_db ;;
+    PW_*) pw_autoinstall_from_db ;;
 esac
-
-stop_portwine
