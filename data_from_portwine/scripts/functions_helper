@@ -95,7 +95,7 @@ check_process () {
 
 try_download () {
     set -o pipefail
-    wget -c -t 5 -T 3 "$1" --output-document="$2" 2>&1 | \
+    wget --no-check-certificate --content-disposition -c -t 5 -T 3 "$1" --output-document="$2" 2>&1 | \
     tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
     zenity --progress --percentage=0 --title="Download $(basename $1)" --text=Starting... --auto-close --auto-kill --width=500 --height=90
     [ "${PIPESTATUS[0]}" != 0 ] && print_error "failed to download $1. Scipping." && return 1 || return 0
@@ -103,14 +103,14 @@ try_download () {
 
 try_download_to_path () {
     set -o pipefail
-    wget -c -t 5 -T 3 "$1" --directory-prefix="$2" 2>&1 | \
+    wget --no-check-certificate --content-disposition -c -t 5 -T 3 "$1" --directory-prefix="$2" 2>&1 | \
     tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
     zenity --progress --percentage=0 --title="Download $(basename $1)" --text=Starting... --auto-close --auto-kill --width=500 --height=90
     [ "${PIPESTATUS[0]}" != 0 ] && print_error "failed to download $1. Scipping." && return 1 || return 0
 }
 
 try_download_silent () {
-    wget -t 2 -T 10 "$1" --output-document="$2"
+    wget --no-check-certificate --content-disposition -t 2 -T 10 "$1" --output-document="$2"
     [ "$?" != 0 ] && print_error "failed to download $1. Scipping." && return 1 || return 0
 }
 
@@ -695,16 +695,14 @@ pw_gui_for_edit_db () {
         done
     }
     edit_db_field_read $@
-    edit_db_from_gui $@
-
     FPS_LIMIT="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit"`"
     if [ "${FPS_LIMIT}" == 0 ] ; then
         export MANGOHUD_CONFIG=font_size=24,position=top-left,toggle_hud=Shift_R+F12,no_display,resolution,wine,gpu_name,vulkan_driver,gpu_stats,vkbasalt
     else
         export MANGOHUD_CONFIG=font_size=24,position=top-left,toggle_hud=Shift_R+F12,no_display,resolution,wine,gpu_name,vulkan_driver,gpu_stats,vkbasalt,fps_limit=${FPS_LIMIT}
-        export PW_MANGOHUD=1
     fi
-    edit_db_from_gui PW_MANGOHUD MANGOHUD_CONFIG
+    edit_db_from_gui $@ MANGOHUD_CONFIG
+
     # PW_DB_TMP=`cat "${PORTWINE_DB_FILE}"`
     # echo "${PW_DB_TMP}" | awk '! a[$0]++' > "${PORTWINE_DB_FILE}"
     # unset PW_DB_TMP
