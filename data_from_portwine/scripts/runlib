@@ -260,6 +260,9 @@ start_portwine () {
     -z "`cat ${WINEPREFIX}/.wine_ver | grep ${PW_WINE_USE}`" ]]
     then
         # pw_clear_pfx
+        OLD_PW_WINE_USE="${PW_WINE_USE}"
+        export PW_WINE_USE=PROTON_STEAM
+        init_wine_ver
         create_new_dir "${WINEPREFIX}"
         create_new_dir "${WINEPREFIX}/drive_c"
         create_new_dir "${WINEPREFIX}/dosdevices"
@@ -273,11 +276,11 @@ start_portwine () {
         try_copy_file "${WINEDIR}/share/fonts/"LiberationSerif-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"times.ttf
         try_copy_file "${WINEDIR}/share/fonts/"LiberationMono-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"cour.ttf
         try_copy_file "${WINEDIR}/share/fonts/"SourceHanSansSCRegular.otf "${WINEPREFIX}/drive_c/windows/Fonts/"msyh.ttf
-        # kill_portwine &&
         ${pw_runtime} env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -i
         wait_wineserver &&
-        # kill_portwine &&
         echo "${PW_WINE_USE}" > "${WINEPREFIX}/.wine_ver"
+        export PW_WINE_USE="${OLD_PW_WINE_USE}"
+        init_wine_ver
     fi
     [ ! -d "${WINEPREFIX}/dosdevices/c:" ] && try_force_link_dir "${WINEPREFIX}/drive_c/" "${WINEPREFIX}/dosdevices/c:"
     [ ! -d "${WINEPREFIX}/dosdevices/z:" ] && try_force_link_dir "/" "${WINEPREFIX}/dosdevices/z:"

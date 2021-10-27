@@ -217,7 +217,7 @@ pw_edit_db () {
 
 pw_autoinstall_from_db () {
     kill_portwine
-    export PW_USER_TEMP="$WINEPREFIX/drive_c/users/steamuser/Temp"
+    export PW_USER_TEMP="$WINEPREFIX/drive_c"
     export PW_FORCE_LARGE_ADDRESS_AWARE=0
     export PW_USE_GAMEMODE=0
     export PW_CHECK_AUTOINSTAL=1
@@ -231,8 +231,6 @@ pw_autoinstall_from_db () {
     export PW_NO_ESYNC=1
     unset PORTWINE_CREATE_SHORTCUT_NAME
     export PW_DISABLED_CREAT_DB=1
-    start_portwine
-    kill_portwine
     . "${PORT_SCRIPTS_PATH}/pw_autoinstall/${PW_YAD_SET}"
 }
 
