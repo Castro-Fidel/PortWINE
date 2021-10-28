@@ -160,10 +160,11 @@ unpack_tar () {
 pw_mangohud_check () {
     export RUN_MANGOHUD=""
     if [ "${PW_MANGOHUD}" == "1" ] ; then
-        #if [ "${PW_VULKAN_USE}" = "0" ] ; then 
+        if [ "${PW_VULKAN_USE}" = "0" ] ; then 
             export RUN_MANGOHUD="mangohud --dlsym"
-        #else export RUN_MANGOHUD="mangohud"
-        #fi
+        else 
+            export RUN_MANGOHUD="mangohud"
+        fi
     else
         export DISABLE_MANGOHUD=1
     fi
@@ -291,7 +292,6 @@ init_wine_ver () {
             try_force_link_dir "${PORT_WINE_TMP_PATH}/${mono_gecko_chk}" "${WINEDIR}"/share/wine/
         fi
     done
-    return 0
 }
 
 cabextract_fix () {
@@ -320,7 +320,6 @@ pw_stop_progress_bar () {
     while [ ! -z "`pgrep -a yad | grep "\-\-progress" | awk '{print $1}'`" ]
     do kill -n 9 `pgrep -a yad | grep "\-\-progress" | awk '{print $1}' | head -n 1` > /dev/null 2>&1
     done
-    return 0
 }
 
 pw_download_libs () {
@@ -439,22 +438,27 @@ wait_wineserver () {
     while [ ! -z "$(ls -l /proc/*/exe 2>/dev/null | grep -ie ${portname} | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}')" ] ; do
         sleep 1
     done
-    return 0
 }
 
 kill_portwine () {
-    wine_pids=`ls -l /proc/*/exe 2>/dev/null | grep -ie ${portname} | grep -E 'wine(64)?-preloader| ' | awk -F/ '{print $3}'`
+    wine_pids="`ls -l /proc/*/exe 2>/dev/null | grep -ie ${portname} | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}'`"
     if  [ ! -z "${wine_pids}" ] ; then
         for pw_kill_pids in ${wine_pids} ; do
             if [ "`ps cax | grep ${pw_kill_pids}`" ] ; then
                 kill -n 9 ${pw_kill_pids}
+                echo "kill -n 9 ${pw_kill_pids}"
             fi
         done
     fi
-    if [ ! -z `pgrep -a bwrap | grep ${portname} | head -n 1 | awk '{print $1}'` ] ; then
-        kill -n 9 `pgrep -a bwrap | grep ${portname} | head -n 1 | awk '{print $1}'`
+    bwrap_pids="`pgrep -a wrap | grep ${portname} | head -n 1 | awk '{print $1}'`"
+    if  [ ! -z "${bwrap_pids}" ] ; then
+        for pw_kill_pids in ${bwrap_pids} ; do
+            if [ "`ps cax | grep ${pw_kill_pids}`" ] ; then
+                kill -n 9 ${pw_kill_pids}
+                echo "kill -n 9 ${pw_kill_pids}"
+            fi
+        done
     fi
-    return 0
 }
 export -f kill_portwine
 
@@ -613,7 +617,7 @@ pw_kill_autostart () {
     if [ "$PW_USE_RUNTIME" != 1 ]
     then print_info "PW_USE_RUNTIME=$PW_USE_RUNTIME"
     else
-        sleep 10 
+        sleep 10
         while true ; do
             if  [[ -z "`ps aux | grep -m 1 "$1" | grep -v grep | awk '{print $2}'`" && ! -z "`ps aux | grep wrap | grep -v grep | grep -i ${portname} | head -n 1`" ]] ; then
                 echo -e "PID "$1" not found"
@@ -624,7 +628,7 @@ pw_kill_autostart () {
             fi
         done
     fi
-    if [  ! -z "`ls "${WINEPREFIX}"/drive_c/ | grep -m 1 ".tmp"`" ] ; then
+    if [[ ! -z "`ls "${WINEPREFIX}"/drive_c/ | grep -m 1 ".tmp"`" ]] ; then
         rm -f "${WINEPREFIX}"/drive_c/*.tmp
     fi
 }
@@ -706,7 +710,6 @@ pw_gui_for_edit_db () {
     # PW_DB_TMP=`cat "${PORTWINE_DB_FILE}"`
     # echo "${PW_DB_TMP}" | awk '! a[$0]++' > "${PORTWINE_DB_FILE}"
     # unset PW_DB_TMP
-    return 0
 }
 
 pw_check_and_download_wine () {

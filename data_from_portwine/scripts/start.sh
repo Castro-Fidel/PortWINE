@@ -230,7 +230,7 @@ pw_autoinstall_from_db () {
     export PW_NO_FSYNC=1
     export PW_NO_ESYNC=1
     unset PORTWINE_CREATE_SHORTCUT_NAME
-    export PW_DISABLED_CREAT_DB=1
+    export PW_DISABLED_CREATE_DB=1
     . "${PORT_SCRIPTS_PATH}/pw_autoinstall/${PW_YAD_SET}"
 }
 
@@ -389,7 +389,7 @@ fi
 
 init_wine_ver
 
-if [ -z "${PW_DISABLED_CREAT_DB}" ] ; then
+if [ -z "${PW_DISABLED_CREATE_DB}" ] ; then
     if [ ! -z "${PORTWINE_DB}" ] ; then
         PORTWINE_DB_FILE=`grep -il "\#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/*`
         if [ -z "${PORTWINE_DB_FILE}" ] ; then
@@ -423,3 +423,5 @@ case "$PW_YAD_SET" in
     120) gui_vkBasalt ;;
     PW_*) pw_autoinstall_from_db ;;
 esac
+
+stop_portwine
