@@ -255,14 +255,7 @@ start_portwine () {
     pw_vkbasalt_check
     pw_other_fixes
     #init_pfx
-    if [[ ! -d "${WINEPREFIX}" || ! -d "${WINEPREFIX}"/drive_c/windows || ! -d "${WINEPREFIX}/dosdevices" || \
-    ! -f "${WINEPREFIX}"/userdef.reg || ! -f "${WINEPREFIX}"/system.reg || ! -f "${WINEPREFIX}"/user.reg  || \
-    -z "`cat ${WINEPREFIX}/.wine_ver | grep ${PW_WINE_USE}`" ]]
-    then
-        # pw_clear_pfx
-        OLD_PW_WINE_USE="${PW_WINE_USE}"
-        export PW_WINE_USE=PROTON_STEAM
-        init_wine_ver
+    check_dirs_and_files_in_pfx () {
         create_new_dir "${WINEPREFIX}"
         create_new_dir "${WINEPREFIX}/drive_c"
         create_new_dir "${WINEPREFIX}/dosdevices"
@@ -276,11 +269,25 @@ start_portwine () {
         try_copy_file "${WINEDIR}/share/fonts/"LiberationSerif-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"times.ttf
         try_copy_file "${WINEDIR}/share/fonts/"LiberationMono-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"cour.ttf
         try_copy_file "${WINEDIR}/share/fonts/"SourceHanSansSCRegular.otf "${WINEPREFIX}/drive_c/windows/Fonts/"msyh.ttf
+    }
+    if [[ ! -d "${WINEPREFIX}" || ! -d "${WINEPREFIX}"/drive_c/windows || ! -d "${WINEPREFIX}/dosdevices" || \
+    ! -f "${WINEPREFIX}"/userdef.reg || ! -f "${WINEPREFIX}"/system.reg || ! -f "${WINEPREFIX}"/user.reg ]]
+    then
+        pw_clear_pfx
+        OLD_PW_WINE_USE="${PW_WINE_USE}"
+        export PW_WINE_USE=PROTON_STEAM
+        init_wine_ver
+        check_dirs_and_files_in_pfx
+        ${pw_runtime} env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -i
+        wait_wineserver &&
+        export PW_WINE_USE="${OLD_PW_WINE_USE}"
+        init_wine_ver
+        echo "${PW_WINE_USE}" > "${WINEPREFIX}/.wine_ver"
+    elif [[ -z "`cat ${WINEPREFIX}/.wine_ver | grep ${PW_WINE_USE}`" ]] ; then 
+        check_dirs_and_files_in_pfx
         ${pw_runtime} env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -i
         wait_wineserver &&
         echo "${PW_WINE_USE}" > "${WINEPREFIX}/.wine_ver"
-        export PW_WINE_USE="${OLD_PW_WINE_USE}"
-        init_wine_ver
     fi
     [ ! -d "${WINEPREFIX}/dosdevices/c:" ] && try_force_link_dir "${WINEPREFIX}/drive_c/" "${WINEPREFIX}/dosdevices/c:"
     [ ! -d "${WINEPREFIX}/dosdevices/z:" ] && try_force_link_dir "/" "${WINEPREFIX}/dosdevices/z:"
@@ -418,9 +425,9 @@ start_portwine () {
         wait_wineserver &&
         echo "Set to win${PW_WINDOWS_VER}"
     fi
-    add_in_start_portwine
     pw_stop_progress_bar &&
     pw_start_progress_bar_cs "Start ${portname}... Please wait..."
+    add_in_start_portwine
 }
 
 pw_run () {
