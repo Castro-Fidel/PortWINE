@@ -95,23 +95,40 @@ check_process () {
 
 try_download () {
     set -o pipefail
-    wget --no-check-certificate --content-disposition -c -t 5 -T 3 "$1" --output-document="$2" 2>&1 | \
+    wget --no-check-certificate --content-disposition -t 5 -T 3 "$1" --output-document="$2" 2>&1 | \
     tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
     zenity --progress --percentage=0 --title="Download $(basename $1)" --text=Starting... --auto-close --auto-kill --width=500 --height=90
-    [ "${PIPESTATUS[0]}" != 0 ] && print_error "failed to download $1. Scipping." && return 1 || return 0
+    if [ "${PIPESTATUS[0]}" != 0 ] ; then
+        print_error "failed to download $1. Skipping."
+        try_remove_file "$2"
+        return 1 
+    else 
+        return 0
+    fi
 }
 
 try_download_to_path () {
     set -o pipefail
-    wget --no-check-certificate --content-disposition -c -t 5 -T 3 "$1" --directory-prefix="$2" 2>&1 | \
+    wget --no-check-certificate --content-disposition -t 5 -T 3 "$1" --directory-prefix="$2" 2>&1 | \
     tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
     zenity --progress --percentage=0 --title="Download $(basename $1)" --text=Starting... --auto-close --auto-kill --width=500 --height=90
-    [ "${PIPESTATUS[0]}" != 0 ] && print_error "failed to download $1. Scipping." && return 1 || return 0
+    if [ "${PIPESTATUS[0]}" != 0 ] ; then
+        print_error "failed to download $1. Skipping."
+        return 1 
+    else 
+        return 0
+    fi
 }
 
 try_download_silent () {
     wget --no-check-certificate --content-disposition -t 2 -T 10 "$1" --output-document="$2"
-    [ "$?" != 0 ] && print_error "failed to download $1. Scipping." && return 1 || return 0
+    if [ "${PIPESTATUS[0]}" != 0 ] ; then
+        print_error "failed to download $1. Skipping."
+        try_remove_file "$2"
+        return 1 
+    else 
+        return 0
+    fi
 }
 
 zenity_error_download () {
@@ -182,6 +199,8 @@ pw_vkbasalt_check () {
         sed -ri "s/casSharpness .*/casSharpness = ${PW_VKBASALT_FFX_CAS}/g" "${PORT_WINE_PATH}/data/vkBasalt.conf"
         export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
         sed -i s/'> = 0.05;'/'> = 0.035;'/ "${PW_WINELIB}/runtime/local/share/reshade/shaders/FilmGrain2.fx"
+        sed -i s/'> = 0.65;'/'> = 0.4;'/ "${PW_WINELIB}/runtime/local/share/reshade/shaders/Curves.fx"
+        sed -i s/'> = 0.8;'/'> = 0.9;'/ "${PW_WINELIB}/runtime/local/share/reshade/shaders/Bloom.fx"
     else
         export DISABLE_VKBASALT=1
     fi
