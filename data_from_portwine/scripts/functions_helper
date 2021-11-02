@@ -855,22 +855,21 @@ gui_proton_downloader () {
 	
     print_info "Download and install ${VERSION_WINE_GIT}..."
     if try_download_to_path "${URL_VERSION_PROTON_GIT}" "${PORT_WINE_PATH}/data/tmp/" ; then
-       	for archive_type in "gz" "xz" ; do
-           	if [ -f "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}" ] ; then
-               	if unpack_tar_${archive_type} "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}" "${PORT_WINE_PATH}/data/dist/" ; then
-                   	try_remove_file "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}"
-				else
+        for archive_type in "gz" "xz" ; do
+            if [ -f "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}" ] ; then
+                if unpack_tar_${archive_type} "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}" "${PORT_WINE_PATH}/data/dist/" ; then
                     try_remove_file "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}"
-       	            try_remove_dir "${PORT_WINE_PATH}/data/dist/${VERSION_WINE_GIT}"
-           	        zenity_error_download && gui_proton_downloader
-               	fi
-			fi
+                else
+                    try_remove_file "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}"
+                    try_remove_dir "${PORT_WINE_PATH}/data/dist/${VERSION_WINE_GIT}"
+                    zenity_error_download && gui_proton_downloader
+                fi
+            fi
         done
-	else
-		zenity_error_download && gui_proton_downloader
-	fi
-	/bin/bash -c ${pw_full_command_line[*]} &
-
+    else
+        zenity_error_download && gui_proton_downloader
+    fi
+    /bin/bash -c ${pw_full_command_line[*]} &
     exit 0
 }
 export -f gui_proton_downloader
