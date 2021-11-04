@@ -95,7 +95,7 @@ check_process () {
 
 try_download () {
     set -o pipefail
-    wget --no-check-certificate --content-disposition -t 5 -T 3 "$1" --output-document="$2" 2>&1 | \
+    wget --no-check-certificate --content-disposition -t 3 -T 5 "$1" --output-document="$2" 2>&1 | \
     tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
     zenity --progress --percentage=0 --title="Download $(basename $1)" --text=Starting... --auto-close --auto-kill --width=500 --height=90
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
@@ -109,7 +109,7 @@ try_download () {
 
 try_download_to_path () {
     set -o pipefail
-    wget --no-check-certificate --content-disposition -t 5 -T 3 "$1" --directory-prefix="$2" 2>&1 | \
+    wget --no-check-certificate --content-disposition -t 3 -T 5 "$1" --directory-prefix="$2" 2>&1 | \
     tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
     zenity --progress --percentage=0 --title="Download $(basename $1)" --text=Starting... --auto-close --auto-kill --width=500 --height=90
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
@@ -121,7 +121,7 @@ try_download_to_path () {
 }
 
 try_download_silent () {
-    wget --no-check-certificate --content-disposition -t 2 -T 10 "$1" --output-document="$2"
+    wget --no-check-certificate --content-disposition -t 3 -T 5 "$1" --output-document="$2"
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
         print_error "failed to download $1. Skipping."
         try_remove_file "$2"
@@ -820,7 +820,7 @@ gui_proton_downloader () {
     --column "Select installed WINE for delete:" < "${PORT_WINE_TMP_PATH}/tmp_installed_wine" 1> "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set"` &
     `"${pw_yad}" --key=$KEY_WINE --notebook --width=500 --height=600 --text-align=center --center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "Download..." --separator="" \
-    --tab-pos=top --tab="PROTON-GE" --tab="PROTON-PW" --tab="Installed"`
+    --tab-pos=top --tab="PROTON-GE" --tab="PROTON-PW" --tab="INSTALLED"`
     YAD_WINE_STATUS="$?"
     if [[ "$YAD_WINE_STATUS" == "1" || "$YAD_WINE_STATUS" == "252" ]] ; then
         /bin/bash -c ${pw_full_command_line[*]} &
