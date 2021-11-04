@@ -204,7 +204,7 @@ start_portwine () {
     if [ -x "`which optimus-manager 2>/dev/null`" ]; then
         export check_optimus_manager=`optimus-manager --status | grep Current | cut -f 2 -d':' | sed -e 's/^[[:space:]]*//'`
     fi
-    if [[ ! -z "${PW_NVIDIA}" && "${check_optimus_manager}" != "intel" ]]; then
+    if [[ ! -z "${PW_NVIDIA}" && "${check_optimus_manager}" != "intel" ]] ; then
         if [ "${check_optimus_manager}" = "nvidia" ]; then
             export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
         elif [ -x "`which primusrun 2>/dev/null`" ]; then
@@ -216,11 +216,10 @@ start_portwine () {
         elif [ -x "`which prime-run 2>/dev/null`" ]; then
             export optirun_on="prime-run"
             export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
-        fi
-        export __NV_PRIME_RENDER_OFFLOAD=1
-        export __GLX_VENDOR_LIBRARY_NAME=nvidia
-        if [ ! -d "${PORT_WINE_TMP_PATH}"/gl_shader_cache ] ; then
-            mkdir -p "${PORT_WINE_TMP_PATH}"/gl_shader_cache
+        elif [[ -x "`which nvidia-settings 2>/dev/null`" ]] ; then 
+            export __NV_PRIME_RENDER_OFFLOAD=1
+            export __GLX_VENDOR_LIBRARY_NAME=nvidia
+            export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
         fi
     else
         export DRI_PRIME=1
@@ -233,6 +232,7 @@ start_portwine () {
         export vblank_mode=1
         export __GL_SYNC_TO_VBLANK=1 ;;
     esac
+    create_new_dir "${PORT_WINE_TMP_PATH}"/gl_shader_cache
     export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk.conf"
     export int_xneur=0
     if [[ ! -z "`pgrep xneur`" ]]; then
