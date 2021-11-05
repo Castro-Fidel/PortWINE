@@ -204,22 +204,29 @@ start_portwine () {
     if [ -x "`which optimus-manager 2>/dev/null`" ]; then
         export check_optimus_manager=`optimus-manager --status | grep Current | cut -f 2 -d':' | sed -e 's/^[[:space:]]*//'`
     fi
+    check_vk_icd_file () {
+        if [[ -f "/usr/share/vulkan/icd.d/nvidia_icd.json" ]] ; then
+            export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/nvidia_icd.json"
+        elif [[ -f "/etc/vulkan/icd.d/nvidia_icd.json" ]] ; then
+            export VK_ICD_FILENAMES="/etc/vulkan/icd.d/nvidia_icd.json"
+        fi
+    }
     if [[ ! -z "${PW_NVIDIA}" && "${check_optimus_manager}" != "intel" ]] ; then
         if [ "${check_optimus_manager}" = "nvidia" ]; then
-            export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+            check_vk_icd_file
         elif [ -x "`which primusrun 2>/dev/null`" ]; then
             export optirun_on="primusrun"
-            export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+            check_vk_icd_file
         elif [ -x "`which optirun 2>/dev/null`" ]; then
             export optirun_on="optirun -b primus"
-            export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+            check_vk_icd_file
         elif [ -x "`which prime-run 2>/dev/null`" ]; then
             export optirun_on="prime-run"
-            export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+            check_vk_icd_file
         elif [[ -x "`which nvidia-settings 2>/dev/null`" ]] ; then 
             export __NV_PRIME_RENDER_OFFLOAD=1
             export __GLX_VENDOR_LIBRARY_NAME=nvidia
-            export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+            check_vk_icd_file
         fi
     else
         export DRI_PRIME=1
