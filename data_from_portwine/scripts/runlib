@@ -36,7 +36,6 @@ start_portwine () {
         cp -f "${PORT_SCRIPTS_PATH}/.Xresources" "${HOME}"
         xrdb -merge "${HOME}/.Xresources"
     fi
-    pw_tray_icon
     pw_start_progress_bar_block "Update prefix for ${PW_WINE_USE}... Please wait..." 
 
     if [[ ! -z "${LD_LIBRARY_PATH}" ]] ; then 
@@ -308,7 +307,7 @@ start_portwine () {
     if [ ! -d "${WINEPREFIX}/drive_c/users/steamuser/My Documents" ]
     then try_force_link_dir "${WINEPREFIX}/drive_c/users/steamuser/Documents" "${WINEPREFIX}/drive_c/users/steamuser/My Documents"
     fi
-    var_winedlloverride_update "beclient,beclient_x64=b,n;steam_api,steam_api64,steamclient,steamclient64=n;lsteamclient,GameOverlayRenderer,GameOverlayRenderer64,winemenubuilder.exe="
+    var_winedlloverride_update "steam_api,steam_api64,steamclient,steamclient64=n;lsteamclient,GameOverlayRenderer,GameOverlayRenderer64,winemenubuilder.exe="
 
     # export TOTAL_VRAM=`"${PW_WINELIB}/runtime/bin/glxinfo" -B | grep Total | awk -F: '{print $2}' | awk '{print $1}'`
     # echo "TOTAL_VRAM=${TOTAL_VRAM}"
@@ -434,6 +433,7 @@ start_portwine () {
         echo "Set to win${PW_WINDOWS_VER}"
     fi
     pw_stop_progress_bar &&
+    pw_tray_icon
     pw_start_progress_bar_cs "Start ${portname}... Please wait..."
     add_in_start_portwine
 }
@@ -469,6 +469,7 @@ pw_run () {
         fi
     fi
 }
+export -f pw_run
 
 ###MAIN###
 if [ $(id -u) -eq 0 ] ; then
@@ -522,6 +523,7 @@ if [ -z "${INSTALLING_PORT}" ] ; then
     . "${USER_CONF}"
     pw_port_update
     pw_download_libs
+    pw_check_and_download_wine PROTON_STEAM
     pw_init_db
     . "${USER_CONF}"
 fi

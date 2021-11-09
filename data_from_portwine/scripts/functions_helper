@@ -17,6 +17,7 @@ print_info () {
 print_var () {
     for vp in $@ ; do echo "${vp}=${!vp}" ; done
 }
+export -f print_var
 
 try_copy_file () {
     if [ ! -f "$1" ] ; then	print_info "file $1 not found for copy" && return 1
@@ -186,6 +187,7 @@ pw_mangohud_check () {
         export DISABLE_MANGOHUD=1
     fi
 }
+export -f pw_mangohud_check
 
 pw_vkbasalt_check () {
     if [[ ! -z "${ENABLE_VKBASALT}" && "${ENABLE_VKBASALT}" == 1 ]] ; then
@@ -437,13 +439,13 @@ update_winetricks () {
     print_info "Version winetricks on server: ${W_TRX_EXT_VER}"
     W_TRX_INT_VER="$(cat "${PORT_WINE_TMP_PATH}/winetricks" | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')"
     print_info "Version winetricks in port: ${W_TRX_INT_VER}"
-    #if [[ ! -f "${PORT_WINE_TMP_PATH}/winetricks" && ! -z "$W_TRX_EXT_VER" ]] || [[ "$W_TRX_INT_VER" != "$W_TRX_EXT_VER" && ! -z "$W_TRX_EXT_VER" ]]; then
+    if [[ ! -f "${PORT_WINE_TMP_PATH}/winetricks" && ! -z "$W_TRX_EXT_VER" ]] || [[ "$W_TRX_INT_VER" != "$W_TRX_EXT_VER" && ! -z "$W_TRX_EXT_VER" ]]; then
         if try_download "${W_TRX_URL}" "${PORT_WINE_TMP_PATH}/winetricks_new" ; then
             mv -f "${PORT_WINE_TMP_PATH}/winetricks_new" "${PORT_WINE_TMP_PATH}/winetricks"
             W_TRX_INT_VER="$(cat "${PORT_WINE_TMP_PATH}/winetricks" | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')" && print_info "Winetricks version in port has been updated (${W_TRX_INT_VER})" 
             chmod u+x "${PORT_WINE_TMP_PATH}/winetricks"
         fi
-    #fi
+    fi
     if  [ -f "${PORT_WINE_TMP_PATH}/winetricks" ] ; then
         sed -i 's/w_metadata vcrun2015 dlls \\/w_metadata !dont_use_2015! dlls \\/' "${PORT_WINE_TMP_PATH}/winetricks"
         sed -i 's/w_metadata vcrun2017 dlls \\/w_metadata !dont_use_2017! dlls \\/' "${PORT_WINE_TMP_PATH}/winetricks"
@@ -518,6 +520,10 @@ pw_tray_icon () {
         echo ""
     }
     export -f tray_icon_click
+    pw_tray_winefile () {
+        pw_run explorer
+    }
+    export -f pw_tray_winefile
     tray_icon_click_exit() {
         kill_portwine &&
         if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ]
@@ -534,8 +540,9 @@ pw_tray_icon () {
     --command="bash -c tray_icon_click" \
     --tooltip="PortProton" \
     --menu="| \
-<<< CHANGE LOG >>>!bash -c open_changelog!"$PW_GUI_ICON_PATH/port_changelog.png"| \
-<<<   FORCE EXIT   >>>!bash -c tray_icon_click_exit!"$PW_GUI_ICON_PATH/port_exit.png"|" &
+<<<     WINEFILE     >>>!bash -c pw_tray_winefile!"$PW_GUI_ICON_PATH/port_winefile.png"| \
+<<< CHANGE  LOG >>>!bash -c open_changelog!"$PW_GUI_ICON_PATH/port_changelog.png"| \
+<<<   FORCE  EXIT   >>>!bash -c tray_icon_click_exit!"$PW_GUI_ICON_PATH/port_exit.png"|" &
 }
 
 pw_init_db () {
@@ -700,11 +707,7 @@ pw_gui_for_edit_db () {
     --text "Change settings in database file for ${PORTWINE_DB}\n" --separator=" " --borders=10 --center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --button="CANCEL":1 --button="OPEN DB FILE":150 --button="SAVE CHANGES":0
     YAD_STATUS="$?"
-    if [[ "$YAD_STATUS" == "1" ]] ; then
-        /bin/bash -c ${pw_full_command_line[*]} &
-        exit 0
-    elif [[ "$YAD_STATUS" == "252" ]] ; then 
-        exit 0
+    if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0
     elif [ "$YAD_STATUS" == "150" ] ; then
         xdg-open "${PORTWINE_DB_FILE}" &
         exit 0

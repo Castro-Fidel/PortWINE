@@ -154,6 +154,10 @@ portwine_start_debug () {
         cat "${PORT_SCRIPTS_PATH}/portwine_db/default" | sed '/##/d' >> "${PORT_WINE_PATH}/${portname}.log"
     fi
     echo "-----------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    if [ -f "${USER_CONF}" ]; then
+        cat "${USER_CONF}" | sed '/bash/d' >> "${PORT_WINE_PATH}/${portname}.log"
+    fi
+    echo "----------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Log WINE:" >> "${PORT_WINE_PATH}/${portname}.log"
 
     export DXVK_HUD="full"
