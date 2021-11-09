@@ -707,7 +707,11 @@ pw_gui_for_edit_db () {
     --text "Change settings in database file for ${PORTWINE_DB}\n" --separator=" " --borders=10 --center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --button="CANCEL":1 --button="OPEN DB FILE":150 --button="SAVE CHANGES":0
     YAD_STATUS="$?"
-    if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0
+    if [[ "$YAD_STATUS" == "1" ]] ; then
+        /bin/bash -c ${pw_full_command_line[*]} &
+        exit 0
+    elif [[ "$YAD_STATUS" == "252" ]] ; then 
+        exit 0
     elif [ "$YAD_STATUS" == "150" ] ; then
         xdg-open "${PORTWINE_DB_FILE}" &
         exit 0

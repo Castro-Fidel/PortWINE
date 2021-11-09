@@ -220,7 +220,6 @@ pw_edit_db () {
 }
 
 pw_autoinstall_from_db () {
-    kill_portwine
     export PW_USER_TEMP="$WINEPREFIX/drive_c"
     export PW_FORCE_LARGE_ADDRESS_AWARE=0
     export PW_USE_GAMEMODE=0
