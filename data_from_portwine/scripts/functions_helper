@@ -179,9 +179,9 @@ pw_mangohud_check () {
     export RUN_MANGOHUD=""
     if [ "${PW_MANGOHUD}" == "1" ] ; then
         if [ "${PW_VULKAN_USE}" = "0" ] ; then 
-            export RUN_MANGOHUD="mangohud --dlsym"
+            export RUN_MANGOHUD="${PW_WINELIB}/portable/bin/mangohud --dlsym"
         else 
-            export RUN_MANGOHUD="mangohud"
+            export RUN_MANGOHUD="${PW_WINELIB}/portable/bin/mangohud"
         fi
     else
         export DISABLE_MANGOHUD=1
@@ -200,9 +200,13 @@ pw_vkbasalt_check () {
         fi
         sed -ri "s/casSharpness .*/casSharpness = ${PW_VKBASALT_FFX_CAS}/g" "${PORT_WINE_PATH}/data/vkBasalt.conf"
         export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
-        sed -i s/'> = 0.05;'/'> = 0.035;'/ "${PW_WINELIB}/runtime/local/share/reshade/shaders/FilmGrain2.fx"
-        sed -i s/'> = 0.65;'/'> = 0.4;'/ "${PW_WINELIB}/runtime/local/share/reshade/shaders/Curves.fx"
-        sed -i s/'> = 0.8;'/'> = 0.9;'/ "${PW_WINELIB}/runtime/local/share/reshade/shaders/Bloom.fx"
+        sed -i s/'> = 0.05;'/'> = 0.035;'/ "${PW_WINELIB}/pressure-vessel/reshade/shaders/FilmGrain2.fx"
+        sed -i s/'> = 0.65;'/'> = 0.4;'/ "${PW_WINELIB}/pressure-vessel/reshade/shaders/Curves.fx"
+        sed -i s/'> = 0.8;'/'> = 0.9;'/ "${PW_WINELIB}/pressure-vessel/reshade/shaders/Bloom.fx"
+        if [ ! -z "${VK_INSTANCE_LAYERS}" ]
+        then export VK_INSTANCE_LAYERS="VK_LAYER_VKBASALT_post_processing:${VK_INSTANCE_LAYERS}"
+        else export VK_INSTANCE_LAYERS="VK_LAYER_VKBASALT_post_processing"
+        fi
     else
         export DISABLE_VKBASALT=1
     fi
@@ -315,12 +319,6 @@ init_wine_ver () {
     done
 }
 
-cabextract_fix () {
-    [ ! -f "${WINEDIR}/bin/cabextract" ] && try_copy_file "${PW_WINELIB}/runtime/bin/cabextract" "${WINEDIR}/bin/cabextract"
-    [ ! -f "${WINEDIR}/lib64/libmspack.so.0" ] && try_copy_file "${PW_WINELIB}/runtime/lib/x86_64-linux-gnu/libmspack.so.0" "${WINEDIR}/lib64/libmspack.so.0"
-    [ ! -f "${WINEDIR}/lib64/libmspack.so.0.1.0" ] && try_copy_file "${WINEDIR}/lib64/libmspack.so.0" "${WINEDIR}/lib64/libmspack.so.0.1.0"
-}
-
 sszen() {
     zenity --progress --title="Settings..." --text="Updating parameters" --pulsate --auto-close --width=500 --height=90 --no-cancel
 }
@@ -349,8 +347,8 @@ pw_download_libs () {
         do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_LIBS}"
         done
     fi
-    if [[ ! -e "${PW_WINELIB}/runtime/bin/yad" || ! -e "${PW_WINELIB}/runtime/lib/p7zip/7z" \
-    || ! -e "${PW_WINELIB}/runtime/bin/vkcube" || ! -e "${PW_WINELIB}/runtime/bin/xterm" || \
+    if [[ ! -e "${PW_WINELIB}/runtime/files/bin/yad" || ! -e "${PW_WINELIB}/runtime/files/lib/p7zip/7z" \
+    || ! -e "${PW_WINELIB}/runtime/files/bin/vkcube" || ! -e "${PW_WINELIB}/runtime/files/bin/xterm" || \
     -e "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" ]] ; then
         print_info "Download and install libraries..."
         if try_download "https://github.com/Castro-Fidel/PortWINE/releases/download/libs${PW_LIBS_VER}/libs${PW_LIBS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" ; then
@@ -365,15 +363,15 @@ pw_download_libs () {
             zenity_error_download && pw_download_libs
         fi
     fi
-    export pw_yad="${PW_WINELIB}/runtime/bin/yad"
-    export pw_yad_new="${PW_WINELIB}/runtime/bin/yad_new"
-    export pw_zstd="${PW_WINELIB}/runtime/bin/zstd"
-    export pw_7z="${PW_WINELIB}/runtime/lib/p7zip/7z"
+    export pw_yad="${PW_WINELIB}/runtime/files/bin/yad"
+    export pw_yad_new="${PW_WINELIB}/runtime/files/bin/yad_new"
+    export pw_zstd="${PW_WINELIB}/runtime/files/bin/zstd"
+    export pw_7z="${PW_WINELIB}/runtime/files/lib/p7zip/7z"
     if [ -x "`which xterm 2>/dev/null`" ]; then
         export SYS_XTERM=`which xterm`
         export PW_XTERM="${SYS_XTERM} -geometry 159x37 -e"
     else
-        export PW_XTERM="${PW_WINELIB}/runtime/bin/xterm -geometry 159x37 -e"
+        export PW_XTERM="${PW_WINELIB}/runtime/files/bin/xterm -geometry 159x37 -e"
     fi
 }
 
@@ -503,6 +501,7 @@ stop_portwine () {
         chmod -R 755 "${WINEPREFIX}"/drive_c/users/steamuser/Temp/
         rm -fr "${WINEPREFIX}"/drive_c/users/steamuser/Temp/*
     fi
+    try_remove_dir "${PW_WINELIB}/var"
     exit 0
 }
 open_changelog () {
@@ -914,7 +913,7 @@ gui_vkBasalt () {
     --field="AMD FidelityFX - Contrast Adaptive Sharpening":SCL "${VKBASALT_FFX_CAS_GUI}" \
     1> "${PORT_WINE_TMP_PATH}/tmp_yad_cas_set" &
 
-    "${pw_yad_new}" --paned --key="$KEY_FX_GUI" --height="600" --title="vkBasalt" --center --borders=10 \
+    "${pw_yad_new}" --paned --key="$KEY_FX_GUI" --height="450" --title="vkBasalt" --center --borders=10 \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
     --button="CANCEL":1 --button="DISABLE  VKBASALT":180 --button="ENABLE  VKBASALT":182
     YAD_VKBASALT_STATUS="$?"

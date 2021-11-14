@@ -127,11 +127,11 @@ portwine_start_debug () {
     echo "-----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Graphic cards and drivers" >> "${PORT_WINE_PATH}/${portname}.log"
     echo `lspci | grep -i vga` >> "${PORT_WINE_PATH}/${portname}.log"
-    "${PW_WINELIB}/runtime/bin/glxinfo" -B >> "${PORT_WINE_PATH}/${portname}.log"
+    "${PW_WINELIB}/portable/bin/glxinfo" -B >> "${PORT_WINE_PATH}/${portname}.log"
     echo "----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Vulkan info device name:" >> "${PORT_WINE_PATH}/${portname}.log"
-    "${PW_WINELIB}/runtime/bin/vulkaninfo" | grep deviceName >> "${PORT_WINE_PATH}/${portname}.log"
-    "${PW_WINELIB}/runtime/bin/vkcube" --c 50
+    "${PW_WINELIB}/runtime/files/bin/vulkaninfo" | grep deviceName >> "${PORT_WINE_PATH}/${portname}.log"
+    "${PW_WINELIB}/runtime/files/bin/vkcube" --c 50
     if [ $? -eq 0 ]; then
         echo "Vulkan cube test passed successfully" >> "${PORT_WINE_PATH}/${portname}.log"
     else
@@ -164,10 +164,12 @@ portwine_start_debug () {
 
     portwine_launch &
     sleep 1 && zenity --info --title "DEBUG" --text "${port_debug}" --no-wrap &> /dev/null && kill_portwine
-    sed -i '%/gstreamer-1.0/%d' "${PORT_WINE_PATH}/${portname}.log"
+    sed -i '/gstreamer-1.0/d' "${PORT_WINE_PATH}/${portname}.log"
     sed -i '/winemenubuilder.exe/d' "${PORT_WINE_PATH}/${portname}.log"
-    sed -i '/nsiproxy/d' "${PORT_WINE_PATH}/${portname}.log"
     sed -i '/.fx$/d' "${PORT_WINE_PATH}/${portname}.log"
+    sed -i '/HACK_does_openvr_work/d' "${PORT_WINE_PATH}/${portname}.log"
+    sed -i '/dlopen failed - libgamemode.so/d' "${PORT_WINE_PATH}/${portname}.log"
+    sed -i '/Uploading is disabled/d' "${PORT_WINE_PATH}/${portname}.log"
     deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++') 
     echo "$deb_text" > "${PORT_WINE_PATH}/${portname}.log"
     "$pw_yad" --title="${portname}.log" --borders=10 --no-buttons --text-align=center \
@@ -189,7 +191,7 @@ pw_winecmd () {
     export PW_USE_TERMINAL=1
     start_portwine
     cd "${WINEPREFIX}/drive_c"
-    ${pw_runtime} xterm -e env LD_LIBRARY_PATH="${PW_AND_RUNTIME_LIBRARY_PATH}${LD_LIBRARY_PATH}" "${WINELOADER}" cmd
+    ${pw_runtime} xterm -e env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" "${WINELOADER}" cmd
     stop_portwine
 }
 
