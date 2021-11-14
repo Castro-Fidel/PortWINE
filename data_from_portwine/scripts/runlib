@@ -108,9 +108,9 @@ start_portwine () {
             else export PRESSURE_VESSEL_FILESYSTEMS_RW="${PWRTMRW}"
             fi
         done
-        # if [ ! -f "${PW_WINELIB}/runtime/etc/os-release" ]
-        # then try_force_link_file "${PW_WINELIB}/runtime/lib/os-release" "${PW_WINELIB}/runtime/etc/os-release"
-        # fi
+        #HOTFIX portable libs for Debian based OS
+        [[ ! -d "${PW_WINELIB}/portable/lib/lib/i386-linux-gnu" ]] && ln -s "${PW_WINELIB}/portable/lib/lib32" "${PW_WINELIB}/portable/lib/lib/i386-linux-gnu"
+        [[ ! -d "${PW_WINELIB}/portable/lib/lib/x86_64-linux-gnu" ]] && ln -s "${PW_WINELIB}/portable/lib/lib" "${PW_WINELIB}/portable/lib/lib/x86_64-linux-gnu"  
         echo "RUNTIME is enabled"
     fi
 
@@ -158,7 +158,7 @@ start_portwine () {
     if [[ ! -z "${PW_USE_NVAPI_AND_DLSS}" && "${PW_USE_NVAPI_AND_DLSS}" == 1 && -d "${WINEDIR}/lib/wine/nvapi/" ]]
     then
         try_copy_file "${WINEDIR}/lib/wine/nvapi/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-        try_copy_file "${WINEDIR}/lib64/wine/nvapi/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+        try_copy_file "${WINEDIR}/lib64/wine/nvapi/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/" 
         var_winedlloverride_update "nvapi,nvapi64,nvml=n;nvcuda=b"
         if [[ ! -f "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll" || ! -f "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll" ]] ; then
             try_copy_file `find /usr/* -type f -name "nvngx.dll" 2>/dev/null | awk '{print $1}'` "${WINEPREFIX}/drive_c/windows/system32/"
@@ -215,20 +215,15 @@ start_portwine () {
             export __GLX_VENDOR_LIBRARY_NAME=nvidia
             check_vk_icd_file
         fi
-        #try copy nvml.dll to prefix
-        if ! try_copy_file "${WINEDIR}"/lib/wine/fakedlls/nvml.dll "${WINEPREFIX}/drive_c/windows/syswow64/"
-        then try_copy_file "${WINEDIR}"/lib/wine/i386-windows/nvml.dll "${WINEPREFIX}/drive_c/windows/syswow64/"
+        #try link nvml.dll to prefix
+        if ! try_force_link_file "${WINEDIR}"/lib/wine/nvml.dll.so "${WINEPREFIX}/drive_c/windows/syswow64/nvml.dll"
+        then try_force_link_file "${WINEDIR}"/lib/wine/i386-unix/nvml.dll.so "${WINEPREFIX}/drive_c/windows/syswow64/nvml.dll"
         fi
-        if ! try_copy_file "${WINEDIR}"/lib64/wine/fakedlls/nvml.dll "${WINEPREFIX}/drive_c/windows/system32/"
-        then try_copy_file "${WINEDIR}"/lib64/wine/x86_64-windows/nvml.dll "${WINEPREFIX}/drive_c/windows/system32/"
+        if ! try_force_link_file "${WINEDIR}"/lib64/wine/nvml.dll.so "${WINEPREFIX}/drive_c/windows/system32/nvml.dll"
+        then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-unix/nvml.dll.so "${WINEPREFIX}/drive_c/windows/system32/nvml.dll"
         fi 
     else
         export DRI_PRIME=1
-        if [[ -f "/usr/share/vulkan/icd.d/radeon_icd.x86_64.json" ]] ; then
-            export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/radeon_icd.x86_64.json:/usr/share/vulkan/icd.d/radeon_icd.i686.json"
-        elif [[ -f "/etc/vulkan/icd.d/radeon_icd.x86_64.json" ]] ; then
-            export VK_ICD_FILENAMES="/etc/vulkan/icd.d/radeon_icd.x86_64.json:/etc/vulkan/icd.d/radeon_icd.i686.json"
-        fi
     fi
     case "$PW_FORCE_USE_VSYNC" in  # 0-FORCE_OFF, 1-FORCE_ON, 2-BY_DEFAULT
         "0")
@@ -436,7 +431,6 @@ start_portwine () {
         wait_wineserver &&
         echo "Set to win${PW_WINDOWS_VER}"
     fi
-    for tmp_trash in `find ./ -type f -name "${WINEPREFIX}/drive_c/*.tmp" 2>/dev/null`; do rm -f ${tmp_trash} ; done
     pw_stop_progress_bar &&
     pw_tray_icon
     pw_start_progress_bar_cs "Start ${portname}... Please wait..."
