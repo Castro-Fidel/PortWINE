@@ -302,8 +302,8 @@ init_wine_ver () {
 
     for copy_proton_dll in "dxvk" "vkd3d-proton" ; do
         if [[ ! -d "${WINEDIR}/lib/wine/${copy_proton_dll}/" || ! -d "${WINEDIR}/lib64/wine/${copy_proton_dll}/" ]] ; then
-            try_copy_dir "${PORT_WINE_PATH}/data/dist/PROTON_STEAM/lib/wine/${copy_proton_dll}" "${WINEDIR}/lib/wine/"
-            try_copy_dir "${PORT_WINE_PATH}/data/dist/PROTON_STEAM/lib64/wine/${copy_proton_dll}" "${WINEDIR}/lib64/wine/"
+            try_copy_dir "${PORT_WINE_PATH}/data/dist/${PW_PROTON_STEAM_VER}/lib/wine/${copy_proton_dll}" "${WINEDIR}/lib/wine/"
+            try_copy_dir "${PORT_WINE_PATH}/data/dist/${PW_PROTON_STEAM_VER}/lib64/wine/${copy_proton_dll}" "${WINEDIR}/lib64/wine/"
         fi
     done
     
@@ -372,62 +372,6 @@ pw_download_libs () {
         export PW_XTERM="${SYS_XTERM} -geometry 159x37 -e"
     else
         export PW_XTERM="${PW_WINELIB}/runtime/files/bin/xterm -geometry 159x37 -e"
-    fi
-}
-
-pw_download_mono () {
-    [ ${PW_WINE_USE} = "PROTON_GE" ] && export PW_MONO_VER="${PW_MONO_GE_VER}"
-    if [ ! -d "${PORT_WINE_TMP_PATH}/mono/wine-mono-${PW_MONO_VER}" ] ; then
-        export url_mono="https://github.com/madewokherd/wine-mono/releases/download/wine-mono-${PW_MONO_VER}/wine-mono-${PW_MONO_VER}-x86.tar.xz"
-        echo "######################################################"
-        print_info "Download and install wine mono..."
-        if try_download "${url_mono}" "${PORT_WINE_TMP_PATH}/wine-mono-${PW_MONO_VER}-x86.tar.xz" ; then
-            create_new_dir "${PORT_WINE_TMP_PATH}/mono"
-            if ! unpack_tar_xz "${PORT_WINE_TMP_PATH}/wine-mono-${PW_MONO_VER}-x86.tar.xz" "${PORT_WINE_TMP_PATH}/mono/"
-            then
-                try_remove_dir "${PORT_WINE_TMP_PATH}/mono/wine-mono-${PW_MONO_VER}-x86"
-                zenity_error_download && pw_download_mono
-            fi
-            try_remove_file "${PORT_WINE_TMP_PATH}/wine-mono-${PW_MONO_VER}-x86.tar.xz"
-        else
-            zenity_error_download && pw_download_mono
-        fi
-    fi
-}
-
-pw_download_gecko () {
-    [ ${PW_WINE_USE} = "PROTON_GE" ] && export PW_GECKO_VER="${PW_GECKO_GE_VER}"
-    if [ ! -d "${PORT_WINE_TMP_PATH}/gecko/wine-gecko-${PW_GECKO_VER}-x86" ] ; then
-        export url_gecko_x86="https://dl.winehq.org/wine/wine-gecko/${PW_GECKO_VER}/wine-gecko-${PW_GECKO_VER}-x86.tar.xz"
-        echo "######################################################"
-        print_info "Download and install wine gecko x86..."
-        if try_download "${url_gecko_x86}" "${PORT_WINE_TMP_PATH}/wine-gecko-${PW_GECKO_VER}-x86.tar.xz" ; then
-            create_new_dir "${PORT_WINE_TMP_PATH}/gecko"
-            if ! unpack_tar_xz "${PORT_WINE_TMP_PATH}/wine-gecko-${PW_GECKO_VER}-x86.tar.xz" "${PORT_WINE_TMP_PATH}/gecko/"
-            then
-                try_remove_dir "${PORT_WINE_TMP_PATH}/gecko/wine-gecko-${PW_GECKO_VER}-x86"
-                zenity_error_download && pw_download_gecko
-            fi
-            try_remove_file "${PORT_WINE_TMP_PATH}/wine-gecko-${PW_GECKO_VER}-x86.tar.xz"
-        else
-            zenity_error_download && pw_download_gecko
-        fi
-    fi
-    if [ ! -d "${PORT_WINE_TMP_PATH}/gecko/wine-gecko-${PW_GECKO_VER}-x86_64" ] ; then
-        export url_gecko_x86_64="https://dl.winehq.org/wine/wine-gecko/${PW_GECKO_VER}/wine-gecko-${PW_GECKO_VER}-x86_64.tar.xz"
-        echo "######################################################"
-        print_info "Download and install wine gecko x86_64..."
-        if try_download "${url_gecko_x86_64}" "${PORT_WINE_TMP_PATH}/wine-gecko-${PW_GECKO_VER}-x86_64.tar.xz" ; then
-            create_new_dir "${PORT_WINE_TMP_PATH}/gecko"
-            if ! unpack_tar_xz "${PORT_WINE_TMP_PATH}/wine-gecko-${PW_GECKO_VER}-x86_64.tar.xz" "${PORT_WINE_TMP_PATH}/gecko/"
-            then
-                try_remove_dir "${PORT_WINE_TMP_PATH}/gecko/wine-gecko-${PW_GECKO_VER}-x86_64"
-                zenity_error_download && pw_download_gecko
-            fi
-            try_remove_file "${PORT_WINE_TMP_PATH}/wine-gecko-${PW_GECKO_VER}-x86_64.tar.xz"
-        else
-            zenity_error_download && pw_download_gecko
-        fi
     fi
 }
 
@@ -502,7 +446,7 @@ stop_portwine () {
         rm -fr "${WINEPREFIX}"/drive_c/users/steamuser/Temp/*
     fi
     try_remove_dir "${PW_WINELIB}/var"
-    find "${WINEPREFIX}/drive_c/" -type f -name "*.tmp" -delete
+    find "${WINEPREFIX}/drive_c/" -maxdepth 1 -type f -name "*.tmp" -delete
     exit 0
 }
 open_changelog () {
@@ -551,6 +495,11 @@ pw_init_db () {
         PORTWINE_DB_FILE=`grep -ilw "#${PORTWINE_DB}" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
         if [ ! -z "${PORTWINE_DB_FILE}" ]; then
             . "${PORTWINE_DB_FILE}"
+            if [[ `echo "${PW_WINE_USE}" | grep "^PROTON_STEAM$"` ]]
+            then export PW_WINE_USE="${PW_PROTON_STEAM_VER}"
+            elif [[ `echo "${PW_WINE_USE}" | grep "^PROTON_GE$"` ]]
+            then export PW_WINE_USE="${PW_PROTON_GE_VER}"
+            fi
             init_wine_ver &&
             print_info "Use ${PORTWINE_DB_FILE} db file."
         fi
@@ -690,7 +639,8 @@ pw_gui_for_edit_db () {
             else export ${int_to_boole}="FALSE"
             fi
             TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
-            ADD_CHK_BOX_EDIT_DB+="--field=${int_to_boole}!${!TMP_HELP_FOR_GUI}:CHK%${!int_to_boole}%"
+            int_to_boole_non_pw="`echo ${int_to_boole} | sed 's/^PW_//'`"
+            ADD_CHK_BOX_EDIT_DB+="--field=  ${int_to_boole_non_pw}    !${!TMP_HELP_FOR_GUI}:CHK%${!int_to_boole}%"
         done
     }
     edit_db_field_add $@
@@ -703,7 +653,7 @@ pw_gui_for_edit_db () {
     "${pw_yad_new}" --plug=$KEY_EDIT_DB_GUI --tabnum="2" --form --separator=" " --columns=1 \
     --field="MANGOHUD FPS LIMIT (0-disabled):SCL" ${FPS_LIMIT_VAR} 1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" & 
 
-    "${pw_yad_new}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="330" \
+    "${pw_yad_new}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="370" \
     --text "Change settings in database file for ${PORTWINE_DB}\n" --separator=" " --borders=10 --center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --button="CANCEL":1 --button="OPEN DB FILE":150 --button="SAVE CHANGES":0
     YAD_STATUS="$?"
@@ -744,21 +694,18 @@ pw_gui_for_edit_db () {
 
 pw_check_and_download_wine () {
     [ ! -d "${PORT_WINE_PATH}/data/dist/" ] && create_new_dir "${PORT_WINE_PATH}/data/dist"
-    if [ "${1}" == "PROTON_GE" ] ; then
-        if [ "`cat "${PORT_WINE_PATH}"/data/dist/PROTON_GE/version | head -n 1`" != "${PW_PROTON_GE_VER}" ]
-        then try_remove_dir "${PORT_WINE_PATH}/data/dist/PROTON_GE/"
-        fi
-        if [ ! -d "${PORT_WINE_PATH}/data/dist/PROTON_GE" ] ; then
-            print_info "Download and install PROTON_GE..."
+    if [ "${1}" == "${PW_PROTON_GE_VER}" ] ; then
+        if [ ! -d "${PORT_WINE_PATH}/data/dist/${PW_PROTON_GE_VER}" ] ; then
+            print_info "Download and install ${PW_PROTON_GE_VER}..."
             if try_download "https://github.com/Castro-Fidel/wine_builds/releases/download/${PW_PROTON_GE_VER}/${PW_PROTON_GE_VER}.tar.xz" "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}.tar.xz" ; then
                 if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
-                    echo "${PW_PROTON_GE_VER}" > "${PORT_WINE_PATH}/data/dist/PROTON_GE/version"
+                    echo "${PW_PROTON_GE_VER}" > "${PORT_WINE_PATH}/data/dist/${PW_PROTON_GE_VER}/version"
                     try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}.tar.xz"
                     try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}"
                 else
                     try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}.tar.xz"
                     try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}"
-                    try_remove_dir "${PORT_WINE_PATH}/data/dist/PROTON_GE"
+                    try_remove_dir "${PORT_WINE_PATH}/data/dist/${PW_PROTON_GE_VER}"
 
                     zenity_error_download && pw_check_and_download_wine
                 fi
@@ -767,20 +714,37 @@ pw_check_and_download_wine () {
             fi
         fi
     fi
-    if [ "`cat "${PORT_WINE_PATH}"/data/dist/PROTON_STEAM/version | head -n 1`" != "${PW_PROTON_STEAM_VER}" ]
-    then try_remove_dir "${PORT_WINE_PATH}/data/dist/PROTON_STEAM/"
-    fi
-    if [ ! -d "${PORT_WINE_PATH}/data/dist/PROTON_STEAM" ] ; then
-        print_info "Download and install PROTON_STEAM..."
+    if [ ! -d "${PORT_WINE_PATH}/data/dist/${PW_PROTON_STEAM_VER}" ] ; then
+        print_info "Download and install ${PW_PROTON_STEAM_VER}..."
         if try_download "https://github.com/Castro-Fidel/wine_builds/releases/download/${PW_PROTON_STEAM_VER}/${PW_PROTON_STEAM_VER}.tar.xz" "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}.tar.xz" ; then
             if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
-                echo "${PW_PROTON_STEAM_VER}" > "${PORT_WINE_PATH}/data/dist/PROTON_STEAM/version"
+                echo "${PW_PROTON_STEAM_VER}" > "${PORT_WINE_PATH}/data/dist/${PW_PROTON_STEAM_VER}/version"
                 try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}.tar.xz"
                 try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}"
             else
                 try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}.tar.xz"
                 try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}"
-                try_remove_dir "${PORT_WINE_PATH}/data/dist/PROTON_STEAM"
+                try_remove_dir "${PORT_WINE_PATH}/data/dist/${PW_PROTON_STEAM_VER}"
+
+                zenity_error_download && pw_check_and_download_wine
+            fi
+        else
+            zenity_error_download && pw_check_and_download_wine
+        fi
+    fi
+}
+
+pw_check_and_download_plugins () {
+    if [[ ! -d "${PW_PLUGINS_PATH}/BattlEye_Runtime" || ! -d "${PW_PLUGINS_PATH}/d3d_extras" \
+    || ! -d "${PW_PLUGINS_PATH}/nvapi" || ! -d "${PW_PLUGINS_PATH}/nvml" ]]
+    then
+        print_info "Download and install plugins${PW_PLUGINS_VER}..."
+        if try_download "https://github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" ; then
+            if unpack_tar_xz "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}" ; then
+                try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" 
+            else
+                try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz"
+                try_remove_dir "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
 
                 zenity_error_download && pw_check_and_download_wine
             fi
@@ -807,7 +771,7 @@ gui_proton_downloader () {
     for PPWGIT in ${PROTON_PW_GIT[@]} ; do
         echo ${PPWGIT} | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
     done
-    sed -i '/PROTON_GE/d' "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+    sed -i /${PW_PROTON_GE_VER}/d "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
 
     for INSTALLING_VERSION_IN_DIST in `ls "${PORT_WINE_PATH}/data/dist/"` ; do
         sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
@@ -914,7 +878,7 @@ gui_vkBasalt () {
     --field="AMD FidelityFX - Contrast Adaptive Sharpening":SCL "${VKBASALT_FFX_CAS_GUI}" \
     1> "${PORT_WINE_TMP_PATH}/tmp_yad_cas_set" &
 
-    "${pw_yad_new}" --paned --key="$KEY_FX_GUI" --height="450" --title="vkBasalt" --center --borders=10 \
+    "${pw_yad_new}" --paned --key="$KEY_FX_GUI" --height="500" --title="vkBasalt" --center --borders=10 \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
     --button="CANCEL":1 --button="DISABLE  VKBASALT":180 --button="ENABLE  VKBASALT":182
     YAD_VKBASALT_STATUS="$?"
