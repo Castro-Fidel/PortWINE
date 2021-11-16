@@ -269,7 +269,7 @@ if [ ! -z "${PORTWINE_DB_FILE}" ] ; then
     esac
 else
     export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!OPENGL '
-    export PW_DEFAULT_WINE_USE="${PW_PROTON_STEAM_VER}${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}"
+    export PW_DEFAULT_WINE_USE="${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}"
     unset PW_GUI_DISABLED_CS
 fi
 if [ ! -z "${portwine_exe}" ]; then

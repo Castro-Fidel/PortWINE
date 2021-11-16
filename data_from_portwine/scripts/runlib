@@ -110,10 +110,6 @@ start_portwine () {
         [[ ! -d "${PW_WINELIB}/portable/lib/lib/i386-linux-gnu" ]] && ln -s "${PW_WINELIB}/portable/lib/lib32" "${PW_WINELIB}/portable/lib/lib/i386-linux-gnu"
         [[ ! -d "${PW_WINELIB}/portable/lib/lib/x86_64-linux-gnu" ]] && ln -s "${PW_WINELIB}/portable/lib/lib" "${PW_WINELIB}/portable/lib/lib/x86_64-linux-gnu"  
         echo "RUNTIME is enabled"
-        #HOTFIX portable libs for Red Hat
-        [[ ! -d "${PW_WINELIB}/portable/lib/lib/lib" ]] && ln -s "${PW_WINELIB}/portable/lib/lib32" "${PW_WINELIB}/portable/lib/lib/lib"
-        [[ ! -d "${PW_WINELIB}/portable/lib/lib/lib64" ]] && ln -s "${PW_WINELIB}/portable/lib/lib" "${PW_WINELIB}/portable/lib/lib/lib64"  
-        echo "RUNTIME is enabled"
     fi
 
     if [[ ! -z "${PW_LOG}" && "${PW_LOG}" != 0 ]] ; then
@@ -248,7 +244,7 @@ start_portwine () {
             setxkbmap us,ru
         fi
     fi
-    if [[ -x "`which "gamemoderun" 2>/dev/null`" && "$PW_USE_GAMEMODE" = "1" ]] ; then
+    if [[ -x "`which "gamemoderun" 2>/dev/null`" && "$PW_USE_GAMEMODE" = "1" && -z "`cat /etc/os-release | grep -i "red hat"`" ]] ; then
         export PW_GAMEMODERUN=1
         echo "Gamemod will be launched."
     else
