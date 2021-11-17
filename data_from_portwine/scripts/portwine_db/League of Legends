@@ -41,6 +41,23 @@ export PW_NO_ESYNC=1                            # Do not use eventfd-based in-pr
 ##export PW_USE_TERMINAL=1                        # Force run in terminal
 ##export PW_GUI_DISABLED_CS=1                     # 1 = disabled GUI
 
+check_download_wine_ver_for_lol () {
+    if [ ! -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ] ; then
+        if try_download "https://github.com/Castro-Fidel/wine_builds/releases/download/${PW_WINE_USE}/${PW_WINE_USE}.tar.xz" \
+        "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" ; then
+            if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
+                try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz"
+                UNPACK_STATUS=0
+            else
+                try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz"
+                try_remove_dir "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}"
+            fi
+        fi
+        [[ "${UNPACK_STATUS}" != 0 ]] && exit 1
+    fi
+}
+check_download_wine_ver_for_lol
+
 check_port_for_lol () {
     pw_start_progress_bar_block "Loading and start League of Legends. Please wait. It can take a long time!"
     process=LeagueClientUx.exe
