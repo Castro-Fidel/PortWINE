@@ -34,7 +34,8 @@ start_portwine () {
         cp -f "${PORT_SCRIPTS_PATH}/.Xresources" "${HOME}"
         xrdb -merge "${HOME}/.Xresources"
     fi
-    pw_start_progress_bar_block "Update prefix for ${PW_WINE_USE}... Please wait..." 
+
+    pw_update_pfx_cover_gui &
 
     if [[ ! -z "${LD_LIBRARY_PATH}" ]] ; then 
         if [[ -z "`echo ${LD_LIBRARY_PATH} | grep "${WINEDIR}/lib64:${WINEDIR}/lib"`" ]] ; then
@@ -277,14 +278,14 @@ start_portwine () {
         export PW_WINE_USE=${PW_PROTON_STEAM_VER}
         init_wine_ver
         check_dirs_and_files_in_pfx
-        ${pw_runtime} env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -i
+        ${pw_runtime} env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -i &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
         wait_wineserver &&
         export PW_WINE_USE="${OLD_PW_WINE_USE}"
         init_wine_ver
         echo "${PW_WINE_USE}" > "${WINEPREFIX}/.wine_ver"
     elif [[ -z "`cat ${WINEPREFIX}/.wine_ver | grep ${PW_WINE_USE}`" ]] ; then 
         check_dirs_and_files_in_pfx
-        ${pw_runtime} env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -i
+        ${pw_runtime} env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -i &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
         wait_wineserver &&
         echo "${PW_WINE_USE}" > "${WINEPREFIX}/.wine_ver"
     fi
@@ -315,13 +316,13 @@ start_portwine () {
     try_force_link_file "${PW_PLUGINS_PATH}"/BattlEye_Runtime/BEClient.so "${WINEDIR}"/lib
     try_force_link_file "${PW_PLUGINS_PATH}"/BattlEye_Runtime/BEClient_x64.so "${WINEDIR}"/lib64
     var_winedlloverride_update "beclient,beclient_x64=b,n"
-    #try copy d3d extras libs
+    #try link d3d extras libs
     for d3d_extras_from_plugins in d3dcompiler_43 d3dx9_27 d3dx9_32 d3dx9_37.dll d3dx9_42 d3dcompiler_47 d3dx9_28.dll \
         d3dx9_33 d3dx9_38 d3dx9_43 d3dx9_24 d3dx9_29 d3dx9_34 d3dx9_39 d3dx9_25 d3dx9_30 d3dx9_35 d3dx9_40 d3dx9_26 \
         d3dx9_31 d3dx9_36 d3dx9_41 
     do  
-        try_copy_file "${PW_PLUGINS_PATH}/d3d_extras/x64/${d3d_extras_from_plugins}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-        try_copy_file "${PW_PLUGINS_PATH}/d3d_extras/x32/${d3d_extras_from_plugins}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+        try_force_link_file "${PW_PLUGINS_PATH}/d3d_extras/x64/${d3d_extras_from_plugins}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+        try_force_link_file "${PW_PLUGINS_PATH}/d3d_extras/x32/${d3d_extras_from_plugins}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
         var_winedlloverride_update "${d3d_extras_from_plugins}=n"
     done
     var_winedlloverride_update "steam_api,steam_api64,steamclient,steamclient64=n;lsteamclient,winemenubuilder.exe="
@@ -413,13 +414,15 @@ start_portwine () {
             if [ "$?" == "1" ] ; then
                 if [ -z "${PW_DLL_NEED_INSTALL}" ]
                 then export PW_DLL_NEED_INSTALL="${need_install_dll_to_pfx}"
-                else export PW_DLL_NEED_INSTALL="${need_install_dll_to_pfx} ${PW_DLL_NEED_INSTALL}"
+                else export PW_DLL_NEED_INSTALL="${need_install_dll_to_pfx} ${PW_DLL_NEED_INSTALL}" 
                 fi
                 export USE_WT_FROM_DB=1
             fi
         done
         if [ "${USE_WT_FROM_DB}" == "1" ] ; then
             update_winetricks
+            echo "START WINETRICKS..." >> "${PORT_WINE_TMP_PATH}/update_pfx_log"
+            echo "Try to install DLL in prefix: ${PW_DLL_NEED_INSTALL}" >> "${PORT_WINE_TMP_PATH}/update_pfx_log"
             print_info "Try to install DLL in prefix: ${PW_DLL_NEED_INSTALL}"
             chmod -R 775 "${HOME}/.cache/winetricks"
             if [ "${PW_WINE_VER}" != "${PW_PROTON_STEAM_VER}" ] ; then
@@ -427,8 +430,8 @@ start_portwine () {
                 export PW_WINE_VER="${PW_PROTON_STEAM_VER}"
                 init_wine_ver
             fi
-            ${pw_runtime} xterm -e env PATH="${PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" \
-            "${PORT_WINE_TMP_PATH}/winetricks" -q -r ${PW_DLL_NEED_INSTALL}
+            ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" \
+            "${PORT_WINE_TMP_PATH}/winetricks" -q -r ${PW_DLL_NEED_INSTALL} &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
             if [ "${PW_WINE_VER_FROM_DB}" != "${PW_PROTON_STEAM_VER}" ] ; then
                 export PW_SILENT_RESTART=1
                 /bin/bash -c ${pw_full_command_line[*]} &
@@ -447,7 +450,7 @@ start_portwine () {
     fi
     pw_stop_progress_bar &&
     pw_tray_icon
-    pw_start_progress_bar_cs "Start ${portname}... Please wait..."
+    pw_start_progress_bar_cover "${PW_GUI_ICON_PATH}/covers/pw_loading_cover.gif"
     add_in_start_portwine
 }
 
@@ -504,6 +507,8 @@ export portname=PortProton
 cd "$(dirname "`readlink -f "$0"`")" && export PORT_SCRIPTS_PATH="$(pwd)"
 cd "${PORT_SCRIPTS_PATH}/../../" && export PORT_WINE_PATH="$(pwd)"
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
+rm -f "${PORT_WINE_TMP_PATH}"/*.tar.*
+
 if [ -d "${PORT_WINE_PATH}/data/dist" ] ; then
     chmod -R 755 "${PORT_WINE_PATH}/data/dist"
     orig_IFS="$IFS"
@@ -525,7 +530,7 @@ create_new_dir "${PORT_WINE_TMP_PATH}"/mono
 cd "${PORT_SCRIPTS_PATH}"
 . "${PORT_SCRIPTS_PATH}/var"
 
-export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}/"  
+export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"  
 
 if [ ! -f "${PORT_WINE_TMP_PATH}/${portname}_loc" ] ; then
 	SET_LANG=`zenity --title  "Install $portname" --text "Select the language" --list --radiolist \

@@ -294,6 +294,8 @@ init_wine_ver () {
         done
     fi
 
+    [[ ! -f "${WINEDIR}/version" ]] && echo "${PW_WINE_USE}" > "${WINEDIR}/version"
+
     if [[ ! -d "${WINEDIR}/lib64/" && -d "${WINEDIR}/lib/wine/x86_64-unix" ]] ; then
         create_new_dir "${WINEDIR}/lib64/wine"
         mv -f "${WINEDIR}/lib/wine/x86_64-unix" "${WINEDIR}/lib64/wine/"
@@ -323,6 +325,32 @@ sszen() {
     zenity --progress --title="Settings..." --text="Updating parameters" --pulsate --auto-close --width=500 --height=90 --no-cancel
 }
 
+pw_start_progress_bar_cover () {
+    PW_GIF_FILE="$1"
+    PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 20}'`
+    PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 20}'`
+    "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated --center \
+    --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y > /dev/null 2>&1 &
+}
+
+pw_update_pfx_cover_gui () {
+        PW_KEY_PROGRESS_BAR=$RANDOM
+        PW_GIF_FILE="${PW_GUI_ICON_PATH}/covers/pw_update_pfx_cover.gif"
+        PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 40}'`
+        PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 80}'`
+        echo "UPDATE PREFIX..." > "${PORT_WINE_TMP_PATH}/update_pfx_log"
+        while [[ -f "${PORT_WINE_TMP_PATH}/update_pfx_log" ]] ; do
+            sleep 1
+            while read -r line  ; do
+                echo "# ${line}"
+            done
+        done < "${PORT_WINE_TMP_PATH}/update_pfx_log" | "${pw_yad_new}" --plug=$PW_KEY_PROGRESS_BAR  --tabnum="2" --text-info --tail &
+        "${pw_yad_new}" --plug=$PW_KEY_PROGRESS_BAR --tabnum="1" --picture --filename="${PW_GIF_FILE}" --image-on-top &
+
+        "${pw_yad_new}" --notebook --key="$PW_KEY_PROGRESS_BAR" --tab=LOGO --tab=TERMINAL --no-buttons --undecorated \
+        --center --auto-close --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y --tab-pos=bottom
+}
+
 pw_start_progress_bar_cs () {
     "${pw_yad}" --progress --progress-text="$@" --pulsate --close-on-unfocus \
     --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 > /dev/null 2>&1 &
@@ -336,8 +364,12 @@ pw_start_progress_bar_block () {
 }
 
 pw_stop_progress_bar () {
+    try_remove_file "${PORT_WINE_TMP_PATH}/update_pfx_log"
     while [ ! -z "`pgrep -a yad | grep "\-\-progress" | awk '{print $1}'`" ]
     do kill -n 9 `pgrep -a yad | grep "\-\-progress" | awk '{print $1}' | head -n 1` > /dev/null 2>&1
+    done
+    while [ ! -z "`pgrep -a yad | grep -i "PortProton" | awk '{print $1}'`" ]
+    do kill -n 9 `pgrep -a yad | grep -i "PortProton" | awk '{print $1}' | head -n 1` > /dev/null 2>&1
     done
 }
 
@@ -447,6 +479,9 @@ stop_portwine () {
     fi
     try_remove_dir "${PW_WINELIB}/var"
     find "${WINEPREFIX}/drive_c/" -maxdepth 1 -type f -name "*.tmp" -delete
+    if [[ ! -z "`pgrep -a start.sh | grep -i portproton | awk '{print $1}'`" ]]
+    then kill -s KILL `pgrep -a start.sh | grep -i portproton | awk '{print $1}'`
+    fi &
     exit 0
 }
 open_changelog () {
@@ -822,11 +857,11 @@ gui_proton_downloader () {
         fi
     done
 	
-	if [[ ${VERSION_INSTALLED_WINE} ]]; then
+	if [[ ! -z "${VERSION_INSTALLED_WINE}" ]]; then
 		try_remove_dir "${PORT_WINE_PATH}/data/dist/${VERSION_INSTALLED_WINE}"
 		unset VERSION_INSTALLED_WINE
-		gui_proton_downloader
-		exit 0
+        /bin/bash -c ${pw_full_command_line[*]} &
+        exit 0
 	fi
 	
     print_info "Download and install ${VERSION_WINE_GIT}..."

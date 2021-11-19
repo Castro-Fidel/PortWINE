@@ -5,7 +5,8 @@ if [ -f "$1" ]; then
     export portwine_exe="$(readlink -f "$1")"
 fi
 . "$(dirname $(readlink -f "$0"))/runlib"
-kill_portwine 
+kill_portwine
+pw_stop_progress_bar
 
 portwine_launch () {
     start_portwine
@@ -191,7 +192,7 @@ pw_winecmd () {
     export PW_USE_TERMINAL=1
     start_portwine
     cd "${WINEPREFIX}/drive_c"
-    ${pw_runtime} xterm -e env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" "${WINELOADER}" cmd
+    ${pw_runtime} env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" xterm -e "${WINELOADER}" cmd
     stop_portwine
 }
 
