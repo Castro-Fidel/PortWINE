@@ -1,0 +1,18 @@
+#!/bin/bash
+# Author: chal55rus (Sergey P.)
+########################################################################
+#export LAUNCH_PARAMETERS=("")
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/citra-setup-windows.exe"
+start_portwine
+if try_download "https://github.com/citra-emu/citra-web/releases/download/1.0/citra-setup-windows.exe" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_start_progress_bar_block "Installing the Citra. Please wait..."
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/users/steamuser/AppData/Local/Citra/nightly-mingw/citra-qt.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    kill_portwine
+    pw_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="Citra"
+    portwine_create_shortcut
+fi
+stop_portwine

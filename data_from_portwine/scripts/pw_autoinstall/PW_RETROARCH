@@ -1,0 +1,17 @@
+#!/bin/bash
+# Author: chal55rus (Sergey P.)
+########################################################################
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/RetroArch.7z"
+start_portwine
+if try_download "https://buildbot.libretro.com/stable/1.9.13/windows/x86_64/RetroArch.7z" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_start_progress_bar_block "Installing the RetroArch. Please wait..."
+    "$pw_7z" x -y "${PW_AUTOINSTALL_EXE}" -o"$WINEPREFIX/drive_c/Program Files (x86)"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/RetroArch-Win64/retroarch.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    kill_portwine
+    pw_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="RetroArch"
+    portwine_create_shortcut
+fi
+stop_portwine

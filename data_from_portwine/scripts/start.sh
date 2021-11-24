@@ -332,11 +332,19 @@ else
     export -f gui_open_var
 
     export KEY=$RANDOM
-    "${pw_yad}" --plug=$KEY --tabnum=3 --form --columns=2 \
+    "${pw_yad}" --plug=$KEY --tabnum=4 --form --columns=2 \
     --field="CLEAR PREFIX":"BTN" '@bash -c "button_click gui_clear_pfx"'  \
     --field="EDIT SCRIPT VAR":"BTN" '@bash -c "button_click gui_open_var"' \
     --field="WINE UNINSTALLER":"BTN" '@bash -c "button_click gui_wine_uninstaller"' \
     --field="REMOVE PORTPROTON":"BTN" '@bash -c "button_click gui_rm_portproton"' &
+
+    "${pw_yad}" --plug=$KEY --tabnum=3 --form --columns=3  --scroll  --height=500 \
+    --field="   Dolphin 5.0"!"$PW_GUI_ICON_PATH/dolphin.png":"BTN" '@bash -c "button_click PW_DOLPHIN"' \
+    --field="   MAME"!"$PW_GUI_ICON_PATH/mame.png":"BTN" '@bash -c "button_click PW_MAME"' \
+    --field="   ScummVM"!"$PW_GUI_ICON_PATH/scummvm.png":"BTN" '@bash -c "button_click PW_SCUMMVM"' \
+    --field="   RetroArch"!"$PW_GUI_ICON_PATH/retroarch.png":"BTN" '@bash -c "button_click PW_RETROARCH"' \
+    --field="   PPSSPP Windows"!"$PW_GUI_ICON_PATH/ppsspp.png":"BTN" '@bash -c "button_click PW_PPSSPP"' \
+    --field="   Citra"!"$PW_GUI_ICON_PATH/citra.png":"BTN" '@bash -c "button_click PW_CITRA"' \ &
 
     "${pw_yad}" --plug=$KEY --tabnum=2 --form --columns=3  --scroll  --height=500 \
     --field="   Wargaming Game Center"!"$PW_GUI_ICON_PATH/wgc.png":"BTN" '@bash -c "button_click PW_WGC"' \
@@ -354,7 +362,8 @@ else
     --field="   Glyph Client"!"$PW_GUI_ICON_PATH/glyph.png":"BTN" '@bash -c "button_click  PW_GLYPH"' \
     --field="   Ankama Launcher"!"$PW_GUI_ICON_PATH/ankama.png":"BTN" '@bash -c "button_click PW_ANKAMA"' \
     --field="   League of Legends"!"$PW_GUI_ICON_PATH/lol.png":"BTN" '@bash -c "button_click PW_LOL"' \
-    --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png":"BTN" '@bash -c "button_click  PW_GAMEFORGE"' & 
+    --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png":"BTN" '@bash -c "button_click  PW_GAMEFORGE"' \
+    --field="   ITCH.IO"!"$PW_GUI_ICON_PATH/itch.png":"BTN" '@bash -c "button_click PW_ITCH"' & 
 
     "${pw_yad}" --plug=${KEY} --tabnum=1 --columns=3 --form --separator=";" \
     --image "$PW_GUI_ICON_PATH/port_proton.png" \
@@ -373,7 +382,7 @@ else
 
     "${pw_yad}" --key=$KEY --notebook --borders=10 --width=1000 --height=168 --no-buttons --text-align=center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "${portname}-${install_ver} (${scripts_install_ver})" --separator=";" \
-    --tab-pos=right --tab="PORT_PROTON" --tab="AUTOINSTALL" --tab="    SETTINGS" --center
+    --tab-pos=right --tab="PORT_PROTON" --tab="AUTOINSTALL" --tab="  EMULATORS"  --tab="    SETTINGS" --center
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
 
