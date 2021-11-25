@@ -344,7 +344,8 @@ else
     --field="   ScummVM"!"$PW_GUI_ICON_PATH/scummvm.png":"BTN" '@bash -c "button_click PW_SCUMMVM"' \
     --field="   RetroArch"!"$PW_GUI_ICON_PATH/retroarch.png":"BTN" '@bash -c "button_click PW_RETROARCH"' \
     --field="   PPSSPP Windows"!"$PW_GUI_ICON_PATH/ppsspp.png":"BTN" '@bash -c "button_click PW_PPSSPP"' \
-    --field="   Citra"!"$PW_GUI_ICON_PATH/citra.png":"BTN" '@bash -c "button_click PW_CITRA"' \ &
+    --field="   Citra"!"$PW_GUI_ICON_PATH/citra.png":"BTN" '@bash -c "button_click PW_CITRA"' \
+    --field="   Cemu"!"$PW_GUI_ICON_PATH/cemu.png":"BTN" '@bash -c "button_click PW_CEMU"' &
 
     "${pw_yad}" --plug=$KEY --tabnum=2 --form --columns=3  --scroll  --height=500 \
     --field="   Wargaming Game Center"!"$PW_GUI_ICON_PATH/wgc.png":"BTN" '@bash -c "button_click PW_WGC"' \
@@ -355,7 +356,7 @@ else
     --field="   Steam Client Launcher"!"$PW_GUI_ICON_PATH/steam.png":"BTN" '@bash -c "button_click PW_STEAM"' \
     --field="   EVE Online Launcher"!"$PW_GUI_ICON_PATH/eve.png":"BTN" '@bash -c "button_click PW_EVE"' \
     --field="   Origin Launcher"!"$PW_GUI_ICON_PATH/origin.png":"BTN" '@bash -c "button_click PW_ORIGIN"' \
-    --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/Bethesda.png":"BTN" '@bash -c "button_click PW_BETHESDA"' \
+    --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png":"BTN" '@bash -c "button_click PW_BETHESDA"' \
     --field="   Rockstar Games Launcher"!"$PW_GUI_ICON_PATH/Rockstar.png":"BTN" '@bash -c "button_click PW_ROCKSTAR"' \
     --field="   My.Games Launcher"!"$PW_GUI_ICON_PATH/mygames.png":"BTN" '@bash -c "button_click PW_MYGAMES"' \
     --field="   OSU"!"$PW_GUI_ICON_PATH/osu.png":"BTN" '@bash -c "button_click PW_OSU"' \

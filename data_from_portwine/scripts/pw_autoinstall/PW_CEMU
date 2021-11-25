@@ -1,0 +1,18 @@
+#!/bin/bash
+# Author: PortWINE-Linux.ru
+########################################################################
+export PW_URL_CEMU=($(curl -s "https://cemu.info" | grep "zip" | cut -d \" -f 2))
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/`echo ${PW_URL_CEMU} | awk -F/ '{print $5}'`"
+start_portwine
+if try_download "${PW_URL_CEMU}" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_start_progress_bar_block "Installing the Cemu. Please wait..."
+    "$pw_7z" x -y "${PW_AUTOINSTALL_EXE}" -o"$WINEPREFIX/drive_c/Program Files (x86)"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/`echo ${PW_URL_CEMU} | awk -F/ '{print $5}' | sed 's/.zip//'`/Cemu.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    kill_portwine
+    pw_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="Cemu"
+    portwine_create_shortcut
+fi
+stop_portwine
