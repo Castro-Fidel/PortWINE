@@ -1,0 +1,18 @@
+#!/bin/bash
+# Author: chal55rus (Sergey P.)
+########################################################################
+export LAUNCH_PARAMETERS=("/VERYSILENT")
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/Setup Project64 3.0.1-5664-2df3434.exe"
+start_portwine
+if try_download "https://www.pj64-emu.com/file/setup-project64-3-0-0-5632-f83bee9/" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_start_progress_bar_block "Installing the Project64. Please wait..."
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/Project64 3.0/Project64.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    kill_portwine
+    pw_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="Project64"
+    portwine_create_shortcut
+fi
+stop_portwine

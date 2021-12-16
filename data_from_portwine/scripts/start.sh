@@ -208,7 +208,14 @@ pw_winetricks () {
     init_wine_ver
     cabextract_fix
     start_portwine
-    ${PW_TERM} "${PORT_WINE_TMP_PATH}/winetricks" -q -r
+    while [[ -f "${PORT_WINE_TMP_PATH}/update_pfx_log" ]] ; do
+        sleep 1
+        while read -r line  ; do
+            echo "# ${line}"
+        done
+    done < "${PORT_WINE_TMP_PATH}/update_pfx_log" | "${pw_yad_new}" --text-info --tail --no-buttons --title="WINETRICKS" \
+    --center --auto-close --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y &
+    "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
     stop_portwine
 }
 
@@ -345,7 +352,12 @@ else
     --field="   RetroArch"!"$PW_GUI_ICON_PATH/retroarch.png":"BTN" '@bash -c "button_click PW_RETROARCH"' \
     --field="   PPSSPP Windows"!"$PW_GUI_ICON_PATH/ppsspp.png":"BTN" '@bash -c "button_click PW_PPSSPP"' \
     --field="   Citra"!"$PW_GUI_ICON_PATH/citra.png":"BTN" '@bash -c "button_click PW_CITRA"' \
-    --field="   Cemu"!"$PW_GUI_ICON_PATH/cemu.png":"BTN" '@bash -c "button_click PW_CEMU"' &
+    --field="   Cemu"!"$PW_GUI_ICON_PATH/cemu.png":"BTN" '@bash -c "button_click PW_CEMU"' \
+    --field="   DuckStation"!"$PW_GUI_ICON_PATH/duckstation.png":"BTN" '@bash -c "button_click PW_DUCKSTATION"' \
+    --field="   ePSXe"!"$PW_GUI_ICON_PATH/epsxe.png":"BTN" '@bash -c "button_click PW_EPSXE"' \
+    --field="   Project64"!"$PW_GUI_ICON_PATH/project64.png":"BTN" '@bash -c "button_click PW_PROJECT64"' \
+    --field="   VBA-M"!"$PW_GUI_ICON_PATH/vba-m.png":"BTN" '@bash -c "button_click PW_VBA-M"' \
+    --field="   Yabause"!"$PW_GUI_ICON_PATH/yabause.png":"BTN" '@bash -c "button_click PW_YABAUSE"' &
 
     "${pw_yad}" --plug=$KEY --tabnum=2 --form --columns=3  --scroll  --height=500 \
     --field="   Wargaming Game Center"!"$PW_GUI_ICON_PATH/wgc.png":"BTN" '@bash -c "button_click PW_WGC"' \

@@ -121,7 +121,10 @@ esac
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 cd "${PORT_WINE_PATH}"
 try_download_scripts () {
-	wget -c -t 5 -T 20 "https://github.com/Castro-Fidel/PortWINE/archive/refs/heads/master.tar.gz" --output-document="${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
+	wget -O "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" -nd -c --read-timeout 300 \
+	--retry-connrefused --timeout 15 --tries 3 \
+    --user-agent="Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" \
+	"https://github.com/Castro-Fidel/PortWINE/archive/refs/heads/master.tar.gz"	
 	if [ "$?" = "0" ] ; then
 		tar -xvzf "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" -C "${PORT_WINE_TMP_PATH}"
 		if [ "$?" = "0" ] ; then

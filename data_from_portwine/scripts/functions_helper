@@ -96,7 +96,8 @@ check_process () {
 
 try_download () {
     set -o pipefail
-    wget --no-check-certificate --content-disposition -t 3 -T 5 "$1" --output-document="$2" 2>&1 | \
+    wget -O "$2" --read-timeout 300 --retry-connrefused --timeout 15 --tries 3 \
+    --user-agent="Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" "$1" 2>&1 | \
     tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
     zenity --progress --percentage=0 --title="Download $(basename $1)" --text=Starting... --auto-close --auto-kill --width=500 --height=90
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
@@ -110,7 +111,8 @@ try_download () {
 
 try_download_to_path () {
     set -o pipefail
-    wget --no-check-certificate --content-disposition -t 3 -T 5 "$1" --directory-prefix="$2" 2>&1 | \
+    wget --directory-prefix="$2" --read-timeout 300 --retry-connrefused --timeout 15 --tries 3 \
+    --user-agent="Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" "$1" 2>&1 | \
     tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
     zenity --progress --percentage=0 --title="Download $(basename $1)" --text=Starting... --auto-close --auto-kill --width=500 --height=90
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
@@ -122,7 +124,8 @@ try_download_to_path () {
 }
 
 try_download_silent () {
-    wget --no-check-certificate --content-disposition -t 3 -T 5 "$1" --output-document="$2"
+    wget -O "$2" --read-timeout 300 --retry-connrefused --timeout 15 --tries 3 \
+    --user-agent="Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" "$1"
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
         print_error "failed to download $1. Skipping."
         try_remove_file "$2"
@@ -133,7 +136,7 @@ try_download_silent () {
 }
 
 zenity_error_download () {
-    `zenity --error --title "Error..." --text "You will need to check internet connettion,\nand press OK for repeet download" --no-wrap `
+    `zenity --error --title "Error..." --text "You will need to check internet connection,\nand press OK for repeat download" --no-wrap `
     [ "$?" != 0 ] && exit 1 || return 0
 }
 
@@ -364,7 +367,6 @@ pw_start_progress_bar_block () {
 }
 
 pw_stop_progress_bar () {
-    try_remove_file "${PORT_WINE_TMP_PATH}/update_pfx_log"
     while [ ! -z "`pgrep -a yad | grep "\-\-progress" | awk '{print $1}'`" ]
     do kill -n 9 `pgrep -a yad | grep "\-\-progress" | awk '{print $1}' | head -n 1` > /dev/null 2>&1
     done
@@ -823,11 +825,11 @@ gui_proton_downloader () {
     try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set"
     try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_set"
 	try_remove_file "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set"
-    `"${pw_yad}" --plug=$KEY_WINE --tabnum=2 --list --cheklist --separator="" --listen \
+    `"${pw_yad}" --plug=$KEY_WINE --tabnum=2 --list --separator="" --listen \
     --column "Select WINE for download:" < "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git" 1> "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set"` &
-    `"${pw_yad}" --plug=$KEY_WINE --tabnum=1 --list --cheklist --separator="" --listen \
+    `"${pw_yad}" --plug=$KEY_WINE --tabnum=1 --list --separator="" --listen \
     --column "Select WINE for download:" < "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git" 1> "${PORT_WINE_TMP_PATH}/tmp_proton_set"` &
-	`"${pw_yad}" --plug=$KEY_WINE --tabnum=3 --list --cheklist --separator="" --listen \
+	`"${pw_yad}" --plug=$KEY_WINE --tabnum=3 --list --separator="" --listen \
     --column "Select installed WINE for delete:" < "${PORT_WINE_TMP_PATH}/tmp_installed_wine" 1> "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set"` &
     `"${pw_yad}" --key=$KEY_WINE --notebook --width=500 --height=600 --text-align=center --center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "Download..." --separator="" \
