@@ -327,6 +327,12 @@ else
     }
     export -f gui_rm_portproton
 
+    gui_pw_update () {
+        try_remove_file "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
+        /bin/bash -c ${pw_full_command_line[*]} &
+        exit 0
+    }
+
     gui_wine_uninstaller () {
         start_portwine
         pw_run uninstaller
@@ -343,6 +349,7 @@ else
     --field="CLEAR PREFIX":"BTN" '@bash -c "button_click gui_clear_pfx"'  \
     --field="EDIT SCRIPT VAR":"BTN" '@bash -c "button_click gui_open_var"' \
     --field="WINE UNINSTALLER":"BTN" '@bash -c "button_click gui_wine_uninstaller"' \
+    --field="UPDATE PORTPROTON":"BTN" '@bash -c "button_click gui_pw_update"' \
     --field="REMOVE PORTPROTON":"BTN" '@bash -c "button_click gui_rm_portproton"' &
 
     "${pw_yad}" --plug=$KEY --tabnum=3 --form --columns=3  --scroll  --height=500 \
@@ -448,6 +455,7 @@ case "$PW_YAD_SET" in
     gui_open_var) gui_open_var ;;
     gui_wine_uninstaller) gui_wine_uninstaller ;;
     gui_rm_portproton) gui_rm_portproton ;;
+    gui_pw_update) gui_pw_update ;;
     gui_proton_downloader) gui_proton_downloader ;;
     120) gui_vkBasalt ;;
     PW_*) pw_autoinstall_from_db ;;
