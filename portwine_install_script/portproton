@@ -11,10 +11,15 @@ clear && echo '
 '
 ########################################################################
 unset PW_AUTOPLAY PW_SET_LANG PW_SILENT_INSTALL
+export portname="PortProton"
+export port_ver=97
+########################################################################
+deflink="${HOME}/PortWINE/${portname}"
 [ $(id -u) -eq 0 ] && echo "Do not run the script from the superuser!" && zenity --error --text "Do not run the script from the superuser!" 2> /dev/null  && exit 1
 if [ "$(dirname "`readlink -f "$0"`")" == "/usr/bin" ] ; then
-	if [ -f "$HOME/PortWINE/PortProton/data/scripts/start.sh" ] ; then
-		sh "$HOME/PortWINE/PortProton/data/scripts/start.sh" $@ & exit 0
+	[ -z "${XDG_DATA_HOME}" ] && export XDG_DATA_HOME="$HOME/.local/share"
+	if [ -f "${XDG_DATA_HOME}/PortWINE/PortProton/data/scripts/start.sh" ] ; then
+		sh "${XDG_DATA_HOME}/PortWINE/PortProton/data/scripts/start.sh" $@ & exit 0
 	else
 		if [ ! -z "`locale | grep "LANG=ru_RU.UTF-8"`" ] ; then 
 			PW_SET_LANG="Russian"
@@ -23,11 +28,9 @@ if [ "$(dirname "`readlink -f "$0"`")" == "/usr/bin" ] ; then
 		fi
 		export PW_SILENT_INSTALL="1"
 		export PW_AUTOPLAY=1
+		deflink="${XDG_DATA_HOME}/PortWINE/${portname}"
 	fi
 fi
-########################################################################
-export portname="PortProton"
-export port_ver=97
 ########################################################################
 export INSTALLING_PORT=1
 export PROGS_INST=""
@@ -45,7 +48,6 @@ fi
 ########################################################################
 cd "$(dirname "`readlink -f "$0"`")"
 links="$(pwd)"
-deflink="${HOME}/PortWINE/${portname}"
 ########################################################################
 if [ "$1" = "-rus" ] ; then
 	PW_SET_LANG="Russian"

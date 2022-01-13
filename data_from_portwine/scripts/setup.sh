@@ -33,7 +33,8 @@ chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 if [ "${PW_SILENT_INSTALL}" = "1" ] ; then
 	if [ "${PW_AUTOPLAY}" = "1" ] ; then
 		unset INSTALLING_PORT
-		sh "$HOME/PortWINE/PortProton/data/scripts/start.sh" $@ & exit 0
+		ln -s "${XDG_DATA_HOME}/PortWINE" "${HOME}/"
+		sh "${XDG_DATA_HOME}/PortWINE/PortProton/data/scripts/start.sh" $@ & exit 0
 	else
 		echo "Installation completed successfully."
 	fi
