@@ -2,12 +2,33 @@
 # Author: Castro-Fidel (PortWINE-Linux.ru)
 ########################################################################
 export LAUNCH_PARAMETERS=("/VERYSILENT")
-export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/setup_galaxy_2.0.41.150.exe"
+export PW_GOG_WEB_INSTALL_EXE="${PW_USER_TEMP}/users/steamuser/Temp/GOG_Galaxy_2.0.exe"
 start_portwine
-if try_download "https://content-system.gog.com/open_link/download?path=/open/galaxy/client/2.0.41.150/setup_galaxy_2.0.41.150.exe" "${PW_AUTOINSTALL_EXE}"
+if try_download_silent "https://webinstallers.gog-statics.com/download/GOG_Galaxy_2.0.exe" "${PW_GOG_WEB_INSTALL_EXE}"
 then
+    pw_kill_autostart GalaxyInstaller.exe &
+    pw_kill_autostart GOG_Galaxy_2.0.exe &
+    # while true; do
+    #     if [ -z `ps -Ao pid,cmd | grep -v grep | grep GalaxyInstaller.exe | awk '{print $1}'` ]; then
+    #         sleep 1
+    #     else
+    #         [ `ps -Ao pid,cmd | grep -v grep | grep -E ${PW_GOG_WEB_INSTALL_EXE} | tail -n 1 | awk '{print $1}'` ]
+    #         kill -s KILL `ps -Ao pid,cmd | grep -v grep | grep -E ${PW_GOG_WEB_INSTALL_EXE} | tail -n 1 | awk '{print $1}'`
+    #         [ -z `ps -Ao pid,cmd | grep -v grep | grep GalaxyInstaller.exe | awk '{print $1}'` ]
+    #         killall -s KILL "GalaxyInstaller.exe"
+    #     break
+    #     fi
+    # done &
     pw_start_progress_bar_block "Installing the GOG Galaxy. Please wait..."
-    pw_kill_autostart GalaxyClient.* &
+    pw_run "${PW_GOG_WEB_INSTALL_EXE}"
+    if  [ -f "${PW_USER_TEMP}/users/steamuser/Temp/GalaxyInstaller_"*"/remoteconfig.json" ]; then
+        export PW_GOG_URL_EXE=$(cat "${PW_USER_TEMP}/users/steamuser/Temp/GalaxyInstaller_"*"/remoteconfig.json" | grep -Eo '[[:alnum:]+\.\_\-\/\=\?\:\-]*.exe' | sed s%'\\'%%g )
+    fi
+fi
+export PW_AUTOINSTALL_EXE="`echo ${PW_USER_TEMP}/${PW_GOG_URL_EXE} | awk -F/ '{print $NF}'`"
+echo "${PW_AUTOINSTALL_EXE}"
+if  try_download "${PW_GOG_URL_EXE}" "${PW_AUTOINSTALL_EXE}"
+then
     pw_run "${PW_AUTOINSTALL_EXE}"
     portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/GOG Galaxy/GalaxyClient.exe"
     try_remove_file "${PW_AUTOINSTALL_EXE}"

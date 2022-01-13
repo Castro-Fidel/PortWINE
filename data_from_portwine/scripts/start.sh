@@ -206,7 +206,6 @@ pw_winetricks () {
     export PW_USE_TERMINAL=1
     export PW_WINE_VER="${PW_PROTON_STEAM_VER}"
     init_wine_ver
-    cabextract_fix
     start_portwine
     while [[ -f "${PORT_WINE_TMP_PATH}/update_pfx_log" ]] ; do
         sleep 1
