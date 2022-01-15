@@ -41,10 +41,13 @@ if [ "${PW_SILENT_INSTALL}" = "1" ] ; then
 		if [[ ! -z "${PW_OLD_PATH}" ]]	; then 
 			if [[ "${PW_OLD_PATH}"* == "${HOME}/PortWINE"* ]] & [[ -d "${HOME}/PortWINE" ]] ; then
 				echo "Old path = ${HOME}/PortWINE"
+				try_remove_dir "${XDG_DATA_HOME}/PortWINE"
 				mv -f "${HOME}/PortWINE" "${XDG_DATA_HOME}"
 			elif [[ "${PW_OLD_PATH}"* == "${PW_OLD_PATH}/PortWINE"* ]] & [[ -d "${PW_OLD_PATH}/PortWINE" ]] ; then
+				try_remove_dir "${XDG_DATA_HOME}/PortWINE"
 				ln -s "${PW_OLD_PATH}/PortWINE" "${XDG_DATA_HOME}/"
 			elif [[ "${PW_OLD_PATH}"* == "${PW_OLD_PATH}/PortProton"* ]] & [[ -d "${PW_OLD_PATH}/PortProton" ]] ; then
+				try_remove_dir "${XDG_DATA_HOME}/PortWINE"
 				create_new_dir "${XDG_DATA_HOME}/PortWINE"
 				ln -s "${PW_OLD_PATH}/PortProton" "${XDG_DATA_HOME}/PortWINE"
 			fi
