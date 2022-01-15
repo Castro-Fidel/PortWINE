@@ -33,6 +33,20 @@ chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 if [ "${PW_SILENT_INSTALL}" = "1" ] ; then
 	if [ "${PW_AUTOPLAY}" = "1" ] ; then
 		unset INSTALLING_PORT
+		if [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]] ; then
+			export PW_OLD_PATH=`cat "${HOME}/.local/share/applications/PortProton.desktop" | grep -w 'Path=' | sed -E 's/Path=//' | sed -E 's%\/PortProton\/data\/scripts\/%%g' `
+			try_remove_file "${HOME}/.local/share/applications/PortProton.desktop"
+		fi
+		if [[ ! -z "${PW_OLD_PATH}" ]]	; then 
+			if [[ "${PW_OLD_PATH}"* == "${HOME}/PortWINE"* ]] & [[ -d "${HOME}/PortWINE" ]] ; then
+				mv -f "${HOME}/PortWINE" "${XDG_DATA_HOME}"
+			elif [[ "${PW_OLD_PATH}"* == "${PW_OLD_PATH}/PortWINE"* ]] & [[ -d "${PW_OLD_PATH}/PortWINE" ]] ; then
+				ln -s "${PW_OLD_PATH}/PortWINE" "${XDG_DATA_HOME}/"
+			elif [[ "${PW_OLD_PATH}"* == "${PW_OLD_PATH}/PortProton"* ]] & [[ -d "${PW_OLD_PATH}/PortProton" ]] ; then
+				create_new_dir "${XDG_DATA_HOME}/PortWINE"
+				ln -s "${PW_OLD_PATH}/PortProton" "${XDG_DATA_HOME}/PortWINE"
+			fi
+		fi
 		ln -s "${XDG_DATA_HOME}/PortWINE" "${HOME}/"
 		sh "${XDG_DATA_HOME}/PortWINE/PortProton/data/scripts/start.sh" $@ & exit 0
 	else
