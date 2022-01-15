@@ -323,6 +323,7 @@ else
         if gui_question "${port_del2}" ; then
             rm -fr "${PORT_WINE_PATH}"
             rm -fr "${PORT_WINE_TMP_PATH}"
+            rm -fr "${HOME}/PortWINE"
             rm -f `grep -il PortProton "${HOME}/.local/share/applications"/*`
             update-desktop-database -q "${HOME}/.local/share/applications"
         fi
