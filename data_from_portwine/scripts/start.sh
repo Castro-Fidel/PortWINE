@@ -8,6 +8,10 @@ fi
 kill_portwine
 pw_stop_progress_bar
 
+if [[ -f "/usr/bin/portproton" ]] && [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]] ; then
+    sh "/usr/bin/portproton" "$@" & exit 0
+fi
+
 portwine_launch () {
     start_portwine
     PORTWINE_MSI=`basename "${portwine_exe}" | grep .msi`
