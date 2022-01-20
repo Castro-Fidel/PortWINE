@@ -1,6 +1,6 @@
 #!/bin/bash
 #Author: Castro-Fidel (PortWINE-Linux.ru)
-#SCRIPTS_NEXT_VERSION=2061
+#SCRIPTS_NEXT_VERSION=2063
 #PORT_NEXT_VERSION=97
 ########################################################################
 export PW_MANGOHUD=1
@@ -54,18 +54,22 @@ echo " "
 }
 ########################################################################
 pw_other_fixes () {
+if [[ -f "${WINEPREFIX}/system.reg" ]] ; then
 #fix after installation Origin, for disabled OriginWebHelperService by default
-if [ ! -z `cat "${WINEPREFIX}/system.reg" | grep -wm 1 "Origin.exe" | awk '{print $1}'` ] ; then
-    sysreg_norig=$(((`cat -n "${WINEPREFIX}/system.reg" | grep OriginWebHelperService | awk '{print $1}'` + 3)))
-    sed -i "${sysreg_norig}s/dword:0000000[1-2]/dword:00000003/" "${WINEPREFIX}/system.reg"
-fi
-#fix after installation PnkBstr*, for disabled PnkBstr* by default
-for fix_reg in "PnkBstrA.exe" "PnkBstrB.exe" ; do
-    if [ ! -z `cat "${WINEPREFIX}/system.reg" | grep -wm 1 "${fix_reg}" | awk '{print $1}'` ] ; then
-        sysreg_norig=$(((`cat -n "${WINEPREFIX}/system.reg" | grep "${fix_reg}" | awk '{print $1}'` + 3)))
+    if [[ ! -z `cat "${WINEPREFIX}/system.reg" | grep -wm 1 "Origin.exe" | awk '{print $1}'` ]] ; then
+        sysreg_norig=$(((`cat -n "${WINEPREFIX}/system.reg" | grep OriginWebHelperService | awk '{print $1}'` + 3)))
         sed -i "${sysreg_norig}s/dword:0000000[1-2]/dword:00000003/" "${WINEPREFIX}/system.reg"
     fi
-done
+    #fix after installation PnkBstr*, for disabled PnkBstr* by default
+    for fix_reg in "PnkBstrA.exe" "PnkBstrB.exe" ; do
+        if [[ ! -z `cat "${WINEPREFIX}/system.reg" | grep -wm 1 "${fix_reg}" | awk '{print $1}'` ]] ; then
+            sysreg_norig=$(((`cat -n "${WINEPREFIX}/system.reg" | grep "${fix_reg}" | awk '{print $1}'` + 3)))
+            sed -i "${sysreg_norig}s/dword:0000000[1-2]/dword:00000003/" "${WINEPREFIX}/system.reg"
+        fi
+    done
+fi
 #disabled silent autostart steam
-sed -i '/steam.exe\\" -silent"/d' "${WINEPREFIX}/user.reg"
+if [[ -f "${WINEPREFIX}/user.reg" ]] ; then
+    sed -i '/steam.exe\\" -silent"/d' "${WINEPREFIX}/user.reg"
+fi
 }

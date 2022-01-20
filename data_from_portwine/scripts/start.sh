@@ -208,8 +208,6 @@ pw_winereg () {
 pw_winetricks () {
     update_winetricks
     export PW_USE_TERMINAL=1
-    export PW_WINE_VER="${PW_PROTON_STEAM_VER}"
-    init_wine_ver
     start_portwine
     while [[ -f "${PORT_WINE_TMP_PATH}/update_pfx_log" ]] ; do
         sleep 1
@@ -307,7 +305,7 @@ else
     button_click () {
         [ ! -z "$1" ] && echo "$1" > "${PORT_WINE_TMP_PATH}/tmp_yad_form"
         if [ ! -z `pidof -s yad` ] ; then
-            kill -s SIGUSR1 `pgrep -a yad | grep "\-\-key=${KEY} \-\-notebook" | awk '{print $1}'`
+            kill -s SIGUSR1 `pgrep -a yad | grep "\-\-key=${KEY} \-\-notebook" | awk '{print $1}'` > /dev/null 2>&1
         fi
     }
     export -f button_click

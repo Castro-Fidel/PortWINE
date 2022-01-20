@@ -26,7 +26,7 @@ try_copy_file () {
         cp -f "$1" "$2"
         if [ "$?" != 0 ]
         then print_error "failed to copy file $1 to $2" || return 1
-        else print_info "copy file $1 to $2 was successful" || return 0
+        else return 0
         fi
     fi
 }
@@ -107,6 +107,7 @@ try_download () {
     else 
         return 0
     fi
+    try_remove_file "${PORT_WINE_TMP_PATH}/download_log"
 }
 
 try_download_to_path () {
@@ -267,6 +268,11 @@ check_user_conf () {
 }
 
 init_wine_ver () {
+    if [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_STEAM$"` ]]
+    then export PW_WINE_USE="${PW_PROTON_STEAM_VER}"
+    elif [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_GE$"` ]]
+    then export PW_WINE_USE="${PW_PROTON_GE_VER}"
+    fi
     [ ! -z "${PW_WINE_VER}" ] && export PW_WINE_USE=`echo "${PW_WINE_VER}" | tr [[:lower:]] [[:upper:]]`
     [ ! -z "${PW_WINE_USE}" ] && export PW_WINE_USE=`echo "${PW_WINE_USE}" | tr [[:lower:]] [[:upper:]]`
     unset PW_WINE_VER
@@ -367,12 +373,87 @@ pw_start_progress_bar_block () {
 }
 
 pw_stop_progress_bar () {
-    while [ ! -z "`pgrep -a yad | grep "\-\-progress" | awk '{print $1}'`" ]
-    do kill -n 9 `pgrep -a yad | grep "\-\-progress" | awk '{print $1}' | head -n 1` > /dev/null 2>&1
+    if [[ ! -z "`pgrep -a yad | grep "progress" | awk '{print $1}' `" ]] ; then
+        kill -s SIGTERM `pgrep -a yad | grep "progress" | awk '{print $1}'` > /dev/null 2>&1
+    fi
+    if [[ ! -z "`pgrep -a yad | grep key=$PW_KEY_PROGRESS_BAR | awk '{print $1}' `" ]] ; then
+        kill -s SIGTERM "`pgrep -a yad | grep key=$PW_KEY_PROGRESS_BAR | awk '{print $1}' `" > /dev/null 2>&1
+    fi
+    return 0
+}
+export -f pw_stop_progress_bar
+
+wait_wineserver () {
+    while [ ! -z "$(ls -l /proc/*/exe 2>/dev/null | grep -ie ${portname} | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}')" ] ; do
+        sleep 1
     done
-    while [ ! -z "`pgrep -a yad | grep -i "PortProton" | awk '{print $1}'`" ]
-    do kill -n 9 `pgrep -a yad | grep -i "PortProton" | awk '{print $1}' | head -n 1` > /dev/null 2>&1
-    done
+}
+
+kill_portwine () {
+    wine_pids="`ls -l /proc/*/exe 2>/dev/null | grep -ie ${portname} | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}'`"
+    if  [ ! -z "${wine_pids}" ] ; then
+        for pw_kill_pids in ${wine_pids} ; do
+            if [ "`ps cax | grep ${pw_kill_pids}`" ] ; then
+                kill -n 9 ${pw_kill_pids} > /dev/null 2>&1  
+            fi
+        done
+    fi
+    bwrap_pids="`pgrep -a wrap | grep ${portname} | head -n 1 | awk '{print $1}'`"
+    if  [ ! -z "${bwrap_pids}" ] ; then
+        for pw_kill_pids in ${bwrap_pids} ; do
+            if [ "`ps cax | grep ${pw_kill_pids}`" ] ; then
+                kill -n 9 ${pw_kill_pids} > /dev/null 2>&1
+            fi
+        done
+    fi
+}
+export -f kill_portwine
+
+pw_kill_autostart () {
+    if [ "$PW_USE_RUNTIME" != 1 ]
+    then print_info "PW_USE_RUNTIME=$PW_USE_RUNTIME"
+    else
+        sleep 5
+        while true ; do
+            if  [[ -z "`ps aux | grep -m 1 "$1" | grep -v grep | awk '{print $2}'`" && ! -z "`ps aux | grep wrap | grep -v grep | grep -i ${portname} | head -n 1`" ]] ; then
+                echo -e "PID "$1" not found"
+                sleep 1
+            else
+                kill_portwine 
+                break
+            fi
+        done
+    fi
+    if [[ ! -z "`ls "${WINEPREFIX}"/drive_c/ | grep -m 1 ".tmp"`" ]] ; then
+        rm -f "${WINEPREFIX}"/drive_c/*.tmp
+    fi
+}
+
+stop_portwine () { 
+    wait_wineserver &&
+    add_in_stop_portwine
+    if [ "$int_xneur" = "1"  ]; then
+        xneur &
+    fi
+    if [ ! -z ${PW_XKBD} ]; then
+        setxkbmap ${PW_XKBD}
+    fi
+    pw_stop_progress_bar
+    try_remove_file "${PORT_SCRIPTS_PATH}/0"
+    try_remove_file "${PORT_SCRIPTS_PATH}/1"
+    kill_portwine &&
+    if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ]
+    then kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" > /dev/null 2>&1 
+    fi
+    if [  ! -z "`ls "${WINEPREFIX}"/drive_c/users/steamuser/Temp/ | head -n 1`" ] ; then
+        chmod -R 755 "${WINEPREFIX}"/drive_c/users/steamuser/Temp/
+        rm -fr "${WINEPREFIX}"/drive_c/users/steamuser/Temp/*
+    fi
+    try_remove_dir "${PW_WINELIB}/var"
+    find "${WINEPREFIX}/drive_c/" -maxdepth 1 -type f -name "*.tmp" -delete
+    if [[ ! -z "`pgrep -a start.sh | grep -i portproton | awk '{print $1}'`" ]]
+    then kill -s KILL `pgrep -a start.sh | grep -i portproton | awk '{print $1}'` > /dev/null 2>&1  
+    fi
 }
 
 pw_download_libs () {
@@ -409,83 +490,68 @@ pw_download_libs () {
     fi
 }
 
-update_winetricks () {
-    W_TRX_URL="https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks"
-    W_TRX_EXT_VER="$(curl -s --list-only ${W_TRX_URL} | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')"
-    print_info "Version winetricks on server: ${W_TRX_EXT_VER}"
-    W_TRX_INT_VER="$(cat "${PORT_WINE_TMP_PATH}/winetricks" | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')"
-    print_info "Version winetricks in port: ${W_TRX_INT_VER}"
-    if [[ ! -f "${PORT_WINE_TMP_PATH}/winetricks" && ! -z "$W_TRX_EXT_VER" ]] || [[ "$W_TRX_INT_VER" != "$W_TRX_EXT_VER" && ! -z "$W_TRX_EXT_VER" ]]; then
-        if try_download "${W_TRX_URL}" "${PORT_WINE_TMP_PATH}/winetricks_new" ; then
-            mv -f "${PORT_WINE_TMP_PATH}/winetricks_new" "${PORT_WINE_TMP_PATH}/winetricks"
-            W_TRX_INT_VER="$(cat "${PORT_WINE_TMP_PATH}/winetricks" | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')" && print_info "Winetricks version in port has been updated (${W_TRX_INT_VER})" 
-            chmod u+x "${PORT_WINE_TMP_PATH}/winetricks"
+pw_check_and_download_wine () {
+    [ ! -d "${PORT_WINE_PATH}/data/dist/" ] && create_new_dir "${PORT_WINE_PATH}/data/dist"
+    if [ "${1}" == "${PW_PROTON_GE_VER}" ] ; then
+        if [ ! -d "${PORT_WINE_PATH}/data/dist/${PW_PROTON_GE_VER}" ] ; then
+            print_info "Download and install ${PW_PROTON_GE_VER}..."
+            if try_download "https://github.com/Castro-Fidel/wine_builds/releases/download/${PW_PROTON_GE_VER}/${PW_PROTON_GE_VER}.tar.xz" "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}.tar.xz" ; then
+                if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
+                    echo "${PW_PROTON_GE_VER}" > "${PORT_WINE_PATH}/data/dist/${PW_PROTON_GE_VER}/version"
+                    try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}.tar.xz"
+                    try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}"
+                else
+                    try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}.tar.xz"
+                    try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}"
+                    try_remove_dir "${PORT_WINE_PATH}/data/dist/${PW_PROTON_GE_VER}"
+
+                    zenity_error_download && pw_check_and_download_wine
+                fi
+            else
+                zenity_error_download && pw_check_and_download_wine
+            fi
         fi
     fi
-    if  [ -f "${PORT_WINE_TMP_PATH}/winetricks" ] ; then
-        sed -i 's/w_metadata vcrun2015 dlls \\/w_metadata !dont_use_2015! dlls \\/' "${PORT_WINE_TMP_PATH}/winetricks"
-        sed -i 's/w_metadata vcrun2017 dlls \\/w_metadata !dont_use_2017! dlls \\/' "${PORT_WINE_TMP_PATH}/winetricks"
-        #HOTFIX SHA256SUM FOR VC_RUN2019
-        sed -i 's/vc_redist.x86.exe 1acd8d5ea1cdc3eb2eb4c87be3ab28722d0825c15449e5c9ceef95d897de52fa/vc_redist.x86.exe 80c7969f4e05002a0cd820b746e0acb7406d4b85e52ef096707315b390927824/g' "${PORT_WINE_TMP_PATH}/winetricks"
-        sed -i 's/vc_redist.x64.exe 003063723b2131da23f40e2063fb79867bae275f7b5c099dbd1792e25845872b/vc_redist.x64.exe 9b9dd72c27ab1db081de56bb7b73bee9a00f60d14ed8e6fde45dab3e619b5f04/g' "${PORT_WINE_TMP_PATH}/winetricks"
+    if [ ! -d "${PORT_WINE_PATH}/data/dist/${PW_PROTON_STEAM_VER}" ] ; then
+        print_info "Download and install ${PW_PROTON_STEAM_VER}..."
+        if try_download "https://github.com/Castro-Fidel/wine_builds/releases/download/${PW_PROTON_STEAM_VER}/${PW_PROTON_STEAM_VER}.tar.xz" "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}.tar.xz" ; then
+            if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
+                echo "${PW_PROTON_STEAM_VER}" > "${PORT_WINE_PATH}/data/dist/${PW_PROTON_STEAM_VER}/version"
+                try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}.tar.xz"
+                try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}"
+            else
+                try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}.tar.xz"
+                try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}"
+                try_remove_dir "${PORT_WINE_PATH}/data/dist/${PW_PROTON_STEAM_VER}"
 
-    fi
-}
-wait_wineserver () {
-    while [ ! -z "$(ls -l /proc/*/exe 2>/dev/null | grep -ie ${portname} | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}')" ] ; do
-        sleep 1
-    done
-}
-
-kill_portwine () {
-    wine_pids="`ls -l /proc/*/exe 2>/dev/null | grep -ie ${portname} | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}'`"
-    if  [ ! -z "${wine_pids}" ] ; then
-        for pw_kill_pids in ${wine_pids} ; do
-            if [ "`ps cax | grep ${pw_kill_pids}`" ] ; then
-                kill -n 9 ${pw_kill_pids}
-                echo "kill -n 9 ${pw_kill_pids}"
+                zenity_error_download && pw_check_and_download_wine
             fi
-        done
-    fi
-    bwrap_pids="`pgrep -a wrap | grep ${portname} | head -n 1 | awk '{print $1}'`"
-    if  [ ! -z "${bwrap_pids}" ] ; then
-        for pw_kill_pids in ${bwrap_pids} ; do
-            if [ "`ps cax | grep ${pw_kill_pids}`" ] ; then
-                kill -n 9 ${pw_kill_pids}
-                echo "kill -n 9 ${pw_kill_pids}"
-            fi
-        done
+        else
+            zenity_error_download && pw_check_and_download_wine
+        fi
     fi
 }
-export -f kill_portwine
 
-stop_portwine () { 
-    wait_wineserver &&
-    add_in_stop_portwine
-    if [ "$int_xneur" = "1"  ]; then
-        xneur &
+pw_check_and_download_plugins () {
+    if [[ ! -d "${PW_PLUGINS_PATH}/BattlEye_Runtime" || ! -d "${PW_PLUGINS_PATH}/d3d_extras" \
+    || ! -d "${PW_PLUGINS_PATH}/nvapi" || ! -d "${PW_PLUGINS_PATH}/nvml" ]]
+    then
+        print_info "Download and install plugins${PW_PLUGINS_VER}..."
+        if try_download "https://github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" ; then
+            if unpack_tar_xz "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}" ; then
+                try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" 
+            else
+                try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz"
+                try_remove_dir "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
+
+                zenity_error_download && pw_check_and_download_wine
+            fi
+        else
+            zenity_error_download && pw_check_and_download_wine
+        fi
     fi
-    if [ ! -z ${PW_XKBD} ]; then
-        setxkbmap ${PW_XKBD}
-    fi
-    pw_stop_progress_bar
-    try_remove_file "${PORT_SCRIPTS_PATH}/0"
-    try_remove_file "${PORT_SCRIPTS_PATH}/1"
-    kill_portwine &&
-    if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ]
-    then kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`"
-    fi
-    if [  ! -z "`ls "${WINEPREFIX}"/drive_c/users/steamuser/Temp/ | head -n 1`" ] ; then
-        chmod -R 755 "${WINEPREFIX}"/drive_c/users/steamuser/Temp/
-        rm -fr "${WINEPREFIX}"/drive_c/users/steamuser/Temp/*
-    fi
-    try_remove_dir "${PW_WINELIB}/var"
-    find "${WINEPREFIX}/drive_c/" -maxdepth 1 -type f -name "*.tmp" -delete
-    if [[ ! -z "`pgrep -a start.sh | grep -i portproton | awk '{print $1}'`" ]]
-    then kill -s KILL `pgrep -a start.sh | grep -i portproton | awk '{print $1}'`
-    fi &
-    exit 0
 }
+
 open_changelog () {
     "${pw_yad}" --title="Changelog" --borders=10 --no-buttons --text-align=center \
     --text-info --show-uri --wrap --center --width=1200 --height=550 --uri-color=red \
@@ -495,7 +561,7 @@ export -f open_changelog
 
 pw_tray_icon () {
     if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ] ; then
-        kill -n 9 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`"
+        kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`"
     fi
     tray_icon_click() {
         echo ""
@@ -506,12 +572,12 @@ pw_tray_icon () {
     }
     export -f pw_tray_winefile
     tray_icon_click_exit() {
-        kill_portwine &&
+        pw_stop_progress_bar
+        kill_portwine
         if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ]
-        then kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`"
+        then kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" > /dev/null 2>&1
         fi
-        kill -n 9 `pgrep -a start.sh | awk '/PortWINE/ && /PortProton/' | awk '{print $1}'`
-        exit 0
+        kill -n 9 `pgrep -a start.sh | awk '/PortWINE/ && /PortProton/' | awk '{print $1}'` > /dev/null 2>&1
     }
     export -f tray_icon_click_exit
 
@@ -532,11 +598,6 @@ pw_init_db () {
         PORTWINE_DB_FILE=`grep -ilw "#${PORTWINE_DB}" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
         if [ ! -z "${PORTWINE_DB_FILE}" ]; then
             . "${PORTWINE_DB_FILE}"
-            if [[ `echo "${PW_WINE_USE}" | grep "^PROTON_STEAM$"` ]]
-            then export PW_WINE_USE="${PW_PROTON_STEAM_VER}"
-            elif [[ `echo "${PW_WINE_USE}" | grep "^PROTON_GE$"` ]]
-            then export PW_WINE_USE="${PW_PROTON_GE_VER}"
-            fi
             init_wine_ver &&
             print_info "Use ${PORTWINE_DB_FILE} db file."
         fi
@@ -551,7 +612,8 @@ pw_port_update () {
         echo "2000" > "${PORT_WINE_TMP_PATH}/scripts_ver"
     fi
     export scripts_install_ver=`cat "${PORT_WINE_TMP_PATH}/scripts_ver" | head -n 1`
-    if try_download_silent "https://github.com/Castro-Fidel/PortWINE/raw/master/data_from_portwine/scripts/var" "${PORT_WINE_TMP_PATH}/curent_var_ver" ; then
+    curl -s --list-only https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine/scripts/var > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+    if [[ "$?" == 0 ]] ; then
         if [ ! -f "${PORT_WINE_TMP_PATH}/${portname}_ver" ] ; then
             echo "10" > "${PORT_WINE_TMP_PATH}/${portname}_ver"
         fi
@@ -625,23 +687,27 @@ pw_port_update () {
     fi
 }
 
-pw_kill_autostart () {
-    if [ "$PW_USE_RUNTIME" != 1 ]
-    then print_info "PW_USE_RUNTIME=$PW_USE_RUNTIME"
-    else
-        sleep 5
-        while true ; do
-            if  [[ -z "`ps aux | grep -m 1 "$1" | grep -v grep | awk '{print $2}'`" && ! -z "`ps aux | grep wrap | grep -v grep | grep -i ${portname} | head -n 1`" ]] ; then
-                echo -e "PID "$1" not found"
-                sleep 1
-            else
-                kill_portwine 
-                break
-            fi
-        done
+
+update_winetricks () {
+    W_TRX_URL="https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks"
+    W_TRX_EXT_VER="$(curl -s --list-only ${W_TRX_URL} | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')"
+    print_info "Version winetricks on server: ${W_TRX_EXT_VER}"
+    W_TRX_INT_VER="$(cat "${PORT_WINE_TMP_PATH}/winetricks" | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')"
+    print_info "Version winetricks in port: ${W_TRX_INT_VER}"
+    if [[ ! -f "${PORT_WINE_TMP_PATH}/winetricks" && ! -z "$W_TRX_EXT_VER" ]] || [[ "$W_TRX_INT_VER" != "$W_TRX_EXT_VER" && ! -z "$W_TRX_EXT_VER" ]]; then
+        if try_download "${W_TRX_URL}" "${PORT_WINE_TMP_PATH}/winetricks_new" ; then
+            mv -f "${PORT_WINE_TMP_PATH}/winetricks_new" "${PORT_WINE_TMP_PATH}/winetricks"
+            W_TRX_INT_VER="$(cat "${PORT_WINE_TMP_PATH}/winetricks" | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')" && print_info "Winetricks version in port has been updated (${W_TRX_INT_VER})" 
+            chmod u+x "${PORT_WINE_TMP_PATH}/winetricks"
+        fi
     fi
-    if [[ ! -z "`ls "${WINEPREFIX}"/drive_c/ | grep -m 1 ".tmp"`" ]] ; then
-        rm -f "${WINEPREFIX}"/drive_c/*.tmp
+    if  [ -f "${PORT_WINE_TMP_PATH}/winetricks" ] ; then
+        sed -i 's/w_metadata vcrun2015 dlls \\/w_metadata !dont_use_2015! dlls \\/' "${PORT_WINE_TMP_PATH}/winetricks"
+        sed -i 's/w_metadata vcrun2017 dlls \\/w_metadata !dont_use_2017! dlls \\/' "${PORT_WINE_TMP_PATH}/winetricks"
+        #HOTFIX SHA256SUM FOR VC_RUN2019
+        sed -i 's/vc_redist.x86.exe 1acd8d5ea1cdc3eb2eb4c87be3ab28722d0825c15449e5c9ceef95d897de52fa/vc_redist.x86.exe 80c7969f4e05002a0cd820b746e0acb7406d4b85e52ef096707315b390927824/g' "${PORT_WINE_TMP_PATH}/winetricks"
+        sed -i 's/vc_redist.x64.exe 003063723b2131da23f40e2063fb79867bae275f7b5c099dbd1792e25845872b/vc_redist.x64.exe 9b9dd72c27ab1db081de56bb7b73bee9a00f60d14ed8e6fde45dab3e619b5f04/g' "${PORT_WINE_TMP_PATH}/winetricks"
+
     fi
 }
 
@@ -727,68 +793,6 @@ pw_gui_for_edit_db () {
     # PW_DB_TMP=`cat "${PORTWINE_DB_FILE}"`
     # echo "${PW_DB_TMP}" | awk '! a[$0]++' > "${PORTWINE_DB_FILE}"
     # unset PW_DB_TMP
-}
-
-pw_check_and_download_wine () {
-    [ ! -d "${PORT_WINE_PATH}/data/dist/" ] && create_new_dir "${PORT_WINE_PATH}/data/dist"
-    if [ "${1}" == "${PW_PROTON_GE_VER}" ] ; then
-        if [ ! -d "${PORT_WINE_PATH}/data/dist/${PW_PROTON_GE_VER}" ] ; then
-            print_info "Download and install ${PW_PROTON_GE_VER}..."
-            if try_download "https://github.com/Castro-Fidel/wine_builds/releases/download/${PW_PROTON_GE_VER}/${PW_PROTON_GE_VER}.tar.xz" "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}.tar.xz" ; then
-                if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
-                    echo "${PW_PROTON_GE_VER}" > "${PORT_WINE_PATH}/data/dist/${PW_PROTON_GE_VER}/version"
-                    try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}.tar.xz"
-                    try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}"
-                else
-                    try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}.tar.xz"
-                    try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_GE_VER}"
-                    try_remove_dir "${PORT_WINE_PATH}/data/dist/${PW_PROTON_GE_VER}"
-
-                    zenity_error_download && pw_check_and_download_wine
-                fi
-            else
-                zenity_error_download && pw_check_and_download_wine
-            fi
-        fi
-    fi
-    if [ ! -d "${PORT_WINE_PATH}/data/dist/${PW_PROTON_STEAM_VER}" ] ; then
-        print_info "Download and install ${PW_PROTON_STEAM_VER}..."
-        if try_download "https://github.com/Castro-Fidel/wine_builds/releases/download/${PW_PROTON_STEAM_VER}/${PW_PROTON_STEAM_VER}.tar.xz" "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}.tar.xz" ; then
-            if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
-                echo "${PW_PROTON_STEAM_VER}" > "${PORT_WINE_PATH}/data/dist/${PW_PROTON_STEAM_VER}/version"
-                try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}.tar.xz"
-                try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}"
-            else
-                try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}.tar.xz"
-                try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_PROTON_STEAM_VER}"
-                try_remove_dir "${PORT_WINE_PATH}/data/dist/${PW_PROTON_STEAM_VER}"
-
-                zenity_error_download && pw_check_and_download_wine
-            fi
-        else
-            zenity_error_download && pw_check_and_download_wine
-        fi
-    fi
-}
-
-pw_check_and_download_plugins () {
-    if [[ ! -d "${PW_PLUGINS_PATH}/BattlEye_Runtime" || ! -d "${PW_PLUGINS_PATH}/d3d_extras" \
-    || ! -d "${PW_PLUGINS_PATH}/nvapi" || ! -d "${PW_PLUGINS_PATH}/nvml" ]]
-    then
-        print_info "Download and install plugins${PW_PLUGINS_VER}..."
-        if try_download "https://github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" ; then
-            if unpack_tar_xz "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}" ; then
-                try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" 
-            else
-                try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz"
-                try_remove_dir "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
-
-                zenity_error_download && pw_check_and_download_wine
-            fi
-        else
-            zenity_error_download && pw_check_and_download_wine
-        fi
-    fi
 }
 
 gui_proton_downloader () {
