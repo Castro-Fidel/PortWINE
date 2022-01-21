@@ -12,6 +12,11 @@ if [[ -f "/usr/bin/portproton" ]] && [[ -f "${HOME}/.local/share/applications/Po
     sh "/usr/bin/portproton" "$@" & exit 0
 fi
 
+if [[ "${XDG_SESSION_TYPE}" = "wayland" ]] && [[ ! -f "${PORT_WINE_TMP_PATH}/check_wayland" ]]; then
+    zenity_info "$PW_WAYLAND_INFO"
+    echo "1" > "${PORT_WINE_TMP_PATH}/check_wayland"
+fi
+
 portwine_launch () {
     start_portwine
     PORTWINE_MSI=`basename "${portwine_exe}" | grep .msi`
@@ -117,9 +122,10 @@ portwine_start_debug () {
     echo "Operating system" >> "${PORT_WINE_PATH}/${portname}.log"
     lsb_release -d | sed s/Description/ОС/g >> "${PORT_WINE_PATH}/${portname}.log"
     echo "--------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "Desktop Environment" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "$DESKTOP_SESSION" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "${XDG_CURRENT_DESKTOP}" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "Desktop environment:" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "Desktop session: ${DESKTOP_SESSION}" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "Current desktop: ${XDG_CURRENT_DESKTOP}" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "Session type: ${XDG_SESSION_TYPE}" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "--------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Kernel" >> "${PORT_WINE_PATH}/${portname}.log"
     uname -r >> "${PORT_WINE_PATH}/${portname}.log"
@@ -209,14 +215,18 @@ pw_winetricks () {
     update_winetricks
     export PW_USE_TERMINAL=1
     start_portwine
+    pw_stop_progress_bar
+    echo "WINETRICKS..." > "${PORT_WINE_TMP_PATH}/update_pfx_log"
     while [[ -f "${PORT_WINE_TMP_PATH}/update_pfx_log" ]] ; do
         sleep 1
         while read -r line  ; do
             echo "# ${line}"
         done
     done < "${PORT_WINE_TMP_PATH}/update_pfx_log" | "${pw_yad_new}" --text-info --tail --no-buttons --title="WINETRICKS" \
-    --center --auto-close --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y &
+    --auto-close --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y &
     "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
+    try_remove_file "${PORT_WINE_TMP_PATH}/update_pfx_log"
+    kill -s SIGTERM "`pgrep -a yad_new | grep "title=WINETRICKS" | awk '{print $1}'`" > /dev/null 2>&1    
     stop_portwine
 }
 
@@ -313,6 +323,8 @@ else
     gui_clear_pfx () {
         if gui_question "${port_clear_pfx}" ; then
             pw_clear_pfx
+            /bin/bash -c ${pw_full_command_line[*]} &
+            exit 0
         fi
     }
     export -f gui_clear_pfx
@@ -352,7 +364,8 @@ else
     --field="EDIT SCRIPT VAR":"BTN" '@bash -c "button_click gui_open_var"' \
     --field="WINE UNINSTALLER":"BTN" '@bash -c "button_click gui_wine_uninstaller"' \
     --field="UPDATE PORTPROTON":"BTN" '@bash -c "button_click gui_pw_update"' \
-    --field="REMOVE PORTPROTON":"BTN" '@bash -c "button_click gui_rm_portproton"' &
+    --field="REMOVE PORTPROTON":"BTN" '@bash -c "button_click gui_rm_portproton"' \
+    --field="CHANGELOG":"BTN" '@bash -c "button_click open_changelog"' &
 
     "${pw_yad}" --plug=$KEY --tabnum=3 --form --columns=3  --scroll  --height=500 \
     --field="   Dolphin 5.0"!"$PW_GUI_ICON_PATH/dolphin.png":"BTN" '@bash -c "button_click PW_DOLPHIN"' \
@@ -459,6 +472,7 @@ case "$PW_YAD_SET" in
     gui_rm_portproton) gui_rm_portproton ;;
     gui_pw_update) gui_pw_update ;;
     gui_proton_downloader) gui_proton_downloader ;;
+    open_changelog) open_changelog ;;
     120) gui_vkBasalt ;;
     PW_*) pw_autoinstall_from_db ;;
 esac

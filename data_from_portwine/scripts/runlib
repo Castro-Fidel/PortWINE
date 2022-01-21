@@ -445,7 +445,7 @@ start_portwine () {
             #     init_wine_ver
             # fi
             ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" \
-            "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${PW_DLL_NEED_INSTALL} &>>"${PORT_WINE_TMP_PATH}/update_pfx_log" 
+            "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${PW_DLL_NEED_INSTALL} 2>&1 | tr /n /r | grep -i "" &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
             # if [ "${PW_WINE_VER_FROM_DB}" != "${PW_PROTON_STEAM_VER}" ] ; then
             #     export PW_SILENT_RESTART=1
             #     /bin/bash -c ${pw_full_command_line[*]} &
@@ -503,8 +503,7 @@ export -f pw_run
 
 ###MAIN###
 if [ $(id -u) -eq 0 ] ; then
-    echo "Do not run the script from the superuser!"
-    zenity --error --text "Do not run the script from the superuser!" 2> /dev/null  
+    zenity_error "Do not run the script from the superuser!"
     exit 1
 fi
 if [[ ! -z "${PW_SILENT_RESTART}" && "${PW_SILENT_RESTART}" = 1 ]] ; then
