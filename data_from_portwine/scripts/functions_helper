@@ -9,20 +9,24 @@ pw_ping_test () {
 print_error () {
     echo "ERROR: $@"
 }
+export -f print_error
 
 zenity_error () {
     echo "ERROR: $@"
     zenity --error --no-wrap --text "$@" 2> /dev/null
 }
+export -f zenity_error
 
 print_info () {
     echo "INFO: $@"
 }
+export -f print_info
 
 zenity_info () {
     echo "INFO: $@"
     zenity --info --no-wrap --text "$@" 2> /dev/null
 }
+export -f zenity_info
 
 print_var () {
     for vp in $@ ; do echo "${vp}=${!vp}" ; done
@@ -40,6 +44,7 @@ try_copy_file () {
         fi
     fi
 }
+export -f try_copy_file
 
 try_copy_dir () {
     if [ ! -d "$1" ] ; then	print_info "directory $1 not found for copy"
@@ -50,6 +55,7 @@ try_copy_dir () {
     fi
     return 1
 }
+export -f try_copy_dir
 
 try_remove_file () {
     if [ -f "$1" ] ; then
@@ -58,6 +64,7 @@ try_remove_file () {
     fi
     return 1
 }
+export -f try_remove_file
 
 try_remove_dir () {
     if [ -d "$1" ] ; then
@@ -66,6 +73,7 @@ try_remove_dir () {
     fi
     return 1
 }
+export -f try_remove_dir
 
 try_force_link_file () {
     if [ ! -f "$1" ] ; then	print_info "file $1 not found for link"
@@ -76,6 +84,7 @@ try_force_link_file () {
     fi
     return 1
 }
+export -f try_force_link_file
 
 check_symlink () {
     CHK_SYMLINK_FILE=`file "$1"`
@@ -89,6 +98,7 @@ check_symlink () {
         return 1
     fi
 }
+export -f check_symlink
 
 try_force_link_dir () {
     if [ ! -d "$1" ] ; then	print_info "directory $1 not found for link"
@@ -99,10 +109,12 @@ try_force_link_dir () {
     fi
     return 1
 }
+export -f try_force_link_dir
 
 check_process () {
     [ ! -n "`ps cax | grep "$1" | awk '{print $1}'`" ] && return 0 || return 1 
 }
+export -f check_process
 
 try_download () {
     set -o pipefail
@@ -350,6 +362,7 @@ pw_start_progress_bar_cover () {
     PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 20}'`
     "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated --center \
     --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y > /dev/null 2>&1 &
+    export PW_YAD_PID_PROGRESS_BAR_COVER="$!"
 }
 
 pw_update_pfx_cover_gui () {
@@ -368,28 +381,24 @@ pw_update_pfx_cover_gui () {
 
         "${pw_yad_new}" --notebook --key="$PW_KEY_PROGRESS_BAR" --tab=LOGO --tab=TERMINAL --no-buttons --undecorated \
         --center --auto-close --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y --tab-pos=bottom &
-        echo ""
+        export PW_YAD_PID_PFX_COVER_UI="$!"
 }
 
 pw_start_progress_bar_cs () {
     "${pw_yad}" --progress --progress-text="$@" --pulsate --close-on-unfocus \
     --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 > /dev/null 2>&1 &
-    echo ""
+    export PW_YAD_PID_PROGRESS_BAR_CS="$!"
 }
 
 pw_start_progress_bar_block () {
     "${pw_yad}" --progress --progress-text="$@" --pulsate \
     --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 > /dev/null 2>&1 &
-    echo ""
+    export PW_YAD_PID_PROGRESS_BAR_BLOCK="$!"
 }
 
 pw_stop_progress_bar () {
-    if [[ ! -z "`pgrep -a yad | grep "progress" | awk '{print $1}' `" ]] ; then
-        kill -s SIGTERM `pgrep -a yad | grep "progress" | awk '{print $1}'` > /dev/null 2>&1
-    fi
-    if [[ ! -z "`pgrep -a yad | grep key=$PW_KEY_PROGRESS_BAR | awk '{print $1}' `" ]] ; then
-        kill -s SIGTERM "`pgrep -a yad | grep key=$PW_KEY_PROGRESS_BAR | awk '{print $1}' `" > /dev/null 2>&1
-    fi
+    kill -s SIGUSR1 "$PW_YAD_PID_PROGRESS_BAR_BLOCK" "$PW_YAD_PID_PROGRESS_BAR_CS" \
+    "$PW_YAD_PID_PFX_COVER_UI""$PW_YAD_PID_PROGRESS_BAR_COVER""$PW_YAD_PID_TRAY" > /dev/null 2>&1
     return 0
 }
 export -f pw_stop_progress_bar
@@ -399,6 +408,7 @@ wait_wineserver () {
         sleep 1
     done
 }
+export -f wait_wineserver
 
 kill_portwine () {
     wine_pids="`ls -l /proc/*/exe 2>/dev/null | grep -ie ${portname} | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}'`"
@@ -439,9 +449,9 @@ pw_kill_autostart () {
         rm -f "${WINEPREFIX}"/drive_c/*.tmp
     fi
 }
+export -f pw_kill_autostart
 
 stop_portwine () { 
-    wait_wineserver &&
     add_in_stop_portwine
     if [ "$int_xneur" = "1"  ]; then
         xneur &
@@ -453,19 +463,17 @@ stop_portwine () {
     try_remove_file "${PORT_SCRIPTS_PATH}/0"
     try_remove_file "${PORT_SCRIPTS_PATH}/1"
     kill_portwine &&
-    if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ]
-    then kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" > /dev/null 2>&1 
-    fi
+    kill -s SIGUSR1 "$PW_YAD_PID_TRAY" > /dev/null 2>&1
     if [  ! -z "`ls "${WINEPREFIX}"/drive_c/users/steamuser/Temp/ | head -n 1`" ] ; then
         chmod -R 755 "${WINEPREFIX}"/drive_c/users/steamuser/Temp/
         rm -fr "${WINEPREFIX}"/drive_c/users/steamuser/Temp/*
     fi
     try_remove_dir "${PW_WINELIB}/var"
     find "${WINEPREFIX}/drive_c/" -maxdepth 1 -type f -name "*.tmp" -delete
-    if [[ ! -z "`pgrep -a start.sh | grep -i portproton | awk '{print $1}'`" ]]
-    then kill -s KILL `pgrep -a start.sh | grep -i portproton | awk '{print $1}'` > /dev/null 2>&1  
-    fi
+    kill -n 9 `pgrep -a start.sh | grep '/PortProton/' | awk '{print $1}'` > /dev/null 2>&1
+    exit 0
 }
+export -f stop_portwine
 
 pw_download_libs () {
     if [ ! -z "`ls ${PORT_WINE_TMP_PATH} | grep libs_v | grep -v libs${PW_LIBS_VER}`" ] ; then
@@ -585,10 +593,8 @@ pw_tray_icon () {
     tray_icon_click_exit() {
         pw_stop_progress_bar
         kill_portwine
-        if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ]
-        then kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" > /dev/null 2>&1
-        fi
-        kill -n 9 `pgrep -a start.sh | awk '/PortWINE/ && /PortProton/' | awk '{print $1}'` > /dev/null 2>&1
+        kill -s SIGUSR1 "$PW_YAD_PID_TRAY" > /dev/null 2>&1
+        stop_portwine
     }
     export -f tray_icon_click_exit
 
@@ -601,6 +607,7 @@ pw_tray_icon () {
 <<<     WINEFILE     >>>!bash -c pw_tray_winefile!"$PW_GUI_ICON_PATH/port_winefile.png"| \
 <<< CHANGE  LOG >>>!bash -c open_changelog!"$PW_GUI_ICON_PATH/port_changelog.png"| \
 <<<   FORCE  EXIT   >>>!bash -c tray_icon_click_exit!"$PW_GUI_ICON_PATH/port_exit.png"|" &
+    export PW_YAD_PID_TRAY="$!"
 }
 
 pw_init_db () {
