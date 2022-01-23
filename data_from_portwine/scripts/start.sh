@@ -136,13 +136,17 @@ portwine_start_debug () {
     echo "RAM" >> "${PORT_WINE_PATH}/${portname}.log"
     free -m >> "${PORT_WINE_PATH}/${portname}.log"
     echo "-----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "Graphic cards and drivers" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "Graphic cards and drivers:" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo 'lspci | grep -i vga:' >> "${PORT_WINE_PATH}/${portname}.log"
     echo `lspci | grep -i vga` >> "${PORT_WINE_PATH}/${portname}.log"
-    "${PW_WINELIB}/portable/bin/glxinfo" -B >> "${PORT_WINE_PATH}/${portname}.log"
+    env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_WINELIB}/portable/lib/\$LIB" "${PW_WINELIB}/portable/bin/glxinfo" -B >> "${PORT_WINE_PATH}/${portname}.log"
+    echo " " >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "inxi -G:" >> "${PORT_WINE_PATH}/${portname}.log"
+    "${PW_WINELIB}/portable/bin/inxi" -G >> "${PORT_WINE_PATH}/${portname}.log"
     echo "----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Vulkan info device name:" >> "${PORT_WINE_PATH}/${portname}.log"
-    "${PW_WINELIB}/runtime/files/bin/vulkaninfo" | grep deviceName >> "${PORT_WINE_PATH}/${portname}.log"
-    "${PW_WINELIB}/runtime/files/bin/vkcube" --c 50
+    "${PW_WINELIB}/portable/bin/vulkaninfo" | grep deviceName >> "${PORT_WINE_PATH}/${portname}.log"
+    "${PW_WINELIB}/portable/bin/vkcube" --c 50
     if [ $? -eq 0 ]; then
         echo "Vulkan cube test passed successfully" >> "${PORT_WINE_PATH}/${portname}.log"
     else
@@ -186,6 +190,7 @@ portwine_start_debug () {
     "$pw_yad" --title="${portname}.log" --borders=10 --no-buttons --text-align=center \
     --text-info --show-uri --wrap --center --width=1200 --height=550  --uri-color=red \
     --filename="${PORT_WINE_PATH}/${portname}.log"
+    stop_portwine
 }
 
 pw_winecfg () {
@@ -250,8 +255,6 @@ pw_autoinstall_from_db () {
     export PW_WINEDBG_DISABLE=1
     export PW_NO_WRITE_WATCH=0
     export PW_VULKAN_USE=0
-    unset PW_WINE_VER
-    export PW_WINE_USE=${PW_PROTON_STEAM_VER}
     export PW_NO_FSYNC=1
     export PW_NO_ESYNC=1
     unset PORTWINE_CREATE_SHORTCUT_NAME
