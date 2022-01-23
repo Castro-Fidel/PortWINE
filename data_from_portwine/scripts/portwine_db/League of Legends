@@ -61,6 +61,7 @@ check_download_wine_ver_for_lol
 check_port_for_lol () { 
     "${pw_yad}" --progress --progress-text="Loading and start League of Legends. Please wait. It can take a long time!" \
     --pulsate --no-buttons --undecorated --center --skip-taskbar --image="${PW_GUI_ICON_PATH}/covers/lol_cover.jpg" --image-on-top > /dev/null 2>&1 &
+    PW_YAD_PID_LOL="$?"
     process=LeagueClientUx.exe
     while [[ -z `pidof ${process}` ]] ; do
         echo "PID ${process} not found"
@@ -80,7 +81,7 @@ check_port_for_lol () {
     sleep 1
     done"
     kill -CONT ${uxpid}
-    pw_stop_progress_bar
+    kill -s SIGUSR1 "${PW_YAD_PID_LOL}"
 }
 
 add_in_start_portwine () {

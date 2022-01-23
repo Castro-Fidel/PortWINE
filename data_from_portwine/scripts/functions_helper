@@ -613,14 +613,35 @@ pw_tray_icon () {
 pw_init_db () {
     if [ ! -z "${portwine_exe}" ]; then
         export PORTWINE_DB=`echo "${portwine_exe}" | awk -F '/' 'NF>1{print $NF}' | sed s/".exe"/""/gi`
-        PORTWINE_DB_FILE=`grep -ilw "#${PORTWINE_DB}" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
+        orig_IFS="$IFS"
+        IFS=$'\n'
+        PW_FIND_DB_FILE=`grep -ilw "#${PORTWINE_DB}" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
+        if [[ `echo "$PW_FIND_DB_FILE" | wc -l` -gt 1 ]] ; then
+            unset ADD_CB_DBFILE
+            for PW_CHECK_DB_FILE in $PW_FIND_DB_FILE ; do
+                if [[ -z "${ADD_CB_DBFILE}" ]] ; then
+                    export ADD_CB_DBFILE="${PW_CHECK_DB_FILE}"
+                else
+                    export ADD_CB_DBFILE="${PW_CHECK_DB_FILE}!${ADD_CB_DBFILE}"
+                fi
+            done
+            PORTWINE_DB_FILE=`"${pw_yad_new}" --text-align=center --text "${PW_SELECTION_DB_LOC}" --borders=15 --form --center  \
+            --title "Database file selection..." --window-icon="$PW_GUI_ICON_PATH/port_proton.png"  --form --separator="" \
+            --field="DB FILE: :CB" "${ADD_CB_DBFILE}"`
+            if [[ "$?" == "1" || "$?" == "252" ]] ; then exit 0 ; fi
+        elif [[ `echo "$PW_FIND_DB_FILE" | wc -l` -eq 1 ]] ; then
+            PORTWINE_DB_FILE="${PW_FIND_DB_FILE}"
+        fi
+        IFS="$orig_IFS"
         if [ ! -z "${PORTWINE_DB_FILE}" ]; then
             . "${PORTWINE_DB_FILE}"
             init_wine_ver &&
             print_info "Use ${PORTWINE_DB_FILE} db file."
         fi
+        if [ -z "$PATH_TO_GAME" ] ; then
+            export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
+        fi
     fi
-#        export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
 #        export WIN_PATH_TO_GAME=`echo "C:${PATH_TO_GAME}" | sed "s%$WINEPREFIX%%g" | sed "s/drive_c//g" | sed 's#/#\\\#g'`
 }
 

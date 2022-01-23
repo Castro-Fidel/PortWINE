@@ -273,22 +273,30 @@ if [ ! -z "${PORTWINE_DB_FILE}" ] ; then
     if [[ -z "${PW_VULKAN_USE}" || -z "${PW_WINE_USE}" ]] ; then
         unset PW_GUI_DISABLED_CS
         [ -z "${PW_VULKAN_USE}" ] && export PW_VULKAN_USE=1
-        [ -z "${PW_WINE_USE}" ] && export PW_WINE_USE=${PW_PROTON_STEAM_VER}
+        # [ -z "${PW_WINE_USE}" ] && export PW_WINE_USE=${PW_PROTON_STEAM_VER}
     fi
     case "${PW_VULKAN_USE}" in
             "0") export PW_DEFAULT_VULKAN_USE='OPENGL !VULKAN (DXVK and VKD3D)' ;;
               *) export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!OPENGL ' ;;
     esac
     case "${PW_WINE_USE}" in
-        "${PW_PROTON_GE_VER}") export PW_DEFAULT_WINE_USE="${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}" ;;
-        "${PW_PROTON_STEAM_VER}") export PW_DEFAULT_WINE_USE="${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}" ;;
+        "${PW_PROTON_GE_VER}") 
+            export PW_DEFAULT_WINE_USE="${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}" ;;
+        "${PW_PROTON_STEAM_VER}") 
+            export PW_DEFAULT_WINE_USE="${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}" ;;
         *)
             export DIST_ADD_TO_GUI=`echo ${DIST_ADD_TO_GUI} | sed -e s/"\!${PW_WINE_USE}$//g"`
             export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}" ;;
     esac
 else
     export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!OPENGL '
-    export PW_DEFAULT_WINE_USE="${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}"
+    if [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_STEAM$"` ]] ; then
+        export PW_DEFAULT_WINE_USE="${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}"
+    elif [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_GE$"` ]] ; then
+        export PW_DEFAULT_WINE_USE="${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}"
+    else
+        export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}"       
+    fi
     unset PW_GUI_DISABLED_CS
 fi
 if [ ! -z "${portwine_exe}" ]; then
@@ -406,7 +414,7 @@ else
     --field=":LBL" "" \
     --field='DEBUG'!!"${loc_debug}":"BTN" '@bash -c "button_click DEBUG"' \
     --field='WINECFG'!!"${loc_winecfg}":"BTN" '@bash -c "button_click WINECFG"' \
-    --field=":CB" "${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}" \
+    --field=":CB" "${PW_DEFAULT_WINE_USE}" \
     --field=":LBL" "" \
     --field='WINEFILE'!!"${loc_winefile}":"BTN" '@bash -c "button_click WINEFILE"' \
     --field='WINECMD'!!"${loc_winecmd}":"BTN" '@bash -c "button_click WINECMD"' \
