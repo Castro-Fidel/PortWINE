@@ -404,8 +404,8 @@ pw_start_progress_bar_block () {
 }
 
 pw_stop_progress_bar () {
-    kill -s SIGUSR1 "$PW_YAD_PID_PROGRESS_BAR_BLOCK" "$PW_YAD_PID_PROGRESS_BAR_CS" \
-    "$PW_YAD_PID_PFX_COVER_UI" "$PW_YAD_PID_PROGRESS_BAR_COVER" > /dev/null 2>&1
+    kill -s SIGUSR1 "$PW_YAD_PID_PROGRESS_BAR_BLOCK" "$PW_YAD_PID_PROGRESS_BAR_CS" > /dev/null 2>&1
+    kill -s SIGUSR1 "$PW_YAD_PID_PFX_COVER_UI" "$PW_YAD_PID_PROGRESS_BAR_COVER" > /dev/null 2>&1
     return 0
 }
 export -f pw_stop_progress_bar
@@ -443,7 +443,7 @@ pw_kill_autostart () {
     else
         sleep 5
         while true ; do
-            if  [[ -z "`ps aux | grep -m 1 "$1" | grep -v grep | awk '{print $2}'`" && ! -z "`ps aux | grep wrap | grep -v grep | grep -i ${portname} | head -n 1`" ]] ; then
+            if  [[ -z "`ps aux | grep -m 1 "$1" | grep -v grep | awk '{print $2}'`" ]] && [[ ! -z "`ps aux | grep wrap | grep -v grep | grep -i ${portname} | head -n 1`" ]] ; then
                 echo -e "PID "$1" not found"
                 sleep 5
             else
@@ -577,7 +577,7 @@ pw_tray_icon () {
     if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ] ; then
         kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`"
     fi
-    tray_icon_click() {
+    tray_icon_click () {
         echo ""
     }
     export -f tray_icon_click
@@ -585,7 +585,7 @@ pw_tray_icon () {
         pw_run explorer
     }
     export -f pw_tray_winefile
-    tray_icon_click_exit() {
+    tray_icon_click_exit () {
         pw_stop_progress_bar
         stop_portwine
     }
@@ -787,7 +787,7 @@ pw_gui_for_edit_db () {
     "${pw_yad_new}" --plug=$KEY_EDIT_DB_GUI --tabnum="2" --form --separator=" " --columns=1 \
     --field="MANGOHUD FPS LIMIT (0-disabled):SCL" ${FPS_LIMIT_VAR} 1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" & 
 
-    "${pw_yad_new}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="370" \
+    "${pw_yad_new}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="400" \
     --text "Change settings in database file for ${PORTWINE_DB}\n" --separator=" " --borders=10 --center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --button="CANCEL":1 --button="OPEN DB FILE":150 --button="SAVE CHANGES":0
     YAD_STATUS="$?"
