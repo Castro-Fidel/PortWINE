@@ -239,7 +239,8 @@ pw_edit_db () {
     pw_gui_for_edit_db PW_MANGOHUD PW_MANGOHUD_USER_CONF ENABLE_VKBASALT PW_NO_ESYNC PW_NO_FSYNC PW_USE_DXR10 PW_USE_DXR11 \
     PW_VULKAN_NO_ASYNC PW_USE_NVAPI_AND_DLSS PW_OLD_GL_STRING PW_HIDE_NVIDIA_GPU PW_FORCE_USE_VSYNC PW_VIRTUAL_DESKTOP \
     PW_WINEDBG_DISABLE PW_USE_TERMINAL PW_WINE_ALLOW_XIM PW_HEAP_DELAY_FREE PW_NO_WRITE_WATCH PW_GUI_DISABLED_CS \
-    PW_USE_GSTREAMER PW_USE_RUNTIME PW_USE_GAMEMODE PW_DX12_DISABLE PW_USE_WINE_DXGI PW_PRIME_RENDER_OFFLOAD
+    PW_USE_GSTREAMER PW_USE_RUNTIME PW_USE_GAMEMODE PW_DX12_DISABLE PW_USE_WINE_DXGI PW_PRIME_RENDER_OFFLOAD \
+    PW_D3D_EXTRAS_DISABLE
     if [ "$?" == 0 ] ; then
         /bin/bash -c ${pw_full_command_line[*]} &
         exit 0
@@ -276,21 +277,25 @@ if [ ! -z "${PORTWINE_DB_FILE}" ] ; then
     if [[ -z "${PW_VULKAN_USE}" || -z "${PW_WINE_USE}" ]] ; then
         unset PW_GUI_DISABLED_CS
         [ -z "${PW_VULKAN_USE}" ] && export PW_VULKAN_USE=1
-        # [ -z "${PW_WINE_USE}" ] && export PW_WINE_USE=${PW_PROTON_STEAM_VER}
     fi
     case "${PW_VULKAN_USE}" in
             "0") export PW_DEFAULT_VULKAN_USE='OPENGL !VULKAN (DXVK and VKD3D)' ;;
               *) export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!OPENGL ' ;;
     esac
-    case "${PW_WINE_USE}" in
-        "${PW_PROTON_GE_VER}") 
-            export PW_DEFAULT_WINE_USE="${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}" ;;
-        "${PW_PROTON_STEAM_VER}") 
-            export PW_DEFAULT_WINE_USE="${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}" ;;
-        *)
+    if [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_STEAM$"` ]] ; then
+        export PW_DEFAULT_WINE_USE="${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}"
+    elif [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_GE$"` ]] ; then
+        export PW_DEFAULT_WINE_USE="${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}"
+    else
+        if [[ "${PW_WINE_USE}" == "${PW_PROTON_STEAM_VER}" ]] ; then
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}" 
+        elif [[ "${PW_WINE_USE}" == "${PW_PROTON_GE_VER}" ]] ; then
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}" 
+        else
             export DIST_ADD_TO_GUI=`echo ${DIST_ADD_TO_GUI} | sed -e s/"\!${PW_WINE_USE}$//g"`
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}" ;;
-    esac
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}"
+        fi
+    fi
 else
     export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!OPENGL '
     if [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_STEAM$"` ]] ; then
@@ -298,7 +303,14 @@ else
     elif [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_GE$"` ]] ; then
         export PW_DEFAULT_WINE_USE="${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}"
     else
-        export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}"       
+        if [[ "${PW_WINE_USE}" == "${PW_PROTON_STEAM_VER}" ]] ; then
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}" 
+        elif [[ "${PW_WINE_USE}" == "${PW_PROTON_GE_VER}" ]] ; then
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}" 
+        else
+            export DIST_ADD_TO_GUI=`echo ${DIST_ADD_TO_GUI} | sed -e s/"\!${PW_WINE_USE}$//g"`
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}"
+        fi     
     fi
     unset PW_GUI_DISABLED_CS
 fi
@@ -405,11 +417,12 @@ else
     --field="   Rockstar Games Launcher"!"$PW_GUI_ICON_PATH/Rockstar.png":"BTN" '@bash -c "button_click PW_ROCKSTAR"' \
     --field="   My.Games Launcher"!"$PW_GUI_ICON_PATH/mygames.png":"BTN" '@bash -c "button_click PW_MYGAMES"' \
     --field="   OSU"!"$PW_GUI_ICON_PATH/osu.png":"BTN" '@bash -c "button_click PW_OSU"' \
-    --field="   Glyph Client"!"$PW_GUI_ICON_PATH/glyph.png":"BTN" '@bash -c "button_click  PW_GLYPH"' \
     --field="   Ankama Launcher"!"$PW_GUI_ICON_PATH/ankama.png":"BTN" '@bash -c "button_click PW_ANKAMA"' \
     --field="   League of Legends"!"$PW_GUI_ICON_PATH/lol.png":"BTN" '@bash -c "button_click PW_LOL"' \
     --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png":"BTN" '@bash -c "button_click  PW_GAMEFORGE"' \
     --field="   ITCH.IO"!"$PW_GUI_ICON_PATH/itch.png":"BTN" '@bash -c "button_click PW_ITCH"' & 
+
+    # --field="   Glyph Client"!"$PW_GUI_ICON_PATH/glyph.png":"BTN" '@bash -c "button_click  PW_GLYPH"' \
 
     "${pw_yad}" --plug=${KEY} --tabnum=1 --columns=3 --form --separator=";" \
     --image "$PW_GUI_ICON_PATH/port_proton.png" \

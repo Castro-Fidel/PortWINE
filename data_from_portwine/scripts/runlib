@@ -344,7 +344,9 @@ start_portwine () {
     do  
         try_force_link_file "${PW_PLUGINS_PATH}/d3d_extras/x64/${d3d_extras_from_plugins}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
         try_force_link_file "${PW_PLUGINS_PATH}/d3d_extras/x32/${d3d_extras_from_plugins}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-        var_winedlloverride_update "${d3d_extras_from_plugins}=n"
+        if [[ "${PW_D3D_EXTRAS_DISABLE}" != 1 ]] ; then
+            var_winedlloverride_update "${d3d_extras_from_plugins}=n"
+        fi
         if [[ -z "`grep "${d3d_extras_from_plugins}" "${WINEPREFIX}/winetricks.log"`" ]] ; then
             echo "${d3d_extras_from_plugins}" >> "${WINEPREFIX}/winetricks.log"
         fi
