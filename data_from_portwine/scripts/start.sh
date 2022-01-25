@@ -142,7 +142,7 @@ portwine_start_debug () {
     env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_WINELIB}/portable/lib/\$LIB" "${PW_WINELIB}/portable/bin/glxinfo" -B >> "${PORT_WINE_PATH}/${portname}.log"
     echo " " >> "${PORT_WINE_PATH}/${portname}.log"
     echo "inxi -G:" >> "${PORT_WINE_PATH}/${portname}.log"
-    "${PW_WINELIB}/portable/bin/inxi" -G >> "${PORT_WINE_PATH}/${portname}.log"
+    "${PW_WINELIB}/portable/bin/inxi" -G | sed 's/[*]12/""/' >> "${PORT_WINE_PATH}/${portname}.log"
     echo "----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Vulkan info device name:" >> "${PORT_WINE_PATH}/${portname}.log"
     "${PW_WINELIB}/portable/bin/vulkaninfo" | grep deviceName >> "${PORT_WINE_PATH}/${portname}.log"
@@ -239,10 +239,9 @@ pw_edit_db () {
     pw_gui_for_edit_db PW_MANGOHUD PW_MANGOHUD_USER_CONF ENABLE_VKBASALT PW_NO_ESYNC PW_NO_FSYNC PW_USE_DXR10 PW_USE_DXR11 \
     PW_VULKAN_NO_ASYNC PW_USE_NVAPI_AND_DLSS PW_OLD_GL_STRING PW_HIDE_NVIDIA_GPU PW_FORCE_USE_VSYNC PW_VIRTUAL_DESKTOP \
     PW_WINEDBG_DISABLE PW_USE_TERMINAL PW_WINE_ALLOW_XIM PW_HEAP_DELAY_FREE PW_NO_WRITE_WATCH PW_GUI_DISABLED_CS \
-    PW_USE_GSTREAMER PW_USE_RUNTIME PW_USE_GAMEMODE PW_DX12_DISABLE PW_USE_WINE_DXGI PW_PRIME_RENDER_OFFLOAD \
-    PW_D3D_EXTRAS_DISABLE
+    PW_USE_GSTREAMER PW_USE_GAMEMODE PW_DX12_DISABLE PW_PRIME_RENDER_OFFLOAD PW_D3D_EXTRAS_DISABLE
     if [ "$?" == 0 ] ; then
-        /bin/bash -c ${pw_full_command_line[*]} &
+        /bin/bash ${pw_full_command_line[*]} &
         exit 0
     fi
 }
@@ -279,37 +278,38 @@ if [ ! -z "${PORTWINE_DB_FILE}" ] ; then
         [ -z "${PW_VULKAN_USE}" ] && export PW_VULKAN_USE=1
     fi
     case "${PW_VULKAN_USE}" in
-            "0") export PW_DEFAULT_VULKAN_USE='OPENGL !VULKAN (DXVK and VKD3D)' ;;
-              *) export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!OPENGL ' ;;
+            "0") export PW_DEFAULT_VULKAN_USE='OPENGL !VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)' ;;
+            "1") export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL ' ;;
+            "2") export PW_DEFAULT_VULKAN_USE='VULKAN (WINE DXGI)!VULKAN (DXVK and VKD3D)!OPENGL ' ;;
     esac
     if [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_STEAM$"` ]] ; then
-        export PW_DEFAULT_WINE_USE="${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}"
+        export PW_DEFAULT_WINE_USE="${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OVER-WINE"
     elif [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_GE$"` ]] ; then
-        export PW_DEFAULT_WINE_USE="${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}"
+        export PW_DEFAULT_WINE_USE="${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}!GET-OVER-WINE"
     else
         if [[ "${PW_WINE_USE}" == "${PW_PROTON_STEAM_VER}" ]] ; then
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}" 
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OVER-WINE" 
         elif [[ "${PW_WINE_USE}" == "${PW_PROTON_GE_VER}" ]] ; then
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}" 
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}!GET-OVER-WINE" 
         else
             export DIST_ADD_TO_GUI=`echo ${DIST_ADD_TO_GUI} | sed -e s/"\!${PW_WINE_USE}$//g"`
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}"
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}!GET-OVER-WINE"
         fi
     fi
 else
-    export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!OPENGL '
+    export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL '
     if [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_STEAM$"` ]] ; then
-        export PW_DEFAULT_WINE_USE="${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}"
+        export PW_DEFAULT_WINE_USE="${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OVER-WINE"
     elif [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_GE$"` ]] ; then
-        export PW_DEFAULT_WINE_USE="${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}"
+        export PW_DEFAULT_WINE_USE="${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}!GET-OVER-WINE"
     else
         if [[ "${PW_WINE_USE}" == "${PW_PROTON_STEAM_VER}" ]] ; then
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}" 
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OVER-WINE" 
         elif [[ "${PW_WINE_USE}" == "${PW_PROTON_GE_VER}" ]] ; then
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}" 
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}!GET-OVER-WINE" 
         else
             export DIST_ADD_TO_GUI=`echo ${DIST_ADD_TO_GUI} | sed -e s/"\!${PW_WINE_USE}$//g"`
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}"
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}!GET-OVER-WINE"
         fi     
     fi
     unset PW_GUI_DISABLED_CS
@@ -329,7 +329,7 @@ if [ ! -z "${portwine_exe}" ]; then
         --button='LAUNCH'!!"${loc_launch}":106 )
         export PW_YAD_SET="$?"
         if [[ "$PW_YAD_SET" == "1" || "$PW_YAD_SET" == "252" ]] ; then exit 0 ; fi
-        export VULKAN_MOD=`echo "${OUTPUT_START}" | grep \;\; | awk -F";" '{print $1}' | awk '{print $1}'`
+        export VULKAN_MOD=`echo "${OUTPUT_START}" | grep \;\; | awk -F";" '{print $1}'`
         export PW_WINE_VER=`echo "${OUTPUT_START}" | grep \;\; | awk -F";" '{print $2}' | awk '{print $1}'`
     elif [ ! -z "${PORTWINE_DB_FILE}" ]; then
         portwine_launch
@@ -346,7 +346,7 @@ else
     gui_clear_pfx () {
         if gui_question "${port_clear_pfx}" ; then
             pw_clear_pfx
-            /bin/bash -c ${pw_full_command_line[*]} &
+            /bin/bash ${pw_full_command_line[*]} &
             exit 0
         fi
     }
@@ -366,7 +366,7 @@ else
 
     gui_pw_update () {
         try_remove_file "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
-        /bin/bash -c ${pw_full_command_line[*]} &
+        /bin/bash ${pw_full_command_line[*]} &
         exit 0
     }
 
@@ -426,7 +426,7 @@ else
 
     "${pw_yad}" --plug=${KEY} --tabnum=1 --columns=3 --form --separator=";" \
     --image "$PW_GUI_ICON_PATH/port_proton.png" \
-    --field=":CB" "VULKAN (DXVK and VKD3D)!OPENGL" \
+    --field=":CB" "VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL" \
     --field=":LBL" "" \
     --field='DEBUG'!!"${loc_debug}":"BTN" '@bash -c "button_click DEBUG"' \
     --field='WINECFG'!!"${loc_winecfg}":"BTN" '@bash -c "button_click WINECFG"' \
@@ -452,14 +452,17 @@ else
     if [ -f "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" ] ; then
         cat "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan"
         export VULKAN_MOD=`cat "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" | grep \;\; | awk '{print $1}' | awk -F";" '{print $1}'`
-        export PW_WINE_VER=`cat "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" | grep \;\; | awk -F";" '{print $5}' | awk '{print $1}'`
-        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan"
+        export PW_WINE_VER=`cat "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" | grep \;\; | awk -F";" '{print $5}'`
+        #try_remove_file "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan"
     fi
 fi
 
 if [[ ! -z "${VULKAN_MOD}" && "${VULKAN_MOD}" = "OPENGL" ]] 
 then export PW_VULKAN_USE="0"
-else export PW_VULKAN_USE="1"
+elif [[ ! -z "${VULKAN_MOD}" && "${VULKAN_MOD}" = "VULKAN (DXVK and VKD3D)" ]] 
+then export PW_VULKAN_USE="1"
+elif [[ ! -z "${VULKAN_MOD}" && "${VULKAN_MOD}" = "VULKAN (WINE DXGI)" ]] 
+then export PW_VULKAN_USE="2"
 fi
 
 init_wine_ver

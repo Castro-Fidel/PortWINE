@@ -137,9 +137,10 @@ start_portwine () {
     #default wine-mono override for FNA games
     export WINE_MONO_OVERRIDES="Microsoft.Xna.Framework.*,Gac=n"
 
-    if [[ ! -z "${PW_NO_ESYNC}" && "${PW_NO_ESYNC}" != 0 ]]
-    then export WINEESYNC="0"
-    else export WINEESYNC="1"
+    if [[ ! -z "${PW_NO_ESYNC}" && "${PW_NO_ESYNC}" != 0 ]] ; then
+        export WINEESYNC="0"
+    else 
+        export WINEESYNC="1"
     fi
     if [[ ! -z "${PW_NO_FSYNC}" && "${PW_NO_FSYNC}" != 0 ]] ; then
         export WINEFSYNC="0"
@@ -147,6 +148,7 @@ start_portwine () {
     else
         export WINEFSYNC="1"
         export WINEFSYNC_FUTEX2="1"
+        export WINEFSYNC_SPINCOUNT=100
     fi
     if [[ ! -z "${PW_FORCE_LARGE_ADDRESS_AWARE}" && "${PW_FORCE_LARGE_ADDRESS_AWARE}" != 0 ]]
     then export WINE_LARGE_ADDRESS_AWARE="1"
@@ -256,8 +258,15 @@ start_portwine () {
             setxkbmap us,ru
         fi
     fi
-    if [[ -x "`which "gamemoderun" 2>/dev/null`" && "$PW_USE_GAMEMODE" = "1" && -z "`cat /etc/os-release | grep -i "red hat"`" ]] ; then
+    if [[ -x "`which "gamemoderun" 2>/dev/null`" && "$PW_USE_GAMEMODE" = "1" ]] && \
+       [[ -z "`cat /etc/os-release | grep -i "red hat"`" ]] && \
+       [[ -z "`cat /etc/os-release | grep -i "centos"`" ]] ; then
         export PW_GAMEMODERUN=1
+        if [[ ! -z "${LD_PRELOAD}" ]] ; then
+            export PW_LD_PRELOAD="$LD_PRELOAD:libgamemodeauto.so.0"
+        else
+            export PW_LD_PRELOAD="libgamemodeauto.so.0"
+        fi
         echo "Gamemod will be launched."
     else
         export PW_GAMEMODERUN=0
@@ -388,7 +397,7 @@ start_portwine () {
             try_force_link_file "${WINEDIR}/lib/wine/dxvk/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
             try_force_link_file "${WINEDIR}/lib64/wine/dxvk/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
         done
-        if [[ ! -z "${PW_USE_WINE_DXGI}" && "${PW_USE_WINE_DXGI}" != 0 ]] ; then 
+        if [[ "${PW_USE_WINE_DXGI}" = 1 ]] || [[ "${PW_VULKAN_USE}" = "2" ]]; then 
             echo "Try link wine DXGI..."
             if ! try_force_link_file "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/dxgi.dll"
             then try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/dxgi.dll"
@@ -463,7 +472,7 @@ start_portwine () {
             "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${PW_DLL_NEED_INSTALL} 2>&1 | tr /n /r | grep -i "" &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
             # if [ "${PW_WINE_VER_FROM_DB}" != "${PW_PROTON_STEAM_VER}" ] ; then
             #     export PW_SILENT_RESTART=1
-            #     /bin/bash -c ${pw_full_command_line[*]} &
+            #     /bin/bash ${pw_full_command_line[*]} &
             #     exit 0
             # fi
         fi
@@ -490,12 +499,13 @@ pw_run () {
         cd "${WINEPREFIX}/drive_c"
     fi
     pw_mangohud_check
-    print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VKD3D_CONFIG" "LD_LIBRARY_PATH" "PATH"
+    print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VKD3D_CONFIG" \
+    "LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2"
     if [ "${PW_LOG}" == 1 ] ; then
         export PW_LOG_TO_FILE="${PORT_WINE_PATH}/${portname}.log"
         if [[ ! -z "${PW_GAMEMODERUN}" && "${PW_GAMEMODERUN}" != 0 ]] ; then
-            ${optirun_on} gamemoderun ${pw_runtime} env VK_LAYER_PATH="${VK_LAYER_PATH}" PATH="${PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" \
-            ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} &>>"${PW_LOG_TO_FILE}"
+            ${optirun_on} ${pw_runtime} env LD_PRELOAD="${PW_LD_PRELOAD}" VK_LAYER_PATH="${VK_LAYER_PATH}" PATH="${PATH}" \
+            LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} &>>"${PW_LOG_TO_FILE}"
         else
             ${optirun_on} ${pw_runtime} env VK_LAYER_PATH="${VK_LAYER_PATH}" PATH="${PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" \
             ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} &>>"${PW_LOG_TO_FILE}"
@@ -503,8 +513,8 @@ pw_run () {
     else
         [ "${PW_USE_TERMINAL}" != "1" ] && export PW_TERM=""
         if [[ ! -z "${PW_GAMEMODERUN}" && "${PW_GAMEMODERUN}" != 0 ]] ; then
-            $PW_TERM ${optirun_on} gamemoderun ${pw_runtime} env VK_LAYER_PATH="${VK_LAYER_PATH}" PATH="${PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" \
-            ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}
+            $PW_TERM ${optirun_on} ${pw_runtime} env LD_PRELOAD="${PW_LD_PRELOAD}" VK_LAYER_PATH="${VK_LAYER_PATH}" PATH="${PATH}" \
+            LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}
         else
             $PW_TERM ${optirun_on} ${pw_runtime} env VK_LAYER_PATH="${VK_LAYER_PATH}" PATH="${PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" \
             ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}

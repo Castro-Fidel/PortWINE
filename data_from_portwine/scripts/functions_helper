@@ -76,8 +76,8 @@ try_remove_dir () {
 export -f try_remove_dir
 
 try_force_link_file () {
-    if [ ! -f "$1" ] ; then	print_info "file $1 not found for link"
-    elif [ -z "$2" ] ; then	print_error "no way to link file $1"
+    if [ -z "$2" ] ; then
+        print_error "no way to link file $1"
     else
         ln -sf "$1" "$2"
         [ "$?" != 0 ] && print_error "failed to link file $1 to $2" || return 0
@@ -335,32 +335,33 @@ init_wine_ver () {
             rm -fr "${WINEDIR}/$clear_dist_files"
         done
     fi
+    if [[ -d "${WINEDIR}" ]] ; then
+        [[ ! -f "${WINEDIR}/version" ]] && echo "${PW_WINE_USE}" > "${WINEDIR}/version"
 
-    [[ ! -f "${WINEDIR}/version" ]] && echo "${PW_WINE_USE}" > "${WINEDIR}/version"
+        if [[ ! -d "${WINEDIR}/lib64/" && -d "${WINEDIR}/lib/wine/x86_64-unix" ]] ; then
+            create_new_dir "${WINEDIR}/lib64/wine"
+            mv -f "${WINEDIR}/lib/wine/x86_64-unix" "${WINEDIR}/lib64/wine/"
+            mv -f "${WINEDIR}/lib/wine/x86_64-windows" "${WINEDIR}/lib64/wine/"
+        fi
 
-    if [[ ! -d "${WINEDIR}/lib64/" && -d "${WINEDIR}/lib/wine/x86_64-unix" ]] ; then
-        create_new_dir "${WINEDIR}/lib64/wine"
-        mv -f "${WINEDIR}/lib/wine/x86_64-unix" "${WINEDIR}/lib64/wine/"
-        mv -f "${WINEDIR}/lib/wine/x86_64-windows" "${WINEDIR}/lib64/wine/"
+        for copy_proton_dll in "dxvk" "vkd3d-proton" ; do
+            if [[ ! -d "${WINEDIR}/lib/wine/${copy_proton_dll}/" || ! -d "${WINEDIR}/lib64/wine/${copy_proton_dll}/" ]] ; then
+                try_copy_dir "${PORT_WINE_PATH}/data/dist/${PW_PROTON_GE_VER}/lib/wine/${copy_proton_dll}" "${WINEDIR}/lib/wine/"
+                try_copy_dir "${PORT_WINE_PATH}/data/dist/${PW_PROTON_GE_VER}/lib64/wine/${copy_proton_dll}" "${WINEDIR}/lib64/wine/"
+            fi
+        done
+        
+        for mono_gecko_chk in "mono" "gecko" ; do
+            if [ ! -d "${WINEDIR}/share/wine/${mono_gecko_chk}" ] ; then
+                try_remove_dir "${WINEDIR}/share/wine/${mono_gecko_chk}"
+                try_force_link_dir "${PORT_WINE_TMP_PATH}/${mono_gecko_chk}" "${WINEDIR}"/share/wine/
+            elif ! check_symlink "${WINEDIR}/share/wine/${mono_gecko_chk}" && [[ -d "${WINEDIR}/share/wine/${mono_gecko_chk}" ]]  ; then  
+                cp -fr "${WINEDIR}/share/wine/${mono_gecko_chk}" "${PORT_WINE_TMP_PATH}"
+                rm -fr "${WINEDIR}/share/wine/${mono_gecko_chk}"
+                try_force_link_dir "${PORT_WINE_TMP_PATH}/${mono_gecko_chk}" "${WINEDIR}"/share/wine/
+            fi
+        done
     fi
-
-    for copy_proton_dll in "dxvk" "vkd3d-proton" ; do
-        if [[ ! -d "${WINEDIR}/lib/wine/${copy_proton_dll}/" || ! -d "${WINEDIR}/lib64/wine/${copy_proton_dll}/" ]] ; then
-            try_copy_dir "${PORT_WINE_PATH}/data/dist/${PW_PROTON_STEAM_VER}/lib/wine/${copy_proton_dll}" "${WINEDIR}/lib/wine/"
-            try_copy_dir "${PORT_WINE_PATH}/data/dist/${PW_PROTON_STEAM_VER}/lib64/wine/${copy_proton_dll}" "${WINEDIR}/lib64/wine/"
-        fi
-    done
-    
-    for mono_gecko_chk in "mono" "gecko" ; do
-        if [ ! -d "${WINEDIR}/share/wine/${mono_gecko_chk}" ] ; then
-            try_remove_dir "${WINEDIR}/share/wine/${mono_gecko_chk}"
-            try_force_link_dir "${PORT_WINE_TMP_PATH}/${mono_gecko_chk}" "${WINEDIR}"/share/wine/
-        elif ! check_symlink "${WINEDIR}/share/wine/${mono_gecko_chk}" && [[ -d "${WINEDIR}/share/wine/${mono_gecko_chk}" ]]  ; then  
-            cp -fr "${WINEDIR}/share/wine/${mono_gecko_chk}" "${PORT_WINE_TMP_PATH}"
-            rm -fr "${WINEDIR}/share/wine/${mono_gecko_chk}"
-            try_force_link_dir "${PORT_WINE_TMP_PATH}/${mono_gecko_chk}" "${WINEDIR}"/share/wine/
-        fi
-    done
 }
 
 sszen() {
@@ -525,6 +526,9 @@ pw_download_libs () {
 
 pw_check_and_download_wine () {
     [ ! -d "${PORT_WINE_PATH}/data/dist/" ] && create_new_dir "${PORT_WINE_PATH}/data/dist"
+    if [[ "${PW_WINE_USE}" == "GET-OVER-WINE" ]] ; then
+        gui_proton_downloader
+    fi
     if [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_STEAM$"` ]] 
     then export PW_WINE_USE="${PW_PROTON_STEAM_VER}"
     elif [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_GE$"` ]]
@@ -551,6 +555,11 @@ pw_check_and_download_wine () {
 }
 
 pw_check_and_download_plugins () {
+    if [ ! -z "`ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`" ] ; then
+        for RM_PLUGINS in `ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`
+        do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_PLUGINS}"
+        done
+    fi
     if [[ ! -d "${PW_PLUGINS_PATH}/BattlEye_Runtime" || ! -d "${PW_PLUGINS_PATH}/d3d_extras" \
     || ! -d "${PW_PLUGINS_PATH}/nvapi" || ! -d "${PW_PLUGINS_PATH}/nvml" ]]
     then
@@ -705,7 +714,7 @@ pw_port_update () {
                                 echo "${scripts_current_ver}" > "${PORT_WINE_TMP_PATH}/scripts_ver"
                                 zenity --title="Changelog" --text-info --width=1200 --height=550 \
                                 --filename="${PORT_WINE_PATH}/data/${PW_CHANGELOG_FILE}"
-                                [ "$?" == 0 ] && /bin/bash -c ${pw_full_command_line[*]} &
+                                [ "$?" == 0 ] && /bin/bash ${pw_full_command_line[*]} &
                                 exit 0
                             fi
                         else
@@ -796,7 +805,7 @@ pw_gui_for_edit_db () {
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --button="CANCEL":1 --button="OPEN DB FILE":150 --button="SAVE CHANGES":0
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" ]] ; then
-        /bin/bash -c ${pw_full_command_line[*]} &
+        /bin/bash ${pw_full_command_line[*]} &
         exit 0
     elif [[ "$YAD_STATUS" == "252" ]] ; then 
         exit 0
@@ -835,30 +844,36 @@ gui_proton_downloader () {
     #PROTON_GE
     export PROTON_GE_GIT=($(curl -s "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases" | grep "browser_download_url.*\.tar\.gz" | cut -d \" -f 4))
     try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
-    for PGEGIT in ${PROTON_GE_GIT[@]} ; do
-        echo ${PGEGIT} | awk -F/ '{print $NF}' | sed 's/.tar.gz//' >> "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
-    done
-    sed -i '/Proton-6.5-GE-2/,$d' "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
-    sed -i '/github-action/d' "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+    if [[ ! -z "${PROTON_GE_GIT}" ]] ; then
+        for PGEGIT in ${PROTON_GE_GIT[@]} ; do
+            echo ${PGEGIT} | awk -F/ '{print $NF}' | sed 's/.tar.gz//' >> "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+        done
+        sed -i '/Proton-6.5-GE-2/,$d' "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+        sed -i '/github-action/d' "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+    fi
 
     #PROTON_PW
     export PROTON_PW_GIT=($(curl -s "https://api.github.com/repos/Castro-Fidel/wine_builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4))
     try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
-    for PPWGIT in ${PROTON_PW_GIT[@]} ; do
-        echo ${PPWGIT} | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
-    done
-    sed -i /${PW_PROTON_GE_VER}/d "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
-    sed -i '/plugins/d' "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
-
+    if [[ ! -z "${PROTON_PW_GIT}" ]] ; then
+        for PPWGIT in ${PROTON_PW_GIT[@]} ; do
+            echo ${PPWGIT} | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
+        done
+        sed -i /${PW_PROTON_GE_VER}/d "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
+        sed -i '/plugins/d' "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
+    fi
+    pw_stop_progress_bar
+    if [[ -z "${PROTON_GE_GIT}" ]] || [[ -z "${PROTON_PW_GIT}" ]] ; then
+        zenity_error "Error: check wine from github."
+        /bin/bash ${pw_full_command_line[*]} &
+        exit 0
+    fi
     for INSTALLING_VERSION_IN_DIST in `ls "${PORT_WINE_PATH}/data/dist/"` ; do
         sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
         sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
     done
-    pw_stop_progress_bar
-    
 	#Installed wine
-	ls -l ${PORT_WINE_PATH}/data/dist | awk '{print $9}' | sed '/^$/d' > ${PORT_WINE_TMP_PATH}/tmp_installed_wine
-	
+	ls -l ${PORT_WINE_PATH}/data/dist | awk '{print $9}' | sed '/^$/d' > ${PORT_WINE_TMP_PATH}/tmp_installed_wine	
     #GUI
     export KEY_WINE=$RANDOM
     try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set"
@@ -875,7 +890,7 @@ gui_proton_downloader () {
     --tab-pos=top --tab="PROTON-GE" --tab="PROTON-PW" --tab="INSTALLED"`
     YAD_WINE_STATUS="$?"
     if [[ "$YAD_WINE_STATUS" == "1" || "$YAD_WINE_STATUS" == "252" ]] ; then
-        /bin/bash -c ${pw_full_command_line[*]} &
+        /bin/bash ${pw_full_command_line[*]} &
         exit 0
     fi
 
@@ -901,7 +916,7 @@ gui_proton_downloader () {
 	if [[ ! -z "${VERSION_INSTALLED_WINE}" ]]; then
 		try_remove_dir "${PORT_WINE_PATH}/data/dist/${VERSION_INSTALLED_WINE}"
 		unset VERSION_INSTALLED_WINE
-        /bin/bash -c ${pw_full_command_line[*]} &
+        /bin/bash ${pw_full_command_line[*]} &
         exit 0
 	fi
 	
@@ -911,6 +926,10 @@ gui_proton_downloader () {
             if [ -f "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}" ] ; then
                 if unpack_tar_${archive_type} "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}" "${PORT_WINE_PATH}/data/dist/" ; then
                     try_remove_file "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}"
+                    if [ ! -z "${portwine_exe}" ]; then
+                        PW_WINE_USE=${VERSION_WINE_GIT}
+                        edit_db_from_gui PW_WINE_USE
+                    fi
                 else
                     try_remove_file "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}"
                     try_remove_dir "${PORT_WINE_PATH}/data/dist/${VERSION_WINE_GIT}"
@@ -921,7 +940,7 @@ gui_proton_downloader () {
     else
         zenity_error_download && gui_proton_downloader
     fi
-    /bin/bash -c ${pw_full_command_line[*]} &
+    /bin/bash ${pw_full_command_line[*]} &
     exit 0
 }
 export -f gui_proton_downloader
@@ -961,7 +980,7 @@ gui_vkBasalt () {
     YAD_VKBASALT_STATUS="$?"
     case "${YAD_VKBASALT_STATUS}" in
         1|252)
-            /bin/bash -c ${pw_full_command_line[*]} &
+            /bin/bash ${pw_full_command_line[*]} &
             exit 0 ;;
         180)
             export ENABLE_VKBASALT=0 ;;
@@ -989,6 +1008,6 @@ gui_vkBasalt () {
         export PW_VKBASALT_FFX_CAS="0`bc -s <<< "scale=2; $YAD_CAS_SET/100"`"
     fi
     edit_db_from_gui PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS ENABLE_VKBASALT
-    /bin/bash -c ${pw_full_command_line[*]} &
+    /bin/bash ${pw_full_command_line[*]} &
     exit 0
 }
