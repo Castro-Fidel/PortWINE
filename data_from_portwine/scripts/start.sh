@@ -278,9 +278,9 @@ if [ ! -z "${PORTWINE_DB_FILE}" ] ; then
         [ -z "${PW_VULKAN_USE}" ] && export PW_VULKAN_USE=1
     fi
     case "${PW_VULKAN_USE}" in
-            "0") export PW_DEFAULT_VULKAN_USE='OPENGL !VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)' ;;
-            "1") export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL ' ;;
-            "2") export PW_DEFAULT_VULKAN_USE='VULKAN (WINE DXGI)!VULKAN (DXVK and VKD3D)!OPENGL ' ;;
+            "0") export PW_DEFAULT_VULKAN_USE='OPENGL!VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)' ;;
+            "1") export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL' ;;
+            "2") export PW_DEFAULT_VULKAN_USE='VULKAN (WINE DXGI)!VULKAN (DXVK and VKD3D)!OPENGL' ;;
     esac
     if [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_STEAM$"` ]] ; then
         export PW_DEFAULT_WINE_USE="${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
@@ -297,7 +297,7 @@ if [ ! -z "${PORTWINE_DB_FILE}" ] ; then
         fi
     fi
 else
-    export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL '
+    export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL'
     if [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_STEAM$"` ]] ; then
         export PW_DEFAULT_WINE_USE="${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
     elif [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_GE$"` ]] ; then
@@ -330,7 +330,7 @@ if [ ! -z "${portwine_exe}" ]; then
         export PW_YAD_SET="$?"
         if [[ "$PW_YAD_SET" == "1" || "$PW_YAD_SET" == "252" ]] ; then exit 0 ; fi
         export VULKAN_MOD=`echo "${OUTPUT_START}" | grep \;\; | awk -F";" '{print $1}'`
-        export PW_WINE_VER=`echo "${OUTPUT_START}" | grep \;\; | awk -F";" '{print $2}' | awk '{print $1}'`
+        export PW_WINE_VER=`echo "${OUTPUT_START}" | grep \;\; | awk -F";" '{print $2}'`
     elif [ ! -z "${PORTWINE_DB_FILE}" ]; then
         portwine_launch
     fi
@@ -451,9 +451,9 @@ else
     fi
     if [ -f "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" ] ; then
         cat "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan"
-        export VULKAN_MOD=`cat "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" | grep \;\; | awk '{print $1}' | awk -F";" '{print $1}'`
+        export VULKAN_MOD=`cat "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" | grep \;\;  | awk -F";" '{print $1}'`
         export PW_WINE_VER=`cat "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" | grep \;\; | awk -F";" '{print $5}'`
-        #try_remove_file "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan"
+        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan"
     fi
 fi
 
