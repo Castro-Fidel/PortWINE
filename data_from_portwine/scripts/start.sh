@@ -241,7 +241,7 @@ pw_edit_db () {
     PW_WINEDBG_DISABLE PW_USE_TERMINAL PW_WINE_ALLOW_XIM PW_HEAP_DELAY_FREE PW_NO_WRITE_WATCH PW_GUI_DISABLED_CS \
     PW_USE_GSTREAMER PW_USE_GAMEMODE PW_DX12_DISABLE PW_PRIME_RENDER_OFFLOAD PW_D3D_EXTRAS_DISABLE
     if [ "$?" == 0 ] ; then
-        /bin/bash ${pw_full_command_line[*]} &
+        /bin/bash -c ${pw_full_command_line[*]} &
         exit 0
     fi
 }
@@ -283,33 +283,33 @@ if [ ! -z "${PORTWINE_DB_FILE}" ] ; then
             "2") export PW_DEFAULT_VULKAN_USE='VULKAN (WINE DXGI)!VULKAN (DXVK and VKD3D)!OPENGL ' ;;
     esac
     if [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_STEAM$"` ]] ; then
-        export PW_DEFAULT_WINE_USE="${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OVER-WINE"
+        export PW_DEFAULT_WINE_USE="${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
     elif [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_GE$"` ]] ; then
-        export PW_DEFAULT_WINE_USE="${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}!GET-OVER-WINE"
+        export PW_DEFAULT_WINE_USE="${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
     else
         if [[ "${PW_WINE_USE}" == "${PW_PROTON_STEAM_VER}" ]] ; then
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OVER-WINE" 
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE" 
         elif [[ "${PW_WINE_USE}" == "${PW_PROTON_GE_VER}" ]] ; then
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}!GET-OVER-WINE" 
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE" 
         else
             export DIST_ADD_TO_GUI=`echo ${DIST_ADD_TO_GUI} | sed -e s/"\!${PW_WINE_USE}$//g"`
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}!GET-OVER-WINE"
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
         fi
     fi
 else
     export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL '
     if [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_STEAM$"` ]] ; then
-        export PW_DEFAULT_WINE_USE="${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OVER-WINE"
+        export PW_DEFAULT_WINE_USE="${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
     elif [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_GE$"` ]] ; then
-        export PW_DEFAULT_WINE_USE="${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}!GET-OVER-WINE"
+        export PW_DEFAULT_WINE_USE="${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
     else
         if [[ "${PW_WINE_USE}" == "${PW_PROTON_STEAM_VER}" ]] ; then
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OVER-WINE" 
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE" 
         elif [[ "${PW_WINE_USE}" == "${PW_PROTON_GE_VER}" ]] ; then
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}!GET-OVER-WINE" 
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE" 
         else
             export DIST_ADD_TO_GUI=`echo ${DIST_ADD_TO_GUI} | sed -e s/"\!${PW_WINE_USE}$//g"`
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}!GET-OVER-WINE"
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}!${PW_PROTON_STEAM_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
         fi     
     fi
     unset PW_GUI_DISABLED_CS
@@ -346,7 +346,7 @@ else
     gui_clear_pfx () {
         if gui_question "${port_clear_pfx}" ; then
             pw_clear_pfx
-            /bin/bash ${pw_full_command_line[*]} &
+            /bin/bash -c ${pw_full_command_line[*]} &
             exit 0
         fi
     }
@@ -366,7 +366,7 @@ else
 
     gui_pw_update () {
         try_remove_file "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
-        /bin/bash ${pw_full_command_line[*]} &
+        /bin/bash -c ${pw_full_command_line[*]} &
         exit 0
     }
 
