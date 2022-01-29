@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Author: PortWINE-Linux.ru
 export pw_full_command_line=("$0" $*)
 if [ -f "$1" ]; then
@@ -241,7 +241,7 @@ pw_edit_db () {
     PW_WINEDBG_DISABLE PW_USE_TERMINAL PW_WINE_ALLOW_XIM PW_HEAP_DELAY_FREE PW_NO_WRITE_WATCH PW_GUI_DISABLED_CS \
     PW_USE_GSTREAMER PW_USE_GAMEMODE PW_DX12_DISABLE PW_PRIME_RENDER_OFFLOAD PW_D3D_EXTRAS_DISABLE
     if [ "$?" == 0 ] ; then
-        /bin/bash -c ${pw_full_command_line[*]} &
+        /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     fi
 }
@@ -279,8 +279,8 @@ if [ ! -z "${PORTWINE_DB_FILE}" ] ; then
     fi
     case "${PW_VULKAN_USE}" in
             "0") export PW_DEFAULT_VULKAN_USE='OPENGL!VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)' ;;
-            "1") export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL' ;;
             "2") export PW_DEFAULT_VULKAN_USE='VULKAN (WINE DXGI)!VULKAN (DXVK and VKD3D)!OPENGL' ;;
+              *) export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL' ;;
     esac
     if [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_STEAM$"` ]] ; then
         export PW_DEFAULT_WINE_USE="${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
@@ -346,7 +346,7 @@ else
     gui_clear_pfx () {
         if gui_question "${port_clear_pfx}" ; then
             pw_clear_pfx
-            /bin/bash -c ${pw_full_command_line[*]} &
+            /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
         fi
     }
@@ -366,7 +366,7 @@ else
 
     gui_pw_update () {
         try_remove_file "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
-        /bin/bash -c ${pw_full_command_line[*]} &
+        /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     }
 
@@ -471,7 +471,7 @@ if [ -z "${PW_DISABLED_CREATE_DB}" ] ; then
     if [ ! -z "${PORTWINE_DB}" ] ; then
         PORTWINE_DB_FILE=`grep -il "\#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/*`
         if [ -z "${PORTWINE_DB_FILE}" ] ; then
-            echo "#!/bin/bash"  > "${PORT_SCRIPTS_PATH}/portwine_db/$PORTWINE_DB"
+            echo "#!/usr/bin/env bash"  > "${PORT_SCRIPTS_PATH}/portwine_db/$PORTWINE_DB"
             echo "#Author: "${USER}"" >> "${PORT_SCRIPTS_PATH}/portwine_db/$PORTWINE_DB"
             echo "#"${PORTWINE_DB}.exe"" >> "${PORT_SCRIPTS_PATH}/portwine_db/$PORTWINE_DB"
             echo "#Rating=1-5" >> "${PORT_SCRIPTS_PATH}/portwine_db/$PORTWINE_DB"

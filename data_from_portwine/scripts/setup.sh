@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/env bash
 # Author: PortWINE-Linux.ru
 . "$(dirname $(readlink -f "$0"))/runlib"
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/env bash
 # Author: Castro-Fidel (PortWINE-Linux.ru)
 # Development assistants: Cefeiko; Dezert1r; Taz_mania; Anton_Famillianov; gavr; RidBowt; chal55rus
 ########################################################################
@@ -22,10 +22,11 @@ fi
 . "$(dirname $(readlink -f "$0"))/functions_helper"
 
 start_portwine () {
+    export WINEARCH="win64"
     pw_check_and_download_wine "${PW_WINE_USE}" 
     init_wine_ver 
     if [ -x "`which konsole 2>/dev/null`" ]; then export PW_TERM="konsole --nofork -e"
-#    elif [ -x "`which gnome-terminal 2>/dev/null`" ]; then export PW_TERM="gnome-terminal -- /bin/bash" ???
+#    elif [ -x "`which gnome-terminal 2>/dev/null`" ]; then export PW_TERM="gnome-terminal -- /usr/bin/env bash" ???
     elif [ -x "`which lxterminal 2>/dev/null`" ]; then export PW_TERM="lxterminal -e"
     elif [ -x "`which xterm 2>/dev/null`" ]; then export PW_TERM="${PW_XTERM}"
     else export PW_TERM="${PW_XTERM}"
@@ -472,7 +473,7 @@ start_portwine () {
             "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${PW_DLL_NEED_INSTALL} 2>&1 | tr /n /r | grep -i "" &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
             # if [ "${PW_WINE_VER_FROM_DB}" != "${PW_PROTON_STEAM_VER}" ] ; then
             #     export PW_SILENT_RESTART=1
-            #     /bin/bash ${pw_full_command_line[*]} &
+            #     /usr/bin/env bash ${pw_full_command_line[*]} &
             #     exit 0
             # fi
         fi
@@ -486,9 +487,9 @@ start_portwine () {
         wait_wineserver &&
         echo "Set to win${PW_WINDOWS_VER}"
     fi
-    pw_stop_progress_bar 
-    pw_tray_icon
-    pw_start_progress_bar_cover "${PW_GUI_ICON_PATH}/covers/pw_loading_cover.gif"
+    pw_stop_progress_bar &&
+    pw_tray_icon &&
+    pw_start_progress_bar_cover "${PW_GUI_ICON_PATH}/covers/pw_loading_cover.gif" &&
     add_in_start_portwine
 }
 
@@ -571,6 +572,7 @@ if [ ! -f "${PORT_WINE_TMP_PATH}/${portname}_loc" ] ; then
 	echo "${SET_LANG}" > "${PORT_WINE_TMP_PATH}/${portname}_loc"
 fi
 . "${PORT_SCRIPTS_PATH}"/lang
+. "${PORT_SCRIPTS_PATH}"/zen_yad_gui
 
 export urlg="https://portwine-linux.ru/portwine-faq/"
 export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"

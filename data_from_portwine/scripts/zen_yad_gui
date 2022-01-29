@@ -1,0 +1,364 @@
+#!/bin/env bash
+# Author: Castro-Fidel (PortWINE-Linux.ru)
+########################################################################
+zenity_info () {
+    echo "INFO: $@"
+    zenity --info --no-wrap --text "$@" 2> /dev/null
+}
+export -f zenity_info
+
+zenity_error () {
+    echo "ERROR: $@"
+    zenity --error --no-wrap --text "$@" 2> /dev/null
+}
+export -f zenity_error
+
+zenity_error_download () {
+    `zenity --error --title "Error..." --text "You will need to check internet connection,\nand press OK for repeat download" --no-wrap `
+    if [[ "$?" != 0 ]] ; then
+        stop_portwine
+    else
+        return 0
+    fi
+}
+
+sszen() {
+    zenity --progress --title="Settings..." --text="Updating parameters" --pulsate --auto-close --width=500 --height=90 --no-cancel
+}
+
+gui_question () {
+    `zenity --question --title "${inst_set}." --text "$1" --no-wrap ` &> /dev/null
+     [ $? -eq "0" ] && return 0 || return 1
+}
+
+
+pw_start_progress_bar_cover () {
+    PW_GIF_FILE="$1"
+    PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 20}'`
+    PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 20}'`
+    "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated --center \
+    --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y > /dev/null 2>&1 &
+    export PW_YAD_PID_PROGRESS_BAR_COVER="$!"
+    return 0
+}
+
+pw_update_pfx_cover_gui () {
+        PW_KEY_PROGRESS_BAR=$RANDOM
+        PW_GIF_FILE="${PW_GUI_ICON_PATH}/covers/pw_update_pfx_cover.gif"
+        PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 40}'`
+        PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 80}'`
+        echo "UPDATE PREFIX..." > "${PORT_WINE_TMP_PATH}/update_pfx_log"
+        while [[ -f "${PORT_WINE_TMP_PATH}/update_pfx_log" ]] ; do
+            sleep 1
+            while read -r gui_line  ; do
+                echo "# ${gui_line}"
+            done
+        done < "${PORT_WINE_TMP_PATH}/update_pfx_log" | "${pw_yad_new}" --plug=$PW_KEY_PROGRESS_BAR  --tabnum="2" --text-info --tail &
+        "${pw_yad_new}" --plug=$PW_KEY_PROGRESS_BAR --tabnum="1" --picture --filename="${PW_GIF_FILE}" --image-on-top &
+
+        "${pw_yad_new}" --notebook --key="$PW_KEY_PROGRESS_BAR" --tab=LOGO --tab=TERMINAL --no-buttons --undecorated \
+        --center --auto-close --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y --tab-pos=bottom &
+        export PW_YAD_PID_PFX_COVER_UI="$!"
+        return 0
+}
+
+pw_start_progress_bar_cs () {
+    "${pw_yad}" --progress --progress-text="$@" --pulsate --close-on-unfocus \
+    --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 > /dev/null 2>&1 &
+    export PW_YAD_PID_PROGRESS_BAR_CS="$!"
+    return 0
+}
+
+pw_start_progress_bar_block () {
+    "${pw_yad}" --progress --progress-text="$@" --pulsate \
+    --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 > /dev/null 2>&1 &
+    export PW_YAD_PID_PROGRESS_BAR_BLOCK="$!"
+    return 0
+}
+
+pw_stop_progress_bar () {
+    for PW_KILL_YAD_PID in "$PW_YAD_PID_PROGRESS_BAR_BLOCK" "$PW_YAD_PID_PROGRESS_BAR_CS" "$PW_YAD_PID_PFX_COVER_UI" \
+    "$PW_YAD_PID_PROGRESS_BAR_COVER" "${PW_YAD_PID_PROGRESS_BAR_COVER}"
+    do
+        kill -s SIGUSR1 "$PW_KILL_YAD_PID" > /dev/null 2>&1
+    done
+    return 0
+}
+export -f pw_stop_progress_bar
+
+open_changelog () {
+    "${pw_yad}" --title="Changelog" --borders=10 --no-buttons --text-align=center \
+    --text-info --show-uri --wrap --center --width=1200 --height=550 --uri-color=red \
+    --filename="${PORT_WINE_PATH}/data/${PW_CHANGELOG_FILE}"
+}
+export -f open_changelog
+
+pw_tray_icon () {
+    if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ] ; then
+        kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`"
+    fi
+    tray_icon_click () {
+        echo ""
+    }
+    export -f tray_icon_click
+    pw_tray_winefile () {
+        pw_run explorer
+    }
+    export -f pw_tray_winefile
+    tray_icon_click_exit () {
+        pw_stop_progress_bar
+        stop_portwine
+    }
+    export -f tray_icon_click_exit
+
+    "${pw_yad_new}" --notification --no-middle --text="PortProton" \
+    --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
+    --image="$PW_GUI_ICON_PATH/port_proton.png" \
+    --command="bash -c tray_icon_click" \
+    --tooltip="PortProton" \
+    --menu="| \
+<<<     WINEFILE     >>>!bash -c pw_tray_winefile!"$PW_GUI_ICON_PATH/port_winefile.png"| \
+<<< CHANGE  LOG >>>!bash -c open_changelog!"$PW_GUI_ICON_PATH/port_changelog.png"| \
+<<<   FORCE  EXIT   >>>!bash -c tray_icon_click_exit!"$PW_GUI_ICON_PATH/port_exit.png"|" & 
+    return 0
+}
+  
+pw_gui_for_edit_db () {
+    KEY_EDIT_DB_GUI=$RANDOM
+    if [[ -n "`echo "${MANGOHUD_CONFIG}" | grep "fps_limit"`" ]] ; then
+        FPS_LIMIT_VAR="`echo ${MANGOHUD_CONFIG} | sed 's/.*fps_limit=//g' | awk -F, '{print $1}'`"
+    else
+        FPS_LIMIT_VAR=0
+    fi
+    echo "FPS_LIMIT_VAR=$FPS_LIMIT_VAR"
+    unset ADD_CHK_BOX_EDIT_DB
+    edit_db_field_add () {
+        for int_to_boole in $@ ; do
+            if [ "${!int_to_boole}" == "1" ]
+            then export ${int_to_boole}="TRUE"
+            else export ${int_to_boole}="FALSE"
+            fi
+            TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
+            int_to_boole_non_pw="`echo ${int_to_boole} | sed 's/^PW_//'`"
+            ADD_CHK_BOX_EDIT_DB+="--field=  ${int_to_boole_non_pw}    !${!TMP_HELP_FOR_GUI}:CHK%${!int_to_boole}%"
+        done
+    }
+    edit_db_field_add $@
+    old_IFS=$IFS
+    IFS="%" 
+    "${pw_yad_new}" --plug=$KEY_EDIT_DB_GUI --tabnum="1" --form --separator=" " --columns=4 ${ADD_CHK_BOX_EDIT_DB} \
+    1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db" & 
+    IFS=$old_IFS
+
+    "${pw_yad_new}" --plug=$KEY_EDIT_DB_GUI --tabnum="2" --form --separator=" " --columns=1 \
+    --field="MANGOHUD FPS LIMIT (0-disabled):SCL" ${FPS_LIMIT_VAR} 1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" & 
+
+    "${pw_yad_new}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="400" \
+    --text "Change settings in database file for ${PORTWINE_DB}\n" --separator=" " --borders=10 --center \
+    --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --button="CANCEL":1 --button="OPEN DB FILE":150 --button="SAVE CHANGES":0
+    YAD_STATUS="$?"
+    if [[ "$YAD_STATUS" == "1" ]] ; then
+        /usr/bin/env bash -c ${pw_full_command_line[*]} &
+        exit 0
+    elif [[ "$YAD_STATUS" == "252" ]] ; then 
+        exit 0
+    elif [ "$YAD_STATUS" == "150" ] ; then
+        xdg-open "${PORTWINE_DB_FILE}" &
+        exit 0
+    fi
+    output_yad_edit_db=(`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db"`)
+    bool_from_yad=0
+    edit_db_field_read () {
+        for boole_to_int in $@ ; do
+            export ${boole_to_int}=${output_yad_edit_db[$bool_from_yad]}
+            if [ "${!boole_to_int}" == "TRUE" ]
+            then export ${boole_to_int}="1"
+            else export ${boole_to_int}="0"
+            fi
+            export bool_from_yad=$(( ${bool_from_yad} + 1 ))
+        done
+    }
+    edit_db_field_read $@
+    FPS_LIMIT="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit"`"
+    if [ "${FPS_LIMIT}" == 0 ] ; then
+        export MANGOHUD_CONFIG=font_size=24,position=top-left,toggle_hud=Shift_R+F12,no_display,resolution,wine,gpu_name,vulkan_driver,gpu_stats,vkbasalt
+    else
+        export MANGOHUD_CONFIG=font_size=24,position=top-left,toggle_hud=Shift_R+F12,no_display,resolution,wine,gpu_name,vulkan_driver,gpu_stats,vkbasalt,fps_limit=${FPS_LIMIT}
+    fi
+    edit_db_from_gui $@ MANGOHUD_CONFIG
+    return 0
+}
+
+
+gui_proton_downloader () {
+    pw_start_progress_bar_block "Check new version WINE from GitHub"
+    #PROTON_GE
+    export PROTON_GE_GIT=($(curl -s "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases" | grep "browser_download_url.*\.tar\.gz" | cut -d \" -f 4))
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+    if [[ ! -z "${PROTON_GE_GIT}" ]] ; then
+        for PGEGIT in ${PROTON_GE_GIT[@]} ; do
+            echo ${PGEGIT} | awk -F/ '{print $NF}' | sed 's/.tar.gz//' >> "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+        done
+        sed -i '/Proton-6.5-GE-2/,$d' "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+        sed -i '/github-action/d' "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+    fi
+
+    #PROTON_PW
+    export PROTON_PW_GIT=($(curl -s "https://api.github.com/repos/Castro-Fidel/wine_builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4))
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
+    if [[ ! -z "${PROTON_PW_GIT}" ]] ; then
+        for PPWGIT in ${PROTON_PW_GIT[@]} ; do
+            echo ${PPWGIT} | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
+        done
+        sed -i /${PW_PROTON_GE_VER}/d "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
+        sed -i '/plugins/d' "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
+    fi
+    pw_stop_progress_bar
+    if [[ -z "${PROTON_GE_GIT}" ]] || [[ -z "${PROTON_PW_GIT}" ]] ; then
+        zenity_error "Error: check wine from github."
+        /usr/bin/env bash -c ${pw_full_command_line[*]} &
+        exit 0
+    fi
+    for INSTALLING_VERSION_IN_DIST in `ls "${PORT_WINE_PATH}/data/dist/"` ; do
+        sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+        sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
+    done
+	#Installed wine
+	ls -l ${PORT_WINE_PATH}/data/dist | awk '{print $9}' | sed '/^$/d' > ${PORT_WINE_TMP_PATH}/tmp_installed_wine	
+    #GUI
+    export KEY_WINE=$RANDOM
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set"
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_set"
+	try_remove_file "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set"
+    `"${pw_yad}" --plug=$KEY_WINE --tabnum=2 --list --separator="" --listen \
+    --column "Select WINE for download:" < "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git" 1> "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set"` &
+    `"${pw_yad}" --plug=$KEY_WINE --tabnum=1 --list --separator="" --listen \
+    --column "Select WINE for download:" < "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git" 1> "${PORT_WINE_TMP_PATH}/tmp_proton_set"` &
+	`"${pw_yad}" --plug=$KEY_WINE --tabnum=3 --list --separator="" --listen \
+    --column "Select installed WINE for delete:" < "${PORT_WINE_TMP_PATH}/tmp_installed_wine" 1> "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set"` &
+    `"${pw_yad}" --key=$KEY_WINE --notebook --width=500 --height=600 --text-align=center --center \
+    --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "Download..." --separator="" \
+    --tab-pos=top --tab="PROTON-GE" --tab="PROTON-PW" --tab="INSTALLED"`
+    YAD_WINE_STATUS="$?"
+    if [[ "$YAD_WINE_STATUS" == "1" || "$YAD_WINE_STATUS" == "252" ]] ; then
+        /usr/bin/env bash -c ${pw_full_command_line[*]} &
+        exit 0
+    fi
+
+    if [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_proton_set" | awk '{print $1}'` ] ; then
+        export VERSION_WINE_GIT="`cat "${PORT_WINE_TMP_PATH}/tmp_proton_set"`"
+    elif [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set" | awk '{print $1}'` ] ; then
+        export VERSION_WINE_GIT="`cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set"`"
+	elif [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set" | awk '{print $1}'` ] ; then
+	    export VERSION_INSTALLED_WINE="`cat "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set"`"
+    fi
+
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_set"
+	try_remove_file "${PORT_WINE_TMP_PATH}/tmp_installed_wine"
+
+    for GIVE_WINE_URL in ${PROTON_GE_GIT[@]} ${PROTON_PW_GIT[@]} ; do
+        if [ ! -z `echo ${GIVE_WINE_URL} | grep "$VERSION_WINE_GIT"` ] ; then
+            export URL_VERSION_PROTON_GIT="${GIVE_WINE_URL}"
+        fi
+    done
+	
+	if [[ ! -z "${VERSION_INSTALLED_WINE}" ]]; then
+		try_remove_dir "${PORT_WINE_PATH}/data/dist/${VERSION_INSTALLED_WINE}"
+		unset VERSION_INSTALLED_WINE
+        /usr/bin/env bash -c ${pw_full_command_line[*]} &
+        exit 0
+	fi
+	
+    print_info "Download and install ${VERSION_WINE_GIT}..."
+    if try_download_to_path "${URL_VERSION_PROTON_GIT}" "${PORT_WINE_PATH}/data/tmp/" ; then
+        for archive_type in "gz" "xz" ; do
+            if [ -f "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}" ] ; then
+                if unpack_tar_${archive_type} "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}" "${PORT_WINE_PATH}/data/dist/" ; then
+                    try_remove_file "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}"
+                    if [ ! -z "${portwine_exe}" ]; then
+                        PW_WINE_USE=${VERSION_WINE_GIT}
+                        edit_db_from_gui PW_WINE_USE
+                    fi
+                else
+                    try_remove_file "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}"
+                    try_remove_dir "${PORT_WINE_PATH}/data/dist/${VERSION_WINE_GIT}"
+                    zenity_error_download && gui_proton_downloader
+                fi
+            fi
+        done
+    else
+        zenity_error_download && gui_proton_downloader
+    fi
+    /usr/bin/env bash -c ${pw_full_command_line[*]} &
+    exit 0
+}
+export -f gui_proton_downloader
+
+gui_vkBasalt () {
+    KEY_FX_GUI=$RANDOM
+    FILE_VKBASALT_CONF="${PORT_WINE_PATH}/data/vkBasalt.conf"
+    LIST_FX=(`grep ".fx$" "${FILE_VKBASALT_CONF}" | awk '{print $1}'`)
+    GET_FX_IN_FILE=(`echo ${PW_VKBASALT_EFFECTS} | sed s/"cas:"// | sed s/":"/" "/g`)
+    unset ADD_GUI_FX GUI_FX_RESULT
+    for add_list_fx in ${LIST_FX[@]} ; do
+        PW_VKBASALT_GUI_HELP="PW_${add_list_fx}_INFO"
+        if [[ ! -z `echo " ${GET_FX_IN_FILE[@]} " | grep " ${add_list_fx} "` ]] ; then
+            ADD_GUI_FX+="--field=$add_list_fx!${!PW_VKBASALT_GUI_HELP}:CHK%TRUE%"
+        else
+            ADD_GUI_FX+="--field=$add_list_fx!${!PW_VKBASALT_GUI_HELP}:CHK%FALSE%"
+        fi
+    done
+    if [[ ! -z "${PW_VKBASALT_FFX_CAS}" ]] ; then
+        VKBASALT_FFX_CAS_GUI=`bc -s <<< "${PW_VKBASALT_FFX_CAS}*100" | sed 's/\..*//'`
+    else
+        VKBASALT_FFX_CAS_GUI=75
+    fi
+    export old_IFS=$IFS
+    export IFS="%" 
+    "${pw_yad_new}" --plug=$KEY_FX_GUI --tabnum="1" --form --columns=5 --separator=" " \
+    ${ADD_GUI_FX} 1> "${PORT_WINE_TMP_PATH}/tmp_yad_basalt_set" &
+    export IFS="${old_IFS}" 
+
+    "${pw_yad_new}" --plug=$KEY_FX_GUI --tabnum="2" --separator=" " --form \
+    --field="AMD FidelityFX - Contrast Adaptive Sharpening":SCL "${VKBASALT_FFX_CAS_GUI}" \
+    1> "${PORT_WINE_TMP_PATH}/tmp_yad_cas_set" &
+
+    "${pw_yad_new}" --paned --key="$KEY_FX_GUI" --height="500" --title="vkBasalt" --center --borders=10 \
+    --separator=" " --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
+    --button="CANCEL":1 --button="DISABLE  VKBASALT":180 --button="ENABLE  VKBASALT":182
+    YAD_VKBASALT_STATUS="$?"
+    case "${YAD_VKBASALT_STATUS}" in
+        1|252)
+            /usr/bin/env bash -c ${pw_full_command_line[*]} &
+            exit 0 ;;
+        180)
+            export ENABLE_VKBASALT=0 ;;
+        182)
+            export ENABLE_VKBASALT=1 ;;
+    esac
+    YAD_BASALT_SET=`cat "${PORT_WINE_TMP_PATH}/tmp_yad_basalt_set"`
+    YAD_CAS_SET=`cat "${PORT_WINE_TMP_PATH}/tmp_yad_cas_set" | sed s/" "//g`
+
+    INT_COUNT_FX=0
+    for read_list_fx in ${YAD_BASALT_SET} ; do
+        if [[ "$read_list_fx" == "TRUE" ]] ; then
+            export GUI_FX_RESULT+=":${LIST_FX[$INT_COUNT_FX]}"
+        fi
+        export INT_COUNT_FX=$(( ${INT_COUNT_FX} + 1 ))
+    done
+    GUI_FX_RESULT="cas${GUI_FX_RESULT}"
+    export PW_VKBASALT_EFFECTS="${GUI_FX_RESULT}"       
+
+    if [[ "$YAD_CAS_SET" == "0" ]] ; then
+        export PW_VKBASALT_FFX_CAS="0"
+    elif [[ "$YAD_CAS_SET" == "100" ]] ; then
+        export PW_VKBASALT_FFX_CAS="1"
+    else
+        export PW_VKBASALT_FFX_CAS="0`bc -s <<< "scale=2; $YAD_CAS_SET/100"`"
+    fi
+    edit_db_from_gui PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS ENABLE_VKBASALT
+    /usr/bin/env bash -c ${pw_full_command_line[*]} &
+    exit 0
+}
