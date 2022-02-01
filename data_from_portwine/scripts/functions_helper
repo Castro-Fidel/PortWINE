@@ -346,6 +346,23 @@ init_wine_ver () {
     return 0
 }
 
+regdlloverrides () {
+    PW_DLL_EXE=`echo $@ | awk -F: '{print $1}'`
+    PW_DLL_LIB=`echo $@ | awk -F: '{print $2}' | awk -F= '{print $1}'`
+    PW_DLL_SET=`echo $@ | awk -F= '{print $NF}'`
+    case "${PW_DLL_SET}" in
+        "n,b") PW_DLL_IN_REG="native,builtin" ;;
+        "b,n") PW_DLL_IN_REG="builtin,native" ;;
+            "n") PW_DLL_IN_REG="native" ;;
+            "b") PW_DLL_IN_REG="builtin" ;;
+            *) PW_DLL_IN_REG="" ;;
+    esac
+    grep 'HKCU,Software\\Wine\\AppDefaults\\'"${PW_DLL_EXE}"'\\DllOverrides,'\"${PW_DLL_LIB}\",0x2,\"${PW_DLL_IN_REG}\" "${WINEDIR}/share/wine/wine.inf"
+    if [[ "$?" != "0" ]] ; then
+        sed -i "/\[SteamClient.ntamd64\]/a HKCU,Software\\\Wine\\\AppDefaults\\\\${PW_DLL_EXE}\\\DllOverrides,\"${PW_DLL_LIB}\",0x2,\"${PW_DLL_IN_REG}\"" "${WINEDIR}/share/wine/wine.inf"
+    fi
+}
+
 wait_wineserver () {
     while [ ! -z "$(ls -l /proc/*/exe 2>/dev/null | grep -ie ${portname} | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}')" ] ; do
         sleep 1
