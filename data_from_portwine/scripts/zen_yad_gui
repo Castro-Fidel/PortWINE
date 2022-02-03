@@ -48,12 +48,20 @@ pw_update_pfx_cover_gui () {
         PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 40}'`
         PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 80}'`
         echo "UPDATE PREFIX..." > "${PORT_WINE_TMP_PATH}/update_pfx_log"
-        while [[ -f "${PORT_WINE_TMP_PATH}/update_pfx_log" ]] ; do
-            sleep 1
-            while read -r gui_line  ; do
-                echo "# ${gui_line}"
-            done
-        done < "${PORT_WINE_TMP_PATH}/update_pfx_log" | "${pw_yad_new}" --plug=$PW_KEY_PROGRESS_BAR  --tabnum="2" --text-info --tail &
+        unset PW_TIMER
+        while read -r line || [[ ! -z `pgrep -a yad | grep "yad_new --notebook --key="$PW_KEY_PROGRESS_BAR"" | awk '{print $1}'` ]] ; do
+                sleep 0.005
+                if [[ ! -z "${line}" ]] && [[ -z "`echo "${line}" | grep -i "gstreamer"`" ]] \
+                                        && [[ -z "`echo "${line}" | grep -i "kerberos"`" ]] \
+                                        && [[ -z "`echo "${line}" | grep -i "ntlm"`" ]]
+                then
+                    echo "# ${line}"
+                fi
+                if [[ "${PW_TIMER}" != 1 ]] ; then
+                    sleep 3
+                    PW_TIMER=1
+                fi
+        done < "${PORT_WINE_TMP_PATH}/update_pfx_log" | "${pw_yad_new}" --plug=$PW_KEY_PROGRESS_BAR --tabnum="2" --text-info --tail &
         "${pw_yad_new}" --plug=$PW_KEY_PROGRESS_BAR --tabnum="1" --picture --filename="${PW_GIF_FILE}" --image-on-top &
 
         "${pw_yad_new}" --notebook --key="$PW_KEY_PROGRESS_BAR" --tab=LOGO --tab=TERMINAL --no-buttons --undecorated \
@@ -77,14 +85,18 @@ pw_start_progress_bar_block () {
 }
 
 pw_stop_progress_bar () {
-    for PW_KILL_YAD_PID in "$PW_YAD_PID_PROGRESS_BAR_BLOCK" "$PW_YAD_PID_PROGRESS_BAR_CS" "$PW_YAD_PID_PFX_COVER_UI" \
-    "$PW_YAD_PID_PROGRESS_BAR_COVER" "${PW_YAD_PID_PROGRESS_BAR_COVER}"
+    for PW_KILL_YAD_PID in "$PW_YAD_PID_PROGRESS_BAR_BLOCK" "$PW_YAD_PID_PROGRESS_BAR_CS" "$PW_YAD_PID_PFX_COVER_UI" "$PW_YAD_PID_PROGRESS_BAR_COVER"
     do
         kill -s SIGUSR1 "$PW_KILL_YAD_PID" > /dev/null 2>&1
     done
     return 0
 }
 export -f pw_stop_progress_bar
+
+pw_stop_progress_bar_cover () {
+    kill -s KILL "$PW_YAD_PID_PROGRESS_BAR_COVER" > /dev/null 2>&1
+    return 0
+}
 
 open_changelog () {
     "${pw_yad}" --title="Changelog" --borders=10 --no-buttons --text-align=center \

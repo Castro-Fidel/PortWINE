@@ -178,12 +178,31 @@ portwine_start_debug () {
     export DXVK_HUD="full"
 
     portwine_launch &
-    sleep 1 && zenity --info --title "DEBUG" --text "${port_debug}" --no-wrap &> /dev/null && kill_portwine
-    sed -i '/gstreamer-1.0/d' "${PORT_WINE_PATH}/${portname}.log"
-    sed -i '/winemenubuilder.exe/d' "${PORT_WINE_PATH}/${portname}.log"
+    sleep 3
+    pw_stop_progress_bar_cover
+    unset PW_TIMER
+    while read -r line || [[ ! -z `pgrep -a yad | grep "yad_new --text-info --tail --button="STOP":0 --title="DEBUG"" | awk '{print $1}'` ]] ; do
+            sleep 0.005
+            if [[ ! -z "${line}" ]] && [[ -z "`echo "${line}" | grep -i "gstreamer"`" ]] \
+                                    && [[ -z "`echo "${line}" | grep -i "kerberos"`" ]] \
+                                    && [[ -z "`echo "${line}" | grep -i "ntlm"`" ]]
+            then
+                echo "# ${line}"
+            fi
+            if [[ "${PW_TIMER}" != 1 ]] ; then
+                sleep 3
+                PW_TIMER=1
+            fi
+    done < "${PORT_WINE_PATH}/${portname}.log" | "${pw_yad_new}" --text-info --tail --button="STOP":0 --title="DEBUG" \
+    --skip-taskbar --center --width=800 --height=400 --text "${port_debug}" &&
+    kill_portwine
+#    sleep 1 && zenity --info --title "DEBUG" --text "${port_debug}" --no-wrap &> /dev/null && kill_portwine
     sed -i '/.fx$/d' "${PORT_WINE_PATH}/${portname}.log"
+    sed -i '/GStreamer/d' "${PORT_WINE_PATH}/${portname}.log"
+    sed -i '/kerberos/d' "${PORT_WINE_PATH}/${portname}.log"
+    sed -i '/ntlm/d' "${PORT_WINE_PATH}/${portname}.log"
+    sed -i '/winemenubuilder.exe/d' "${PORT_WINE_PATH}/${portname}.log"
     sed -i '/HACK_does_openvr_work/d' "${PORT_WINE_PATH}/${portname}.log"
-    sed -i '/dlopen failed - libgamemode.so/d' "${PORT_WINE_PATH}/${portname}.log"
     sed -i '/Uploading is disabled/d' "${PORT_WINE_PATH}/${portname}.log"
     deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++') 
     echo "$deb_text" > "${PORT_WINE_PATH}/${portname}.log"
@@ -222,11 +241,19 @@ pw_winetricks () {
     start_portwine
     pw_stop_progress_bar
     echo "WINETRICKS..." > "${PORT_WINE_TMP_PATH}/update_pfx_log"
-    while [[ -f "${PORT_WINE_TMP_PATH}/update_pfx_log" ]] ; do
-        sleep 1
-        while read -r line  ; do
-            echo "# ${line}"
-        done
+    unset PW_TIMER
+    while read -r line || [[ ! -z `pgrep -a yad | grep "yad_new --text-info --tail --no-buttons --title="WINETRICKS"" | awk '{print $1}'` ]] ; do
+            sleep 0.005
+            if [[ ! -z "${line}" ]] && [[ -z "`echo "${line}" | grep -i "gstreamer"`" ]] \
+                                    && [[ -z "`echo "${line}" | grep -i "kerberos"`" ]] \
+                                    && [[ -z "`echo "${line}" | grep -i "ntlm"`" ]]
+            then
+                echo "# ${line}"
+            fi
+            if [[ "${PW_TIMER}" != 1 ]] ; then
+                sleep 3
+                PW_TIMER=1
+            fi
     done < "${PORT_WINE_TMP_PATH}/update_pfx_log" | "${pw_yad_new}" --text-info --tail --no-buttons --title="WINETRICKS" \
     --auto-close --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y &
     "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
