@@ -346,6 +346,14 @@ init_wine_ver () {
     return 0
 }
 
+check_vk_icd_file () {
+    if [[ -f "/usr/share/vulkan/icd.d/nvidia_icd.json" ]] ; then
+        export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/nvidia_icd.json"
+    elif [[ -f "/etc/vulkan/icd.d/nvidia_icd.json" ]] ; then
+        export VK_ICD_FILENAMES="/etc/vulkan/icd.d/nvidia_icd.json"
+    fi
+}
+
 regdlloverrides () {
     PW_DLL_EXE=`echo $@ | awk -F: '{print $1}'`
     PW_DLL_LIB=`echo $@ | awk -F: '{print $2}' | awk -F= '{print $1}'`
@@ -690,4 +698,31 @@ edit_db_from_gui () {
         fi
     done
     return 0
+}
+
+pw_create_gui_png () {
+    if [ ! -z "${PORTWINE_CREATE_SHORTCUT_NAME}" ] ; then
+        export PORTPROTON_NAME="${PORTWINE_CREATE_SHORTCUT_NAME}"
+    else
+        export PORTPROTON_NAME="$(basename "${portwine_exe}" | sed s/".exe"/""/gi )"
+    fi
+    PW_RESIZE_TO=96
+    if [[ -x "`which wrestool 2>/dev/null`" ]] && [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
+        try_remove_dir "${PORT_WINE_TMP_PATH}/tmp_img"
+        create_new_dir "${PORT_WINE_TMP_PATH}/tmp_img"
+        wrestool -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" -t14 "${portwine_exe}"
+        cp "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".ico"  | head -n 1)" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
+        icotool -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
+        cp "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".png"  | head -n 1)" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.png"
+        cp -f "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.png" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
+    fi
+    if [[ -x "`which "convert" 2>/dev/null`" ]] && [[ -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] && \
+       [[ -z "`file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}"`" ]] ; then
+        convert "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" -resize ${PW_RESIZE_TO}x${PW_RESIZE_TO} "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" 
+    fi
+    if [[ ! -z "`file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}"`" ]] ; then
+        export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" 
+    else
+        export PW_ICON_FOR_YAD="${PW_GUI_ICON_PATH}/port_proton.png"
+    fi
 }

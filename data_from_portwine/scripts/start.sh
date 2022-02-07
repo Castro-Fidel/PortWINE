@@ -34,33 +34,14 @@ portwine_launch () {
 }
 
 portwine_create_shortcut () {
-    if [ ! -z "${portwine_exe}" ]; then
-        PORTPROTON_EXE="${portwine_exe}"
-    else
-        PORTPROTON_EXE=$(zenity --file-selection --file-filter=""*.exe" "*.bat"" \
-        --title="${sc_path}" --filename="${PORT_WINE_PATH}/data/pfx/drive_c/")
-        if [ $? -eq 1 ];then exit 1; fi
-    fi
-    if [ ! -z "${PORTWINE_CREATE_SHORTCUT_NAME}" ] ; then
-        export PORTPROTON_NAME="${PORTWINE_CREATE_SHORTCUT_NAME}"
-    else
-        PORTPROTON_NAME="$(basename "${PORTPROTON_EXE}" | sed s/".exe"/""/gi )"
-    fi
-    PORTPROTON_PATH="$( cd "$( dirname "${PORTPROTON_EXE}" )" >/dev/null 2>&1 && pwd )"
-    if [ -x "`which wrestool 2>/dev/null`" ]; then
-        wrestool -x --output="${PORTPROTON_PATH}/" -t14 "${PORTPROTON_EXE}"
-        cp "$(ls -S -1 "${PORTPROTON_EXE}"*".ico"  | head -n 1)" "${PORTPROTON_EXE}.ico"
-        icotool -x --output="${PORTPROTON_PATH}/" "${PORTPROTON_EXE}.ico"
-        cp "$(ls -S -1 "${PORTPROTON_EXE}"*".png"  | head -n 1)" "${PORTPROTON_EXE}.png"
-        cp -f "${PORTPROTON_EXE}.png" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
-    fi
+    pw_create_gui_png
     name_desktop="${PORTPROTON_NAME}"
     echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
     echo "Name=${PORTPROTON_NAME}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
     if [ -z "${PW_CHECK_AUTOINSTAL}" ]
-    then echo "Exec=env "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${PORTPROTON_EXE}\" "" \
+    then echo "Exec=env "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" "" \
     >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    else echo "Exec=env "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${PORTPROTON_EXE}\" "" \
+    else echo "Exec=env "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" "" \
     >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
     fi
     echo "Type=Application" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
@@ -75,6 +56,12 @@ portwine_create_shortcut () {
     fi
     xdg-open "${PORT_WINE_PATH}" 2>1 >/dev/null &
 }
+
+portwine_delete_shortcut () {
+    rm -f "`grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop`"
+    rm -f "`grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop`" 
+}
+
 
 portwine_start_debug () {
     kill_portwine
@@ -206,7 +193,7 @@ portwine_start_debug () {
     sed -i '/Uploading is disabled/d' "${PORT_WINE_PATH}/${portname}.log"
     deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++') 
     echo "$deb_text" > "${PORT_WINE_PATH}/${portname}.log"
-    "$pw_yad" --title="${portname}.log" --borders=10 --no-buttons --text-align=center \
+    "$pw_yad" --title="${portname}.log" --borders=7 --no-buttons --text-align=center \
     --text-info --show-uri --wrap --center --width=1200 --height=550  --uri-color=red \
     --filename="${PORT_WINE_PATH}/${portname}.log"
     stop_portwine
@@ -342,16 +329,23 @@ else
     unset PW_GUI_DISABLED_CS
 fi
 if [ ! -z "${portwine_exe}" ]; then
-    if [[ -z "${PW_GUI_DISABLED_CS}" || "${PW_GUI_DISABLED_CS}" == 0 ]] ; then
-        OUTPUT_START=$("${pw_yad}" --text-align=center --text "$PW_COMMENT_DB" --wrap-width=150 --borders=15 --form --center  \
-        --title "${portname}-${install_ver} (${scripts_install_ver})"  --image "$PW_GUI_ICON_PATH/port_proton.png" --separator=";" \
+    if [[ -z "${PW_GUI_DISABLED_CS}" || "${PW_GUI_DISABLED_CS}" == 0 ]] ; then  
+        pw_create_gui_png
+        grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*
+        if [[ "$?" == 1 ]] ; then
+            PW_SHORTCUT="CREATE SHORTCUT!!${loc_create_shortcut}:100"
+        else
+            PW_SHORTCUT="DELETE SHORTCUT!!${loc_delete_shortcut}:98"
+        fi
+        OUTPUT_START=$("${pw_yad}" --text-align=center --text "$PW_COMMENT_DB" --wrap-width=150 --borders=7 --form --center  \
+        --title "${portname}-${install_ver} (${scripts_install_ver})"  --image "${PW_ICON_FOR_YAD}" --separator=";" \
         --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
-        --field="Run with :CB" "${PW_DEFAULT_VULKAN_USE}" \
-        --field="Run with :CB" "${PW_DEFAULT_WINE_USE}" \
+        --field="3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
+        --field="  WINE  : :CB" "${PW_DEFAULT_WINE_USE}" \
         --field=":LBL" "" \
         --button='VKBASALT'!!"${ENABLE_VKBASALT_INFO}":120 \
         --button='EDIT  DB'!!"${loc_edit_db} ${PORTWINE_DB}":118 \
-        --button='CREATE SHORTCUT'!!"${loc_creat_shortcut}":100 \
+        --button="${PW_SHORTCUT}" \
         --button='DEBUG'!!"${loc_debug}":102 \
         --button='LAUNCH'!!"${loc_launch}":106 )
         export PW_YAD_SET="$?"
@@ -466,7 +460,7 @@ else
     --field='WINEREG'!!"${loc_winereg}":"BTN" '@bash -c "button_click WINEREG"' \
     --field='WINETRICKS'!!"${loc_winetricks}":"BTN" '@bash -c "button_click WINETRICKS"' &> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" &
 
-    "${pw_yad}" --key=$KEY --notebook --borders=10 --width=1000 --height=168 --no-buttons --text-align=center \
+    "${pw_yad}" --key=$KEY --notebook --borders=3 --width=1000 --height=168 --no-buttons --text-align=center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "${portname}-${install_ver} (${scripts_install_ver})" --separator=";" \
     --tab-pos=right --tab="PORT_PROTON" --tab="AUTOINSTALL" --tab="  EMULATORS"  --tab="    SETTINGS" --center
     YAD_STATUS="$?"
@@ -511,6 +505,7 @@ fi
 echo "PW_YAD_SET=$PW_YAD_SET"
 case "$PW_YAD_SET" in
     1|252) exit 0 ;;
+    98) portwine_delete_shortcut ;;
     100) portwine_create_shortcut ;;
     DEBUG|102) portwine_start_debug ;;
     106) portwine_launch ;;

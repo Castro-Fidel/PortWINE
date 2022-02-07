@@ -194,6 +194,7 @@ start_portwine () {
     fi
     if [[ ! -z "${PW_PRIME_RENDER_OFFLOAD}" && "${PW_PRIME_RENDER_OFFLOAD}" != 0 ]] ; then
         export __NV_PRIME_RENDER_OFFLOAD=1
+        check_vk_icd_file
     fi
     if [[ ! -z "${PW_HEAP_DELAY_FREE}" && "${PW_HEAP_DELAY_FREE}" != 0 ]]
     then export WINE_HEAP_DELAY_FREE="1"
@@ -216,13 +217,6 @@ start_portwine () {
     if [ -x "`which optimus-manager 2>/dev/null`" ]; then
         export check_optimus_manager=`optimus-manager --status | grep Current | cut -f 2 -d':' | sed -e 's/^[[:space:]]*//'`
     fi
-    check_vk_icd_file () {
-        if [[ -f "/usr/share/vulkan/icd.d/nvidia_icd.json" ]] ; then
-            export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/nvidia_icd.json"
-        elif [[ -f "/etc/vulkan/icd.d/nvidia_icd.json" ]] ; then
-            export VK_ICD_FILENAMES="/etc/vulkan/icd.d/nvidia_icd.json"
-        fi
-    }
     if [[ ! -z "${PW_NVIDIA}" && "${check_optimus_manager}" != "intel" ]] ; then
         if [ "${check_optimus_manager}" = "nvidia" ]; then
             check_vk_icd_file
@@ -544,9 +538,9 @@ if [[ ! -z "${PW_SILENT_RESTART}" && "${PW_SILENT_RESTART}" = 1 ]] ; then
 else
     unset PW_GUI_DISABLED_CS
 fi
-unset MANGOHUD MANGOHUD_DLSYM PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_YAD_SET
+unset MANGOHUD MANGOHUD_DLSYM PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_YAD_SET PW_ICON_FOR_YAD
 unset PW_CHECK_AUTOINSTAL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PORTWINE_DB_FILE PW_DISABLED_CREATE_DB
-unset CHK_SYMLINK_FILE MESA_GL_VERSION_OVERRIDE PATH_TO_GAME PW_START_DEBUG
+unset CHK_SYMLINK_FILE MESA_GL_VERSION_OVERRIDE PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME PORTWINE_CREATE_SHORTCUT_NAME
 export portname=PortProton
 
 cd "$(dirname "`readlink -f "$0"`")" && export PORT_SCRIPTS_PATH="$(pwd)"
