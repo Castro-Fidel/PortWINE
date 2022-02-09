@@ -711,13 +711,18 @@ pw_create_gui_png () {
         try_remove_dir "${PORT_WINE_TMP_PATH}/tmp_img"
         create_new_dir "${PORT_WINE_TMP_PATH}/tmp_img"
         wrestool -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" -t14 "${portwine_exe}"
-        cp "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".ico"  | head -n 1)" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
-        icotool -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
-        cp "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".png"  | head -n 1)" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.png"
+        cp "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".ico" | head -n 1)" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
+        icotool -x --width=${PW_RESIZE_TO} --height=${PW_RESIZE_TO} --output="${PORT_WINE_TMP_PATH}/tmp_img/" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
+        if [[ ! -f "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".png" | grep "${PW_RESIZE_TO}x${PW_RESIZE_TO}")" ]] ; then 
+            icotool -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
+            cp "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".png" | head -n 1)" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.png"
+        else
+            cp "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".png" | grep "${PW_RESIZE_TO}x${PW_RESIZE_TO}" | head -n 1)" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.png"
+        fi
         cp -f "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.png" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
     fi
-    if [[ -x "`which "convert" 2>/dev/null`" ]] && [[ -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] && \
-       [[ -z "`file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}"`" ]] ; then
+    if [[ -z "`file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}"`" ]] && \
+       [[ -x "`which "convert" 2>/dev/null`" ]] && [[ -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
         convert "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" -resize ${PW_RESIZE_TO}x${PW_RESIZE_TO} "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" 
     fi
     if [[ ! -z "`file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}"`" ]] ; then

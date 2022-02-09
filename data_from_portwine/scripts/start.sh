@@ -331,8 +331,8 @@ fi
 if [ ! -z "${portwine_exe}" ]; then
     if [[ -z "${PW_GUI_DISABLED_CS}" || "${PW_GUI_DISABLED_CS}" == 0 ]] ; then  
         pw_create_gui_png
-        grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*
-        if [[ "$?" == 1 ]] ; then
+        grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop
+        if [[ "$?" != "0" ]] ; then
             PW_SHORTCUT="CREATE SHORTCUT!!${loc_create_shortcut}:100"
         else
             PW_SHORTCUT="DELETE SHORTCUT!!${loc_delete_shortcut}:98"
