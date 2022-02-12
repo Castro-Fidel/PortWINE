@@ -162,10 +162,21 @@ pw_gui_for_edit_db () {
     1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db" & 
     IFS=$old_IFS
 
-    "${pw_yad_new}" --plug=$KEY_EDIT_DB_GUI --tabnum="2" --form --separator=" " --columns=1 \
+    case ${PW_WINDOWS_VER} in
+         "7") ADD_WINVER_EDIT_DB="7!10!XP" ;;
+        "XP") ADD_WINVER_EDIT_DB="XP!7!10" ;;
+           *) ADD_WINVER_EDIT_DB="10!7!XP" ;;
+    esac
+    "${pw_yad_new}" --plug=$KEY_EDIT_DB_GUI --tabnum="2" --form --separator="%" --columns=1 \
+    --field="SELECT VERSION OF WINDOWS::CB" "${ADD_WINVER_EDIT_DB}" \
+    --field="AUTOINSTALL WITH WINETRICKS::CBE" "${PW_DLL_INSTALL}!vcrun2019 corefonts lucida" \
+    --field="WINEDLLOVERRIDES::CBE" "${WINEDLLOVERRIDES}!d3dx9_36,d3dx9_42=n,b;mfc120=b,n" \
+    --field=":LBL" "" \
+    --field="ADD ARGUMENTS FOR .EXE FILE::CBE" "\\${LAUNCH_PARAMETERS[@]}!-dx11 -skipintro 1" \
+    --field=":LBL" "" \
     --field="MANGOHUD FPS LIMIT (0-disabled):SCL" ${FPS_LIMIT_VAR} 1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" & 
 
-    "${pw_yad_new}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="400" \
+    "${pw_yad_new}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="520" \
     --text "Change settings in database file for ${PORTWINE_DB}\n" --separator=" " --borders=10 --center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --button="CANCEL":1 --button="OPEN DB FILE":150 --button="SAVE CHANGES":0
     YAD_STATUS="$?"
@@ -191,13 +202,18 @@ pw_gui_for_edit_db () {
         done
     }
     edit_db_field_read $@
-    FPS_LIMIT="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit"`"
+    PW_WINDOWS_VER="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $1}'`"
+    PW_DLL_INSTALL=\"`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $2}'`\"
+    WINEDLLOVERRIDES=\"`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $3}'`\"
+    LAUNCH_PARAMETERS=\"`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $5}'`\"
+    FPS_LIMIT="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $7}'`"
+
     if [ "${FPS_LIMIT}" == 0 ] ; then
         export MANGOHUD_CONFIG=font_size=24,position=top-left,toggle_hud=Shift_R+F12,no_display,resolution,wine,gpu_name,vulkan_driver,gpu_stats,vkbasalt
     else
         export MANGOHUD_CONFIG=font_size=24,position=top-left,toggle_hud=Shift_R+F12,no_display,resolution,wine,gpu_name,vulkan_driver,gpu_stats,vkbasalt,fps_limit=${FPS_LIMIT}
     fi
-    edit_db_from_gui $@ MANGOHUD_CONFIG
+    edit_db_from_gui $@ MANGOHUD_CONFIG LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES
     return 0
 }
 

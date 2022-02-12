@@ -49,18 +49,16 @@ export -f try_copy_dir
 try_remove_file () {
     if [ -f "$1" ] ; then
         rm -f "$1"
-        [ "$?" != 0 ] && print_error "failed to remove file $1" || return 0
+        [ "$?" == 0 ] && return 0 || return 1
     fi
-    return 1
 }
 export -f try_remove_file
 
 try_remove_dir () {
     if [ -d "$1" ] ; then
         rm -fr "$1"
-        [ "$?" != 0 ] && print_error "failed to remove directory $1" || return 0
+        [ "$?" == 0 ] && return 0 || return 1
     fi
-    return 1
 }
 export -f try_remove_dir
 
@@ -189,12 +187,12 @@ unpack_tar () {
 }
 
 pw_mangohud_check () {
-    export RUN_MANGOHUD=""
-    if [ "${PW_MANGOHUD}" == "1" ] ; then
-        if [ "${PW_VULKAN_USE}" = "0" ] ; then 
-            export RUN_MANGOHUD="${PW_WINELIB}/portable/bin/mangohud --dlsym"
+    export RUN_MANGOHUD_IN_SLR=""
+    if [[ "${PW_MANGOHUD}" == "1" ]] ; then
+        if [[ "${PW_VULKAN_USE}" = "0" ]] ; then 
+            export RUN_MANGOHUD_IN_SLR="mangohud --dlsym"
         else 
-            export RUN_MANGOHUD="${PW_WINELIB}/portable/bin/mangohud"
+            export RUN_MANGOHUD_IN_SLR="mangohud"
         fi
     else
         export DISABLE_MANGOHUD=1
@@ -546,7 +544,7 @@ pw_init_db () {
         export PORTWINE_DB=`echo "${portwine_exe}" | awk -F '/' 'NF>1{print $NF}' | sed s/".exe"/""/gi`
         orig_IFS="$IFS"
         IFS=$'\n'
-        PW_FIND_DB_FILE=`grep -ilw "#${PORTWINE_DB}" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
+        PW_FIND_DB_FILE=`grep -ilw "#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
         if [[ `echo "$PW_FIND_DB_FILE" | wc -l` -gt 1 ]] ; then
             unset ADD_CB_DBFILE
             for PW_CHECK_DB_FILE in $PW_FIND_DB_FILE ; do
@@ -707,6 +705,7 @@ pw_create_gui_png () {
         export PORTPROTON_NAME="$(basename "${portwine_exe}" | sed s/".exe"/""/gi )"
     fi
     PW_RESIZE_TO=96
+    try_remove_file "${PORT_WINE_PATH}/data/img/setup.png"
     if [[ -x "`which wrestool 2>/dev/null`" ]] && [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
         try_remove_dir "${PORT_WINE_TMP_PATH}/tmp_img"
         create_new_dir "${PORT_WINE_TMP_PATH}/tmp_img"

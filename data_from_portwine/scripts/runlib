@@ -40,7 +40,10 @@ start_portwine () {
 
     pw_update_pfx_cover_gui
 
-    if [[ ! -z "`cat /etc/*-release | grep -i opensuse`" ]] || [[ ! -z "`cat /etc/*-release | grep -i centos`" ]] ; then
+    if [[ ! -z "`cat /etc/*-release | grep -i opensuse`" ]] \
+    || [[ ! -z "`cat /etc/*-release | grep -i centos`" ]] \
+    || [[ ! -z "`cat /etc/*-release | grep -i fedora`" ]] \
+    || [[ ! -z "`cat /etc/*-release | grep -i gentoo`" ]] ; then
         if check_symlink "${PW_WINELIB}/portable/lib/lib64" ; then
             rm -fr "${PW_WINELIB}/portable/lib/lib64"
         fi
@@ -210,7 +213,6 @@ start_portwine () {
     elif [[ ! -z "${PW_USE_DXR10}" && "${PW_USE_DXR10}" != 0 ]] 
     then var_vkd3d_config_update dxr
     fi
-
     export optirun_on=""
     export check_optimus_manager=
     export PW_NVIDIA="$(lspci | grep NVIDIA)"
@@ -367,7 +369,7 @@ start_portwine () {
     # export TOTAL_VRAM=`"${PW_WINELIB}/runtime/files/bin/glxinfo" -B | grep Total | awk -F: '{print $2}' | awk '{print $1}'`
     # echo "TOTAL_VRAM=${TOTAL_VRAM}"
 
-    if [[ "${PW_VULKAN_USE}" = "0" ]] ; then
+    if [[ "${PW_VULKAN_USE}" == "0" ]] ; then
         echo "Use OpenGL"
         export MESA_GLSL_CACHE_DIR="${PORT_WINE_TMP_PATH}"
         export GL_YIELD="NOTHING"
@@ -396,7 +398,7 @@ start_portwine () {
             try_force_link_file "${WINEDIR}/lib/wine/dxvk/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
             try_force_link_file "${WINEDIR}/lib64/wine/dxvk/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
         done
-        if [[ "${PW_USE_WINE_DXGI}" = 1 ]] || [[ "${PW_VULKAN_USE}" = "2" ]]; then 
+        if [[ "${PW_USE_WINE_DXGI}" == 1 ]] || [[ "${PW_VULKAN_USE}" == "2" ]]; then 
             echo "Try link wine DXGI..."
             if ! try_force_link_file "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/dxgi.dll"
             then try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/dxgi.dll"
@@ -503,25 +505,28 @@ pw_run () {
         cd "${WINEPREFIX}/drive_c"
     fi
     pw_mangohud_check
+    PW_LOG_TO_FILE="${PORT_WINE_PATH}/${portname}.log"
     print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VKD3D_CONFIG" \
     "LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2"
     if [ "${PW_LOG}" == 1 ] ; then
-        export PW_LOG_TO_FILE="${PORT_WINE_PATH}/${portname}.log"
+        echo "WINEDLLOVERRIDES=${WINEDLLOVERRIDES}" >> "${PW_LOG_TO_FILE}"
+        echo "------------------------------------" >> "${PW_LOG_TO_FILE}"
+        echo "Log WINE:" >> "${PW_LOG_TO_FILE}"
         if [[ ! -z "${PW_GAMEMODERUN}" && "${PW_GAMEMODERUN}" != 0 ]] ; then
             ${optirun_on} ${pw_runtime} env LD_PRELOAD="${PW_LD_PRELOAD}" VK_LAYER_PATH="${VK_LAYER_PATH}" PATH="${PATH}" \
-            LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} &>>"${PW_LOG_TO_FILE}"
+            LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" ${RUN_MANGOHUD_IN_SLR} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
         else
             ${optirun_on} ${pw_runtime} env VK_LAYER_PATH="${VK_LAYER_PATH}" PATH="${PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" \
-            ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]} &>>"${PW_LOG_TO_FILE}"
+            ${RUN_MANGOHUD_IN_SLR} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
         fi
     else
         [ "${PW_USE_TERMINAL}" != "1" ] && export PW_TERM=""
         if [[ ! -z "${PW_GAMEMODERUN}" && "${PW_GAMEMODERUN}" != 0 ]] ; then
             $PW_TERM ${optirun_on} ${pw_runtime} env LD_PRELOAD="${PW_LD_PRELOAD}" VK_LAYER_PATH="${VK_LAYER_PATH}" PATH="${PATH}" \
-            LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}
+            LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" ${RUN_MANGOHUD_IN_SLR} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]}
         else
             $PW_TERM ${optirun_on} ${pw_runtime} env VK_LAYER_PATH="${VK_LAYER_PATH}" PATH="${PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" \
-            ${RUN_MANGOHUD} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[*]}
+            ${RUN_MANGOHUD_IN_SLR} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]}
         fi
     fi
 }
