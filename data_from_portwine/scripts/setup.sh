@@ -53,7 +53,8 @@ if [ "${PW_SILENT_INSTALL}" = "1" ] ; then
 			fi
 		fi
 		ln -s "${XDG_DATA_HOME}/PortWINE" "${HOME}/"
-		sh "${XDG_DATA_HOME}/PortWINE/PortProton/data/scripts/start.sh" $@ & exit 0
+		/usr/bin/env bash -c "${XDG_DATA_HOME}/PortWINE/PortProton/data/scripts/start.sh" $@ & 
+		exit 0
 	else
 		echo "Installation completed successfully."
 	fi

@@ -9,7 +9,8 @@ kill_portwine
 pw_stop_progress_bar
 
 if [[ -f "/usr/bin/portproton" ]] && [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]] ; then
-    sh "/usr/bin/portproton" "$@" & exit 0
+    /usr/bin/env bash "/usr/bin/portproton" "$@" & 
+    exit 0
 fi
 
 if [[ "${XDG_SESSION_TYPE}" = "wayland" ]] && [[ ! -f "${PORT_WINE_TMP_PATH}/check_wayland" ]]; then
