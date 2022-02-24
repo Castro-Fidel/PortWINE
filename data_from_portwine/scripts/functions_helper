@@ -63,8 +63,8 @@ try_remove_dir () {
 export -f try_remove_dir
 
 try_force_link_file () {
-    if [ ! -f "$1" ] ; then	print_info "file $1 not found for link"
-    elif [ -z "$2" ] ; then	print_error "no way to link file $1"
+    if [ -z "$2" ] ; then
+        print_error "no way to link file $1"
     else
         ln -sf "$1" "$2"
         [ "$?" != 0 ] && print_error "failed to link file $1 to $2" || return 0
@@ -88,8 +88,8 @@ check_symlink () {
 export -f check_symlink
 
 try_force_link_dir () {
-    if [ ! -d "$1" ] ; then	print_info "directory $1 not found for link"
-    elif [ -z "$2" ] ; then	print_error "no way to link directory $1"
+    if [ -z "$2" ] ; then
+        print_error "no way to link directory $1"
     else
         ln -sf "$1" "$2"
         [ "$?" != 0 ] && print_error "failed to link directory $1 to $2" || return 0
@@ -432,10 +432,6 @@ stop_portwine () {
     try_remove_file "${PORT_SCRIPTS_PATH}/0"
     try_remove_file "${PORT_SCRIPTS_PATH}/1"
     kill_portwine &&
-    if [  ! -z "`ls "${WINEPREFIX}"/drive_c/users/steamuser/Temp/ | head -n 1`" ] ; then
-        chmod -R 755 "${WINEPREFIX}"/drive_c/users/steamuser/Temp/
-        rm -fr "${WINEPREFIX}"/drive_c/users/steamuser/Temp/*
-    fi
     try_remove_dir "${PW_WINELIB}/var"
     find "${WINEPREFIX}/drive_c/" -maxdepth 1 -type f -name "*.tmp" -delete
     if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ] ; then
@@ -542,26 +538,40 @@ pw_check_and_download_plugins () {
 pw_init_db () {
     if [ ! -z "${portwine_exe}" ]; then
         export PORTWINE_DB=`echo "${portwine_exe}" | awk -F '/' 'NF>1{print $NF}' | sed s/".exe"/""/gi`
-        orig_IFS="$IFS"
-        IFS=$'\n'
-        PW_FIND_DB_FILE=`grep -ilw "#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
-        if [[ `echo "$PW_FIND_DB_FILE" | wc -l` -gt 1 ]] ; then
-            unset ADD_CB_DBFILE
-            for PW_CHECK_DB_FILE in $PW_FIND_DB_FILE ; do
-                if [[ -z "${ADD_CB_DBFILE}" ]] ; then
-                    export ADD_CB_DBFILE="${PW_CHECK_DB_FILE}"
-                else
-                    export ADD_CB_DBFILE="${PW_CHECK_DB_FILE}!${ADD_CB_DBFILE}"
+        if [[ -f "${portwine_exe}".ppdb ]] ; then
+            export PORTWINE_DB_FILE="${portwine_exe}".ppdb
+        else
+            orig_IFS="$IFS"
+            IFS=$'\n'
+            PW_FIND_DB_FILE=`grep -ilw "#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
+            if [[ `echo "$PW_FIND_DB_FILE" | wc -l` -gt 1 ]] ; then
+                unset ADD_CB_DBFILE
+                for PW_CHECK_DB_FILE in $PW_FIND_DB_FILE ; do
+                    if [[ -z "${ADD_CB_DBFILE}" ]] ; then
+                        export ADD_CB_DBFILE="${PW_CHECK_DB_FILE}"
+                    else
+                        export ADD_CB_DBFILE="${PW_CHECK_DB_FILE}!${ADD_CB_DBFILE}"
+                    fi
+                done
+                PORTWINE_DB_FILE=`"${pw_yad_new}" --text-align=center --text "${PW_SELECTION_DB_LOC}" --borders=15 --form --center  \
+                --title "Database file selection..." --window-icon="$PW_GUI_ICON_PATH/port_proton.png"  --form --separator="" \
+                --field="DB FILE: :CB" "${ADD_CB_DBFILE}"`
+                if [[ "$?" == "1" || "$?" == "252" ]] ; then exit 0 ; fi
+            elif [[ `echo "$PW_FIND_DB_FILE" | wc -l` -eq 1 ]] ; then
+                PORTWINE_DB_FILE="${PW_FIND_DB_FILE}"
+            fi
+            IFS="$orig_IFS"
+            if [[ -f "${PW_FIND_DB_FILE}" ]] && [[ -z `grep "^export PW_DISABLED_CREATE_DB=1" "${PW_FIND_DB_FILE}"` ]] ; then
+                try_copy_file "${PW_FIND_DB_FILE}" "${portwine_exe}".ppdb
+                export PORTWINE_DB_FILE="${portwine_exe}".ppdb
+                if [[ ! -z `echo "${portwine_exe}" | grep "/data/prefixes/"` ]] && \
+                   [[ -z `echo "${portwine_exe}" | grep "/data/prefixes/DEFAULT"` ]]
+                then 
+                    export PW_PREFIX_NAME=`echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}'`
+                    edit_db_from_gui PW_PREFIX_NAME
                 fi
-            done
-            PORTWINE_DB_FILE=`"${pw_yad_new}" --text-align=center --text "${PW_SELECTION_DB_LOC}" --borders=15 --form --center  \
-            --title "Database file selection..." --window-icon="$PW_GUI_ICON_PATH/port_proton.png"  --form --separator="" \
-            --field="DB FILE: :CB" "${ADD_CB_DBFILE}"`
-            if [[ "$?" == "1" || "$?" == "252" ]] ; then exit 0 ; fi
-        elif [[ `echo "$PW_FIND_DB_FILE" | wc -l` -eq 1 ]] ; then
-            PORTWINE_DB_FILE="${PW_FIND_DB_FILE}"
+            fi
         fi
-        IFS="$orig_IFS"
         if [ ! -z "${PORTWINE_DB_FILE}" ]; then
             . "${PORTWINE_DB_FILE}"
             init_wine_ver &&
@@ -572,88 +582,68 @@ pw_init_db () {
         fi
     fi
     return 0
-#        export WIN_PATH_TO_GAME=`echo "C:${PATH_TO_GAME}" | sed "s%$WINEPREFIX%%g" | sed "s/drive_c//g" | sed 's#/#\\\#g'`
 }
 
 pw_port_update () {
-    ###PORT UPDATE###
+    ###SCRIPTS UPDATE###
     if [ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ] ; then
-        echo "2000" > "${PORT_WINE_TMP_PATH}/scripts_ver"
+        echo "2022" > "${PORT_WINE_TMP_PATH}/scripts_ver"
     fi
     export scripts_install_ver=`cat "${PORT_WINE_TMP_PATH}/scripts_ver" | head -n 1`
     curl -s --list-only https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine/scripts/var > "${PORT_WINE_TMP_PATH}/curent_var_ver"
-    if [[ "$?" == 0 ]] ; then
-        if [ ! -f "${PORT_WINE_TMP_PATH}/${portname}_ver" ] ; then
-            echo "10" > "${PORT_WINE_TMP_PATH}/${portname}_ver"
-        fi
-        export port_install_ver=`cat "${PORT_WINE_TMP_PATH}/${portname}_ver" | head -n 1`
-        if [ ! -f "${PORT_WINE_TMP_PATH}/update_notifier" ] ; then
-            echo "1" > "${PORT_WINE_TMP_PATH}/update_notifier"
-        fi
-        read "update_not" < "${PORT_WINE_TMP_PATH}/update_notifier"
-        if [ "${update_not}" = "1" ] ; then
-            export port_current_ver=`cat "${PORT_WINE_TMP_PATH}/curent_var_ver" | grep PORT_NEXT_VERSION | awk -F "=" '{print $2}'`
-            print_info "Port version in github = ${port_current_ver}"
-            print_info "Port version local = ${port_install_ver}"
-            if  [[ ! -z "${port_current_ver}" && "${port_current_ver}" -gt "${port_install_ver}" ]] ; then
-                xsd=`zenity --title  "${port_upd1}" --text "${port_upd2}" --list --radiolist --height=240 --column="${inst_set}" --column "${port_upd3}" \
-                TRUE "${port_upd4}" \
-                FALSE "${port_upd5}" \
-                FALSE "${port_upd6}" `
-                case $xsd in
-                    "${port_upd4}")
-                        kill_portwine &&
-                        xdg-open $PORTWINE_URL
-                        exit 0 ;;
-                    "${port_upd5}")
-                        echo " " ;;
-                    "${port_upd6}")
-                    echo "0" > "${PORT_WINE_TMP_PATH}/update_notifier" ;;
-                esac
-            fi
-        fi
-        ###SCRIPTS UPDATE###
-        if [ ! -f "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ] ; then
-                echo "1" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
-        fi
-        read "scripts_update_not" < "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
-        if [ "${scripts_update_not}" = "1" ] ; then
-            export scripts_current_ver=`cat "${PORT_WINE_TMP_PATH}/curent_var_ver" | grep SCRIPTS_NEXT_VERSION | awk -F "=" '{print $2}'`
-            print_info "Scripts version in github = ${scripts_current_ver}"
-            print_info "Scripts version local = ${scripts_install_ver}"
-            if [[ ! -z "${scripts_current_ver}" && "${scripts_current_ver}" -gt "${scripts_install_ver}" ]] ; then
+    [[ ! -f "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ]] && echo "1" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
+    read "scripts_update_not" < "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
+    if [[ "${scripts_update_not}" == "1" ]] ; then
+        export scripts_current_ver=`cat "${PORT_WINE_TMP_PATH}/curent_var_ver" | grep SCRIPTS_NEXT_VERSION | awk -F "=" '{print $2}'`
+        print_info "Scripts version in github = ${scripts_current_ver}"
+        print_info "Scripts version local = ${scripts_install_ver}"
+        if [[ ! -z "${scripts_current_ver}" ]] &&  [[ "${scripts_current_ver}" -gt "${scripts_install_ver}" ]] ; then
+            if [[ -f "${PW_WINELIB}/portable/bin/yad_new" ]] ; then
+                export pw_yad_new="${PW_WINELIB}/portable/bin/yad_new"
+                curl -s --list-only "https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine/${PW_CHANGELOG_FILE}" | tee "${PORT_WINE_TMP_PATH}/curent_var_ver" | sszen
+                CHANGLOG_NEWS=`cat "${PORT_WINE_TMP_PATH}/curent_var_ver" | sed "/Scripts version ${scripts_install_ver}/,$ d" | sed '1,/---/ d' `
+                xcsd=`"${pw_yad_new}" --title "${scripts_upd2} v.${scripts_current_ver}" --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
+                --borders=5 --form --separator='%%%' --width=1000 --height=350 --center \
+                --field=":TXT" "${CHANGLOG_NEWS}" \
+                --field="   ${scripts_upd3} :CB" "${scripts_upd4}!${scripts_upd5}!${scripts_upd6}" `
+                YAD_STATUS="$?"
+                if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
+                xcsd=`echo "${xcsd}" | awk -F'%%%' '{print $2}'`
+            else
                 xcsd=`zenity --title  "${scripts_upd1}" --text "${scripts_upd2}" --list --radiolist --height=240 --column="${inst_set}" --column "${scripts_upd3}" \
                 TRUE "${scripts_upd4}" \
                 FALSE "${scripts_upd5}" \
                 FALSE "${scripts_upd6}"`
-                case $xcsd in
-                    "${scripts_upd4}")
-                        echo "######################################################"
-                        print_info "Update scripts..."
-                        try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
-                        if try_download "https://github.com/Castro-Fidel/PortWINE/archive/refs/heads/master.tar.gz" "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" ; then
-                            if unpack_tar_gz "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" "${PORT_WINE_TMP_PATH}" ; then
-                                cp -fr "${PORT_WINE_TMP_PATH}/PortWINE-master/data_from_portwine/"* "${PORT_WINE_PATH}/data/"
-                                try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
-                                try_remove_dir "${PORT_WINE_TMP_PATH}/PortWINE-master/"
-                                echo "${scripts_current_ver}" > "${PORT_WINE_TMP_PATH}/scripts_ver"
+            fi
+            case $xcsd in
+                "${scripts_upd4}")
+                    echo "######################################################"
+                    print_info "Update scripts..."
+                    try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
+                    if try_download "https://github.com/Castro-Fidel/PortWINE/archive/refs/heads/master.tar.gz" "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" ; then
+                        if unpack_tar_gz "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" "${PORT_WINE_TMP_PATH}" ; then
+                            cp -fr "${PORT_WINE_TMP_PATH}/PortWINE-master/data_from_portwine/"* "${PORT_WINE_PATH}/data/"
+                            try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
+                            try_remove_dir "${PORT_WINE_TMP_PATH}/PortWINE-master/"
+                            echo "${scripts_current_ver}" > "${PORT_WINE_TMP_PATH}/scripts_ver"
+                            if [[ -z "${pw_yad_new}" ]] ; then
                                 zenity --title="Changelog" --text-info --width=1200 --height=550 \
                                 --filename="${PORT_WINE_PATH}/data/${PW_CHANGELOG_FILE}"
-                                [ "$?" == 0 ] && /usr/bin/env bash -c ${pw_full_command_line[*]} &
-                                exit 0
                             fi
-                        else
-                            zenity_error_download && pw_scripts_update
-                        fi ;;
-                    "${scripts_upd5}")
-                        echo " " ;;
-                    "${scripts_upd6}")
-                    echo "0" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ;;
-                esac
-            fi
+                            [ "$?" == 0 ] && /usr/bin/env bash -c ${pw_full_command_line[*]} &
+                            exit 0
+                        fi
+                    else
+                        zenity_error_download && pw_scripts_update
+                    fi ;;
+                "${scripts_upd5}")
+                    echo " " ;;
+                "${scripts_upd6}")
+                echo "0" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ;;
+            esac
         fi
-        try_remove_file "${PORT_WINE_TMP_PATH}/curent_var_ver"
     fi
+    try_remove_file "${PORT_WINE_TMP_PATH}/curent_var_ver"
     return 0
 }
 
@@ -683,16 +673,17 @@ update_winetricks () {
 }
 
 edit_db_from_gui () {
+    echo "edit_db_from_gui PORTWINE_DB_FILE=$PORTWINE_DB_FILE"
     for mod_db in $@ ; do
         echo "${mod_db}=${!mod_db}"
         if [ -z "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}="`" ] ; then
-            echo "export ${mod_db}=${!mod_db}" >> "${PORTWINE_DB_FILE}"
+            echo "export ${mod_db}=\"${!mod_db}\"" >> "${PORTWINE_DB_FILE}"
         elif [ "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}=" | grep -v "#"`" ] ; then
-            if [ "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}=" | grep -v "#"`" != "export ${mod_db}=${!mod_db}" ] ; then
-                sed -ri "s/^export ${mod_db}=.*/export ${mod_db}=${!mod_db}/" "${PORTWINE_DB_FILE}"
+            if [ "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}=" | grep -v "#"`" != "export ${mod_db}=\"${!mod_db}\"" ] ; then
+                sed -ri "s/^export ${mod_db}=.*/export ${mod_db}=\"${!mod_db}\"/" "${PORTWINE_DB_FILE}"
             fi
         elif [ "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}="`" != "export ${mod_db}=${!mod_db}" ] ; then
-            sed -ri "s/.*export ${mod_db}=.*/export ${mod_db}=${!mod_db}/g" "${PORTWINE_DB_FILE}"
+            sed -ri "s/.*export ${mod_db}=.*/export ${mod_db}=\"${!mod_db}\"/g" "${PORTWINE_DB_FILE}"
         fi
     done
     return 0
@@ -704,7 +695,7 @@ pw_create_gui_png () {
     else
         export PORTPROTON_NAME="$(basename "${portwine_exe}" | sed s/".exe"/""/gi )"
     fi
-    PW_RESIZE_TO=96
+    PW_RESIZE_TO=128
     try_remove_file "${PORT_WINE_PATH}/data/img/setup.png"
     if [[ -x "`which wrestool 2>/dev/null`" ]] && [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
         try_remove_dir "${PORT_WINE_TMP_PATH}/tmp_img"
@@ -724,9 +715,11 @@ pw_create_gui_png () {
        [[ -x "`which "convert" 2>/dev/null`" ]] && [[ -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
         convert "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" -resize ${PW_RESIZE_TO}x${PW_RESIZE_TO} "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" 
     fi
-    if [[ ! -z "`file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}"`" ]] ; then
-        export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" 
-    else
-        export PW_ICON_FOR_YAD="${PW_GUI_ICON_PATH}/port_proton.png"
+    if [[ -z "${PW_ICON_FOR_YAD}" ]] ; then
+        if [[ ! -z "`file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}"`" ]] ; then
+            export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" 
+        else
+            export PW_ICON_FOR_YAD="${PW_GUI_ICON_PATH}/port_proton.png"
+        fi
     fi
 }

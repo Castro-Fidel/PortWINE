@@ -22,7 +22,11 @@ fi
 . "$(dirname $(readlink -f "$0"))/functions_helper"
 
 start_portwine () {
+    export WINEPREFIX="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"
+    create_new_dir "${WINEPREFIX}/drive_c/"
+    try_force_link_dir "${PORT_WINE_PATH}/data/prefixes" "${WINEPREFIX}/drive_c/"
     export WINEARCH="win64"
+    pw_install_dll_in_prefix
     pw_check_and_download_wine "${PW_WINE_USE}" 
     init_wine_ver
     sed -i '/Steam.exe/d' "${WINEDIR}/share/wine/wine.inf"
@@ -54,12 +58,14 @@ start_portwine () {
             mv -f "${PW_WINELIB}/portable/lib/lib32" "${PW_WINELIB}/portable/lib/lib"
         fi
     fi
-    if [[ ! -z "${LD_LIBRARY_PATH}" ]] ; then 
-        if [[ -z "`echo ${LD_LIBRARY_PATH} | grep "${WINEDIR}/lib64:${WINEDIR}/lib"`" ]] ; then
-            export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${PW_WINELIB}/portable/lib/\$LIB:${LD_LIBRARY_PATH}"
+
+    PW_PV_OVERRIDES="/usr/lib/pressure-vessel/overrides/lib" 
+    if [[ ! -z "${LD_LIBRARY_PATH}" ]] ; then
+        if [[ -z "`echo ${PW_LD_LIBRARY_PATH} | grep "${WINEDIR}/lib64:${WINEDIR}/lib"`" ]] ; then
+            export PW_LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${PW_WINELIB}/portable/lib/\$LIB:${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:${LD_LIBRARY_PATH}"
         fi
     else
-        export LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${PW_WINELIB}/portable/lib/\$LIB"
+        export PW_LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${PW_WINELIB}/portable/lib/\$LIB:${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:${PW_PV_OVERRIDES}/i386-linux-gnu/aliases"
     fi 
 
     if [[ ! -z "${VK_LAYER_PATH}" ]]
@@ -86,8 +92,8 @@ start_portwine () {
     else
         var_winedlloverride_update "winegstreamer="
     fi
-    export STAGING_SHARED_MEMORY=1
-    export PW_FORCE_LARGE_ADDRESS_AWARE=1
+    # export STAGING_SHARED_MEMORY=1
+    # export PW_FORCE_LARGE_ADDRESS_AWARE=1
 
     if [ "${PW_USE_RUNTIME}" = 0 ] ; then
         export pw_runtime=""
@@ -275,7 +281,7 @@ start_portwine () {
     fi
     pw_vkbasalt_check
     pw_other_fixes
-    #init_pfx
+
     check_dirs_and_files_in_pfx () {
         create_new_dir "${WINEPREFIX}"
         create_new_dir "${WINEPREFIX}/drive_c"
@@ -300,6 +306,7 @@ start_portwine () {
         
         try_force_link_file "${WINEDIR}/share/wine/fonts/"tahoma.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"tahoma.ttf
     }
+    
     if [[ ! -d "${WINEPREFIX}" || ! -d "${WINEPREFIX}"/drive_c/windows || ! -d "${WINEPREFIX}/dosdevices" || \
     ! -f "${WINEPREFIX}"/userdef.reg || ! -f "${WINEPREFIX}"/system.reg || ! -f "${WINEPREFIX}"/user.reg ]]
     then
@@ -308,14 +315,14 @@ start_portwine () {
         # export PW_WINE_USE=${PW_PROTON_STEAM_VER}
         # init_wine_ver
         check_dirs_and_files_in_pfx
-        ${pw_runtime} env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -i &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
+        ${pw_runtime} env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -i &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
         wait_wineserver &&
         # export PW_WINE_USE="${OLD_PW_WINE_USE}"
         # init_wine_ver
         echo "${PW_WINE_USE}" > "${WINEPREFIX}/.wine_ver"
-    elif [[ -z "`cat ${WINEPREFIX}/.wine_ver | grep ${PW_WINE_USE}`" ]] ; then 
+    elif [[ -z "`cat "${WINEPREFIX}/.wine_ver" | grep ${PW_WINE_USE}`" ]] ; then 
         check_dirs_and_files_in_pfx
-        ${pw_runtime} env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -i &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
+        ${pw_runtime} env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -i &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
         wait_wineserver &&
         echo "${PW_WINE_USE}" > "${WINEPREFIX}/.wine_ver"
     fi
@@ -325,26 +332,15 @@ start_portwine () {
     if [ ! -d "${WINEPREFIX}/drive_c/users/${USER}" ]; then
 	    try_force_link_dir "${WINEPREFIX}/drive_c/users/steamuser" "${WINEPREFIX}/drive_c/users/${USER}"
     fi
-    [ ! -d "${PORT_WINE_PATH}/drive_c" ] && try_force_link_dir "${PORT_WINE_PATH}/data/pfx/drive_c/" "${PORT_WINE_PATH}/"
     create_new_dir "${WINEPREFIX}/drive_c/users/Public/Documents/Steam"
     create_new_dir "${WINEPREFIX}/drive_c/users/steamuser/Documents/Steam"
     if [ ! -d "${WINEPREFIX}/drive_c/users/steamuser/My Documents" ]
     then try_force_link_dir "${WINEPREFIX}/drive_c/users/steamuser/Documents" "${WINEPREFIX}/drive_c/users/steamuser/My Documents"
     fi
-    #try link Battle Eye libs
-    try_force_link_file "${PW_PLUGINS_PATH}"/BattlEye_Runtime/v1/lib/wine/fakedlls/beclient.dll "${WINEPREFIX}/drive_c/windows/syswow64/"
-    try_force_link_file "${PW_PLUGINS_PATH}"/BattlEye_Runtime/v1/lib64/wine/fakedlls/beclient_x64.dll "${WINEPREFIX}/drive_c/windows/system32/"
-    if [[ ! -d "${WINEDIR}"/lib/wine/i386-unix ]]
-    then try_force_link_file "${PW_PLUGINS_PATH}"/BattlEye_Runtime/v1/lib/wine/beclient.dll.so "${WINEDIR}"/lib/wine/
-    else try_force_link_file "${PW_PLUGINS_PATH}"/BattlEye_Runtime/v1/lib/wine/beclient.dll.so "${WINEDIR}"/lib/wine/i386-unix/
-    fi
-    if [[ ! -d "${WINEDIR}"/lib64/wine/x86_64-unix ]]
-    then try_force_link_file "${PW_PLUGINS_PATH}"/BattlEye_Runtime/v1/lib64/wine/beclient_x64.dll.so "${WINEDIR}"/lib64/wine/
-    else try_force_link_file "${PW_PLUGINS_PATH}"/BattlEye_Runtime/v1/lib64/wine/beclient_x64.dll.so "${WINEDIR}"/lib64/wine/x86_64-unix/
-    fi
-    try_force_link_file "${PW_PLUGINS_PATH}"/BattlEye_Runtime/BEClient.so "${WINEDIR}"/lib
-    try_force_link_file "${PW_PLUGINS_PATH}"/BattlEye_Runtime/BEClient_x64.so "${WINEDIR}"/lib64
-    var_winedlloverride_update "beclient,beclient_x64=b,n"
+    #enabled BattleEye_Runtime and EasyAntiCheat_Runtime
+    export PROTON_BATTLEYE_RUNTIME="${PW_PLUGINS_PATH}/d3d_extras/BattlEye_Runtime"
+    export PROTON_EAC_RUNTIME="${PW_PLUGINS_PATH}/d3d_extras/EasyAntiCheat_Runtime"
+    var_winedlloverride_update "easyanticheat_x86,easyanticheat_x64,beclient,beclient_x64=b,n"
     #try link d3d extras libs
     for d3d_extras_from_plugins in d3dcompiler_33 d3dcompiler_34 d3dcompiler_35 d3dcompiler_36 d3dcompiler_37 \
     d3dcompiler_38 d3dcompiler_39 d3dcompiler_40 d3dcompiler_41 d3dcompiler_42 d3dcompiler_43 d3dcompiler_46 \
@@ -469,7 +465,7 @@ start_portwine () {
             #     export PW_WINE_VER="${PW_PROTON_STEAM_VER}"
             #     init_wine_ver
             # fi
-            ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" \
+            ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${PW_DLL_NEED_INSTALL} &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
             wait_wineserver
             kill_portwine
@@ -484,7 +480,7 @@ start_portwine () {
         if [[ ! -z "${PW_WINDOWS_VER}" && `echo "$PW_WINDOWS_VER" | sed 's/.*/\L&/'` == "xp" ]] ; then
             export PW_WINDOWS_VER="xp64"
         fi
-        ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" \
+        ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
         "${WINELOADER}" winecfg -v `echo "win${PW_WINDOWS_VER}" | sed 's/.*/\L&/'`
         wait_wineserver
         kill_portwine
@@ -507,25 +503,25 @@ pw_run () {
     pw_mangohud_check
     PW_LOG_TO_FILE="${PORT_WINE_PATH}/${portname}.log"
     print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VKD3D_CONFIG" \
-    "LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2"
+    "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2"
     if [ "${PW_LOG}" == 1 ] ; then
         echo "WINEDLLOVERRIDES=${WINEDLLOVERRIDES}" >> "${PW_LOG_TO_FILE}"
         echo "------------------------------------" >> "${PW_LOG_TO_FILE}"
         echo "Log WINE:" >> "${PW_LOG_TO_FILE}"
         if [[ ! -z "${PW_GAMEMODERUN}" && "${PW_GAMEMODERUN}" != 0 ]] ; then
             ${optirun_on} ${pw_runtime} env LD_PRELOAD="${PW_LD_PRELOAD}" VK_LAYER_PATH="${VK_LAYER_PATH}" PATH="${PATH}" \
-            LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" ${RUN_MANGOHUD_IN_SLR} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
+            LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" ${RUN_MANGOHUD_IN_SLR} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
         else
-            ${optirun_on} ${pw_runtime} env VK_LAYER_PATH="${VK_LAYER_PATH}" PATH="${PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" \
+            ${optirun_on} ${pw_runtime} env VK_LAYER_PATH="${VK_LAYER_PATH}" PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             ${RUN_MANGOHUD_IN_SLR} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
         fi
     else
         [ "${PW_USE_TERMINAL}" != "1" ] && export PW_TERM=""
         if [[ ! -z "${PW_GAMEMODERUN}" && "${PW_GAMEMODERUN}" != 0 ]] ; then
             $PW_TERM ${optirun_on} ${pw_runtime} env LD_PRELOAD="${PW_LD_PRELOAD}" VK_LAYER_PATH="${VK_LAYER_PATH}" PATH="${PATH}" \
-            LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" ${RUN_MANGOHUD_IN_SLR} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]}
+            LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" ${RUN_MANGOHUD_IN_SLR} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]}
         else
-            $PW_TERM ${optirun_on} ${pw_runtime} env VK_LAYER_PATH="${VK_LAYER_PATH}" PATH="${PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" \
+            $PW_TERM ${optirun_on} ${pw_runtime} env VK_LAYER_PATH="${VK_LAYER_PATH}" PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             ${RUN_MANGOHUD_IN_SLR} "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]}
         fi
     fi
@@ -546,6 +542,8 @@ fi
 unset MANGOHUD MANGOHUD_DLSYM PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_YAD_SET PW_ICON_FOR_YAD
 unset PW_CHECK_AUTOINSTAL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PORTWINE_DB_FILE PW_DISABLED_CREATE_DB
 unset CHK_SYMLINK_FILE MESA_GL_VERSION_OVERRIDE PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME PORTWINE_CREATE_SHORTCUT_NAME
+unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER
+
 export portname=PortProton
 
 cd "$(dirname "`readlink -f "$0"`")" && export PORT_SCRIPTS_PATH="$(pwd)"
@@ -553,18 +551,59 @@ cd "${PORT_SCRIPTS_PATH}/../../" && export PORT_WINE_PATH="$(pwd)"
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 rm -f "${PORT_WINE_TMP_PATH}"/*.tar.*
 
-if [ -d "${PORT_WINE_PATH}/data/dist" ] ; then
+if [[ -d "${PORT_WINE_PATH}/data/dist" ]] ; then
     chmod -R 755 "${PORT_WINE_PATH}/data/dist"
     orig_IFS="$IFS"
     IFS=$'\n'
     for dist_dir in $(ls -1 "${PORT_WINE_PATH}/data/dist/") ; do
         dist_dir_new=`echo "${dist_dir}" | awk '$1=$1' | sed -e s/[[:blank:]]/_/g`
-        if [ ! -d "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}" ] ; then
+        if [[ ! -d "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}" ]] ; then
             mv -- "${PORT_WINE_PATH}/data/dist/$dist_dir" "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}"
         fi
     done
     IFS="$orig_IFS"
 fi
+
+create_new_dir "${PORT_WINE_PATH}/data/prefixes"
+try_force_link_dir "${PORT_WINE_PATH}/data/prefixes" "${PORT_WINE_PATH}"
+if [[ -d "${PORT_WINE_PATH}/data/pfx" ]] ; then 
+    mv -f "${PORT_WINE_PATH}/data/pfx" "${PORT_WINE_PATH}/data/prefixes/DEFAULT"
+    orig_IFS="$IFS"
+    IFS=$'\n'
+    for change_path in `grep -il "/data/pfx/" "${HOME}/.local/share/applications"/*.desktop` ; do
+        sed -i 's%/data/pfx/%/data/prefixes/DEFAULT/%g' "${change_path}"
+    done
+    for change_path in `grep -il "/data/pfx/" "${PORT_WINE_PATH}"/*.desktop` ; do
+        sed -i 's%/data/pfx/%/data/prefixes/DEFAULT/%g' "${change_path}"
+    done
+    IFS="$orig_IFS"
+    rm -f "${PORT_WINE_PATH}/drive_c"
+fi
+
+if [[ -d "${PORT_WINE_PATH}/data/pfx_dotnet" ]] ; then 
+    mv -f "${PORT_WINE_PATH}/data/pfx_dotnet" "${PORT_WINE_PATH}/data/prefixes/DOTNET"
+    orig_IFS="$IFS"
+    IFS=$'\n'
+    for change_path in `grep -il "/data/pfx_dotnet/" "${HOME}/.local/share/applications"/*.desktop` ; do
+        sed -i 's%/data/pfx_dotnet/%/data/prefixes/DOTNET/%g' "${change_path}"
+    done
+    for change_path in `grep -il "/data/pfx_dotnet/" "${PORT_WINE_PATH}"/*.desktop` ; do
+        sed -i 's%/data/pfx_dotnet/%/data/prefixes/DOTNET/%g' "${change_path}"
+    done
+    IFS="$orig_IFS"
+fi
+create_new_dir "${PORT_WINE_PATH}/data/prefixes/DOTNET"
+
+
+orig_IFS="$IFS"
+IFS=$'\n'
+for pfx_dir in $(ls -1 "${PORT_WINE_PATH}/data/prefixes/") ; do
+    pfx_dir_new=`echo "${pfx_dir}" | awk '$1=$1' | sed -e s/[[:blank:]]/_/g`
+    if [[ ! -d "${PORT_WINE_PATH}/data/prefixes/${pfx_dir_new^^}" ]] ; then
+        mv -- "${PORT_WINE_PATH}/data/prefixes/$pfx_dir" "${PORT_WINE_PATH}/data/prefixes/${pfx_dir_new^^}"
+    fi
+done
+IFS="$orig_IFS"
 
 create_new_dir "${PORT_WINE_TMP_PATH}"/gecko
 create_new_dir "${PORT_WINE_TMP_PATH}"/mono

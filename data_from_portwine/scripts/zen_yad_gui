@@ -85,7 +85,8 @@ pw_start_progress_bar_block () {
 }
 
 pw_stop_progress_bar () {
-    for PW_KILL_YAD_PID in "$PW_YAD_PID_PROGRESS_BAR_BLOCK" "$PW_YAD_PID_PROGRESS_BAR_CS" "$PW_YAD_PID_PFX_COVER_UI" "$PW_YAD_PID_PROGRESS_BAR_COVER"
+    for PW_KILL_YAD_PID in "$PW_YAD_PID_PROGRESS_BAR_BLOCK" "$PW_YAD_PID_PROGRESS_BAR_CS" \
+                           "$PW_YAD_PID_PFX_COVER_UI" "$PW_YAD_PID_PROGRESS_BAR_COVER"
     do
         kill -s SIGUSR1 "$PW_KILL_YAD_PID" > /dev/null 2>&1
     done
@@ -151,7 +152,7 @@ pw_gui_for_edit_db () {
             else export ${int_to_boole}="FALSE"
             fi
             TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
-            int_to_boole_non_pw="`echo ${int_to_boole} | sed 's/^PW_//'`"
+            int_to_boole_non_pw="`echo ${int_to_boole} | sed 's/^PW_//' `"
             ADD_CHK_BOX_EDIT_DB+="--field=  ${int_to_boole_non_pw}    !${!TMP_HELP_FOR_GUI}:CHK%${!int_to_boole}%"
         done
     }
@@ -180,15 +181,11 @@ pw_gui_for_edit_db () {
     --text "Change settings in database file for ${PORTWINE_DB}\n" --separator=" " --borders=10 --center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --button="CANCEL":1 --button="OPEN DB FILE":150 --button="SAVE CHANGES":0
     YAD_STATUS="$?"
-    if [[ "$YAD_STATUS" == "1" ]] ; then
-        /usr/bin/env bash -c ${pw_full_command_line[*]} &
-        exit 0
-    elif [[ "$YAD_STATUS" == "252" ]] ; then 
-        exit 0
-    elif [ "$YAD_STATUS" == "150" ] ; then
-        xdg-open "${PORTWINE_DB_FILE}" &
-        exit 0
-    fi
+    case "$YAD_STATUS" in 
+          1) /usr/bin/env bash -c ${pw_full_command_line[*]} & exit 0 ;;
+        150) xdg-open "${PORTWINE_DB_FILE}" & exit 0 ;;
+        252) exit 0 ;;
+    esac
     output_yad_edit_db=(`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db"`)
     bool_from_yad=0
     edit_db_field_read () {
@@ -203,9 +200,9 @@ pw_gui_for_edit_db () {
     }
     edit_db_field_read $@
     PW_WINDOWS_VER="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $1}'`"
-    PW_DLL_INSTALL=\"`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $2}'`\"
-    WINEDLLOVERRIDES=\"`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $3}'`\"
-    LAUNCH_PARAMETERS=\"`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $5}'`\"
+    PW_DLL_INSTALL=`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $2}'`
+    WINEDLLOVERRIDES=`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $3}'`
+    LAUNCH_PARAMETERS=`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $5}'`
     FPS_LIMIT="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $7}'`"
 
     if [ "${FPS_LIMIT}" == 0 ] ; then
@@ -213,6 +210,7 @@ pw_gui_for_edit_db () {
     else
         export MANGOHUD_CONFIG=font_size=24,position=top-left,toggle_hud=Shift_R+F12,no_display,resolution,wine,gpu_name,vulkan_driver,gpu_stats,vkbasalt,fps_limit=${FPS_LIMIT}
     fi
+    echo "pw_gui_for_edit_db PORTWINE_DB_FILE=$PORTWINE_DB_FILE"
     edit_db_from_gui $@ MANGOHUD_CONFIG LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES
     return 0
 }

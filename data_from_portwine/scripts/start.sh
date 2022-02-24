@@ -52,7 +52,7 @@ portwine_create_shortcut () {
     chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
     `zenity --question --title "${inst_set}." --text "${ss_done}" --no-wrap ` &> /dev/null
     if [ $? -eq "0" ]; then
-        cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" ${HOME}/.local/share/applications/
+        cp -fu "${PORT_WINE_PATH}/${name_desktop}.desktop" ${HOME}/.local/share/applications/
     fi
     xdg-open "${PORT_WINE_PATH}" 2>1 >/dev/null &
 }
@@ -61,7 +61,6 @@ portwine_delete_shortcut () {
     rm -f "`grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop`"
     rm -f "`grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop`" 
 }
-
 
 portwine_start_debug () {
     kill_portwine
@@ -126,7 +125,7 @@ portwine_start_debug () {
     echo "Graphic cards and drivers:" >> "${PORT_WINE_PATH}/${portname}.log"
     echo 'lspci | grep -i vga:' >> "${PORT_WINE_PATH}/${portname}.log"
     echo `lspci | grep -i vga` >> "${PORT_WINE_PATH}/${portname}.log"
-    env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_WINELIB}/portable/lib/\$LIB" "${PW_WINELIB}/portable/bin/glxinfo" -B >> "${PORT_WINE_PATH}/${portname}.log"
+    env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${PW_WINELIB}/portable/bin/glxinfo" -B >> "${PORT_WINE_PATH}/${portname}.log"
     echo " " >> "${PORT_WINE_PATH}/${portname}.log"
     echo "inxi -G:" >> "${PORT_WINE_PATH}/${portname}.log"
     env LANG=C "${PW_WINELIB}/portable/bin/inxi" -G >> "${PORT_WINE_PATH}/${portname}.log"
@@ -146,7 +145,7 @@ portwine_start_debug () {
     fi
     echo "-------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "winetricks.log:" >> "${PORT_WINE_PATH}/${portname}.log"
-    cat "${WINEPREFIX}/winetricks.log" >> "${PORT_WINE_PATH}/${portname}.log"
+    cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     if [ ! -z "${PORTWINE_DB_FILE}" ]; then
         echo "Use ${PORTWINE_DB_FILE} db file:" >> "${PORT_WINE_PATH}/${portname}.log"
@@ -211,7 +210,7 @@ pw_winecmd () {
     export PW_USE_TERMINAL=1
     start_portwine
     cd "${WINEPREFIX}/drive_c"
-    ${pw_runtime} env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" xterm -e "${WINELOADER}" cmd
+    ${pw_runtime} env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" xterm -e "${WINELOADER}" cmd
     stop_portwine
 }
 
@@ -259,7 +258,7 @@ pw_edit_db () {
 }
 
 pw_autoinstall_from_db () {
-    export PW_USER_TEMP="$WINEPREFIX/drive_c"
+    export PW_USER_TEMP="${PORT_WINE_TMP_PATH}"
     export PW_FORCE_LARGE_ADDRESS_AWARE=0
     export PW_USE_GAMEMODE=0
     export PW_CHECK_AUTOINSTAL=1
@@ -277,6 +276,23 @@ pw_autoinstall_from_db () {
 }
 
 ###MAIN###
+export PW_PREFIX_NAME="`echo "${PW_PREFIX_NAME}" | sed -e s/[[:blank:]]/_/g`"
+PW_ALL_PREFIXES=`ls "${PORT_WINE_PATH}/data/prefixes/" | sed -e s/"${PW_PREFIX_NAME}$"//g`
+
+# if [[ ! -z "${PORTWINE_DB}" ]] && [[ -z `echo "${PW_PREFIX_NAME}" | grep -i "$(echo "${PORTWINE_DB}" | sed -e s/[[:blank:]]/_/g)"` ]] ; then 
+#     export PW_PREFIX_NAME="${PW_PREFIX_NAME}!`echo "${PORTWINE_DB}" | sed -e s/[[:blank:]]/_/g`"
+# fi
+
+unset PW_ADD_PREFIXES_TO_GUI
+IFS_OLD=$IFS
+IFS=$'\n'
+for PAIG in ${PW_ALL_PREFIXES[*]} ; do 
+    [[ "${PAIG}" != `echo "${PORTWINE_DB^^}" | sed -e s/[[:blank:]]/_/g` ]] && \
+    export PW_ADD_PREFIXES_TO_GUI="${PW_ADD_PREFIXES_TO_GUI}!${PAIG}"
+done
+IFS=$IFS_OLD
+export PW_ADD_PREFIXES_TO_GUI="${PW_PREFIX_NAME^^}${PW_ADD_PREFIXES_TO_GUI}"
+
 PW_ALL_DIST=`ls "${PORT_WINE_PATH}/data/dist/" | sed -e s/"${PW_PROTON_GE_VER}$//g" | sed -e s/"${PW_PROTON_STEAM_VER}$//g"`
 unset DIST_ADD_TO_GUI
 for DAIG in ${PW_ALL_DIST}
@@ -340,6 +356,7 @@ if [ ! -z "${portwine_exe}" ]; then
         --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
         --field="3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
         --field="  WINE  : :CB" "${PW_DEFAULT_WINE_USE}" \
+        --field="PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
         --field=":LBL" "" \
         --button='VKBASALT'!!"${ENABLE_VKBASALT_INFO}":120 \
         --button='EDIT  DB'!!"${loc_edit_db} ${PORTWINE_DB}":118 \
@@ -350,13 +367,19 @@ if [ ! -z "${portwine_exe}" ]; then
         if [[ "$PW_YAD_SET" == "1" || "$PW_YAD_SET" == "252" ]] ; then exit 0 ; fi
         export VULKAN_MOD=`echo "${OUTPUT_START}" | grep \;\; | awk -F";" '{print $1}'`
         export PW_WINE_VER=`echo "${OUTPUT_START}" | grep \;\; | awk -F";" '{print $2}'`
+        export PW_PREFIX_NAME=`echo "${OUTPUT_START}" | grep \;\; | awk -F";" '{print $3}' | sed -e s/[[:blank:]]/_/g`
+        if [[ -z "${PW_PREFIX_NAME}" ]] || [[ ! -z "`echo "${PW_PREFIX_NAME}" | grep -E '^_.*' `" ]] ; then
+            export PW_PREFIX_NAME="DEFAULT"
+        else
+            export PW_PREFIX_NAME="${PW_PREFIX_NAME^^}"
+        fi
     elif [ ! -z "${PORTWINE_DB_FILE}" ]; then
         portwine_launch
     fi
 else
     button_click () {
         [ ! -z "$1" ] && echo "$1" > "${PORT_WINE_TMP_PATH}/tmp_yad_form"
-        if [ ! -z `pidof -s yad` ] ; then
+        if [ ! -z `pidof -s yad` ] || [ ! -z `pidof -s yad_new` ] ; then
             kill -s SIGUSR1 `pgrep -a yad | grep "\-\-key=${KEY} \-\-notebook" | awk '{print $1}'` > /dev/null 2>&1
         fi
     }
@@ -395,72 +418,65 @@ else
     }
     export -f gui_wine_uninstaller
 
-    gui_open_var () {
-        xdg-open "${PORT_SCRIPTS_PATH}/var"
+    gui_open_user_conf () {
+        xdg-open "${PORT_WINE_PATH}/data/user.conf"
     }
-    export -f gui_open_var
+    export -f gui_open_user_conf
 
     export KEY=$RANDOM
-    "${pw_yad}" --plug=$KEY --tabnum=4 --form --columns=2 \
-    --field="CLEAR PREFIX":"BTN" '@bash -c "button_click gui_clear_pfx"'  \
-    --field="EDIT SCRIPT VAR":"BTN" '@bash -c "button_click gui_open_var"' \
-    --field="WINE UNINSTALLER":"BTN" '@bash -c "button_click gui_wine_uninstaller"' \
-    --field="UPDATE PORTPROTON":"BTN" '@bash -c "button_click gui_pw_update"' \
-    --field="REMOVE PORTPROTON":"BTN" '@bash -c "button_click gui_rm_portproton"' \
-    --field="CHANGELOG":"BTN" '@bash -c "button_click open_changelog"' &
+    "${pw_yad_new}" --plug=${KEY} --tabnum=3 --columns=4 --align-buttons --form --separator=";" \
+    --field="  3D API  : :CB" "VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL" \
+    --field="  PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
+    --field="  WINE    : :CB" "${PW_DEFAULT_WINE_USE}" \
+    --field="                    DOWNLOAD OTHER WINE "!"${loc_download_other_wine}":"FBTN" '@bash -c "button_click gui_proton_downloader"' \
+    --field='   DEBUG'!""!"${loc_debug}":"FBTN" '@bash -c "button_click DEBUG"' \
+    --field='   WINECFG'!""!"${loc_winecfg}":"FBTN" '@bash -c "button_click WINECFG"' \
+    --field='   WINEFILE'!""!"${loc_winefile}":"FBTN" '@bash -c "button_click WINEFILE"' \
+    --field='   WINECMD'!""!"${loc_winecmd}":"FBTN" '@bash -c "button_click WINECMD"' \
+    --field='   WINEREG'!""!"${loc_winereg}":"FBTN" '@bash -c "button_click WINEREG"' \
+    --field='   WINETRICKS'!""!"${loc_winetricks}":"FBTN" '@bash -c "button_click WINETRICKS"' \
+    --field="   WINE UNINSTALLER"!""!"":"FBTN" '@bash -c "button_click gui_wine_uninstaller"' \
+    --field="   CLEAR PREFIX"!""!"":"FBTN" '@bash -c "button_click gui_clear_pfx"'  \
+    --field="   EDIT USER.CONF"!""!"":"FBTN" '@bash -c "button_click gui_open_user_conf"' \
+    --field="   REMOVE PORTPROTON"!""!"":"FBTN" '@bash -c "button_click gui_rm_portproton"' \
+    --field="   UPDATE PORTPROTON"!""!"":"FBTN" '@bash -c "button_click gui_pw_update"' \
+    --field="   CHANGELOG"!""!"":"FBTN" '@bash -c "button_click open_changelog"' &> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" &
 
-    "${pw_yad}" --plug=$KEY --tabnum=3 --form --columns=3  --scroll  --height=500 \
-    --field="   Dolphin 5.0"!"$PW_GUI_ICON_PATH/dolphin.png":"BTN" '@bash -c "button_click PW_DOLPHIN"' \
-    --field="   MAME"!"$PW_GUI_ICON_PATH/mame.png":"BTN" '@bash -c "button_click PW_MAME"' \
-    --field="   ScummVM"!"$PW_GUI_ICON_PATH/scummvm.png":"BTN" '@bash -c "button_click PW_SCUMMVM"' \
-    --field="   RetroArch"!"$PW_GUI_ICON_PATH/retroarch.png":"BTN" '@bash -c "button_click PW_RETROARCH"' \
-    --field="   PPSSPP Windows"!"$PW_GUI_ICON_PATH/ppsspp.png":"BTN" '@bash -c "button_click PW_PPSSPP"' \
-    --field="   Citra"!"$PW_GUI_ICON_PATH/citra.png":"BTN" '@bash -c "button_click PW_CITRA"' \
-    --field="   Cemu"!"$PW_GUI_ICON_PATH/cemu.png":"BTN" '@bash -c "button_click PW_CEMU"' \
-    --field="   DuckStation"!"$PW_GUI_ICON_PATH/duckstation.png":"BTN" '@bash -c "button_click PW_DUCKSTATION"' \
-    --field="   ePSXe"!"$PW_GUI_ICON_PATH/epsxe.png":"BTN" '@bash -c "button_click PW_EPSXE"' \
-    --field="   Project64"!"$PW_GUI_ICON_PATH/project64.png":"BTN" '@bash -c "button_click PW_PROJECT64"' \
-    --field="   VBA-M"!"$PW_GUI_ICON_PATH/vba-m.png":"BTN" '@bash -c "button_click PW_VBA-M"' \
-    --field="   Yabause"!"$PW_GUI_ICON_PATH/yabause.png":"BTN" '@bash -c "button_click PW_YABAUSE"' &
+    "${pw_yad_new}" --plug=$KEY --tabnum=2 --form --columns=3 --align-buttons --keep-icon-size --scroll  \
+    --field="   Dolphin 5.0"!"$PW_GUI_ICON_PATH/dolphin.png"!"":"FBTN" '@bash -c "button_click PW_DOLPHIN"' \
+    --field="   MAME"!"$PW_GUI_ICON_PATH/mame.png"!"":"FBTN" '@bash -c "button_click PW_MAME"' \
+    --field="   ScummVM"!"$PW_GUI_ICON_PATH/scummvm.png"!"":"FBTN" '@bash -c "button_click PW_SCUMMVM"' \
+    --field="   RetroArch"!"$PW_GUI_ICON_PATH/retroarch.png"!"":"FBTN" '@bash -c "button_click PW_RETROARCH"' \
+    --field="   PPSSPP Windows"!"$PW_GUI_ICON_PATH/ppsspp.png"!"":"FBTN" '@bash -c "button_click PW_PPSSPP"' \
+    --field="   Citra"!"$PW_GUI_ICON_PATH/citra.png"!"":"FBTN" '@bash -c "button_click PW_CITRA"' \
+    --field="   Cemu"!"$PW_GUI_ICON_PATH/cemu.png"!"":"FBTN" '@bash -c "button_click PW_CEMU"' \
+    --field="   DuckStation"!"$PW_GUI_ICON_PATH/duckstation.png"!"":"FBTN" '@bash -c "button_click PW_DUCKSTATION"' \
+    --field="   ePSXe"!"$PW_GUI_ICON_PATH/epsxe.png"!"":"FBTN" '@bash -c "button_click PW_EPSXE"' \
+    --field="   Project64"!"$PW_GUI_ICON_PATH/project64.png"!"":"FBTN" '@bash -c "button_click PW_PROJECT64"' \
+    --field="   VBA-M"!"$PW_GUI_ICON_PATH/vba-m.png"!"":"FBTN" '@bash -c "button_click PW_VBA-M"' \
+    --field="   Yabause"!"$PW_GUI_ICON_PATH/yabause.png"!"":"FBTN" '@bash -c "button_click PW_YABAUSE"' &
 
-    "${pw_yad}" --plug=$KEY --tabnum=2 --form --columns=3  --scroll  --height=500 \
-    --field="   Wargaming Game Center"!"$PW_GUI_ICON_PATH/wgc.png":"BTN" '@bash -c "button_click PW_WGC"' \
-    --field="   Battle.net Launcher"!"$PW_GUI_ICON_PATH/battle_net.png":"BTN" '@bash -c "button_click PW_BATTLE_NET"' \
-    --field="   Epic Games Launcher"!"$PW_GUI_ICON_PATH/epicgames.png":"BTN" '@bash -c "button_click PW_EPIC"' \
-    --field="   GoG Galaxy Launcher"!"$PW_GUI_ICON_PATH/gog.png":"BTN" '@bash -c "button_click PW_GOG"' \
-    --field="   Ubisoft Game Launcher"!"$PW_GUI_ICON_PATH/ubc.png":"BTN" '@bash -c "button_click PW_UBC"' \
-    --field="   Steam Client Launcher"!"$PW_GUI_ICON_PATH/steam.png":"BTN" '@bash -c "button_click PW_STEAM"' \
-    --field="   EVE Online Launcher"!"$PW_GUI_ICON_PATH/eve.png":"BTN" '@bash -c "button_click PW_EVE"' \
-    --field="   Origin Launcher"!"$PW_GUI_ICON_PATH/origin.png":"BTN" '@bash -c "button_click PW_ORIGIN"' \
-    --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png":"BTN" '@bash -c "button_click PW_BETHESDA"' \
-    --field="   Rockstar Games Launcher"!"$PW_GUI_ICON_PATH/Rockstar.png":"BTN" '@bash -c "button_click PW_ROCKSTAR"' \
-    --field="   My.Games Launcher"!"$PW_GUI_ICON_PATH/mygames.png":"BTN" '@bash -c "button_click PW_MYGAMES"' \
-    --field="   OSU"!"$PW_GUI_ICON_PATH/osu.png":"BTN" '@bash -c "button_click PW_OSU"' \
-    --field="   Ankama Launcher"!"$PW_GUI_ICON_PATH/ankama.png":"BTN" '@bash -c "button_click PW_ANKAMA"' \
-    --field="   League of Legends"!"$PW_GUI_ICON_PATH/lol.png":"BTN" '@bash -c "button_click PW_LOL"' \
-    --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png":"BTN" '@bash -c "button_click  PW_GAMEFORGE"' \
-    --field="   ITCH.IO"!"$PW_GUI_ICON_PATH/itch.png":"BTN" '@bash -c "button_click PW_ITCH"' & 
+    "${pw_yad_new}" --plug=$KEY --tabnum=1 --form --columns=3 --align-buttons --keep-icon-size --scroll \
+    --field="   Wargaming Game Center"!"$PW_GUI_ICON_PATH/wgc.png"!"":"FBTN" '@bash -c "button_click PW_WGC"' \
+    --field="   Battle.net Launcher"!"$PW_GUI_ICON_PATH/battle_net.png"!"":"FBTN" '@bash -c "button_click PW_BATTLE_NET"' \
+    --field="   Epic Games Launcher"!"$PW_GUI_ICON_PATH/epicgames.png"!"":"FBTN" '@bash -c "button_click PW_EPIC"' \
+    --field="   GoG Galaxy Launcher"!"$PW_GUI_ICON_PATH/gog.png"!"":"FBTN" '@bash -c "button_click PW_GOG"' \
+    --field="   Ubisoft Game Launcher"!"$PW_GUI_ICON_PATH/ubc.png"!"":"FBTN" '@bash -c "button_click PW_UBC"' \
+    --field="   Steam Client Launcher"!"$PW_GUI_ICON_PATH/steam.png"!"":"FBTN" '@bash -c "button_click PW_STEAM"' \
+    --field="   EVE Online Launcher"!"$PW_GUI_ICON_PATH/eve.png"!"":"FBTN" '@bash -c "button_click PW_EVE"' \
+    --field="   Origin Launcher"!"$PW_GUI_ICON_PATH/origin.png"!"":"FBTN" '@bash -c "button_click PW_ORIGIN"' \
+    --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"' \
+    --field="   Rockstar Games Launcher"!"$PW_GUI_ICON_PATH/Rockstar.png"!"":"FBTN" '@bash -c "button_click PW_ROCKSTAR"' \
+    --field="   My.Games Launcher"!"$PW_GUI_ICON_PATH/mygames.png"!"":"FBTN" '@bash -c "button_click PW_MYGAMES"' \
+    --field="   OSU"!"$PW_GUI_ICON_PATH/osu.png"!"":"FBTN" '@bash -c "button_click PW_OSU"' \
+    --field="   Ankama Launcher"!"$PW_GUI_ICON_PATH/ankama.png"!"":"FBTN" '@bash -c "button_click PW_ANKAMA"' \
+    --field="   League of Legends"!"$PW_GUI_ICON_PATH/lol.png"!"":"FBTN" '@bash -c "button_click PW_LOL"' \
+    --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png"!"":"FBTN" '@bash -c "button_click  PW_GAMEFORGE"' \
+    --field="   ITCH.IO"!"$PW_GUI_ICON_PATH/itch.png"!"":"FBTN" '@bash -c "button_click PW_ITCH"' & 
 
-    # --field="   Glyph Client"!"$PW_GUI_ICON_PATH/glyph.png":"BTN" '@bash -c "button_click  PW_GLYPH"' \
-
-    "${pw_yad}" --plug=${KEY} --tabnum=1 --columns=3 --form --separator=";" \
-    --image "$PW_GUI_ICON_PATH/port_proton.png" \
-    --field=":CB" "VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL" \
-    --field=":LBL" "" \
-    --field='DEBUG'!!"${loc_debug}":"BTN" '@bash -c "button_click DEBUG"' \
-    --field='WINECFG'!!"${loc_winecfg}":"BTN" '@bash -c "button_click WINECFG"' \
-    --field=":CB" "${PW_DEFAULT_WINE_USE}" \
-    --field=":LBL" "" \
-    --field='WINEFILE'!!"${loc_winefile}":"BTN" '@bash -c "button_click WINEFILE"' \
-    --field='WINECMD'!!"${loc_winecmd}":"BTN" '@bash -c "button_click WINECMD"' \
-    --field="GET  OTHER  WINE"!!"":"FBTN" '@bash -c "button_click gui_proton_downloader"' \
-    --field=":LBL" "" \
-    --field='WINEREG'!!"${loc_winereg}":"BTN" '@bash -c "button_click WINEREG"' \
-    --field='WINETRICKS'!!"${loc_winetricks}":"BTN" '@bash -c "button_click WINETRICKS"' &> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" &
-
-    "${pw_yad}" --key=$KEY --notebook --borders=3 --width=1000 --height=168 --no-buttons --text-align=center \
-    --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "${portname}-${install_ver} (${scripts_install_ver})" --separator=";" \
-    --tab-pos=right --tab="PORT_PROTON" --tab="AUTOINSTALL" --tab="  EMULATORS"  --tab="    SETTINGS" --center
+    "${pw_yad_new}" --key=$KEY --notebook --borders=5 --width=1000 --height=235 --no-buttons --auto-close \
+    --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "${portname}-${install_ver} (${scripts_install_ver})" \
+    --tab-pos=bottom --tab="AUTOINSTALL"!""!"" --tab="EMULATORS"!""!"" --tab="SETTINGS"!""!"" --center 
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
 
@@ -469,11 +485,17 @@ else
         try_remove_file "${PORT_WINE_TMP_PATH}/tmp_yad_form"
     fi
     if [ -f "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" ] ; then
-        cat "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan"
         export VULKAN_MOD=`cat "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" | grep \;\;  | awk -F";" '{print $1}'`
-        export PW_WINE_VER=`cat "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" | grep \;\; | awk -F";" '{print $5}'`
+        export PW_PREFIX_NAME=`cat "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" | grep \;\;  | awk -F";" '{print $2}' | sed -e "s/[[:blank:]]/_/g" `
+        export PW_WINE_VER=`cat "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" | grep \;\; | awk -F";" '{print $3}'`
+        if [[ -z "${PW_PREFIX_NAME}" ]] || [[ ! -z "`echo "${PW_PREFIX_NAME}" | grep -E '^_.*' `" ]] ; then
+            export PW_PREFIX_NAME="DEFAULT"
+        else
+            export PW_PREFIX_NAME="${PW_PREFIX_NAME^^}"
+        fi
         try_remove_file "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan"
     fi
+    export PW_DISABLED_CREATE_DB=1
 fi
 
 if [[ ! -z "${VULKAN_MOD}" && "${VULKAN_MOD}" = "OPENGL" ]] 
@@ -486,21 +508,21 @@ fi
 
 init_wine_ver
 
-if [ -z "${PW_DISABLED_CREATE_DB}" ] ; then
-    if [ ! -z "${PORTWINE_DB}" ] ; then
+if [[ -z "${PW_DISABLED_CREATE_DB}" ]] ; then
+    if [[ ! -z "${PORTWINE_DB}" ]] && [[ -z "${PORTWINE_DB_FILE}" ]] ; then
         PORTWINE_DB_FILE=`grep -il "\#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/*`
-        if [ -z "${PORTWINE_DB_FILE}" ] ; then
-            echo "#!/usr/bin/env bash"  > "${PORT_SCRIPTS_PATH}/portwine_db/$PORTWINE_DB"
-            echo "#Author: "${USER}"" >> "${PORT_SCRIPTS_PATH}/portwine_db/$PORTWINE_DB"
-            echo "#"${PORTWINE_DB}.exe"" >> "${PORT_SCRIPTS_PATH}/portwine_db/$PORTWINE_DB"
-            echo "#Rating=1-5" >> "${PORT_SCRIPTS_PATH}/portwine_db/$PORTWINE_DB"
-            cat "${PORT_SCRIPTS_PATH}/portwine_db/default" | grep "##" >> "${PORT_SCRIPTS_PATH}/portwine_db/$PORTWINE_DB"
-            export PORTWINE_DB_FILE="${PORT_SCRIPTS_PATH}/portwine_db/${PORTWINE_DB}"
+        if [[ -z "${PORTWINE_DB_FILE}" ]] ; then
+            echo "#!/usr/bin/env bash"  > "${portwine_exe}".ppdb
+            echo "#Author: "${USER}"" >> "${portwine_exe}".ppdb
+            echo "#"${PORTWINE_DB}.exe"" >> "${portwine_exe}".ppdb
+            echo "#Rating=1-5" >> "${portwine_exe}".ppdb
+            cat "${PORT_SCRIPTS_PATH}/portwine_db/default" | grep "##" >> "${portwine_exe}".ppdb
+            export PORTWINE_DB_FILE="${portwine_exe}".ppdb
         fi
-        edit_db_from_gui PW_VULKAN_USE PW_WINE_USE
     fi
+    edit_db_from_gui PW_VULKAN_USE PW_WINE_USE PW_PREFIX_NAME 
 fi
-echo "PW_YAD_SET=$PW_YAD_SET"
+
 case "$PW_YAD_SET" in
     1|252) exit 0 ;;
     98) portwine_delete_shortcut ;;
@@ -514,7 +536,7 @@ case "$PW_YAD_SET" in
     WINETRICKS|116) pw_winetricks ;;
     118) pw_edit_db ;;
     gui_clear_pfx) gui_clear_pfx ;;
-    gui_open_var) gui_open_var ;;
+    gui_open_user_conf) gui_open_user_conf ;;
     gui_wine_uninstaller) gui_wine_uninstaller ;;
     gui_rm_portproton) gui_rm_portproton ;;
     gui_pw_update) gui_pw_update ;;

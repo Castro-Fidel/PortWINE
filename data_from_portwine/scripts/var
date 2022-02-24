@@ -1,6 +1,6 @@
 #!/bin/env bash
 #Author: Castro-Fidel (PortWINE-Linux.ru)
-#SCRIPTS_NEXT_VERSION=2085
+#SCRIPTS_NEXT_VERSION=2089
 #PORT_NEXT_VERSION=97
 ########################################################################
 export PW_MANGOHUD=1
@@ -19,21 +19,20 @@ export PW_FORCE_USE_VSYNC=2
 export PW_LOG=0
 export PW_TERM=""
 export PW_USE_TERMINAL=0
-export PW_MUST_HAVE_DLL="physx mfc42 vcrun2019"
 export PW_WINEDBG_DISABLE=1
 export PW_WINDOWS_VER="10"
 export WINEARCH="win64"
-export PW_LIBS_VER="_v21"
+export PW_LIBS_VER="_v22.2"
 export PORTWINE_URL="http://portwine-linux.ru/"
 export GDK_BACKEND="x11"
 export PW_USE_GSTREAMER="1"
-export WINEPREFIX="${PORT_WINE_PATH}/data/pfx"
+export PW_PREFIX_NAME="DEFAULT"
 export WINE_WIN_START="start.exe /i /unix"
 ###DEFAULT_WINE###
 export PW_WINE_USE=PROTON_GE
-export PW_PLUGINS_VER="_v2"
+export PW_PLUGINS_VER="_v3"
 ###WINE_PROTON_STEAM###
-export PW_STEAM_VER="6.3-8C_PW2"
+export PW_STEAM_VER="7.0-1"
 export PW_PROTON_STEAM_VER="PROTON_STEAM_${PW_STEAM_VER}"
 ###WINE_PROTON_GE###
 export PW_GE_VER="7.1-2"
@@ -41,33 +40,41 @@ export PW_PROTON_GE_VER="PROTON_GE_${PW_GE_VER}"
 export WINE_FULLSCREEN_FSR="1"
 export WINE_FULLSCREEN_FSR_STRENGTH="2"
 #################################################################
+pw_install_dll_in_prefix ()
+{
+    case $PW_PREFIX_NAME in
+        DEFAULT) export PW_MUST_HAVE_DLL="physx mfc42 vcrun2019" ;;
+         DOTNET) export PW_MUST_HAVE_DLL="physx mfc42 vcrun2019 dotnet20sp2 dotnet48" ;;
+              *) export PW_MUST_HAVE_DLL="" ;;
+    esac
+}
 add_in_start_portwine ()
 {
-echo " "
+    echo " "
 }
 ########################################################################
 add_in_stop_portwine ()
 {
-echo " "
+    echo " "
 }
 ########################################################################
 pw_other_fixes () {
-if [[ -f "${WINEPREFIX}/system.reg" ]] ; then
-#fix after installation Origin, for disabled OriginWebHelperService by default
-    if [[ ! -z `cat "${WINEPREFIX}/system.reg" | grep -wm 1 "Origin.exe" | awk '{print $1}'` ]] ; then
-        sysreg_norig=$(((`cat -n "${WINEPREFIX}/system.reg" | grep OriginWebHelperService | awk '{print $1}'` + 3)))
-        sed -i "${sysreg_norig}s/dword:0000000[1-2]/dword:00000003/" "${WINEPREFIX}/system.reg"
-    fi
-    #fix after installation PnkBstr*, for disabled PnkBstr* by default
-    for fix_reg in "PnkBstrA.exe" "PnkBstrB.exe" ; do
-        if [[ ! -z `cat "${WINEPREFIX}/system.reg" | grep -wm 1 "${fix_reg}" | awk '{print $1}'` ]] ; then
-            sysreg_norig=$(((`cat -n "${WINEPREFIX}/system.reg" | grep "${fix_reg}" | awk '{print $1}'` + 3)))
-            sed -i "${sysreg_norig}s/dword:0000000[1-2]/dword:00000003/" "${WINEPREFIX}/system.reg"
+    if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" ]] ; then
+    #fix after installation Origin, for disabled OriginWebHelperService by default
+        if [[ ! -z `cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" | grep -wm 1 "Origin.exe" | awk '{print $1}'` ]] ; then
+            sysreg_norig=$(((`cat -n "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" | grep OriginWebHelperService | awk '{print $1}'` + 3)))
+            sed -i "${sysreg_norig}s/dword:0000000[1-2]/dword:00000003/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
         fi
-    done
-fi
-#disabled silent autostart steam
-if [[ -f "${WINEPREFIX}/user.reg" ]] ; then
-    sed -i '/steam.exe\\" -silent"/d' "${WINEPREFIX}/user.reg"
-fi
+        #fix after installation PnkBstr*, for disabled PnkBstr* by default
+        for fix_reg in "PnkBstrA.exe" "PnkBstrB.exe" ; do
+            if [[ ! -z `cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" | grep -wm 1 "${fix_reg}" | awk '{print $1}'` ]] ; then
+                sysreg_norig=$(((`cat -n "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" | grep "${fix_reg}" | awk '{print $1}'` + 3)))
+                sed -i "${sysreg_norig}s/dword:0000000[1-2]/dword:00000003/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
+            fi
+        done
+    fi
+    #disabled silent autostart steam
+    if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" ]] ; then
+        sed -i '/steam.exe\\" -silent"/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
+    fi
 }
