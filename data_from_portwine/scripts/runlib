@@ -23,8 +23,8 @@ fi
 
 start_portwine () {
     export WINEPREFIX="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"
-    create_new_dir "${WINEPREFIX}/drive_c/"
-    try_force_link_dir "${PORT_WINE_PATH}/data/prefixes" "${WINEPREFIX}/drive_c/"
+    create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/"
+    try_force_link_dir "${PORT_WINE_PATH}/data/prefixes" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/"
     export WINEARCH="win64"
     pw_install_dll_in_prefix
     pw_check_and_download_wine "${PW_WINE_USE}" 
@@ -181,16 +181,16 @@ start_portwine () {
     fi
     if [[ ! -z "${PW_USE_NVAPI_AND_DLSS}" && "${PW_USE_NVAPI_AND_DLSS}" == 1 && -d "${WINEDIR}/lib/wine/nvapi/" ]]
     then
-        try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-        try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/" 
+        try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x32/nvapi.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/"
+        try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x64/nvapi64.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/" 
         var_winedlloverride_update "nvapi,nvapi64,nvml=n;nvcuda=b"
-        if [[ ! -f "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll" || ! -f "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll" ]] ; then
-            try_copy_file `find /usr/* -type f -name "nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'` "${WINEPREFIX}/drive_c/windows/system32/"
-            try_copy_file `find /usr/* -type f -name "_nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'` "${WINEPREFIX}/drive_c/windows/system32/"       
+        if [[ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/nvngx.dll" || ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/_nvngx.dll" ]] ; then
+            try_copy_file `find /usr/* -type f -name "nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'` "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
+            try_copy_file `find /usr/* -type f -name "_nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'` "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"       
         fi
         echo "Try link nvml.dll.so to prefix"
-        try_force_link_file "${PW_PLUGINS_PATH}"/nvml/lib/wine/nvml.dll.so "${WINEPREFIX}/drive_c/windows/syswow64/nvml.dll"
-        try_force_link_file "${PW_PLUGINS_PATH}"/nvml/lib64/wine/nvml.dll.so "${WINEPREFIX}/drive_c/windows/system32/nvml.dll"
+        try_force_link_file "${PW_PLUGINS_PATH}"/nvml/lib/wine/nvml.dll.so "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/nvml.dll"
+        try_force_link_file "${PW_PLUGINS_PATH}"/nvml/lib64/wine/nvml.dll.so "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/nvml.dll"
         export DXVK_NVAPIHACK=0
     else
         var_winedlloverride_update "nvapi,nvapi64,nvml,nvcuda="
@@ -283,54 +283,54 @@ start_portwine () {
     pw_other_fixes
 
     check_dirs_and_files_in_pfx () {
-        create_new_dir "${WINEPREFIX}"
-        create_new_dir "${WINEPREFIX}/drive_c"
-        create_new_dir "${WINEPREFIX}/dosdevices"
-        create_new_dir "${WINEPREFIX}/drive_c/windows/syswow64/"
-        create_new_dir "${WINEPREFIX}/drive_c/windows/system32/"
-        [ ! -d "${WINEPREFIX}/dosdevices/c:" ] && try_force_link_dir "${WINEPREFIX}/drive_c/" "${WINEPREFIX}/dosdevices/c:"
-        [ ! -d "${WINEPREFIX}/dosdevices/z:" ] && try_force_link_dir "/" "${WINEPREFIX}/dosdevices/z:"
-        create_new_dir "${WINEPREFIX}/drive_c/windows/Fonts/"
-        try_force_link_file "${WINEDIR}/share/fonts/"LiberationSans-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arial.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"LiberationSans-Bold.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arialbd.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"LiberationSerif-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"times.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"LiberationMono-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"cour.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"LiberationMono-Bold.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"courbd.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"msyh.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"msyh.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"malgun.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"malgun.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"micross.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"micross.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"nirmala.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"nirmala.ttf
+        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"
+        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c"
+        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices"
+        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/"
+        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
+        [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/c:" ] && try_force_link_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/c:"
+        [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/z:" ] && try_force_link_dir "/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/z:"
+        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"
+        try_force_link_file "${WINEDIR}/share/fonts/"LiberationSans-Regular.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"arial.ttf
+        try_force_link_file "${WINEDIR}/share/fonts/"LiberationSans-Bold.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"arialbd.ttf
+        try_force_link_file "${WINEDIR}/share/fonts/"LiberationSerif-Regular.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"times.ttf
+        try_force_link_file "${WINEDIR}/share/fonts/"LiberationMono-Regular.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"cour.ttf
+        try_force_link_file "${WINEDIR}/share/fonts/"LiberationMono-Bold.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"courbd.ttf
+        try_force_link_file "${WINEDIR}/share/fonts/"msyh.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"msyh.ttf
+        try_force_link_file "${WINEDIR}/share/fonts/"malgun.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"malgun.ttf
+        try_force_link_file "${WINEDIR}/share/fonts/"micross.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"micross.ttf
+        try_force_link_file "${WINEDIR}/share/fonts/"nirmala.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"nirmala.ttf
 
-        try_force_link_file "${WINEDIR}/share/fonts/"simsun.ttc "${WINEPREFIX}/drive_c/windows/Fonts/"simsun.ttc
-        try_force_link_file "${WINEDIR}/share/fonts/"msgothic.ttc "${WINEPREFIX}/drive_c/windows/Fonts/"msgothic.ttc
+        try_force_link_file "${WINEDIR}/share/fonts/"simsun.ttc "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"simsun.ttc
+        try_force_link_file "${WINEDIR}/share/fonts/"msgothic.ttc "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"msgothic.ttc
         
-        try_force_link_file "${WINEDIR}/share/wine/fonts/"tahoma.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"tahoma.ttf
+        try_force_link_file "${WINEDIR}/share/wine/fonts/"tahoma.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"tahoma.ttf
     }
     
-    if [[ ! -d "${WINEPREFIX}" || ! -d "${WINEPREFIX}"/drive_c/windows || ! -d "${WINEPREFIX}/dosdevices" || \
-    ! -f "${WINEPREFIX}"/userdef.reg || ! -f "${WINEPREFIX}"/system.reg || ! -f "${WINEPREFIX}"/user.reg ]]
+    if [[ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" || ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/windows || ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices" || \
+    ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/userdef.reg || ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/system.reg || ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/user.reg ]]
     then
         pw_clear_pfx
         check_dirs_and_files_in_pfx
         ${pw_runtime} env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -i &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
         wait_wineserver &&
-        echo "${PW_WINE_USE}" > "${WINEPREFIX}/.wine_ver"
-    elif [[ -z "`cat "${WINEPREFIX}/.wine_ver" | grep ${PW_WINE_USE}`" ]] ; then 
+        echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
+    elif [[ -z "`cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver" | grep ${PW_WINE_USE}`" ]] ; then 
         check_dirs_and_files_in_pfx
         ${pw_runtime} env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -i &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
         wait_wineserver &&
-        echo "${PW_WINE_USE}" > "${WINEPREFIX}/.wine_ver"
+        echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
     fi
-    [ ! -d "${WINEPREFIX}/dosdevices/c:" ] && try_force_link_dir "${WINEPREFIX}/drive_c/" "${WINEPREFIX}/dosdevices/c:"
-    [ ! -d "${WINEPREFIX}/dosdevices/z:" ] && try_force_link_dir "/" "${WINEPREFIX}/dosdevices/z:"
-    create_new_dir "${WINEPREFIX}/drive_c/users/steamuser"
-    if [ ! -d "${WINEPREFIX}/drive_c/users/${USER}" ]; then
-	    try_force_link_dir "${WINEPREFIX}/drive_c/users/steamuser" "${WINEPREFIX}/drive_c/users/${USER}"
+    [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/c:" ] && try_force_link_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/c:"
+    [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/z:" ] && try_force_link_dir "/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/z:"
+    create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/users/steamuser"
+    if [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/users/${USER}" ]; then
+	    try_force_link_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/users/steamuser" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/users/${USER}"
     fi
-    create_new_dir "${WINEPREFIX}/drive_c/users/Public/Documents/Steam"
-    create_new_dir "${WINEPREFIX}/drive_c/users/steamuser/Documents/Steam"
-    if [ ! -d "${WINEPREFIX}/drive_c/users/steamuser/My Documents" ]
-    then try_force_link_dir "${WINEPREFIX}/drive_c/users/steamuser/Documents" "${WINEPREFIX}/drive_c/users/steamuser/My Documents"
+    create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/users/Public/Documents/Steam"
+    create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/users/steamuser/Documents/Steam"
+    if [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/users/steamuser/My Documents" ]
+    then try_force_link_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/users/steamuser/Documents" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/users/steamuser/My Documents"
     fi
     #enabled BattleEye_Runtime and EasyAntiCheat_Runtime
     export PROTON_BATTLEYE_RUNTIME="${PW_PLUGINS_PATH}/d3d_extras/BattlEye_Runtime"
@@ -343,17 +343,17 @@ start_portwine () {
     d3dx10_42 d3dx10_43 d3dx10 d3dx11_42 d3dx11_43 d3dx9_24 d3dx9_25 d3dx9_26 d3dx9_27 d3dx9_28 d3dx9_29 d3dx9_30 \
     d3dx9_31 d3dx9_32 d3dx9_33 d3dx9_34 d3dx9_35 d3dx9_36 d3dx9_37 d3dx9_38 d3dx9_39 d3dx9_40 d3dx9_41 d3dx9_42 d3dx9_43
     do  
-        try_force_link_file "${PW_PLUGINS_PATH}/d3d_extras/x64/${d3d_extras_from_plugins}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-        try_force_link_file "${PW_PLUGINS_PATH}/d3d_extras/x32/${d3d_extras_from_plugins}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+        try_force_link_file "${PW_PLUGINS_PATH}/d3d_extras/x64/${d3d_extras_from_plugins}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
+        try_force_link_file "${PW_PLUGINS_PATH}/d3d_extras/x32/${d3d_extras_from_plugins}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/"
         if [[ "${PW_D3D_EXTRAS_DISABLE}" != 1 ]] ; then
             var_winedlloverride_update "${d3d_extras_from_plugins}=n,b"
         fi
-        if [[ -z "`grep "${d3d_extras_from_plugins}" "${WINEPREFIX}/winetricks.log"`" ]] ; then
-            echo "${d3d_extras_from_plugins}" >> "${WINEPREFIX}/winetricks.log"
+        if [[ -z "`grep "${d3d_extras_from_plugins}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"`" ]] ; then
+            echo "${d3d_extras_from_plugins}" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
         fi
     done
-    if [[ -z "`grep d3dx9 "${WINEPREFIX}/winetricks.log"`" ]] ; then
-        echo "d3dx9" >> "${WINEPREFIX}/winetricks.log"
+    if [[ -z "`grep d3dx9 "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"`" ]] ; then
+        echo "d3dx9" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
     fi
     var_winedlloverride_update "steam_api,steam_api64,steamclient,steamclient64=n;lsteamclient,winemenubuilder.exe="
 
@@ -365,19 +365,19 @@ start_portwine () {
         export MESA_GLSL_CACHE_DIR="${PORT_WINE_TMP_PATH}"
         export GL_YIELD="NOTHING"
         echo "Try link wine DXGI..."
-        if ! try_force_link_file "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/dxgi.dll"
-        then try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/dxgi.dll"
+        if ! try_force_link_file "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/dxgi.dll"
+        then try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/dxgi.dll"
         fi
-        if ! try_force_link_file "${WINEDIR}"/lib64/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/system32/dxgi.dll"
-        then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/dxgi.dll "${WINEPREFIX}/drive_c/windows/system32/dxgi.dll"
+        if ! try_force_link_file "${WINEDIR}"/lib64/wine/fakedlls/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/dxgi.dll"
+        then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/dxgi.dll"
         fi
         echo "Try link wine d3d filese..."
         for wine_build_dll in d3d11 d3d10 d3d10core d3d10_1 d3d9 ; do
-            if ! try_force_link_file "${WINEDIR}/lib/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_build_dll}.dll"
-            then try_force_link_file "${WINEDIR}/lib/wine/i386-windows/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_build_dll}.dll"
+            if ! try_force_link_file "${WINEDIR}/lib/wine/${wine_build_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${wine_build_dll}.dll"
+            then try_force_link_file "${WINEDIR}/lib/wine/i386-windows/${wine_build_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${wine_build_dll}.dll"
             fi
-            if ! try_force_link_file "${WINEDIR}/lib64/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_build_dll}.dll"
-            then try_force_link_file "${WINEDIR}/lib64/wine/x86_64-windows/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_build_dll}.dll"
+            if ! try_force_link_file "${WINEDIR}/lib64/wine/${wine_build_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${wine_build_dll}.dll"
+            then try_force_link_file "${WINEDIR}/lib64/wine/x86_64-windows/${wine_build_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${wine_build_dll}.dll"
             fi
         done
         var_winedlloverride_update "d3d11,d3d10,d3d10core,d3d10_1,d3d9,dxgi=b;d3d12="
@@ -386,27 +386,27 @@ start_portwine () {
         export CP_DXVK_FILES="d3d11 d3d10 d3d10core d3d10_1 d3d9 dxgi dxvk_config"
         echo "Try link native DXVK files..."
         for wine_dxvk_dll in ${CP_DXVK_FILES} ; do
-            try_force_link_file "${WINEDIR}/lib/wine/dxvk/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
-            try_force_link_file "${WINEDIR}/lib64/wine/dxvk/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
+            try_force_link_file "${WINEDIR}/lib/wine/dxvk/${wine_dxvk_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
+            try_force_link_file "${WINEDIR}/lib64/wine/dxvk/${wine_dxvk_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
         done
         if [[ "${PW_USE_WINE_DXGI}" == 1 ]] || [[ "${PW_VULKAN_USE}" == "2" ]]; then 
             echo "Try link wine DXGI..."
-            if ! try_force_link_file "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/dxgi.dll"
-            then try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/dxgi.dll"
+            if ! try_force_link_file "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/dxgi.dll"
+            then try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/dxgi.dll"
             fi
-            if ! try_force_link_file "${WINEDIR}"/lib64/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/system32/dxgi.dll"
-            then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/dxgi.dll "${WINEPREFIX}/drive_c/windows/system32/dxgi.dll"
+            if ! try_force_link_file "${WINEDIR}"/lib64/wine/fakedlls/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/dxgi.dll"
+            then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/dxgi.dll"
             fi
             var_winedlloverride_update "d3d11,d3d10core,d3d9,dxvk_config=n;dxgi=b"
         else
             var_winedlloverride_update "d3d11,d3d10core,d3d9,dxgi,dxvk_config=n"
         fi        
         echo "Try link native VKD3D files..."
-        try_force_link_file "${WINEDIR}/lib/vkd3d/libvkd3d-shader-1.dll" "${WINEPREFIX}/drive_c/windows/syswow64/libvkd3d-shader-1.dll"
-        try_force_link_file "${WINEDIR}/lib64/vkd3d/libvkd3d-shader-1.dll" "${WINEPREFIX}/drive_c/windows/system32/libvkd3d-shader-1.dll"
+        try_force_link_file "${WINEDIR}/lib/vkd3d/libvkd3d-shader-1.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/libvkd3d-shader-1.dll"
+        try_force_link_file "${WINEDIR}/lib64/vkd3d/libvkd3d-shader-1.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/libvkd3d-shader-1.dll"
         for wine_vkd3d_dll in d3d12 libvkd3d-proton-utils-3 ; do
-            try_force_link_file "${WINEDIR}/lib/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
-            try_force_link_file "${WINEDIR}/lib64/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
+            try_force_link_file "${WINEDIR}/lib/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
+            try_force_link_file "${WINEDIR}/lib64/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
         done
         if [[ ! -z "${PW_DX12_DISABLE}" && "${PW_DX12_DISABLE}" != 0 ]]  
         then var_winedlloverride_update "libvkd3d-proton-utils-3,libvkd3d-shader-1=n;d3d12="
@@ -428,19 +428,19 @@ start_portwine () {
     if [ ! -z "${PW_DLL_INSTALL}" ]; then
         export PW_DLL_NEED_INSTALL=""
         export USE_WT_FROM_DB=0
-        if [ ! -e "${WINEPREFIX}/winetricks.log" ] ; then
-            touch "${WINEPREFIX}/winetricks.log"
+        if [ ! -e "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ] ; then
+            touch "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
         fi
         for need_install_dll_to_pfx in ${PW_DLL_INSTALL} ; do
             if [[ "${need_install_dll_to_pfx}" == "vcrun2015" || "${need_install_dll_to_pfx}" == "vcrun2017" ]] ; then
                 need_install_dll_to_pfx="vcrun2019"
-                sed -i '/vcrun2015/d' "${WINEPREFIX}/winetricks.log"
-                sed -i '/vcrun2017/d' "${WINEPREFIX}/winetricks.log"
+                sed -i '/vcrun2015/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
+                sed -i '/vcrun2017/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
             elif [ "${need_install_dll_to_pfx}" == "vcrun2019" ] ; then
-                sed -i '/vcrun2015/d' "${WINEPREFIX}/winetricks.log"
-                sed -i '/vcrun2017/d' "${WINEPREFIX}/winetricks.log"
+                sed -i '/vcrun2015/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
+                sed -i '/vcrun2017/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
             fi
-            grep "${need_install_dll_to_pfx}" "${WINEPREFIX}/winetricks.log"
+            grep "${need_install_dll_to_pfx}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
             if [ "$?" == "1" ] ; then
                 if [ -z "${PW_DLL_NEED_INSTALL}" ]
                 then export PW_DLL_NEED_INSTALL="${need_install_dll_to_pfx}"
@@ -471,7 +471,7 @@ start_portwine () {
             # fi
         fi
     fi
-    if [[ -f "${WINEPREFIX}/system.reg" ]] && [[ -z `cat "${WINEPREFIX}/system.reg" | grep "Windows $PW_WINDOWS_VER"` ]] ; then
+    if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" ]] && [[ -z `cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" | grep "Windows $PW_WINDOWS_VER"` ]] ; then
         if [[ ! -z "${PW_WINDOWS_VER}" && `echo "$PW_WINDOWS_VER" | sed 's/.*/\L&/'` == "xp" ]] ; then
             export PW_WINDOWS_VER="xp64"
         fi
@@ -493,7 +493,7 @@ pw_run () {
     if [ ! -z "$portwine_exe" ] ; then
         cd "${PATH_TO_GAME}"
     else
-        cd "${WINEPREFIX}/drive_c"
+        cd "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c"
     fi
     pw_mangohud_check
     PW_LOG_TO_FILE="${PORT_WINE_PATH}/${portname}.log"

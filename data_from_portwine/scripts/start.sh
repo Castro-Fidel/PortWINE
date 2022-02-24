@@ -209,7 +209,7 @@ pw_winefile () {
 pw_winecmd () {
     export PW_USE_TERMINAL=1
     start_portwine
-    cd "${WINEPREFIX}/drive_c"
+    cd "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c"
     ${pw_runtime} env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" xterm -e "${WINELOADER}" cmd
     stop_portwine
 }
