@@ -423,8 +423,28 @@ else
     }
     export -f gui_open_user_conf
 
+    gui_open_scripts_from_backup () {
+        cd "${PORT_WINE_TMP_PATH}/scripts_backup/"
+        PW_SCRIPT_FROM_BACKUP=`"${pw_yad_new}" --file --borders=5 --width=650 --height=500 --auto-close --center \
+        --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "SCRIPTS FROM BACKUP" --file-filter="backup_scripts|scripts_v*.tar.gz"`
+        YAD_STATUS="$?"
+        if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
+        unpack_tar_gz "$PW_SCRIPT_FROM_BACKUP" "${PORT_WINE_PATH}/data/"
+        echo "0" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
+        /usr/bin/env bash -c ${pw_full_command_line[*]} &
+        exit 0
+    }
+    export -f gui_open_scripts_from_backup
+
     export KEY=$RANDOM
-    "${pw_yad_new}" --plug=${KEY} --tabnum=3 --columns=4 --align-buttons --form --separator=";" \
+    "${pw_yad_new}" --plug=${KEY} --tabnum=4 --columns=3 --align-buttons --form --separator=";" \
+    --field="   REMOVE PORTPROTON"!""!"":"FBTN" '@bash -c "button_click gui_rm_portproton"' \
+    --field="   UPDATE PORTPROTON"!""!"":"FBTN" '@bash -c "button_click gui_pw_update"' \
+    --field="   CHANGELOG"!""!"":"FBTN" '@bash -c "button_click open_changelog"' \
+    --field="   EDIT USER.CONF"!""!"":"FBTN" '@bash -c "button_click gui_open_user_conf"' \
+    --field="   SCRIPTS FROM BACKUP"!""!"":"FBTN" '@bash -c "button_click gui_open_scripts_from_backup"' &
+
+    "${pw_yad_new}" --plug=${KEY} --tabnum=3 --columns=3 --align-buttons --form --separator=";" \
     --field="  3D API  : :CB" "VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL" \
     --field="  PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
     --field="  WINE    : :CB" "${PW_DEFAULT_WINE_USE}" \
@@ -436,11 +456,7 @@ else
     --field='   WINEREG'!""!"${loc_winereg}":"FBTN" '@bash -c "button_click WINEREG"' \
     --field='   WINETRICKS'!""!"${loc_winetricks}":"FBTN" '@bash -c "button_click WINETRICKS"' \
     --field="   WINE UNINSTALLER"!""!"":"FBTN" '@bash -c "button_click gui_wine_uninstaller"' \
-    --field="   CLEAR PREFIX"!""!"":"FBTN" '@bash -c "button_click gui_clear_pfx"'  \
-    --field="   EDIT USER.CONF"!""!"":"FBTN" '@bash -c "button_click gui_open_user_conf"' \
-    --field="   REMOVE PORTPROTON"!""!"":"FBTN" '@bash -c "button_click gui_rm_portproton"' \
-    --field="   UPDATE PORTPROTON"!""!"":"FBTN" '@bash -c "button_click gui_pw_update"' \
-    --field="   CHANGELOG"!""!"":"FBTN" '@bash -c "button_click open_changelog"' &> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" &
+    --field="   CLEAR PREFIX"!""!"":"FBTN" '@bash -c "button_click gui_clear_pfx"' &> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" &
 
     "${pw_yad_new}" --plug=$KEY --tabnum=2 --form --columns=3 --align-buttons --keep-icon-size --scroll  \
     --field="   Dolphin 5.0"!"$PW_GUI_ICON_PATH/dolphin.png"!"":"FBTN" '@bash -c "button_click PW_DOLPHIN"' \
@@ -474,9 +490,9 @@ else
     --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png"!"":"FBTN" '@bash -c "button_click  PW_GAMEFORGE"' \
     --field="   ITCH.IO"!"$PW_GUI_ICON_PATH/itch.png"!"":"FBTN" '@bash -c "button_click PW_ITCH"' & 
 
-    "${pw_yad_new}" --key=$KEY --notebook --borders=5 --width=1000 --height=235 --no-buttons --auto-close \
+    "${pw_yad_new}" --key=$KEY --notebook --borders=5 --width=1000 --height=235 --no-buttons --auto-close --center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "${portname}-${install_ver} (${scripts_install_ver})" \
-    --tab-pos=bottom --tab="AUTOINSTALL"!""!"" --tab="EMULATORS"!""!"" --tab="SETTINGS"!""!"" --center 
+    --tab-pos=bottom --tab="AUTOINSTALL"!""!"" --tab="EMULATORS"!""!"" --tab=" WINE SETTINGS"!""!"" --tab=" PORPROTON SETTINGS"!""!""
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
 
@@ -541,6 +557,7 @@ case "$PW_YAD_SET" in
     gui_rm_portproton) gui_rm_portproton ;;
     gui_pw_update) gui_pw_update ;;
     gui_proton_downloader) gui_proton_downloader ;;
+    gui_open_scripts_from_backup) gui_open_scripts_from_backup ;;
     open_changelog) open_changelog ;;
     120) gui_vkBasalt ;;
     PW_*) pw_autoinstall_from_db ;;

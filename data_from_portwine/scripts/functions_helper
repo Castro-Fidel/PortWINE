@@ -171,19 +171,19 @@ var_vkd3d_config_update () {
 unpack_tar_xz () {
     set -o pipefail
     tar -Jxvf "$1" -C "$2" | sszen
-    [ "${PIPESTATUS[0]}" != 0 ] && print_error "File unpacking error." && return 1 || return 0
+    [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
 }
 
 unpack_tar_gz () {
     set -o pipefail
     tar -xzvf "$1" -C "$2" | sszen
-    [ "${PIPESTATUS[0]}" != 0 ] && print_error "File unpacking error." && return 1 || return 0
+    [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
 }
 
 unpack_tar () {
     set -o pipefail
     tar -xvf "$1" -C "$2" | sszen
-    [ "${PIPESTATUS[0]}" != 0 ] && print_error "File unpacking error." && return 1 || return 0
+    [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
 }
 
 pw_mangohud_check () {
@@ -625,7 +625,12 @@ pw_port_update () {
                     print_info "Update scripts..."
                     try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
                     if try_download "https://github.com/Castro-Fidel/PortWINE/archive/refs/heads/master.tar.gz" "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" ; then
-                        if unpack_tar_gz "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" "${PORT_WINE_TMP_PATH}" ; then
+                        if unpack_tar_gz "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" "${PORT_WINE_TMP_PATH}"
+                        then
+                            create_new_dir "${PORT_WINE_TMP_PATH}/scripts_backup"
+                            cd "${PORT_WINE_PATH}/data/"
+                            tar -czpf "${PORT_WINE_TMP_PATH}/scripts_backup/scripts_v.${scripts_install_ver}.tar.gz" ./scripts ./img \
+                            ./changelog* ./dxvk.conf ./vkBasalt.conf ./tmp/scripts_ver
                             cp -fr "${PORT_WINE_TMP_PATH}/PortWINE-master/data_from_portwine/"* "${PORT_WINE_PATH}/data/"
                             try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
                             try_remove_dir "${PORT_WINE_TMP_PATH}/PortWINE-master/"
