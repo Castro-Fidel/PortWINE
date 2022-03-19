@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 # Author: Castro-Fidel (PortWINE-Linux.ru)
 ########################################################################
 pw_ping_test () {
@@ -292,7 +292,11 @@ init_wine_ver () {
     export WINE="${WINEDIR}/bin/wine"
     export WINELOADER="${WINEDIR}/bin/wine"
     export WINESERVER="${WINEDIR}/bin/wineserver"
-    export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
+    if [[ -z "${PATH_TO_GAME}" ]] ; then
+        export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
+    else
+        export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine:${PATH_TO_GAME}"
+    fi
 
     if [[ -d "${WINEDIR}/files" && ! -d "${WINEDIR}/dist" ]] ; then
         chmod -R 755 "${WINEDIR}"
@@ -346,6 +350,98 @@ init_wine_ver () {
         done
     fi
     return 0
+}
+
+pw_init_runtime () {
+    if [[ ! -z "`cat /etc/*-release | grep -i opensuse`" ]] \
+    || [[ ! -z "`cat /etc/*-release | grep -i centos`" ]] \
+    || [[ ! -z "`cat /etc/*-release | grep -i rosa`" ]] \
+    || [[ ! -z "`cat /etc/*-release | grep -i fedora`" ]] \
+    || [[ ! -z "`cat /etc/*-release | grep -i gentoo`" ]] ; then
+        if check_symlink "${PW_WINELIB}/portable/lib/lib64" ; then
+            rm -fr "${PW_WINELIB}/portable/lib/lib64"
+        fi
+        if [[ ! -d "${PW_WINELIB}/portable/lib/lib64" ]] ; then
+            mv -f "${PW_WINELIB}/portable/lib/lib" "${PW_WINELIB}/portable/lib/lib64"
+        fi
+        if [[ ! -d "${PW_WINELIB}/portable/lib/lib" ]] ; then
+            mv -f "${PW_WINELIB}/portable/lib/lib32" "${PW_WINELIB}/portable/lib/lib"
+        fi
+    fi
+
+    PW_PV_OVERRIDES="/usr/lib/pressure-vessel/overrides/lib" 
+    if [[ ! -z "${LD_LIBRARY_PATH}" ]] ; then
+        if [[ -z "`echo ${PW_LD_LIBRARY_PATH} | grep "${WINEDIR}/lib64:${WINEDIR}/lib"`" ]] ; then
+            export PW_LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${PW_WINELIB}/portable/lib/\$LIB:${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:${LD_LIBRARY_PATH}"
+        fi
+    else
+        export PW_LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${PW_WINELIB}/portable/lib/\$LIB:${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:${PW_PV_OVERRIDES}/i386-linux-gnu/aliases"
+    fi 
+
+    if [[ ! -z "${VK_LAYER_PATH}" ]]
+    then export VK_LAYER_PATH="${PW_WINELIB}/portable/share/vulkan/implicit_layer.d/:${VK_LAYER_PATH}"
+    else export VK_LAYER_PATH="${PW_WINELIB}/portable/share/vulkan/implicit_layer.d/"
+    fi
+    if [ ! -z ${PATH_TMP} ]
+    then export PATH="${PATH_TMP}"
+    else export PATH_TMP="${PATH}"
+    fi
+    if [ ! -z "${PATH}" ]
+    then export PATH="${WINEDIR}/bin:${PATH}:${PW_WINELIB}/portable/bin"
+    else export PATH="${WINEDIR}/bin:${PW_WINELIB}/portable/bin"
+    fi
+    if [ "${PW_USE_GSTREAMER}" = 1 ] ; then 
+        if [ -d "${WINEDIR}/lib64/gstreamer-1.0" ] ; then
+            export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/gstreamer-1.0:${WINEDIR}/lib/gstreamer-1.0"
+        fi
+        export WINE_GST_REGISTRY_DIR="${PORT_WINE_TMP_PATH}"
+        export MEDIACONV_AUDIO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/audio.foz
+        export MEDIACONV_AUDIO_TRANSCODED_FILE="${PORT_WINE_TMP_PATH}"/transcoded_audio.foz
+        export MEDIACONV_VIDEO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/video.foz
+        export MEDIACONV_VIDEO_TRANSCODED_FILE="${PORT_WINE_TMP_PATH}"/transcoded_video.foz
+    else
+        var_winedlloverride_update "winegstreamer="
+    fi
+    # export STAGING_SHARED_MEMORY=1
+    # export PW_FORCE_LARGE_ADDRESS_AWARE=1
+
+    if [ "${PW_USE_RUNTIME}" = 0 ] ; then
+        export pw_runtime=""
+        if [ "${PW_MANGOHUD}" = 1 ] ; then
+            [ -z `which mangohud` ] && export PW_MANGOHUD=0
+        fi
+        echo "RUNTIME is disabled"
+    else
+        if [[ ! -z "${PW_SANDBOX_HOME_PATH}" && -d "${PW_SANDBOX_HOME_PATH}" ]]; then
+            export pw_runtime="${PW_WINELIB}/run \
+            --unshare-home \
+            --home="${PW_SANDBOX_HOME_PATH}" \
+            ${PW_ADD_TO_ARGS_IN_RUNTIME} --"
+        else
+            export pw_runtime="${PW_WINELIB}/run \
+            --share-home \
+            ${PW_ADD_TO_ARGS_IN_RUNTIME} --"
+        fi
+        # export PRESSURE_VESSEL_VARIABLE_DIR="${PW_WINELIB}/runtime"
+        export PRESSURE_VESSEL_REMOVE_GAME_OVERLAY=1
+        export PRESSURE_VESSEL_IMPORT_VULKAN_LAYERS=1
+        export PRESSURE_VESSEL_GC_RUNTIMES=0
+        export PRESSURE_VESSEL_PREFIX="${PW_WINELIB}/pressure-vessel"
+        unset PRESSURE_VESSEL_FILESYSTEMS_RO PRESSURE_VESSEL_FILESYSTEMS_RW
+        for PWRTMRO in ${PW_RT_MOUNT_RO[*]} ; do
+            if [ ! -z "${PRESSURE_VESSEL_FILESYSTEMS_RO}" ]
+            then export PRESSURE_VESSEL_FILESYSTEMS_RO="${PRESSURE_VESSEL_FILESYSTEMS_RO}:${PWRTMRO}"
+            else export PRESSURE_VESSEL_FILESYSTEMS_RO="${PWRTMRO}"
+            fi
+        done
+        for PWRTMRW in ${PW_RT_MOUNT_RW[*]} ; do
+            if [ ! -z "${PRESSURE_VESSEL_FILESYSTEMS_RW}" ]
+            then export PRESSURE_VESSEL_FILESYSTEMS_RW="${PRESSURE_VESSEL_FILESYSTEMS_RW}:${PWRTMRW}"
+            else export PRESSURE_VESSEL_FILESYSTEMS_RW="${PWRTMRW}"
+            fi
+        done
+        echo "RUNTIME is enabled"
+    fi
 }
 
 check_vk_icd_file () {

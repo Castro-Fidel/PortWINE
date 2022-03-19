@@ -18,6 +18,14 @@ if [[ "${XDG_SESSION_TYPE}" = "wayland" ]] && [[ ! -f "${PORT_WINE_TMP_PATH}/che
     echo "1" > "${PORT_WINE_TMP_PATH}/check_wayland"
 fi
 
+if [[ -n `basename "${portwine_exe}" | grep .ppack` ]] ; then
+    export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
+    unset PW_SANDBOX_HOME_PATH
+    pw_init_runtime
+    ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" unsquashfs -f -d "${PORT_WINE_PATH}/data/prefixes/$(basename $1 | awk -F'.' '{print $1}')" "$1"
+    exit 0
+fi
+
 portwine_launch () {
     start_portwine
     PORTWINE_MSI=`basename "${portwine_exe}" | grep .msi`
@@ -124,12 +132,12 @@ portwine_start_debug () {
     free -m >> "${PORT_WINE_PATH}/${portname}.log"
     echo "-----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Graphic cards and drivers:" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo 'lspci | grep -i vga:' >> "${PORT_WINE_PATH}/${portname}.log"
-    echo `lspci | grep -i vga` >> "${PORT_WINE_PATH}/${portname}.log"
-    env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${PW_WINELIB}/portable/bin/glxinfo" -B >> "${PORT_WINE_PATH}/${portname}.log"
+    echo 'lspci -k | grep -EA3 VGA|3D|Display:' >> "${PORT_WINE_PATH}/${portname}.log"
+    echo `lspci -k | grep -EA3 'VGA|3D|Display'` >> "${PORT_WINE_PATH}/${portname}.log"
+    [[ `which glxinfo` ]] && glxinfo -B >> "${PORT_WINE_PATH}/${portname}.log"
     echo " " >> "${PORT_WINE_PATH}/${portname}.log"
     echo "inxi -G:" >> "${PORT_WINE_PATH}/${portname}.log"
-    env LANG=C "${PW_WINELIB}/portable/bin/inxi" -G >> "${PORT_WINE_PATH}/${portname}.log"
+    "${PW_WINELIB}/portable/bin/inxi" -G >> "${PORT_WINE_PATH}/${portname}.log"
     echo "----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Vulkan info device name:" >> "${PORT_WINE_PATH}/${portname}.log"
     "${PW_WINELIB}/portable/bin/vulkaninfo" | grep deviceName >> "${PORT_WINE_PATH}/${portname}.log"
@@ -220,6 +228,58 @@ pw_winereg () {
     pw_run regedit
 }
 
+# pw_prefix_manager () {
+#     update_winetricks
+#     start_portwine
+#     [[ ! -f "${PORT_WINE_TMP_PATH}/dll_list" ]] && "${PORT_WINE_TMP_PATH}/winetricks" dlls list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/dll_list"
+#     gui_prefix_manager () {
+#         unset SET_FROM_PFX_MANAGER_TMP SET_FROM_PFX_MANAGER
+#         old_IFS=$IFS
+#         IFS=$'\n'
+#         try_remove_file  "${PORT_WINE_TMP_PATH}/dll_list_tmp"
+#         #for PW_BOOL_IN_DLL_LIST in `cat "${PORT_WINE_TMP_PATH}/dll_list"` ; do
+#         while read PW_BOOL_IN_DLL_LIST ; do
+#             if [[ -z `echo "${PW_BOOL_IN_DLL_LIST}" | grep -E 'dont_use|dxvk|vkd3d|galliumnine|faudio1'` ]] ; then
+#                 if grep "^`echo ${PW_BOOL_IN_DLL_LIST} | awk '{print $1}'`$" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
+#                     echo -e "true\n`echo ${PW_BOOL_IN_DLL_LIST} | awk '{print $1}'`\n`echo ${PW_BOOL_IN_DLL_LIST} | awk '{ $1 = ""; print substr($0, 2) }'`" >> "${PORT_WINE_TMP_PATH}/dll_list_tmp"
+#                 else
+#                     echo -e "false\n`echo ${PW_BOOL_IN_DLL_LIST} | awk '{print $1}'`\n`echo ${PW_BOOL_IN_DLL_LIST} | awk '{ $1 = ""; print substr($0, 2) }'`" >> "${PORT_WINE_TMP_PATH}/dll_list_tmp"
+#                 fi
+#             fi
+#         done < "${PORT_WINE_TMP_PATH}/dll_list"
+#         pw_stop_progress_bar
+
+#         SET_FROM_PFX_MANAGER_TMP=`"${pw_yad_new}" --list --checklist --column=set --column=dll --column=info \
+#         --borders=5 --width=650 --height=500 --center < "${PORT_WINE_TMP_PATH}/dll_list_tmp"`
+#         YAD_STATUS="$?"
+#         if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
+#             stop_portwine
+#             exit 0
+#         fi
+
+#         for STPFXMNG in ${SET_FROM_PFX_MANAGER_TMP} ; do
+#             grep `echo ${STPFXMNG} | awk -F'|' '{print $2}'` "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
+#             if [ "$?" == "1" ] ; then
+#                 [[ -n "${STPFXMNG}" ]] && SET_FROM_PFX_MANAGER+="`echo ${STPFXMNG} | awk -F'|' '{print $2}'` "
+#             fi
+#         done
+#         IFS=${old_IFS}
+        
+#         if [[ -n ${SET_FROM_PFX_MANAGER_TMP} ]] ; then
+#             print_var SET_FROM_PFX_MANAGER
+#             export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
+#             pw_init_runtime
+#             ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${SET_FROM_PFX_MANAGER}
+#             gui_prefix_manager
+#         else
+#             echo "nothing to do"
+#             stop_portwine
+#             exit 0
+#         fi
+#     }
+#     gui_prefix_manager
+# }
+
 pw_winetricks () {
     update_winetricks
     export PW_USE_TERMINAL=1
@@ -245,6 +305,35 @@ pw_winetricks () {
     try_remove_file "${PORT_WINE_TMP_PATH}/update_pfx_log"
     kill -s SIGTERM "`pgrep -a yad_new | grep "title=WINETRICKS" | awk '{print $1}'`" > /dev/null 2>&1    
     stop_portwine
+}
+
+pw_create_prefix_backup () {
+    cd "$HOME"
+    export PW_PREFIX_TO_BACKUP=`"${pw_yad_new}" --file --directory --borders=5 --width=650 --height=500 --auto-close --center \
+    --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "BACKUP PREFIX TO..."`
+    YAD_STATUS="$?"
+    if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
+    unset PW_SANDBOX_HOME_PATH
+    export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
+    pw_init_runtime
+    ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" mksquashfs "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" -comp zstd &
+    sleep 15
+    while true ; do
+        if [[ -n `pgrep -a xterm | grep ".ppack" | head -n 1 | awk '{print $1}'` ]] ; then
+            sleep 1
+        else
+            kill -TERM `pgrep -a mksquashfs | grep ".ppack.part" | head -n 1 | awk '{print $1}'`
+            sleep 3
+            break
+        fi
+    done
+    if [[ -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" ]] ; then
+        mv -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack"
+        zenity_info "Backup for prefix \"${PW_PREFIX_NAME}\" successfully created."
+    else 
+        zenity_error "An error occurred while creating a backup for prefix: \"${PW_PREFIX_NAME}\" !"
+    fi
+    return 0
 }
 
 pw_edit_db () {
@@ -275,6 +364,20 @@ pw_autoinstall_from_db () {
     export ENABLE_VKBASALT=0
     . "${PORT_SCRIPTS_PATH}/pw_autoinstall/${PW_YAD_SET}"
 }
+
+gui_about_portproton () {
+    "${pw_yad_new}" --about --pname=PortProton  \
+    --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
+    --pversion="${install_ver}\n(scripts v. ${scripts_install_ver})" \
+    --image=help-about \
+    --copyright="Copyright © 2022 Castro-Fidel (PortWINE-Linux.ru)" \
+    --comments="Порт для запуска Windows игр и приложений в GNU/Linux" \
+    --license=MIT \
+    --authors="Castro-Fidel",,"Выражаем особую благодарность в помоще проекту:",Cefeiko,Dezert1r,Taz_mania,Anton_Famillianov,gavr,RidBowt,chal55rus,UserDiscord \
+    --website=https://portwine-linux.ru/ \
+    --website-label=https://portwine-linux.ru
+}
+export -f gui_about_portproton
 
 ###MAIN###
 export PW_PREFIX_NAME="`echo "${PW_PREFIX_NAME}" | sed -e s/[[:blank:]]/_/g`"
@@ -444,20 +547,22 @@ else
     --field="   CHANGELOG"!""!"":"FBTN" '@bash -c "button_click open_changelog"' \
     --field="   EDIT USER.CONF"!""!"":"FBTN" '@bash -c "button_click gui_open_user_conf"' \
     --field="   SCRIPTS FROM BACKUP"!""!"":"FBTN" '@bash -c "button_click gui_open_scripts_from_backup"' &
+    #--field="   ABOUT PORTPROTON"!""!"":"FBTN" '@bash -c "button_click gui_about_portproton"' &
+
 
     "${pw_yad_new}" --plug=${KEY} --tabnum=3 --columns=3 --align-buttons --form --separator=";" \
     --field="  3D API  : :CB" "VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL" \
     --field="  PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
     --field="  WINE    : :CB" "${PW_DEFAULT_WINE_USE}" \
     --field="                    DOWNLOAD OTHER WINE "!"${loc_download_other_wine}":"FBTN" '@bash -c "button_click gui_proton_downloader"' \
-    --field='   DEBUG'!""!"${loc_debug}":"FBTN" '@bash -c "button_click DEBUG"' \
     --field='   WINECFG'!""!"${loc_winecfg}":"FBTN" '@bash -c "button_click WINECFG"' \
     --field='   WINEFILE'!""!"${loc_winefile}":"FBTN" '@bash -c "button_click WINEFILE"' \
     --field='   WINECMD'!""!"${loc_winecmd}":"FBTN" '@bash -c "button_click WINECMD"' \
     --field='   WINEREG'!""!"${loc_winereg}":"FBTN" '@bash -c "button_click WINEREG"' \
     --field='   WINETRICKS'!""!"${loc_winetricks}":"FBTN" '@bash -c "button_click WINETRICKS"' \
     --field="   WINE UNINSTALLER"!""!"":"FBTN" '@bash -c "button_click gui_wine_uninstaller"' \
-    --field="   CLEAR PREFIX"!""!"":"FBTN" '@bash -c "button_click gui_clear_pfx"' &> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" &
+    --field="   CLEAR PREFIX"!""!"":"FBTN" '@bash -c "button_click gui_clear_pfx"' \
+    --field="   CREATE PFX BACKUP"!""!"":"FBTN" '@bash -c "button_click pw_create_prefix_backup"' &> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" &
 
     "${pw_yad_new}" --plug=$KEY --tabnum=2 --form --columns=3 --align-buttons --keep-icon-size --scroll  \
     --field="   Dolphin 5.0"!"$PW_GUI_ICON_PATH/dolphin.png"!"":"FBTN" '@bash -c "button_click PW_DOLPHIN"' \
@@ -561,6 +666,8 @@ case "$PW_YAD_SET" in
     gui_open_scripts_from_backup) gui_open_scripts_from_backup ;;
     open_changelog) open_changelog ;;
     120) gui_vkBasalt ;;
+    pw_create_prefix_backup) pw_create_prefix_backup ;;
+    gui_about_portproton) gui_about_portproton ;;
     PW_*) pw_autoinstall_from_db ;;
 esac
 
