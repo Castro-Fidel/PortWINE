@@ -228,57 +228,81 @@ pw_winereg () {
     pw_run regedit
 }
 
-# pw_prefix_manager () {
-#     update_winetricks
-#     start_portwine
-#     [[ ! -f "${PORT_WINE_TMP_PATH}/dll_list" ]] && "${PORT_WINE_TMP_PATH}/winetricks" dlls list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/dll_list"
-#     gui_prefix_manager () {
-#         unset SET_FROM_PFX_MANAGER_TMP SET_FROM_PFX_MANAGER
-#         old_IFS=$IFS
-#         IFS=$'\n'
-#         try_remove_file  "${PORT_WINE_TMP_PATH}/dll_list_tmp"
-#         #for PW_BOOL_IN_DLL_LIST in `cat "${PORT_WINE_TMP_PATH}/dll_list"` ; do
-#         while read PW_BOOL_IN_DLL_LIST ; do
-#             if [[ -z `echo "${PW_BOOL_IN_DLL_LIST}" | grep -E 'dont_use|dxvk|vkd3d|galliumnine|faudio1'` ]] ; then
-#                 if grep "^`echo ${PW_BOOL_IN_DLL_LIST} | awk '{print $1}'`$" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
-#                     echo -e "true\n`echo ${PW_BOOL_IN_DLL_LIST} | awk '{print $1}'`\n`echo ${PW_BOOL_IN_DLL_LIST} | awk '{ $1 = ""; print substr($0, 2) }'`" >> "${PORT_WINE_TMP_PATH}/dll_list_tmp"
-#                 else
-#                     echo -e "false\n`echo ${PW_BOOL_IN_DLL_LIST} | awk '{print $1}'`\n`echo ${PW_BOOL_IN_DLL_LIST} | awk '{ $1 = ""; print substr($0, 2) }'`" >> "${PORT_WINE_TMP_PATH}/dll_list_tmp"
-#                 fi
-#             fi
-#         done < "${PORT_WINE_TMP_PATH}/dll_list"
-#         pw_stop_progress_bar
+pw_prefix_manager () {
+    update_winetricks
+    start_portwine
+    [[ ! -f "${PORT_WINE_TMP_PATH}/dll_list" ]] && "${PORT_WINE_TMP_PATH}/winetricks" dlls list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/dll_list"
+    [[ ! -f "${PORT_WINE_TMP_PATH}/fonts_list" ]] && "${PORT_WINE_TMP_PATH}/winetricks" fonts list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/fonts_list"
+    # [[ ! -f "${PORT_WINE_TMP_PATH}/settings_list" ]] && "${PORT_WINE_TMP_PATH}/winetricks" settings list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/settings_list"
 
-#         SET_FROM_PFX_MANAGER_TMP=`"${pw_yad_new}" --list --checklist --column=set --column=dll --column=info \
-#         --borders=5 --width=650 --height=500 --center < "${PORT_WINE_TMP_PATH}/dll_list_tmp"`
-#         YAD_STATUS="$?"
-#         if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
-#             stop_portwine
-#             exit 0
-#         fi
+    gui_prefix_manager () {
+        pw_start_progress_bar_block "Starting prefix manager..."
+        unset SET_FROM_PFX_MANAGER_TMP SET_FROM_PFX_MANAGER
+        old_IFS=$IFS
+        IFS=$'\n'
+        try_remove_file  "${PORT_WINE_TMP_PATH}/dll_list_tmp"
+        while read PW_BOOL_IN_DLL_LIST ; do
+            if [[ -z `echo "${PW_BOOL_IN_DLL_LIST}" | grep -E 'dont_use|dxvk|vkd3d|galliumnine|faudio1'` ]] ; then
+                if grep "^`echo ${PW_BOOL_IN_DLL_LIST} | awk '{print $1}'`$" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
+                    echo -e "true\n`echo ${PW_BOOL_IN_DLL_LIST} | awk '{print $1}'`\n`echo ${PW_BOOL_IN_DLL_LIST} | awk '{ $1 = ""; print substr($0, 2) }'`" >> "${PORT_WINE_TMP_PATH}/dll_list_tmp"
+                else
+                    echo -e "false\n`echo ${PW_BOOL_IN_DLL_LIST} | awk '{print $1}'`\n`echo ${PW_BOOL_IN_DLL_LIST} | awk '{ $1 = ""; print substr($0, 2) }'`" >> "${PORT_WINE_TMP_PATH}/dll_list_tmp"
+                fi
+            fi
+        done < "${PORT_WINE_TMP_PATH}/dll_list"
+        try_remove_file  "${PORT_WINE_TMP_PATH}/fonts_list_tmp"
+        while read PW_BOOL_IN_FONTS_LIST ; do
+            if [[ -z `echo "${PW_BOOL_IN_FONTS_LIST}" | grep -E 'dont_use'` ]] ; then
+                if grep "^`echo ${PW_BOOL_IN_FONTS_LIST} | awk '{print $1}'`$" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
+                    echo -e "true\n`echo ${PW_BOOL_IN_FONTS_LIST} | awk '{print $1}'`\n`echo ${PW_BOOL_IN_FONTS_LIST} | awk '{ $1 = ""; print substr($0, 2) }'`" >> "${PORT_WINE_TMP_PATH}/fonts_list_tmp"
+                else
+                    echo -e "false\n`echo ${PW_BOOL_IN_FONTS_LIST} | awk '{print $1}'`\n`echo ${PW_BOOL_IN_FONTS_LIST} | awk '{ $1 = ""; print substr($0, 2) }'`" >> "${PORT_WINE_TMP_PATH}/fonts_list_tmp"
+                fi
+            fi
+        done < "${PORT_WINE_TMP_PATH}/fonts_list"
+        pw_stop_progress_bar
 
-#         for STPFXMNG in ${SET_FROM_PFX_MANAGER_TMP} ; do
-#             grep `echo ${STPFXMNG} | awk -F'|' '{print $2}'` "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
-#             if [ "$?" == "1" ] ; then
-#                 [[ -n "${STPFXMNG}" ]] && SET_FROM_PFX_MANAGER+="`echo ${STPFXMNG} | awk -F'|' '{print $2}'` "
-#             fi
-#         done
-#         IFS=${old_IFS}
-        
-#         if [[ -n ${SET_FROM_PFX_MANAGER_TMP} ]] ; then
-#             print_var SET_FROM_PFX_MANAGER
-#             export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
-#             pw_init_runtime
-#             ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${SET_FROM_PFX_MANAGER}
-#             gui_prefix_manager
-#         else
-#             echo "nothing to do"
-#             stop_portwine
-#             exit 0
-#         fi
-#     }
-#     gui_prefix_manager
-# }
+        KEY_EDIT_MANAGER_GUI=$RANDOM
+        "${pw_yad_new}" --plug=$KEY_EDIT_MANAGER_GUI --tabnum=1 --list --checklist \
+        --text="Select components to install in prefix: <b>\"${PW_PREFIX_NAME}\"</b>, using wine: <b>\"${PW_WINE_USE}\"</b>" \
+        --column=set --column=dll --column=info < "${PORT_WINE_TMP_PATH}/dll_list_tmp" 1>> "${PORT_WINE_TMP_PATH}/to_winetricks" &
+
+        "${pw_yad_new}" --plug=$KEY_EDIT_MANAGER_GUI --tabnum=2 --list --checklist \
+        --text="Select fonts to install in prefix: <b>\"${PW_PREFIX_NAME}\"</b>, using wine: <b>\"${PW_WINE_USE}\"</b>" \
+        --column=set --column=dll --column=info < "${PORT_WINE_TMP_PATH}/fonts_list_tmp" 1>> "${PORT_WINE_TMP_PATH}/to_winetricks" &
+
+        "${pw_yad_new}" --key=$KEY_EDIT_MANAGER_GUI --notebook --borders=5 --width=700 --height=600 --center \
+        --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "PREFIX MANAGER..." --tab-pos=bottom --tab="DLL" --tab="FONST"
+        YAD_STATUS="$?"
+        if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
+            stop_portwine
+            exit 0
+        fi 
+        try_remove_file  "${PORT_WINE_TMP_PATH}/dll_list_tmp"
+        try_remove_file  "${PORT_WINE_TMP_PATH}/fonts_list_tmp"
+
+        for STPFXMNG in `cat "${PORT_WINE_TMP_PATH}/to_winetricks"` ; do
+            grep `echo ${STPFXMNG} | awk -F'|' '{print $2}'` "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" &>/dev/null
+            if [ "$?" == "1" ] ; then
+                [[ -n "${STPFXMNG}" ]] && SET_FROM_PFX_MANAGER+="`echo ${STPFXMNG} | awk -F'|' '{print $2}'` "
+            fi
+        done
+        IFS=${old_IFS}
+        try_remove_file  "${PORT_WINE_TMP_PATH}/to_winetricks"
+
+        if [[ ! -z ${SET_FROM_PFX_MANAGER} ]] ; then
+            export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
+            pw_init_runtime
+            ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${SET_FROM_PFX_MANAGER}
+            gui_prefix_manager
+        else
+            print_info "Nothing to do. Restarting PortProton..."
+            stop_portwine &
+            /usr/bin/env bash -c ${pw_full_command_line[*]} 
+        fi
+    }
+    gui_prefix_manager
+}
 
 pw_winetricks () {
     update_winetricks
@@ -340,7 +364,7 @@ pw_edit_db () {
     pw_gui_for_edit_db PW_MANGOHUD PW_MANGOHUD_USER_CONF ENABLE_VKBASALT PW_NO_ESYNC PW_NO_FSYNC PW_USE_DXR10 PW_USE_DXR11 \
     PW_VULKAN_NO_ASYNC PW_USE_NVAPI_AND_DLSS PW_OLD_GL_STRING PW_HIDE_NVIDIA_GPU PW_FORCE_USE_VSYNC PW_VIRTUAL_DESKTOP \
     PW_WINEDBG_DISABLE PW_USE_TERMINAL PW_WINE_ALLOW_XIM PW_HEAP_DELAY_FREE PW_GUI_DISABLED_CS PW_USE_GSTREAMER \
-    PW_USE_GAMEMODE PW_DX12_DISABLE PW_PRIME_RENDER_OFFLOAD PW_D3D_EXTRAS_DISABLE 
+    PW_USE_GAMEMODE PW_DX12_DISABLE PW_PRIME_RENDER_OFFLOAD PW_D3D_EXTRAS_DISABLE PW_FIX_VIDEO_IN_GAME
     if [ "$?" == 0 ] ; then
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
@@ -547,8 +571,7 @@ else
     --field="   CHANGELOG"!""!"":"FBTN" '@bash -c "button_click open_changelog"' \
     --field="   EDIT USER.CONF"!""!"":"FBTN" '@bash -c "button_click gui_open_user_conf"' \
     --field="   SCRIPTS FROM BACKUP"!""!"":"FBTN" '@bash -c "button_click gui_open_scripts_from_backup"' &
-    #--field="   ABOUT PORTPROTON"!""!"":"FBTN" '@bash -c "button_click gui_about_portproton"' &
-
+    # --field="   ABOUT PORTPROTON"!""!"":"FBTN" '@bash -c "button_click gui_about_portproton"' &
 
     "${pw_yad_new}" --plug=${KEY} --tabnum=3 --columns=3 --align-buttons --form --separator=";" \
     --field="  3D API  : :CB" "VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL" \
@@ -655,7 +678,7 @@ case "$PW_YAD_SET" in
     WINEFILE|110) pw_winefile ;;
     WINECMD|112) pw_winecmd ;;
     WINEREG|114) pw_winereg ;;
-    WINETRICKS|116) pw_winetricks ;;
+    WINETRICKS|116) pw_prefix_manager ;;
     118) pw_edit_db ;;
     gui_clear_pfx) gui_clear_pfx ;;
     gui_open_user_conf) gui_open_user_conf ;;

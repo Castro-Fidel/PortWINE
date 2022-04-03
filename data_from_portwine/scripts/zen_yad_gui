@@ -98,6 +98,7 @@ pw_stop_progress_bar_cover () {
     kill -s KILL "$PW_YAD_PID_PROGRESS_BAR_COVER" > /dev/null 2>&1
     return 0
 }
+export -f pw_stop_progress_bar_cover
 
 open_changelog () {
     "${pw_yad}" --title="Changelog" --borders=10 --no-buttons --text-align=center \
@@ -110,14 +111,17 @@ pw_tray_icon () {
     if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ] ; then
         kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`"
     fi
+
     tray_icon_click () {
         echo ""
     }
     export -f tray_icon_click
+
     pw_tray_winefile () {
         pw_run explorer
     }
     export -f pw_tray_winefile
+
     tray_icon_click_exit () {
         pw_stop_progress_bar
         stop_portwine

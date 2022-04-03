@@ -10,7 +10,7 @@ echo '
 █────████─█─█───█───█─█──███─█──█─███
 
 '
-if [ $(id -u) = 0 ] ; then
+if [[ $(id -u) = 0 ]] ; then
     echo "Do not run this script as root!"
     zenity --error --text "Do not run this script as root!"
     exit 1
@@ -124,6 +124,11 @@ start_portwine () {
     then export WINE_ALLOW_XIM="1"
     else export WINE_ALLOW_XIM="0"
     fi
+    if [[ ! -z "${PW_FIX_VIDEO_IN_GAME}" && "${PW_FIX_VIDEO_IN_GAME}" != 0 ]]
+    then export WINE_DO_NOT_CREATE_DXGI_DEVICE_MANAGER="1"
+    else export WINE_DO_NOT_CREATE_DXGI_DEVICE_MANAGER="0"
+    fi
+    
     [[ ! -z "${PW_MANGOHUD_USER_CONF}" && "${PW_MANGOHUD_USER_CONF}" != 0 ]] && unset MANGOHUD_CONFIG
     if [[ ! -z "${PW_USE_DXR11}" && "${PW_USE_DXR11}" != 0 ]]
     then var_vkd3d_config_update dxr11
@@ -398,7 +403,7 @@ start_portwine () {
 }
 
 pw_run () {
-    if [ ! -z "$portwine_exe" ] ; then
+    if [[ ! -z "$portwine_exe" ]] ; then
         cd "${PATH_TO_GAME}"
     else
         cd "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c"
@@ -407,7 +412,7 @@ pw_run () {
     PW_LOG_TO_FILE="${PORT_WINE_PATH}/${portname}.log"
     print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VKD3D_CONFIG" \
     "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2"
-    if [ "${PW_LOG}" == 1 ] ; then
+    if [[ "${PW_LOG}" == 1 ]] ; then
         echo "WINEDLLOVERRIDES=${WINEDLLOVERRIDES}" >> "${PW_LOG_TO_FILE}"
         echo "------------------------------------" >> "${PW_LOG_TO_FILE}"
         echo "Log WINE:" >> "${PW_LOG_TO_FILE}"
@@ -436,6 +441,8 @@ if [[ $(id -u) -eq 0 ]] ; then
     zenity_error "Do not run the script from the superuser!"
     exit 1
 fi
+[[ -z "${LANG}" ]] && export LANG=C
+
 create_new_dir "${HOME}/.local/share/applications"
 if [[ ! -z "${PW_SILENT_RESTART}" ]] && [[ "${PW_SILENT_RESTART}" = 1 ]] ; then
     export PW_GUI_DISABLED_CS=1
@@ -538,7 +545,7 @@ export WINETRICKS_DOWNLOADER="curl"
 export USER_CONF="${PORT_WINE_PATH}/data/user.conf"
 check_user_conf
 
-if [ -z "${INSTALLING_PORT}" ] ; then
+if [[ -z "${INSTALLING_PORT}" ]] ; then
     . "${USER_CONF}"
     pw_port_update
     pw_download_libs
