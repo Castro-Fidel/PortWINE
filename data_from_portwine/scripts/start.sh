@@ -22,7 +22,17 @@ if [[ -n `basename "${portwine_exe}" | grep .ppack` ]] ; then
     export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
     unset PW_SANDBOX_HOME_PATH
     pw_init_runtime
-    ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" unsquashfs -f -d "${PORT_WINE_PATH}/data/prefixes/$(basename $1 | awk -F'.' '{print $1}')" "$1"
+    export PW_PREFIX_NAME=`basename "$1" | awk -F'.' '{print $1}'`
+    ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" unsquashfs -f -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" "$1"
+    if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut" ]] ; then
+        orig_IFS="$IFS"
+        IFS=$'\n'
+        for crfb in `cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut"` ; do
+            export portwine_exe="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/${crfb}"
+            portwine_create_shortcut "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/${crfb}"
+        done
+        IFS="$orig_IFS"
+    fi
     exit 0
 fi
 
@@ -32,43 +42,14 @@ portwine_launch () {
     PORTWINE_BAT=`basename "${portwine_exe}" | grep .bat`
     if [[ ! -z "${PW_VIRTUAL_DESKTOP}" && "${PW_VIRTUAL_DESKTOP}" == "1" ]] ; then
         pw_screen_resolution=`xrandr --current | grep "*" | awk '{print $1;}' | head -1`
-        pw_run explorer "/desktop=portwine,${pw_screen_resolution}" "$portwine_exe"
+        pw_run explorer "/desktop=portwine,${pw_screen_resolution}" ${WINE_WIN_START} "$portwine_exe"
     elif [ ! -z "${PORTWINE_MSI}" ]; then
         pw_run msiexec /i "$portwine_exe"
     elif [[ ! -z "${PORTWINE_BAT}" || ! -z "${portwine_exe}" ]] ; then
         pw_run ${WINE_WIN_START} "$portwine_exe"
     else
-        pw_run explorer
+        pw_run winefile
     fi
-}
-
-portwine_create_shortcut () {
-    pw_create_gui_png
-    name_desktop="${PORTPROTON_NAME}"
-    echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    echo "Name=${PORTPROTON_NAME}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    if [ -z "${PW_CHECK_AUTOINSTAL}" ]
-    then echo "Exec=env "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" "" \
-    >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    else echo "Exec=env "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" "" \
-    >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    fi
-    echo "Type=Application" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    echo "Categories=Game" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    echo "StartupNotify=true" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    echo "Path="${PORT_SCRIPTS_PATH}/"" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    echo "Icon="${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    `zenity --question --title "${inst_set}." --text "${ss_done}" --no-wrap ` &> /dev/null
-    if [ $? -eq "0" ]; then
-        cp -fu "${PORT_WINE_PATH}/${name_desktop}.desktop" ${HOME}/.local/share/applications/
-    fi
-    xdg-open "${PORT_WINE_PATH}" 2>1 >/dev/null &
-}
-
-portwine_delete_shortcut () {
-    rm -f "`grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop`"
-    rm -f "`grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop`" 
 }
 
 portwine_start_debug () {
@@ -99,9 +80,12 @@ portwine_start_debug () {
     echo "GLIBC version:" >> "${PORT_WINE_PATH}/${portname}.log"
     echo `ldd --version | grep -m1 ldd | awk '{print $NF}'` >> "${PORT_WINE_PATH}/${portname}.log"
     echo "--------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    if [ "${PW_VULKAN_USE}" = "0" ]
-    then echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DX9-11 to OpenGL" >> "${PORT_WINE_PATH}/${portname}.log"
-    else echo "PW_VULKAN_USE=${PW_VULKAN_USE}" >> "${PORT_WINE_PATH}/${portname}.log"
+    if [[ "${PW_VULKAN_USE}" = "0" ]] ; then 
+        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DX9-11 to OpenGL" >> "${PORT_WINE_PATH}/${portname}.log"
+    elif [[ "${PW_VULKAN_USE}" = "3" ]] ; then 
+        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - native DX9 on MESA drivers" >> "${PORT_WINE_PATH}/${portname}.log"
+    else 
+        echo "PW_VULKAN_USE=${PW_VULKAN_USE}" >> "${PORT_WINE_PATH}/${portname}.log"
     fi
     echo "--------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Version WINE in the Port:" >> "${PORT_WINE_PATH}/${portname}.log"
@@ -212,7 +196,7 @@ pw_winecfg () {
 
 pw_winefile () {
     start_portwine
-    pw_run explorer
+    pw_run winefile
 }
 
 pw_winecmd () {
@@ -233,7 +217,7 @@ pw_prefix_manager () {
     start_portwine
     [[ ! -f "${PORT_WINE_TMP_PATH}/dll_list" ]] && "${PORT_WINE_TMP_PATH}/winetricks" dlls list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/dll_list"
     [[ ! -f "${PORT_WINE_TMP_PATH}/fonts_list" ]] && "${PORT_WINE_TMP_PATH}/winetricks" fonts list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/fonts_list"
-    # [[ ! -f "${PORT_WINE_TMP_PATH}/settings_list" ]] && "${PORT_WINE_TMP_PATH}/winetricks" settings list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/settings_list"
+    [[ ! -f "${PORT_WINE_TMP_PATH}/settings_list" ]] && "${PORT_WINE_TMP_PATH}/winetricks" settings list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/settings_list"
 
     gui_prefix_manager () {
         pw_start_progress_bar_block "Starting prefix manager..."
@@ -242,7 +226,7 @@ pw_prefix_manager () {
         IFS=$'\n'
         try_remove_file  "${PORT_WINE_TMP_PATH}/dll_list_tmp"
         while read PW_BOOL_IN_DLL_LIST ; do
-            if [[ -z `echo "${PW_BOOL_IN_DLL_LIST}" | grep -E 'dont_use|dxvk|vkd3d|galliumnine|faudio1'` ]] ; then
+            if [[ -z `echo "${PW_BOOL_IN_DLL_LIST}" | grep -E 'd3d|directx9|dont_use|dxvk|vkd3d|galliumnine|faudio1'` ]] ; then
                 if grep "^`echo ${PW_BOOL_IN_DLL_LIST} | awk '{print $1}'`$" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
                     echo -e "true\n`echo ${PW_BOOL_IN_DLL_LIST} | awk '{print $1}'`\n`echo ${PW_BOOL_IN_DLL_LIST} | awk '{ $1 = ""; print substr($0, 2) }'`" >> "${PORT_WINE_TMP_PATH}/dll_list_tmp"
                 else
@@ -260,6 +244,16 @@ pw_prefix_manager () {
                 fi
             fi
         done < "${PORT_WINE_TMP_PATH}/fonts_list"
+        try_remove_file  "${PORT_WINE_TMP_PATH}/settings_list_tmp"
+        while read PW_BOOL_IN_FONTS_LIST ; do
+            if [[ -z `echo "${PW_BOOL_IN_FONTS_LIST}" | grep -E 'vista|alldlls|autostart_|bad|good|win|videomemory|vd=|isolate_home'` ]] ; then
+                if grep "^`echo ${PW_BOOL_IN_FONTS_LIST} | awk '{print $1}'`$" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
+                    echo -e "true\n`echo ${PW_BOOL_IN_FONTS_LIST} | awk '{print $1}'`\n`echo ${PW_BOOL_IN_FONTS_LIST} | awk '{ $1 = ""; print substr($0, 2) }'`" >> "${PORT_WINE_TMP_PATH}/settings_list_tmp"
+                else
+                    echo -e "false\n`echo ${PW_BOOL_IN_FONTS_LIST} | awk '{print $1}'`\n`echo ${PW_BOOL_IN_FONTS_LIST} | awk '{ $1 = ""; print substr($0, 2) }'`" >> "${PORT_WINE_TMP_PATH}/settings_list_tmp"
+                fi
+            fi
+        done < "${PORT_WINE_TMP_PATH}/settings_list"
         pw_stop_progress_bar
 
         KEY_EDIT_MANAGER_GUI=$RANDOM
@@ -271,8 +265,12 @@ pw_prefix_manager () {
         --text="Select fonts to install in prefix: <b>\"${PW_PREFIX_NAME}\"</b>, using wine: <b>\"${PW_WINE_USE}\"</b>" \
         --column=set --column=dll --column=info < "${PORT_WINE_TMP_PATH}/fonts_list_tmp" 1>> "${PORT_WINE_TMP_PATH}/to_winetricks" &
 
+        "${pw_yad_new}" --plug=$KEY_EDIT_MANAGER_GUI --tabnum=3 --list --checklist \
+        --text="Change config for prefix: <b>\"${PW_PREFIX_NAME}\"</b>" \
+        --column=set --column=dll --column=info < "${PORT_WINE_TMP_PATH}/settings_list_tmp" 1>> "${PORT_WINE_TMP_PATH}/to_winetricks" &
+
         "${pw_yad_new}" --key=$KEY_EDIT_MANAGER_GUI --notebook --borders=5 --width=700 --height=600 --center \
-        --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "PREFIX MANAGER..." --tab-pos=bottom --tab="DLL" --tab="FONST"
+        --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "PREFIX MANAGER..." --tab-pos=bottom --tab="DLL" --tab="FONTS" --tab="SETTINGS"
         YAD_STATUS="$?"
         if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
             stop_portwine
@@ -337,6 +335,11 @@ pw_create_prefix_backup () {
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "BACKUP PREFIX TO..."`
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
+    if [[ ! -z "`grep "/${PW_PREFIX_NAME}/" "${PORT_WINE_PATH}"/*.desktop `" ]] ; then
+        try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut"
+        grep "/${PW_PREFIX_NAME}/" "${PORT_WINE_PATH}"/*.desktop | awk -F"/${PW_PREFIX_NAME}/" '{print $2}' \
+        | awk -F\" '{print $1}' > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut"
+    fi
     unset PW_SANDBOX_HOME_PATH
     export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
     pw_init_runtime
@@ -361,10 +364,12 @@ pw_create_prefix_backup () {
 }
 
 pw_edit_db () {
-    pw_gui_for_edit_db PW_MANGOHUD PW_MANGOHUD_USER_CONF ENABLE_VKBASALT PW_NO_ESYNC PW_NO_FSYNC PW_USE_DXR10 PW_USE_DXR11 \
+    pw_gui_for_edit_db \
+    PW_MANGOHUD PW_MANGOHUD_USER_CONF ENABLE_VKBASALT PW_NO_ESYNC PW_NO_FSYNC PW_USE_DXR10 PW_USE_DXR11 \
     PW_VULKAN_NO_ASYNC PW_USE_NVAPI_AND_DLSS PW_OLD_GL_STRING PW_HIDE_NVIDIA_GPU PW_FORCE_USE_VSYNC PW_VIRTUAL_DESKTOP \
     PW_WINEDBG_DISABLE PW_USE_TERMINAL PW_WINE_ALLOW_XIM PW_HEAP_DELAY_FREE PW_GUI_DISABLED_CS PW_USE_GSTREAMER \
-    PW_USE_GAMEMODE PW_DX12_DISABLE PW_PRIME_RENDER_OFFLOAD PW_D3D_EXTRAS_DISABLE PW_FIX_VIDEO_IN_GAME
+    PW_USE_GAMEMODE PW_DX12_DISABLE PW_PRIME_RENDER_OFFLOAD PW_D3D_EXTRAS_DISABLE PW_FIX_VIDEO_IN_GAME PW_USE_AMDVLK_DRIVER \
+    PW_FORCE_LARGE_ADDRESS_AWARE 
     if [ "$?" == 0 ] ; then
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
@@ -434,9 +439,10 @@ if [ ! -z "${PORTWINE_DB_FILE}" ] ; then
         [ -z "${PW_VULKAN_USE}" ] && export PW_VULKAN_USE=1
     fi
     case "${PW_VULKAN_USE}" in
-            "0") export PW_DEFAULT_VULKAN_USE='OPENGL!VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)' ;;
-            "2") export PW_DEFAULT_VULKAN_USE='VULKAN (WINE DXGI)!VULKAN (DXVK and VKD3D)!OPENGL' ;;
-              *) export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL' ;;
+            "0") export PW_DEFAULT_VULKAN_USE='OPENGL!VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!GALLIUM_NINE (native DX9 on MESA)' ;;
+            "2") export PW_DEFAULT_VULKAN_USE='VULKAN (WINE DXGI)!VULKAN (DXVK and VKD3D)!OPENGL!GALLIUM_NINE (native DX9 on MESA)' ;;
+            "3") export PW_DEFAULT_VULKAN_USE='GALLIUM_NINE (native DX9 on MESA)!VULKAN (WINE DXGI)!VULKAN (DXVK and VKD3D)!OPENGL' ;;
+              *) export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL!GALLIUM_NINE (native DX9 on MESA)' ;;
     esac
     if [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_STEAM$"` ]] ; then
         export PW_DEFAULT_WINE_USE="${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
@@ -453,7 +459,7 @@ if [ ! -z "${PORTWINE_DB_FILE}" ] ; then
         fi
     fi
 else
-    export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL'
+    export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL!GALLIUM_NINE (native DX9 on MESA)'
     if [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_STEAM$"` ]] ; then
         export PW_DEFAULT_WINE_USE="${PW_PROTON_STEAM_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
     elif [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_GE$"` ]] ; then
@@ -574,7 +580,7 @@ else
     # --field="   ABOUT PORTPROTON"!""!"":"FBTN" '@bash -c "button_click gui_about_portproton"' &
 
     "${pw_yad_new}" --plug=${KEY} --tabnum=3 --columns=3 --align-buttons --form --separator=";" \
-    --field="  3D API  : :CB" "VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL" \
+    --field="  3D API  : :CB" "VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL!GALLIUM_NINE (native DX9 on MESA)" \
     --field="  PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
     --field="  WINE    : :CB" "${PW_DEFAULT_WINE_USE}" \
     --field="                    DOWNLOAD OTHER WINE "!"${loc_download_other_wine}":"FBTN" '@bash -c "button_click gui_proton_downloader"' \
@@ -649,6 +655,8 @@ elif [[ ! -z "${VULKAN_MOD}" && "${VULKAN_MOD}" = "VULKAN (DXVK and VKD3D)" ]]
 then export PW_VULKAN_USE="1"
 elif [[ ! -z "${VULKAN_MOD}" && "${VULKAN_MOD}" = "VULKAN (WINE DXGI)" ]] 
 then export PW_VULKAN_USE="2"
+elif [[ ! -z "${VULKAN_MOD}" && "${VULKAN_MOD}" = "GALLIUM_NINE (native DX9 on MESA)" ]] 
+then export PW_VULKAN_USE="3"
 fi
 
 init_wine_ver

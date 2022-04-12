@@ -118,9 +118,14 @@ pw_tray_icon () {
     export -f tray_icon_click
 
     pw_tray_winefile () {
-        pw_run explorer
+        pw_run winefile "C:\\users\\${USER}\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\"
     }
     export -f pw_tray_winefile
+
+    pw_tray_taskmgr () {
+        pw_run taskmgr
+    }
+    export -f pw_tray_taskmgr
 
     tray_icon_click_exit () {
         pw_stop_progress_bar
@@ -135,6 +140,7 @@ pw_tray_icon () {
     --tooltip="PortProton" \
     --menu="| \
 <<<     WINEFILE     >>>!bash -c pw_tray_winefile!"$PW_GUI_ICON_PATH/port_winefile.png"| \
+<<<     TASKMNR     >>>!bash -c pw_tray_taskmgr!"$PW_GUI_ICON_PATH/port_winefile.png"| \
 <<< CHANGE  LOG >>>!bash -c open_changelog!"$PW_GUI_ICON_PATH/port_changelog.png"| \
 <<<   FORCE  EXIT   >>>!bash -c tray_icon_click_exit!"$PW_GUI_ICON_PATH/port_exit.png"|" & 
     return 0
@@ -181,7 +187,7 @@ pw_gui_for_edit_db () {
     --field=":LBL" "" \
     --field="MANGOHUD FPS LIMIT (0-disabled):SCL" ${FPS_LIMIT_VAR} 1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" & 
 
-    "${pw_yad_new}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="520" \
+    "${pw_yad_new}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="550" \
     --text "Change settings in database file for ${PORTWINE_DB}\n" --separator=" " --borders=10 --center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --button="CANCEL":1 --button="OPEN DB FILE":150 --button="SAVE CHANGES":0
     YAD_STATUS="$?"
@@ -391,4 +397,40 @@ gui_vkBasalt () {
     edit_db_from_gui PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS ENABLE_VKBASALT
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
+}
+
+portwine_create_shortcut () {
+    pw_create_gui_png
+    name_desktop="${PORTPROTON_NAME}"
+    echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
+    echo "Name=${PORTPROTON_NAME}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+    if [ -z "${PW_CHECK_AUTOINSTAL}" ]
+    then echo "Exec=env "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" "" \
+    >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+    else echo "Exec=env "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" "" \
+    >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+    fi
+    echo "Type=Application" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+    echo "Categories=Game" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+    echo "StartupNotify=true" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+    echo "Path="${PORT_SCRIPTS_PATH}/"" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+    echo "Icon="${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+    chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
+    "${pw_yad}" --title="${inst_set}." --form --center --borders=5 \
+    --window-icon "$PW_GUI_ICON_PATH/port_proton.png" \
+    --image "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" \
+    --field="    <b>${name_desktop}.desktop</b>:LBL" "" \
+    --field="    ${ss_done}:LBL" "" \
+    --button='CANCEL'!!"":1 \
+    --button='OK'!!"":0 
+    if [ $? -eq "0" ]; then
+        try_remove_file "${HOME}/.local/share/applications/${name_desktop}.desktop"
+        cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" ${HOME}/.local/share/applications/
+    fi
+    xdg-open "${PORT_WINE_PATH}" 2>1 >/dev/null &
+}
+
+portwine_delete_shortcut () {
+    rm -f "`grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop`"
+    rm -f "`grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop`" 
 }

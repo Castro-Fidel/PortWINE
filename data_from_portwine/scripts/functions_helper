@@ -186,45 +186,6 @@ unpack_tar () {
     [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
 }
 
-pw_mangohud_check () {
-    export RUN_MANGOHUD_IN_SLR=""
-    if [[ "${PW_MANGOHUD}" == "1" ]] ; then
-        if [[ "${PW_VULKAN_USE}" = "0" ]] ; then 
-            export RUN_MANGOHUD_IN_SLR="mangohud --dlsym"
-        else 
-            export RUN_MANGOHUD_IN_SLR="mangohud"
-        fi
-    else
-        export DISABLE_MANGOHUD=1
-    fi
-    return 0
-}
-export -f pw_mangohud_check
-
-pw_vkbasalt_check () {
-    if [[ ! -z "${ENABLE_VKBASALT}" && "${ENABLE_VKBASALT}" == 1 ]] ; then
-        if [ -z "${PW_VKBASALT_EFFECTS}" ] ; then
-            export PW_VKBASALT_EFFECTS="cas:FilmGrain2" 
-        fi
-        sed -ri "s/effects = .*/effects = ${PW_VKBASALT_EFFECTS}/g" "${PORT_WINE_PATH}/data/vkBasalt.conf"
-        if [ -z "${PW_VKBASALT_FFX_CAS}" ] ; then
-            export PW_VKBASALT_FFX_CAS="0.7" 
-        fi
-        sed -ri "s/casSharpness .*/casSharpness = ${PW_VKBASALT_FFX_CAS}/g" "${PORT_WINE_PATH}/data/vkBasalt.conf"
-        export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
-        sed -i s/'> = 0.05;'/'> = 0.035;'/ "${PW_WINELIB}/pressure-vessel/reshade/shaders/FilmGrain2.fx"
-        sed -i s/'> = 0.65;'/'> = 0.4;'/ "${PW_WINELIB}/pressure-vessel/reshade/shaders/Curves.fx"
-        sed -i s/'> = 0.8;'/'> = 0.9;'/ "${PW_WINELIB}/pressure-vessel/reshade/shaders/Bloom.fx"
-        if [ ! -z "${VK_INSTANCE_LAYERS}" ]
-        then export VK_INSTANCE_LAYERS="VK_LAYER_VKBASALT_post_processing:${VK_INSTANCE_LAYERS}"
-        else export VK_INSTANCE_LAYERS="VK_LAYER_VKBASALT_post_processing"
-        fi
-    else
-        export DISABLE_VKBASALT=1
-    fi
-    return 0
-}
-
 pw_clear_pfx () {
     try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
     try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
@@ -338,7 +299,7 @@ init_wine_ver () {
             if check_symlink "${WINEDIR}/share/wine/${mono_gecko_chk}" ; then
                 echo "${WINEDIR}/share/wine/${mono_gecko_chk} is symlink. OK."
             elif [[ -d "${WINEDIR}/share/wine/${mono_gecko_chk}" ]] ; then
-                try_copy_dir "${WINEDIR}/share/wine/${mono_gecko_chk}" "${PORT_WINE_TMP_PATH}"
+                try_copy_dir "${WINEDIR}/share/wine/${mono_gecko_chk}" "${PORT_WINE_TMP_PATH}" | sszen
                 try_remove_dir "${WINEDIR}/share/wine/${mono_gecko_chk}"
                 try_force_link_dir "${PORT_WINE_TMP_PATH}/${mono_gecko_chk}" "${WINEDIR}"/share/wine/
                 echo "Copy ${WINEDIR}/share/wine/${mono_gecko_chk} to tmp and create symlink to ${WINEDIR}/share/wine/. OK."
@@ -374,17 +335,13 @@ pw_init_runtime () {
 
     PW_PV_OVERRIDES="/usr/lib/pressure-vessel/overrides/lib" 
     if [[ ! -z "${LD_LIBRARY_PATH}" ]] ; then
-        if [[ -z "`echo ${PW_LD_LIBRARY_PATH} | grep "${WINEDIR}/lib64:${WINEDIR}/lib"`" ]] ; then
-            export PW_LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${PW_WINELIB}/portable/lib/\$LIB:${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:${LD_LIBRARY_PATH}"
-        fi
+        export PW_LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${PW_WINELIB}/portable/lib/\$LIB:${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:${LD_LIBRARY_PATH}"
     else
         export PW_LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${PW_WINELIB}/portable/lib/\$LIB:${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:${PW_PV_OVERRIDES}/i386-linux-gnu/aliases"
     fi 
 
-    if [[ ! -z "${VK_LAYER_PATH}" ]]
-    then export VK_LAYER_PATH="${PW_WINELIB}/portable/share/vulkan/implicit_layer.d/:${VK_LAYER_PATH}"
-    else export VK_LAYER_PATH="${PW_WINELIB}/portable/share/vulkan/implicit_layer.d/"
-    fi
+    export PW_VK_LAYER_PATH="${PW_WINELIB}/portable/share/vulkan/implicit_layer.d/"
+
     if [ ! -z ${PATH_TMP} ]
     then export PATH="${PATH_TMP}"
     else export PATH_TMP="${PATH}"
@@ -405,8 +362,6 @@ pw_init_runtime () {
     else
         var_winedlloverride_update "winegstreamer="
     fi
-    # export STAGING_SHARED_MEMORY=1
-    # export PW_FORCE_LARGE_ADDRESS_AWARE=1
 
     if [ "${PW_USE_RUNTIME}" = 0 ] ; then
         export pw_runtime=""
@@ -447,7 +402,56 @@ pw_init_runtime () {
     fi
 }
 
-check_vk_icd_file () {
+pw_mangohud_check () {
+    if [[ "${PW_MANGOHUD}" == "1" ]] ; then
+        export MANGOHUD=1
+        MANGOHUD_LIB_NAME="libMangoHud.so"
+        if [[ "${PW_VULKAN_USE}" = "0" ]] ; then 
+	        MANGOHUD_LIB_NAME="libMangoHud_dlsym.so:${MANGOHUD_LIB_NAME}"
+        fi
+        if [[ ! -z "${PW_LD_PRELOAD}" ]]
+        then export PW_LD_PRELOAD="${PW_LD_PRELOAD}:${MANGOHUD_LIB_NAME}"
+        else export PW_LD_PRELOAD="${MANGOHUD_LIB_NAME}"
+        fi
+        if [[ ! -z "${PW_VK_INSTANCE_LAYERS}" ]]
+        then export PW_VK_INSTANCE_LAYERS="VK_LAYER_MANGOHUD_overlay:${PW_VK_INSTANCE_LAYERS}"
+        else export PW_VK_INSTANCE_LAYERS="VK_LAYER_MANGOHUD_overlay"
+        fi
+        print_info "MANGOHUD is enabled"
+    else
+        export DISABLE_MANGOHUD=1
+        print_info "MANGOHUD is disabled"
+    fi
+    return 0
+}
+
+pw_vkbasalt_check () {
+    if [[ "${ENABLE_VKBASALT}" == 1 ]] && [[ "${PW_VULKAN_USE}" != "0" ]] && [[ "${PW_VULKAN_USE}" != "3" ]] ; then
+        if [[ -z "${PW_VKBASALT_EFFECTS}" ]] ; then
+            export PW_VKBASALT_EFFECTS="cas:FilmGrain2" 
+        fi
+        sed -ri "s/effects = .*/effects = ${PW_VKBASALT_EFFECTS}/g" "${PORT_WINE_PATH}/data/vkBasalt.conf"
+        if [[ -z "${PW_VKBASALT_FFX_CAS}" ]] ; then
+            export PW_VKBASALT_FFX_CAS="0.7" 
+        fi
+        sed -ri "s/casSharpness .*/casSharpness = ${PW_VKBASALT_FFX_CAS}/g" "${PORT_WINE_PATH}/data/vkBasalt.conf"
+        export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
+        sed -i s/'> = 0.05;'/'> = 0.035;'/ "${PW_WINELIB}/pressure-vessel/reshade/shaders/FilmGrain2.fx"
+        sed -i s/'> = 0.65;'/'> = 0.4;'/ "${PW_WINELIB}/pressure-vessel/reshade/shaders/Curves.fx"
+        sed -i s/'> = 0.8;'/'> = 0.9;'/ "${PW_WINELIB}/pressure-vessel/reshade/shaders/Bloom.fx"
+        if [[ ! -z "${PW_VK_INSTANCE_LAYERS}" ]]
+        then export PW_VK_INSTANCE_LAYERS="VK_LAYER_VKBASALT_post_processing:${PW_VK_INSTANCE_LAYERS}"
+        else export PW_VK_INSTANCE_LAYERS="VK_LAYER_VKBASALT_post_processing"
+        fi
+        print_info "vkBasalt is enabled"
+    else
+        export DISABLE_VKBASALT=1
+        print_info "vkBasalt is disabled"
+    fi
+    return 0
+}
+
+check_nvidia_vk_icd_file () {
     if [[ -f "/usr/share/vulkan/icd.d/nvidia_icd.json" ]] ; then
         export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/nvidia_icd.json"
     elif [[ -f "/etc/vulkan/icd.d/nvidia_icd.json" ]] ; then
@@ -643,6 +647,11 @@ pw_init_db () {
         export PORTWINE_DB=`echo "${portwine_exe}" | awk -F '/' 'NF>1{print $NF}' | sed s/".exe"/""/gi`
         if [[ -f "${portwine_exe}".ppdb ]] ; then
             export PORTWINE_DB_FILE="${portwine_exe}".ppdb
+            . "${PORTWINE_DB_FILE}"
+            if [[ -z "`ls -p "${PORT_WINE_PATH}/prefixes/" | grep -e "^${PW_PREFIX_NAME}/"`" ]] ; then
+                export PW_PREFIX_NAME=`echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}'`
+                edit_db_from_gui PW_PREFIX_NAME
+            fi
         else
             orig_IFS="$IFS"
             IFS=$'\n'
@@ -666,13 +675,13 @@ pw_init_db () {
             IFS="$orig_IFS"
             if [[ -f "${PW_FIND_DB_FILE}" ]] && [[ -z `grep "^export PW_DISABLED_CREATE_DB=1" "${PW_FIND_DB_FILE}"` ]] ; then
                 try_copy_file "${PW_FIND_DB_FILE}" "${portwine_exe}".ppdb
-                export PORTWINE_DB_FILE="${portwine_exe}".ppdb
-                if [[ ! -z `echo "${portwine_exe}" | grep "/data/prefixes/"` ]] && \
-                   [[ -z `echo "${portwine_exe}" | grep "/data/prefixes/DEFAULT"` ]]
-                then 
-                    export PW_PREFIX_NAME=`echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}'`
-                    edit_db_from_gui PW_PREFIX_NAME
-                fi
+            fi
+            export PORTWINE_DB_FILE="${portwine_exe}".ppdb
+            if [[ ! -z `echo "${portwine_exe}" | grep "/data/prefixes/"` ]] && \
+                [[ -z `echo "${portwine_exe}" | grep "/data/prefixes/DEFAULT/"` ]]
+            then 
+                export PW_PREFIX_NAME=`echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}'`
+                edit_db_from_gui PW_PREFIX_NAME
             fi
         fi
         if [ ! -z "${PORTWINE_DB_FILE}" ]; then
