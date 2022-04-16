@@ -221,6 +221,9 @@ pw_winereg () {
 pw_prefix_manager () {
     update_winetricks
     start_portwine
+    if [ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ] ; then
+        touch "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
+    fi
     [[ ! -f "${PORT_WINE_TMP_PATH}/dll_list" ]] && "${PORT_WINE_TMP_PATH}/winetricks" dlls list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/dll_list"
     [[ ! -f "${PORT_WINE_TMP_PATH}/fonts_list" ]] && "${PORT_WINE_TMP_PATH}/winetricks" fonts list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/fonts_list"
     [[ ! -f "${PORT_WINE_TMP_PATH}/settings_list" ]] && "${PORT_WINE_TMP_PATH}/winetricks" settings list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/settings_list"

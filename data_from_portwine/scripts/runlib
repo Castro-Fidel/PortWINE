@@ -314,7 +314,6 @@ start_portwine () {
         var_winedlloverride_update "d3d11,d3d10,d3d10core,d3d10_1,d3d9,dxgi=b;d3d12="
     elif [[ "${PW_VULKAN_USE}" == "3" ]] ; then
         echo "Use GALLIUM-NINE (Native DX9 on MESA drivers)"
-        echo "Try link wine DXGI..."
         export PW_GALLIUM_NINE_VER="0.8"
         export PW_GALLIUM_NINE_PATH="${PW_PLUGINS_PATH}/gallium_nine_v.${PW_GALLIUM_NINE_VER}"
         try_force_link_file "${PW_GALLIUM_NINE_PATH}/lib32/d3d9-nine.dll.so" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/d3d9.dll"
@@ -421,7 +420,7 @@ start_portwine () {
     if [[ ! -z "${PW_DLL_INSTALL}" ]] ; then
         export PW_DLL_NEED_INSTALL=""
         export USE_WT_FROM_DB=0
-        if [ ! -e "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ] ; then
+        if [ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ] ; then
             touch "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
         fi
         for need_install_dll_to_pfx in ${PW_DLL_INSTALL} ; do
