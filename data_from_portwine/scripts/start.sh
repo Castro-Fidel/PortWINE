@@ -137,9 +137,15 @@ portwine_start_debug () {
         echo "!!!gamemod not found!!!"  >> "${PORT_WINE_PATH}/${portname}.log"
     fi
     echo "-------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    if [[ "${PW_D3D_EXTRAS_DISABLE}" == 1 ]]
+    then echo "D3D_EXTRAS - disable" >> "${PORT_WINE_PATH}/${portname}.log"
+    else echo "D3D_EXTRAS - enable" >> "${PORT_WINE_PATH}/${portname}.log"
+    fi
+    echo 
+    echo "------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "winetricks.log:" >> "${PORT_WINE_PATH}/${portname}.log"
     cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "-----------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     if [ ! -z "${PORTWINE_DB_FILE}" ]; then
         echo "Use ${PORTWINE_DB_FILE} db file:" >> "${PORT_WINE_PATH}/${portname}.log"
         cat "${PORTWINE_DB_FILE}" | sed '/##/d' >> "${PORT_WINE_PATH}/${portname}.log"
@@ -147,11 +153,11 @@ portwine_start_debug () {
         echo "Use ${PORT_SCRIPTS_PATH}/portwine_db/default db file:" >> "${PORT_WINE_PATH}/${portname}.log"
         cat "${PORT_SCRIPTS_PATH}/portwine_db/default" | sed '/##/d' >> "${PORT_WINE_PATH}/${portname}.log"
     fi
-    echo "-----------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "----------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     if [ -f "${USER_CONF}" ]; then
         cat "${USER_CONF}" | sed '/bash/d' >> "${PORT_WINE_PATH}/${portname}.log"
     fi
-    echo "----------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "---------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
 
     export DXVK_HUD="full"
 
@@ -343,6 +349,7 @@ pw_create_prefix_backup () {
     unset PW_SANDBOX_HOME_PATH
     export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
     pw_init_runtime
+    chmod -R u+w "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"
     ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" mksquashfs "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" -comp zstd &
     sleep 15
     while true ; do
@@ -369,7 +376,7 @@ pw_edit_db () {
     PW_VULKAN_NO_ASYNC PW_USE_NVAPI_AND_DLSS PW_OLD_GL_STRING PW_HIDE_NVIDIA_GPU PW_FORCE_USE_VSYNC PW_VIRTUAL_DESKTOP \
     PW_WINEDBG_DISABLE PW_USE_TERMINAL PW_WINE_ALLOW_XIM PW_HEAP_DELAY_FREE PW_GUI_DISABLED_CS PW_USE_GSTREAMER \
     PW_USE_GAMEMODE PW_DX12_DISABLE PW_PRIME_RENDER_OFFLOAD PW_D3D_EXTRAS_DISABLE PW_FIX_VIDEO_IN_GAME PW_USE_AMDVLK_DRIVER \
-    PW_FORCE_LARGE_ADDRESS_AWARE 
+    PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE
     if [ "$?" == 0 ] ; then
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
@@ -613,7 +620,6 @@ else
     --field="   Epic Games Launcher"!"$PW_GUI_ICON_PATH/epicgames.png"!"":"FBTN" '@bash -c "button_click PW_EPIC"' \
     --field="   GoG Galaxy Launcher"!"$PW_GUI_ICON_PATH/gog.png"!"":"FBTN" '@bash -c "button_click PW_GOG"' \
     --field="   Ubisoft Game Launcher"!"$PW_GUI_ICON_PATH/ubc.png"!"":"FBTN" '@bash -c "button_click PW_UBC"' \
-    --field="   Steam Client Launcher"!"$PW_GUI_ICON_PATH/steam.png"!"":"FBTN" '@bash -c "button_click PW_STEAM"' \
     --field="   EVE Online Launcher"!"$PW_GUI_ICON_PATH/eve.png"!"":"FBTN" '@bash -c "button_click PW_EVE"' \
     --field="   Origin Launcher"!"$PW_GUI_ICON_PATH/origin.png"!"":"FBTN" '@bash -c "button_click PW_ORIGIN"' \
     --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"' \
@@ -623,7 +629,10 @@ else
     --field="   Ankama Launcher"!"$PW_GUI_ICON_PATH/ankama.png"!"":"FBTN" '@bash -c "button_click PW_ANKAMA"' \
     --field="   League of Legends"!"$PW_GUI_ICON_PATH/lol.png"!"":"FBTN" '@bash -c "button_click PW_LOL"' \
     --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png"!"":"FBTN" '@bash -c "button_click  PW_GAMEFORGE"' \
+    --field="   World of Sea Battle (BETA)"!"$PW_GUI_ICON_PATH/wosb.png"!"":"FBTN" '@bash -c "button_click PW_WOSB"' \
     --field="   ITCH.IO"!"$PW_GUI_ICON_PATH/itch.png"!"":"FBTN" '@bash -c "button_click PW_ITCH"' & 
+
+    # --field="   Steam Client Launcher"!"$PW_GUI_ICON_PATH/steam.png"!"":"FBTN" '@bash -c "button_click PW_STEAM"' 
 
     "${pw_yad_new}" --key=$KEY --notebook --borders=5 --width=1000 --height=235 --no-buttons --auto-close --center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "${portname}-${install_ver} (${scripts_install_ver})" \

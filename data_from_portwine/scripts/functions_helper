@@ -168,6 +168,22 @@ var_vkd3d_config_update () {
     return 0
 }
 
+var_radv_perftest_config_update () {
+    if [ ! -z "${RADV_PERFTEST}" ]
+    then export RADV_PERFTEST="${1};${RADV_PERFTEST}"
+    else export RADV_PERFTEST="${1}"
+    fi
+    return 0
+}
+
+var_vk_istance_layers_config_update () {
+    if [ ! -z "${PW_VK_INSTANCE_LAYERS}" ]
+    then export PW_VK_INSTANCE_LAYERS="${1}:${PW_VK_INSTANCE_LAYERS}"
+    else export PW_VK_INSTANCE_LAYERS="${1}"
+    fi
+    return 0
+}
+
 unpack_tar_xz () {
     set -o pipefail
     tar -Jxvf "$1" -C "$2" | sszen
@@ -260,14 +276,12 @@ init_wine_ver () {
     fi
 
     if [[ -d "${WINEDIR}/files" && ! -d "${WINEDIR}/dist" ]] ; then
-        chmod -R 755 "${WINEDIR}"
         for clear_dist_files in `ls "${WINEDIR}" | sed -e "s/^files$//g" | sed -e "s/^version$//g"` ; do 
             rm -fr "${WINEDIR}/$clear_dist_files"
         done
         mv -f "${WINEDIR}/files"/* "${WINEDIR}/"
         rm -fr "${WINEDIR}/files"
     elif [[ ! -d "${WINEDIR}/files" && -d "${WINEDIR}/dist" ]] ; then
-            chmod -R 755 "${WINEDIR}"
         for clear_dist_files in `ls "${WINEDIR}" | sed -e "s/^dist$//g" | sed -e "s/^version$//g"` ; do 
             rm -fr "${WINEDIR}/$clear_dist_files"
         done
@@ -314,30 +328,24 @@ init_wine_ver () {
 }
 
 pw_init_runtime () {
-    if [[ ! -z "`cat /etc/*-release | grep -i opensuse`" ]] \
-    || [[ ! -z "`cat /etc/*-release | grep -i centos`" ]] \
-    || [[ ! -z "`cat /etc/*-release | grep -i rosa`" ]] \
-    || [[ ! -z "`cat /etc/*-release | grep -i altlinux`" ]] \
-    || [[ ! -z "`cat /etc/*-release | grep -i astra`" ]] \
-    || [[ ! -z "`cat /etc/*-release | grep -i redos`" ]] \
-    || [[ ! -z "`cat /etc/*-release | grep -i fedora`" ]] \
-    || [[ ! -z "`cat /etc/*-release | grep -i gentoo`" ]] ; then
-        if check_symlink "${PW_WINELIB}/portable/lib/lib64" ; then
-            rm -fr "${PW_WINELIB}/portable/lib/lib64"
-        fi
-        if [[ ! -d "${PW_WINELIB}/portable/lib/lib64" ]] ; then
-            mv -f "${PW_WINELIB}/portable/lib/lib" "${PW_WINELIB}/portable/lib/lib64"
-        fi
-        if [[ ! -d "${PW_WINELIB}/portable/lib/lib" ]] ; then
-            ln -s "${PW_WINELIB}/portable/lib/lib32" "${PW_WINELIB}/portable/lib/lib"
-        fi
-    fi
+    # PW_OS_LIB='opensuse|centos|rosa|altlinux|astra|redos|fedora|gentoo'
+    # if [[ ! -z "`cat /etc/*-release | grep -iE "${PW_OS_LIB}"`" ]] ; then
+    #     if check_symlink "${PW_WINELIB}/portable/lib/lib64" ; then
+    #         rm -fr "${PW_WINELIB}/portable/lib/lib64"
+    #     fi
+    #     if [[ ! -d "${PW_WINELIB}/portable/lib/lib64" ]] ; then
+    #         mv -f "${PW_WINELIB}/portable/lib/lib" "${PW_WINELIB}/portable/lib/lib64"
+    #     fi
+    #     if [[ ! -d "${PW_WINELIB}/portable/lib/lib" ]] ; then
+    #         ln -s "${PW_WINELIB}/portable/lib/lib32" "${PW_WINELIB}/portable/lib/lib"
+    #     fi
+    # fi
 
     PW_PV_OVERRIDES="/usr/lib/pressure-vessel/overrides/lib" 
     if [[ ! -z "${LD_LIBRARY_PATH}" ]] ; then
-        export PW_LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${PW_WINELIB}/portable/lib/\$LIB:${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:${LD_LIBRARY_PATH}"
+        export PW_LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${PW_WINELIB}/portable/lib/lib64:${PW_WINELIB}/portable/lib/lib32:${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:${LD_LIBRARY_PATH}"
     else
-        export PW_LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${PW_WINELIB}/portable/lib/\$LIB:${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:${PW_PV_OVERRIDES}/i386-linux-gnu/aliases"
+        export PW_LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${PW_WINELIB}/portable/lib/lib64:${PW_WINELIB}/portable/lib/lib32:${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:${PW_PV_OVERRIDES}/i386-linux-gnu/aliases"
     fi 
 
     export PW_VK_LAYER_PATH="${PW_WINELIB}/portable/share/vulkan/implicit_layer.d/"
@@ -363,43 +371,43 @@ pw_init_runtime () {
         var_winedlloverride_update "winegstreamer="
     fi
 
-    if [ "${PW_USE_RUNTIME}" = 0 ] ; then
-        export pw_runtime=""
-        if [ "${PW_MANGOHUD}" = 1 ] ; then
-            [ -z `which mangohud` ] && export PW_MANGOHUD=0
-        fi
-        echo "RUNTIME is disabled"
+    if [[ ! -z "${PW_SANDBOX_HOME_PATH}" && -d "${PW_SANDBOX_HOME_PATH}" ]]; then
+        export pw_runtime="${PW_WINELIB}/run \
+        --unshare-home \
+        --home="${PW_SANDBOX_HOME_PATH}" \
+        ${PW_ADD_TO_ARGS_IN_RUNTIME} --"
     else
-        if [[ ! -z "${PW_SANDBOX_HOME_PATH}" && -d "${PW_SANDBOX_HOME_PATH}" ]]; then
-            export pw_runtime="${PW_WINELIB}/run \
-            --unshare-home \
-            --home="${PW_SANDBOX_HOME_PATH}" \
-            ${PW_ADD_TO_ARGS_IN_RUNTIME} --"
-        else
-            export pw_runtime="${PW_WINELIB}/run \
-            --share-home \
-            ${PW_ADD_TO_ARGS_IN_RUNTIME} --"
-        fi
-        # export PRESSURE_VESSEL_VARIABLE_DIR="${PW_WINELIB}/runtime"
-        export PRESSURE_VESSEL_REMOVE_GAME_OVERLAY=1
-        export PRESSURE_VESSEL_IMPORT_VULKAN_LAYERS=1
-        export PRESSURE_VESSEL_GC_RUNTIMES=0
-        export PRESSURE_VESSEL_PREFIX="${PW_WINELIB}/pressure-vessel"
-        unset PRESSURE_VESSEL_FILESYSTEMS_RO PRESSURE_VESSEL_FILESYSTEMS_RW
-        for PWRTMRO in ${PW_RT_MOUNT_RO[*]} ; do
-            if [ ! -z "${PRESSURE_VESSEL_FILESYSTEMS_RO}" ]
-            then export PRESSURE_VESSEL_FILESYSTEMS_RO="${PRESSURE_VESSEL_FILESYSTEMS_RO}:${PWRTMRO}"
-            else export PRESSURE_VESSEL_FILESYSTEMS_RO="${PWRTMRO}"
-            fi
-        done
-        for PWRTMRW in ${PW_RT_MOUNT_RW[*]} ; do
-            if [ ! -z "${PRESSURE_VESSEL_FILESYSTEMS_RW}" ]
-            then export PRESSURE_VESSEL_FILESYSTEMS_RW="${PRESSURE_VESSEL_FILESYSTEMS_RW}:${PWRTMRW}"
-            else export PRESSURE_VESSEL_FILESYSTEMS_RW="${PWRTMRW}"
-            fi
-        done
-        echo "RUNTIME is enabled"
+        export pw_runtime="${PW_WINELIB}/run \
+        --share-home \
+        ${PW_ADD_TO_ARGS_IN_RUNTIME} --"
     fi
+
+    export PRESSURE_VESSEL_GC_RUNTIMES=0
+    export PRESSURE_VESSEL_COPY_RUNTIME=0
+    export PRESSURE_VESSEL_GC_LEGACY_RUNTIMES=0
+    export PRESSURE_VESSEL_REMOVE_GAME_OVERLAY=0
+    export PRESSURE_VESSEL_IMPORT_VULKAN_LAYERS=0
+
+    unset PRESSURE_VESSEL_RUNTIME_ARCHIVE
+    export PRESSURE_VESSEL_RUNTIME=runtime
+    export PRESSURE_VESSEL_RUNTIME_BASE="${PW_WINELIB}"
+    export PRESSURE_VESSEL_VARIABLE_DIR="${PW_WINELIB}/var"
+    export PRESSURE_VESSEL_PREFIX="${PW_WINELIB}/pressure-vessel"
+
+    unset PRESSURE_VESSEL_FILESYSTEMS_RO PRESSURE_VESSEL_FILESYSTEMS_RW
+    for PWRTMRO in ${PW_RT_MOUNT_RO[*]} ; do
+        if [ ! -z "${PRESSURE_VESSEL_FILESYSTEMS_RO}" ]
+        then export PRESSURE_VESSEL_FILESYSTEMS_RO="${PRESSURE_VESSEL_FILESYSTEMS_RO}:${PWRTMRO}"
+        else export PRESSURE_VESSEL_FILESYSTEMS_RO="${PWRTMRO}"
+        fi
+    done
+    for PWRTMRW in ${PW_RT_MOUNT_RW[*]} ; do
+        if [ ! -z "${PRESSURE_VESSEL_FILESYSTEMS_RW}" ]
+        then export PRESSURE_VESSEL_FILESYSTEMS_RW="${PRESSURE_VESSEL_FILESYSTEMS_RW}:${PWRTMRW}"
+        else export PRESSURE_VESSEL_FILESYSTEMS_RW="${PWRTMRW}"
+        fi
+    done
+    echo "RUNTIME is enabled"
 }
 
 pw_mangohud_check () {
@@ -413,10 +421,7 @@ pw_mangohud_check () {
         then export PW_LD_PRELOAD="${PW_LD_PRELOAD}:${MANGOHUD_LIB_NAME}"
         else export PW_LD_PRELOAD="${MANGOHUD_LIB_NAME}"
         fi
-        if [[ ! -z "${PW_VK_INSTANCE_LAYERS}" ]]
-        then export PW_VK_INSTANCE_LAYERS="VK_LAYER_MANGOHUD_overlay:${PW_VK_INSTANCE_LAYERS}"
-        else export PW_VK_INSTANCE_LAYERS="VK_LAYER_MANGOHUD_overlay"
-        fi
+        var_vk_istance_layers_config_update "VK_LAYER_MANGOHUD_overlay64:VK_LAYER_MANGOHUD_overlay32"
         print_info "MANGOHUD is enabled"
     else
         export DISABLE_MANGOHUD=1
@@ -439,10 +444,7 @@ pw_vkbasalt_check () {
         sed -i s/'> = 0.05;'/'> = 0.035;'/ "${PW_WINELIB}/pressure-vessel/reshade/shaders/FilmGrain2.fx"
         sed -i s/'> = 0.65;'/'> = 0.4;'/ "${PW_WINELIB}/pressure-vessel/reshade/shaders/Curves.fx"
         sed -i s/'> = 0.8;'/'> = 0.9;'/ "${PW_WINELIB}/pressure-vessel/reshade/shaders/Bloom.fx"
-        if [[ ! -z "${PW_VK_INSTANCE_LAYERS}" ]]
-        then export PW_VK_INSTANCE_LAYERS="VK_LAYER_VKBASALT_post_processing:${PW_VK_INSTANCE_LAYERS}"
-        else export PW_VK_INSTANCE_LAYERS="VK_LAYER_VKBASALT_post_processing"
-        fi
+        var_vk_istance_layers_config_update "VK_LAYER_VKBASALT_post_processing32:VK_LAYER_VKBASALT_post_processing64"
         print_info "vkBasalt is enabled"
     else
         export DISABLE_VKBASALT=1
