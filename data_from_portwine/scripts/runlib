@@ -17,7 +17,7 @@ if [[ $(id -u) = 0 ]] ; then
 fi
 if [[ "${s_install}" != "1" && ! -x "`which "zenity" 2>/dev/null`" ]] ; then
     echo "You will need to install: zenity, and restart the port."
-    xdg-open "http://portwine-linux.ru/portwine-faq/" > /dev/null 2>&1 & exit 0
+    xdg-open "portwine-linux.ru/portwine-faq/" > /dev/null 2>&1 & exit 0
 fi
 . "$(dirname $(readlink -f "$0"))/functions_helper"
 
@@ -30,7 +30,7 @@ start_portwine () {
         export PW_WINE_USE="${PW_PROTON_PW_VER}"
         echo "Force to use $PW_WINE_USE"
         if [ ! -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ] ; then
-            if try_download "https://github.com/Castro-Fidel/wine_builds/releases/download/${PW_WINE_USE}/${PW_WINE_USE}.tar.xz" \
+            if try_download "github.com/Castro-Fidel/wine_builds/releases/download/${PW_WINE_USE}/${PW_WINE_USE}.tar.xz" \
                 "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" ; then
                 if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
                     try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz"
@@ -80,6 +80,7 @@ start_portwine () {
         export VKD3D_SHADER_DEBUG="none"
         export VKD3D_DEBUG="none"
         export DXVK_LOG_PATH="none"
+        export VKBASALT_LOG_LEVEL="none"
     fi
 
     #default wine-mono override for FNA games
@@ -209,6 +210,7 @@ start_portwine () {
     if [[ -x "`which "gamemoderun" 2>/dev/null`" ]] && [[ "$PW_USE_GAMEMODE" = "1" ]] ; then
         export GAMEMODERUN=1
         PW_GAMEMODERUN_SLR="gamemoderun"
+        systemctl enable --now --user gamemoded &>/dev/null
         echo "Gamemod will be launched."
     else
         export GAMEMODERUN=0
@@ -285,7 +287,13 @@ start_portwine () {
         if [[ "${PW_D3D_EXTRAS_DISABLE}" != 1 ]] ; then
             var_winedlloverride_update "${d3d_extras_from_plugins}=n,b"
         fi
+        if [[ -z "`grep "${d3d_extras_from_plugins}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"`" ]] ; then
+            echo "${d3d_extras_from_plugins}" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
+        fi
     done
+    if [[ -z "`grep d3dx9 "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"`" ]] ; then
+        echo "d3dx9" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
+    fi
     var_winedlloverride_update "steam_api,steam_api64,steamclient,steamclient64=n;lsteamclient,winemenubuilder.exe="
 
     # export TOTAL_VRAM=`"${PW_WINELIB}/runtime/files/bin/glxinfo" -B | grep Total | awk -F: '{print $2}' | awk '{print $1}'`
@@ -293,8 +301,8 @@ start_portwine () {
 
     if [[ "${PW_VULKAN_USE}" == "0" ]] ; then
         echo "Use OpenGL"
-        export MESA_GLSL_CACHE_DIR="${PORT_WINE_TMP_PATH}"
         export GL_YIELD="NOTHING"
+        export mesa_glthread=true
         echo "Try link wine DXGI..."
         if ! try_force_link_file "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/dxgi.dll"
         then try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/dxgi.dll"
@@ -337,15 +345,14 @@ start_portwine () {
             zenity_error "d3dadapter9.so.1.0.0 - ${loc_find_d3dadapter9_error}"
             stop_portwine
         fi
-        export LIBGL_ALWAYS_SOFTWARE=true
+        export mesa_glthread=true
         export PW_DX12_DISABLE=1
         export ENABLE_VKBASALT=0
         export PW_MANGOHUD=0
         export WINE_FULLSCREEN_FSR=0
-        export __GLX_VENDOR_LIBRARY_NAME=mesa
     else
         echo "Use VKD3D-PROTON and DXVK (DX 9-12 to vulkan)"
-        if [[ ! -z "${PW_USE_AMDVLK_DRIVER}" && "${PW_USE_AMDVLK_DRIVER}" != 0 ]] ; then 
+        if [[ ! -z "${PW_USE_AMDVLK_DRIVER}" ]] && [[ "${PW_USE_AMDVLK_DRIVER}" != 0 ]] ; then 
             export AMD_VULKAN_ICD=AMDVLK
             print_info "Try to use AMDVLK driver (only with MESA)"
         else 
@@ -354,7 +361,7 @@ start_portwine () {
         fi
         export VKD3D_FEATURE_LEVEL="12_0"
         export __GL_DXVK_OPTIMIZATIONS=1
-
+        var_vkd3d_config_update no_upload_hvv
         export CP_DXVK_FILES="d3d11 d3d10 d3d10core d3d10_1 d3d9 dxgi dxvk_config openvr_api_dxvk"
         echo "Try link native DXVK files..."
         for wine_dxvk_dll in ${CP_DXVK_FILES} ; do
@@ -397,15 +404,17 @@ start_portwine () {
     fi
 
     if [[ "${PW_USE_SHADER_CACHE}" == 1 ]] ; then
+        export MESA_GLSL_CACHE_DIR="${PORT_WINE_TMP_PATH}"
         create_new_dir "${PORT_WINE_TMP_PATH}/gl_shader_cache"
-        export __GL_SHADER_DISK_CACHE_PATH="${PORT_WINE_TMP_PATH}/gl_shader_cache"
         export __GL_SHADER_DISK_CACHE=1
+        export __GL_SHADER_DISK_CACHE_PATH="${PORT_WINE_TMP_PATH}/gl_shader_cache"
         export __GL_SHADER_DISK_CACHE_SIZE=1000000000
         create_new_dir "${PORT_WINE_TMP_PATH}/dxvk_cache"
         export DXVK_STATE_CACHE_PATH="${PORT_WINE_TMP_PATH}"/dxvk_cache
         export DXVK_STATE_CACHE=1
         create_new_dir "${PORT_WINE_TMP_PATH}/vkd3d_cache"
         export VKD3D_SHADER_CACHE_PATH="${PORT_WINE_TMP_PATH}/vkd3d_cache"
+        var_vkd3d_config_update pipeline_library_app_cache
     else
         export __GL_SHADER_DISK_CACHE=0
         export DXVK_STATE_CACHE=0
@@ -518,7 +527,7 @@ fi
 unset MANGOHUD MANGOHUD_DLSYM PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_YAD_SET PW_ICON_FOR_YAD
 unset PW_CHECK_AUTOINSTAL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PORTWINE_DB_FILE PW_DISABLED_CREATE_DB
 unset CHK_SYMLINK_FILE MESA_GL_VERSION_OVERRIDE PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME PORTWINE_CREATE_SHORTCUT_NAME
-unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR
+unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD
 
 export portname=PortProton
 
@@ -596,7 +605,7 @@ fi
 . "${PORT_SCRIPTS_PATH}"/lang
 . "${PORT_SCRIPTS_PATH}"/zen_yad_gui
 
-export urlg="https://portwine-linux.ru/portwine-faq/"
+export urlg="portwine-linux.ru/portwine-faq/"
 export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
 try_remove_dir "${PW_WINELIB}/var"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"

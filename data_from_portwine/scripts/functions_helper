@@ -301,7 +301,10 @@ init_wine_ver () {
             mv -f "${WINEDIR}/lib/wine/x86_64-unix" "${WINEDIR}/lib64/wine/"
             mv -f "${WINEDIR}/lib/wine/x86_64-windows" "${WINEDIR}/lib64/wine/"
         fi
-
+        
+        try_remove_file "${WINEDIR}/lib/libsteam_api.so"
+        try_remove_file "${WINEDIR}/lib64/libsteam_api.so"
+        
         for copy_proton_dll in "dxvk" "vkd3d-proton" ; do
             if [[ ! -d "${WINEDIR}/lib/wine/${copy_proton_dll}/" || ! -d "${WINEDIR}/lib64/wine/${copy_proton_dll}/" ]] ; then
                 try_copy_dir "${PORT_WINE_PATH}/data/dist/${PW_PROTON_GE_VER}/lib/wine/${copy_proton_dll}" "${WINEDIR}/lib/wine/"
@@ -382,11 +385,11 @@ pw_init_runtime () {
         ${PW_ADD_TO_ARGS_IN_RUNTIME} --"
     fi
 
-    export PRESSURE_VESSEL_GC_RUNTIMES=0
-    export PRESSURE_VESSEL_COPY_RUNTIME=0
-    export PRESSURE_VESSEL_GC_LEGACY_RUNTIMES=0
-    export PRESSURE_VESSEL_REMOVE_GAME_OVERLAY=0
-    export PRESSURE_VESSEL_IMPORT_VULKAN_LAYERS=0
+    export PRESSURE_VESSEL_GC_RUNTIMES=1
+    export PRESSURE_VESSEL_COPY_RUNTIME=1
+    export PRESSURE_VESSEL_GC_LEGACY_RUNTIMES=1
+    export PRESSURE_VESSEL_REMOVE_GAME_OVERLAY=1
+    export PRESSURE_VESSEL_IMPORT_VULKAN_LAYERS=1
 
     unset PRESSURE_VESSEL_RUNTIME_ARCHIVE
     export PRESSURE_VESSEL_RUNTIME=runtime
@@ -563,7 +566,7 @@ pw_download_libs () {
     || ! -e "${PW_WINELIB}/runtime/files/bin/vkcube" || -e "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" ]] ;
     then
         print_info "Download and install libraries..."
-        if try_download "https://github.com/Castro-Fidel/PortWINE/releases/download/libs${PW_LIBS_VER}/libs${PW_LIBS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" ; then
+        if try_download "github.com/Castro-Fidel/PortWINE/releases/download/libs${PW_LIBS_VER}/libs${PW_LIBS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" ; then
             if unpack_tar_xz "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/" ; then
                 try_remove_file "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz"
             else
@@ -600,7 +603,7 @@ pw_check_and_download_wine () {
     fi
     if [ ! -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ] ; then
         print_info "Download and install ${PW_WINE_USE}..."
-        if try_download "https://github.com/Castro-Fidel/wine_builds/releases/download/${PW_WINE_USE}/${PW_WINE_USE}.tar.xz" "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" ; then
+        if try_download "github.com/Castro-Fidel/wine_builds/releases/download/${PW_WINE_USE}/${PW_WINE_USE}.tar.xz" "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" ; then
             if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
                 echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}/version"
                 try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz"
@@ -629,7 +632,7 @@ pw_check_and_download_plugins () {
     || ! -d "${PW_PLUGINS_PATH}/nvapi" || ! -d "${PW_PLUGINS_PATH}/nvml" ]]
     then
         print_info "Download and install plugins${PW_PLUGINS_VER}..."
-        if try_download "https://github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" ; then
+        if try_download "github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" ; then
             if unpack_tar_xz "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}" ; then
                 try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" 
             else
@@ -735,7 +738,7 @@ pw_port_update () {
                     echo "######################################################"
                     print_info "Update scripts..."
                     try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
-                    if try_download "https://github.com/Castro-Fidel/PortWINE/archive/refs/heads/master.tar.gz" "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" ; then
+                    if try_download "github.com/Castro-Fidel/PortWINE/archive/refs/heads/master.tar.gz" "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" ; then
                         if unpack_tar_gz "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" "${PORT_WINE_TMP_PATH}"
                         then
                             create_new_dir "${PORT_WINE_TMP_PATH}/scripts_backup"
@@ -769,7 +772,7 @@ pw_port_update () {
 
 
 update_winetricks () {
-    W_TRX_URL="https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks"
+    W_TRX_URL="raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks"
     W_TRX_EXT_VER="$(curl -s --list-only ${W_TRX_URL} | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')"
     print_info "Version winetricks on server: ${W_TRX_EXT_VER}"
     W_TRX_INT_VER="$(cat "${PORT_WINE_TMP_PATH}/winetricks" | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')"

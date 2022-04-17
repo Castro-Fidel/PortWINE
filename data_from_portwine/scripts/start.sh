@@ -138,12 +138,12 @@ portwine_start_debug () {
     fi
     echo "-------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     if [[ "${PW_D3D_EXTRAS_DISABLE}" == 1 ]]
-    then echo "D3D_EXTRAS - disable" >> "${PORT_WINE_PATH}/${portname}.log"
-    else echo "D3D_EXTRAS - enable" >> "${PORT_WINE_PATH}/${portname}.log"
+    then echo "D3D_EXTRAS - disabled" >> "${PORT_WINE_PATH}/${portname}.log"
+    else echo "D3D_EXTRAS - enabled" >> "${PORT_WINE_PATH}/${portname}.log"
     fi
     echo 
     echo "------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "winetricks.log:" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "winetricks.log:" | grep -v 'd3dcomp|d3dx' >> "${PORT_WINE_PATH}/${portname}.log"
     cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "-----------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     if [ ! -z "${PORTWINE_DB_FILE}" ]; then
@@ -413,8 +413,8 @@ gui_about_portproton () {
     --comments="Порт для запуска Windows игр и приложений в GNU/Linux" \
     --license=MIT \
     --authors="Castro-Fidel",,"Выражаем особую благодарность в помоще проекту:",Cefeiko,Dezert1r,Taz_mania,Anton_Famillianov,gavr,RidBowt,chal55rus,UserDiscord \
-    --website=https://portwine-linux.ru/ \
-    --website-label=https://portwine-linux.ru
+    --website=portwine-linux.ru/ \
+    --website-label=portwine-linux.ru
 }
 export -f gui_about_portproton
 
