@@ -351,7 +351,10 @@ pw_init_runtime () {
         export PW_LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${PW_WINELIB}/portable/lib/lib64:${PW_WINELIB}/portable/lib/lib32:${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:${PW_PV_OVERRIDES}/i386-linux-gnu/aliases"
     fi 
 
-    export PW_VK_LAYER_PATH="${PW_WINELIB}/portable/share/vulkan/implicit_layer.d/"
+    export PW_VK_LAYER_PATH="${PW_WINELIB}/portable/share/vulkan/implicit_layer.d"
+
+    export DISABLE_VK_LAYER_VALVE_steam_fossilize_1=1
+    export DISABLE_VK_LAYER_VALVE_steam_overlay_1=1
 
     if [ ! -z ${PATH_TMP} ]
     then export PATH="${PATH_TMP}"
@@ -374,22 +377,30 @@ pw_init_runtime () {
         var_winedlloverride_update "winegstreamer="
     fi
 
-    if [[ ! -z "${PW_SANDBOX_HOME_PATH}" && -d "${PW_SANDBOX_HOME_PATH}" ]]; then
-        export pw_runtime="${PW_WINELIB}/run \
+    if [[ ! -z "${PW_SANDBOX_HOME_PATH}" && -d "${PW_SANDBOX_HOME_PATH}" ]] ; then
+        export pw_runtime="${PW_WINELIB}/pressure-vessel/bin/pressure-vessel-unruntime \
         --unshare-home \
         --home="${PW_SANDBOX_HOME_PATH}" \
+        --no-gc-legacy-runtimes \
+        --no-gc-runtimes \
+        --generate-locales \
+        --remove-game-overlay \
+        --systemd-scope \
         ${PW_ADD_TO_ARGS_IN_RUNTIME} --"
     else
-        export pw_runtime="${PW_WINELIB}/run \
+        export pw_runtime="${PW_WINELIB}/pressure-vessel/bin/pressure-vessel-unruntime \
         --share-home \
+        --no-gc-legacy-runtimes \
+        --no-gc-runtimes \
+        --generate-locales \
+        --remove-game-overlay \
+        --systemd-scope \
         ${PW_ADD_TO_ARGS_IN_RUNTIME} --"
     fi
 
-    export PRESSURE_VESSEL_GC_RUNTIMES=1
     export PRESSURE_VESSEL_COPY_RUNTIME=1
-    export PRESSURE_VESSEL_GC_LEGACY_RUNTIMES=1
-    export PRESSURE_VESSEL_REMOVE_GAME_OVERLAY=1
-    export PRESSURE_VESSEL_IMPORT_VULKAN_LAYERS=1
+    export PRESSURE_VESSEL_IMPORT_VULKAN_LAYERS=0
+    # export PRESSURE_VESSEL_GRAPHICS_PROVIDER=""
 
     unset PRESSURE_VESSEL_RUNTIME_ARCHIVE
     export PRESSURE_VESSEL_RUNTIME=runtime
@@ -415,7 +426,7 @@ pw_init_runtime () {
 
 pw_mangohud_check () {
     if [[ "${PW_MANGOHUD}" == "1" ]] ; then
-        export MANGOHUD=1
+        export PW_MANGOHUD_SLR='MANGOHUD=1'
         MANGOHUD_LIB_NAME="libMangoHud.so"
         if [[ "${PW_VULKAN_USE}" = "0" ]] ; then 
 	        MANGOHUD_LIB_NAME="libMangoHud_dlsym.so:${MANGOHUD_LIB_NAME}"
@@ -427,7 +438,7 @@ pw_mangohud_check () {
         var_vk_istance_layers_config_update "VK_LAYER_MANGOHUD_overlay64:VK_LAYER_MANGOHUD_overlay32"
         print_info "MANGOHUD is enabled"
     else
-        export DISABLE_MANGOHUD=1
+        export PW_MANGOHUD_SLR='DISABLE_MANGOHUD=1'
         print_info "MANGOHUD is disabled"
     fi
     return 0

@@ -354,9 +354,11 @@ start_portwine () {
         echo "Use VKD3D-PROTON and DXVK (DX 9-12 to vulkan)"
         if [[ ! -z "${PW_USE_AMDVLK_DRIVER}" ]] && [[ "${PW_USE_AMDVLK_DRIVER}" != 0 ]] ; then 
             export AMD_VULKAN_ICD=AMDVLK
+            unset DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1
             print_info "Try to use AMDVLK driver (only with MESA)"
         else 
             export AMD_VULKAN_ICD=RADV
+            export DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1=1
             print_info "Try to use RADV driver (only with MESA)"
         fi
         export VKD3D_FEATURE_LEVEL="12_0"
@@ -368,7 +370,7 @@ start_portwine () {
             try_force_link_file "${WINEDIR}/lib/wine/dxvk/${wine_dxvk_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
             try_force_link_file "${WINEDIR}/lib64/wine/dxvk/${wine_dxvk_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
         done
-        if [[ "${PW_USE_WINE_DXGI}" == 1 ]] || [[ "${PW_VULKAN_USE}" == "2" ]]; then 
+        if [[ "${PW_USE_WINE_DXGI}" == 1 ]] || [[ "${PW_VULKAN_USE}" == 2 ]]; then 
             echo "Try link wine DXGI..."
             if ! try_force_link_file "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/dxgi.dll"
             then try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/dxgi.dll"
@@ -404,7 +406,7 @@ start_portwine () {
     fi
 
     if [[ "${PW_USE_SHADER_CACHE}" == 1 ]] ; then
-        export MESA_GLSL_CACHE_DIR="${PORT_WINE_TMP_PATH}"
+        export MESA_SHADER_CACHE_DIR="${PORT_WINE_TMP_PATH}"
         create_new_dir "${PORT_WINE_TMP_PATH}/gl_shader_cache"
         export __GL_SHADER_DISK_CACHE=1
         export __GL_SHADER_DISK_CACHE_PATH="${PORT_WINE_TMP_PATH}/gl_shader_cache"
@@ -498,12 +500,12 @@ pw_run () {
         echo "WINEDLLOVERRIDES=${WINEDLLOVERRIDES}" >> "${PW_LOG_TO_FILE}"
         echo "------------------------------------" >> "${PW_LOG_TO_FILE}"
         echo "Log WINE:" >> "${PW_LOG_TO_FILE}"
-        ${optirun_on} ${PW_GAMEMODERUN_SLR} ${pw_runtime} env LD_PRELOAD="${PW_LD_PRELOAD}" VK_LAYER_PATH="${VK_LAYER_PATH}" \
+        ${optirun_on} ${PW_GAMEMODERUN_SLR} ${pw_runtime} env ${PW_MANGOHUD_SLR} LD_PRELOAD="${PW_LD_PRELOAD}" \
         PATH="${PATH}" VK_INSTANCE_LAYERS=${PW_VK_INSTANCE_LAYERS} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
         VK_LAYER_PATH="${PW_VK_LAYER_PATH}" "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
     else
         [ "${PW_USE_TERMINAL}" != "1" ] && export PW_TERM=""
-        $PW_TERM ${optirun_on} ${PW_GAMEMODERUN_SLR} ${pw_runtime} env LD_PRELOAD="${PW_LD_PRELOAD}" VK_LAYER_PATH="${VK_LAYER_PATH}" \
+        $PW_TERM ${optirun_on} ${PW_GAMEMODERUN_SLR} ${pw_runtime} env ${PW_MANGOHUD_SLR} LD_PRELOAD="${PW_LD_PRELOAD}"\
         PATH="${PATH}" VK_INSTANCE_LAYERS=${PW_VK_INSTANCE_LAYERS} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
         VK_LAYER_PATH="${PW_VK_LAYER_PATH}" "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]}
     fi
@@ -605,7 +607,7 @@ fi
 . "${PORT_SCRIPTS_PATH}"/lang
 . "${PORT_SCRIPTS_PATH}"/zen_yad_gui
 
-export urlg="portwine-linux.ru/portwine-faq/"
+export urlg="https://portwine-linux.ru/portwine-faq/"
 export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
 try_remove_dir "${PW_WINELIB}/var"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
