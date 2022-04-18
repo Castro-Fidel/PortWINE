@@ -141,10 +141,9 @@ portwine_start_debug () {
     then echo "D3D_EXTRAS - disabled" >> "${PORT_WINE_PATH}/${portname}.log"
     else echo "D3D_EXTRAS - enabled" >> "${PORT_WINE_PATH}/${portname}.log"
     fi
-    echo 
     echo "------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "winetricks.log:" | grep -v 'd3dcomp|d3dx' >> "${PORT_WINE_PATH}/${portname}.log"
-    cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "winetricks.log:" >> "${PORT_WINE_PATH}/${portname}.log"
+    cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" | sed -e /"^d3dcomp*"/d -e /"^d3dx*"/d >> "${PORT_WINE_PATH}/${portname}.log"
     echo "-----------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     if [ ! -z "${PORTWINE_DB_FILE}" ]; then
         echo "Use ${PORTWINE_DB_FILE} db file:" >> "${PORT_WINE_PATH}/${portname}.log"
@@ -224,9 +223,12 @@ pw_prefix_manager () {
     if [ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ] ; then
         touch "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
     fi
-    [[ ! -f "${PORT_WINE_TMP_PATH}/dll_list" ]] && "${PORT_WINE_TMP_PATH}/winetricks" dlls list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/dll_list"
-    [[ ! -f "${PORT_WINE_TMP_PATH}/fonts_list" ]] && "${PORT_WINE_TMP_PATH}/winetricks" fonts list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/fonts_list"
-    [[ ! -f "${PORT_WINE_TMP_PATH}/settings_list" ]] && "${PORT_WINE_TMP_PATH}/winetricks" settings list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/settings_list"
+
+    pw_start_progress_bar_block "Starting prefix manager..."
+    "${PORT_WINE_TMP_PATH}/winetricks" dlls list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/dll_list"
+    "${PORT_WINE_TMP_PATH}/winetricks" fonts list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/fonts_list"
+    "${PORT_WINE_TMP_PATH}/winetricks" settings list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/settings_list"
+    pw_stop_progress_bar
 
     gui_prefix_manager () {
         pw_start_progress_bar_block "Starting prefix manager..."
@@ -287,6 +289,7 @@ pw_prefix_manager () {
         fi 
         try_remove_file  "${PORT_WINE_TMP_PATH}/dll_list_tmp"
         try_remove_file  "${PORT_WINE_TMP_PATH}/fonts_list_tmp"
+        try_remove_file  "${PORT_WINE_TMP_PATH}/settings_list_tmp"
 
         for STPFXMNG in `cat "${PORT_WINE_TMP_PATH}/to_winetricks"` ; do
             grep `echo ${STPFXMNG} | awk -F'|' '{print $2}'` "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" &>/dev/null
