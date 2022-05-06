@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Author: PortWINE-Linux.ru
+export NO_AT_BRIDGE=1
 export pw_full_command_line=("$0" $*)
 if [ -f "$1" ]; then
     export portwine_exe="$(readlink -f "$1")"
@@ -23,7 +24,20 @@ if [[ -n `basename "${portwine_exe}" | grep .ppack` ]] ; then
     unset PW_SANDBOX_HOME_PATH
     pw_init_runtime
     export PW_PREFIX_NAME=`basename "$1" | awk -F'.' '{print $1}'`
-    ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" unsquashfs -f -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" "$1"
+    ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" unsquashfs -f -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" "$1" &
+    sleep 10
+    while true ; do
+        if [[ -n `pgrep -a xterm | grep ".ppack" | head -n 1 | awk '{print $1}'` ]] ; then
+            sleep 0.5
+        else
+            kill -TERM `pgrep -a unsquashfs | grep ".ppack" | head -n 1 | awk '{print $1}'`
+            sleep 0.3
+            if [[ -z "`pgrep -a unsquashfs | grep ".ppack" | head -n 1 | awk '{print $1}'`" ]]
+            then break
+            else sleep 0.3
+            fi
+        fi
+    done
     if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut" ]] ; then
         orig_IFS="$IFS"
         IFS=$'\n'
@@ -343,7 +357,7 @@ pw_winetricks () {
 
 pw_create_prefix_backup () {
     cd "$HOME"
-    export PW_PREFIX_TO_BACKUP=`"${pw_yad_new}" --file --directory --borders=5 --width=650 --height=500 --auto-close --center \
+    PW_PREFIX_TO_BACKUP=`"${pw_yad_new}" --file --directory --borders=5 --width=650 --height=500 --auto-close --center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "BACKUP PREFIX TO..."`
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
@@ -357,14 +371,17 @@ pw_create_prefix_backup () {
     pw_init_runtime
     chmod -R u+w "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"
     ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" mksquashfs "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" -comp zstd &
-    sleep 15
+    sleep 10
     while true ; do
-        if [[ -n `pgrep -a xterm | grep ".ppack" | head -n 1 | awk '{print $1}'` ]] ; then
-            sleep 1
+        if [[ -n `pgrep -a xterm | grep ".ppack.part" | head -n 1 | awk '{print $1}'` ]] ; then
+            sleep 0.5
         else
             kill -TERM `pgrep -a mksquashfs | grep ".ppack.part" | head -n 1 | awk '{print $1}'`
-            sleep 3
-            break
+            sleep 0.3
+            if [[ -z "`pgrep -a mksquashfs | grep ".ppack.part" | head -n 1 | awk '{print $1}'`" ]]
+            then break
+            else sleep 0.3
+            fi
         fi
     done
     if [[ -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" ]] ; then
@@ -454,7 +471,7 @@ if [ ! -z "${PORTWINE_DB_FILE}" ] ; then
     case "${PW_VULKAN_USE}" in
             "0") export PW_DEFAULT_VULKAN_USE='OPENGL!VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!GALLIUM_NINE (native DX9 on MESA)' ;;
             "2") export PW_DEFAULT_VULKAN_USE='VULKAN (WINE DXGI)!VULKAN (DXVK and VKD3D)!OPENGL!GALLIUM_NINE (native DX9 on MESA)' ;;
-            "3") export PW_DEFAULT_VULKAN_USE='GALLIUM_NINE (native DX9 on MESA)!VULKAN (WINE DXGI)!VULKAN (DXVK and VKD3D)!OPENGL' ;;
+            "3") export PW_DEFAULT_VULKAN_USE='GALLIUM_NINE (native DX9 on MESA)!VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL' ;;
               *) export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL!GALLIUM_NINE (native DX9 on MESA)' ;;
     esac
     if [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_STEAM$"` ]] ; then
@@ -585,12 +602,12 @@ else
 
     export KEY=$RANDOM
     "${pw_yad_new}" --plug=${KEY} --tabnum=4 --columns=3 --align-buttons --form --separator=";" \
-    --field="   REMOVE PORTPROTON"!""!"":"FBTN" '@bash -c "button_click gui_rm_portproton"' \
-    --field="   UPDATE PORTPROTON"!""!"":"FBTN" '@bash -c "button_click gui_pw_update"' \
-    --field="   CHANGELOG"!""!"":"FBTN" '@bash -c "button_click open_changelog"' \
-    --field="   EDIT USER.CONF"!""!"":"FBTN" '@bash -c "button_click gui_open_user_conf"' \
-    --field="   SCRIPTS FROM BACKUP"!""!"":"FBTN" '@bash -c "button_click gui_open_scripts_from_backup"' &
-    # --field="   ABOUT PORTPROTON"!""!"":"FBTN" '@bash -c "button_click gui_about_portproton"' &
+    --field="   $loc_gui_rm_pp"!""!"":"FBTN" '@bash -c "button_click gui_rm_portproton"' \
+    --field="   $loc_gui_upd_pp"!""!"":"FBTN" '@bash -c "button_click gui_pw_update"' \
+    --field="   $loc_gui_changelog"!""!"":"FBTN" '@bash -c "button_click open_changelog"' \
+    --field="   $loc_gui_edit_usc"!""!"":"FBTN" '@bash -c "button_click gui_open_user_conf"' \
+    --field="   $loc_gui_scripts_fb"!""!"":"FBTN" '@bash -c "button_click gui_open_scripts_from_backup"' &
+    # --field="   $loc_gui_about_us"!""!"":"FBTN" '@bash -c "button_click gui_about_portproton"' &
 
     "${pw_yad_new}" --plug=${KEY} --tabnum=3 --columns=3 --align-buttons --form --separator=";" \
     --field="  3D API  : :CB" "VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL!GALLIUM_NINE (native DX9 on MESA)" \
@@ -628,21 +645,21 @@ else
     --field="   Ubisoft Game Launcher"!"$PW_GUI_ICON_PATH/ubc.png"!"":"FBTN" '@bash -c "button_click PW_UBC"' \
     --field="   EVE Online Launcher"!"$PW_GUI_ICON_PATH/eve.png"!"":"FBTN" '@bash -c "button_click PW_EVE"' \
     --field="   Origin Launcher"!"$PW_GUI_ICON_PATH/origin.png"!"":"FBTN" '@bash -c "button_click PW_ORIGIN"' \
-    --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"' \
     --field="   Rockstar Games Launcher"!"$PW_GUI_ICON_PATH/Rockstar.png"!"":"FBTN" '@bash -c "button_click PW_ROCKSTAR"' \
     --field="   My.Games Launcher"!"$PW_GUI_ICON_PATH/mygames.png"!"":"FBTN" '@bash -c "button_click PW_MYGAMES"' \
-    --field="   OSU"!"$PW_GUI_ICON_PATH/osu.png"!"":"FBTN" '@bash -c "button_click PW_OSU"' \
     --field="   Ankama Launcher"!"$PW_GUI_ICON_PATH/ankama.png"!"":"FBTN" '@bash -c "button_click PW_ANKAMA"' \
+    --field="   OSU"!"$PW_GUI_ICON_PATH/osu.png"!"":"FBTN" '@bash -c "button_click PW_OSU"' \
     --field="   League of Legends"!"$PW_GUI_ICON_PATH/lol.png"!"":"FBTN" '@bash -c "button_click PW_LOL"' \
     --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png"!"":"FBTN" '@bash -c "button_click  PW_GAMEFORGE"' \
     --field="   World of Sea Battle (BETA)"!"$PW_GUI_ICON_PATH/wosb.png"!"":"FBTN" '@bash -c "button_click PW_WOSB"' \
     --field="   ITCH.IO"!"$PW_GUI_ICON_PATH/itch.png"!"":"FBTN" '@bash -c "button_click PW_ITCH"' & 
 
-    # --field="   Steam Client Launcher"!"$PW_GUI_ICON_PATH/steam.png"!"":"FBTN" '@bash -c "button_click PW_STEAM"' 
+    # --field="   Steam Client Launcher"!"$PW_GUI_ICON_PATH/steam.png"!"":"FBTN" '@bash -c "button_click PW_STEAM"'
+    # --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"'
 
-    "${pw_yad_new}" --key=$KEY --notebook --borders=5 --width=1000 --height=235 --no-buttons --auto-close --center \
+    "${pw_yad_new}" --key=$KEY --notebook --borders=5 --width=900 --height=235 --no-buttons --auto-close --center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "${portname}-${install_ver} (${scripts_install_ver})" \
-    --tab-pos=bottom --tab="AUTOINSTALL"!""!"" --tab="EMULATORS"!""!"" --tab=" WINE SETTINGS"!""!"" --tab=" PORPROTON SETTINGS"!""!""
+    --tab-pos=bottom --tab=" $loc_mg_autoinstall"!""!"" --tab=" $loc_mg_emulators"!""!"" --tab=" $loc_mg_wine_settings"!""!"" --tab=" $loc_mg_portproton_settings"!""!""
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
 

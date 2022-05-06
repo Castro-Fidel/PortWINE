@@ -110,7 +110,7 @@ try_download () {
     tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
     zenity --progress --percentage=0 --title="Download $(basename $1)" --text=Starting... --auto-close --width=500 --height=90
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
-        print_error "failed to download $1. Skipping."
+        print_error "Failed to download $1."
         try_remove_file "$2"
         return 1 
     else
@@ -126,7 +126,7 @@ try_download_to_path () {
     tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
     zenity --progress --percentage=0 --title="Download $(basename $1)" --text=Starting... --auto-close --width=500 --height=90
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
-        print_error "failed to download $1. Skipping."
+        print_error "Failed to download $1."
         return 1 
     else 
         return 0
@@ -137,7 +137,7 @@ try_download_silent () {
     wget -O "$2" --read-timeout 300 --retry-connrefused --timeout 15 --tries 3 \
     --user-agent="Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" "$1"
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
-        print_error "failed to download $1. Skipping."
+        print_error "Failed to download $1. Skipping."
         try_remove_file "$2"
         return 1 
     else 
@@ -331,25 +331,9 @@ init_wine_ver () {
 }
 
 pw_init_runtime () {
-    # PW_OS_LIB='opensuse|centos|rosa|altlinux|astra|redos|fedora|gentoo'
-    # if [[ ! -z "`cat /etc/*-release | grep -iE "${PW_OS_LIB}"`" ]] ; then
-    #     if check_symlink "${PW_WINELIB}/portable/lib/lib64" ; then
-    #         rm -fr "${PW_WINELIB}/portable/lib/lib64"
-    #     fi
-    #     if [[ ! -d "${PW_WINELIB}/portable/lib/lib64" ]] ; then
-    #         mv -f "${PW_WINELIB}/portable/lib/lib" "${PW_WINELIB}/portable/lib/lib64"
-    #     fi
-    #     if [[ ! -d "${PW_WINELIB}/portable/lib/lib" ]] ; then
-    #         ln -s "${PW_WINELIB}/portable/lib/lib32" "${PW_WINELIB}/portable/lib/lib"
-    #     fi
-    # fi
 
     PW_PV_OVERRIDES="/usr/lib/pressure-vessel/overrides/lib" 
-    if [[ ! -z "${LD_LIBRARY_PATH}" ]] ; then
-        export PW_LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${PW_WINELIB}/portable/lib/lib64:${PW_WINELIB}/portable/lib/lib32:${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:${LD_LIBRARY_PATH}"
-    else
-        export PW_LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${PW_WINELIB}/portable/lib/lib64:${PW_WINELIB}/portable/lib/lib32:${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:${PW_PV_OVERRIDES}/i386-linux-gnu/aliases"
-    fi 
+    export PW_LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${PW_WINELIB}/portable/lib/lib64:${PW_WINELIB}/portable/lib/lib32:${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:${PW_PV_OVERRIDES}/i386-linux-gnu/aliases"
 
     export PW_VK_LAYER_PATH="${PW_WINELIB}/portable/share/vulkan/implicit_layer.d"
 
@@ -522,24 +506,23 @@ kill_portwine () {
 export -f kill_portwine
 
 pw_kill_autostart () {
-    if [ "$PW_USE_RUNTIME" != 1 ]
-    then print_info "PW_USE_RUNTIME=$PW_USE_RUNTIME"
-    else
-        sleep 5
-        while true ; do
-            if  [[ -z "`ps aux | grep -m 1 "$1" | grep -v grep | awk '{print $2}'`" ]] && [[ ! -z "`ps aux | grep wrap | grep -v grep | grep -i ${portname} | head -n 1`" ]] ; then
-                echo -e "PID "$1" not found"
-                sleep 5
-            else
-                sleep 5
-                kill_portwine 
-                break
-            fi
-        done
-    fi
+    sleep 5
+    
+    while true ; do
+        if  [[ -z "`ps aux | grep -m 1 "$1" | grep -v grep | awk '{print $2}'`" ]] && [[ ! -z "`ps aux | grep wrap | grep -v grep | grep -i ${portname} | head -n 1`" ]] ; then
+            echo -e "PID "$1" not found"
+            sleep 5
+        else
+            sleep 5
+            kill_portwine 
+            break
+        fi
+    done
+
     if [[ ! -z "`ls "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/ | grep -m 1 ".tmp"`" ]] ; then
         rm -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/*.tmp
     fi
+
     return 0
 }
 export -f pw_kill_autostart
@@ -558,9 +541,9 @@ stop_portwine () {
     try_remove_dir "${PW_WINELIB}/var"
     find "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/" -maxdepth 1 -type f -name "*.tmp" -delete
     if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ] ; then
-        kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`"
+        kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" 2>/dev/null
     fi
-    add_in_stop_portwine > /dev/null 2>&1
+    add_in_stop_portwine &>/dev/null
     kill -n 9 `pgrep -a start.sh | grep -i '/PortProton/' | awk '{print $1}'` > /dev/null 2>&1
     killall yad_new &>/dev/null
     exit 0
@@ -660,9 +643,9 @@ pw_check_and_download_plugins () {
 }
 
 pw_init_db () {
-    if [ ! -z "${portwine_exe}" ]; then
+    if [[ ! -z "${portwine_exe}" ]] ; then
         export PORTWINE_DB=`echo "${portwine_exe}" | awk -F '/' 'NF>1{print $NF}' | sed s/".exe"/""/gi`
-        if [[ -f "${portwine_exe}".ppdb ]] ; then
+        if [[ -f "${portwine_exe}".ppdb ]] && [[ "${PORTWINE_DB}" != "RiotClientServices" ]] ; then
             export PORTWINE_DB_FILE="${portwine_exe}".ppdb
             . "${PORTWINE_DB_FILE}"
             if [[ -z "`ls -p "${PORT_WINE_PATH}/prefixes/" | grep -e "^${PW_PREFIX_NAME}/"`" ]] ; then
@@ -692,8 +675,8 @@ pw_init_db () {
             IFS="$orig_IFS"
             if [[ -f "${PW_FIND_DB_FILE}" ]] && [[ -z `grep "^export PW_DISABLED_CREATE_DB=1" "${PW_FIND_DB_FILE}"` ]] ; then
                 try_copy_file "${PW_FIND_DB_FILE}" "${portwine_exe}".ppdb
+                export PORTWINE_DB_FILE="${portwine_exe}".ppdb
             fi
-            export PORTWINE_DB_FILE="${portwine_exe}".ppdb
             if [[ ! -z `echo "${portwine_exe}" | grep "/data/prefixes/"` ]] && \
                 [[ -z `echo "${portwine_exe}" | grep "/data/prefixes/DEFAULT/"` ]]
             then 
@@ -773,7 +756,7 @@ pw_port_update () {
                 "${scripts_upd5}")
                     echo " " ;;
                 "${scripts_upd6}")
-                echo "0" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ;;
+                    echo "0" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ;;
             esac
         fi
     fi
