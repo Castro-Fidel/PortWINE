@@ -367,18 +367,12 @@ pw_init_runtime () {
         --home="${PW_SANDBOX_HOME_PATH}" \
         --no-gc-legacy-runtimes \
         --no-gc-runtimes \
-        --generate-locales \
-        --remove-game-overlay \
-        --systemd-scope \
         ${PW_ADD_TO_ARGS_IN_RUNTIME} --"
     else
         export pw_runtime="${PW_WINELIB}/pressure-vessel/bin/pressure-vessel-unruntime \
         --share-home \
         --no-gc-legacy-runtimes \
         --no-gc-runtimes \
-        --generate-locales \
-        --remove-game-overlay \
-        --systemd-scope \
         ${PW_ADD_TO_ARGS_IN_RUNTIME} --"
     fi
 
@@ -431,7 +425,7 @@ pw_mangohud_check () {
 pw_vkbasalt_check () {
     if [[ "${ENABLE_VKBASALT}" == 1 ]] && [[ "${PW_VULKAN_USE}" != "0" ]] && [[ "${PW_VULKAN_USE}" != "3" ]] ; then
         if [[ -z "${PW_VKBASALT_EFFECTS}" ]] ; then
-            export PW_VKBASALT_EFFECTS="cas:FilmGrain2" 
+            export PW_VKBASALT_EFFECTS="Curves:cas" 
         fi
         sed -ri "s/effects = .*/effects = ${PW_VKBASALT_EFFECTS}/g" "${PORT_WINE_PATH}/data/vkBasalt.conf"
         if [[ -z "${PW_VKBASALT_FFX_CAS}" ]] ; then
@@ -439,9 +433,7 @@ pw_vkbasalt_check () {
         fi
         sed -ri "s/casSharpness .*/casSharpness = ${PW_VKBASALT_FFX_CAS}/g" "${PORT_WINE_PATH}/data/vkBasalt.conf"
         export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
-        sed -i s/'> = 0.05;'/'> = 0.035;'/ "${PW_WINELIB}/pressure-vessel/reshade/shaders/FilmGrain2.fx"
-        sed -i s/'> = 0.65;'/'> = 0.4;'/ "${PW_WINELIB}/pressure-vessel/reshade/shaders/Curves.fx"
-        sed -i s/'> = 0.8;'/'> = 0.9;'/ "${PW_WINELIB}/pressure-vessel/reshade/shaders/Bloom.fx"
+        # sed -i s/'> = 0.05;'/'> = 0.035;'/ "${PW_WINELIB}/pressure-vessel/reshade/shaders/FilmGrain2.fx"
         var_vk_istance_layers_config_update "VK_LAYER_VKBASALT_post_processing32:VK_LAYER_VKBASALT_post_processing64"
         print_info "vkBasalt is enabled"
     else

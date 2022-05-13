@@ -424,6 +424,25 @@ start_portwine () {
         export RADV_DEBUG=nocache
     fi
 
+    if [[ "${PW_WINE_FULLSCREEN_FSR}" == 1 ]] || [[ "${WINE_FULLSCREEN_FSR}" == 1 ]] ; then
+        export WINE_FULLSCREEN_FSR=1
+        export WINE_FULLSCREEN_FSR_STRENGTH=0
+        export WINE_FULLSCREEN_INTEGER_SCALING=0
+        # export WINE_FULLSCREEN_FAKE_CURRENT_RES=1920x1080
+    else
+        export WINE_FULLSCREEN_FSR=0
+        unset WINE_FULLSCREEN_FAKE_CURRENT_RES WINE_FULLSCREEN_FSR_STRENGTH WINE_FULLSCREEN_INTEGER_SCALING
+    fi
+
+    for try_cp_dll_from_wine in "ntdll.dll" "vulkan-1.dll" ; do
+        if ! try_copy_file "${WINEDIR}"/lib/wine/fakedlls/${try_cp_dll_from_wine} "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${try_cp_dll_from_wine}"
+        then try_copy_file "${WINEDIR}"/lib/wine/i386-windows/${try_cp_dll_from_wine} "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${try_cp_dll_from_wine}"
+        fi
+        if ! try_copy_file "${WINEDIR}"/lib64/wine/fakedlls/${try_cp_dll_from_wine} "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${try_cp_dll_from_wine}"
+        then try_copy_file "${WINEDIR}"/lib64/wine/x86_64-windows/${try_cp_dll_from_wine} "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${try_cp_dll_from_wine}"
+        fi
+    done
+
     #run_winetricks_from_db
     if [[ ! -z "${PW_MUST_HAVE_DLL}" ]]
     then export PW_DLL_INSTALL="`echo "${PW_MUST_HAVE_DLL} ${PW_DLL_INSTALL}" | awk '{ for(i=1;i<=NF;i++){a[$i]++} }END{ for(i in a){printf("%s ",i)} }' `"
@@ -500,14 +519,24 @@ pw_run () {
         echo "WINEDLLOVERRIDES=${WINEDLLOVERRIDES}" >> "${PW_LOG_TO_FILE}"
         echo "------------------------------------" >> "${PW_LOG_TO_FILE}"
         echo "Log WINE:" >> "${PW_LOG_TO_FILE}"
-        ${optirun_on} ${PW_GAMEMODERUN_SLR} ${pw_runtime} env ${PW_MANGOHUD_SLR} LD_PRELOAD="${PW_LD_PRELOAD}" \
-        PATH="${PATH}" VK_INSTANCE_LAYERS=${PW_VK_INSTANCE_LAYERS} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
-        VK_LAYER_PATH="${PW_VK_LAYER_PATH}" "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
+        ${optirun_on} ${PW_GAMEMODERUN_SLR} ${pw_runtime} \
+        env ${PW_MANGOHUD_SLR} \
+        PATH="${PATH}" \
+        LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
+        LD_PRELOAD="${PW_LD_PRELOAD}" \
+        VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+        VK_INSTANCE_LAYERS=${PW_VK_INSTANCE_LAYERS} \
+        "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
     else
-        [ "${PW_USE_TERMINAL}" != "1" ] && export PW_TERM=""
-        $PW_TERM ${optirun_on} ${PW_GAMEMODERUN_SLR} ${pw_runtime} env ${PW_MANGOHUD_SLR} LD_PRELOAD="${PW_LD_PRELOAD}"\
-        PATH="${PATH}" VK_INSTANCE_LAYERS=${PW_VK_INSTANCE_LAYERS} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
-        VK_LAYER_PATH="${PW_VK_LAYER_PATH}" "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]}
+        [[ "${PW_USE_TERMINAL}" != "1" ]] && export PW_TERM=""
+        $PW_TERM ${optirun_on} ${PW_GAMEMODERUN_SLR} ${pw_runtime} \
+        env ${PW_MANGOHUD_SLR} \
+        PATH="${PATH}" \
+        LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
+        LD_PRELOAD="${PW_LD_PRELOAD}" \
+        VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+        VK_INSTANCE_LAYERS=${PW_VK_INSTANCE_LAYERS} \
+        "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>/dev/null
     fi
 }
 export -f pw_run

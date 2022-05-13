@@ -333,7 +333,7 @@ export -f gui_proton_downloader
 gui_vkBasalt () {
     KEY_FX_GUI=$RANDOM
     FILE_VKBASALT_CONF="${PORT_WINE_PATH}/data/vkBasalt.conf"
-    LIST_FX=(`grep ".fx$" "${FILE_VKBASALT_CONF}" | awk '{print $1}'`)
+    LIST_FX=(`grep -E '.fx$|.fxh$' "${FILE_VKBASALT_CONF}" | awk '{print $1}'`)
     GET_FX_IN_FILE=(`echo ${PW_VKBASALT_EFFECTS} | sed s/"cas:"// | sed s/":"/" "/g`)
     unset ADD_GUI_FX GUI_FX_RESULT
     for add_list_fx in ${LIST_FX[@]} ; do
@@ -378,11 +378,11 @@ gui_vkBasalt () {
     INT_COUNT_FX=0
     for read_list_fx in ${YAD_BASALT_SET} ; do
         if [[ "$read_list_fx" == "TRUE" ]] ; then
-            export GUI_FX_RESULT+=":${LIST_FX[$INT_COUNT_FX]}"
+            export GUI_FX_RESULT+="${LIST_FX[$INT_COUNT_FX]}:"
         fi
         export INT_COUNT_FX=$(( ${INT_COUNT_FX} + 1 ))
     done
-    GUI_FX_RESULT="cas${GUI_FX_RESULT}"
+    GUI_FX_RESULT="${GUI_FX_RESULT}cas"
     export PW_VKBASALT_EFFECTS="${GUI_FX_RESULT}"       
 
     if [[ "$YAD_CAS_SET" == "0" ]] ; then
