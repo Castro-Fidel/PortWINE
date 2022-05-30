@@ -151,7 +151,7 @@ portwine_start_debug () {
         echo "!!!gamemod not found!!!"  >> "${PORT_WINE_PATH}/${portname}.log"
     fi
     echo "-------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    if [[ "${PW_D3D_EXTRAS_DISABLE}" == 1 ]]
+    if [[ "${PW_USE_D3D_EXTRAS}" != 1 ]]
     then echo "D3D_EXTRAS - disabled" >> "${PORT_WINE_PATH}/${portname}.log"
     else echo "D3D_EXTRAS - enabled" >> "${PORT_WINE_PATH}/${portname}.log"
     fi
@@ -398,7 +398,7 @@ pw_edit_db () {
     PW_MANGOHUD PW_MANGOHUD_USER_CONF ENABLE_VKBASALT PW_NO_ESYNC PW_NO_FSYNC PW_USE_DXR10 PW_USE_DXR11 \
     PW_USE_NVAPI_AND_DLSS PW_WINE_FULLSCREEN_FSR PW_OLD_GL_STRING PW_HIDE_NVIDIA_GPU PW_FORCE_USE_VSYNC PW_VIRTUAL_DESKTOP \
     PW_WINEDBG_DISABLE PW_USE_TERMINAL PW_WINE_ALLOW_XIM PW_HEAP_DELAY_FREE PW_GUI_DISABLED_CS PW_USE_GSTREAMER \
-    PW_USE_GAMEMODE PW_DX12_DISABLE PW_PRIME_RENDER_OFFLOAD PW_D3D_EXTRAS_DISABLE PW_FIX_VIDEO_IN_GAME PW_USE_AMDVLK_DRIVER \
+    PW_USE_GAMEMODE PW_DX12_DISABLE PW_PRIME_RENDER_OFFLOAD PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_USE_AMDVLK_DRIVER \
     PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE
     if [ "$?" == 0 ] ; then
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
