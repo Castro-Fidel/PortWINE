@@ -63,7 +63,7 @@ try_remove_dir () {
 export -f try_remove_dir
 
 try_force_link_file () {
-    if [ ! -f "$1" ] ; then	print_info "file $1 not found for link"
+    if [ ! -f "$1" ] ; return 1
     elif [ -z "$2" ] ; then	print_error "no way to link file $1"
     else
         ln -sf "$1" "$2"
@@ -331,6 +331,8 @@ init_wine_ver () {
 }
 
 pw_init_runtime () {
+
+    export LOCPATH="/run/host/usr/share/locale/"
 
     PW_PV_OVERRIDES="/usr/lib/pressure-vessel/overrides/lib" 
     export PW_LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${PW_WINELIB}/portable/lib/lib64:${PW_WINELIB}/portable/lib/lib32:${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:${PW_PV_OVERRIDES}/i386-linux-gnu/aliases"
