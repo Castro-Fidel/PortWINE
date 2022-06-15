@@ -425,19 +425,10 @@ pw_autoinstall_from_db () {
     . "${PORT_SCRIPTS_PATH}/pw_autoinstall/${PW_YAD_SET}"
 }
 
-gui_about_portproton () {
-    "${pw_yad_new}" --about --pname=PortProton  \
-    --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
-    --pversion="${install_ver}\n(scripts v. ${scripts_install_ver})" \
-    --image=help-about \
-    --copyright="Copyright © 2022 Castro-Fidel (PortWINE-Linux.ru)" \
-    --comments="Порт для запуска Windows игр и приложений в GNU/Linux" \
-    --license=MIT \
-    --authors="Castro-Fidel",,"Выражаем особую благодарность в помоще проекту:",Cefeiko,Dezert1r,Taz_mania,Anton_Famillianov,gavr,RidBowt,chal55rus,UserDiscord \
-    --website=portwine-linux.ru/ \
-    --website-label=portwine-linux.ru
+gui_credits () {
+    . "${PORT_SCRIPTS_PATH}/credits"
 }
-export -f gui_about_portproton
+export -f gui_credits
 
 ###MAIN###
 PW_PREFIX_NAME="$(echo "${PW_PREFIX_NAME}" | sed -e s/[[:blank:]]/_/g)"
@@ -608,8 +599,8 @@ else
     --field="   $loc_gui_upd_pp"!""!"":"FBTN" '@bash -c "button_click gui_pw_update"' \
     --field="   $loc_gui_changelog"!""!"":"FBTN" '@bash -c "button_click open_changelog"' \
     --field="   $loc_gui_edit_usc"!""!"":"FBTN" '@bash -c "button_click gui_open_user_conf"' \
-    --field="   $loc_gui_scripts_fb"!""!"":"FBTN" '@bash -c "button_click gui_open_scripts_from_backup"' &
-    # --field="   $loc_gui_about_us"!""!"":"FBTN" '@bash -c "button_click gui_about_portproton"' &
+    --field="   $loc_gui_scripts_fb"!""!"":"FBTN" '@bash -c "button_click gui_open_scripts_from_backup"' \
+    --field="   $loc_gui_credits"!""!"":"FBTN" '@bash -c "button_click gui_credits"' &
 
     "${pw_yad_new}" --plug=${KEY} --tabnum=3 --columns=3 --align-buttons --form --separator=";" \
     --field="  3D API  : :CB" "VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL!GALLIUM_NINE (native DX9 on MESA)" \
@@ -732,7 +723,7 @@ case "$PW_YAD_SET" in
     open_changelog) open_changelog ;;
     120) gui_vkBasalt ;;
     pw_create_prefix_backup) pw_create_prefix_backup ;;
-    gui_about_portproton) gui_about_portproton ;;
+    gui_credits) gui_credits ;;
     PW_*) pw_autoinstall_from_db ;;
 esac
 
