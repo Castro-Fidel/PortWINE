@@ -22,7 +22,6 @@ fi
 . "$(dirname $(readlink -f "$0"))/functions_helper"
 
 start_portwine () {
-    pw_update_pfx_cover_gui
     export WINEPREFIX="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"
     create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/"
     try_force_link_dir "${PORT_WINE_PATH}/data/prefixes" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/"
@@ -242,8 +241,25 @@ start_portwine () {
         
         try_force_link_file "${WINEDIR}/share/wine/fonts/"tahoma.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"tahoma.ttf
     }
+
+    export DOTPFX_VER="48v1"
+    DOTPFX_URL="github.com/Castro-Fidel/PortWINE/releases/download/dotpfx${DOTPFX_VER}/dotpfx${DOTPFX_VER}.tar.xz"
+
+    if [[ "${update_loc}" == "RUS" && "${PW_PREFIX_NAME}" == "DOTNET" && ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/.dotnet48 ]] ; then
+        print_info "Download and install DOTNET..."
+        if try_download "${DOTPFX_URL}" "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz" ; then
+            unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/"
+            try_remove_file "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz"
+        else
+            try_remove_file "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz"
+            zenity_error_download && exit 1
+        fi
+    fi
     
-    if [[ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" || ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/windows || ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices" || \
+    pw_update_pfx_cover_gui
+
+
+    if [[ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" || ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/windows || \
     ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/userdef.reg || ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/system.reg || ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/user.reg ]]
     then
         pw_clear_pfx
@@ -252,13 +268,11 @@ start_portwine () {
             cp -frL "${PW_PLUGINS_PATH}/default_pfx/"* "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/"
         fi
         ${pw_runtime} env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -u &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
-        # ${pw_runtime} env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${WINESERVER}" -w &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
         wait_wineserver &&
         echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
-    elif [[ -z "`cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver" | grep ${PW_WINE_USE}`" ]] ; then 
+    elif [[ -z "`cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver" | grep ${PW_WINE_USE}`" || ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices" ]] ; then 
         check_dirs_and_files_in_pfx
         ${pw_runtime} env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -i &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
-        # ${pw_runtime} env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${WINESERVER}" -w &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
         wait_wineserver &&
         echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
     fi
@@ -276,7 +290,8 @@ start_portwine () {
     #enabled BattleEye_Runtime and EasyAntiCheat_Runtime
     export PROTON_BATTLEYE_RUNTIME="${PW_PLUGINS_PATH}/d3d_extras/BattlEye_Runtime"
     export PROTON_EAC_RUNTIME="${PW_PLUGINS_PATH}/d3d_extras/EasyAntiCheat_Runtime"
-    var_winedlloverride_update "beclient,beclient_x64=b,n"
+    export PROTON_EASYANTICHEAT_RUNTIME="${PROTON_EAC_RUNTIME}"
+    var_winedlloverride_update "beclient,beclient_x64=b"
     #try link d3d extras libs
     for d3d_extras_from_plugins in d3dcompiler_33 d3dcompiler_34 d3dcompiler_35 d3dcompiler_36 d3dcompiler_37 \
     d3dcompiler_38 d3dcompiler_39 d3dcompiler_40 d3dcompiler_41 d3dcompiler_42 d3dcompiler_43 d3dcompiler_46 \
@@ -514,6 +529,7 @@ start_portwine () {
 }
 
 pw_run () {
+    unset GDK_BACKEND
     if [[ ! -z "$portwine_exe" ]] ; then
         cd "${PATH_TO_GAME}"
     else
@@ -589,35 +605,8 @@ if [[ -d "${PORT_WINE_PATH}/data/dist" ]] ; then
 fi
 
 create_new_dir "${PORT_WINE_PATH}/data/prefixes"
-try_force_link_dir "${PORT_WINE_PATH}/data/prefixes" "${PORT_WINE_PATH}"
-if [[ -d "${PORT_WINE_PATH}/data/pfx" ]] ; then 
-    mv -f "${PORT_WINE_PATH}/data/pfx" "${PORT_WINE_PATH}/data/prefixes/DEFAULT"
-    orig_IFS="$IFS"
-    IFS=$'\n'
-    for change_path in `grep -il "/data/pfx/" "${HOME}/.local/share/applications"/*.desktop` ; do
-        sed -i 's%/data/pfx/%/data/prefixes/DEFAULT/%g' "${change_path}"
-    done
-    for change_path in `grep -il "/data/pfx/" "${PORT_WINE_PATH}"/*.desktop` ; do
-        sed -i 's%/data/pfx/%/data/prefixes/DEFAULT/%g' "${change_path}"
-    done
-    IFS="$orig_IFS"
-    rm -f "${PORT_WINE_PATH}/drive_c"
-fi
-
-if [[ -d "${PORT_WINE_PATH}/data/pfx_dotnet" ]] ; then 
-    mv -f "${PORT_WINE_PATH}/data/pfx_dotnet" "${PORT_WINE_PATH}/data/prefixes/DOTNET"
-    orig_IFS="$IFS"
-    IFS=$'\n'
-    for change_path in `grep -il "/data/pfx_dotnet/" "${HOME}/.local/share/applications"/*.desktop` ; do
-        sed -i 's%/data/pfx_dotnet/%/data/prefixes/DOTNET/%g' "${change_path}"
-    done
-    for change_path in `grep -il "/data/pfx_dotnet/" "${PORT_WINE_PATH}"/*.desktop` ; do
-        sed -i 's%/data/pfx_dotnet/%/data/prefixes/DOTNET/%g' "${change_path}"
-    done
-    IFS="$orig_IFS"
-fi
 create_new_dir "${PORT_WINE_PATH}/data/prefixes/DOTNET"
-
+try_force_link_dir "${PORT_WINE_PATH}/data/prefixes" "${PORT_WINE_PATH}"
 
 orig_IFS="$IFS"
 IFS=$'\n'
