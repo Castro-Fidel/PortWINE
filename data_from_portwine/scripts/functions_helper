@@ -369,16 +369,16 @@ pw_init_runtime () {
         export pw_runtime="${PW_WINELIB}/pressure-vessel/bin/pressure-vessel-unruntime \
         --unshare-home \
         --home="${PW_SANDBOX_HOME_PATH}" \
-        --no-gc-legacy-runtimes \
         --no-gc-runtimes \
+        --gc-legacy-runtimes \
         --copy-runtime \
         --remove-game-overlay \
         ${PW_ADD_TO_ARGS_IN_RUNTIME} --"
     else
         export pw_runtime="${PW_WINELIB}/pressure-vessel/bin/pressure-vessel-unruntime \
         --share-home \
-        --no-gc-legacy-runtimes \
         --no-gc-runtimes \
+        --gc-legacy-runtimes \
         --copy-runtime \
         --remove-game-overlay \
         ${PW_ADD_TO_ARGS_IN_RUNTIME} --"
@@ -471,7 +471,12 @@ regdlloverrides () {
     esac
     grep 'HKCU,Software\\Wine\\AppDefaults\\'"${PW_DLL_EXE}"'\\DllOverrides,'\"${PW_DLL_LIB}\",0x2,\"${PW_DLL_IN_REG}\" "${WINEDIR}/share/wine/wine.inf"
     if [[ "$?" != "0" ]] ; then
-        sed -i "/\[SteamClient.ntamd64\]/a HKCU,Software\\\Wine\\\AppDefaults\\\\${PW_DLL_EXE}\\\DllOverrides,\"${PW_DLL_LIB}\",0x2,\"${PW_DLL_IN_REG}\"" "${WINEDIR}/share/wine/wine.inf"
+        grep "ProtonOverrides" "${WINEDIR}/share/wine/wine.inf"
+        if [[ "$?" == "0" ]] ; then
+            sed -i "/\[ProtonOverrides\]/a HKCU,Software\\\Wine\\\AppDefaults\\\\${PW_DLL_EXE}\\\DllOverrides,\"${PW_DLL_LIB}\",0x2,\"${PW_DLL_IN_REG}\"" "${WINEDIR}/share/wine/wine.inf"
+        else
+            sed -i "/\[SteamClient.ntamd64\]/a HKCU,Software\\\Wine\\\AppDefaults\\\\${PW_DLL_EXE}\\\DllOverrides,\"${PW_DLL_LIB}\",0x2,\"${PW_DLL_IN_REG}\"" "${WINEDIR}/share/wine/wine.inf"
+        fi
     fi
 }
 

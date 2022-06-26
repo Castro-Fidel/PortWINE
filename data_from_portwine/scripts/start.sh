@@ -138,7 +138,7 @@ portwine_start_debug () {
     "${PW_WINELIB}/portable/bin/inxi" -G >> "${PORT_WINE_PATH}/${portname}.log"
     echo "----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Vulkan info device name:" >> "${PORT_WINE_PATH}/${portname}.log"
-    "${PW_WINELIB}/portable/bin/vulkaninfo" | grep deviceName >> "${PORT_WINE_PATH}/${portname}.log"
+    [[ `which vulkaninfo` ]] && vulkaninfo | grep deviceName >> "${PORT_WINE_PATH}/${portname}.log"
     "${PW_WINELIB}/portable/bin/vkcube" --c 50
     if [ $? -eq 0 ]; then
         echo "Vulkan cube test passed successfully" >> "${PORT_WINE_PATH}/${portname}.log"
