@@ -12,8 +12,8 @@ export TEXT_OPSSL=""
 [[ -z `which openssl` ]] && export TEXT_OPSSL="Install openssl in your system!!!\n"
 export PW_COMMENT_DB="${TEXT_OPSSL}Dwnload and start League of Legends can take a long time"
 export WINEDLLOVERRIDES="mscoree,mshtml="
-# export LAUNCH_PARAMETERS="--launch-product=league_of_legends --launch-patchline=live"              # Additional launch options
-export PW_WINE_USE=WINE_LOL_GE_7.0-2
+export LAUNCH_PARAMETERS="--launch-product=league_of_legends --launch-patchline=live"              # Additional launch options
+export PW_WINE_USE=WINE_LOL_GE_7.0-4
 export PW_VULKAN_USE=1
 export PW_MUST_HAVE_DLL=""
 export PW_PREFIX_NAME="LEAGUE_OF_LEGENDS"
@@ -42,7 +42,7 @@ check_download_wine_ver_for_lol
 
 # check_port_for_lol () { 
 #     "${pw_yad}" --progress --progress-text="Loading and start League of Legends. Please wait. It can take a long time!" \
-#     --pulsate --no-buttons --undecorated --center --skip-taskbar --image="${PW_GUI_ICON_PATH}/covers/lol_cover.jpg" --image-on-top > /dev/null 2>&1 &
+#     --pulsate --no-buttons --undecorated --center --skip-taskbar --image="${PW_GUI_ICON_PATH}/covers/lol_cover.jpg" --image-on-top > /dev/null 4>&1 &
 #     PW_YAD_PID_LOL="$!"
 #     process=LeagueClientUx.exe
 #     while [[ -z `pidof ${process}` ]] ; do
@@ -67,12 +67,13 @@ check_download_wine_ver_for_lol
 # }
 
 add_in_start_portwine () {
-    if [ "$(cat /proc/sys/abi/vsyscall32)" -ne 0 ] ; then
-        pw_stop_progress_bar
-        zenity --question --title="Fix for LoL anti-cheat" \
-        --text='Root rights are required to execute the command:           \n"sysctl -w abi.vsyscall32=0"' --no-wrap
-        [ "$?" = 1 ] && exit 0
-        pkexec /usr/bin/env bash -c 'sysctl -w abi.vsyscall32=0'
-    fi
+    echo ""
+    # if [ "$(cat /proc/sys/abi/vsyscall32)" -ne 0 ] ; then
+    #     pw_stop_progress_bar
+    #     zenity --question --title="Fix for LoL anti-cheat" \
+    #     --text='Root rights are required to execute the command:           \n"sysctl -w abi.vsyscall32=0"' --no-wrap
+    #     [ "$?" = 1 ] && exit 0
+    #     pkexec /usr/bin/env bash -c 'sysctl -w abi.vsyscall32=0'
+    # fi
     # check_port_for_lol &
 }

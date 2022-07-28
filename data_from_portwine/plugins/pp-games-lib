@@ -1,0 +1,409 @@
+#!/usr/bin/env python3
+
+import os
+import re
+import shlex
+import shutil
+from configparser import ConfigParser
+from pathlib import Path
+from subprocess import run
+from types import SimpleNamespace
+try:
+    from PyQt6.QtCore import * # type: ignore
+    from PyQt6.QtGui import * # type: ignore
+    from PyQt6.QtWidgets import * # type: ignore
+except ModuleNotFoundError:
+    from PyQt5.QtCore import *
+    from PyQt5.QtGui import *
+    from PyQt5.QtWidgets import *
+
+settings = QSettings('PPGL', 'PortProtonGamesLib')
+g = SimpleNamespace()
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.resize(QSize(800, 600))
+        geometry = settings.value('geometry_main')
+        if geometry:
+            self.restoreGeometry(geometry)
+
+        shortcut = ConfigParser()
+        shortcut.read(os.getenv('HOME') + '/.local/share/applications/PortProton.desktop')
+        scripts_dir = shortcut.get('Desktop Entry', 'Path', fallback=os.getenv('HOME') + '/.local/share/PortWINE/PortProton/data/scripts')
+        if not scripts_dir or not Path(scripts_dir).is_dir():
+            QMessageBox.critical(self, 'Error', 'Can not find installed PortProton')
+            exit(1)
+        g.scripts_dir = scripts_dir.rstrip('/')
+        g.pp_icon = shortcut.get('Desktop Entry', 'Icon', fallback='/usr/share/pixmaps/portproton.png')
+        pp_icon = QIcon(g.pp_icon)
+        self.setWindowIcon(pp_icon)
+        self.setWindowTitle('PortProton games library')
+
+        g.base_dir = str(Path(scripts_dir + '/../..').resolve())
+        g.install_pfx = g.base_dir + '/data/prefixes/INSTALL'
+        g.shortcuts_dir = g.base_dir + '/shortcuts'
+        g.games_dir = g.base_dir + '/games'
+
+        Path(g.shortcuts_dir).mkdir(parents=True, exist_ok=True)
+        Path(g.games_dir).mkdir(parents=True, exist_ok=True)
+
+        sep = QFrame(self)
+        sep.setFrameShape(QFrame.Shape.VLine)
+        sep.setFrameShadow(QFrame.Shadow.Sunken)
+        self._status_size = QLabel(self)
+        self._status_dir = QLabel(self)
+        self.statusBar().setVisible(False)
+        self.statusBar().addWidget(self._status_dir, 1)
+        self.statusBar().addWidget(sep)
+        self.statusBar().addWidget(self._status_size)
+
+
+        self.game_list = GameList(self)
+        self.setCentralWidget(self.game_list)
+
+        self.toolbar = self.addToolBar('Main')
+        self.toolbar.setIconSize(QSize(32, 32))
+        self.toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.toolbar.setMovable(False)
+        action = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogNewFolder), 'Install new game', self)
+        action.triggered.connect(self.install_game)
+        self.toolbar.addAction(action)
+        action = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_FileLinkIcon), 'Add game entry', self)
+        action.triggered.connect(self.add_game)
+        self.toolbar.addAction(action)
+        action = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_BrowserReload), 'Reload list', self)
+        action.triggered.connect(self.reload_list)
+        self.toolbar.addAction(action)
+        action = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_TrashIcon), 'Drop install prefix', self)
+        action.triggered.connect(self.drop_prefix)
+        self.toolbar.addAction(action)
+        spacer = QWidget(self)
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.toolbar.addWidget(spacer)
+        action = QAction(pp_icon, 'PortProton', self)
+        action.triggered.connect(self.run_pp)
+        self.toolbar.addAction(action)
+
+    def install_game(self):
+        InstallGame(self)
+
+    def add_game(self):
+        InstallGame(self, False)
+
+    def reload_list(self):
+        self.game_list.reload()
+
+    def drop_prefix(self):
+        res = QMessageBox.question(self, 'Are you shure ?', 'Do you really want to remove<br/><b>' + g.install_pfx + '</b> ?')
+        if res == QMessageBox.StandardButton.Yes:
+            shutil.rmtree(g.install_pfx, True)
+
+    def run_pp(self):
+        self.setDisabled(True)
+        app.processEvents()
+        run([g.scripts_dir + '/start.sh'])
+        self.setDisabled(False)
+
+    def set_status(self, item):
+        self.statusBar().setVisible(bool(item))
+        if item:
+            self._status_size.setText('Size: ' + item.dir_size_human)
+            self._status_dir.setText(' ' + item.game_dir)
+
+    def closeEvent(self, event):
+        geometry = self.saveGeometry()
+        settings.setValue('geometry_main', geometry)
+        super().closeEvent(event)
+
+class LoadListThread(QThread):
+    completed = pyqtSignal(list)
+    def __init__(self, parent, install_dir):
+        super().__init__(parent)
+        self.install_dir = install_dir
+    def run(self):
+        exe_list = list(Path(self.install_dir).glob('**/*.exe'))
+        self.completed.emit(exe_list)
+
+class InstallGame(QDialog):
+    def __init__(self, parent, installing=True):
+        super().__init__(parent)
+        self._installing = installing
+        self.install_dir = g.install_pfx + '/drive_c/Games' if installing else g.games_dir
+        self._exe_list_widget = QListWidget(self)
+        self._exe_list_widget.setIconSize(QSize(16, 16))
+        self._exe_list_widget.itemDoubleClicked.connect(self._handleDoubleClick)
+        layout = QVBoxLayout()
+        layout.addWidget(self._exe_list_widget)
+
+        self._pbar = QProgressBar(self)
+        self._pbar.setMaximum(0)
+        layout.addWidget(self._pbar)
+        thread = LoadListThread(self, self.install_dir)
+        thread.completed.connect(self.load)
+        thread.start()
+
+        if self._installing:
+            setup_btn = QPushButton(self)
+            setup_btn.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogStart))
+            setup_btn.setText('Run another setup')
+            setup_btn.clicked.connect(self._runSetup)
+            layout.addWidget(setup_btn)
+        self.setLayout(layout)
+        self.resize(400, 300)
+        self.setModal(True)
+        self.setWindowTitle('Select game exe file')
+        geometry = settings.value('geometry_install')
+        if geometry:
+            self.restoreGeometry(geometry)
+        self.show()
+
+    def load(self, exe_list):
+        if self._installing and len(exe_list) == 0:
+            self._runSetup()
+            exe_list = list(Path(self.install_dir).glob('**/*.exe'))
+        if len(exe_list) == 0:
+            return self.close()
+        def render_list():
+            pixmap = QPixmap(16, 16)
+            pixmap.fill(Qt.GlobalColor.transparent)
+            empty_icon = QIcon(pixmap)
+            for exe in sorted(exe_list):
+                ico_file = str(exe) + '.ico'
+                item = QListWidgetItem(self._exe_list_widget)
+                item.setText(str(exe)[len(self.install_dir)+1:])
+                try:
+                    if not Path(ico_file).exists():
+                        run(['wrestool', '-x', '-t14', '-o', ico_file, exe], capture_output=True)
+                    item.setIcon(QIcon(ico_file))
+                except Exception:
+                    pass
+                if item.icon().pixmap(16, 16).isNull():
+                    item.setIcon(empty_icon)
+                self._exe_list_widget.addItem(item)
+            self._pbar.setVisible(False)
+        thread = QThread(self)
+        thread.run = render_list
+        thread.start()
+
+    def _runSetup(self):
+        downloads_dir = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation)
+        exe_file, _ = QFileDialog.getOpenFileName(self, caption='Choose setup file', filter='Exe files (*.exe)', directory=downloads_dir)
+        if not exe_file:
+            return
+        ppdb = shlex.quote(exe_file + '.ppdb')
+        script = f"""
+            mkdir -p {shlex.quote(g.install_pfx + '/drive_c/Games')}
+            echo '
+                export PW_VULKAN_USE=1
+                export PW_GUI_DISABLED_CS=1
+                export PW_PREFIX_NAME=INSTALL
+                export PW_DLL_INSTALL=mfc42
+            ' > {ppdb}
+            {shlex.quote(g.scripts_dir + '/start.sh')} {shlex.quote(exe_file)}
+            rm -f {ppdb}
+        """
+        self.setDisabled(True)
+        app.processEvents()
+        run(['bash', '-c', script])
+        self.setDisabled(False)
+
+    def _handleDoubleClick(self, item):
+        game_dir = item.text().split('/')[0]
+        dlg = QInputDialog(self)
+        dlg.setWindowTitle('Please enter game entry name')
+        dlg.setLabelText('New game entry')
+        dlg.setTextValue(game_dir)
+        dlg.resize(300, 0)
+        ok = dlg.exec()
+        shortcut_name = dlg.textValue()
+        if not ok or not shortcut_name:
+            return
+        file_name = re.sub(r'[<>:/\\|?*]', '_', shortcut_name)
+        shortcut = f"{g.shortcuts_dir}/{file_name}.desktop"
+        if Path(shortcut).exists():
+            res = QMessageBox.question(self, 'Shortcut already exuists', 'Shortcut <b>' + file_name + '</b> already exists. Overwrite ?')
+            if res != QMessageBox.StandardButton.Yes:
+                return
+        src_dir = self.install_dir + '/' + game_dir
+        dst_dir = g.games_dir + '/' + game_dir
+        exe_file = shlex.quote(g.games_dir + '/' + item.text())
+        ppdb = shlex.quote(g.games_dir + '/' + item.text()) + '.ppdb'
+        self.setDisabled(True)
+        if self._installing and Path(dst_dir).exists():
+            res = QMessageBox.question(self, 'Dir already exuists', 'Dir <b>' + game_dir + '</b> already exists. Overwrite ?')
+            if res != QMessageBox.StandardButton.Yes:
+                return
+        if self._installing:
+            os.rename(src_dir, dst_dir)
+        script = f"""
+            export INSTALLING_PORT=1
+            export portwine_exe={exe_file}
+            cd {shlex.quote(g.scripts_dir)}
+            . {shlex.quote(g.scripts_dir + '/runlib')}
+            pw_create_gui_png
+            pw_init_db
+            [ -f {ppdb} ] && . {ppdb}
+            echo -e "export PW_VULKAN_USE=${{PW_VULKAN_USE:-1}}\nexport PW_GUI_DISABLED_CS=1" >> {ppdb}
+        """
+        run(['bash', '-c', script])
+        icon_path = g.base_dir + '/data/img/' + Path(item.text()).stem + '.png'
+        if not Path(icon_path).exists():
+            icon_path = g.pp_icon
+        Path(shortcut).write_text(f"""[Desktop Entry]
+Name={shortcut_name}
+Exec=env {shlex.quote(g.scripts_dir + '/start.sh')} {exe_file}
+Type=Application
+Categories=Game
+StartupNotify=true
+Path={shlex.quote(g.scripts_dir)}
+Icon={icon_path}
+""", encoding='utf-8')
+        os.chmod(shortcut, 0o755)
+        win.reload_list()
+        self.close()
+
+    def closeEvent(self, event):
+        geometry = self.saveGeometry()
+        settings.setValue('geometry_install', geometry)
+        super().closeEvent(event)
+
+
+class GameList(QListWidget):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.itemActivated.connect(self.runGame)
+        self.currentItemChanged.connect(self.selectItem)
+        self.setViewMode(QListWidget.ViewMode.IconMode)
+        self.setResizeMode(QListWidget.ResizeMode.Adjust)
+        self.setIconSize(QSize(64, 64))
+        self.setWordWrap(True)
+        self.setSpacing(3)
+        self.reload()
+
+    def reload(self):
+        self.clear()
+        shortcuts = list(Path(g.shortcuts_dir).glob('*.desktop'))
+        for shortcut in shortcuts:
+            item = GameItem(self, shortcut)
+            self.addItem(item)
+        self.sortItems()
+        self.setCurrentIndex(QModelIndex())
+
+    def runGame(self, item):
+        win.setDisabled(True)
+        app.processEvents()
+        run(['bash', '-c', item.get('Exec')])
+        win.setDisabled(False)
+
+    def selectItem(self, item):
+        win.set_status(item)
+
+    def contextMenuEvent(self, event):
+        selected = self.selectedItems()
+        if len(selected) == 0:
+            return
+        selected = selected[0]
+        menu = QMenu(self)
+        desktop = menu.addAction(self.style().standardIcon(QStyle.StandardPixmap.SP_DesktopIcon), 'Add to desktop')
+        restore_gui = menu.addAction(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogResetButton), 'Restore PP GUI')
+        remove = menu.addAction(self.style().standardIcon(QStyle.StandardPixmap.SP_TrashIcon), 'Remove game entry')
+        uninstall = menu.addAction(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogCloseButton), 'Uninstall game')
+        if not selected.game_dir.startswith(g.games_dir):
+            uninstall.setVisible(False)
+        action = menu.exec(self.mapToGlobal(event.pos()))
+        desktop_shortcut = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DesktopLocation) + '/' + Path(selected.desktop_file).name
+        if action == desktop:
+            if Path(desktop_shortcut).exists():
+                res = QMessageBox.question(self, 'Shortcut already exuists', 'Desktop shortcut <b>' + desktop_shortcut + '</b> already exists. Overwrite ?')
+                if res != QMessageBox.StandardButton.Yes:
+                    return
+            shutil.copy(selected.desktop_file, desktop_shortcut)
+        if action == restore_gui:
+            ppdb = shlex.split(selected.get('Exec'))[-1] + '.ppdb'
+            if not Path(ppdb).exists():
+                return
+            with open(ppdb, 'r') as read:
+                with open(ppdb + '.new', 'w') as write:
+                    while (line := read.readline()):
+                        if 'PW_GUI_DISABLED_CS' not in line:
+                            write.write(line)
+            os.rename(ppdb + '.new', ppdb)
+        if action == remove:
+            Path(desktop_shortcut).unlink(True)
+            Path(selected.desktop_file).unlink(True)
+            Path(selected.get('Icon')).unlink(True)
+            self.reload()
+        if action == uninstall:
+            res = QMessageBox.question(self,
+                'Are you shure ?',
+                'Do you really want to uninstall <b>' + selected.get('Name') + '</b><br/>located in "<b>'+selected.game_dir+'</b>" ?'
+            )
+            if res != QMessageBox.StandardButton.Yes:
+                return
+            Path(desktop_shortcut).unlink(True)
+            Path(selected.desktop_file).unlink(True)
+            Path(selected.get('Icon')).unlink(True)
+            if selected.game_dir.startswith(g.games_dir):
+                shutil.rmtree(selected.game_dir, True)
+            self.reload()
+
+
+def human_size(num):
+    if not num:
+        return "-"
+    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
+        if abs(num) < 1024.0:
+            return f"{num:.2f} {unit}B"
+        num /= 1024.0
+    return f"{num:.2f} YiB"
+
+class GameItem(QListWidgetItem):
+    def __init__(self, parent, desktop_file):
+        super().__init__(parent)
+        self.desktop_file = desktop_file
+        self.config = ConfigParser()
+        self.config.read(desktop_file)
+        text = self.get('Name', Path(desktop_file).stem)
+        self.setToolTip(text)
+        self.setText(text)
+        icon_path = self.get('Icon') if Path(self.get('Icon')).exists() else g.pp_icon
+        qicon = QIcon(icon_path)
+        self.setIcon(qicon)
+        self.setTextAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
+        self.setSizeHint(QSize(100, 105))
+        self.game_dir = shlex.split(self.get('Exec'))[-1]
+        if self.game_dir.startswith(g.games_dir):
+            self.game_dir = g.games_dir + '/' + self.game_dir[len(g.games_dir)+1:].split('/')[0]
+        else:
+            self.game_dir = str(Path(self.game_dir).parent)
+        self._set_dir_size(None)
+        dir_size_cache = self.game_dir + '/.size'
+        if Path(dir_size_cache).exists():
+            self._set_dir_size(int(Path(dir_size_cache).read_text()))
+        else:
+            def calc_dir_size():
+                if not Path(self.game_dir).exists():
+                    return
+                dir_size = sum(p.stat().st_size for p in Path(self.game_dir).rglob('*'))
+                self._set_dir_size(dir_size)
+                Path(dir_size_cache).write_text(str(dir_size))
+            thread = QThread(parent)
+            thread.run = calc_dir_size
+            thread.start()
+
+    def get(self, name, fallback=None):
+        return self.config.get('Desktop Entry', name, fallback=fallback)
+
+    def _set_dir_size(self, size):
+        self.dir_size = size
+        self.dir_size_human = human_size(size)
+
+import signal
+signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+app = QApplication([])
+win = MainWindow()
+win.show()
+app.exec()

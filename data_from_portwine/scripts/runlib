@@ -66,14 +66,14 @@ start_portwine () {
         xrdb -merge "${HOME}/.Xresources"
     fi
 
-    export NOSTEAM=1
     pw_init_runtime
 
     if [[ ! -z "${PW_LOG}" && "${PW_LOG}" != 0 ]] ; then
         export WINEDEBUG="fixme-all,err+loaddll,err+dll,err+file,err+reg"
-        export DXVK_LOG_LEVEL="info"
+        export DXVK_LOG_LEVEL="warn"
         export VKD3D_DEBUG="warn"
         export WINE_MONO_TRACE="E:System.NotImplementedException"
+        export VK_LOADER_DEBUG=all
     else
         export WINEDEBUG="-all"
         export DXVK_LOG_LEVEL="none"
@@ -351,7 +351,23 @@ start_portwine () {
         export PW_GALLIUM_NINE_PATH="${PW_PLUGINS_PATH}/gallium_nine_v.${PW_GALLIUM_NINE_VER}"
         try_force_link_file "${PW_GALLIUM_NINE_PATH}/lib32/d3d9-nine.dll.so" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/d3d9.dll"
         try_force_link_file "${PW_GALLIUM_NINE_PATH}/lib64/d3d9-nine.dll.so" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/d3d9.dll"
-        var_winedlloverride_update "d3d9=n;wined3d=b;d3d10,d3d11,dxvk_config,vulkan-1,winevulkan="
+        var_winedlloverride_update "d3d9=n;wined3d=b;dxvk_config,vulkan-1,winevulkan="
+        echo "Try link wine DXGI..."
+        if ! try_force_link_file "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/dxgi.dll"
+        then try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/dxgi.dll"
+        fi
+        if ! try_force_link_file "${WINEDIR}"/lib64/wine/fakedlls/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/dxgi.dll"
+        then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/dxgi.dll"
+        fi
+        echo "Try link wine d3d filese..."
+        for wine_build_dll in d3d11 d3d10 d3d10core d3d10_1 dxgi ; do
+            if ! try_force_link_file "${WINEDIR}/lib/wine/${wine_build_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${wine_build_dll}.dll"
+            then try_force_link_file "${WINEDIR}/lib/wine/i386-windows/${wine_build_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${wine_build_dll}.dll"
+            fi
+            if ! try_force_link_file "${WINEDIR}/lib64/wine/${wine_build_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${wine_build_dll}.dll"
+            then try_force_link_file "${WINEDIR}/lib64/wine/x86_64-windows/${wine_build_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${wine_build_dll}.dll"
+            fi
+        done
         unset FIND_D3D_MODULE D3D_MODULE_PATH
         FIND_D3D_MODULE=`dirname $(find /usr/ -maxdepth 4 -type f -name "d3dadapter9.so.*") 2>/dev/null` 
         if [[ ! -z "$FIND_D3D_MODULE" ]] ; then
@@ -525,6 +541,9 @@ start_portwine () {
     pw_tray_icon &&
     if [[ "${PW_CHECK_AUTOINSTAL}" != "1" ]] ; then
         pw_start_progress_bar_cover "${PW_GUI_ICON_PATH}/covers/pw_loading_cover.gif"
+    fi
+    if [[ "${PW_PREFIX_NAME}" == "DOTNET" ]] && [[ "${PW_VULKAN_USE}" == "1" || "${PW_VULKAN_USE}" == "2" ]] ; then
+        var_winedlloverride_update "libglesv2=d"
     fi
     add_in_start_portwine
 }
