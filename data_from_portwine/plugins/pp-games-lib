@@ -18,7 +18,7 @@ except ModuleNotFoundError:
     from PyQt5.QtWidgets import *
 
 settings = QSettings('PPGL', 'PortProtonGamesLib')
-g = SimpleNamespace()
+g = SimpleNamespace(locale = '')
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -46,6 +46,10 @@ class MainWindow(QMainWindow):
         g.shortcuts_dir = g.base_dir + '/shortcuts'
         g.games_dir = g.base_dir + '/games'
 
+        loc_path = Path(g.base_dir + '/data/tmp/PortProton_loc')
+        if loc_path.exists():
+            g.locale = loc_path.read_text().strip()
+
         Path(g.shortcuts_dir).mkdir(parents=True, exist_ok=True)
         Path(g.games_dir).mkdir(parents=True, exist_ok=True)
 
@@ -67,16 +71,16 @@ class MainWindow(QMainWindow):
         self.toolbar.setIconSize(QSize(32, 32))
         self.toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.toolbar.setMovable(False)
-        action = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogNewFolder), 'Install new game', self)
+        action = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogNewFolder), _tr('Install new game'), self)
         action.triggered.connect(self.install_game)
         self.toolbar.addAction(action)
-        action = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_FileLinkIcon), 'Add game entry', self)
+        action = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_FileLinkIcon), _tr('Add game entry'), self)
         action.triggered.connect(self.add_game)
         self.toolbar.addAction(action)
-        action = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_BrowserReload), 'Reload list', self)
+        action = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_BrowserReload), _tr('Reload list'), self)
         action.triggered.connect(self.reload_list)
         self.toolbar.addAction(action)
-        action = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_TrashIcon), 'Drop install prefix', self)
+        action = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_TrashIcon), _tr('Drop install prefix'), self)
         action.triggered.connect(self.drop_prefix)
         self.toolbar.addAction(action)
         spacer = QWidget(self)
@@ -96,7 +100,7 @@ class MainWindow(QMainWindow):
         self.game_list.reload()
 
     def drop_prefix(self):
-        res = QMessageBox.question(self, 'Are you shure ?', 'Do you really want to remove<br/><b>' + g.install_pfx + '</b> ?')
+        res = QMessageBox.question(self, _tr('Are you shure ?'), _tr('Do you really want to remove<br/><b>{0}</b> ?', g.install_pfx))
         if res == QMessageBox.StandardButton.Yes:
             shutil.rmtree(g.install_pfx, True)
 
@@ -147,13 +151,13 @@ class InstallGame(QDialog):
         if self._installing:
             setup_btn = QPushButton(self)
             setup_btn.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileDialogStart))
-            setup_btn.setText('Run another setup')
+            setup_btn.setText(_tr('Run another setup'))
             setup_btn.clicked.connect(self._runSetup)
             layout.addWidget(setup_btn)
         self.setLayout(layout)
         self.resize(400, 300)
         self.setModal(True)
-        self.setWindowTitle('Select game exe file')
+        self.setWindowTitle(_tr('Select game exe file'))
         geometry = settings.value('geometry_install')
         if geometry:
             self.restoreGeometry(geometry)
@@ -189,7 +193,7 @@ class InstallGame(QDialog):
 
     def _runSetup(self):
         downloads_dir = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation)
-        exe_file, _ = QFileDialog.getOpenFileName(self, caption='Choose setup file', filter='Exe files (*.exe)', directory=downloads_dir)
+        exe_file, _ = QFileDialog.getOpenFileName(self, caption=_tr('Choose setup file'), filter='Exe files (*.exe)', directory=downloads_dir)
         if not exe_file:
             return
         ppdb = shlex.quote(exe_file + '.ppdb')
@@ -212,8 +216,8 @@ class InstallGame(QDialog):
     def _handleDoubleClick(self, item):
         game_dir = item.text().split('/')[0]
         dlg = QInputDialog(self)
-        dlg.setWindowTitle('Please enter game entry name')
-        dlg.setLabelText('New game entry')
+        dlg.setWindowTitle(_tr('Please enter game entry name'))
+        dlg.setLabelText(_tr('New game entry'))
         dlg.setTextValue(game_dir)
         dlg.resize(300, 0)
         ok = dlg.exec()
@@ -223,7 +227,7 @@ class InstallGame(QDialog):
         file_name = re.sub(r'[<>:/\\|?*]', '_', shortcut_name)
         shortcut = f"{g.shortcuts_dir}/{file_name}.desktop"
         if Path(shortcut).exists():
-            res = QMessageBox.question(self, 'Shortcut already exuists', 'Shortcut <b>' + file_name + '</b> already exists. Overwrite ?')
+            res = QMessageBox.question(self, _tr('Shortcut already exists'), _tr('Shortcut <b>{0}</b> already exists. Overwrite ?', file_name))
             if res != QMessageBox.StandardButton.Yes:
                 return
         src_dir = self.install_dir + '/' + game_dir
@@ -232,7 +236,7 @@ class InstallGame(QDialog):
         ppdb = shlex.quote(g.games_dir + '/' + item.text()) + '.ppdb'
         self.setDisabled(True)
         if self._installing and Path(dst_dir).exists():
-            res = QMessageBox.question(self, 'Dir already exuists', 'Dir <b>' + game_dir + '</b> already exists. Overwrite ?')
+            res = QMessageBox.question(self, _tr('Dir already exists'), _tr('Dir <b>{0}</b> already exists. Overwrite ?', game_dir))
             if res != QMessageBox.StandardButton.Yes:
                 return
         if self._installing:
@@ -284,10 +288,20 @@ class GameList(QListWidget):
 
     def reload(self):
         self.clear()
+        def validate(shortcut):
+            config = ConfigParser()
+            config.read(shortcut)
+            try:
+                if config.get('Desktop Entry', 'Exec'):
+                    return True
+            except Exception:
+                return False
         shortcuts = list(Path(g.shortcuts_dir).glob('*.desktop'))
+        shortcuts += list(Path(g.base_dir).glob('*.desktop'))
         for shortcut in shortcuts:
-            item = GameItem(self, shortcut)
-            self.addItem(item)
+            if validate(shortcut):
+                item = GameItem(self, shortcut)
+                self.addItem(item)
         self.sortItems()
         self.setCurrentIndex(QModelIndex())
 
@@ -306,17 +320,17 @@ class GameList(QListWidget):
             return
         selected = selected[0]
         menu = QMenu(self)
-        desktop = menu.addAction(self.style().standardIcon(QStyle.StandardPixmap.SP_DesktopIcon), 'Add to desktop')
-        restore_gui = menu.addAction(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogResetButton), 'Restore PP GUI')
-        remove = menu.addAction(self.style().standardIcon(QStyle.StandardPixmap.SP_TrashIcon), 'Remove game entry')
-        uninstall = menu.addAction(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogCloseButton), 'Uninstall game')
+        desktop = menu.addAction(self.style().standardIcon(QStyle.StandardPixmap.SP_DesktopIcon), _tr('Add to desktop'))
+        restore_gui = menu.addAction(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogResetButton), _tr('Restore PortProton GUI'))
+        remove = menu.addAction(self.style().standardIcon(QStyle.StandardPixmap.SP_TrashIcon), _tr('Remove game entry'))
+        uninstall = menu.addAction(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogCloseButton), _tr('Uninstall game'))
         if not selected.game_dir.startswith(g.games_dir):
             uninstall.setVisible(False)
         action = menu.exec(self.mapToGlobal(event.pos()))
         desktop_shortcut = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DesktopLocation) + '/' + Path(selected.desktop_file).name
         if action == desktop:
             if Path(desktop_shortcut).exists():
-                res = QMessageBox.question(self, 'Shortcut already exuists', 'Desktop shortcut <b>' + desktop_shortcut + '</b> already exists. Overwrite ?')
+                res = QMessageBox.question(self, _tr('Shortcut already exists'), _tr('Shortcut <b>{0}</b> already exists. Overwrite ?', desktop_shortcut))
                 if res != QMessageBox.StandardButton.Yes:
                     return
             shutil.copy(selected.desktop_file, desktop_shortcut)
@@ -337,8 +351,8 @@ class GameList(QListWidget):
             self.reload()
         if action == uninstall:
             res = QMessageBox.question(self,
-                'Are you shure ?',
-                'Do you really want to uninstall <b>' + selected.get('Name') + '</b><br/>located in "<b>'+selected.game_dir+'</b>" ?'
+                _tr('Are you shure ?'),
+                _tr('Do you really want to uninstall <b>{0}</b><br/>located in "<b>{1}</b>" ?', selected.get('Name'), selected.game_dir)
             )
             if res != QMessageBox.StandardButton.Yes:
                 return
@@ -402,6 +416,36 @@ class GameItem(QListWidgetItem):
 
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+lang = {
+    'RUS': {
+        'Install new game': 'Установить игру',
+        'Add game entry': 'Добавить в список',
+        'Reload list': 'Обновить список',
+        'Drop install prefix': 'Удалить установочный префикс',
+        'Are you shure ?': 'Вы уверены ?',
+        'Do you really want to remove<br/><b>{0}</b> ?': 'Вы действительно хотите удалить<br/><b>{0}</b> ?',
+        'Run another setup': 'Запустить установку',
+        'Select game exe file': 'Выберите exe файл игры',
+        'Choose setup file': 'Выберите установочный файл',
+        'Please enter game entry name': 'Введите название игры',
+        'New game entry': 'Название игры',
+        'Shortcut already exists': 'Ярлык уже существует',
+        'Shortcut <b>{0}</b> already exists. Overwrite ?': 'Ярлык <b>{0}</b> уже существует. Перезаписать ?',
+        'Dir already exists': 'Директория уже существует',
+        'Dir <b>{0}</b> already exists. Overwrite ?': 'Директория <b>{0}</b> уже существует. Перезаписать ?',
+        'Add to desktop': 'Добавить на рабочий стол',
+        'Restore PortProton GUI': 'Восстановить PortProton GUI',
+        'Remove game entry': 'Убрать из списка',
+        'Uninstall game': 'Удалить игру',
+        'Do you really want to uninstall <b>{0}</b><br/>located in "<b>{1}</b>" ?': 'Вы действительно хотите удалить <b>{0}</b><br/>расположеную в "<b>{1}</b>" ?'
+    }
+}
+def _tr(text, *fmt):
+    res = lang.get(g.locale, {}).get(text, text)
+    if fmt:
+        res = res.format(*fmt)
+    return res
 
 app = QApplication([])
 win = MainWindow()
