@@ -4,7 +4,7 @@ import os
 import re
 import shlex
 import shutil
-from configparser import ConfigParser
+from configparser import RawConfigParser
 from pathlib import Path
 from subprocess import run
 from types import SimpleNamespace
@@ -13,9 +13,9 @@ try:
     from PyQt6.QtGui import * # type: ignore
     from PyQt6.QtWidgets import * # type: ignore
 except ModuleNotFoundError:
-    from PyQt5.QtCore import *
-    from PyQt5.QtGui import *
-    from PyQt5.QtWidgets import *
+    from PyQt5.QtCore import * # type: ignore
+    from PyQt5.QtGui import * # type: ignore
+    from PyQt5.QtWidgets import * # type: ignore
 
 settings = QSettings('PPGL', 'PortProtonGamesLib')
 g = SimpleNamespace(locale = '')
@@ -29,7 +29,7 @@ class MainWindow(QMainWindow):
         if geometry:
             self.restoreGeometry(geometry)
 
-        shortcut = ConfigParser()
+        shortcut = RawConfigParser()
         shortcut.read(os.getenv('HOME') + '/.local/share/applications/PortProton.desktop')
         scripts_dir = shortcut.get('Desktop Entry', 'Path', fallback=os.getenv('HOME') + '/.local/share/PortWINE/PortProton/data/scripts')
         if not scripts_dir or not Path(scripts_dir).is_dir():
@@ -288,20 +288,14 @@ class GameList(QListWidget):
 
     def reload(self):
         self.clear()
-        def validate(shortcut):
-            config = ConfigParser()
-            config.read(shortcut)
-            try:
-                if config.get('Desktop Entry', 'Exec'):
-                    return True
-            except Exception:
-                return False
         shortcuts = list(Path(g.shortcuts_dir).glob('*.desktop'))
         shortcuts += list(Path(g.base_dir).glob('*.desktop'))
         for shortcut in shortcuts:
-            if validate(shortcut):
+            try:
                 item = GameItem(self, shortcut)
                 self.addItem(item)
+            except Exception:
+                pass
         self.sortItems()
         self.setCurrentIndex(QModelIndex())
 
@@ -375,11 +369,21 @@ def human_size(num):
 
 class GameItem(QListWidgetItem):
     def __init__(self, parent, desktop_file):
-        super().__init__(parent)
         self.desktop_file = desktop_file
-        self.config = ConfigParser()
+        self.config = RawConfigParser()
         self.config.read(desktop_file)
         text = self.get('Name', Path(desktop_file).stem)
+        if not self.get('Exec') or text == 'PortProton':
+            raise Exception('Validation fail')
+        self.game_dir = shlex.split(self.get('Exec'))[-1]
+        if self.game_dir.startswith(g.games_dir):
+            self.game_dir = g.games_dir + '/' + self.game_dir[len(g.games_dir)+1:].split('/')[0]
+        else:
+            self.game_dir = str(Path(self.game_dir).parent)
+        if self.game_dir == '.':
+            raise Exception('Can not determine game dir')
+        super().__init__(parent)
+
         self.setToolTip(text)
         self.setText(text)
         icon_path = self.get('Icon') if Path(self.get('Icon')).exists() else g.pp_icon
@@ -387,11 +391,7 @@ class GameItem(QListWidgetItem):
         self.setIcon(qicon)
         self.setTextAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
         self.setSizeHint(QSize(100, 105))
-        self.game_dir = shlex.split(self.get('Exec'))[-1]
-        if self.game_dir.startswith(g.games_dir):
-            self.game_dir = g.games_dir + '/' + self.game_dir[len(g.games_dir)+1:].split('/')[0]
-        else:
-            self.game_dir = str(Path(self.game_dir).parent)
+
         self._set_dir_size(None)
         dir_size_cache = self.game_dir + '/.size'
         if Path(dir_size_cache).exists():
@@ -400,7 +400,7 @@ class GameItem(QListWidgetItem):
             def calc_dir_size():
                 if not Path(self.game_dir).exists():
                     return
-                dir_size = sum(p.stat().st_size for p in Path(self.game_dir).rglob('*'))
+                dir_size = sum(p.stat(follow_symlinks=False).st_size for p in Path(self.game_dir).rglob('*'))
                 self._set_dir_size(dir_size)
                 Path(dir_size_cache).write_text(str(dir_size))
             thread = QThread(parent)
