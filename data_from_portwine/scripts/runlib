@@ -114,10 +114,27 @@ start_portwine () {
         export RADV_DEBUG="llvm"
         var_vkd3d_config_update single_queue
     fi
-    if [[ ! -z "${PW_USE_NVAPI_AND_DLSS}" && "${PW_USE_NVAPI_AND_DLSS}" == 1 && -d "${WINEDIR}/lib/wine/nvapi/" ]]
+    if [[ ! -z "${PW_USE_FAKE_DLSS}" && "${PW_USE_FAKE_DLSS}" == 1 && -d "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/" ]]
+    then
+        try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/" 
+        try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.ini" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
+        try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/winmm.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
+        grep 'Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' "${WINEDIR}/share/wine/wine.inf"
+        if [[ "$?" != "0" ]] ; then
+            echo 'HKLM,Software\NVIDIA Corporation\Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
+        fi
+        grep 'nvlddmkm,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' "${WINEDIR}/share/wine/wine.inf"
+        if [[ "$?" != "0" ]] ; then
+            echo 'HKLM,System\ControlSet001\Services\nvlddmkm,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
+        fi
+    elif [[ ! -z "${PW_USE_NVAPI_AND_DLSS}" && "${PW_USE_NVAPI_AND_DLSS}" == 1 && -d "${WINEDIR}/lib/wine/nvapi/" ]]
     then
         try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x32/nvapi.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/"
         try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x64/nvapi64.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/" 
+        if ! try_force_link_file "${WINEDIR}"/lib64/wine/fakedlls/winmm.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
+        then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/winmm.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
+        fi
+        try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/nvngx.ini"
         var_winedlloverride_update "nvapi,nvapi64,nvml=n;nvcuda=b"
         if [[ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/nvngx.dll" || ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/_nvngx.dll" ]] ; then
             try_copy_file `find /usr/* -type f -name "nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'` "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
@@ -128,7 +145,7 @@ start_portwine () {
         try_force_link_file "${PW_PLUGINS_PATH}"/nvml/lib64/wine/nvml.dll.so "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/nvml.dll"
         export DXVK_NVAPIHACK=0
     else
-        var_winedlloverride_update "nvapi,nvapi64,nvml,nvcuda="
+        var_winedlloverride_update "nvapi,nvapi64,nvml,nvngx,nvcuda="
     fi
     if [[ ! -z "${PW_WINEDBG_DISABLE}" && "${PW_WINEDBG_DISABLE}" != 0 ]] ; then
         var_winedlloverride_update "winedbg.exe="
@@ -243,9 +260,7 @@ start_portwine () {
         try_force_link_file "${WINEDIR}/share/wine/fonts/"tahoma.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"tahoma.ttf
     }
 
-    export DOTPFX_VER="48v1"
     DOTPFX_URL="github.com/Castro-Fidel/PortWINE/releases/download/dotpfx${DOTPFX_VER}/dotpfx${DOTPFX_VER}.tar.xz"
-
     if [[ "${update_loc}" == "RUS" && "${PW_PREFIX_NAME}" == "DOTNET" && ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/.dotnet48 ]] ; then
         print_info "Download and install DOTNET..."
         if try_download "${DOTPFX_URL}" "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz" ; then
@@ -291,8 +306,7 @@ start_portwine () {
     #enabled BattleEye_Runtime and EasyAntiCheat_Runtime
     export PROTON_BATTLEYE_RUNTIME="${PW_PLUGINS_PATH}/BattlEye_Runtime"
     export PROTON_EAC_RUNTIME="${PW_PLUGINS_PATH}/EasyAntiCheat_Runtime"
-    # export PROTON_EASYANTICHEAT_RUNTIME="${PROTON_EAC_RUNTIME}"
-    var_winedlloverride_update "beclient,beclient_x64=b"
+    var_winedlloverride_update "beclient,beclient_x64=b,n"
     #try link d3d extras libs
     for d3d_extras_from_plugins in d3dcompiler_33 d3dcompiler_34 d3dcompiler_35 d3dcompiler_36 d3dcompiler_37 \
     d3dcompiler_38 d3dcompiler_39 d3dcompiler_40 d3dcompiler_41 d3dcompiler_42 d3dcompiler_43 d3dcompiler_46 \
