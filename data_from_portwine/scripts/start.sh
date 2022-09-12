@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Author: PortWINE-Linux.ru
+# Author: linux-gaming.ru
 export NO_AT_BRIDGE=1
 export pw_full_command_line=("$0" $*)
 if [ -f "$1" ]; then

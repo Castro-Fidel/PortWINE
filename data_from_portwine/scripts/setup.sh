@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Author: PortWINE-Linux.ru
+# Author: linux-gaming.ru
 . "$(dirname $(readlink -f "$0"))/runlib"
 
 name_desktop="PortProton"
@@ -61,6 +61,6 @@ if [ "${PW_SILENT_INSTALL}" = "1" ] ; then
 	fi
 else
 	`zenity --info --title "${inst_set_top}" --text "${inst_succ}" --no-wrap ` > /dev/null 2>&1
-	xdg-open "portwine-linux.ru/portwine-faq/" > /dev/null 2>&1 & exit 0
+	xdg-open "linux-gaming.ru/portwine-faq/" > /dev/null 2>&1 & exit 0
 fi
 unset INSTALLING_PORT

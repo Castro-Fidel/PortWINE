@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Author: Castro-Fidel (PortWINE-Linux.ru)
+# Author: Castro-Fidel (linux-gaming.ru)
 ########################################################################
 pw_ping_test () {
     ping -w3 -c1 github.com &> /dev/null
@@ -15,7 +15,6 @@ print_info () {
     echo "INFO: $@"
 }
 export -f print_info
-
 
 print_var () {
     for vp in $@ ; do echo "${vp}=${!vp}" ; done
@@ -326,6 +325,14 @@ init_wine_ver () {
                 echo "${WINEDIR}/share/wine/${mono_gecko_chk} is broken symlink. Repair... OK."
             fi
         done
+        grep 'Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' "${WINEDIR}/share/wine/wine.inf"
+        if [[ "$?" != "0" ]] ; then
+            echo 'HKLM,Software\NVIDIA Corporation\Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
+        fi
+        grep 'nvlddmkm,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' "${WINEDIR}/share/wine/wine.inf"
+        if [[ "$?" != "0" ]] ; then
+            echo 'HKLM,System\ControlSet001\Services\nvlddmkm,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
+        fi
     fi
     return 0
 }

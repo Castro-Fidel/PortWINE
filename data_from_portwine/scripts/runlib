@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Author: Castro-Fidel (PortWINE-Linux.ru)
+# Author: Castro-Fidel (linux-gaming.ru)
 # Development assistants: Cefeiko; Dezert1r; Taz_mania; Anton_Famillianov; gavr; RidBowt; chal55rus; UserDiscord
 ########################################################################
 echo '
@@ -17,7 +17,7 @@ if [[ $(id -u) = 0 ]] ; then
 fi
 if [[ "${s_install}" != "1" && ! -x "`which "zenity" 2>/dev/null`" ]] ; then
     echo "You will need to install: zenity, and restart the port."
-    xdg-open "portwine-linux.ru/portwine-faq/" > /dev/null 2>&1 & exit 0
+    xdg-open "linux-gaming.ru/portwine-faq/" > /dev/null 2>&1 & exit 0
 fi
 . "$(dirname $(readlink -f "$0"))/functions_helper"
 
@@ -73,7 +73,7 @@ start_portwine () {
         export DXVK_LOG_LEVEL="warn"
         export VKD3D_DEBUG="warn"
         export WINE_MONO_TRACE="E:System.NotImplementedException"
-        export VK_LOADER_DEBUG=all
+        export VK_LOADER_DEBUG="warn"
     else
         export WINEDEBUG="-all"
         export DXVK_LOG_LEVEL="none"
@@ -114,26 +114,22 @@ start_portwine () {
         export RADV_DEBUG="llvm"
         var_vkd3d_config_update single_queue
     fi
+
+    if ! try_force_link_file "${WINEDIR}"/lib64/wine/fakedlls/winmm.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
+    then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/winmm.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
+    fi
     if [[ ! -z "${PW_USE_FAKE_DLSS}" && "${PW_USE_FAKE_DLSS}" == 1 && -d "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/" ]]
     then
         try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/" 
         try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.ini" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
-        try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/winmm.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
-        grep 'Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' "${WINEDIR}/share/wine/wine.inf"
-        if [[ "$?" != "0" ]] ; then
-            echo 'HKLM,Software\NVIDIA Corporation\Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
-        fi
-        grep 'nvlddmkm,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' "${WINEDIR}/share/wine/wine.inf"
-        if [[ "$?" != "0" ]] ; then
-            echo 'HKLM,System\ControlSet001\Services\nvlddmkm,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
-        fi
+        sed -i /'dxgi.customDeviceId =/c dxgi.customDeviceId = 222F' "${DXVK_CONFIG_FILE}"
+        sed -i /'dxgi.customVendorId =/c dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
+        sed -i /'dxgi.nvapiHack =/c dxgi.nvapiHack = False' "${DXVK_CONFIG_FILE}"
+        export DXVK_NVAPIHACK=0
     elif [[ ! -z "${PW_USE_NVAPI_AND_DLSS}" && "${PW_USE_NVAPI_AND_DLSS}" == 1 && -d "${WINEDIR}/lib/wine/nvapi/" ]]
     then
         try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x32/nvapi.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/"
         try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x64/nvapi64.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/" 
-        if ! try_force_link_file "${WINEDIR}"/lib64/wine/fakedlls/winmm.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
-        then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/winmm.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
-        fi
         try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/nvngx.ini"
         var_winedlloverride_update "nvapi,nvapi64,nvml=n;nvcuda=b"
         if [[ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/nvngx.dll" || ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/_nvngx.dll" ]] ; then
@@ -144,8 +140,14 @@ start_portwine () {
         try_force_link_file "${PW_PLUGINS_PATH}"/nvml/lib/wine/nvml.dll.so "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/nvml.dll"
         try_force_link_file "${PW_PLUGINS_PATH}"/nvml/lib64/wine/nvml.dll.so "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/nvml.dll"
         export DXVK_NVAPIHACK=0
+        sed -i /'dxgi.customDeviceId =/c # dxgi.customDeviceId = 222F' "${DXVK_CONFIG_FILE}"
+        sed -i /'dxgi.customVendorId =/c # dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
+        sed -i /'dxgi.nvapiHack =/c # dxgi.nvapiHack = False' "${DXVK_CONFIG_FILE}"
     else
         var_winedlloverride_update "nvapi,nvapi64,nvml,nvngx,nvcuda="
+        sed -i /'dxgi.customDeviceId =/c # dxgi.customDeviceId = 222F' "${DXVK_CONFIG_FILE}"
+        sed -i /'dxgi.customVendorId =/c # dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
+        sed -i /'dxgi.nvapiHack =/c # dxgi.nvapiHack = False' "${DXVK_CONFIG_FILE}"
     fi
     if [[ ! -z "${PW_WINEDBG_DISABLE}" && "${PW_WINEDBG_DISABLE}" != 0 ]] ; then
         var_winedlloverride_update "winedbg.exe="
@@ -212,7 +214,6 @@ start_portwine () {
         export __GL_SYNC_TO_VBLANK=1 ;;
     esac
     create_new_dir "${PORT_WINE_TMP_PATH}"/gl_shader_cache
-    export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk.conf"
     export int_xneur=0
     if [[ ! -z "`pgrep xneur`" ]]; then
         killall xneur
@@ -550,6 +551,7 @@ start_portwine () {
         echo "Disable EAC"
         [[ -z "${LAUNCH_PARAMETERS}" ]] && export LAUNCH_PARAMETERS+="-eac-nop-loaded "
     fi
+    sleep 1
     pw_stop_progress_bar &&
     pw_tray_icon &&
     if [[ "${PW_CHECK_AUTOINSTAL}" != "1" ]] ; then
@@ -667,7 +669,7 @@ fi
 . "${PORT_SCRIPTS_PATH}"/lang
 . "${PORT_SCRIPTS_PATH}"/zen_yad_gui
 
-export urlg="https://portwine-linux.ru/portwine-faq/"
+export urlg="https://linux-gaming.ru/portwine-faq/"
 export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
 try_remove_dir "${PW_WINELIB}/var"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
