@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Author: Castro-Fidel (linux-gaming.ru)
+########################################################################
+export PP_PREFIX_NAME="LEAGUE_OF_LEGENDS"
+export PP_AUTOINSTALL_EXE="${PP_USER_TEMP}/live.na.exe"
+export LAUNCH_PARAMETERS="--launch-product=league_of_legends --launch-patchline=live"
+export PP_MUST_HAVE_DLL=""
+export PP_VULKAN_USE=1
+export PP_WINE_USE=WINE_LOL_GE_7.0-4
+export WINEDLLOVERRIDES="mscoree,mshtml="
+export PP_USE_D3D_EXTRAS=1
+
+if [ ! -d "${PORT_WINE_PATH}/data/dist/${PP_WINE_USE}" ] ; then
+    if try_download "github.com/Castro-Fidel/wine_builds/releases/download/${PP_WINE_USE}/${PP_WINE_USE}.tar.xz" \
+    "${PORT_WINE_PATH}/data/tmp/${PP_WINE_USE}.tar.xz" ; then
+        if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/${PP_WINE_USE}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
+            try_remove_file "${PORT_WINE_PATH}/data/tmp/${PP_WINE_USE}.tar.xz"
+            UNPACK_STATUS=0
+        else
+            try_remove_file "${PORT_WINE_PATH}/data/tmp/${PP_WINE_USE}.tar.xz"
+            try_remove_dir "${PORT_WINE_PATH}/data/dist/${PP_WINE_USE}"
+        fi
+    fi
+    [[ "${UNPACK_STATUS}" != 0 ]] && exit 1
+fi
+start_portwine
+if try_download "lol.secure.dyn.riotcdn.net/channels/public/x/installer/current/live.na.exe" "${PP_AUTOINSTALL_EXE}"
+then
+    pp_start_progress_bar_block "Installing League of Legends. Please wait..."
+    zenity --info --width=500 --text "You must click the install button without changing the settings!"   
+    pp_kill_autostart RiotClientServices.exe &
+    pp_run "${PP_AUTOINSTALL_EXE}" 
+    portwine_exe="$WINEPREFIX/drive_c/Riot Games/Riot Client/RiotClientServices.exe"
+    try_remove_file "${PP_AUTOINSTALL_EXE}"
+    kill_portwine
+    pp_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="League of Legend"
+    portwine_create_shortcut
+fi
+stop_portwine

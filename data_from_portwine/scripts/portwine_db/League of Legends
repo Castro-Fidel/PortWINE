@@ -10,29 +10,29 @@
 #####################examples###########################
 export TEXT_OPSSL=""
 [[ -z `which openssl` ]] && export TEXT_OPSSL="Install openssl in your system!!!\n"
-export PW_COMMENT_DB="${TEXT_OPSSL}Dwnload and start League of Legends can take a long time"
+export PP_COMMENT_DB="${TEXT_OPSSL}Dwnload and start League of Legends can take a long time"
 export WINEDLLOVERRIDES="mscoree,mshtml="
 export LAUNCH_PARAMETERS="--launch-product=league_of_legends --launch-patchline=live"              # Additional launch options
-export PW_WINE_USE=WINE_LOL_GE_7.0-4
-export PW_VULKAN_USE=1
-export PW_MUST_HAVE_DLL=""
-export PW_PREFIX_NAME="LEAGUE_OF_LEGENDS"
-export PW_NO_FSYNC=1
-export PW_NO_ESYNC=1
-export PW_DISABLED_CREATE_DB=1
-export PW_USE_D3D_EXTRAS=1
-##export PW_GUI_DISABLED_CS=1                     # 1 = disabled GUI
+export PP_WINE_USE=WINE_LOL_GE_7.0-4
+export PP_VULKAN_USE=1
+export PP_MUST_HAVE_DLL=""
+export PP_PREFIX_NAME="LEAGUE_OF_LEGENDS"
+export PP_NO_FSYNC=1
+export PP_NO_ESYNC=1
+export PP_DISABLED_CREATE_DB=1
+export PP_USE_D3D_EXTRAS=1
+##export PP_GUI_DISABLED_CS=1                     # 1 = disabled GUI
 
 check_download_wine_ver_for_lol () {
-    if [ ! -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ] ; then
-        if try_download "github.com/Castro-Fidel/wine_builds/releases/download/${PW_WINE_USE}/${PW_WINE_USE}.tar.xz" \
-        "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" ; then
-            if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
-                try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz"
+    if [ ! -d "${PORT_WINE_PATH}/data/dist/${PP_WINE_USE}" ] ; then
+        if try_download "github.com/Castro-Fidel/wine_builds/releases/download/${PP_WINE_USE}/${PP_WINE_USE}.tar.xz" \
+        "${PORT_WINE_PATH}/data/tmp/${PP_WINE_USE}.tar.xz" ; then
+            if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/${PP_WINE_USE}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
+                try_remove_file "${PORT_WINE_PATH}/data/tmp/${PP_WINE_USE}.tar.xz"
                 UNPACK_STATUS=0
             else
-                try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz"
-                try_remove_dir "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}"
+                try_remove_file "${PORT_WINE_PATH}/data/tmp/${PP_WINE_USE}.tar.xz"
+                try_remove_dir "${PORT_WINE_PATH}/data/dist/${PP_WINE_USE}"
             fi
         fi
         [[ "${UNPACK_STATUS}" != 0 ]] && exit 1
@@ -41,9 +41,9 @@ check_download_wine_ver_for_lol () {
 check_download_wine_ver_for_lol
 
 # check_port_for_lol () { 
-#     "${pw_yad}" --progress --progress-text="Loading and start League of Legends. Please wait. It can take a long time!" \
-#     --pulsate --no-buttons --undecorated --center --skip-taskbar --image="${PW_GUI_ICON_PATH}/covers/lol_cover.jpg" --image-on-top > /dev/null 4>&1 &
-#     PW_YAD_PID_LOL="$!"
+#     "${pp_yad}" --progress --progress-text="Loading and start League of Legends. Please wait. It can take a long time!" \
+#     --pulsate --no-buttons --undecorated --center --skip-taskbar --image="${PP_GUI_ICON_PATH}/covers/lol_cover.jpg" --image-on-top > /dev/null 4>&1 &
+#     PP_YAD_PID_LOL="$!"
 #     process=LeagueClientUx.exe
 #     while [[ -z `pidof ${process}` ]] ; do
 #         echo "PID ${process} not found"
@@ -63,13 +63,13 @@ check_download_wine_ver_for_lol
 #     sleep 1
 #     done"
 #     kill -CONT ${uxpid}
-#     kill -s SIGUSR1 "${PW_YAD_PID_LOL}"
+#     kill -s SIGUSR1 "${PP_YAD_PID_LOL}"
 # }
 
 add_in_start_portwine () {
     echo ""
     # if [ "$(cat /proc/sys/abi/vsyscall32)" -ne 0 ] ; then
-    #     pw_stop_progress_bar
+    #     pp_stop_progress_bar
     #     zenity --question --title="Fix for LoL anti-cheat" \
     #     --text='Root rights are required to execute the command:           \n"sysctl -w abi.vsyscall32=0"' --no-wrap
     #     [ "$?" = 1 ] && exit 0

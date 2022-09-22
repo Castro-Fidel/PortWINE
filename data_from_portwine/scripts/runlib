@@ -22,31 +22,31 @@ fi
 . "$(dirname $(readlink -f "$0"))/functions_helper"
 
 start_portwine () {
-    export WINEPREFIX="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"
-    create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/"
-    try_force_link_dir "${PORT_WINE_PATH}/data/prefixes" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/"
+    export WINEPREFIX="${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}"
+    create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/"
+    try_force_link_dir "${PORT_WINE_PATH}/data/prefixes" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/"
     export WINEARCH="win64"
-    if [[ "${PW_VULKAN_USE}" == 3 ]] ; then 
-        export PW_WINE_USE="${PW_PROTON_PW_VER}"
-        echo "Force to use $PW_WINE_USE"
-        if [ ! -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ] ; then
-            if try_download "github.com/Castro-Fidel/wine_builds/releases/download/${PW_WINE_USE}/${PW_WINE_USE}.tar.xz" \
-                "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" ; then
-                if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
-                    try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz"
+    if [[ "${PP_VULKAN_USE}" == 3 ]] ; then 
+        export PP_WINE_USE="${PP_PROTON_LG_VER}"
+        echo "Force to use $PP_WINE_USE"
+        if [ ! -d "${PORT_WINE_PATH}/data/dist/${PP_WINE_USE}" ] ; then
+            if try_download "github.com/Castro-Fidel/wine_builds/releases/download/${PP_WINE_USE}/${PP_WINE_USE}.tar.xz" \
+                "${PORT_WINE_PATH}/data/tmp/${PP_WINE_USE}.tar.xz" ; then
+                if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/${PP_WINE_USE}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
+                    try_remove_file "${PORT_WINE_PATH}/data/tmp/${PP_WINE_USE}.tar.xz"
                     UNPACK_STATUS=0
                 else
-                    try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz"
-                    try_remove_dir "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}"
+                    try_remove_file "${PORT_WINE_PATH}/data/tmp/${PP_WINE_USE}.tar.xz"
+                    try_remove_dir "${PORT_WINE_PATH}/data/dist/${PP_WINE_USE}"
                 fi
             fi
             [[ "${UNPACK_STATUS}" != 0 ]] && exit 1
         fi
-        edit_db_from_gui PW_WINE_USE
+        edit_db_from_gui PP_WINE_USE
     else
-        pw_check_and_download_wine "${PW_WINE_USE}"
+        pp_check_and_download_wine "${PP_WINE_USE}"
     fi
-    pw_install_dll_in_prefix 
+    pp_install_dll_in_prefix 
     init_wine_ver
     grep 'Steam.exe' "${WINEDIR}/share/wine/wine.inf"
     if [[ "$?" == "0" ]] ; then
@@ -56,24 +56,25 @@ start_portwine () {
     if [[ "$?" == "0" ]] ; then
         sed -i '/\\Valve\\Steam/d' "${WINEDIR}/share/wine/wine.inf"
     fi
-    if [ -x "`which konsole 2>/dev/null`" ]; then export PW_TERM="konsole --nofork -e"
-    elif [ -x "`which lxterminal 2>/dev/null`" ]; then export PW_TERM="lxterminal -e"
-    elif [ -x "`which xterm 2>/dev/null`" ]; then export PW_TERM="${PW_XTERM}"
-    else export PW_TERM="${PW_XTERM}"
+    if [ -x "`which konsole 2>/dev/null`" ]; then export PP_TERM="konsole --nofork -e"
+    elif [ -x "`which lxterminal 2>/dev/null`" ]; then export PP_TERM="lxterminal -e"
+    elif [ -x "`which xterm 2>/dev/null`" ]; then export PP_TERM="${PP_XTERM}"
+    else export PP_TERM="${PP_XTERM}"
     fi
     if [ ! -f "${HOME}/.Xresources" ]; then
         cp -f "${PORT_SCRIPTS_PATH}/.Xresources" "${HOME}"
         xrdb -merge "${HOME}/.Xresources"
     fi
 
-    pw_init_runtime
+    pp_init_runtime
 
-    if [[ ! -z "${PW_LOG}" && "${PW_LOG}" != 0 ]] ; then
+    if [[ ! -z "${PP_LOG}" && "${PP_LOG}" != 0 ]] ; then
         export WINEDEBUG="fixme-all,err+loaddll,err+dll,err+file,err+reg"
         export DXVK_LOG_LEVEL="warn"
         export VKD3D_DEBUG="warn"
         export WINE_MONO_TRACE="E:System.NotImplementedException"
         export VK_LOADER_DEBUG="warn"
+        export VKBASALT_LOG_LEVEL="warn"
     else
         export WINEDEBUG="-all"
         export DXVK_LOG_LEVEL="none"
@@ -86,12 +87,12 @@ start_portwine () {
     #default wine-mono override for FNA games
     export WINE_MONO_OVERRIDES="Microsoft.Xna.Framework.*,Gac=n"
 
-    if [[ ! -z "${PW_NO_ESYNC}" && "${PW_NO_ESYNC}" != 0 ]] ; then
+    if [[ ! -z "${PP_NO_ESYNC}" && "${PP_NO_ESYNC}" != 0 ]] ; then
         export WINEESYNC="0"
     else 
         export WINEESYNC="1"
     fi
-    if [[ ! -z "${PW_NO_FSYNC}" && "${PW_NO_FSYNC}" != 0 ]] ; then
+    if [[ ! -z "${PP_NO_FSYNC}" && "${PP_NO_FSYNC}" != 0 ]] ; then
         export WINEFSYNC="0"
         export WINEFSYNC_FUTEX2="0"
     else
@@ -99,46 +100,46 @@ start_portwine () {
         export WINEFSYNC_FUTEX2="1"
         export WINEFSYNC_SPINCOUNT=100
     fi
-    if [[ ! -z "${PW_FORCE_LARGE_ADDRESS_AWARE}" && "${PW_FORCE_LARGE_ADDRESS_AWARE}" != 0 ]]
+    if [[ ! -z "${PP_FORCE_LARGE_ADDRESS_AWARE}" && "${PP_FORCE_LARGE_ADDRESS_AWARE}" != 0 ]]
     then export WINE_LARGE_ADDRESS_AWARE="1"
     else export WINE_LARGE_ADDRESS_AWARE="0"
     fi
-    if [[ ! -z "${PW_OLD_GL_STRING}" && "${PW_OLD_GL_STRING}" != 0 ]] ; then
+    if [[ ! -z "${PP_OLD_GL_STRING}" && "${PP_OLD_GL_STRING}" != 0 ]] ; then
         export MESA_EXTENSION_MAX_YEAR="2003" #mesa override
         export __GL_ExtensionStringVersion="17700" #nvidia override
     fi
-    if [[ ! -z "${PW_NO_WRITE_WATCH}" && "${PW_NO_WRITE_WATCH}" != 0 ]] ; then
+    if [[ ! -z "${PP_NO_WRITE_WATCH}" && "${PP_NO_WRITE_WATCH}" != 0 ]] ; then
         export WINE_DISABLE_WRITE_WATCH="1"
     fi
-    if [[ ! -z "${PW_VULKAN_NO_ASYNC}" && "${PW_VULKAN_NO_ASYNC}" != 0 ]] ; then
+    if [[ ! -z "${PP_VULKAN_NO_ASYNC}" && "${PP_VULKAN_NO_ASYNC}" != 0 ]] ; then
         export RADV_DEBUG="llvm"
         var_vkd3d_config_update single_queue
     fi
 
-    if ! try_force_link_file "${WINEDIR}"/lib64/wine/fakedlls/winmm.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
-    then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/winmm.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
+    if ! try_force_link_file "${WINEDIR}"/lib64/wine/fakedlls/winmm.dll "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/"
+    then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/winmm.dll "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/"
     fi
-    if [[ ! -z "${PW_USE_FAKE_DLSS}" && "${PW_USE_FAKE_DLSS}" == 1 && -d "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/" ]]
+    if [[ ! -z "${PP_USE_FAKE_DLSS}" && "${PP_USE_FAKE_DLSS}" == 1 && -d "${PP_PLUGINS_PATH}/fake_dlss/${PP_FAKE_DLSS_VER}/" ]]
     then
-        try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/" 
-        try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.ini" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
+        try_force_link_file "${PP_PLUGINS_PATH}/fake_dlss/${PP_FAKE_DLSS_VER}/nvngx.dll" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/" 
+        try_force_link_file "${PP_PLUGINS_PATH}/fake_dlss/${PP_FAKE_DLSS_VER}/nvngx.ini" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/"
         sed -i /'dxgi.customDeviceId =/c dxgi.customDeviceId = 222F' "${DXVK_CONFIG_FILE}"
         sed -i /'dxgi.customVendorId =/c dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
         sed -i /'dxgi.nvapiHack =/c dxgi.nvapiHack = False' "${DXVK_CONFIG_FILE}"
         export DXVK_NVAPIHACK=0
-    elif [[ ! -z "${PW_USE_NVAPI_AND_DLSS}" && "${PW_USE_NVAPI_AND_DLSS}" == 1 && -d "${WINEDIR}/lib/wine/nvapi/" ]]
+    elif [[ ! -z "${PP_USE_NVAPI_AND_DLSS}" && "${PP_USE_NVAPI_AND_DLSS}" == 1 && -d "${WINEDIR}/lib/wine/nvapi/" ]]
     then
-        try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x32/nvapi.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/"
-        try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x64/nvapi64.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/" 
-        try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/nvngx.ini"
+        try_force_link_file "${PP_PLUGINS_PATH}/nvapi/x32/nvapi.dll" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/syswow64/"
+        try_force_link_file "${PP_PLUGINS_PATH}/nvapi/x64/nvapi64.dll" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/" 
+        try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/nvngx.ini"
         var_winedlloverride_update "nvapi,nvapi64,nvml=n;nvcuda=b"
-        if [[ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/nvngx.dll" || ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/_nvngx.dll" ]] ; then
-            try_copy_file `find /usr/* -type f -name "nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'` "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
-            try_copy_file `find /usr/* -type f -name "_nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'` "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"       
+        if [[ ! -f "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/nvngx.dll" || ! -f "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/_nvngx.dll" ]] ; then
+            try_copy_file `find /usr/* -type f -name "nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'` "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/"
+            try_copy_file `find /usr/* -type f -name "_nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'` "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/"       
         fi
         echo "Try link nvml.dll.so to prefix"
-        try_force_link_file "${PW_PLUGINS_PATH}"/nvml/lib/wine/nvml.dll.so "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/nvml.dll"
-        try_force_link_file "${PW_PLUGINS_PATH}"/nvml/lib64/wine/nvml.dll.so "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/nvml.dll"
+        try_force_link_file "${PP_PLUGINS_PATH}"/nvml/lib/wine/nvml.dll.so "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/syswow64/nvml.dll"
+        try_force_link_file "${PP_PLUGINS_PATH}"/nvml/lib64/wine/nvml.dll.so "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/nvml.dll"
         export DXVK_NVAPIHACK=0
         sed -i /'dxgi.customDeviceId =/c # dxgi.customDeviceId = 222F' "${DXVK_CONFIG_FILE}"
         sed -i /'dxgi.customVendorId =/c # dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
@@ -149,44 +150,48 @@ start_portwine () {
         sed -i /'dxgi.customVendorId =/c # dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
         sed -i /'dxgi.nvapiHack =/c # dxgi.nvapiHack = False' "${DXVK_CONFIG_FILE}"
     fi
-    if [[ ! -z "${PW_WINEDBG_DISABLE}" && "${PW_WINEDBG_DISABLE}" != 0 ]] ; then
+    if [[ ! -z "${PP_WINEDBG_DISABLE}" && "${PP_WINEDBG_DISABLE}" != 0 ]] ; then
         var_winedlloverride_update "winedbg.exe="
     fi
-    if [[ ! -z "${PW_HIDE_NVIDIA_GPU}" && "${PW_HIDE_NVIDIA_GPU}" != 0 ]] ; then
+    if [[ ! -z "${PP_HIDE_NVIDIA_GPU}" && "${PP_HIDE_NVIDIA_GPU}" != 0 ]] ; then
         export WINE_HIDE_NVIDIA_GPU="1"
+        export DXVK_NVAPIHACK=1
+        sed -i /'dxgi.customDeviceId =/c # dxgi.customDeviceId = 222F' "${DXVK_CONFIG_FILE}"
+        sed -i /'dxgi.customVendorId =/c # dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
+        sed -i /'dxgi.nvapiHack =/c dxgi.nvapiHack = True' "${DXVK_CONFIG_FILE}"
     fi
-    if [[ ! -z "${PW_PRIME_RENDER_OFFLOAD}" && "${PW_PRIME_RENDER_OFFLOAD}" != 0 ]] ; then
+    if [[ ! -z "${PP_PRIME_RENDER_OFFLOAD}" && "${PP_PRIME_RENDER_OFFLOAD}" != 0 ]] ; then
         export __NV_PRIME_RENDER_OFFLOAD=1
         check_nvidia_vk_icd_file
     fi
-    if [[ ! -z "${PW_HEAP_DELAY_FREE}" && "${PW_HEAP_DELAY_FREE}" != 0 ]]
+    if [[ ! -z "${PP_HEAP_DELAY_FREE}" && "${PP_HEAP_DELAY_FREE}" != 0 ]]
     then export WINE_HEAP_DELAY_FREE="1"
     else export WINE_HEAP_DELAY_FREE="0"
     fi
-    if [[ ! -z "${PW_WINE_ALLOW_XIM}" && "${PW_WINE_ALLOW_XIM}" != 0 ]]
+    if [[ ! -z "${PP_WINE_ALLOW_XIM}" && "${PP_WINE_ALLOW_XIM}" != 0 ]]
     then export WINE_ALLOW_XIM="1"
     else export WINE_ALLOW_XIM="0"
     fi
-    if [[ ! -z "${PW_FIX_VIDEO_IN_GAME}" && "${PW_FIX_VIDEO_IN_GAME}" != 0 ]]
+    if [[ ! -z "${PP_FIX_VIDEO_IN_GAME}" && "${PP_FIX_VIDEO_IN_GAME}" != 0 ]]
     then export WINE_DO_NOT_CREATE_DXGI_DEVICE_MANAGER="1"
     else export WINE_DO_NOT_CREATE_DXGI_DEVICE_MANAGER="0"
     fi
     
-    [[ ! -z "${PW_MANGOHUD_USER_CONF}" && "${PW_MANGOHUD_USER_CONF}" != 0 ]] && unset MANGOHUD_CONFIG
-    if [[ ! -z "${PW_USE_DXR11}" && "${PW_USE_DXR11}" != 0 ]] ; then 
+    [[ ! -z "${PP_MANGOHUD_USER_CONF}" && "${PP_MANGOHUD_USER_CONF}" != 0 ]] && unset MANGOHUD_CONFIG
+    if [[ ! -z "${PP_USE_DXR11}" && "${PP_USE_DXR11}" != 0 ]] ; then 
         var_vkd3d_config_update dxr11
         var_radv_perftest_config_update rt
-    elif [[ ! -z "${PW_USE_DXR10}" && "${PW_USE_DXR10}" != 0 ]] ; then 
+    elif [[ ! -z "${PP_USE_DXR10}" && "${PP_USE_DXR10}" != 0 ]] ; then 
         var_vkd3d_config_update dxr
         var_radv_perftest_config_update rt
     fi
     export optirun_on=""
     export check_optimus_manager=
-    export PW_NVIDIA="$(lspci | grep NVIDIA)"
+    export PP_NVIDIA="$(lspci | grep NVIDIA)"
     if [ -x "`which optimus-manager 2>/dev/null`" ]; then
         export check_optimus_manager=`optimus-manager --status | grep Current | cut -f 2 -d':' | sed -e 's/^[[:space:]]*//'`
     fi
-    if [[ ! -z "${PW_NVIDIA}" ]] && [[ "${check_optimus_manager}" != "intel" ]] && [[ "${DRI_PRIME}" != 1 ]] ; then
+    if [[ ! -z "${PP_NVIDIA}" ]] && [[ "${check_optimus_manager}" != "intel" ]] && [[ "${DRI_PRIME}" != 1 ]] ; then
         if [ "${check_optimus_manager}" = "nvidia" ]; then
             check_nvidia_vk_icd_file
         elif [ -x "`which primusrun 2>/dev/null`" ]; then
@@ -205,7 +210,7 @@ start_portwine () {
     else
         export DRI_PRIME=1
     fi
-    case "$PW_FORCE_USE_VSYNC" in  # 0-FORCE_OFF, 1-FORCE_ON, 2-BY_DEFAULT
+    case "$PP_FORCE_USE_VSYNC" in  # 0-FORCE_OFF, 1-FORCE_ON, 2-BY_DEFAULT
         "0")
         unset vblank_mode
         unset __GL_SYNC_TO_VBLANK ;;
@@ -219,50 +224,50 @@ start_portwine () {
         killall xneur
         export int_xneur=1
     fi
-    if [[ ! -z "${PW_XKBD_RU_HACK}" && "${PW_XKBD_RU_HACK}" == 1 ]] ; then
-        export PW_XKBD="$(setxkbmap -query | grep -w ru | awk '{print($2)}')"
-        if [ ! -z ${PW_XKBD} ]; then
+    if [[ ! -z "${PP_XKBD_RU_HACK}" && "${PP_XKBD_RU_HACK}" == 1 ]] ; then
+        export PP_XKBD="$(setxkbmap -query | grep -w ru | awk '{print($2)}')"
+        if [ ! -z ${PP_XKBD} ]; then
             setxkbmap us,ru
         fi
     fi
-    if [[ -x "`which "gamemoderun" 2>/dev/null`" ]] && [[ "$PW_USE_GAMEMODE" = "1" ]] ; then
+    if [[ -x "`which "gamemoderun" 2>/dev/null`" ]] && [[ "$PP_USE_GAMEMODE" = "1" ]] ; then
         export GAMEMODERUN=1
-        PW_GAMEMODERUN_SLR="gamemoderun"
+        PP_GAMEMODERUN_SLR="gamemoderun"
         systemctl enable --now --user gamemoded &>/dev/null
         echo "Gamemod will be launched."
     else
         export GAMEMODERUN=0
-        echo "Gamemod is not installed or disabled in vars script or db file: PW_USE_GAMEMODE=$PW_USE_GAMEMODE"
+        echo "Gamemod is not installed or disabled in vars script or db file: PP_USE_GAMEMODE=$PP_USE_GAMEMODE"
     fi
-    pw_other_fixes
+    pp_other_fixes
 
     check_dirs_and_files_in_pfx () {
-        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"
-        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c"
-        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices"
-        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/"
-        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
-        [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/c:" ] && try_force_link_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/c:"
-        [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/z:" ] && try_force_link_dir "/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/z:"
-        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"
-        try_force_link_file "${WINEDIR}/share/fonts/"LiberationSans-Regular.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"arial.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"LiberationSans-Bold.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"arialbd.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"LiberationSerif-Regular.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"times.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"LiberationMono-Regular.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"cour.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"LiberationMono-Bold.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"courbd.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"msyh.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"msyh.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"malgun.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"malgun.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"micross.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"micross.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"nirmala.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"nirmala.ttf
+        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}"
+        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c"
+        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/dosdevices"
+        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/syswow64/"
+        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/"
+        [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/dosdevices/c:" ] && try_force_link_dir "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/dosdevices/c:"
+        [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/dosdevices/z:" ] && try_force_link_dir "/" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/dosdevices/z:"
+        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/Fonts/"
+        try_force_link_file "${WINEDIR}/share/fonts/"LiberationSans-Regular.ttf "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/Fonts/"arial.ttf
+        try_force_link_file "${WINEDIR}/share/fonts/"LiberationSans-Bold.ttf "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/Fonts/"arialbd.ttf
+        try_force_link_file "${WINEDIR}/share/fonts/"LiberationSerif-Regular.ttf "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/Fonts/"times.ttf
+        try_force_link_file "${WINEDIR}/share/fonts/"LiberationMono-Regular.ttf "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/Fonts/"cour.ttf
+        try_force_link_file "${WINEDIR}/share/fonts/"LiberationMono-Bold.ttf "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/Fonts/"courbd.ttf
+        try_force_link_file "${WINEDIR}/share/fonts/"msyh.ttf "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/Fonts/"msyh.ttf
+        try_force_link_file "${WINEDIR}/share/fonts/"malgun.ttf "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/Fonts/"malgun.ttf
+        try_force_link_file "${WINEDIR}/share/fonts/"micross.ttf "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/Fonts/"micross.ttf
+        try_force_link_file "${WINEDIR}/share/fonts/"nirmala.ttf "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/Fonts/"nirmala.ttf
 
-        try_force_link_file "${WINEDIR}/share/fonts/"simsun.ttc "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"simsun.ttc
-        try_force_link_file "${WINEDIR}/share/fonts/"msgothic.ttc "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"msgothic.ttc
+        try_force_link_file "${WINEDIR}/share/fonts/"simsun.ttc "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/Fonts/"simsun.ttc
+        try_force_link_file "${WINEDIR}/share/fonts/"msgothic.ttc "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/Fonts/"msgothic.ttc
         
-        try_force_link_file "${WINEDIR}/share/wine/fonts/"tahoma.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"tahoma.ttf
+        try_force_link_file "${WINEDIR}/share/wine/fonts/"tahoma.ttf "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/Fonts/"tahoma.ttf
     }
 
     DOTPFX_URL="github.com/Castro-Fidel/PortWINE/releases/download/dotpfx${DOTPFX_VER}/dotpfx${DOTPFX_VER}.tar.xz"
-    if [[ "${update_loc}" == "RUS" && "${PW_PREFIX_NAME}" == "DOTNET" && ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/.dotnet48 ]] ; then
+    if [[ "${update_loc}" == "RUS" && "${PP_PREFIX_NAME}" == "DOTNET" && ! -f "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}"/.dotnet48 ]] ; then
         print_info "Download and install DOTNET..."
         if try_download "${DOTPFX_URL}" "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz" ; then
             unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/"
@@ -273,40 +278,40 @@ start_portwine () {
         fi
     fi
     
-    pw_update_pfx_cover_gui
+    pp_update_pfx_cover_gui
 
 
-    if [[ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" || ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/windows || \
-    ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/userdef.reg || ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/system.reg || ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/user.reg ]]
+    if [[ ! -d "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}" || ! -d "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}"/drive_c/windows || \
+    ! -f "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}"/userdef.reg || ! -f "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}"/system.reg || ! -f "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}"/user.reg ]]
     then
-        pw_clear_pfx
+        pp_clear_pfx
         check_dirs_and_files_in_pfx
-        if [[ -d "${PW_PLUGINS_PATH}/default_pfx/" ]] ; then
-            cp -frL "${PW_PLUGINS_PATH}/default_pfx/"* "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/"
+        if [[ -d "${PP_PLUGINS_PATH}/default_pfx/" ]] ; then
+            cp -frL "${PP_PLUGINS_PATH}/default_pfx/"* "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/"
         fi
-        ${pw_runtime} env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -u &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
+        ${pp_runtime} env LD_LIBRARY_PATH="${PP_LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -u &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
         wait_wineserver &&
-        echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
-    elif [[ -z "`cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver" | grep ${PW_WINE_USE}`" || ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices" ]] ; then 
+        echo "${PP_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/.wine_ver"
+    elif [[ -z "`cat "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/.wine_ver" | grep ${PP_WINE_USE}`" || ! -d "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/dosdevices" ]] ; then 
         check_dirs_and_files_in_pfx
-        ${pw_runtime} env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -i &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
+        ${pp_runtime} env LD_LIBRARY_PATH="${PP_LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -i &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
         wait_wineserver &&
-        echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
+        echo "${PP_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/.wine_ver"
     fi
-    [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/c:" ] && try_force_link_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/c:"
-    [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/z:" ] && try_force_link_dir "/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/z:"
-    create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/users/steamuser"
-    if [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/users/${USER}" ]; then
-	    try_force_link_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/users/steamuser" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/users/${USER}"
+    [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/dosdevices/c:" ] && try_force_link_dir "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/dosdevices/c:"
+    [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/dosdevices/z:" ] && try_force_link_dir "/" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/dosdevices/z:"
+    create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/users/steamuser"
+    if [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/users/${USER}" ]; then
+	    try_force_link_dir "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/users/steamuser" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/users/${USER}"
     fi
-    create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/users/Public/Documents/Steam"
-    create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/users/steamuser/Documents/Steam"
-    if [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/users/steamuser/My Documents" ]
-    then try_force_link_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/users/steamuser/Documents" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/users/steamuser/My Documents"
+    create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/users/Public/Documents/Steam"
+    create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/users/steamuser/Documents/Steam"
+    if [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/users/steamuser/My Documents" ]
+    then try_force_link_dir "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/users/steamuser/Documents" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/users/steamuser/My Documents"
     fi
     #enabled BattleEye_Runtime and EasyAntiCheat_Runtime
-    export PROTON_BATTLEYE_RUNTIME="${PW_PLUGINS_PATH}/BattlEye_Runtime"
-    export PROTON_EAC_RUNTIME="${PW_PLUGINS_PATH}/EasyAntiCheat_Runtime"
+    export PROTON_BATTLEYE_RUNTIME="${PP_PLUGINS_PATH}/BattlEye_Runtime"
+    export PROTON_EAC_RUNTIME="${PP_PLUGINS_PATH}/EasyAntiCheat_Runtime"
     var_winedlloverride_update "beclient,beclient_x64=b,n"
     #try link d3d extras libs
     for d3d_extras_from_plugins in d3dcompiler_33 d3dcompiler_34 d3dcompiler_35 d3dcompiler_36 d3dcompiler_37 \
@@ -315,58 +320,58 @@ start_portwine () {
     d3dx10_42 d3dx10_43 d3dx10 d3dx11_42 d3dx11_43 d3dx9_24 d3dx9_25 d3dx9_26 d3dx9_27 d3dx9_28 d3dx9_29 d3dx9_30 \
     d3dx9_31 d3dx9_32 d3dx9_33 d3dx9_34 d3dx9_35 d3dx9_36 d3dx9_37 d3dx9_38 d3dx9_39 d3dx9_40 d3dx9_41 d3dx9_42 d3dx9_43
     do
-        if [[ "${PW_USE_D3D_EXTRAS}" == 1 ]] ; then
-            try_force_link_file "${PW_PLUGINS_PATH}/d3d_extras/x64/${d3d_extras_from_plugins}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
-            try_force_link_file "${PW_PLUGINS_PATH}/d3d_extras/x32/${d3d_extras_from_plugins}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/"
+        if [[ "${PP_USE_D3D_EXTRAS}" == 1 ]] ; then
+            try_force_link_file "${PP_PLUGINS_PATH}/d3d_extras/x64/${d3d_extras_from_plugins}.dll" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/"
+            try_force_link_file "${PP_PLUGINS_PATH}/d3d_extras/x32/${d3d_extras_from_plugins}.dll" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/syswow64/"
             var_winedlloverride_update "${d3d_extras_from_plugins}=n,b"
         else
-            if ! try_force_link_file "${WINEDIR}"/lib/wine/fakedlls/${d3d_extras_from_plugins}.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/"
-            then try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/${d3d_extras_from_plugins}.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/"
+            if ! try_force_link_file "${WINEDIR}"/lib/wine/fakedlls/${d3d_extras_from_plugins}.dll "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/syswow64/"
+            then try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/${d3d_extras_from_plugins}.dll "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/syswow64/"
             fi
-            if ! try_force_link_file "${WINEDIR}"/lib64/wine/fakedlls/${d3d_extras_from_plugins}.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
-            then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/${d3d_extras_from_plugins}.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
+            if ! try_force_link_file "${WINEDIR}"/lib64/wine/fakedlls/${d3d_extras_from_plugins}.dll "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/"
+            then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/${d3d_extras_from_plugins}.dll "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/"
             fi
         fi
-        if [[ -z "`grep "${d3d_extras_from_plugins}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"`" ]] ; then
-            echo "${d3d_extras_from_plugins}" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
+        if [[ -z "`grep "${d3d_extras_from_plugins}" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/winetricks.log"`" ]] ; then
+            echo "${d3d_extras_from_plugins}" >> "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/winetricks.log"
         fi
     done
-    if [[ -z "`grep d3dx9 "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"`" ]] ; then
-        echo "d3dx9" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
+    if [[ -z "`grep d3dx9 "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/winetricks.log"`" ]] ; then
+        echo "d3dx9" >> "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/winetricks.log"
     fi
     var_winedlloverride_update "steam_api,steam_api64,steamclient,steamclient64=n;lsteamclient,winemenubuilder.exe="
 
-    # export TOTAL_VRAM=`"${PW_WINELIB}/runtime/files/bin/glxinfo" -B | grep Total | awk -F: '{print $2}' | awk '{print $1}'`
+    # export TOTAL_VRAM=`"${PP_WINELIB}/runtime/files/bin/glxinfo" -B | grep Total | awk -F: '{print $2}' | awk '{print $1}'`
     # echo "TOTAL_VRAM=${TOTAL_VRAM}"
 
     echo "Try link wine DXGI by default..."
-    if ! try_force_link_file "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/dxgi.dll"
-    then try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/dxgi.dll"
+    if ! try_force_link_file "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/syswow64/dxgi.dll"
+    then try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/syswow64/dxgi.dll"
     fi
-    if ! try_force_link_file "${WINEDIR}"/lib64/wine/fakedlls/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/dxgi.dll"
-    then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/dxgi.dll"
+    if ! try_force_link_file "${WINEDIR}"/lib64/wine/fakedlls/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/dxgi.dll"
+    then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/dxgi.dll"
     fi
     echo "Try link wine d3d filese by default..."
     for wine_build_dll in d3d12 d3d11 d3d10 d3d10core d3d10_1 d3d9 dxgi ; do
-        if ! try_force_link_file "${WINEDIR}/lib/wine/${wine_build_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${wine_build_dll}.dll"
-        then try_force_link_file "${WINEDIR}/lib/wine/i386-windows/${wine_build_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${wine_build_dll}.dll"
+        if ! try_force_link_file "${WINEDIR}/lib/wine/${wine_build_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/syswow64/${wine_build_dll}.dll"
+        then try_force_link_file "${WINEDIR}/lib/wine/i386-windows/${wine_build_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/syswow64/${wine_build_dll}.dll"
         fi
-        if ! try_force_link_file "${WINEDIR}/lib64/wine/${wine_build_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${wine_build_dll}.dll"
-        then try_force_link_file "${WINEDIR}/lib64/wine/x86_64-windows/${wine_build_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${wine_build_dll}.dll"
+        if ! try_force_link_file "${WINEDIR}/lib64/wine/${wine_build_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/${wine_build_dll}.dll"
+        then try_force_link_file "${WINEDIR}/lib64/wine/x86_64-windows/${wine_build_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/${wine_build_dll}.dll"
         fi
     done
 
-    if [[ "${PW_VULKAN_USE}" == "0" ]] ; then
+    if [[ "${PP_VULKAN_USE}" == "0" ]] ; then
         echo "Use OpenGL"
         export GL_YIELD="NOTHING"
         export mesa_glthread=true
         var_winedlloverride_update "d3d11,d3d10,d3d10core,d3d10_1,d3d9,dxgi=b;d3d12="
-    elif [[ "${PW_VULKAN_USE}" == "3" ]] ; then
+    elif [[ "${PP_VULKAN_USE}" == "3" ]] ; then
         echo "Use GALLIUM-NINE (Native DX9 on MESA drivers)"
-        export PW_GALLIUM_NINE_VER="0.8"
-        export PW_GALLIUM_NINE_PATH="${PW_PLUGINS_PATH}/gallium_nine_v.${PW_GALLIUM_NINE_VER}"
-        try_force_link_file "${PW_GALLIUM_NINE_PATH}/lib32/d3d9-nine.dll.so" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/d3d9.dll"
-        try_force_link_file "${PW_GALLIUM_NINE_PATH}/lib64/d3d9-nine.dll.so" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/d3d9.dll"
+        export PP_GALLIUM_NINE_VER="0.8"
+        export PP_GALLIUM_NINE_PATH="${PP_PLUGINS_PATH}/gallium_nine_v.${PP_GALLIUM_NINE_VER}"
+        try_force_link_file "${PP_GALLIUM_NINE_PATH}/lib32/d3d9-nine.dll.so" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/syswow64/d3d9.dll"
+        try_force_link_file "${PP_GALLIUM_NINE_PATH}/lib64/d3d9-nine.dll.so" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/d3d9.dll"
         var_winedlloverride_update "d3d9=n;wined3d=b;dxvk_config,vulkan-1,winevulkan="
         unset FIND_D3D_MODULE D3D_MODULE_PATH
         FIND_D3D_MODULE=`dirname $(find /usr/ -maxdepth 4 -type f -name "d3dadapter9.so.*") 2>/dev/null` 
@@ -382,18 +387,18 @@ start_portwine () {
             IFS=$old_IFS
             print_info "D3D_MODULE_PATH=${D3D_MODULE_PATH}"
         else 
-            pw_stop_progress_bar
+            pp_stop_progress_bar
             zenity_error "d3dadapter9.so.1.0.0 - ${loc_find_d3dadapter9_error}"
             stop_portwine
         fi
         export mesa_glthread=true
-        export PW_DX12_DISABLE=1
+        export PP_DX12_DISABLE=1
         export ENABLE_VKBASALT=0
-        export PW_MANGOHUD=0
+        export PP_MANGOHUD=0
         export WINE_FULLSCREEN_FSR=0
     else
         echo "Use VKD3D-PROTON and DXVK (DX 9-12 to vulkan)"
-        # if [[ ! -z "${PW_USE_AMDVLK_DRIVER}" ]] && [[ "${PW_USE_AMDVLK_DRIVER}" != 0 ]] ; then 
+        # if [[ ! -z "${PP_USE_AMDVLK_DRIVER}" ]] && [[ "${PP_USE_AMDVLK_DRIVER}" != 0 ]] ; then 
         #     export AMD_VULKAN_ICD=AMDVLK
         #     unset DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1
         #     print_info "Try to use AMDVLK driver (only with MESA)"
@@ -405,7 +410,7 @@ start_portwine () {
         # export VKD3D_FEATURE_LEVEL="12_0"
         # export __GL_DXVK_OPTIMIZATIONS=1
         # var_vkd3d_config_update no_upload_hvv
-        if [[ "${PW_USE_WINE_DXGI}" == 1 ]] || [[ "${PW_VULKAN_USE}" == 2 ]]; then 
+        if [[ "${PP_USE_WINE_DXGI}" == 1 ]] || [[ "${PP_VULKAN_USE}" == 2 ]]; then 
             export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxvk_config openvr_api_dxvk"
             var_winedlloverride_update "d3d11,d3d10core,d3d9=n"
         else
@@ -414,34 +419,34 @@ start_portwine () {
         fi
         echo "Try link native DXVK files..."
         for wine_dxvk_dll in ${CP_DXVK_FILES} ; do
-            try_force_link_file "${WINEDIR}/lib/wine/dxvk/${wine_dxvk_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
-            try_force_link_file "${WINEDIR}/lib64/wine/dxvk/${wine_dxvk_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
+            try_force_link_file "${WINEDIR}/lib/wine/dxvk/${wine_dxvk_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
+            try_force_link_file "${WINEDIR}/lib64/wine/dxvk/${wine_dxvk_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
         done        
         echo "Try link native VKD3D files..."
-        try_force_link_file "${WINEDIR}/lib/vkd3d/libvkd3d-shader-1.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/libvkd3d-shader-1.dll"
-        try_force_link_file "${WINEDIR}/lib64/vkd3d/libvkd3d-shader-1.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/libvkd3d-shader-1.dll"
+        try_force_link_file "${WINEDIR}/lib/vkd3d/libvkd3d-shader-1.dll" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/syswow64/libvkd3d-shader-1.dll"
+        try_force_link_file "${WINEDIR}/lib64/vkd3d/libvkd3d-shader-1.dll" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/libvkd3d-shader-1.dll"
         for wine_vkd3d_dll in d3d12 libvkd3d-proton-utils-3 ; do
-            try_force_link_file "${WINEDIR}/lib/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
-            try_force_link_file "${WINEDIR}/lib64/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
+            try_force_link_file "${WINEDIR}/lib/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
+            try_force_link_file "${WINEDIR}/lib64/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
         done
     fi
 
-    if [[ ! -z "${PW_DX12_DISABLE}" && "${PW_DX12_DISABLE}" != 0 ]]  
+    if [[ ! -z "${PP_DX12_DISABLE}" && "${PP_DX12_DISABLE}" != 0 ]]  
     then var_winedlloverride_update "libvkd3d-proton-utils-3,libvkd3d-shader-1=n;d3d12="
     else var_winedlloverride_update "d3d12,libvkd3d-proton-utils-3,libvkd3d-shader-1=n"
     fi
 
-    if [[ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/vrclient/bin" ]] ; then
-        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/vrclient/bin"
-        if ! try_force_link_file "${WINEDIR}"/lib/wine/fakedlls/vrclient.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/vrclient/bin/vrclient.dll"
-        then try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/vrclient.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/vrclient/bin/vrclient.dll"
+    if [[ ! -d "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/vrclient/bin" ]] ; then
+        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/vrclient/bin"
+        if ! try_force_link_file "${WINEDIR}"/lib/wine/fakedlls/vrclient.dll "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/vrclient/bin/vrclient.dll"
+        then try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/vrclient.dll "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/vrclient/bin/vrclient.dll"
         fi
-        if ! try_force_link_file "${WINEDIR}"/lib64/wine/fakedlls/vrclient_x64.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/vrclient/bin/vrclient_x64.dll"
-        then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/vrclient_x64.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/vrclient/bin/vrclient_x64.dll"
+        if ! try_force_link_file "${WINEDIR}"/lib64/wine/fakedlls/vrclient_x64.dll "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/vrclient/bin/vrclient_x64.dll"
+        then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/vrclient_x64.dll "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/vrclient/bin/vrclient_x64.dll"
         fi
     fi
 
-    if [[ "${PW_USE_SHADER_CACHE}" == 1 ]] ; then
+    if [[ "${PP_USE_SHADER_CACHE}" == 1 ]] ; then
         export MESA_SHADER_CACHE_DIR="${PORT_WINE_TMP_PATH}"
         create_new_dir "${PORT_WINE_TMP_PATH}/gl_shader_cache"
         export __GL_SHADER_DISK_CACHE=1
@@ -460,7 +465,7 @@ start_portwine () {
         export RADV_DEBUG=nocache
     fi
 
-    if [[ "${PW_WINE_FULLSCREEN_FSR}" == 1 ]] || [[ "${WINE_FULLSCREEN_FSR}" == 1 ]] ; then
+    if [[ "${PP_WINE_FULLSCREEN_FSR}" == 1 ]] || [[ "${WINE_FULLSCREEN_FSR}" == 1 ]] ; then
         export WINE_FULLSCREEN_FSR=1
         export WINE_FULLSCREEN_FSR_STRENGTH=1
         export WINE_FULLSCREEN_INTEGER_SCALING=0
@@ -470,38 +475,38 @@ start_portwine () {
     fi
 
     for try_cp_dll_from_wine in "ntdll.dll" "vulkan-1.dll" ; do
-        if ! try_copy_file "${WINEDIR}"/lib/wine/fakedlls/${try_cp_dll_from_wine} "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${try_cp_dll_from_wine}"
-        then try_copy_file "${WINEDIR}"/lib/wine/i386-windows/${try_cp_dll_from_wine} "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${try_cp_dll_from_wine}"
+        if ! try_copy_file "${WINEDIR}"/lib/wine/fakedlls/${try_cp_dll_from_wine} "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/syswow64/${try_cp_dll_from_wine}"
+        then try_copy_file "${WINEDIR}"/lib/wine/i386-windows/${try_cp_dll_from_wine} "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/syswow64/${try_cp_dll_from_wine}"
         fi
-        if ! try_copy_file "${WINEDIR}"/lib64/wine/fakedlls/${try_cp_dll_from_wine} "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${try_cp_dll_from_wine}"
-        then try_copy_file "${WINEDIR}"/lib64/wine/x86_64-windows/${try_cp_dll_from_wine} "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${try_cp_dll_from_wine}"
+        if ! try_copy_file "${WINEDIR}"/lib64/wine/fakedlls/${try_cp_dll_from_wine} "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/${try_cp_dll_from_wine}"
+        then try_copy_file "${WINEDIR}"/lib64/wine/x86_64-windows/${try_cp_dll_from_wine} "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c/windows/system32/${try_cp_dll_from_wine}"
         fi
     done
 
     #run_winetricks_from_db
-    if [[ ! -z "${PW_MUST_HAVE_DLL}" ]]
-    then export PW_DLL_INSTALL="`echo "${PW_MUST_HAVE_DLL} ${PW_DLL_INSTALL}" | awk '{ for(i=1;i<=NF;i++){a[$i]++} }END{ for(i in a){printf("%s ",i)} }' `"
+    if [[ ! -z "${PP_MUST_HAVE_DLL}" ]]
+    then export PP_DLL_INSTALL="`echo "${PP_MUST_HAVE_DLL} ${PP_DLL_INSTALL}" | awk '{ for(i=1;i<=NF;i++){a[$i]++} }END{ for(i in a){printf("%s ",i)} }' `"
     fi
-    if [[ ! -z "${PW_DLL_INSTALL}" ]] ; then
-        export PW_DLL_NEED_INSTALL=""
+    if [[ ! -z "${PP_DLL_INSTALL}" ]] ; then
+        export PP_DLL_NEED_INSTALL=""
         export USE_WT_FROM_DB=0
-        if [ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ] ; then
-            touch "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
+        if [ ! -f "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/winetricks.log" ] ; then
+            touch "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/winetricks.log"
         fi
-        for need_install_dll_to_pfx in ${PW_DLL_INSTALL} ; do
+        for need_install_dll_to_pfx in ${PP_DLL_INSTALL} ; do
             if [[ "${need_install_dll_to_pfx}" == "vcrun2015" || "${need_install_dll_to_pfx}" == "vcrun2017" ]] ; then
                 need_install_dll_to_pfx="vcrun2019"
-                sed -i '/vcrun2015/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
-                sed -i '/vcrun2017/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
+                sed -i '/vcrun2015/d' "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/winetricks.log"
+                sed -i '/vcrun2017/d' "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/winetricks.log"
             elif [ "${need_install_dll_to_pfx}" == "vcrun2019" ] ; then
-                sed -i '/vcrun2015/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
-                sed -i '/vcrun2017/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
+                sed -i '/vcrun2015/d' "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/winetricks.log"
+                sed -i '/vcrun2017/d' "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/winetricks.log"
             fi
-            grep "${need_install_dll_to_pfx}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
+            grep "${need_install_dll_to_pfx}" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/winetricks.log"
             if [[ "$?" == "1" ]] ; then
-                if [[ -z "${PW_DLL_NEED_INSTALL}" ]]
-                then export PW_DLL_NEED_INSTALL="${need_install_dll_to_pfx}"
-                else export PW_DLL_NEED_INSTALL="${need_install_dll_to_pfx} ${PW_DLL_NEED_INSTALL}" 
+                if [[ -z "${PP_DLL_NEED_INSTALL}" ]]
+                then export PP_DLL_NEED_INSTALL="${need_install_dll_to_pfx}"
+                else export PP_DLL_NEED_INSTALL="${need_install_dll_to_pfx} ${PP_DLL_NEED_INSTALL}" 
                 fi
                 export USE_WT_FROM_DB=1
             fi
@@ -509,77 +514,77 @@ start_portwine () {
         if [[ "${USE_WT_FROM_DB}" == "1" ]] ; then
             update_winetricks
             echo "START WINETRICKS..." >> "${PORT_WINE_TMP_PATH}/update_pfx_log"
-            echo "Try to install DLL in prefix: ${PW_DLL_NEED_INSTALL}" >> "${PORT_WINE_TMP_PATH}/update_pfx_log"
-            print_info "Try to install DLL in prefix: ${PW_DLL_NEED_INSTALL}"
-            ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
-            "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${PW_DLL_NEED_INSTALL} &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
+            echo "Try to install DLL in prefix: ${PP_DLL_NEED_INSTALL}" >> "${PORT_WINE_TMP_PATH}/update_pfx_log"
+            print_info "Try to install DLL in prefix: ${PP_DLL_NEED_INSTALL}"
+            ${pp_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PP_LD_LIBRARY_PATH}" \
+            "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${PP_DLL_NEED_INSTALL} &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
             wait_wineserver
             kill_portwine
         fi
     fi
-    if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" ]] && [[ -z `cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" | grep "Windows $PW_WINDOWS_VER"` ]] ; then
-        if [[ ! -z "${PW_WINDOWS_VER}" && `echo "$PW_WINDOWS_VER" | sed 's/.*/\L&/'` == "xp" ]] ; then
-            export PW_WINDOWS_VER="xp64"
+    if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/system.reg" ]] && [[ -z `cat "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/system.reg" | grep "Windows $PP_WINDOWS_VER"` ]] ; then
+        if [[ ! -z "${PP_WINDOWS_VER}" && `echo "$PP_WINDOWS_VER" | sed 's/.*/\L&/'` == "xp" ]] ; then
+            export PP_WINDOWS_VER="xp64"
         fi
-        ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
-        "${WINELOADER}" winecfg -v `echo "win${PW_WINDOWS_VER}" | sed 's/.*/\L&/'`
+        ${pp_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PP_LD_LIBRARY_PATH}" \
+        "${WINELOADER}" winecfg -v `echo "win${PP_WINDOWS_VER}" | sed 's/.*/\L&/'`
         wait_wineserver
         kill_portwine
-        echo "Set to win${PW_WINDOWS_VER}"
+        echo "Set to win${PP_WINDOWS_VER}"
     fi
     if [[ "${portwine_exe}" == *-Shipping.exe ]] ; then 
         echo "Disable EAC"
         [[ -z "${LAUNCH_PARAMETERS}" ]] && export LAUNCH_PARAMETERS+="-eac-nop-loaded "
     fi
     sleep 1
-    pw_stop_progress_bar &&
-    pw_tray_icon &&
-    if [[ "${PW_CHECK_AUTOINSTAL}" != "1" ]] ; then
-        pw_start_progress_bar_cover "${PW_GUI_ICON_PATH}/covers/pw_loading_cover.gif"
+    pp_stop_progress_bar &&
+    pp_tray_icon &&
+    if [[ "${PP_CHECK_AUTOINSTAL}" != "1" ]] ; then
+        pp_start_progress_bar_cover "${PP_GUI_ICON_PATH}/covers/pp_loading_cover.gif"
     fi
-    if [[ "${PW_PREFIX_NAME}" == "DOTNET" ]] && [[ "${PW_VULKAN_USE}" == "1" || "${PW_VULKAN_USE}" == "2" ]] ; then
+    if [[ "${PP_PREFIX_NAME}" == "DOTNET" ]] && [[ "${PP_VULKAN_USE}" == "1" || "${PP_VULKAN_USE}" == "2" ]] ; then
         var_winedlloverride_update "libglesv2=d"
     fi
     add_in_start_portwine
 }
 
-pw_run () {
+pp_run () {
     unset GDK_BACKEND
     if [[ ! -z "$portwine_exe" ]] ; then
         cd "${PATH_TO_GAME}"
     else
-        cd "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c"
+        cd "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/drive_c"
     fi
-    pw_mangohud_check
-    pw_vkbasalt_check
-    PW_LOG_TO_FILE="${PORT_WINE_PATH}/${portname}.log"
-    print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VKD3D_CONFIG" \
-    "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2"
-    if [[ "${PW_LOG}" == 1 ]] ; then
-        echo "WINEDLLOVERRIDES=${WINEDLLOVERRIDES}" >> "${PW_LOG_TO_FILE}"
-        echo "------------------------------------" >> "${PW_LOG_TO_FILE}"
-        echo "Log WINE:" >> "${PW_LOG_TO_FILE}"
-        ${optirun_on} ${PW_GAMEMODERUN_SLR} ${pw_runtime} \
-        env ${PW_MANGOHUD_SLR} \
+    pp_mangohud_check
+    pp_vkbasalt_check
+    PP_LOG_TO_FILE="${PORT_WINE_PATH}/${portname}.log"
+    print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PP_WINE_USE" "PP_VULKAN_USE" "VKD3D_CONFIG" \
+    "PP_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2"
+    if [[ "${PP_LOG}" == 1 ]] ; then
+        echo "WINEDLLOVERRIDES=${WINEDLLOVERRIDES}" >> "${PP_LOG_TO_FILE}"
+        echo "------------------------------------" >> "${PP_LOG_TO_FILE}"
+        echo "Log WINE:" >> "${PP_LOG_TO_FILE}"
+        ${optirun_on} ${PP_GAMEMODERUN_SLR} ${pp_runtime} \
+        env ${PP_MANGOHUD_SLR} \
         PATH="${PATH}" \
-        LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
-        LD_PRELOAD="${PW_LD_PRELOAD}" \
-        VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
-        VK_INSTANCE_LAYERS=${PW_VK_INSTANCE_LAYERS} \
-        "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
+        LD_LIBRARY_PATH="${PP_LD_LIBRARY_PATH}" \
+        LD_PRELOAD="${PP_LD_PRELOAD}" \
+        VK_LAYER_PATH="${PP_VK_LAYER_PATH}" \
+        VK_INSTANCE_LAYERS=${PP_VK_INSTANCE_LAYERS} \
+        "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PP_LOG_TO_FILE}"
     else
-        [[ "${PW_USE_TERMINAL}" != "1" ]] && export PW_TERM=""
-        $PW_TERM ${optirun_on} ${PW_GAMEMODERUN_SLR} ${pw_runtime} \
-        env ${PW_MANGOHUD_SLR} \
+        [[ "${PP_USE_TERMINAL}" != "1" ]] && export PP_TERM=""
+        $PP_TERM ${optirun_on} ${PP_GAMEMODERUN_SLR} ${pp_runtime} \
+        env ${PP_MANGOHUD_SLR} \
         PATH="${PATH}" \
-        LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
-        LD_PRELOAD="${PW_LD_PRELOAD}" \
-        VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
-        VK_INSTANCE_LAYERS=${PW_VK_INSTANCE_LAYERS} \
+        LD_LIBRARY_PATH="${PP_LD_LIBRARY_PATH}" \
+        LD_PRELOAD="${PP_LD_PRELOAD}" \
+        VK_LAYER_PATH="${PP_VK_LAYER_PATH}" \
+        VK_INSTANCE_LAYERS=${PP_VK_INSTANCE_LAYERS} \
         "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]}
     fi
 }
-export -f pw_run
+export -f pp_run
 
 ###MAIN###
 if [[ $(id -u) -eq 0 ]] ; then
@@ -589,16 +594,16 @@ fi
 [[ -z "${LANG}" ]] && export LANG=C
 
 create_new_dir "${HOME}/.local/share/applications"
-if [[ ! -z "${PW_SILENT_RESTART}" ]] && [[ "${PW_SILENT_RESTART}" = 1 ]] ; then
-    export PW_GUI_DISABLED_CS=1
-    unset PW_SILENT_RESTART
+if [[ ! -z "${PP_SILENT_RESTART}" ]] && [[ "${PP_SILENT_RESTART}" = 1 ]] ; then
+    export PP_GUI_DISABLED_CS=1
+    unset PP_SILENT_RESTART
 else
-    unset PW_GUI_DISABLED_CS
+    unset PP_GUI_DISABLED_CS
 fi
-unset MANGOHUD MANGOHUD_DLSYM PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_YAD_SET PW_ICON_FOR_YAD
-unset PW_CHECK_AUTOINSTAL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PORTWINE_DB_FILE PW_DISABLED_CREATE_DB
-unset CHK_SYMLINK_FILE MESA_GL_VERSION_OVERRIDE PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME PORTWINE_CREATE_SHORTCUT_NAME
-unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD
+unset MANGOHUD MANGOHUD_DLSYM PP_NO_ESYNC PP_NO_FSYNC PP_VULKAN_USE WINEDLLOVERRIDES PP_NO_WRITE_WATCH PP_YAD_SET PP_ICON_FOR_YAD
+unset PP_CHECK_AUTOINSTAL PP_VKBASALT_EFFECTS PP_VKBASALT_FFX_CAS PORTWINE_DB PORTWINE_DB_FILE PP_DISABLED_CREATE_DB
+unset CHK_SYMLINK_FILE MESA_GL_VERSION_OVERRIDE PATH_TO_GAME PP_START_DEBUG PORTPROTON_NAME PORTWINE_CREATE_SHORTCUT_NAME
+unset PP_PREFIX_NAME WINEPREFIX VULKAN_MOD PP_WINE_VER PP_ADD_TO_ARGS_IN_RUNTIME PP_GAMEMODERUN_SLR AMD_VULKAN_ICD
 
 export portname=PortProton
 
@@ -639,7 +644,7 @@ create_new_dir "${PORT_WINE_TMP_PATH}"/mono
 cd "${PORT_SCRIPTS_PATH}"
 . "${PORT_SCRIPTS_PATH}/var"
 
-export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"  
+export PP_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PP_PLUGINS_VER}"  
 
 if [ ! -f "${PORT_WINE_TMP_PATH}/${portname}_loc" ] ; then
 	SET_LANG=`zenity --title  "Install $portname" --text "Select the language" --list --radiolist \
@@ -650,9 +655,9 @@ fi
 . "${PORT_SCRIPTS_PATH}"/zen_yad_gui
 
 export urlg="https://linux-gaming.ru/portwine-faq/"
-export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
-try_remove_dir "${PW_WINELIB}/var"
-export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
+export PP_WINELIB="${PORT_WINE_TMP_PATH}/libs${PP_LIBS_VER}"
+try_remove_dir "${PP_WINELIB}/var"
+export PP_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
 export install_ver=`cat "${PORT_WINE_TMP_PATH}/${portname}_ver" | head -n 1`
 if [[ "${install_ver}" == 97 ]] ; then
     export install_ver="1.0"
@@ -661,13 +666,14 @@ fi
 export WINETRICKS_DOWNLOADER="curl"
 export USER_CONF="${PORT_WINE_PATH}/data/user.conf"
 check_user_conf
+sed -i 's/ PW_/ PP_/g' "${USER_CONF}"
 
 if [[ -z "${INSTALLING_PORT}" ]] ; then
     . "${USER_CONF}"
-    pw_port_update
-    pw_download_libs
-    pw_check_and_download_wine ${PW_PROTON_STEAM_VER}
-    pw_check_and_download_plugins
-    pw_init_db
+    pp_port_update
+    pp_download_libs
+    pp_check_and_download_wine ${PP_PROTON_LG_VER}
+    pp_check_and_download_plugins
+    pp_init_db
     . "${USER_CONF}"
 fi

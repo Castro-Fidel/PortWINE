@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Author: Castro-Fidel (linux-gaming.ru)
+########################################################################
+export LAUNCH_PARAMETERS=("/VERYSILENT")
+export GOG_VER=2.0.48.63
+export PP_AUTOINSTALL_EXE="${PP_USER_TEMP}/setup_galaxy_${GOG_VER}.exe"
+start_portwine
+if try_download "content-system.gog.com/open_link/download?path=/open/galaxy/client/${GOG_VER}/setup_galaxy_${GOG_VER}.exe" "${PP_AUTOINSTALL_EXE}"
+then
+    pp_start_progress_bar_block "Installing the GOG Galaxy. Please wait..."
+    pp_run "${PP_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/GOG Galaxy/GalaxyClient.exe"
+    try_remove_file "${PP_AUTOINSTALL_EXE}"
+    kill_portwine
+    pp_stop_progress_bar
+    portwine_create_shortcut
+fi
+stop_portwine

@@ -200,10 +200,10 @@ class InstallGame(QDialog):
         script = f"""
             mkdir -p {shlex.quote(g.install_pfx + '/drive_c/Games')}
             echo '
-                export PW_VULKAN_USE=1
-                export PW_GUI_DISABLED_CS=1
-                export PW_PREFIX_NAME=INSTALL
-                export PW_DLL_INSTALL=mfc42
+                export PP_VULKAN_USE=1
+                export PP_GUI_DISABLED_CS=1
+                export PP_PREFIX_NAME=INSTALL
+                export PP_DLL_INSTALL=mfc42
             ' > {ppdb}
             {shlex.quote(g.scripts_dir + '/start.sh')} {shlex.quote(exe_file)}
             rm -f {ppdb}
@@ -246,10 +246,10 @@ class InstallGame(QDialog):
             export portwine_exe={exe_file}
             cd {shlex.quote(g.scripts_dir)}
             . {shlex.quote(g.scripts_dir + '/runlib')}
-            pw_create_gui_png
-            pw_init_db
+            pp_create_gui_png
+            pp_init_db
             [ -f {ppdb} ] && . {ppdb}
-            echo -e "export PW_VULKAN_USE=${{PW_VULKAN_USE:-1}}\nexport PW_GUI_DISABLED_CS=1" >> {ppdb}
+            echo -e "export PP_VULKAN_USE=${{PP_VULKAN_USE:-1}}\nexport PP_GUI_DISABLED_CS=1" >> {ppdb}
         """
         run(['bash', '-c', script])
         icon_path = g.base_dir + '/data/img/' + Path(item.text()).stem + '.png'
@@ -335,7 +335,7 @@ class GameList(QListWidget):
             with open(ppdb, 'r') as read:
                 with open(ppdb + '.new', 'w') as write:
                     while (line := read.readline()):
-                        if 'PW_GUI_DISABLED_CS' not in line:
+                        if 'PP_GUI_DISABLED_CS' not in line:
                             write.write(line)
             os.rename(ppdb + '.new', ppdb)
         if action == remove:

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Author: cefeiko
+########################################################################
+export PP_WINDOWS_VER=10
+export PP_DLL_INSTALL="vcrun2017"
+export PP_AUTOINSTALL_EXE="${PP_USER_TEMP}/EveLauncher-1892908.exe"
+start_portwine
+if try_download "binaries.eveonline.com/EveLauncher-1892908.exe" "${PP_AUTOINSTALL_EXE}"
+then
+    pp_start_progress_bar_block "Installing the EVE Launcher. Please wait..."
+    if [ ! -f "$WINEPREFIX/drive_c/Games/EVE Online/Launcher/evelauncher.exe" ] ; then
+        try_remove_dir "$WINEPREFIX/drive_c/Games/EVE Online"
+        dd if="${PP_AUTOINSTALL_EXE}" of="${PP_AUTOINSTALL_EXE}".7z bs=1M skip=31646603 count=196171208 iflag=skip_bytes,count_bytes
+        "$pp_7z" x "${PP_AUTOINSTALL_EXE}".7z -o"$WINEPREFIX/drive_c/Games/EVE Online"
+        try_remove_file "${PP_AUTOINSTALL_EXE}"
+        try_remove_file "${PP_AUTOINSTALL_EXE}".7z
+    fi
+    portwine_exe="$WINEPREFIX/drive_c/Games/EVE Online/Launcher/evelauncher.exe"
+    pp_stop_progress_bar
+    portwine_create_shortcut
+fi
+stop_portwine
