@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Author: Cefeiko
+########################################################################
+export PW_PREFIX_NAME="DOTNET"
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/wos_client.exe"
+export LAUNCH_PARAMETERS=("/VERYSILENT")
+export PW_DLL_INSTALL="faudio dotnet48"
+export PW_VULKAN_USE=1
+
+if [ ! -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ] ; then
+    if try_download "github.com/Castro-Fidel/wine_builds/releases/download/${PW_WINE_USE}/${PW_WINE_USE}.tar.xz" \
+    "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" ; then
+        if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
+            try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz"
+            UNPACK_STATUS=0
+        else
+            try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz"
+            try_remove_dir "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}"
+        fi
+    fi
+    [[ "${UNPACK_STATUS}" != 0 ]] && exit 1
+fi
+start_portwine
+if try_download "165311.selcdn.ru/wosb_installer/wos_client.exe" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_start_progress_bar_block "Installing World of Sea Battle. Please wait..."
+
+    pw_kill_autostart WorldOfSeaBattleClient.exe &
+    pw_run "${PW_AUTOINSTALL_EXE}" 
+    portwine_exe="$WINEPREFIX/drive_c/Games/World Of Sea Battle/WorldOfSeaBattleClient.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    kill_portwine
+    pw_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="World of Sea Battle"
+    portwine_create_shortcut
+fi
+stop_portwine

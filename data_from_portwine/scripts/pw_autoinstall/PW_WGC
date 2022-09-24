@@ -3,25 +3,25 @@
 ########################################################################
 export LAUNCH_PARAMETERS=("/VERYSILENT")
 [ "${update_loc}" = "RUS" ] && export WGC_LOC=RU || export WGC_LOC=EU
-export PP_AUTOINSTALL_EXE="${PP_USER_TEMP}/Wargaming_Game_Center_Install_WoT_${WGC_LOC}.exe"
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/Wargaming_Game_Center_Install_WoT_${WGC_LOC}.exe"
 
 try_download_wgc () {
     set -o pipefail
     wget -t 5 -T 3 "$1" --output-document="$2" 2>&1 | \
     tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
-    "${pp_yad_new}" --center --progress --percentage=0 --title="Download $(basename $1)" --text=Starting... --auto-close --auto-kill --width=500 --height=90
+    "${pw_yad_new}" --center --progress --percentage=0 --title="Download $(basename $1)" --text=Starting... --auto-close --auto-kill --width=500 --height=90
     [ "${PIPESTATUS[0]}" != 0 ] && print_error "failed to download $1. Scipping." && return 1 || return 0
 }
 
 start_portwine
-if try_download_wgc "redirect.wargaming.net/WGC/Wargaming_Game_Center_Install_WoT_${WGC_LOC}.exe"  "${PP_AUTOINSTALL_EXE}"
+if try_download_wgc "redirect.wargaming.net/WGC/Wargaming_Game_Center_Install_WoT_${WGC_LOC}.exe"  "${PW_AUTOINSTALL_EXE}"
 then
-    pp_start_progress_bar_block "Starting WGC installation..."
-    pp_kill_autostart wgc.exe &
-    pp_run "${PP_AUTOINSTALL_EXE}"
+    pw_start_progress_bar_block "Starting WGC installation..."
+    pw_kill_autostart wgc.exe &
+    pw_run "${PW_AUTOINSTALL_EXE}"
     portwine_exe="$WINEPREFIX/drive_c/ProgramData/Wargaming.net/GameCenter/api/wgc_api.exe"
     export PORTWINE_CREATE_SHORTCUT_NAME="Wargaming Game Center"
-    try_remove_file "${PP_AUTOINSTALL_EXE}"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
     kill_portwine
     portwine_create_shortcut
 fi

@@ -1,59 +1,59 @@
 #!/usr/bin/env bash
 #Author: Castro-Fidel (linux-gaming.ru)
-#SCRIPTS_NEXT_VERSION=2130
+#SCRIPTS_NEXT_VERSION=2131
 ########################################################################
-export PP_MANGOHUD=0
+export PW_MANGOHUD=0
 export MANGOHUD_CONFIG=cpu_stats,cpu_temp,cpu_mhz,cpu_color=2e97cb,cpu_text=CPU,gpu_stats,gpu_temp,gpu_core_clock,gpu_mem_clock,vulkan_driver,gpu_name,gpu_color=2e9762,gpu_text=GPU,vram,vram_color=ad64c1,ram,ram_color=c26693,io_color=a491d3,frame_timing=1,frametime_color=00ff00,time,arch,wine,wine_color=eb5b5b,engine_color=eb5b5b,background_alpha=0.2,font_size=24,background_color=020202,text_color=ffffff,toggle_hud=Shift_R+F12,resolution,vkbasalt
 #export DXVK_HUD=compiler
 #export GALLIUM_HUD=fps
 #export ENABLE_VKBASALT=1
-#export PP_VIRTUAL_DESKTOP=1
-#export PP_XKBD_RU_HACK=1
-export PP_RT_MOUNT_RO=("")
-export PP_RT_MOUNT_RW=("/media" "/mnt" "/run/media/${USER}" "${PORT_WINE_PATH}")
-#export PP_SANDBOX_HOME_PATH="${PORT_WINE_PATH}"
-export PP_NO_ESYNC="1"
-export PP_USE_GAMEMODE="1"
-export PP_FORCE_USE_VSYNC="2"
-export PP_LOG="0"
-export PP_TERM=""
-export PP_USE_TERMINAL="0"
-export PP_WINEDBG_DISABLE="1"
-export PP_WINDOWS_VER="10"
+#export PW_VIRTUAL_DESKTOP=1
+#export PW_XKBD_RU_HACK=1
+export PW_RT_MOUNT_RO=("")
+export PW_RT_MOUNT_RW=("/media" "/mnt" "/run/media/${USER}" "${PORT_WINE_PATH}")
+#export PW_SANDBOX_HOME_PATH="${PORT_WINE_PATH}"
+export PW_NO_ESYNC="1"
+export PW_USE_GAMEMODE="1"
+export PW_FORCE_USE_VSYNC="2"
+export PW_LOG="0"
+export PW_TERM=""
+export PW_USE_TERMINAL="0"
+export PW_WINEDBG_DISABLE="1"
+export PW_WINDOWS_VER="10"
 export WINEARCH="win64"
-export PP_LIBS_VER="_v32"
+export PW_LIBS_VER="_v32"
 export LG_SITE_URL="https://linux-gaming.ru/"
 export GDK_BACKEND="x11"
-export PP_USE_GSTREAMER="1"
-export PP_USE_D3D_EXTRAS="1"
-export PP_PREFIX_NAME="DEFAULT"
+export PW_USE_GSTREAMER="1"
+export PW_USE_D3D_EXTRAS="1"
+export PW_PREFIX_NAME="DEFAULT"
 export WINE_WIN_START="start.exe /i /unix"
-export PP_USE_SHADER_CACHE="1"
+export PW_USE_SHADER_CACHE="1"
 export STAGING_SHARED_MEMORY="1"
-export PP_FORCE_LARGE_ADDRESS_AWARE="1"
+export PW_FORCE_LARGE_ADDRESS_AWARE="1"
 ###DEFAULT_WINE###
-export PP_WINE_USE="PROTON_LG"
-export PP_PLUGINS_VER="_v7"
-export PP_FAKE_DLSS_VER="2.1-3001-0-7-5-1662667880"
+export PW_WINE_USE="PROTON_LG"
+export PW_PLUGINS_VER="_v7"
+export PW_FAKE_DLSS_VER="2.1-3001-0-7-5-1662667880"
 ###WINE_PROTON_LG###
-export PP_LG_VER="7-29"
-export PP_PROTON_LG_VER="PROTON_LG_${PP_LG_VER}"
+export PW_LG_VER="7-29"
+export PW_PROTON_LG_VER="PROTON_LG_${PW_LG_VER}"
 ###WINE_PROTON_GE###
-export PP_GE_VER="7-33"
-export PP_PROTON_GE_VER="PROTON_GE_${PP_GE_VER}"
-export PP_WINE_FULLSCREEN_FSR="0"
+export PW_GE_VER="7-33"
+export PW_PROTON_GE_VER="PROTON_GE_${PW_GE_VER}"
+export PW_WINE_FULLSCREEN_FSR="0"
 ###PREFIX_VERSION###
 export DOTPFX_VER="48v1"
 export DEFPFX_VER="v1"
 #################################################################
 export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk.conf"
 #################################################################
-pp_install_dll_in_prefix ()
+pw_install_dll_in_prefix ()
 {
-    case $PP_PREFIX_NAME in
-        DEFAULT) export PP_MUST_HAVE_DLL="physx mfc42 vcrun2019" ;;
-         DOTNET) export PP_MUST_HAVE_DLL="physx mfc42 vcrun2019 faudio dotnet48" ;;
-              *) export PP_MUST_HAVE_DLL="" ;;
+    case $PW_PREFIX_NAME in
+        DEFAULT) export PW_MUST_HAVE_DLL="physx mfc42 vcrun2019" ;;
+         DOTNET) export PW_MUST_HAVE_DLL="physx mfc42 vcrun2019 faudio dotnet48" ;;
+              *) export PW_MUST_HAVE_DLL="" ;;
     esac
 }
 ########################################################################
@@ -67,23 +67,23 @@ add_in_stop_portwine ()
     echo " "
 }
 ########################################################################
-pp_other_fixes () {
-    if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/system.reg" ]] ; then
+pw_other_fixes () {
+    if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" ]] ; then
     #fix after installation Origin, for disabled OriginWebHelperService by default
-        if [[ ! -z `cat "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/system.reg" | grep -wm 1 "Origin.exe" | awk '{print $1}'` ]] ; then
-            sysreg_norig=$(((`cat -n "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/system.reg" | grep OriginWebHelperService | awk '{print $1}'` + 3)))
-            sed -i "${sysreg_norig}s/dword:0000000[1-2]/dword:00000003/" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/system.reg"
+        if [[ ! -z `cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" | grep -wm 1 "Origin.exe" | awk '{print $1}'` ]] ; then
+            sysreg_norig=$(((`cat -n "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" | grep OriginWebHelperService | awk '{print $1}'` + 3)))
+            sed -i "${sysreg_norig}s/dword:0000000[1-2]/dword:00000003/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
         fi
         #fix after installation PnkBstr*, for disabled PnkBstr* by default
         for fix_reg in "PnkBstrA.exe" "PnkBstrB.exe" ; do
-            if [[ ! -z `cat "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/system.reg" | grep -wm 1 "${fix_reg}" | awk '{print $1}'` ]] ; then
-                sysreg_norig=$(((`cat -n "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/system.reg" | grep "${fix_reg}" | awk '{print $1}'` + 3)))
-                sed -i "${sysreg_norig}s/dword:0000000[1-2]/dword:00000003/" "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/system.reg"
+            if [[ ! -z `cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" | grep -wm 1 "${fix_reg}" | awk '{print $1}'` ]] ; then
+                sysreg_norig=$(((`cat -n "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" | grep "${fix_reg}" | awk '{print $1}'` + 3)))
+                sed -i "${sysreg_norig}s/dword:0000000[1-2]/dword:00000003/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
             fi
         done
     fi
     #disabled silent autostart steam
-    if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/user.reg" ]] ; then
-        sed -i '/steam.exe\\" -silent"/d' "${PORT_WINE_PATH}/data/prefixes/${PP_PREFIX_NAME}/user.reg"
+    if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" ]] ; then
+        sed -i '/steam.exe\\" -silent"/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
     fi
 }
