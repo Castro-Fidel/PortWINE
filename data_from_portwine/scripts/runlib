@@ -48,19 +48,7 @@ start_portwine () {
     fi
     pw_install_dll_in_prefix 
     init_wine_ver
-    grep 'Steam.exe' "${WINEDIR}/share/wine/wine.inf"
-    if [[ "$?" == "0" ]] ; then
-        sed -i '/Steam.exe/d' "${WINEDIR}/share/wine/wine.inf"
-    fi
-    grep '\\Valve\\Steam' "${WINEDIR}/share/wine/wine.inf"
-    if [[ "$?" == "0" ]] ; then
-        sed -i '/\\Valve\\Steam/d' "${WINEDIR}/share/wine/wine.inf"
-    fi
-    if [ -x "`which konsole 2>/dev/null`" ]; then export PW_TERM="konsole --nofork -e"
-    elif [ -x "`which lxterminal 2>/dev/null`" ]; then export PW_TERM="lxterminal -e"
-    elif [ -x "`which xterm 2>/dev/null`" ]; then export PW_TERM="${PW_XTERM}"
-    else export PW_TERM="${PW_XTERM}"
-    fi
+
     if [ ! -f "${HOME}/.Xresources" ]; then
         cp -f "${PORT_SCRIPTS_PATH}/.Xresources" "${HOME}"
         xrdb -merge "${HOME}/.Xresources"
@@ -314,6 +302,10 @@ start_portwine () {
     export PROTON_EAC_RUNTIME="${PW_PLUGINS_PATH}/EasyAntiCheat_Runtime"
     var_winedlloverride_update "beclient,beclient_x64=b,n"
     #try link d3d extras libs
+    if  [[ -d "${PW_PLUGINS_PATH}/d3d_extras" ]]
+    then PATH_TO_D3DEXTRAS="${PW_PLUGINS_PATH}/d3d_extras"
+    else PATH_TO_D3DEXTRAS="${PW_WINELIB}/d3d_extras"
+    fi
     for d3d_extras_from_plugins in d3dcompiler_33 d3dcompiler_34 d3dcompiler_35 d3dcompiler_36 d3dcompiler_37 \
     d3dcompiler_38 d3dcompiler_39 d3dcompiler_40 d3dcompiler_41 d3dcompiler_42 d3dcompiler_43 d3dcompiler_46 \
     d3dcompiler_47 d3dx10_33 d3dx10_34 d3dx10_35 d3dx10_36 d3dx10_37 d3dx10_38 d3dx10_39 d3dx10_40 d3dx10_41 \
@@ -321,8 +313,8 @@ start_portwine () {
     d3dx9_31 d3dx9_32 d3dx9_33 d3dx9_34 d3dx9_35 d3dx9_36 d3dx9_37 d3dx9_38 d3dx9_39 d3dx9_40 d3dx9_41 d3dx9_42 d3dx9_43
     do
         if [[ "${PW_USE_D3D_EXTRAS}" == 1 ]] ; then
-            try_force_link_file "${PW_PLUGINS_PATH}/d3d_extras/x64/${d3d_extras_from_plugins}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
-            try_force_link_file "${PW_PLUGINS_PATH}/d3d_extras/x32/${d3d_extras_from_plugins}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/"
+            try_force_link_file "${PATH_TO_D3DEXTRAS}/x64/${d3d_extras_from_plugins}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
+            try_force_link_file "${PATH_TO_D3DEXTRAS}/x32/${d3d_extras_from_plugins}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/"
             var_winedlloverride_update "${d3d_extras_from_plugins}=n,b"
         else
             if ! try_force_link_file "${WINEDIR}"/lib/wine/fakedlls/${d3d_extras_from_plugins}.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/"
@@ -534,7 +526,7 @@ start_portwine () {
     fi
     if [[ "${portwine_exe}" == *-Shipping.exe ]] ; then 
         echo "Disable EAC"
-        [[ -z "${LAUNCH_PARAMETERS}" ]] && export LAUNCH_PARAMETERS+="-eac-nop-loaded "
+        [[ -z "${LAUNCH_PARAMETERS}" ]] && export LAUNCH_PARAMETERS+=" -eac-nop-loaded "
     fi
     sleep 1
     pw_stop_progress_bar &&
@@ -573,8 +565,11 @@ pw_run () {
         VK_INSTANCE_LAYERS=${PW_VK_INSTANCE_LAYERS} \
         "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
     else
-        [[ "${PW_USE_TERMINAL}" != "1" ]] && export PW_TERM=""
-        $PW_TERM ${optirun_on} ${PW_GAMEMODERUN_SLR} ${pw_runtime} \
+        if [[ "${PW_USE_TERMINAL}" == "1" ]] ; then
+            export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
+            pw_init_runtime
+        fi
+        ${optirun_on} ${PW_GAMEMODERUN_SLR} ${pw_runtime} \
         env ${PW_MANGOHUD_SLR} \
         PATH="${PATH}" \
         LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \

@@ -325,13 +325,13 @@ init_wine_ver () {
                 echo "${WINEDIR}/share/wine/${mono_gecko_chk} is broken symlink. Repair... OK."
             fi
         done
+
         grep 'Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' "${WINEDIR}/share/wine/wine.inf"
         if [[ "$?" != "0" ]] ; then
             echo 'HKLM,Software\NVIDIA Corporation\Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
-        fi
-        grep 'nvlddmkm,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' "${WINEDIR}/share/wine/wine.inf"
-        if [[ "$?" != "0" ]] ; then
             echo 'HKLM,System\ControlSet001\Services\nvlddmkm,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
+            sed -i '/Steam.exe/d' "${WINEDIR}/share/wine/wine.inf"
+            sed -i '/\\Valve\\Steam/d' "${WINEDIR}/share/wine/wine.inf"
         fi
     fi
     return 0
@@ -365,6 +365,8 @@ pw_init_runtime () {
     if [ "${PW_USE_GSTREAMER}" = 1 ] ; then 
         if [ -d "${WINEDIR}/lib64/gstreamer-1.0" ] ; then
             export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/gstreamer-1.0:${WINEDIR}/lib/gstreamer-1.0"
+        elif [ -d "${PW_WINELIB}/portable/lib/lib64/gstreamer-1.0" ] ; then
+            export GST_PLUGIN_SYSTEM_PATH_1_0="${PW_WINELIB}/portable/lib/lib64/gstreamer-1.0:${PW_WINELIB}/portable/lib/lib32/gstreamer-1.0"
         fi
         export WINE_GST_REGISTRY_DIR="${PORT_WINE_TMP_PATH}"
         export MEDIACONV_AUDIO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/audio.foz
@@ -636,7 +638,7 @@ pw_check_and_download_plugins () {
         do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_PLUGINS}"
         done
     fi
-    if [[ ! -d "${PW_PLUGINS_PATH}/BattlEye_Runtime" || ! -d "${PW_PLUGINS_PATH}/d3d_extras" \
+    if [[ ! -d "${PW_PLUGINS_PATH}/BattlEye_Runtime" || ! -d "${PW_PLUGINS_PATH}/fake_dlss" \
     || ! -d "${PW_PLUGINS_PATH}/nvapi" || ! -d "${PW_PLUGINS_PATH}/nvml" ]]
     then
         print_info "Download and install plugins${PW_PLUGINS_VER}..."
