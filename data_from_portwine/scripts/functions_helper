@@ -268,10 +268,10 @@ init_wine_ver () {
     export WINE="${WINEDIR}/bin/wine"
     export WINELOADER="${WINEDIR}/bin/wine"
     export WINESERVER="${WINEDIR}/bin/wineserver"
-    if [[ -z "${PATH_TO_GAME}" ]] ; then
-        export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
-    else
-        export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine:${PATH_TO_GAME}"
+
+    export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
+    if [[ ! -z "${PATH_TO_GAME}" ]] ; then
+        export WINEDLLPATH+=":${PATH_TO_GAME}"
     fi
 
     if [[ -d "${WINEDIR}/files" && ! -d "${WINEDIR}/dist" ]] ; then
@@ -295,12 +295,17 @@ init_wine_ver () {
     if [[ -d "${WINEDIR}" ]] ; then
         [[ ! -f "${WINEDIR}/version" ]] && echo "${PW_WINE_USE}" > "${WINEDIR}/version"
 
+        # if [[ -d "${WINEDIR}/lib32/" ]] ; then
+        #     mv -f "${WINEDIR}/lib" "${WINEDIR}/lib64"
+        #     mv -f "${WINEDIR}/lib32" "${WINEDIR}/lib"
+        # fi
+
         if [[ ! -d "${WINEDIR}/lib64/" && -d "${WINEDIR}/lib/wine/x86_64-unix" ]] ; then
             create_new_dir "${WINEDIR}/lib64/wine"
             mv -f "${WINEDIR}/lib/wine/x86_64-unix" "${WINEDIR}/lib64/wine/"
             mv -f "${WINEDIR}/lib/wine/x86_64-windows" "${WINEDIR}/lib64/wine/"
         fi
-        
+
         try_remove_file "${WINEDIR}/lib/libsteam_api.so"
         try_remove_file "${WINEDIR}/lib64/libsteam_api.so"
         
