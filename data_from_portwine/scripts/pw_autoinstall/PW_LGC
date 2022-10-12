@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Author: chal55rus
+########################################################################
+export LAUNCH_PARAMETERS=("/VERYSILENT")
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/Lesta_Game_Center_Install_RU.exe"
+
+try_download_lgc () {
+    set -o pipefail
+    wget -t 5 -T 3 "$1" --output-document="$2" 2>&1 | \
+    tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
+    "${pw_yad_new}" --center --progress --percentage=0 --title="Download $(basename $1)" --text=Starting... --auto-close --auto-kill --width=500 --height=90
+    [ "${PIPESTATUS[0]}" != 0 ] && print_error "failed to download $1. Scipping." && return 1 || return 0
+}
+
+start_portwine
+if [[ -f "$WINEPREFIX/drive_c/ProgramData/Lesta/GameCenter/api/lgc_api.exe" ]] ; then
+    if [[ ! -f "$WINEPREFIX/drive_c/ProgramData/Wargaming.net/GameCenter/api/wgc_api.exe" ]] ; then
+        try_remove_file "${HOME}/.local/share/applications/Wargaming Game Center.desktop"
+        try_remove_file "${PORT_WINE_PATH}/Wargaming Game Center.desktop"
+    fi
+    export PORTWINE_CREATE_SHORTCUT_NAME="Lesta Game Center"
+    portwine_exe="$WINEPREFIX/drive_c/ProgramData/Lesta/GameCenter/api/lgc_api.exe"
+    portwine_create_shortcut
+else
+    if try_download_lgc "redirect.lesta.ru/LGC/Lesta_Game_Center_Install_RU.exe"  "${PW_AUTOINSTALL_EXE}"
+    then
+        pw_start_progress_bar_block "Starting LGC installation..."
+        pw_kill_autostart lgc.exe &
+        pw_run "${PW_AUTOINSTALL_EXE}"
+        portwine_exe="$WINEPREFIX/drive_c/ProgramData/Lesta/GameCenter/api/lgc_api.exe"
+        export PORTWINE_CREATE_SHORTCUT_NAME="Lesta Game Center"
+        try_remove_file "${PW_AUTOINSTALL_EXE}"
+        kill_portwine
+        portwine_create_shortcut
+    fi
+fi
+stop_portwine

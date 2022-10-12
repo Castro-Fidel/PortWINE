@@ -56,7 +56,7 @@ portwine_launch () {
     PORTWINE_BAT=$(basename "${portwine_exe}" | grep .bat)
     if [[ -n "${PW_VIRTUAL_DESKTOP}" && "${PW_VIRTUAL_DESKTOP}" == "1" ]] ; then
         pw_screen_resolution=$(xrandr --current | grep "*" | awk '{print $1;}' | head -1)
-        pw_run explorer "/desktop=portwine,${pw_screen_resolution}" ${WINE_WIN_START} "$portwine_exe"
+        pw_run explorer "/desktop=PortProton,${pw_screen_resolution}" ${WINE_WIN_START} "$portwine_exe"
     elif [ -n "${PORTWINE_MSI}" ]; then
         pw_run msiexec /i "$portwine_exe"
     elif [[ -n "${PORTWINE_BAT}" || -n "${portwine_exe}" ]] ; then
@@ -440,6 +440,14 @@ gui_credits () {
 export -f gui_credits
 
 ###MAIN###
+
+# HOTFIX WGC TO LGC
+if [[ ! -z "$(echo ${1} | grep wgc_api.exe)" ]] && [[ ! -f "${1}" ]] ; then
+    export PW_YAD_SET=PW_LGC
+    pw_autoinstall_from_db 
+    exit 0
+fi
+
 PW_PREFIX_NAME="$(echo "${PW_PREFIX_NAME}" | sed -e s/[[:blank:]]/_/g)"
 PW_ALL_PREFIXES=$(ls "${PORT_WINE_PATH}/data/prefixes/" | sed -e s/"${PW_PREFIX_NAME}$"//g)
 export PW_PREFIX_NAME PW_ALL_PREFIXES
@@ -650,6 +658,7 @@ else
     --field="   GoG Galaxy Launcher"!"$PW_GUI_ICON_PATH/gog.png"!"":"FBTN" '@bash -c "button_click PW_GOG"' \
     --field="   Ubisoft Game Launcher"!"$PW_GUI_ICON_PATH/ubc.png"!"":"FBTN" '@bash -c "button_click PW_UBC"' \
     --field="   EVE Online Launcher"!"$PW_GUI_ICON_PATH/eve.png"!"":"FBTN" '@bash -c "button_click PW_EVE"' \
+    --field="   Lesta Game Center"!"$PW_GUI_ICON_PATH/lgc.png"!"":"FBTN" '@bash -c "button_click PW_LGC"' \
     --field="   Origin Launcher"!"$PW_GUI_ICON_PATH/origin.png"!"":"FBTN" '@bash -c "button_click PW_ORIGIN"' \
     --field="   Rockstar Games Launcher"!"$PW_GUI_ICON_PATH/Rockstar.png"!"":"FBTN" '@bash -c "button_click PW_ROCKSTAR"' \
     --field="   vkPlay Games Center"!"$PW_GUI_ICON_PATH/mygames.png"!"":"FBTN" '@bash -c "button_click PW_VKPLAY"' \
