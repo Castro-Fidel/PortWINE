@@ -104,18 +104,24 @@ start_portwine () {
         var_vkd3d_config_update single_queue
     fi
 
-    if ! try_force_link_file "${WINEDIR}"/lib64/wine/fakedlls/winmm.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
-    then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/winmm.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
-    fi
+    enabled_fake_nvidia_videocard () 
+    {
+        if [[ "${1}" == 1 ]] ; then
+            sed -i /'dxgi.customDeviceId =/c dxgi.customDeviceId = 222F' "${DXVK_CONFIG_FILE}"
+            sed -i /'dxgi.customVendorId =/c dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
+        elif [[ "${1}" == 0 ]] ; then
+            sed -i /'dxgi.customDeviceId =/c # dxgi.customDeviceId = 222F' "${DXVK_CONFIG_FILE}"
+            sed -i /'dxgi.customVendorId =/c # dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
+        fi
+    }
+
     if [[ ! -z "${PW_USE_FAKE_DLSS}" && "${PW_USE_FAKE_DLSS}" == 1 && -d "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/" ]]
     then
         try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/" 
         try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.ini" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
-        sed -i /'dxgi.customDeviceId =/c dxgi.customDeviceId = 222F' "${DXVK_CONFIG_FILE}"
-        sed -i /'dxgi.customVendorId =/c dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
-        sed -i /'dxgi.nvapiHack =/c dxgi.nvapiHack = False' "${DXVK_CONFIG_FILE}"
+        enabled_fake_nvidia_videocard 1
         export DXVK_NVAPIHACK=0
-    elif [[ ! -z "${PW_USE_NVAPI_AND_DLSS}" && "${PW_USE_NVAPI_AND_DLSS}" == 1 && -d "${WINEDIR}/lib/wine/nvapi/" ]]
+    elif [[ ! -z "${PW_USE_NVAPI_AND_DLSS}" && "${PW_USE_NVAPI_AND_DLSS}" == 1 ]] && [[ -d "${WINEDIR}/lib/wine/nvapi/" ]]
     then
         try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x32/nvapi.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/"
         try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x64/nvapi64.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/" 
@@ -129,25 +135,13 @@ start_portwine () {
         try_force_link_file "${PW_PLUGINS_PATH}"/nvml/lib/wine/nvml.dll.so "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/nvml.dll"
         try_force_link_file "${PW_PLUGINS_PATH}"/nvml/lib64/wine/nvml.dll.so "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/nvml.dll"
         export DXVK_NVAPIHACK=0
-        sed -i /'dxgi.customDeviceId =/c # dxgi.customDeviceId = 222F' "${DXVK_CONFIG_FILE}"
-        sed -i /'dxgi.customVendorId =/c # dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
-        sed -i /'dxgi.nvapiHack =/c # dxgi.nvapiHack = False' "${DXVK_CONFIG_FILE}"
+        enabled_fake_nvidia_videocard 0
     else
         var_winedlloverride_update "nvapi,nvapi64,nvml,nvngx,nvcuda="
-        sed -i /'dxgi.customDeviceId =/c # dxgi.customDeviceId = 222F' "${DXVK_CONFIG_FILE}"
-        sed -i /'dxgi.customVendorId =/c # dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
-        sed -i /'dxgi.nvapiHack =/c # dxgi.nvapiHack = False' "${DXVK_CONFIG_FILE}"
-    fi
-    if [[ ! -z "${PW_WINEDBG_DISABLE}" && "${PW_WINEDBG_DISABLE}" != 0 ]] ; then
-        var_winedlloverride_update "winedbg.exe="
-    fi
-    if [[ ! -z "${PW_HIDE_NVIDIA_GPU}" && "${PW_HIDE_NVIDIA_GPU}" != 0 ]] ; then
-        export WINE_HIDE_NVIDIA_GPU="1"
+        enabled_fake_nvidia_videocard 0
         export DXVK_NVAPIHACK=1
-        sed -i /'dxgi.customDeviceId =/c # dxgi.customDeviceId = 222F' "${DXVK_CONFIG_FILE}"
-        sed -i /'dxgi.customVendorId =/c # dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
-        sed -i /'dxgi.nvapiHack =/c dxgi.nvapiHack = True' "${DXVK_CONFIG_FILE}"
     fi
+
     if [[ ! -z "${PW_PRIME_RENDER_OFFLOAD}" && "${PW_PRIME_RENDER_OFFLOAD}" != 0 ]] ; then
         export __NV_PRIME_RENDER_OFFLOAD=1
         check_nvidia_vk_icd_file
