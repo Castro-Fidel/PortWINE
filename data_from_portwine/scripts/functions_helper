@@ -527,14 +527,18 @@ kill_portwine () {
 export -f kill_portwine
 
 pw_kill_autostart () {
+    if [[ -z "${2}" ]]
+    then SWAIT=5
+    else SWAIT="${2}"
+    fi
     sleep 5
     
     while true ; do
         if  [[ -z "`ps aux | grep -m 1 "$1" | grep -v grep | awk '{print $2}'`" ]] && [[ ! -z "`ps aux | grep wrap | grep -v grep | grep -i ${portname} | head -n 1`" ]] ; then
             echo -e "PID "$1" not found"
-            sleep 5
+            sleep "${SWAIT}"
         else
-            sleep 5
+            sleep "${SWAIT}"
             kill_portwine 
             break
         fi

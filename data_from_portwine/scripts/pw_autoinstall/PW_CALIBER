@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Author: chal55rus
+########################################################################
+export PW_PREFIX_NAME="CALIBER"
+export LAUNCH_PARAMETERS=("/VERYSILENT")
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/CaliberSetup.exe"
+export PW_WINE_USE=PROTON_STEAM_6.3-8
+
+if [ ! -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ] ; then
+    if try_download "github.com/Castro-Fidel/wine_builds/releases/download/${PW_WINE_USE}/${PW_WINE_USE}.tar.xz" \
+    "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" ; then
+        if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
+            try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz"
+            UNPACK_STATUS=0
+        else
+            try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz"
+            try_remove_dir "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}"
+        fi
+    fi
+    [[ "${UNPACK_STATUS}" != 0 ]] && exit 1
+fi
+
+try_download_caliber () {
+    set -o pipefail
+    wget -t 5 -T 3 "$1" --no-check-certificate --output-document="$2" 2>&1 | \
+    tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
+    "${pw_yad_new}" --center --progress --percentage=0 --title="Download $(basename $1)" --text=Starting... --auto-close --auto-kill --width=500 --height=90
+    [ "${PIPESTATUS[0]}" != 0 ] && print_error "failed to download $1. Scipping." && return 1 || return 0
+}
+
+start_portwine
+if try_download_caliber "https://cdn.playcaliber.com/p1/a88c3b70f76a0e56b1e08b62c9895cfe/launcher/setup/CaliberSetup.exe" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_start_progress_bar_block "Installing the CALIBER. Please wait..."
+    pw_kill_autostart VC_redist.x64.exe 3 &
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/1C Game Studios/Caliber/Launcher.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    kill_portwine
+    pw_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="CALIBER"
+    portwine_create_shortcut
+fi
+stop_portwine
