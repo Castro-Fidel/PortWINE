@@ -233,10 +233,37 @@ pw_clear_pfx () {
     try_remove_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/Program Files (x86)/Common Files"
     try_remove_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/Program Files (x86)/Windows Media Player"
     try_remove_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/Program Files (x86)/Windows NT"
-    try_remove_dir "${PORT_WINE_TMP_PATH}/mesa_shader_cache"
     rm -f "${PORT_WINE_TMP_PATH}"/*.bin
     rm -f "${PORT_WINE_TMP_PATH}"/*.foz
     return 0
+}
+
+pw_reinstall_pp () {
+    if [[ "${PW_REINSTALL_FROM_TERMINAL}" == 1 ]] ; then
+        read -p "Do you want to reinstall PortProton? (Y,y - Yes):   " -n 1 -r
+        if [[ ! $REPLY =~ ^[Yy]$ ]]
+        then
+            echo
+            exit 1
+        fi
+    elif ! gui_question "${port_reinstall}" 
+    then exit 1
+    fi
+    pw_clear_pfx
+    try_remove_dir "${PORT_WINE_PATH}/data/dist"
+    try_remove_dir "${PORT_WINE_TMP_PATH}/mesa_shader_cache"
+    try_remove_dir "${PORT_WINE_TMP_PATH}/vkd3d_cache"
+    try_remove_dir "${PORT_WINE_TMP_PATH}/dxvk_cache"
+    try_remove_dir "${PORT_WINE_TMP_PATH}/gl_shader_cache"
+    try_remove_dir "${PORT_WINE_TMP_PATH}/mono"
+    try_remove_dir "${PORT_WINE_TMP_PATH}/gecko"
+    try_remove_file "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
+    try_remove_file "${PORT_WINE_PATH}/data/user.conf"
+    echo 1000 > "${PORT_WINE_TMP_PATH}/scripts_ver"
+    echo
+    echo "Restarting PP for reinstall files..."
+    /usr/bin/env bash -c ${pw_full_command_line[*]} &
+    exit 0
 }
 
 check_user_conf () {

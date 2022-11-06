@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Author: linux-gaming.ru
+clear
 export NO_AT_BRIDGE=1
 export pw_full_command_line=("$0" $*)
 if [ -f "$1" ]; then
@@ -442,7 +443,7 @@ export -f gui_credits
 ###MAIN###
 
 # HOTFIX WGC TO LGC
-if [[ ! -z "$(echo ${1} | grep wgc_api.exe)" ]] && [[ ! -f "${1}" ]] ; then
+if [[ ! -z "$(echo ${1} | grep 'wgc_api.exe')" ]] && [[ ! -f "${1}" ]] ; then
     export PW_YAD_SET=PW_LGC
     pw_autoinstall_from_db 
     exit 0
@@ -452,6 +453,30 @@ fi
 if [[ ! -z "$(echo ${1} | grep '/Caliber/')" ]] ; then
     export PW_WINE_USE=PROTON_STEAM_6.3-8
 fi
+
+# HOTFIX BATTLE.NET
+
+if [[ ! -z "$(echo ${1} | grep 'Battle.net')" ]] ; then
+    export PW_WINE_USE="$PW_PROTON_LG_VER"
+#     RUN_SETFATTR="${PW_WINELIB}/portable/bin/setfattr"
+#     if [[ -f "${RUN_SETFATTR}" ]] ; then
+#         "${RUN_SETFATTR}" -x user.DOSATTRIB "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/Program Files (x86)/Battle.net/Battle.net."*"/platforms/qwindows.dll" 2>/dev/null
+#     fi
+fi
+
+case "${1}" in
+    '--help' )
+        echo '
+usege: [--reinstall]'
+        echo '
+--reinstall                  reinstall portproton to default settings
+'
+        exit 0 ;;
+
+    '--reinstall' )
+        export PW_REINSTALL_FROM_TERMINAL=1
+        pw_reinstall_pp ;;
+esac
 
 PW_PREFIX_NAME="$(echo "${PW_PREFIX_NAME}" | sed -e s/[[:blank:]]/_/g)"
 PW_ALL_PREFIXES=$(ls "${PORT_WINE_PATH}/data/prefixes/" | sed -e s/"${PW_PREFIX_NAME}$"//g)
@@ -620,6 +645,7 @@ else
 
     export KEY=$RANDOM
     "${pw_yad_new}" --plug=${KEY} --tabnum=4 --columns=3 --align-buttons --form --separator=";" \
+    --field="   $loc_gui_pw_reinstall_pp"!""!"":"FBTN" '@bash -c "button_click gui_pw_reinstall_pp"' \
     --field="   $loc_gui_rm_pp"!""!"":"FBTN" '@bash -c "button_click gui_rm_portproton"' \
     --field="   $loc_gui_upd_pp"!""!"":"FBTN" '@bash -c "button_click gui_pw_update"' \
     --field="   $loc_gui_changelog"!""!"":"FBTN" '@bash -c "button_click open_changelog"' \
@@ -745,6 +771,7 @@ case "$PW_YAD_SET" in
     gui_open_user_conf) gui_open_user_conf ;;
     gui_wine_uninstaller) gui_wine_uninstaller ;;
     gui_rm_portproton) gui_rm_portproton ;;
+    gui_pw_reinstall_pp) pw_reinstall_pp ;;
     gui_pw_update) gui_pw_update ;;
     gui_proton_downloader) gui_proton_downloader ;;
     gui_open_scripts_from_backup) gui_open_scripts_from_backup ;;
