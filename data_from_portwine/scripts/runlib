@@ -204,7 +204,6 @@ start_portwine () {
         export vblank_mode=1
         export __GL_SYNC_TO_VBLANK=1 ;;
     esac
-    create_new_dir "${PORT_WINE_TMP_PATH}"/gl_shader_cache
     export int_xneur=0
     if [[ ! -z "`pgrep xneur`" ]]; then
         killall xneur
@@ -351,6 +350,10 @@ start_portwine () {
         fi
     done
 
+    create_new_dir "${PW_VULKAN_DIR}/opengl"
+    PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/opengl"
+    PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/opengl"
+    
     if [[ "${PW_VULKAN_USE}" == "0" ]] ; then
         echo "Use OpenGL"
         export GL_YIELD="NOTHING"
@@ -397,33 +400,45 @@ start_portwine () {
         #     export DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1=1
         #     print_info "Try to use RADV driver (only with MESA)"
         # fi
-        # export VKD3D_FEATURE_LEVEL="12_0"
-        # export __GL_DXVK_OPTIMIZATIONS=1
-        # var_vkd3d_config_update no_upload_hvv
-        if [[ "${PW_USE_WINE_DXGI}" == 1 ]] || [[ "${PW_VULKAN_USE}" == 2 ]]; then 
-            export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxvk_config openvr_api_dxvk"
+        if [[ "${PW_USE_WINE_DXGI}" == 1 ]] ; then 
+            export CP_DXVK_FILES="d3d11 d3d10core d3d9"  # dxvk_config openvr_api_dxvk
             var_winedlloverride_update "d3d11,d3d10core,d3d9=n"
         else
-            export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi dxvk_config openvr_api_dxvk"
+            export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi" # dxvk_config openvr_api_dxvk
             var_winedlloverride_update "d3d11,d3d10core,d3d9,dxgi=n"
         fi
+
+        if [[ "${PW_VULKAN_USE}" == "1" ]] ; then
+            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
+            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
+            echo "DXVK v.${DXVK_STABLE_VER} in use"
+            echo "VKD3D-PROTON v.${VKD3D_STABLE_VER} in use"
+        elif [[ "${PW_VULKAN_USE}" == "2" ]] ; then
+            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}"
+            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
+            echo "DXVK v.${DXVK_GIT_VER} in use"
+            echo "VKD3D-PROTON v.${VKD3D_GIT_VER} in use"
+        fi
+
         echo "Try link native DXVK files..."
         for wine_dxvk_dll in ${CP_DXVK_FILES} ; do
-            try_force_link_file "${WINEDIR}/lib/wine/dxvk/${wine_dxvk_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
-            try_force_link_file "${WINEDIR}/lib64/wine/dxvk/${wine_dxvk_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
-        done        
+            try_force_link_file "${PATH_TO_DXVK_FILES}/x32/${wine_dxvk_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
+            try_force_link_file "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
+        done
+
         echo "Try link native VKD3D files..."
-        try_force_link_file "${WINEDIR}/lib/vkd3d/libvkd3d-shader-1.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/libvkd3d-shader-1.dll"
-        try_force_link_file "${WINEDIR}/lib64/vkd3d/libvkd3d-shader-1.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/libvkd3d-shader-1.dll"
-        for wine_vkd3d_dll in d3d12 libvkd3d-proton-utils-3 ; do
-            try_force_link_file "${WINEDIR}/lib/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
-            try_force_link_file "${WINEDIR}/lib64/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
+        # try_force_link_file "${WINEDIR}/lib/vkd3d/libvkd3d-shader-1.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/libvkd3d-shader-1.dll"
+        # try_force_link_file "${WINEDIR}/lib64/vkd3d/libvkd3d-shader-1.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/libvkd3d-shader-1.dll"
+        for wine_vkd3d_dll in d3d12 # libvkd3d-proton-utils-3 
+        do
+            try_force_link_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
+            try_force_link_file "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
         done
     fi
-
+     
     if [[ ! -z "${PW_DX12_DISABLE}" && "${PW_DX12_DISABLE}" != 0 ]]  
-    then var_winedlloverride_update "libvkd3d-proton-utils-3,libvkd3d-shader-1=n;d3d12="
-    else var_winedlloverride_update "d3d12,libvkd3d-proton-utils-3,libvkd3d-shader-1=n"
+    then var_winedlloverride_update "d3d12=" # libvkd3d-proton-utils-3,libvkd3d-shader-1;
+    else var_winedlloverride_update "d3d12=n" # libvkd3d-proton-utils-3,libvkd3d-shader-1=n
     fi
 
     if [[ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/vrclient/bin" ]] ; then
@@ -436,18 +451,22 @@ start_portwine () {
         fi
     fi
 
+    try_remove_dir "${PORT_WINE_TMP_PATH}/mesa_shader_cache"
+    try_remove_dir "${PORT_WINE_TMP_PATH}/vkd3d_cache"
+    try_remove_dir "${PORT_WINE_TMP_PATH}/dxvk_cache"
+    try_remove_dir "${PORT_WINE_TMP_PATH}/gl_shader_cache"
+ 
     if [[ "${PW_USE_SHADER_CACHE}" == 1 ]] ; then
-        export MESA_SHADER_CACHE_DIR="${PORT_WINE_TMP_PATH}"
-        create_new_dir "${PORT_WINE_TMP_PATH}/gl_shader_cache"
+        create_new_dir "${PATH_TO_DXVK_FILES}/gl_shader_cache"
         export __GL_SHADER_DISK_CACHE=1
         export __GL_SHADER_DISK_CACHE_PATH="${PORT_WINE_TMP_PATH}/gl_shader_cache"
-        export __GL_SHADER_DISK_CACHE_SIZE=1000000000
-        create_new_dir "${PORT_WINE_TMP_PATH}/dxvk_cache"
-        export DXVK_STATE_CACHE_PATH="${PORT_WINE_TMP_PATH}"/dxvk_cache
+        export __GL_SHADER_DISK_CACHE_SIZE=50000000000
+        export __GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1
+        create_new_dir "${PATH_TO_DXVK_FILES}/dxvk_cache"
+        export DXVK_STATE_CACHE_PATH="${PATH_TO_DXVK_FILES}"/dxvk_cache
         export DXVK_STATE_CACHE=1
-        create_new_dir "${PORT_WINE_TMP_PATH}/vkd3d_cache"
-        export VKD3D_SHADER_CACHE_PATH="${PORT_WINE_TMP_PATH}/vkd3d_cache"
-        # var_vkd3d_config_update pipeline_library_apw_cache
+        create_new_dir "${PATH_TO_VKD3D_FILES}/vkd3d_cache"
+        export VKD3D_SHADER_CACHE_PATH="${PATH_TO_VKD3D_FILES}/vkd3d_cache"
     else
         export __GL_SHADER_DISK_CACHE=0
         export DXVK_STATE_CACHE=0
@@ -549,7 +568,7 @@ pw_run () {
     pw_vkbasalt_check
     PW_LOG_TO_FILE="${PORT_WINE_PATH}/${portname}.log"
     print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VKD3D_CONFIG" \
-    "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2"
+    "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2" "WINEDLLPATH"
     if [[ "${PW_LOG}" == 1 ]] ; then
         echo "WINEDLLOVERRIDES=${WINEDLLOVERRIDES}" >> "${PW_LOG_TO_FILE}"
         echo "------------------------------------" >> "${PW_LOG_TO_FILE}"
@@ -634,6 +653,9 @@ IFS="$orig_IFS"
 create_new_dir "${PORT_WINE_TMP_PATH}"/gecko
 create_new_dir "${PORT_WINE_TMP_PATH}"/mono
 
+export PW_VULKAN_DIR="${PORT_WINE_TMP_PATH}/VULKAN"
+create_new_dir "${PW_VULKAN_DIR}"
+
 cd "${PORT_SCRIPTS_PATH}"
 . "${PORT_SCRIPTS_PATH}/var"
 
@@ -666,6 +688,7 @@ if [[ -z "${INSTALLING_PORT}" ]] ; then
     pw_download_libs
     pw_check_and_download_wine ${PW_PROTON_LG_VER}
     pw_check_and_download_plugins
+    pw_check_and_download_dxvk_and_vkd3d
     pw_init_db
     . "${USER_CONF}"
 fi

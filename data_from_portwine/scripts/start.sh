@@ -96,7 +96,7 @@ portwine_start_debug () {
     echo $(ldd --version | grep -m1 ldd | awk '{print $NF}') >> "${PORT_WINE_PATH}/${portname}.log"
     echo "--------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     if [[ "${PW_VULKAN_USE}" = "0" ]] ; then 
-        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DX9-11 to OpenGL" >> "${PORT_WINE_PATH}/${portname}.log"
+        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DX9-11 to ${loc_gui_open_gl}" >> "${PORT_WINE_PATH}/${portname}.log"
     elif [[ "${PW_VULKAN_USE}" = "3" ]] ; then 
         echo "PW_VULKAN_USE=${PW_VULKAN_USE} - native DX9 on MESA drivers" >> "${PORT_WINE_PATH}/${portname}.log"
     else 
@@ -407,7 +407,7 @@ pw_edit_db () {
     PW_MANGOHUD PW_MANGOHUD_USER_CONF ENABLE_VKBASALT PW_NO_ESYNC PW_NO_FSYNC PW_USE_DXR10 PW_USE_DXR11 PW_USE_NVAPI_AND_DLSS \
     PW_USE_FAKE_DLSS PW_WINE_FULLSCREEN_FSR PW_OLD_GL_STRING PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL \
     PW_HEAP_DELAY_FREE PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_DX12_DISABLE PW_PRIME_RENDER_OFFLOAD PW_USE_D3D_EXTRAS \
-    PW_FIX_VIDEO_IN_GAME PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE 
+    PW_FIX_VIDEO_IN_GAME PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE PW_USE_WINE_DXGI
     if [ "$?" == 0 ] ; then
         echo "Restarting PP after update ppdb file..."
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
@@ -467,8 +467,8 @@ fi
 case "${1}" in
     '--help' )
         echo '
-usege: [--reinstall]'
-        echo '
+usege: [--reinstall]
+
 --reinstall                  reinstall portproton to default settings
 '
         exit 0 ;;
@@ -503,16 +503,16 @@ do
     export DIST_ADD_TO_GUI="${DIST_ADD_TO_GUI}!${DAIG}"
 done
 if [[ -n "${PORTWINE_DB_FILE}" ]] ; then
-    [[ -z "${PW_COMMENT_DB}" ]] && PW_COMMENT_DB="PortWINE database file for "\"${PORTWINE_DB}"\" was found."
+    [[ -z "${PW_COMMENT_DB}" ]] && PW_COMMENT_DB="${loc_gui_db_comments} <b>${PORTWINE_DB}</b>."
     if [[ -z "${PW_VULKAN_USE}" || -z "${PW_WINE_USE}" ]] ; then
         unset PW_GUI_DISABLED_CS
         [[ -z "${PW_VULKAN_USE}" ]] && export PW_VULKAN_USE=1
     fi
     case "${PW_VULKAN_USE}" in
-            "0") export PW_DEFAULT_VULKAN_USE='OPENGL!VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!GALLIUM_NINE (native DX9 on MESA)' ;;
-            "2") export PW_DEFAULT_VULKAN_USE='VULKAN (WINE DXGI)!VULKAN (DXVK and VKD3D)!OPENGL!GALLIUM_NINE (native DX9 on MESA)' ;;
-            "3") export PW_DEFAULT_VULKAN_USE='GALLIUM_NINE (native DX9 on MESA)!VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL' ;;
-              *) export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL!GALLIUM_NINE (native DX9 on MESA)' ;;
+            "0") export PW_DEFAULT_VULKAN_USE="${loc_gui_open_gl}!${loc_gui_vulkan_stable}!${loc_gui_vulkan_git}!${loc_gui_gallium_nine}" ;;
+            "2") export PW_DEFAULT_VULKAN_USE="${loc_gui_vulkan_git}!${loc_gui_vulkan_stable}!${loc_gui_open_gl}!${loc_gui_gallium_nine}" ;;
+            "3") export PW_DEFAULT_VULKAN_USE="${loc_gui_gallium_nine}!${loc_gui_vulkan_stable}!${loc_gui_vulkan_git}!${loc_gui_open_gl}" ;;
+              *) export PW_DEFAULT_VULKAN_USE="${loc_gui_vulkan_stable}!${loc_gui_vulkan_git}!${loc_gui_open_gl}!${loc_gui_gallium_nine}" ;;
     esac
     if [[ -n $(echo "${PW_WINE_USE}" | grep "^PROTON_LG$") ]] ; then
         export PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
@@ -529,7 +529,7 @@ if [[ -n "${PORTWINE_DB_FILE}" ]] ; then
         fi
     fi
 else
-    export PW_DEFAULT_VULKAN_USE='VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL!GALLIUM_NINE (native DX9 on MESA)'
+    export PW_DEFAULT_VULKAN_USE="${loc_gui_vulkan_stable}!${loc_gui_vulkan_git}!${loc_gui_open_gl}!${loc_gui_gallium_nine}"
     if [[ -n $(echo "${PW_WINE_USE}" | grep "^PROTON_LG$") ]] ; then
         export PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
     elif [[ -n $(echo "${PW_WINE_USE}" | grep "^PROTON_GE$") ]] ; then
@@ -551,9 +551,9 @@ if [ -n "${portwine_exe}" ]; then
         pw_create_gui_png
         grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop
         if [[ "$?" != "0" ]] ; then
-            PW_SHORTCUT="CREATE SHORTCUT!!${loc_create_shortcut}:100"
+            PW_SHORTCUT="${loc_gui_create_shortcut}!!${loc_create_shortcut}:100"
         else
-            PW_SHORTCUT="DELETE SHORTCUT!!${loc_delete_shortcut}:98"
+            PW_SHORTCUT="${loc_gui_delete_shortcut}!!${loc_delete_shortcut}:98"
         fi
         OUTPUT_START=$("${pw_yad}" --text-align=center --text "$PW_COMMENT_DB" --wrap-width=150 --borders=7 --form --center  \
         --title "${portname}-${install_ver} (${scripts_install_ver})"  --image "${PW_ICON_FOR_YAD}" --separator=";" \
@@ -562,11 +562,11 @@ if [ -n "${portwine_exe}" ]; then
         --field="  WINE  : :CB" "${PW_DEFAULT_WINE_USE}" \
         --field="PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
         --field=":LBL" "" \
-        --button='VKBASALT'!!"${ENABLE_VKBASALT_INFO}":120 \
-        --button='EDIT  DB'!!"${loc_edit_db} ${PORTWINE_DB}":118 \
+        --button="${loc_gui_vkbasalt_start}"!!"${ENABLE_VKBASALT_INFO}":120 \
+        --button="${loc_gui_edit_db_start}"!!"${loc_edit_db} ${PORTWINE_DB}":118 \
         --button="${PW_SHORTCUT}" \
-        --button='DEBUG'!!"${loc_debug}":102 \
-        --button='LAUNCH'!!"${loc_launch}":106 )
+        --button="${loc_gui_debug}"!!"${loc_debug}":102 \
+        --button="${loc_gui_launch}"!!"${loc_launch}":106 )
         export PW_YAD_SET="$?"
         if [[ "$PW_YAD_SET" == "1" || "$PW_YAD_SET" == "252" ]] ; then exit 0 ; fi
         export VULKAN_MOD=$(echo "${OUTPUT_START}" | grep \;\; | awk -F";" '{print $1}')
@@ -655,7 +655,7 @@ else
     --field="   $loc_gui_credits"!""!"":"FBTN" '@bash -c "button_click gui_credits"' &
 
     "${pw_yad_new}" --plug=${KEY} --tabnum=3 --columns=3 --align-buttons --form --separator=";" \
-    --field="  3D API  : :CB" "VULKAN (DXVK and VKD3D)!VULKAN (WINE DXGI)!OPENGL!GALLIUM_NINE (native DX9 on MESA)" \
+    --field="  3D API  : :CB" "${loc_gui_vulkan_stable}!${loc_gui_vulkan_git}!${loc_gui_open_gl}!${loc_gui_gallium_nine}" \
     --field="  PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
     --field="  WINE    : :CB" "${PW_DEFAULT_WINE_USE}" \
     --field="                    DOWNLOAD OTHER WINE "!"${loc_download_other_wine}":"FBTN" '@bash -c "button_click gui_proton_downloader"' \
@@ -690,7 +690,7 @@ else
     --field="   Ubisoft Game Launcher"!"$PW_GUI_ICON_PATH/ubc.png"!"":"FBTN" '@bash -c "button_click PW_UBC"' \
     --field="   EVE Online Launcher"!"$PW_GUI_ICON_PATH/eve.png"!"":"FBTN" '@bash -c "button_click PW_EVE"' \
     --field="   Lesta Game Center"!"$PW_GUI_ICON_PATH/lgc.png"!"":"FBTN" '@bash -c "button_click PW_LGC"' \
-    --field="   Origin Launcher"!"$PW_GUI_ICON_PATH/origin.png"!"":"FBTN" '@bash -c "button_click PW_ORIGIN"' \
+    --field="   EA Launcher (Origin)"!"$PW_GUI_ICON_PATH/eaapp.png"!"":"FBTN" '@bash -c "button_click PW_EAAPP"' \
     --field="   Rockstar Games Launcher"!"$PW_GUI_ICON_PATH/Rockstar.png"!"":"FBTN" '@bash -c "button_click PW_ROCKSTAR"' \
     --field="   vkPlay Games Center"!"$PW_GUI_ICON_PATH/mygames.png"!"":"FBTN" '@bash -c "button_click PW_VKPLAY"' \
     --field="   Ankama Launcher"!"$PW_GUI_ICON_PATH/ankama.png"!"":"FBTN" '@bash -c "button_click PW_ANKAMA"' \
@@ -706,7 +706,11 @@ else
 
     "${pw_yad_new}" --key=$KEY --notebook --borders=5 --width=900 --height=235 --no-buttons --auto-close --center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "${portname}-${install_ver} (${scripts_install_ver})" \
-    --tab-pos=bottom --tab=" $loc_mg_autoinstall"!""!"" --tab=" $loc_mg_emulators"!""!"" --tab=" $loc_mg_wine_settings"!""!"" --tab=" $loc_mg_portproton_settings"!""!""
+    --tab-pos=bottom \
+    --tab=" $loc_mg_autoinstall"!!"" \
+    --tab=" $loc_mg_emulators"!!"" \
+    --tab=" $loc_mg_wine_settings"!!"" \
+    --tab=" $loc_mg_portproton_settings"!!""
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
 
@@ -728,13 +732,13 @@ else
     export PW_DISABLED_CREATE_DB=1
 fi
 
-if [[ -n "${VULKAN_MOD}" && "${VULKAN_MOD}" = "OPENGL" ]] 
+if [[ -n "${VULKAN_MOD}" && "${VULKAN_MOD}" = "${loc_gui_open_gl}" ]] 
 then export PW_VULKAN_USE="0"
-elif [[ -n "${VULKAN_MOD}" && "${VULKAN_MOD}" = "VULKAN (DXVK and VKD3D)" ]] 
+elif [[ -n "${VULKAN_MOD}" && "${VULKAN_MOD}" = "${loc_gui_vulkan_stable}" ]] 
 then export PW_VULKAN_USE="1"
-elif [[ -n "${VULKAN_MOD}" && "${VULKAN_MOD}" = "VULKAN (WINE DXGI)" ]] 
+elif [[ -n "${VULKAN_MOD}" && "${VULKAN_MOD}" = "${loc_gui_vulkan_git}" ]] 
 then export PW_VULKAN_USE="2"
-elif [[ -n "${VULKAN_MOD}" && "${VULKAN_MOD}" = "GALLIUM_NINE (native DX9 on MESA)" ]] 
+elif [[ -n "${VULKAN_MOD}" && "${VULKAN_MOD}" = "${loc_gui_gallium_nine}" ]] 
 then export PW_VULKAN_USE="3"
 fi
 

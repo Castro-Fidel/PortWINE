@@ -183,6 +183,13 @@ var_vk_istance_layers_config_update () {
     return 0
 }
 
+
+unpack_tar_zst () {
+    set -o pipefail
+    tar -I zstd -xvf "$1" -C "$2" | sszen
+    [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
+}
+
 unpack_tar_xz () {
     set -o pipefail
     tar -Jxvf "$1" -C "$2" | sszen
@@ -251,12 +258,7 @@ pw_reinstall_pp () {
     fi
     pw_clear_pfx
     try_remove_dir "${PORT_WINE_PATH}/data/dist"
-    try_remove_dir "${PORT_WINE_TMP_PATH}/mesa_shader_cache"
-    try_remove_dir "${PORT_WINE_TMP_PATH}/vkd3d_cache"
-    try_remove_dir "${PORT_WINE_TMP_PATH}/dxvk_cache"
-    try_remove_dir "${PORT_WINE_TMP_PATH}/gl_shader_cache"
-    try_remove_dir "${PORT_WINE_TMP_PATH}/mono"
-    try_remove_dir "${PORT_WINE_TMP_PATH}/gecko"
+    try_remove_dir "${PORT_WINE_TMP_PATH}/VULKAN"
     try_remove_file "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     try_remove_file "${PORT_WINE_PATH}/data/user.conf"
     echo 1000 > "${PORT_WINE_TMP_PATH}/scripts_ver"
@@ -336,13 +338,6 @@ init_wine_ver () {
         try_remove_file "${WINEDIR}/lib/libsteam_api.so"
         try_remove_file "${WINEDIR}/lib64/libsteam_api.so"
         
-        for copy_proton_dll in "dxvk" "vkd3d-proton" ; do
-            if [[ ! -d "${WINEDIR}/lib/wine/${copy_proton_dll}/" || ! -d "${WINEDIR}/lib64/wine/${copy_proton_dll}/" ]] ; then
-                try_copy_dir "${PORT_WINE_PATH}/data/dist/${PW_PROTON_LG_VER}/lib/wine/${copy_proton_dll}" "${WINEDIR}/lib/wine/"
-                try_copy_dir "${PORT_WINE_PATH}/data/dist/${PW_PROTON_LG_VER}/lib64/wine/${copy_proton_dll}" "${WINEDIR}/lib64/wine/"
-            fi
-        done
-        
         for mono_gecko_chk in "mono" "gecko" ; do
             if check_symlink "${WINEDIR}/share/wine/${mono_gecko_chk}" ; then
                 echo "${WINEDIR}/share/wine/${mono_gecko_chk} is symlink. OK."
@@ -358,7 +353,7 @@ init_wine_ver () {
             fi
         done
 
-        grep 'Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' "${WINEDIR}/share/wine/wine.inf"
+        grep 'Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' "${WINEDIR}/share/wine/wine.inf" &> /dev/null
         if [[ "$?" != "0" ]] ; then
             echo 'HKLM,Software\NVIDIA Corporation\Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
             echo 'HKLM,System\ControlSet001\Services\nvlddmkm,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
@@ -665,6 +660,47 @@ pw_check_and_download_wine () {
             zenity_error_download && pw_check_and_download_wine
         fi
     fi
+    return 0
+}
+
+pw_check_and_download_dxvk_and_vkd3d () {
+    #Download stable and git version DXVK
+    for DXVK_VAR_VER in "${DXVK_STABLE_VER}" "${DXVK_GIT_VER}" ; do
+        if [ ! -d "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}" ] ; then
+            print_info "Download and install DXVK v.${DXVK_VAR_VER}"
+            if try_download "https://github.com/doitsujin/dxvk/releases/download/v${DXVK_VAR_VER}/dxvk-${DXVK_VAR_VER}.tar.gz" "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz" ; then
+                if unpack_tar_gz "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz" "${PW_VULKAN_DIR}" ; then
+                    try_remove_file "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz"
+                else
+                    try_remove_file "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz"
+                    try_remove_dir dxvk-${DXVK_VAR_VER}
+
+                    zenity_error_download && pw_check_and_download_dxvk_and_vkd3d
+                fi
+            else
+                zenity_error_download && pw_check_and_download_dxvk_and_vkd3d
+            fi
+        fi
+    done
+
+    #Download stamle and git version VKD3D
+    for VKD3D_VAR_VER in "${VKD3D_STABLE_VER}" "${VKD3D_GIT_VER}" ; do
+        if [ ! -d "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}" ] ; then
+            print_info "Download and install VKD3D-PROTON v.${VKD3D_VAR_VER}"
+            if try_download "https://github.com/HansKristian-Work/vkd3d-proton/releases/download/v${VKD3D_VAR_VER}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" ; then
+                if unpack_tar_zst "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" "${PW_VULKAN_DIR}" ; then
+                    try_remove_file "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst"
+                else
+                    try_remove_file "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst"
+                    try_remove_dir vkd3d-proton-${VKD3D_VAR_VER}
+
+                    zenity_error_download && pw_check_and_download_dxvk_and_vkd3d
+                fi
+            else
+                zenity_error_download && pw_check_and_download_dxvk_and_vkd3d
+            fi
+        fi
+    done
     return 0
 }
 
