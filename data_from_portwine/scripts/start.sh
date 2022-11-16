@@ -698,8 +698,10 @@ else
     --field="   League of Legends"!"$PW_GUI_ICON_PATH/lol.png"!"":"FBTN" '@bash -c "button_click PW_LOL"' \
     --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png"!"":"FBTN" '@bash -c "button_click  PW_GAMEFORGE"' \
     --field="   World of Sea Battle (BETA)"!"$PW_GUI_ICON_PATH/wosb.png"!"":"FBTN" '@bash -c "button_click PW_WOSB"' \
-    --field="   CALIBER"!"$PW_GUI_ICON_PATH/caliber.png"!"":"FBTN" '@bash -c "button_click PW_CALIBER"' \
-    --field="   ITCH.IO"!"$PW_GUI_ICON_PATH/itch.png"!"":"FBTN" '@bash -c "button_click PW_ITCH"' & 
+    --field="    CALIBER"!"$PW_GUI_ICON_PATH/caliber.png"!"":"FBTN" '@bash -c "button_click PW_CALIBER"' \
+    --field="    FULQRUM GAMES"!"$PW_GUI_ICON_PATH/fulqrumgames.png"!"":"FBTN" '@bash -c "button_click PW_FULQRUM_GAMES"' \
+    --field=" Plarium Play"!"$PW_GUI_ICON_PATH/plariumplay.png"!"":"FBTN" '@bash -c "button_click PW_PLARIUM_PLAY"' \
+    --field="    ITCH.IO"!"$PW_GUI_ICON_PATH/itch.png"!"":"FBTN" '@bash -c "button_click PW_ITCH"' & 
 
     # --field="   Steam Client Launcher"!"$PW_GUI_ICON_PATH/steam.png"!"":"FBTN" '@bash -c "button_click PW_STEAM"'
     # --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"'
@@ -732,15 +734,12 @@ else
     export PW_DISABLED_CREATE_DB=1
 fi
 
-if [[ -n "${VULKAN_MOD}" && "${VULKAN_MOD}" = "${loc_gui_open_gl}" ]] 
-then export PW_VULKAN_USE="0"
-elif [[ -n "${VULKAN_MOD}" && "${VULKAN_MOD}" = "${loc_gui_vulkan_stable}" ]] 
-then export PW_VULKAN_USE="1"
-elif [[ -n "${VULKAN_MOD}" && "${VULKAN_MOD}" = "${loc_gui_vulkan_git}" ]] 
-then export PW_VULKAN_USE="2"
-elif [[ -n "${VULKAN_MOD}" && "${VULKAN_MOD}" = "${loc_gui_gallium_nine}" ]] 
-then export PW_VULKAN_USE="3"
-fi
+case "${VULKAN_MOD}" in
+    "${loc_gui_open_gl}" )          export PW_VULKAN_USE="0" ;;
+    "${loc_gui_vulkan_stable}" )    export PW_VULKAN_USE="1" ;;
+    "${loc_gui_vulkan_git}" )       export PW_VULKAN_USE="2" ;;
+    "${loc_gui_gallium_nine}" )     export PW_VULKAN_USE="3" ;;
+esac
 
 init_wine_ver
 

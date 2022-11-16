@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Author: chal55rus (Sergey P.)
+########################################################################
+export PW_PREFIX_NAME=DOTNET
+export LAUNCH_PARAMETERS=("/s" )
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/plarium_play_setup.exe"
+start_portwine
+if try_download "https://plarium.com/services/api/downloads/desktop?lid=1&arc=64&os=windows" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_start_progress_bar_block "${loc_gui_installing_the} Plarium Play. ${loc_gui_please_wait}"
+    pw_kill_autostart PlariumPlay.exe &
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/users/steamuser/AppData/Local/PlariumPlay/PlariumPlay.exe" 
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    kill_portwine
+    pw_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="Plarium Play"
+    portwine_create_shortcut
+fi
+stop_portwine

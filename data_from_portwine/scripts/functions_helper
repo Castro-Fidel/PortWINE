@@ -103,19 +103,28 @@ check_process () {
 export -f check_process
 
 try_download () {
+    PW_DOWNLOAD_FILE_NAME="$(basename $1)"
     set -o pipefail
-    wget -O "$2" --read-timeout 300 --retry-connrefused --timeout 15 --tries 3 \
-    --user-agent="Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" "$1" 2>&1 | \
+    wget -O "$2" --read-timeout 300 --retry-connrefused --timeout 15 --tries 2 \
+    --user-agent="Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" "${1}" 2>&1 | \
     tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
-    zenity --progress --percentage=0 --title="Download $(basename $1)" --text=Starting... --auto-close --width=500 --height=90
+    zenity --progress --percentage=0 --title="Download ${PW_DOWNLOAD_FILE_NAME}" --text=Starting... --auto-close --width=500 --height=90
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
-        print_error "Failed to download $1."
+        print_error "Failed to download ${PW_DOWNLOAD_FILE_NAME} from GitHub."
+        print_info "Try download ${PW_DOWNLOAD_FILE_NAME} from FTP"
         try_remove_file "$2"
-        return 1 
-    else
-        return 0
+        wget -O "$2" --read-timeout 300 --retry-connrefused --timeout 15 --tries 2 \
+        --user-agent="Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" --ftp-user=anonymous "ftp://171.22.215.18/archives/${PW_DOWNLOAD_FILE_NAME}" 2>&1 | \
+        tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
+        zenity --progress --percentage=0 --title="Download ${PW_DOWNLOAD_FILE_NAME}" --text=Starting... --auto-close --width=500 --height=90
+        if [ "${PIPESTATUS[0]}" != 0 ] ; then
+            print_error "Failed to download ${PW_DOWNLOAD_FILE_NAME} from FTP."
+            try_remove_file "$2"
+            return 1   
+        fi
     fi
     try_remove_file "${PORT_WINE_TMP_PATH}/download_log"
+    return 0
 }
 
 try_download_to_path () {
@@ -183,11 +192,16 @@ var_vk_istance_layers_config_update () {
     return 0
 }
 
-
 unpack_tar_zst () {
     set -o pipefail
-    tar -I zstd -xvf "$1" -C "$2" | sszen
-    [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
+    unset PW_ZSTD_PORT
+    if  [[ `which zstd` ]] &>/dev/null ; then
+        tar -I zstd -xvf "$1" -C "$2" | sszen
+        [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
+    else
+        env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_WINELIB}/portable/lib/lib64:${PW_WINELIB}/portable/lib/lib" tar -I "${PW_WINELIB}/portable/bin/zstd" -xvf "$1" -C "$2" | sszen
+        [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
+    fi
 }
 
 unpack_tar_xz () {
