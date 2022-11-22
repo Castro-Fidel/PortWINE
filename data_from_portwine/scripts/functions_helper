@@ -391,9 +391,6 @@ pw_init_runtime () {
 
     export PW_VK_LAYER_PATH="${PW_WINELIB}/portable/share/vulkan/implicit_layer.d"
 
-    export DISABLE_VK_LAYER_VALVE_steam_fossilize_1=1
-    export DISABLE_VK_LAYER_VALVE_steam_overlay_1=1
-
     if [ ! -z ${PATH_TMP} ]
     then export PATH="${PATH_TMP}"
     else export PATH_TMP="${PATH}"
@@ -422,25 +419,19 @@ pw_init_runtime () {
         export pw_runtime="${PW_WINELIB}/pressure-vessel/bin/pressure-vessel-unruntime \
         --unshare-home \
         --home="${PW_SANDBOX_HOME_PATH}" \
-        --no-gc-runtimes \
-        --gc-legacy-runtimes \
-        --copy-runtime \
-        --remove-game-overlay \
         ${PW_ADD_TO_ARGS_IN_RUNTIME} --"
     else
         export pw_runtime="${PW_WINELIB}/pressure-vessel/bin/pressure-vessel-unruntime \
         --share-home \
-        --no-gc-runtimes \
-        --gc-legacy-runtimes \
-        --copy-runtime \
-        --remove-game-overlay \
         ${PW_ADD_TO_ARGS_IN_RUNTIME} --"
     fi
 
     export PRESSURE_VESSEL_IMPORT_VULKAN_LAYERS=0
-    # export PRESSURE_VESSEL_GRAPHICS_PROVIDER=""
+    export PRESSURE_VESSEL_GRAPHICS_PROVIDER="/"
 
     unset PRESSURE_VESSEL_RUNTIME_ARCHIVE
+    export PRESSURE_VESSEL_COPY_RUNTIME=1
+    export PRESSURE_VESSEL_GC_LEGACY_RUNTIMES=1
     export PRESSURE_VESSEL_RUNTIME=runtime
     export PRESSURE_VESSEL_RUNTIME_BASE="${PW_WINELIB}"
     export PRESSURE_VESSEL_VARIABLE_DIR="${PW_WINELIB}/var"
@@ -697,7 +688,7 @@ pw_check_and_download_dxvk_and_vkd3d () {
         fi
     done
 
-    #Download stamle and git version VKD3D
+    #Download stable and git version VKD3D
     for VKD3D_VAR_VER in "${VKD3D_STABLE_VER}" "${VKD3D_GIT_VER}" ; do
         if [ ! -d "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}" ] ; then
             print_info "Download and install VKD3D-PROTON v.${VKD3D_VAR_VER}"
