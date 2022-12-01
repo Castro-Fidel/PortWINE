@@ -391,21 +391,12 @@ start_portwine () {
         export WINE_FULLSCREEN_FSR=0
     else
         echo "Use VKD3D-PROTON and DXVK (DX 9-12 to vulkan)"
-        # if [[ ! -z "${PW_USE_AMDVLK_DRIVER}" ]] && [[ "${PW_USE_AMDVLK_DRIVER}" != 0 ]] ; then 
-        #     export AMD_VULKAN_ICD=AMDVLK
-        #     unset DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1
-        #     print_info "Try to use AMDVLK driver (only with MESA)"
-        # else 
-        #     export AMD_VULKAN_ICD=RADV
-        #     export DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1=1
-        #     print_info "Try to use RADV driver (only with MESA)"
-        # fi
         if [[ "${PW_USE_WINE_DXGI}" == 1 ]] ; then 
-            export CP_DXVK_FILES="d3d11 d3d10core d3d9"  # dxvk_config openvr_api_dxvk
-            var_winedlloverride_update "d3d11,d3d10core,d3d9=n"
+            export CP_DXVK_FILES="d3d11 d3d10core d3d9"  
+        elif [[ "${USE_ALL_DXVK_DLLS}" == 1 ]] ; then 
+            export CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi" 
         else
-            export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi" # dxvk_config openvr_api_dxvk
-            var_winedlloverride_update "d3d11,d3d10core,d3d9,dxgi=n"
+            export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi" 
         fi
 
         if [[ "${PW_VULKAN_USE}" == "1" ]] ; then
@@ -424,11 +415,10 @@ start_portwine () {
         for wine_dxvk_dll in ${CP_DXVK_FILES} ; do
             try_force_link_file "${PATH_TO_DXVK_FILES}/x32/${wine_dxvk_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
             try_force_link_file "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
+            [[ "$?" == 0 ]] && var_winedlloverride_update "${wine_dxvk_dll}=n"
         done
 
         echo "Try link native VKD3D files..."
-        # try_force_link_file "${WINEDIR}/lib/vkd3d/libvkd3d-shader-1.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/libvkd3d-shader-1.dll"
-        # try_force_link_file "${WINEDIR}/lib64/vkd3d/libvkd3d-shader-1.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/libvkd3d-shader-1.dll"
         for wine_vkd3d_dll in d3d12 # libvkd3d-proton-utils-3 
         do
             try_force_link_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
@@ -436,9 +426,9 @@ start_portwine () {
         done
     fi
      
-    if [[ ! -z "${PW_DX12_DISABLE}" && "${PW_DX12_DISABLE}" != 0 ]]  
-    then var_winedlloverride_update "d3d12=" # libvkd3d-proton-utils-3,libvkd3d-shader-1;
-    else var_winedlloverride_update "d3d12=n" # libvkd3d-proton-utils-3,libvkd3d-shader-1=n
+    if [[ "${PW_DX12_DISABLE}" == 1 ]]  
+    then var_winedlloverride_update "d3d12="
+    else var_winedlloverride_update "d3d12=n"
     fi
 
     if [[ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/vrclient/bin" ]] ; then
@@ -459,7 +449,7 @@ start_portwine () {
     if [[ "${PW_USE_SHADER_CACHE}" == 1 ]] ; then
         create_new_dir "${PATH_TO_DXVK_FILES}/gl_shader_cache"
         export __GL_SHADER_DISK_CACHE=1
-        export __GL_SHADER_DISK_CACHE_PATH="${PORT_WINE_TMP_PATH}/gl_shader_cache"
+        export __GL_SHADER_DISK_CACHE_PATH="${PATH_TO_DXVK_FILES}/gl_shader_cache"
         export __GL_SHADER_DISK_CACHE_SIZE=50000000000
         export __GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1
         create_new_dir "${PATH_TO_DXVK_FILES}/dxvk_cache"
@@ -662,8 +652,8 @@ cd "${PORT_SCRIPTS_PATH}"
 export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"  
 
 if [ ! -f "${PORT_WINE_TMP_PATH}/${portname}_loc" ] ; then
-	SET_LANG=`zenity --title  "Install $portname" --text "Select the language" --list --radiolist \
-	--column="Set:" --column "Language:" TRUE "RUS" FALSE "ENG" `
+	SET_LANG=`zenity --title  "LAUNGUAGE" --text "Select the language" --list --radiolist \
+	--column="Set:" --column "Choose language:" TRUE "RUS" FALSE "ENG" `
 	echo "${SET_LANG}" > "${PORT_WINE_TMP_PATH}/${portname}_loc"
 fi
 . "${PORT_SCRIPTS_PATH}"/lang

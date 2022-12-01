@@ -454,16 +454,6 @@ if [[ ! -z "$(echo ${1} | grep '/Caliber/')" ]] ; then
     export PW_WINE_USE=PROTON_STEAM_6.3-8
 fi
 
-# HOTFIX BATTLE.NET
-
-if [[ ! -z "$(echo ${1} | grep 'Battle.net')" ]] ; then
-    export PW_WINE_USE="$PW_PROTON_LG_VER"
-#     RUN_SETFATTR="${PW_WINELIB}/portable/bin/setfattr"
-#     if [[ -f "${RUN_SETFATTR}" ]] ; then
-#         "${RUN_SETFATTR}" -x user.DOSATTRIB "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/Program Files (x86)/Battle.net/Battle.net."*"/platforms/qwindows.dll" 2>/dev/null
-#     fi
-fi
-
 case "${1}" in
     '--help' )
         echo '
@@ -618,6 +608,13 @@ else
         exit 0
     }
 
+    change_loc () {
+        try_remove_file "${PORT_WINE_TMP_PATH}/PortProton_loc"
+        echo "Restarting PP for change language..."
+        /usr/bin/env bash -c ${pw_full_command_line[*]} &
+        exit 0
+    }
+
     gui_wine_uninstaller () {
         start_portwine
         pw_run uninstaller
@@ -649,6 +646,7 @@ else
     --field="   $loc_gui_rm_pp"!""!"":"FBTN" '@bash -c "button_click gui_rm_portproton"' \
     --field="   $loc_gui_upd_pp"!""!"":"FBTN" '@bash -c "button_click gui_pw_update"' \
     --field="   $loc_gui_changelog"!""!"":"FBTN" '@bash -c "button_click open_changelog"' \
+    --field="   $loc_gui_change_loc"!""!"":"FBTN" '@bash -c "button_click change_loc"' \
     --field="   $loc_gui_edit_usc"!""!"":"FBTN" '@bash -c "button_click gui_open_user_conf"' \
     --field="   $loc_gui_scripts_fb"!""!"":"FBTN" '@bash -c "button_click gui_open_scripts_from_backup"' \
     --field="   Xterm"!""!"":"FBTN" '@bash -c "button_click pw_start_cont_xterm"' \
@@ -698,10 +696,10 @@ else
     --field="   League of Legends"!"$PW_GUI_ICON_PATH/lol.png"!"":"FBTN" '@bash -c "button_click PW_LOL"' \
     --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png"!"":"FBTN" '@bash -c "button_click  PW_GAMEFORGE"' \
     --field="   World of Sea Battle (BETA)"!"$PW_GUI_ICON_PATH/wosb.png"!"":"FBTN" '@bash -c "button_click PW_WOSB"' \
-    --field="    CALIBER"!"$PW_GUI_ICON_PATH/caliber.png"!"":"FBTN" '@bash -c "button_click PW_CALIBER"' \
-    --field="    FULQRUM GAMES"!"$PW_GUI_ICON_PATH/fulqrumgames.png"!"":"FBTN" '@bash -c "button_click PW_FULQRUM_GAMES"' \
-    --field=" Plarium Play"!"$PW_GUI_ICON_PATH/plariumplay.png"!"":"FBTN" '@bash -c "button_click PW_PLARIUM_PLAY"' \
-    --field="    ITCH.IO"!"$PW_GUI_ICON_PATH/itch.png"!"":"FBTN" '@bash -c "button_click PW_ITCH"' & 
+    --field="   CALIBER"!"$PW_GUI_ICON_PATH/caliber.png"!"":"FBTN" '@bash -c "button_click PW_CALIBER"' \
+    --field="   FULQRUM GAMES"!"$PW_GUI_ICON_PATH/fulqrumgames.png"!"":"FBTN" '@bash -c "button_click PW_FULQRUM_GAMES"' \
+    --field="   Plarium Play"!"$PW_GUI_ICON_PATH/plariumplay.png"!"":"FBTN" '@bash -c "button_click PW_PLARIUM_PLAY"' \
+    --field="   ITCH.IO"!"$PW_GUI_ICON_PATH/itch.png"!"":"FBTN" '@bash -c "button_click PW_ITCH"' & 
 
     # --field="   Steam Client Launcher"!"$PW_GUI_ICON_PATH/steam.png"!"":"FBTN" '@bash -c "button_click PW_STEAM"'
     # --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"'
@@ -779,6 +777,7 @@ case "$PW_YAD_SET" in
     gui_proton_downloader) gui_proton_downloader ;;
     gui_open_scripts_from_backup) gui_open_scripts_from_backup ;;
     open_changelog) open_changelog ;;
+    change_loc) change_loc ;;
     120) gui_vkBasalt ;;
     pw_create_prefix_backup) pw_create_prefix_backup ;;
     gui_credits) gui_credits ;;

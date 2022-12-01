@@ -4,6 +4,7 @@ import os
 import re
 import shlex
 import shutil
+import logging
 from configparser import RawConfigParser
 from pathlib import Path
 from subprocess import run
@@ -36,9 +37,9 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, 'Error', 'Can not find installed PortProton')
             exit(1)
         g.scripts_dir = scripts_dir.rstrip('/')
-        g.pw_icon = shortcut.get('Desktop Entry', 'Icon', fallback='/usr/share/pixmaps/portproton.png')
-        pw_icon = QIcon(g.pw_icon)
-        self.setWindowIcon(pw_icon)
+        g.pp_icon = shortcut.get('Desktop Entry', 'Icon', fallback='/usr/share/pixmaps/portproton.png')
+        pp_icon = QIcon(g.pp_icon)
+        self.setWindowIcon(pp_icon)
         self.setWindowTitle('PortProton games library')
 
         g.base_dir = str(Path(scripts_dir + '/../..').resolve())
@@ -58,8 +59,10 @@ class MainWindow(QMainWindow):
         sep.setFrameShadow(QFrame.Shadow.Sunken)
         self._status_size = QLabel(self)
         self._status_dir = QLabel(self)
+        self._status_wine = QLabel(self)
         self.statusBar().setVisible(False)
         self.statusBar().addWidget(self._status_dir, 1)
+        self.statusBar().addWidget(self._status_wine)
         self.statusBar().addWidget(sep)
         self.statusBar().addWidget(self._status_size)
 
@@ -86,7 +89,7 @@ class MainWindow(QMainWindow):
         spacer = QWidget(self)
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.toolbar.addWidget(spacer)
-        action = QAction(pw_icon, 'PortProton', self)
+        action = QAction(pp_icon, 'PortProton', self)
         action.triggered.connect(self.run_pp)
         self.toolbar.addAction(action)
 
@@ -100,7 +103,7 @@ class MainWindow(QMainWindow):
         self.game_list.reload()
 
     def drop_prefix(self):
-        res = QMessageBox.question(self, _tr('Are you shure ?'), _tr('Do you really want to remove<br/><b>{0}</b> ?', g.install_pfx))
+        res = QMessageBox.question(self, _tr('Are you sure ?'), _tr('Do you really want to remove<br/><b>{0}</b> ?', g.install_pfx))
         if res == QMessageBox.StandardButton.Yes:
             shutil.rmtree(g.install_pfx, True)
 
@@ -115,6 +118,7 @@ class MainWindow(QMainWindow):
         if item:
             self._status_size.setText('Size: ' + item.dir_size_human)
             self._status_dir.setText(' ' + item.game_dir)
+            self._status_wine.setText(item.wine_use)
 
     def closeEvent(self, event):
         geometry = self.saveGeometry()
@@ -233,7 +237,7 @@ class InstallGame(QDialog):
         src_dir = self.install_dir + '/' + game_dir
         dst_dir = g.games_dir + '/' + game_dir
         exe_file = shlex.quote(g.games_dir + '/' + item.text())
-        ppdb = shlex.quote(g.games_dir + '/' + item.text()) + '.ppdb'
+        ppdb = shlex.quote(g.games_dir + '/' + item.text() + '.ppdb')
         self.setDisabled(True)
         if self._installing and Path(dst_dir).exists():
             res = QMessageBox.question(self, _tr('Dir already exists'), _tr('Dir <b>{0}</b> already exists. Overwrite ?', game_dir))
@@ -246,15 +250,14 @@ class InstallGame(QDialog):
             export portwine_exe={exe_file}
             cd {shlex.quote(g.scripts_dir)}
             . {shlex.quote(g.scripts_dir + '/runlib')}
-            pw_create_gui_png
             pw_init_db
             [ -f {ppdb} ] && . {ppdb}
             echo -e "export PW_VULKAN_USE=${{PW_VULKAN_USE:-1}}\nexport PW_GUI_DISABLED_CS=1" >> {ppdb}
         """
         run(['bash', '-c', script])
-        icon_path = g.base_dir + '/data/img/' + Path(item.text()).stem + '.png'
+        icon_path = g.games_dir + '/' + item.text() + '.ico'
         if not Path(icon_path).exists():
-            icon_path = g.pw_icon
+            icon_path = g.pp_icon
         Path(shortcut).write_text(f"""[Desktop Entry]
 Name={shortcut_name}
 Exec=env {shlex.quote(g.scripts_dir + '/start.sh')} {exe_file}
@@ -294,8 +297,10 @@ class GameList(QListWidget):
             try:
                 item = GameItem(self, shortcut)
                 self.addItem(item)
-            except Exception:
+            except ValueError:
                 pass
+            except:
+                logging.exception('Error while parse "%s"', shortcut)
         self.sortItems()
         self.setCurrentIndex(QModelIndex())
 
@@ -316,8 +321,13 @@ class GameList(QListWidget):
         menu = QMenu(self)
         desktop = menu.addAction(self.style().standardIcon(QStyle.StandardPixmap.SP_DesktopIcon), _tr('Add to desktop'))
         restore_gui = menu.addAction(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogResetButton), _tr('Restore PortProton GUI'))
+        default_wine = menu.addAction(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogOkButton), _tr('Set default wine'))
         remove = menu.addAction(self.style().standardIcon(QStyle.StandardPixmap.SP_TrashIcon), _tr('Remove game entry'))
         uninstall = menu.addAction(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogCloseButton), _tr('Uninstall game'))
+        if not selected.pp_gui_disabled:
+            restore_gui.setVisible(False)
+        if not selected.wine_use:
+            default_wine.setVisible(False)
         if not selected.game_dir.startswith(g.games_dir):
             uninstall.setVisible(False)
         action = menu.exec(self.mapToGlobal(event.pos()))
@@ -328,31 +338,38 @@ class GameList(QListWidget):
                 if res != QMessageBox.StandardButton.Yes:
                     return
             shutil.copy(selected.desktop_file, desktop_shortcut)
-        if action == restore_gui:
+        if action == restore_gui or action == default_wine:
+            ignore_line = 'PW_GUI_DISABLED_CS' if action == restore_gui else 'PW_WINE_USE'
             ppdb = shlex.split(selected.get('Exec'))[-1] + '.ppdb'
             if not Path(ppdb).exists():
                 return
             with open(ppdb, 'r') as read:
                 with open(ppdb + '.new', 'w') as write:
                     while (line := read.readline()):
-                        if 'PW_GUI_DISABLED_CS' not in line:
+                        if ignore_line not in line:
                             write.write(line)
             os.rename(ppdb + '.new', ppdb)
-        if action == remove:
+            if action == restore_gui:
+                selected.pp_gui_disabled = False
+            if action == default_wine:
+                selected.wine_use = None
+                self.selectItem(selected)
+        def remove_shortcut():
             Path(desktop_shortcut).unlink(True)
             Path(selected.desktop_file).unlink(True)
-            Path(selected.get('Icon')).unlink(True)
+            def_icon_path = g.base_dir + '/data/img/' + Path(shlex.split(selected.get('Exec'))[-1]).stem + '.png'
+            Path(def_icon_path).unlink(True)
+        if action == remove:
+            remove_shortcut()
             self.reload()
         if action == uninstall:
             res = QMessageBox.question(self,
-                _tr('Are you shure ?'),
+                _tr('Are you sure ?'),
                 _tr('Do you really want to uninstall <b>{0}</b><br/>located in "<b>{1}</b>" ?', selected.get('Name'), selected.game_dir)
             )
             if res != QMessageBox.StandardButton.Yes:
                 return
-            Path(desktop_shortcut).unlink(True)
-            Path(selected.desktop_file).unlink(True)
-            Path(selected.get('Icon')).unlink(True)
+            remove_shortcut()
             if selected.game_dir.startswith(g.games_dir):
                 shutil.rmtree(selected.game_dir, True)
             self.reload()
@@ -374,19 +391,31 @@ class GameItem(QListWidgetItem):
         self.config.read(desktop_file)
         text = self.get('Name', Path(desktop_file).stem)
         if not self.get('Exec') or text == 'PortProton':
-            raise Exception('Validation fail')
-        self.game_dir = shlex.split(self.get('Exec'))[-1]
-        if self.game_dir.startswith(g.games_dir):
-            self.game_dir = g.games_dir + '/' + self.game_dir[len(g.games_dir)+1:].split('/')[0]
+            raise ValueError('Validation fail')
+        exe_file = shlex.split(self.get('Exec'))[-1]
+        if exe_file.startswith(g.games_dir):
+            self.game_dir = g.games_dir + '/' + exe_file[len(g.games_dir)+1:].split('/')[0]
         else:
-            self.game_dir = str(Path(self.game_dir).parent)
+            self.game_dir = str(Path(exe_file).parent)
         if self.game_dir == '.':
-            raise Exception('Can not determine game dir')
+            raise ValueError('Can not determine game dir')
+        self.pp_gui_disabled = False
+        self.wine_use = None
+        ppdb = exe_file + '.ppdb'
+        if Path(ppdb).exists():
+            ppdb_conf = RawConfigParser(strict=False)
+            with open(ppdb) as f:
+                ppdb_conf.read_string('[dummy]\n' + f.read())
+            pp_gui_disabled = ppdb_conf.get('dummy', 'export PW_GUI_DISABLED_CS', fallback='').strip('"')
+            try: self.pp_gui_disabled = bool(int(pp_gui_disabled))
+            except: self.pp_gui_disabled = bool(pp_gui_disabled)
+            self.wine_use = ppdb_conf.get('dummy', 'export PW_WINE_USE', fallback='').strip('"')
+
         super().__init__(parent)
 
         self.setToolTip(text)
         self.setText(text)
-        icon_path = self.get('Icon') if Path(self.get('Icon')).exists() else g.pw_icon
+        icon_path = self.get('Icon') if Path(self.get('Icon')).exists() else g.pp_icon
         qicon = QIcon(icon_path)
         self.setIcon(qicon)
         self.setTextAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
@@ -423,7 +452,7 @@ lang = {
         'Add game entry': 'Добавить в список',
         'Reload list': 'Обновить список',
         'Drop install prefix': 'Удалить установочный префикс',
-        'Are you shure ?': 'Вы уверены ?',
+        'Are you sure ?': 'Вы уверены ?',
         'Do you really want to remove<br/><b>{0}</b> ?': 'Вы действительно хотите удалить<br/><b>{0}</b> ?',
         'Run another setup': 'Запустить установку',
         'Select game exe file': 'Выберите exe файл игры',
@@ -436,6 +465,7 @@ lang = {
         'Dir <b>{0}</b> already exists. Overwrite ?': 'Директория <b>{0}</b> уже существует. Перезаписать ?',
         'Add to desktop': 'Добавить на рабочий стол',
         'Restore PortProton GUI': 'Восстановить PortProton GUI',
+        'Set default wine': 'Выбрать дефолтный wine',
         'Remove game entry': 'Убрать из списка',
         'Uninstall game': 'Удалить игру',
         'Do you really want to uninstall <b>{0}</b><br/>located in "<b>{1}</b>" ?': 'Вы действительно хотите удалить <b>{0}</b><br/>расположеную в "<b>{1}</b>" ?'
@@ -448,6 +478,7 @@ def _tr(text, *fmt):
     return res
 
 app = QApplication([])
+app.setDesktopFileName('PortProton')
 win = MainWindow()
 win.show()
 app.exec()
