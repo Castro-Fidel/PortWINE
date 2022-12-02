@@ -673,7 +673,16 @@ pw_check_and_download_dxvk_and_vkd3d () {
     for DXVK_VAR_VER in "${DXVK_STABLE_VER}" "${DXVK_GIT_VER}" ; do
         if [ ! -d "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}" ] ; then
             print_info "Download and install DXVK v.${DXVK_VAR_VER}"
-            if try_download "https://github.com/doitsujin/dxvk/releases/download/v${DXVK_VAR_VER}/dxvk-${DXVK_VAR_VER}.tar.gz" "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz" ; then
+            if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/dxvk-${DXVK_VAR_VER}/dxvk-${DXVK_VAR_VER}.tar.xz" "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.xz" ; then
+                if unpack_tar_xz "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.xz" "${PW_VULKAN_DIR}" ; then
+                    try_remove_file "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.xz"
+                else
+                    try_remove_file "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.xz"
+                    try_remove_dir dxvk-${DXVK_VAR_VER}
+
+                    zenity_error_download && pw_check_and_download_dxvk_and_vkd3d
+                fi
+            elif try_download "https://github.com/doitsujin/dxvk/releases/download/v${DXVK_VAR_VER}/dxvk-${DXVK_VAR_VER}.tar.gz" "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz" ; then
                 if unpack_tar_gz "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz" "${PW_VULKAN_DIR}" ; then
                     try_remove_file "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz"
                 else
@@ -692,7 +701,16 @@ pw_check_and_download_dxvk_and_vkd3d () {
     for VKD3D_VAR_VER in "${VKD3D_STABLE_VER}" "${VKD3D_GIT_VER}" ; do
         if [ ! -d "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}" ] ; then
             print_info "Download and install VKD3D-PROTON v.${VKD3D_VAR_VER}"
-            if try_download "https://github.com/HansKristian-Work/vkd3d-proton/releases/download/v${VKD3D_VAR_VER}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" ; then
+            if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/vkd3d-proton-${VKD3D_VAR_VER}/vkd3d-proton-${VKD3D_VAR_VER}.tar.xz" "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.xz" ; then
+                if unpack_tar_xz "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.xz" "${PW_VULKAN_DIR}" ; then
+                    try_remove_file "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.xz"
+                else
+                    try_remove_file "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.xz"
+                    try_remove_dir vkd3d-proton-${VKD3D_VAR_VER}
+
+                    zenity_error_download && pw_check_and_download_dxvk_and_vkd3d
+                fi
+            elif try_download "https://github.com/HansKristian-Work/vkd3d-proton/releases/download/v${VKD3D_VAR_VER}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" ; then
                 if unpack_tar_zst "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" "${PW_VULKAN_DIR}" ; then
                     try_remove_file "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst"
                 else
