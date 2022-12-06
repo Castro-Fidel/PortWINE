@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Author: Castro Fidel
+########################################################################
+export LAUNCH_PARAMETERS=("/VERYSILENT")
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/crossout.exe"
+# export PW_PREFIX_NAME=DOTNET
+
+start_portwine
+if try_download "https://yupmaster.gaijinent.com/launcher/current.php?id=CrossoutLauncher" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_start_progress_bar_block "${loc_gui_installing_the} Crossout. ${loc_gui_please_wait} "
+    pw_kill_autostart launcher.exe 3 &
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="${WINEPREFIX}/drive_c/users/$USER/AppData/Local/Crossout/launcher.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    kill_portwine
+    pw_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="Crossout"
+    portwine_create_shortcut
+fi
+stop_portwine
