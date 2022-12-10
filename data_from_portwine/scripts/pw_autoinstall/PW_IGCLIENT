@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Author: Castro Fidel
+########################################################################
+export LAUNCH_PARAMETERS=("/S")
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/igclient_setup.exe"
+
+start_portwine
+if try_download "https://content.indiegalacdn.com/common/IGClientSetup.exe" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_start_progress_bar_block "${loc_gui_installing_the} Indiegala Client. ${loc_gui_please_wait} "
+    pw_kill_autostart IGClient.exe 3 &
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="${WINEPREFIX}/drive_c/Program Files/IGClient/IGClient.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    kill_portwine
+    pw_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="IGClient"
+    portwine_create_shortcut
+fi
+stop_portwine

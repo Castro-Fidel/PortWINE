@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Author: Castro Fidel
+########################################################################
+export LAUNCH_PARAMETERS=("/VERYSILENT")
+
+start_portwine
+mkdir -p "${WINEPREFIX}/drive_c/Program Files/Guild Wars 2/"
+export PW_AUTOINSTALL_EXE="${WINEPREFIX}/drive_c/Program Files/Guild Wars 2/Gw2Setup-64.exe"
+
+if try_download "https://s3.amazonaws.com/gw2cdn/client/branches/Gw2Setup-64.exe" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_start_progress_bar_block "${loc_gui_installing_the} Guild Wars 2. ${loc_gui_please_wait} "
+    pw_kill_autostart Gw2-64.exe 3 &
+    cd "${WINEPREFIX}/drive_c/Program Files/Guild Wars 2/"
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="${WINEPREFIX}/drive_c/Program Files/Guild Wars 2/Gw2-64.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    kill_portwine
+    pw_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="Guild Wars 2"
+    portwine_create_shortcut
+fi
+stop_portwine
