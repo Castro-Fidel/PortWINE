@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Author: chal55rus
+########################################################################
+export LAUNCH_PARAMETERS=("/VERYSILENT")
+export PW_WINDOWS_VER="7"
+export PW_PREFIX_NAME="PANZAR"
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/Panzar.exe"
+
+start_portwine
+if try_download "https://www.panzar.ru/ru/download/installer/" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_start_progress_bar_block "${loc_gui_installing_the} Panzar. ${loc_gui_please_wait} "
+    pw_kill_autostart start.exe 3 &
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="${WINEPREFIX}/drive_c/Games/Panzar/PnzSteamLauncher.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    kill_portwine
+    pw_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="Panzar"
+    portwine_create_shortcut
+fi
+stop_portwine
