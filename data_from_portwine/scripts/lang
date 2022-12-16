@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Author: linux-gaming.ru
 
-read "update_loc" < "${PORT_WINE_TMP_PATH}/${portname}_loc"
-export update_loc=${update_loc}
+if [[ -f "${PORT_WINE_TMP_PATH}/${portname}_loc" ]] ; then
+	read "update_loc" < "${PORT_WINE_TMP_PATH}/${portname}_loc"
+	export update_loc=${update_loc}
+fi
 
 if [ "${update_loc}" = "RUS" ]
 then
-
 	export loc_gui_pw_reinstall_pp="Переустановить PORTPROTON"
     export loc_gui_rm_pp="Удалить PORTPROTON"
     export loc_gui_upd_pp="Проверить обновления"
@@ -209,7 +210,8 @@ then
 	export loc_gui_installing_the="Устанавливаем"
 	export loc_gui_please_wait="Пожалуйста подождите..."
 
-else
+elif [ "${update_loc}" = "ENG" ]
+then
 	export loc_gui_installing_the="Installing the"
 	export loc_gui_please_wait="Please wait..."
 
@@ -313,7 +315,7 @@ else
 
 	export loc_download_other_wine="Download other wine-proton from GITHUB"
 
-	#Helped in translation: ConTI1NuEsZZZ
+	# Helped in translation: ConTI1NuEsZZZ
 	export loc_create_shortcut="Create shortcut for select file..."
 	export loc_delete_shortcut="Delete shortcut for select file..."
 	export loc_debug="Launch with the creation of a .log file at the root ${portname}"
@@ -326,4 +328,9 @@ else
 	export loc_edit_db="Edit database file for"
 
 	export loc_find_d3dadapter9_error="not found in the system.\nInstall it and try again."
+else
+	SET_LANG=`zenity --title  "LAUNGUAGE" --text "Select the language" --list --radiolist \
+	--column="Set:" --column "Choose language:" TRUE "RUS" FALSE "ENG" `
+	echo "${SET_LANG}" > "${PORT_WINE_TMP_PATH}/${portname}_loc"
+	exit 0
 fi
