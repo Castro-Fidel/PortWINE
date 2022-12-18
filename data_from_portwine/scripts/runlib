@@ -125,6 +125,8 @@ start_portwine () {
         try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.ini" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
         enabled_fake_nvidia_videocard 1
         export DXVK_NVAPIHACK=0
+        export DXVK_ENABLE_NVAPI=1
+        export WINE_HIDE_NVIDIA_GPU=0
     elif [[ ! -z "${PW_USE_NVAPI_AND_DLSS}" && "${PW_USE_NVAPI_AND_DLSS}" == 1 ]] && [[ -d "${WINEDIR}/lib/wine/nvapi/" ]]
     then
         try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x32/nvapi.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/"
@@ -139,11 +141,14 @@ start_portwine () {
         try_force_link_file "${PW_PLUGINS_PATH}"/nvml/lib/wine/nvml.dll.so "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/nvml.dll"
         try_force_link_file "${PW_PLUGINS_PATH}"/nvml/lib64/wine/nvml.dll.so "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/nvml.dll"
         export DXVK_NVAPIHACK=0
+        export DXVK_ENABLE_NVAPI=1
+        export WINE_HIDE_NVIDIA_GPU=0
         enabled_fake_nvidia_videocard 0
     else
-        var_winedlloverride_update "nvapi,nvapi64,nvml,nvngx,nvcuda="
         enabled_fake_nvidia_videocard 0
         export DXVK_NVAPIHACK=1
+        export DXVK_ENABLE_NVAPI=0
+        export WINE_HIDE_NVIDIA_GPU=1
     fi
 
     if [[ ! -z "${PW_PRIME_RENDER_OFFLOAD}" && "${PW_PRIME_RENDER_OFFLOAD}" != 0 ]] ; then
@@ -265,14 +270,14 @@ start_portwine () {
     
     pw_update_pfx_cover_gui
 
-
     if [[ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" || ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/windows || \
-    ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/userdef.reg || ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/system.reg || ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/user.reg ]]
+    ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/userdef.reg || ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/system.reg || \
+    ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/user.reg ]]
     then
         pw_clear_pfx
         check_dirs_and_files_in_pfx
-        if [[ -d "${PW_PLUGINS_PATH}/default_pfx/" ]] ; then
-            cp -frL "${PW_PLUGINS_PATH}/default_pfx/"* "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/"
+        if [[ -f "${PW_WINELIB}/default_pfx.tar.xz" ]] ; then
+            unpack_tar_xz "${PW_WINELIB}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" 2>/dev/null
         fi
         ${pw_runtime} env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -u &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
         wait_wineserver &&
@@ -328,7 +333,7 @@ start_portwine () {
     if [[ -z "`grep d3dx9 "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"`" ]] ; then
         echo "d3dx9" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
     fi
-    var_winedlloverride_update "steam_api,steam_api64,steamclient,steamclient64=n;lsteamclient,winemenubuilder.exe="
+    var_winedlloverride_update "steam_api,steam_api64,steamclient,steamclient64=n;dotnetfx35.exe,dotnetfx35setup.exe=b;lsteamclient,winemenubuilder.exe=d"
 
     # export TOTAL_VRAM=`"${PW_WINELIB}/runtime/files/bin/glxinfo" -B | grep Total | awk -F: '{print $2}' | awk '{print $1}'`
     # echo "TOTAL_VRAM=${TOTAL_VRAM}"
@@ -407,6 +412,7 @@ start_portwine () {
         elif [[ "${PW_VULKAN_USE}" == "2" ]] ; then
             PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
+            export ENABLE_VKBASALT=0 # need update vkbasalt for new Vulkan 1.3
             echo "DXVK v.${DXVK_GIT_VER} in use"
             echo "VKD3D-PROTON v.${VKD3D_GIT_VER} in use"
         fi
