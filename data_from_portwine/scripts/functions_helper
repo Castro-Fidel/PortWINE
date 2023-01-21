@@ -454,7 +454,7 @@ pw_init_runtime () {
 }
 
 pw_mangohud_check () {
-    if [[ "${PW_MANGOHUD}" == "1" ]] ; then
+    if [[ "${PW_MANGOHUD}" == "1" ]] || [[ "${PW_MANGOHUD_x32}" = "1" ]]; then
         export PW_MANGOHUD_SLR='MANGOHUD=1'
         MANGOHUD_LIB_NAME="libMangoHud.so"
         if [[ "${PW_VULKAN_USE}" = "0" ]] ; then 
@@ -464,7 +464,10 @@ pw_mangohud_check () {
         then export PW_LD_PRELOAD="${PW_LD_PRELOAD}:${MANGOHUD_LIB_NAME}"
         else export PW_LD_PRELOAD="${MANGOHUD_LIB_NAME}"
         fi
-        var_vk_istance_layers_config_update "VK_LAYER_MANGOHUD_overlay64:VK_LAYER_MANGOHUD_overlay32"
+        var_vk_istance_layers_config_update "VK_LAYER_MANGOHUD_overlay64"
+        if [[ "${PW_MANGOHUD_x32}" = "1" ]] ; then 
+            var_vk_istance_layers_config_update "VK_LAYER_MANGOHUD_overlay32"
+        fi
         print_info "MANGOHUD is enabled"
     else
         export PW_MANGOHUD_SLR='DISABLE_MANGOHUD=1'
@@ -485,7 +488,7 @@ pw_vkbasalt_check () {
         sed -ri "s/casSharpness .*/casSharpness = ${PW_VKBASALT_FFX_CAS}/g" "${PORT_WINE_PATH}/data/vkBasalt.conf"
         export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
         # sed -i s/'> = 0.05;'/'> = 0.035;'/ "${PW_WINELIB}/pressure-vessel/reshade/shaders/FilmGrain2.fx"
-        var_vk_istance_layers_config_update "VK_LAYER_VKBASALT_post_processing32:VK_LAYER_VKBASALT_post_processing64"
+        var_vk_istance_layers_config_update "VK_LAYER_VKBASALT_post_processing64:VK_LAYER_VKBASALT_post_processing32"
         print_info "vkBasalt is enabled"
     else
         export DISABLE_VKBASALT=1
