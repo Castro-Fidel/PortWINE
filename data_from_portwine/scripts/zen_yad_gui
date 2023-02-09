@@ -466,12 +466,22 @@ portwine_create_shortcut () {
     --button="$loc_gui_yes":0 
     if [ $? -eq "0" ]; then
         try_remove_file "${HOME}/.local/share/applications/${name_desktop}.desktop"
-        cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" ${HOME}/.local/share/applications/
+        cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" "${HOME}/.local/share/applications/"
+        if [[ -d "${HOME}/Desktop" ]] ; then
+            cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" "${HOME}/Desktop/"
+        elif [[ -d "${HOME}/Рабочий стол" ]] ; then
+            cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" "${HOME}/Рабочий стол/"
+        fi
     fi
     xdg-open "${PORT_WINE_PATH}" 2>1 >/dev/null &
 }
 
 portwine_delete_shortcut () {
     rm -f "`grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop`"
-    rm -f "`grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop`" 
+    rm -f "`grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop`"
+    if [[ -d "${HOME}/Desktop" ]] ; then
+        rm -f "`grep -il "${portwine_exe}" "${HOME}/Desktop"/*.desktop`"
+    elif [[ -d "${HOME}/Рабочий стол" ]] ; then
+        rm -f "`grep -il "${portwine_exe}" "${HOME}/Рабочий стол"/*.desktop`"
+    fi
 }
