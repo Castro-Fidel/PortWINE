@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Author: linux-gaming.ru
-clear
+# clear
 export NO_AT_BRIDGE=1
 export pw_full_command_line=("$0" $*)
 if [ -f "$1" ]; then
@@ -8,6 +8,7 @@ if [ -f "$1" ]; then
 fi
 . "$(dirname $(readlink -f "$0"))/runlib"
 kill_portwine
+killall -9 yad_new 2>/dev/null
 pw_stop_progress_bar
 
 if [[ -f "/usr/bin/portproton" ]] && [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]] ; then
@@ -454,18 +455,28 @@ if [[ ! -z "$(echo ${1} | grep '/Caliber/')" ]] ; then
     export PW_WINE_USE=PROTON_STEAM_6.3-8
 fi
 
+# CLI
 case "${1}" in
     '--help' )
-        echo '
-usege: [--reinstall]
+        files_from_autoinstall=$(ls "${PORT_SCRIPTS_PATH}/pw_autoinstall") 
+        echo -e "
+usege: [--reinstall] [--autoinstall]
 
---reinstall                  reinstall portproton to default settings
-'
+--reinstall                                         reinstall files of the portproton to default settings
+--autoinstall [script_frome_pw_autoinstall]         autoinstall from the list below:
+"
+        echo ${files_from_autoinstall}
+        echo ""
         exit 0 ;;
 
     '--reinstall' )
         export PW_REINSTALL_FROM_TERMINAL=1
         pw_reinstall_pp ;;
+
+    '--autoinstall' )
+        export PW_YAD_SET="$2"
+        pw_autoinstall_from_db 
+        exit 0 ;;
 esac
 
 PW_PREFIX_NAME="$(echo "${PW_PREFIX_NAME}" | sed -e s/[[:blank:]]/_/g)"
@@ -541,22 +552,22 @@ if [ -n "${portwine_exe}" ]; then
         pw_create_gui_png
         grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop
         if [[ "$?" != "0" ]] ; then
-            PW_SHORTCUT="${loc_gui_create_shortcut}!!${loc_create_shortcut}:100"
+            PW_SHORTCUT="${loc_gui_create_shortcut}!$PW_GUI_ICON_PATH/separator.png!${loc_create_shortcut}:100"
         else
-            PW_SHORTCUT="${loc_gui_delete_shortcut}!!${loc_delete_shortcut}:98"
+            PW_SHORTCUT="${loc_gui_delete_shortcut}!$PW_GUI_ICON_PATH/separator.png!${loc_delete_shortcut}:98"
         fi
         OUTPUT_START=$("${pw_yad}" --text-align=center --text "$PW_COMMENT_DB" --wrap-width=150 --borders=7 --form --center  \
-        --title "${portname}-${install_ver} (${scripts_install_ver})"  --image "${PW_ICON_FOR_YAD}" --separator=";" \
+        --title "${portname}-${install_ver} (${scripts_install_ver})" --image "${PW_ICON_FOR_YAD}" --separator=";" --keep-icon-size \
         --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
         --field="3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
         --field="  WINE  : :CB" "${PW_DEFAULT_WINE_USE}" \
         --field="PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
         --field=":LBL" "" \
-        --button="${loc_gui_vkbasalt_start}"!!"${ENABLE_VKBASALT_INFO}":120 \
-        --button="${loc_gui_edit_db_start}"!!"${loc_edit_db} ${PORTWINE_DB}":118 \
+        --button="${loc_gui_vkbasalt_start}"!"$PW_GUI_ICON_PATH/separator.png"!"${ENABLE_VKBASALT_INFO}":120 \
+        --button="${loc_gui_edit_db_start}"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_edit_db} ${PORTWINE_DB}":118 \
         --button="${PW_SHORTCUT}" \
-        --button="${loc_gui_debug}"!!"${loc_debug}":102 \
-        --button="${loc_gui_launch}"!!"${loc_launch}":106 )
+        --button="${loc_gui_debug}"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_debug}":102 \
+        --button="${loc_gui_launch}"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_launch}":106 )
         export PW_YAD_SET="$?"
         if [[ "$PW_YAD_SET" == "1" || "$PW_YAD_SET" == "252" ]] ; then exit 0 ; fi
         export VULKAN_MOD=$(echo "${OUTPUT_START}" | grep \;\; | awk -F";" '{print $1}')
@@ -578,6 +589,22 @@ else
         fi
     }
     export -f button_click
+
+    run_desktop_b_click () {
+        [[ -n "$1" ]] && echo "$1" > "${PORT_WINE_TMP_PATH}/tmp_yad_form"
+        if [[ -n $(pidof -s yad) ]] || [[ -n $(pidof -s yad_new) ]] ; then
+            kill -s SIGUSR1 $(pgrep -a yad | grep "\-\-key=${KEY} \-\-notebook" | awk '{print $1}') > /dev/null 2>&1
+        fi
+        
+        PW_EXEC_FROM_DESKTOP="$(cat "${PORT_WINE_PATH}/${PW_YAD_SET}"* | grep Exec | head -n 1 | awk -F"=env " '{print $2}')"
+        echo ${PW_EXEC_FROM_DESKTOP[*]}
+
+        echo "Restarting PP after choose desktop file..."
+        # stop_portwine
+        /usr/bin/env bash -c "${PW_EXEC_FROM_DESKTOP[*]}" &
+        exit 0 
+    }
+    export -f run_desktop_b_click
 
     gui_clear_pfx () {
         if gui_question "${port_clear_pfx}" ; then
@@ -640,31 +667,32 @@ else
     }
     export -f gui_open_scripts_from_backup
 
-    export KEY=$RANDOM
-    "${pw_yad_new}" --plug=${KEY} --tabnum=4 --columns=3 --align-buttons --form --separator=";" \
-    --field="   $loc_gui_pw_reinstall_pp"!""!"":"FBTN" '@bash -c "button_click gui_pw_reinstall_pp"' \
-    --field="   $loc_gui_rm_pp"!""!"":"FBTN" '@bash -c "button_click gui_rm_portproton"' \
-    --field="   $loc_gui_upd_pp"!""!"":"FBTN" '@bash -c "button_click gui_pw_update"' \
-    --field="   $loc_gui_changelog"!""!"":"FBTN" '@bash -c "button_click open_changelog"' \
-    --field="   $loc_gui_change_loc"!""!"":"FBTN" '@bash -c "button_click change_loc"' \
-    --field="   $loc_gui_edit_usc"!""!"":"FBTN" '@bash -c "button_click gui_open_user_conf"' \
-    --field="   $loc_gui_scripts_fb"!""!"":"FBTN" '@bash -c "button_click gui_open_scripts_from_backup"' \
-    --field="   Xterm"!""!"":"FBTN" '@bash -c "button_click pw_start_cont_xterm"' \
-    --field="   $loc_gui_credits"!""!"":"FBTN" '@bash -c "button_click gui_credits"' &
 
-    "${pw_yad_new}" --plug=${KEY} --tabnum=3 --columns=3 --align-buttons --form --separator=";" \
+    export KEY=$RANDOM
+    "${pw_yad_new}" --plug=${KEY} --tabnum=4 --form --columns=3 --align-buttons --keep-icon-size  --separator=";" \
+    --field="   $loc_gui_pw_reinstall_pp"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_pw_reinstall_pp"' \
+    --field="   $loc_gui_rm_pp"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_rm_portproton"' \
+    --field="   $loc_gui_upd_pp"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_pw_update"' \
+    --field="   $loc_gui_changelog"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click open_changelog"' \
+    --field="   $loc_gui_change_loc"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click change_loc"' \
+    --field="   $loc_gui_edit_usc"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_open_user_conf"' \
+    --field="   $loc_gui_scripts_fb"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_open_scripts_from_backup"' \
+    --field="   Xterm"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click pw_start_cont_xterm"' \
+    --field="   $loc_gui_credits"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_credits"' &
+
+    "${pw_yad_new}" --plug=${KEY} --tabnum=3 --form --columns=3 --align-buttons --keep-icon-size --separator=";" \
     --field="  3D API  : :CB" "${loc_gui_vulkan_stable}!${loc_gui_vulkan_git}!${loc_gui_open_gl}!${loc_gui_gallium_nine}" \
     --field="  PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
     --field="  WINE    : :CB" "${PW_DEFAULT_WINE_USE}" \
-    --field="                    DOWNLOAD OTHER WINE "!"${loc_download_other_wine}":"FBTN" '@bash -c "button_click gui_proton_downloader"' \
-    --field='   WINECFG'!""!"${loc_winecfg}":"FBTN" '@bash -c "button_click WINECFG"' \
-    --field='   WINEFILE'!""!"${loc_winefile}":"FBTN" '@bash -c "button_click WINEFILE"' \
-    --field='   WINECMD'!""!"${loc_winecmd}":"FBTN" '@bash -c "button_click WINECMD"' \
-    --field='   WINEREG'!""!"${loc_winereg}":"FBTN" '@bash -c "button_click WINEREG"' \
-    --field='   WINETRICKS'!""!"${loc_winetricks}":"FBTN" '@bash -c "button_click WINETRICKS"' \
-    --field="   WINE UNINSTALLER"!""!"":"FBTN" '@bash -c "button_click gui_wine_uninstaller"' \
-    --field="   CLEAR PREFIX"!""!"":"FBTN" '@bash -c "button_click gui_clear_pfx"' \
-    --field="   CREATE PFX BACKUP"!""!"":"FBTN" '@bash -c "button_click pw_create_prefix_backup"' &> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" &
+    --field="                  DOWNLOAD OTHER WINE"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_download_other_wine}":"FBTN" '@bash -c "button_click gui_proton_downloader"' \
+    --field='   WINECFG'!"$PW_GUI_ICON_PATH/separator.png"!"${loc_winecfg}":"FBTN" '@bash -c "button_click WINECFG"' \
+    --field='   WINEFILE'!"$PW_GUI_ICON_PATH/separator.png"!"${loc_winefile}":"FBTN" '@bash -c "button_click WINEFILE"' \
+    --field='   WINECMD'!"$PW_GUI_ICON_PATH/separator.png"!"${loc_winecmd}":"FBTN" '@bash -c "button_click WINECMD"' \
+    --field='   WINEREG'!"$PW_GUI_ICON_PATH/separator.png"!"${loc_winereg}":"FBTN" '@bash -c "button_click WINEREG"' \
+    --field='   WINETRICKS'!"$PW_GUI_ICON_PATH/separator.png"!"${loc_winetricks}":"FBTN" '@bash -c "button_click WINETRICKS"' \
+    --field="   WINE UNINSTALLER"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_wine_uninstaller"' \
+    --field="   CLEAR PREFIX"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_clear_pfx"' \
+    --field="   CREATE PFX BACKUP"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click pw_create_prefix_backup"' &> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" &
 
     "${pw_yad_new}" --plug=$KEY --tabnum=2 --form --columns=3 --align-buttons --keep-icon-size --scroll  \
     --field="   Dolphin 5.0"!"$PW_GUI_ICON_PATH/dolphin.png"!"":"FBTN" '@bash -c "button_click PW_DOLPHIN"' \
@@ -712,19 +740,36 @@ else
     # --field="   Guild Wars 2"!"$PW_GUI_ICON_PATH/gw2.png"!"":"FBTN" '@bash -c "button_click PW_GUILD_WARS_2"'
     # --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"'
 
-    "${pw_yad_new}" --key=$KEY --notebook --borders=5 --width=900 --height=235 --no-buttons --auto-close --center \
+    orig_IFS="$IFS" && IFS=$'\n'
+    PW_ALL_DF="$(ls ${PORT_WINE_PATH}/ | grep .desktop | grep -v "PortProton" | grep -v "readme")"
+    IFS="$orig_IFS"
+
+    for PW_DESKTOP_FILES in ${PW_ALL_DF} ; do
+        PW_NAME_D_NAME="$(cat "${PORT_WINE_PATH}/$PW_DESKTOP_FILES" | grep Name | awk -F= '{print $2}')"
+        PW_NAME_D_ICON="$(cat "${PORT_WINE_PATH}/$PW_DESKTOP_FILES" | grep Icon | awk -F= '{print $2}')"
+
+        PW_GENERATE_BUTTONS+="--field=  ${PW_NAME_D_NAME}!${PW_NAME_D_ICON}!:FBTN%@bash -c \"run_desktop_b_click ${PW_DESKTOP_FILES}\"%"
+    done
+
+    old_IFS=$IFS && IFS="%"
+    "${pw_yad_new}" --plug=$KEY --tabnum=5 --form --columns=2 --align-buttons --keep-icon-size --scroll --separator=" " ${PW_GENERATE_BUTTONS} &
+    IFS="$orig_IFS"
+
+
+    "${pw_yad_new}" --key=$KEY --notebook --borders=5 --width=1000 --height=235 --no-buttons --auto-close --center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "${portname}-${install_ver} (${scripts_install_ver})" \
-    --tab-pos=bottom \
-    --tab=" $loc_mg_autoinstall"!!"" \
-    --tab=" $loc_mg_emulators"!!"" \
-    --tab=" $loc_mg_wine_settings"!!"" \
-    --tab=" $loc_mg_portproton_settings"!!""
+    --tab-pos=bottom --keep-icon-size \
+    --tab="$loc_mg_autoinstall"!"$PW_GUI_ICON_PATH/separator.png"!"" \
+    --tab="$loc_mg_emulators"!"$PW_GUI_ICON_PATH/separator.png"!"" \
+    --tab="$loc_mg_wine_settings"!"$PW_GUI_ICON_PATH/separator.png"!"" \
+    --tab="$loc_mg_portproton_settings"!"$PW_GUI_ICON_PATH/separator.png"!""
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
 
     if [[ -f "${PORT_WINE_TMP_PATH}/tmp_yad_form" ]]; then
         export PW_YAD_SET=$(cat "${PORT_WINE_TMP_PATH}/tmp_yad_form" | head -n 1 | awk '{print $1}')
-        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_yad_form"
+        echo "from tmp_yad_form $PW_YAD_SET, and cat tmp_yad_form"
+        cat "${PORT_WINE_TMP_PATH}/tmp_yad_form"
     fi
     if [[ -f "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" ]] ; then
         export VULKAN_MOD=$(cat "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" | grep \;\;  | awk -F";" '{print $1}')

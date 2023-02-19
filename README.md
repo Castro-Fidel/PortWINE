@@ -70,11 +70,7 @@ If you have a video card from **NVIDIA** , be sure to check if the **lib32-nvidi
 
 * **openSUSE**
 
-`sudo zypper ref && sudo zypper up && sudo zypper in curl icoutils wget zenity bubblewrap zstd cabextract tar steam zenity zenity-lang`
-
-Installing Gamemode is done with a separate command:
-
-`opi gamemode`
+`sudo zypper in curl icoutils wget zenity bubblewrap zstd cabextract tar steam zenity zenity-lang gamemoded libgamemode0 libgamemodeauto0`
 
 * **Fedora**
 
@@ -94,7 +90,7 @@ Install the required dependencies:
 
 * **ROSA DESKTOP FRESH R12**
 
-`sudo dnf update && sudo dnf upgrade --refresh && sudo dnf install sysvinit-tools curl libcurl4 icoutils wget zenity bubblewrap zstd cabextract tar libvulkan1 lib64vulkan1 vulkan.x86_64 vulkan.i686 vkd3d.x86_64 vkd3d.i686 coreutils file libc6 libnss3 xz bubblewrap xdg-utils openssl bc libgl1 lib64freetype2 libfreetype2 lib64txc-dxtn libtxc-dxtn coreutils lib64opencl1 libopencl1 libdrm2 libdrm2.i686 mesa.i686`
+`sudo dnf update && sudo dnf upgrade --refresh && sudo dnf install sysvinit-tools curl libcurl4 icoutils wget zenity bubblewrap zstd cabextract tar libvulkan1 lib64vulkan1 vulkan.x86_64 vulkan.i686 vkd3d.x86_64 vkd3d.i686 coreutils file libc6 libnss3 xz bubblewrap xdg-utils openssl bc libgl1 lib64freetype2 libfreetype2 lib64txc-dxtn libtxc-dxtn lib64opencl1 libopencl1 libdrm2 libdrm2.i686 mesa.i686`
 
 * **Solus 4.x**
 
