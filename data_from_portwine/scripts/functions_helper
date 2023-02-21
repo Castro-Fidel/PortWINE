@@ -958,3 +958,15 @@ pw_create_gui_png () {
         fi
     fi
 }
+
+pw_find_exe () {
+    unset PW_FIND_TIME
+    case "$1" in
+        "last_day") PW_FIND_TIME="-mtime -1" ;;
+    esac
+
+    PW_EXCUDE_EXE_FIND='(windows|explorer|anticheat|programdata|redist|setup|.ppdb|unin|error|crash|handler|install|/jre/|steam|uploader)'
+    PW_PATH_FOR_FIND="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/"
+
+    find -P "${PW_PATH_FOR_FIND}" -type f -name "*.exe" ${PW_FIND_TIME} | grep -viE ${PW_EXCUDE_EXE_FIND}
+}
