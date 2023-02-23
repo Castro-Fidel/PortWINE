@@ -598,7 +598,7 @@ stop_portwine () {
     if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ] ; then
         kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" 2>/dev/null
     fi
-    add_in_stop_portwine &>/dev/null
+    add_in_stop_portwine #&>/dev/null
     kill -n 9 `pgrep -a start.sh | grep -i '/PortProton/' | awk '{print $1}'` > /dev/null 2>&1
     killall yad_new &>/dev/null
     exit 0
@@ -762,7 +762,7 @@ pw_init_db () {
         export PORTWINE_DB=`echo "${portwine_exe}" | awk -F '/' 'NF>1{print $NF}' | sed s/".exe"/""/gi`
         if [[ -f "${portwine_exe}".ppdb ]] && [[ "${PORTWINE_DB}" != "RiotClientServices" ]] ; then
             export PORTWINE_DB_FILE="${portwine_exe}".ppdb
-            sed -i 's/ PP_/ PW_/g' "${PORTWINE_DB_FILE}"
+            # sed -i 's/ PP_/ PW_/g' "${PORTWINE_DB_FILE}"
             . "${PORTWINE_DB_FILE}"
             if [[ -z "`ls -p "${PORT_WINE_PATH}/prefixes/" | grep -e "^${PW_PREFIX_NAME}/"`" ]] ; then
                 export PW_PREFIX_NAME=`echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}'`
@@ -785,10 +785,10 @@ pw_init_db () {
                 --title "Database file selection..." --window-icon="$PW_GUI_ICON_PATH/port_proton.png"  --form --separator="" \
                 --field="DB FILE: :CB" "${ADD_CB_DBFILE}"`
                 if [[ "$?" == "1" || "$?" == "252" ]] ; then exit 0 ; fi
-                sed -i 's/ PP_/ PW_/g' "${PORTWINE_DB_FILE}"
+                # sed -i 's/ PP_/ PW_/g' "${PORTWINE_DB_FILE}"
             elif [[ `echo "$PW_FIND_DB_FILE" | wc -l` -eq 1 ]] ; then
                 PORTWINE_DB_FILE="${PW_FIND_DB_FILE}"
-                sed -i 's/ PP_/ PW_/g' "${PORTWINE_DB_FILE}"
+                # sed -i 's/ PP_/ PW_/g' "${PORTWINE_DB_FILE}"
             fi
             IFS="$orig_IFS"
             if [[ -f "${PW_FIND_DB_FILE}" ]] && [[ -z `grep "^export PW_DISABLED_CREATE_DB=1" "${PW_FIND_DB_FILE}"` ]] ; then
@@ -899,10 +899,7 @@ update_winetricks () {
     if  [ -f "${PORT_WINE_TMP_PATH}/winetricks" ] ; then
         sed -i 's/w_metadata vcrun2015 dlls \\/w_metadata !dont_use_2015! dlls \\/' "${PORT_WINE_TMP_PATH}/winetricks"
         sed -i 's/w_metadata vcrun2017 dlls \\/w_metadata !dont_use_2017! dlls \\/' "${PORT_WINE_TMP_PATH}/winetricks"
-        #HOTFIX SHA256SUM FOR VC_RUN2019
-        sed -i 's/vc_redist.x86.exe 1acd8d5ea1cdc3eb2eb4c87be3ab28722d0825c15449e5c9ceef95d897de52fa/vc_redist.x86.exe 80c7969f4e05002a0cd820b746e0acb7406d4b85e52ef096707315b390927824/g' "${PORT_WINE_TMP_PATH}/winetricks"
-        sed -i 's/vc_redist.x64.exe 003063723b2131da23f40e2063fb79867bae275f7b5c099dbd1792e25845872b/vc_redist.x64.exe 9b9dd72c27ab1db081de56bb7b73bee9a00f60d14ed8e6fde45dab3e619b5f04/g' "${PORT_WINE_TMP_PATH}/winetricks"
-
+        sed -i 's/w_metadata vcrun2019 dlls \\/w_metadata !dont_use_2019! dlls \\/' "${PORT_WINE_TMP_PATH}/winetricks"
     fi
     return 0
 }
@@ -962,11 +959,29 @@ pw_create_gui_png () {
 pw_find_exe () {
     unset PW_FIND_TIME
     case "$1" in
-        "last_day") PW_FIND_TIME="-mtime -1" ;;
+        "news") PW_FIND_TIME="-cmin -180" ;;
     esac
 
-    PW_EXCUDE_EXE_FIND='(windows|explorer|anticheat|programdata|redist|setup|.ppdb|unin|error|crash|handler|install|/jre/|steam|uploader)'
-    PW_PATH_FOR_FIND="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/"
+    PW_EXCLUDE_EXE_FIND='(windows|explorer|anticheat|programdata|redist|setup|.ppdb|unin|error|crash|handler|install|/jre/|steam|uploader|eac|netframe)'
+    PW_PATH_FOR_FIND="${PORT_WINE_PATH}/data/prefixes/"
 
-    find -P "${PW_PATH_FOR_FIND}" -type f -name "*.exe" ${PW_FIND_TIME} | grep -viE ${PW_EXCUDE_EXE_FIND}
+    find -P "${PW_PATH_FOR_FIND}" -type f -name "*.exe" ${PW_FIND_TIME} | grep -viE ${PW_EXCLUDE_EXE_FIND} | awk -F"/prefixes/" '{print $2}' > "${PORT_WINE_TMP_PATH}/tmp_yad_find_exe"
+
+    unset FIND_TO_GUI
+    while read line; do
+        FIND_TO_GUI+="false%${line}%"
+    done < "${PORT_WINE_TMP_PATH}/tmp_yad_find_exe"
+
+    OrigIFS="$IFS" && IFS=%
+    PW_SET_FIND_EXE="$("${pw_yad_new}" --height="300" --width="1000" --center --list --radiolist \
+    --text-align=center --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "Create shortcut for..." \
+    --text="\n${loc_gui_create_shortcut_for_exe}" --column="set:" --column="path to .exe file:" ${FIND_TO_GUI})"
+    YAD_STATUS="$?"
+    if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
+    IFS=$OrigIFS
+
+    if [[ -n "${PW_SET_FIND_EXE}" ]] ; then
+        portwine_exe="${PW_PATH_FOR_FIND}$(echo "${PW_SET_FIND_EXE}" | awk -F'|' '{print $2}')"
+        portwine_create_shortcut
+    fi
 }

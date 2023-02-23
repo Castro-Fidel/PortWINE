@@ -597,7 +597,7 @@ else
         fi
         
         PW_EXEC_FROM_DESKTOP="$(cat "${PORT_WINE_PATH}/${PW_YAD_SET}"* | grep Exec | head -n 1 | awk -F"=env " '{print $2}')"
-        echo ${PW_EXEC_FROM_DESKTOP[*]}
+        export portwine_exe="$(echo $PW_EXEC_FROM_DESKTOP | awk -F"start.sh" '{print $1}')"
 
         echo "Restarting PP after choose desktop file..."
         # stop_portwine
@@ -668,8 +668,24 @@ else
     export -f gui_open_scripts_from_backup
 
 
-    export KEY=$RANDOM
-    "${pw_yad_new}" --plug=${KEY} --tabnum=4 --form --columns=3 --align-buttons --keep-icon-size  --separator=";" \
+    export KEY="$RANDOM"
+    
+    orig_IFS="$IFS" && IFS=$'\n'
+    PW_ALL_DF="$(ls ${PORT_WINE_PATH}/ | grep .desktop | grep -vE '(PortProton|readme)')"
+    IFS="$orig_IFS"
+    PW_GENERATE_BUTTONS="--field=   $loc_create_shortcut_from_gui!$PW_GUI_ICON_PATH/separator.png!:FBTN%@bash -c \"button_click pw_find_exe\"%"
+    for PW_DESKTOP_FILES in ${PW_ALL_DF} ; do
+        PW_NAME_D_NAME="$(cat "${PORT_WINE_PATH}/$PW_DESKTOP_FILES" | grep Name | awk -F= '{print $2}')"
+        # PW_NAME_D_ICON="$(cat "${PORT_WINE_PATH}/$PW_DESKTOP_FILES" | grep Icon | awk -F= '{print $2}')"
+        PW_NAME_D_ICON="$PW_GUI_ICON_PATH/separator.png"
+        # PW_GENERATE_BUTTONS+="--field=  ${PW_NAME_D_NAME}!${PW_NAME_D_ICON}!:FBTN%@bash -c \"run_desktop_b_click ${PW_DESKTOP_FILES}\"%"
+    done
+
+    old_IFS=$IFS && IFS="%"
+    "${pw_yad_new}" --plug=$KEY --tabnum=5 --form --columns=2 --align-buttons --keep-icon-size --scroll --separator=" " ${PW_GENERATE_BUTTONS} &
+    IFS="$orig_IFS"
+
+    "${pw_yad_new}" --plug=${KEY} --tabnum=4 --form --columns=3 --align-buttons --keep-icon-size --separator=";" \
     --field="   $loc_gui_pw_reinstall_pp"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_pw_reinstall_pp"' \
     --field="   $loc_gui_rm_pp"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_rm_portproton"' \
     --field="   $loc_gui_upd_pp"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_pw_update"' \
@@ -740,36 +756,19 @@ else
     # --field="   Guild Wars 2"!"$PW_GUI_ICON_PATH/gw2.png"!"":"FBTN" '@bash -c "button_click PW_GUILD_WARS_2"'
     # --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"'
 
-    orig_IFS="$IFS" && IFS=$'\n'
-    PW_ALL_DF="$(ls ${PORT_WINE_PATH}/ | grep .desktop | grep -v "PortProton" | grep -v "readme")"
-    IFS="$orig_IFS"
-
-    for PW_DESKTOP_FILES in ${PW_ALL_DF} ; do
-        PW_NAME_D_NAME="$(cat "${PORT_WINE_PATH}/$PW_DESKTOP_FILES" | grep Name | awk -F= '{print $2}')"
-        PW_NAME_D_ICON="$(cat "${PORT_WINE_PATH}/$PW_DESKTOP_FILES" | grep Icon | awk -F= '{print $2}')"
-
-        PW_GENERATE_BUTTONS+="--field=  ${PW_NAME_D_NAME}!${PW_NAME_D_ICON}!:FBTN%@bash -c \"run_desktop_b_click ${PW_DESKTOP_FILES}\"%"
-    done
-
-    old_IFS=$IFS && IFS="%"
-    "${pw_yad_new}" --plug=$KEY --tabnum=5 --form --columns=2 --align-buttons --keep-icon-size --scroll --separator=" " ${PW_GENERATE_BUTTONS} &
-    IFS="$orig_IFS"
-
-
     "${pw_yad_new}" --key=$KEY --notebook --borders=5 --width=1000 --height=235 --no-buttons --auto-close --center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "${portname}-${install_ver} (${scripts_install_ver})" \
     --tab-pos=bottom --keep-icon-size \
     --tab="$loc_mg_autoinstall"!"$PW_GUI_ICON_PATH/separator.png"!"" \
     --tab="$loc_mg_emulators"!"$PW_GUI_ICON_PATH/separator.png"!"" \
     --tab="$loc_mg_wine_settings"!"$PW_GUI_ICON_PATH/separator.png"!"" \
-    --tab="$loc_mg_portproton_settings"!"$PW_GUI_ICON_PATH/separator.png"!""
+    --tab="$loc_mg_portproton_settings"!"$PW_GUI_ICON_PATH/separator.png"!"" \
+    --tab="$loc_mg_installed"!"$PW_GUI_ICON_PATH/separator.png"!""
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
 
     if [[ -f "${PORT_WINE_TMP_PATH}/tmp_yad_form" ]]; then
         export PW_YAD_SET=$(cat "${PORT_WINE_TMP_PATH}/tmp_yad_form" | head -n 1 | awk '{print $1}')
-        echo "from tmp_yad_form $PW_YAD_SET, and cat tmp_yad_form"
-        cat "${PORT_WINE_TMP_PATH}/tmp_yad_form"
     fi
     if [[ -f "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" ]] ; then
         export VULKAN_MOD=$(cat "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" | grep \;\;  | awk -F";" '{print $1}')
@@ -835,7 +834,9 @@ case "$PW_YAD_SET" in
     pw_create_prefix_backup) pw_create_prefix_backup ;;
     gui_credits) gui_credits ;;
     pw_start_cont_xterm) pw_start_cont_xterm ;;
+    pw_find_exe) pw_find_exe ;;
     PW_*) pw_autoinstall_from_db ;;
+    # *) run_desktop_b_click
 esac
 
 stop_portwine
