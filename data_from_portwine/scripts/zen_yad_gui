@@ -315,29 +315,30 @@ gui_proton_downloader () {
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
         fi
+    
+        if [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_proton_set" | awk '{print $1}'` ] ; then
+            export VERSION_WINE_GIT="`cat "${PORT_WINE_TMP_PATH}/tmp_proton_set"`"
+        elif [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set" | awk '{print $1}'` ] ; then
+            export VERSION_WINE_GIT="`cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set"`"
+        elif [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_kron4ek_set" | awk '{print $1}'` ] ; then
+            export VERSION_WINE_GIT="`cat "${PORT_WINE_TMP_PATH}/tmp_kron4ek_set"`"
+        elif [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set" | awk '{print $1}'` ] ; then
+            export VERSION_WINE_GIT="`cat "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set"`"
+        elif [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set" | awk '{print $1}'` ] ; then
+            export VERSION_INSTALLED_WINE="`cat "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set"`"
+        fi
+
+        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
+        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git"
+        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_set"
+        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set"
+        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_installed_wine"
+
     elif [[ "$1" == "silent" ]] && [[ -n "$2" ]] ; then
-        YAD_WINE_STATUS="$2"
+        VERSION_WINE_GIT="$2"
     fi
     
-    if [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_proton_set" | awk '{print $1}'` ] ; then
-        export VERSION_WINE_GIT="`cat "${PORT_WINE_TMP_PATH}/tmp_proton_set"`"
-    elif [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set" | awk '{print $1}'` ] ; then
-        export VERSION_WINE_GIT="`cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set"`"
-    elif [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_kron4ek_set" | awk '{print $1}'` ] ; then
-        export VERSION_WINE_GIT="`cat "${PORT_WINE_TMP_PATH}/tmp_kron4ek_set"`"
-    elif [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set" | awk '{print $1}'` ] ; then
-        export VERSION_WINE_GIT="`cat "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set"`"
-    elif [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set" | awk '{print $1}'` ] ; then
-        export VERSION_INSTALLED_WINE="`cat "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set"`"
-    fi
-
-    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
-    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
-    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git"
-    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_set"
-    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set"
-    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_installed_wine"
-
     for GIVE_WINE_URL in ${PROTON_GE_GIT[@]} ${PROTON_PW_GIT[@]} ${WINE_KRON4EK[@]} ${WINE_GE_CUSTOM[@]} ; do
         if [ ! -z `echo ${GIVE_WINE_URL} | grep -i "$VERSION_WINE_GIT"` ] ; then
             export URL_VERSION_PROTON_GIT="${GIVE_WINE_URL}"
