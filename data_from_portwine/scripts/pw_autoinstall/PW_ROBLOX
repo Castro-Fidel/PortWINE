@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Author: chal55rus (Sergey P.)
+########################################################################
+export LAUNCH_PARAMETERS=("")
+export PW_PREFIX_NAME="ROBLOX"
+export PW_AUTOINSTALL_EXE="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/roblox_installer.exe"
+export WINEDLLOVERRIDES="mscoree,mshtml="
+export PW_MUST_HAVE_DLL=""
+export PW_WINE_USE="WINE-8.2-STAGING-TKG-AMD64"
+
+gui_proton_downloader silent "WINE-8.2-STAGING-TKG-AMD64"
+
+start_portwine
+if try_download "setup.rbxcdn.com/RobloxPlayerLauncher.exe" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="${WINEPREFIX}/drive_c/users/${USER}/AppData/Local/Roblox/Versions/version-5e9aac577efb4995/RobloxPlayerBeta.exe"
+    try_remove_file "${portwine_exe}.ppdb"
+    pw_stop_progress_bar
+    # export PORTWINE_CREATE_SHORTCUT_NAME="RobloxPlayerBeta"
+    portwine_create_shortcut
+fi
+stop_portwine

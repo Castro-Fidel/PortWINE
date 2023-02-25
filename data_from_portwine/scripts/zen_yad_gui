@@ -230,6 +230,9 @@ pw_gui_for_edit_db () {
 
 
 gui_proton_downloader () {
+    if [[ "$1" == "silent" ]] && [[ -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ]] ; then
+        return 0
+    fi
     pw_start_progress_bar_block "$loc_gui_check_new_wine"
     #PROTON_GE
     export PROTON_GE_GIT=($(curl -s "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases" | grep "browser_download_url.*\.tar\.gz" | cut -d \" -f 4))
@@ -286,30 +289,34 @@ gui_proton_downloader () {
         sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git"
     done
 	#Installed wine
-	ls -l ${PORT_WINE_PATH}/data/dist | awk '{print $9}' | sed '/^$/d' > ${PORT_WINE_TMP_PATH}/tmp_installed_wine	
-    #GUI
-    export KEY_WINE=$RANDOM
-    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set"
-    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_set"
-	try_remove_file "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set"
+	ls -l ${PORT_WINE_PATH}/data/dist | awk '{print $9}' | sed '/^$/d' > ${PORT_WINE_TMP_PATH}/tmp_installed_wine
+    if [[ "$1" != "silent" ]] ; then
+        #GUI
+        export KEY_WINE=$RANDOM
+        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set"
+        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_set"
+        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set"
 
-    `"${pw_yad}" --plug=$KEY_WINE --tabnum=1 --list --separator="" --listen \
-    --column "$loc_gui_set_new_wine" < "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git" 1> "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set"` &
-    `"${pw_yad}" --plug=$KEY_WINE --tabnum=2 --list --separator="" --listen \
-    --column "$loc_gui_set_new_wine" < "${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git" 1> "${PORT_WINE_TMP_PATH}/tmp_kron4ek_set"` &
-    `"${pw_yad}" --plug=$KEY_WINE --tabnum=3 --list --separator="" --listen \
-    --column "$loc_gui_set_new_wine" < "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git" 1> "${PORT_WINE_TMP_PATH}/tmp_proton_set"` &
-    `"${pw_yad}" --plug=$KEY_WINE --tabnum=4 --list --separator="" --listen \
-    --column "$loc_gui_set_new_wine" < "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git" 1> "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set"` &
-    `"${pw_yad}" --plug=$KEY_WINE --tabnum=5 --list --separator="" --listen \
-    --column "$loc_gui_del_wine" < "${PORT_WINE_TMP_PATH}/tmp_installed_wine" 1> "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set"` &
-    `"${pw_yad}" --key=$KEY_WINE --notebook --width=500 --height=600 --text-align=center --center \
-    --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "WINE MANAGER" --separator="" \
-    --tab-pos=top --tab="PROTON-LG" --tab="WINE-KRON4EK"  --tab="PROTON-GE" --tab="WINE-GE-CUSTOM" --tab="$loc_gui_installed_wine"`
-    YAD_WINE_STATUS="$?"
-    if [[ "$YAD_WINE_STATUS" == "1" || "$YAD_WINE_STATUS" == "252" ]] ; then
-        /usr/bin/env bash -c ${pw_full_command_line[*]} &
-        exit 0
+        `"${pw_yad}" --plug=$KEY_WINE --tabnum=1 --list --separator="" --listen \
+        --column "$loc_gui_set_new_wine" < "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git" 1> "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set"` &
+        `"${pw_yad}" --plug=$KEY_WINE --tabnum=2 --list --separator="" --listen \
+        --column "$loc_gui_set_new_wine" < "${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git" 1> "${PORT_WINE_TMP_PATH}/tmp_kron4ek_set"` &
+        `"${pw_yad}" --plug=$KEY_WINE --tabnum=3 --list --separator="" --listen \
+        --column "$loc_gui_set_new_wine" < "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git" 1> "${PORT_WINE_TMP_PATH}/tmp_proton_set"` &
+        `"${pw_yad}" --plug=$KEY_WINE --tabnum=4 --list --separator="" --listen \
+        --column "$loc_gui_set_new_wine" < "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git" 1> "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set"` &
+        `"${pw_yad}" --plug=$KEY_WINE --tabnum=5 --list --separator="" --listen \
+        --column "$loc_gui_del_wine" < "${PORT_WINE_TMP_PATH}/tmp_installed_wine" 1> "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set"` &
+        `"${pw_yad}" --key=$KEY_WINE --notebook --width=500 --height=600 --text-align=center --center \
+        --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "WINE MANAGER" --separator="" \
+        --tab-pos=top --tab="PROTON-LG" --tab="WINE-KRON4EK"  --tab="PROTON-GE" --tab="WINE-GE-CUSTOM" --tab="$loc_gui_installed_wine"`
+        YAD_WINE_STATUS="$?"
+        if [[ "$YAD_WINE_STATUS" == "1" || "$YAD_WINE_STATUS" == "252" ]] ; then
+            /usr/bin/env bash -c ${pw_full_command_line[*]} &
+            exit 0
+        fi
+    elif [[ "$1" == "silent" ]] && [[ -n "$2" ]] ; then
+        YAD_WINE_STATUS="$2"
     fi
     
     if [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_proton_set" | awk '{print $1}'` ] ; then
@@ -364,8 +371,13 @@ gui_proton_downloader () {
     else
         zenity_error_download && gui_proton_downloader
     fi
-    /usr/bin/env bash -c ${pw_full_command_line[*]} &
-    exit 0
+
+    if [[ "$1" != "silent" ]] ; then
+        /usr/bin/env bash -c ${pw_full_command_line[*]} &
+        exit 0
+    else
+        init_wine_ver
+    fi
 }
 export -f gui_proton_downloader
 

@@ -5,44 +5,18 @@ export LAUNCH_PARAMETERS=("/silent" "/repair" )
 export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/EAappInstaller.exe"
 export PW_DLL_INSTALL=""               # Install DDL in port prefix (used winetricks) 
 export PW_VULKAN_USE=1                       # dxvk, vkd3d or 0 for OpenGL
-# export PW_USE_TERMINAL="1"
-# export PW_WINE_TKG_VER="7.20"
-# export PW_WINE_USE="WINE-${PW_WINE_TKG_VER}-STAGING-TKG-AMD64"
 export PW_MUST_HAVE_DLL=""
-# export PW_PREFIX_NAME="EA_APP"
+export PW_PREFIX_NAME="EA_APP"
 # export WINEDLLOVERRIDES="mscoree,mshtml=b"
+export PW_WINE_USE="WINE-8.2-STAGING-TKG-AMD64"
+gui_proton_downloader silent "WINE-8.2-STAGING-TKG-AMD64"
 
-# if [ ! -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ] ; then
-#     if try_download "https://github.com/Kron4ek/Wine-Builds/releases/download/${PW_WINE_TKG_VER}/wine-${PW_WINE_TKG_VER}-staging-tkg-amd64.tar.xz" \
-#     "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" ; then
-#         if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
-#             try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz"
-#             UNPACK_STATUS=0
-#         else
-#             try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz"
-#             try_remove_dir "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}"
-#         fi
-#     fi
-#     [[ "${UNPACK_STATUS}" != 0 ]] && exit 1
-# fi
-
-# if [[ -d "${PORT_WINE_PATH}/data/dist" ]] ; then
-#     orig_IFS="$IFS"
-#     IFS=$'\n'
-#     for dist_dir in $(ls -1 "${PORT_WINE_PATH}/data/dist/") ; do
-#         dist_dir_new=`echo "${dist_dir}" | awk '$1=$1' | sed -e s/[[:blank:]]/_/g`
-#         if [[ ! -d "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}" ]] ; then
-#             mv -- "${PORT_WINE_PATH}/data/dist/$dist_dir" "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}"
-#         fi
-#     done
-#     IFS="$orig_IFS"
-# fi
 
 start_portwine
 if try_download "origin-a.akamaihd.net/EA-Desktop-Client-Download/installer-releases/EAappInstaller.exe" "${PW_AUTOINSTALL_EXE}"
 then
     pw_start_progress_bar_block "${loc_gui_installing_the} EA Launcher. ${loc_gui_please_wait} "
-    # pw_kill_autostart EABackgroundService.exe &
+    pw_kill_autostart EABackgroundService.exe &
     # pw_kill_autostart EALocalHostSvc.exe &
     mkdir -p "$WINEPREFIX/drive_c/Program Files/Electronic Arts/EA Desktop/EA Desktop"
     pw_run "${PW_AUTOINSTALL_EXE}"
