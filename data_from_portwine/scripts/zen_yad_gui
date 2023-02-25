@@ -338,7 +338,7 @@ gui_proton_downloader () {
     elif [[ "$1" == "silent" ]] && [[ -n "$2" ]] ; then
         VERSION_WINE_GIT="$2"
     fi
-    
+
     for GIVE_WINE_URL in ${PROTON_GE_GIT[@]} ${PROTON_PW_GIT[@]} ${WINE_KRON4EK[@]} ${WINE_GE_CUSTOM[@]} ; do
         if [ ! -z `echo ${GIVE_WINE_URL} | grep -i "$VERSION_WINE_GIT"` ] ; then
             export URL_VERSION_PROTON_GIT="${GIVE_WINE_URL}"
@@ -353,18 +353,19 @@ gui_proton_downloader () {
 	fi
 	
     print_info "Download and install ${VERSION_WINE_GIT}..."
+    PW_WINE_ARCHIVE="$(echo ${URL_VERSION_PROTON_GIT} | awk -F'/' '{print $NF}' | awk -F'.tar' '{print $1}')"
     if try_download_to_path "${URL_VERSION_PROTON_GIT}" "${PORT_WINE_PATH}/data/tmp/" ; then
         for archive_type in "gz" "xz" ; do
-            if [ -f "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}" ] ; then
-                if unpack_tar_${archive_type} "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}" "${PORT_WINE_PATH}/data/dist/" ; then
-                    try_remove_file "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}"
+            if [ -f "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}" ] ; then
+                if unpack_tar_${archive_type} "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}" "${PORT_WINE_PATH}/data/dist/" ; then
+                    try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}"
                     if [ ! -z "${portwine_exe}" ]; then
                         PW_WINE_USE=${VERSION_WINE_GIT}
                         edit_db_from_gui PW_WINE_USE
                     fi
                 else
-                    try_remove_file "${PORT_WINE_PATH}/data/tmp/${VERSION_WINE_GIT}.tar.${archive_type}"
-                    try_remove_dir "${PORT_WINE_PATH}/data/dist/${VERSION_WINE_GIT}"
+                    try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}"
+                    try_remove_dir "${PORT_WINE_PATH}/data/dist/${PW_WINE_ARCHIVE}"
                     zenity_error_download && gui_proton_downloader
                 fi
             fi
