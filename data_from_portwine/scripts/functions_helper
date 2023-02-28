@@ -831,7 +831,9 @@ pw_port_update () {
         echo "2022" > "${PORT_WINE_TMP_PATH}/scripts_ver"
     fi
     export scripts_install_ver=`cat "${PORT_WINE_TMP_PATH}/scripts_ver" | head -n 1`
+    print_info "Check update..."
     curl -s --list-only https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine/scripts/var > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+    [[ $? == 0 ]] && print_info "OK!" || print_info "ERROR!"
     [[ ! -f "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ]] && echo "1" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     read "scripts_update_not" < "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     if [[ "${scripts_update_not}" == "1" ]] ; then
@@ -988,11 +990,17 @@ pw_find_exe () {
     --text-align=center --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "Create shortcut for..." \
     --text="\n${loc_gui_create_shortcut_for_exe}" --column="set:" --column="path to .exe file:" ${FIND_TO_GUI})"
     YAD_STATUS="$?"
-    if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
+    print_var YAD_STATUS
+    if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" || -z "${PW_SET_FIND_EXE}" ]] ; then
+        /usr/bin/env bash -c ${pw_full_command_line[*]} &
+        exit 0
+    fi
     IFS=$OrigIFS
 
     if [[ -n "${PW_SET_FIND_EXE}" ]] ; then
         portwine_exe="${PW_PATH_FOR_FIND}$(echo "${PW_SET_FIND_EXE}" | awk -F'|' '{print $2}')"
         portwine_create_shortcut
+        /usr/bin/env bash -c ${pw_full_command_line[*]} &
+        exit 0
     fi
 }
