@@ -978,17 +978,20 @@ pw_find_exe () {
     PW_EXCLUDE_EXE_FIND='(windows|explorer|anticheat|programdata|redist|setup|.ppdb|unin|error|crash|handler|install|/jre/|steam|uploader|eac|netframe)'
     PW_PATH_FOR_FIND="${PORT_WINE_PATH}/data/prefixes/"
 
-    find -P "${PW_PATH_FOR_FIND}" -type f -name "*.exe" ${PW_FIND_TIME} | grep -viE ${PW_EXCLUDE_EXE_FIND} | awk -F"/prefixes/" '{print $2}' > "${PORT_WINE_TMP_PATH}/tmp_yad_find_exe"
+    pw_start_progress_bar_block "Searching for .exe files... Please wait."
+    find -P "${PW_PATH_FOR_FIND}" -type f -name "*.exe" ${PW_FIND_TIME} | grep -viE ${PW_EXCLUDE_EXE_FIND} | \
+    awk -F"/prefixes/" '{print $2}' > "${PORT_WINE_TMP_PATH}/tmp_yad_find_exe"
+    pw_stop_progress_bar
 
     unset FIND_TO_GUI
     while read line; do
-        FIND_TO_GUI+="false%${line}%"
+        FIND_TO_GUI+="${line}%"
     done < "${PORT_WINE_TMP_PATH}/tmp_yad_find_exe"
 
     OrigIFS="$IFS" && IFS=%
-    PW_SET_FIND_EXE="$("${pw_yad_new}" --height="300" --width="1000" --center --list --radiolist \
+    PW_SET_FIND_EXE="$("${pw_yad_new}" --height="300" --width="1000" --center --list \
     --text-align=center --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "Create shortcut for..." \
-    --text="\n${loc_gui_create_shortcut_for_exe}" --column="set:" --column="path to .exe file:" ${FIND_TO_GUI})"
+    --text="\n${loc_gui_create_shortcut_for_exe}" --column="path to .exe file:" ${FIND_TO_GUI})"
     YAD_STATUS="$?"
     print_var YAD_STATUS
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" || -z "${PW_SET_FIND_EXE}" ]] ; then
@@ -998,8 +1001,8 @@ pw_find_exe () {
     IFS=$OrigIFS
 
     if [[ -n "${PW_SET_FIND_EXE}" ]] ; then
-        portwine_exe="${PW_PATH_FOR_FIND}$(echo "${PW_SET_FIND_EXE}" | awk -F'|' '{print $2}')"
-        portwine_create_shortcut
+        portwine_exe="${PW_PATH_FOR_FIND}$(echo "${PW_SET_FIND_EXE}" | awk -F'|' '{print $1}')"
+        portwine_create_shortcut silent
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     fi
