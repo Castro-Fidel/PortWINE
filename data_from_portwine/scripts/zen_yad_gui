@@ -28,7 +28,7 @@ sszen() {
 
 gui_question () {
     `zenity --question --title "${inst_set}." --text "$1" --no-wrap ` &> /dev/null
-     [ $? -eq "0" ] && return 0 || return 1
+    [ $? -eq "0" ] && return 0 || return 1
 }
 
 
@@ -43,31 +43,31 @@ pw_start_progress_bar_cover () {
 }
 
 pw_update_pfx_cover_gui () {
-        PW_KEY_PROGRESS_BAR=$RANDOM
-        PW_GIF_FILE="${PW_GUI_ICON_PATH}/covers/pw_update_pfx_cover.gif"
-        PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 40}'`
-        PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 80}'`
-        echo "UPDATE PREFIX..." > "${PORT_WINE_TMP_PATH}/update_pfx_log"
-        unset PW_TIMER
-        while read -r line || [[ ! -z `pgrep -a yad | grep "yad_new --notebook --key="$PW_KEY_PROGRESS_BAR"" | awk '{print $1}'` ]] ; do
-                sleep 0.005
-                if [[ ! -z "${line}" ]] && [[ -z "`echo "${line}" | grep -i "gstreamer"`" ]] \
-                                        && [[ -z "`echo "${line}" | grep -i "kerberos"`" ]] \
-                                        && [[ -z "`echo "${line}" | grep -i "ntlm"`" ]]
-                then
-                    echo "# ${line}"
-                fi
-                if [[ "${PW_TIMER}" != 1 ]] ; then
-                    sleep 3
-                    PW_TIMER=1
-                fi
-        done < "${PORT_WINE_TMP_PATH}/update_pfx_log" | "${pw_yad_new}" --plug=$PW_KEY_PROGRESS_BAR --tabnum="2" --text-info --tail &
-        "${pw_yad_new}" --plug=$PW_KEY_PROGRESS_BAR --tabnum="1" --picture --filename="${PW_GIF_FILE}" --image-on-top &
+    PW_KEY_PROGRESS_BAR=$RANDOM
+    PW_GIF_FILE="${PW_GUI_ICON_PATH}/covers/pw_update_pfx_cover.gif"
+    PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 40}'`
+    PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 80}'`
+    echo "UPDATE PREFIX..." > "${PORT_WINE_TMP_PATH}/update_pfx_log"
+    unset PW_TIMER
+    while read -r line || [[ ! -z `pgrep -a yad | grep "yad_new --notebook --key="$PW_KEY_PROGRESS_BAR"" | awk '{print $1}'` ]] ; do
+            sleep 0.005
+            if [[ ! -z "${line}" ]] && [[ -z "`echo "${line}" | grep -i "gstreamer"`" ]] \
+                                    && [[ -z "`echo "${line}" | grep -i "kerberos"`" ]] \
+                                    && [[ -z "`echo "${line}" | grep -i "ntlm"`" ]]
+            then
+                echo "# ${line}"
+            fi
+            if [[ "${PW_TIMER}" != 1 ]] ; then
+                sleep 3
+                PW_TIMER=1
+            fi
+    done < "${PORT_WINE_TMP_PATH}/update_pfx_log" | "${pw_yad_new}" --plug=$PW_KEY_PROGRESS_BAR --tabnum="2" --text-info --tail &
+    "${pw_yad_new}" --plug=$PW_KEY_PROGRESS_BAR --tabnum="1" --picture --filename="${PW_GIF_FILE}" --image-on-top &
 
-        "${pw_yad_new}" --notebook --key="$PW_KEY_PROGRESS_BAR" --tab=LOGO --tab=TERMINAL --no-buttons --undecorated \
-        --center --auto-close --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y --tab-pos=bottom &
-        export PW_YAD_PID_PFX_COVER_UI="$!"
-        return 0
+    "${pw_yad_new}" --notebook --key="$PW_KEY_PROGRESS_BAR" --tab=LOGO --tab=TERMINAL --no-buttons --undecorated \
+    --center --auto-close --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y --tab-pos=bottom &
+    export PW_YAD_PID_PFX_COVER_UI="$!"
+    return 0
 }
 
 pw_start_progress_bar_cs () {
@@ -188,7 +188,7 @@ pw_gui_for_edit_db () {
     --field=":LBL" "" \
     --field="${loc_gui_mango_fps}!${loc_gui_mango_fps_help} :SCL" ${FPS_LIMIT_VAR} 2>/dev/null 1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" & 
 
-    "${pw_yad_new}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="450" \
+    "${pw_yad_new}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="550" \
     --text "${loc_gui_edit_db} <b>${PORTWINE_DB}</b>\n ${loc_gui_edit_db_help}" --separator=" " --borders=10 --center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
     --button="${loc_gui_cancel}"!!"${loc_gui_cancel_help}":1 \

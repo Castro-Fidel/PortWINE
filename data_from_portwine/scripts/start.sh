@@ -21,6 +21,14 @@ if [[ "${XDG_SESSION_TYPE}" = "wayland" ]] && [[ ! -f "${PORT_WINE_TMP_PATH}/che
     echo "1" > "${PORT_WINE_TMP_PATH}/check_wayland"
 fi
 
+if [[ -f "${PORT_WINE_TMP_PATH}/tmp_main_gui_size" ]] && [[ -n "$(cat ${PORT_WINE_TMP_PATH}/tmp_main_gui_size)" ]] ; then
+    export PW_MAIN_SIZE_W="$(cat ${PORT_WINE_TMP_PATH}/tmp_main_gui_size | awk '{print $1}')"
+    export PW_MAIN_SIZE_H="$(cat ${PORT_WINE_TMP_PATH}/tmp_main_gui_size | awk '{print $2}')"
+else
+    export PW_MAIN_SIZE_W="1000"
+    export PW_MAIN_SIZE_H="260"
+fi    
+
 if [[ -n $(basename "${portwine_exe}" | grep .ppack) ]] ; then
     export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
     unset PW_SANDBOX_HOME_PATH
@@ -760,8 +768,18 @@ else
     # --field="   Guild Wars 2"!"$PW_GUI_ICON_PATH/gw2.png"!"":"FBTN" '@bash -c "button_click PW_GUILD_WARS_2"'
     # --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"'
 
+    if  [[ `which wmctrl` ]] &>/dev/null ; then
+        while [[ $(pgrep -a yad_new | head -n 1 | awk '{print $1}' 2>/dev/null) ]] ; do
+            sleep 1
+            PW_MAIN_GUI_SIZE_TMP="$(wmctrl -lG | grep PortProton-1.0 | awk '{print $5" "$6}' 2>/dev/null)"
+            if [[ -n "${PW_MAIN_GUI_SIZE_TMP}" ]] ; then
+                echo "${PW_MAIN_GUI_SIZE_TMP}" > "${PORT_WINE_TMP_PATH}/tmp_main_gui_size"
+            fi
+        done &
+    fi
+
     if [[ -z "${PW_ALL_DF}" ]] ; then
-        "${pw_yad_new}" --key=$KEY --notebook --borders=5 --width=1000 --height=235 --no-buttons --auto-close --center \
+        "${pw_yad_new}" --key=$KEY --notebook --borders=5 --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons --auto-close --center \
         --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "${portname}-${install_ver} (${scripts_install_ver})" \
         --tab-pos=bottom --keep-icon-size \
         --tab="$loc_mg_autoinstall"!"$PW_GUI_ICON_PATH/separator.png"!"" \
@@ -771,7 +789,7 @@ else
         --tab="$loc_mg_installed"!"$PW_GUI_ICON_PATH/separator.png"!""
         YAD_STATUS="$?"
     else
-        "${pw_yad_new}" --key=$KEY --notebook --borders=5 --width=1000 --height=235 --no-buttons --auto-close --center \
+        "${pw_yad_new}" --key=$KEY --notebook --borders=5 --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons --auto-close --center \
         --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "${portname}-${install_ver} (${scripts_install_ver})" \
         --tab-pos=bottom --keep-icon-size \
         --tab="$loc_mg_installed"!"$PW_GUI_ICON_PATH/separator.png"!"" \
@@ -781,6 +799,7 @@ else
         --tab="$loc_mg_portproton_settings"!"$PW_GUI_ICON_PATH/separator.png"!""
         YAD_STATUS="$?"
     fi
+
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
 
     if [[ -f "${PORT_WINE_TMP_PATH}/tmp_yad_form" ]]; then
