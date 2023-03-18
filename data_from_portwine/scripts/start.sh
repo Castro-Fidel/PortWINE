@@ -190,8 +190,7 @@ portwine_start_debug () {
     unset PW_TIMER
     while read -r line || [[ -n $(pgrep -a yad | grep "yad_new --text-info --tail --button="STOP":0 --title="DEBUG"" | awk '{print $1}') ]] ; do
             sleep 0.005
-            if [[ -n "${line}" ]] && [[ -z "$(echo "${line}" | grep -i "gstreamer")" ]] \
-                                    && [[ -z "$(echo "${line}" | grep -i "kerberos")" ]] \
+            if [[ -n "${line}" ]] && [[ -z "$(echo "${line}" | grep -i "kerberos")" ]] \
                                     && [[ -z "$(echo "${line}" | grep -i "ntlm")" ]]
             then
                 echo "# ${line}"
@@ -205,7 +204,6 @@ portwine_start_debug () {
     kill_portwine
 #    sleep 1 && zenity --info --title "DEBUG" --text "${port_debug}" --no-wrap &> /dev/null && kill_portwine
     sed -i '/.fx$/d' "${PORT_WINE_PATH}/${portname}.log"
-    sed -i '/GStreamer/d' "${PORT_WINE_PATH}/${portname}.log"
     sed -i '/kerberos/d' "${PORT_WINE_PATH}/${portname}.log"
     sed -i '/ntlm/d' "${PORT_WINE_PATH}/${portname}.log"
     sed -i '/HACK_does_openvr_work/d' "${PORT_WINE_PATH}/${portname}.log"
@@ -414,15 +412,15 @@ pw_create_prefix_backup () {
 pw_edit_db () {
     pw_gui_for_edit_db \
     PW_MANGOHUD PW_MANGOHUD_x32 PW_MANGOHUD_USER_CONF ENABLE_VKBASALT PW_NO_ESYNC PW_NO_FSYNC PW_USE_DXR10 PW_USE_DXR11 \
-    PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_WINE_FULLSCREEN_FSR PW_OLD_GL_STRING PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL \
+    PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL \
     PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_DX12_DISABLE PW_PRIME_RENDER_OFFLOAD PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME \
-    PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE PW_USE_WINE_DXGI
+    PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE PW_USE_WINE_DXGI
     if [ "$?" == 0 ] ; then
         echo "Restarting PP after update ppdb file..."
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     fi
-    # PW_WINE_ALLOW_XIM PW_FORCE_USE_VSYNC PW_WINEDBG_DISABLE PW_USE_GSTREAMER PW_USE_AMDVLK_DRIVER
+    # PW_WINE_ALLOW_XIM PW_FORCE_USE_VSYNC PW_WINEDBG_DISABLE PW_USE_AMDVLK_DRIVER
 }
 
 pw_autoinstall_from_db () {
@@ -769,14 +767,15 @@ else
     # --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"'
 
     if  [[ `which wmctrl` ]] &>/dev/null ; then
+        sleep 2
         while [[ $(pgrep -a yad_new | head -n 1 | awk '{print $1}' 2>/dev/null) ]] ; do
-            sleep 1
+            sleep 2
             PW_MAIN_GUI_SIZE_TMP="$(wmctrl -lG | grep PortProton-1.0 | awk '{print $5" "$6}' 2>/dev/null)"
             if [[ -n "${PW_MAIN_GUI_SIZE_TMP}" ]] ; then
                 echo "${PW_MAIN_GUI_SIZE_TMP}" > "${PORT_WINE_TMP_PATH}/tmp_main_gui_size"
             fi
-        done &
-    fi
+        done
+    fi &
 
     if [[ -z "${PW_ALL_DF}" ]] ; then
         "${pw_yad_new}" --key=$KEY --notebook --borders=5 --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons --auto-close --center \

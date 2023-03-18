@@ -994,8 +994,11 @@ pw_find_exe () {
     --text="\n${loc_gui_create_shortcut_for_exe}" --column="path to .exe file:" ${FIND_TO_GUI})"
     YAD_STATUS="$?"
     print_var YAD_STATUS
-    if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" || -z "${PW_SET_FIND_EXE}" ]] ; then
-        /usr/bin/env bash -c ${pw_full_command_line[*]} &
+    if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
+        if [[ -z "${PW_SET_FIND_EXE}" ]] ; then
+            /usr/bin/env bash -c ${pw_full_command_line[*]} &
+            echo "Restarting..."
+        fi
         exit 0
     fi
     IFS=$OrigIFS
