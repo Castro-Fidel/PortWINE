@@ -196,29 +196,29 @@ unpack_tar_zst () {
     set -o pipefail
     unset PW_ZSTD_PORT
     if  [[ `which zstd` ]] &>/dev/null ; then
-        tar -I zstd -xvf "$1" -C "$2" | sszen
+        tar -I zstd -xhvf "$1" -C "$2" | sszen
         [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
     else
-        env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_WINELIB}/portable/lib/lib64:${PW_WINELIB}/portable/lib/lib" tar -I "${PW_WINELIB}/portable/bin/zstd" -xvf "$1" -C "$2" | sszen
+        env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_WINELIB}/portable/lib/lib64:${PW_WINELIB}/portable/lib/lib" tar -I "${PW_WINELIB}/portable/bin/zstd" -xhvf "$1" -C "$2" | sszen
         [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
     fi
 }
 
 unpack_tar_xz () {
     set -o pipefail
-    tar -Jxvf "$1" -C "$2" | sszen
+    tar -Jxhvf "$1" -C "$2" | sszen
     [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
 }
 
 unpack_tar_gz () {
     set -o pipefail
-    tar -xzvf "$1" -C "$2" | sszen
+    tar -xhzvf "$1" -C "$2" | sszen
     [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
 }
 
 unpack_tar () {
     set -o pipefail
-    tar -xvf "$1" -C "$2" | sszen
+    tar -xhvf "$1" -C "$2" | sszen
     [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
 }
 
