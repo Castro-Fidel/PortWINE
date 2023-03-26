@@ -350,7 +350,7 @@ start_portwine () {
     then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/dxgi.dll"
     fi
     echo "Try link wine d3d filese by default..."
-    for wine_build_dll in d3d12 d3d11 d3d10 d3d10core d3d10_1 d3d9 dxgi ; do
+    for wine_build_dll in d3d12core d3d12 d3d11 d3d10 d3d10core d3d10_1 d3d9 dxgi ; do
         if ! try_force_link_file "${WINEDIR}/lib/wine/${wine_build_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${wine_build_dll}.dll"
         then try_force_link_file "${WINEDIR}/lib/wine/i386-windows/${wine_build_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${wine_build_dll}.dll"
         fi
@@ -367,7 +367,7 @@ start_portwine () {
         echo "Use OpenGL"
         export GL_YIELD="NOTHING"
         export mesa_glthread=true
-        var_winedlloverride_update "d3d11,d3d10,d3d10core,d3d10_1,d3d9,dxgi=b;d3d12="
+        var_winedlloverride_update "d3d11,d3d10,d3d10core,d3d10_1,d3d9,dxgi=b;d3d12,d3d12core="
     elif [[ "${PW_VULKAN_USE}" == "3" ]] ; then
         echo "Use GALLIUM-NINE (Native DX9 on MESA drivers)"
         export PW_GALLIUM_NINE_VER="0.8"
@@ -416,7 +416,6 @@ start_portwine () {
         elif [[ "${PW_VULKAN_USE}" == "2" ]] ; then
             PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
-            export ENABLE_VKBASALT=0 # need update vkbasalt for new Vulkan 1.3
             echo "DXVK v.${DXVK_GIT_VER} in use"
             echo "VKD3D-PROTON v.${VKD3D_GIT_VER} in use"
         fi
@@ -429,7 +428,7 @@ start_portwine () {
         done
 
         echo "Try link native VKD3D files..."
-        for wine_vkd3d_dll in d3d12 libvkd3d-shader-1 # libvkd3d-proton-utils-3
+        for wine_vkd3d_dll in d3d12 d3d12core libvkd3d-shader-1 # libvkd3d-proton-utils-3
         do
             try_force_link_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
             try_force_link_file "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
@@ -437,8 +436,8 @@ start_portwine () {
     fi
      
     if [[ "${PW_DX12_DISABLE}" == 1 ]]  
-    then var_winedlloverride_update "d3d12="
-    else var_winedlloverride_update "d3d12=n"
+    then var_winedlloverride_update "d3d12,d3d12core="
+    else var_winedlloverride_update "d3d12,d3d12core=n"
     fi
 
     if [[ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/vrclient/bin" ]] ; then
