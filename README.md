@@ -18,9 +18,22 @@ WINE-PROTON-GE: https://github.com/GloriousEggroll/proton-ge-custom/
 
 ## Installation using packages
 
-* **Ubuntu 20.04** (Kubuntu, Xubuntu, Lubuntu, etc.), **Linux Mint 20.x** : [portproton_1.0-2_amd64.deb](https://github.com/Castro-Fidel/PortProton_dpkg/releases/download/portproton_1.0-2_amd64/portproton_1.0-2_amd64.deb)
-* **Arch Linux** and derivatives (Manjaro, Garuda, etc.) : [portproton-1.0-8-x86_64.pkg.tar.zst](https://github.com/Castro-Fidel/PortProton_PKGBUILD/releases/download/portproton-1.0-8-x86_64/portproton-1.0-8-x86_64.pkg.tar.zst)
-* **ROSA Linux** (package in the official repository) is installed with the command:  `sudo urpmi portproton`
+* **Ubuntu 20.04** (Kubuntu, Xubuntu, Lubuntu, etc.), **Linux Mint 20.x** :
+[portproton_1.0-2_amd64.deb](https://github.com/Castro-Fidel/PortProton_dpkg/releases/download/portproton_1.0-2_amd64/portproton_1.0-2_amd64.deb)
+* **Arch Linux** and derivatives (Manjaro, Garuda, etc.) :
+[portproton-1.0-8-x86_64.pkg.tar.zst](https://github.com/Castro-Fidel/PortProton_PKGBUILD/releases/download/portproton-1.0-8-x86_64/portproton-1.0-8-x86_64.pkg.tar.zst)
+* **ROSA Linux** (package in the official repository) is installed with the command:  
+`sudo urpmi portproton`
+* **Alt Linux (Sisyphus)** (package in the official repository) is installed with the command:  
+
+```
+su -
+epm full-upgrade
+epm ei
+epm play portproton
+```
+
+
 
 ## Universal (manual) installation
 
@@ -36,6 +49,7 @@ Silent installation (ENG):
 
 Silent installation (RUS):
 
+`wget -c 
 `wget -c "https://github.com/Castro-Fidel/PortWINE/raw/master/portwine_install_script/PortProton_1.0" && sh PortProton_1.0 -rus`
 
 ## Dependencies
