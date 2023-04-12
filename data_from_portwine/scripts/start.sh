@@ -425,7 +425,7 @@ pw_edit_db () {
 
 pw_autoinstall_from_db () {
     export PW_USER_TEMP="${PORT_WINE_TMP_PATH}"
-    export PW_FORCE_LARGE_ADDRESS_AWARE=0
+    export PW_FORCE_LARGE_ADDRESS_AWARE=1
     export PW_USE_GAMEMODE=0
     export PW_CHECK_AUTOINSTAL=1
     export PW_GUI_DISABLED_CS=1
