@@ -282,7 +282,7 @@ start_portwine () {
     then
         pw_clear_pfx
         check_dirs_and_files_in_pfx
-        if [[ -f "${PW_WINELIB}/default_pfx.tar.xz" ]] ; then
+        if [[ -f "${PW_WINELIB}/default_pfx.tar.xz" ]] && [[ "${DISABLE_CP_DEFPFX}" != 1 ]] ; then
             unpack_tar_xz "${PW_WINELIB}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" 2>/dev/null
         fi
         ${pw_runtime} env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -u &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
@@ -306,9 +306,13 @@ start_portwine () {
     then try_force_link_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/users/steamuser/Documents" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/users/steamuser/My Documents"
     fi
     #enabled BattleEye_Runtime and EasyAntiCheat_Runtime
-    export PROTON_BATTLEYE_RUNTIME="${PW_PLUGINS_PATH}/BattlEye_Runtime"
-    export PROTON_EAC_RUNTIME="${PW_PLUGINS_PATH}/EasyAntiCheat_Runtime"
-    var_winedlloverride_update "beclient,beclient_x64=b,n"
+    if [[ "${PW_USE_EAC_AND_BE}" == 1 ]] ; then
+        export PROTON_BATTLEYE_RUNTIME="${PW_PLUGINS_PATH}/BattlEye_Runtime"
+        export PROTON_EAC_RUNTIME="${PW_PLUGINS_PATH}/EasyAntiCheat_Runtime"
+        var_winedlloverride_update "beclient,beclient_x64=b,n"
+    else
+        unset PROTON_BATTLEYE_RUNTIME PROTON_EAC_RUNTIME
+    fi
     #try link d3d extras libs
     if  [[ -d "${PW_PLUGINS_PATH}/d3d_extras" ]]
     then PATH_TO_D3DEXTRAS="${PW_PLUGINS_PATH}/d3d_extras"
@@ -430,7 +434,7 @@ start_portwine () {
         done
 
         echo "Try link native VKD3D files..."
-        for wine_vkd3d_dll in d3d12 d3d12core libvkd3d-shader-1 # libvkd3d-proton-utils-3
+        for wine_vkd3d_dll in d3d12 d3d12core libvkd3d-shader-1 libvkd3d-1
         do
             try_force_link_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
             try_force_link_file "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
@@ -438,8 +442,8 @@ start_portwine () {
     fi
      
     if [[ "${PW_DX12_DISABLE}" == 1 ]]  
-    then var_winedlloverride_update "d3d12,d3d12core="
-    else var_winedlloverride_update "d3d12,d3d12core=n"
+    then var_winedlloverride_update "d3d12,d3d12core,libvkd3d-shader-1,libvkd3d-1="
+    else var_winedlloverride_update "d3d12,d3d12core,libvkd3d-shader-1,libvkd3d-1=n"
     fi
 
     if [[ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/vrclient/bin" ]] ; then
