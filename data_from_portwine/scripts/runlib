@@ -183,30 +183,7 @@ start_portwine () {
         export VKD3D_FEATURE_LEVEL=12_1
     fi
     export optirun_on=""
-    export check_optimus_manager=
-    export PW_NVIDIA="$(lspci | grep NVIDIA)"
-    if [ -x "`which optimus-manager 2>/dev/null`" ]; then
-        export check_optimus_manager=`optimus-manager --status | grep Current | cut -f 2 -d':' | sed -e 's/^[[:space:]]*//'`
-    fi
-    if [[ ! -z "${PW_NVIDIA}" ]] && [[ "${check_optimus_manager}" != "intel" ]] && [[ "${DRI_PRIME}" != 1 ]] ; then
-        if [ "${check_optimus_manager}" = "nvidia" ]; then
-            check_nvidia_vk_icd_file
-        elif [ -x "`which primusrun 2>/dev/null`" ]; then
-            export optirun_on="primusrun"
-            check_nvidia_vk_icd_file
-        elif [ -x "`which optirun 2>/dev/null`" ]; then
-            export optirun_on="optirun -b primus"
-            check_nvidia_vk_icd_file
-        elif [ -x "`which prime-run 2>/dev/null`" ]; then
-            export optirun_on="prime-run"
-            check_nvidia_vk_icd_file
-        elif [[ -x "`which nvidia-settings 2>/dev/null`" ]] ; then 
-            export __GLX_VENDOR_LIBRARY_NAME=nvidia
-            check_nvidia_vk_icd_file
-        fi
-    else
-        export DRI_PRIME=1
-    fi
+
     case "$PW_FORCE_USE_VSYNC" in  # 0-FORCE_OFF, 1-FORCE_ON, 2-BY_DEFAULT
         "0")
         unset vblank_mode
@@ -344,9 +321,6 @@ start_portwine () {
         echo "d3dx9" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
     fi
     var_winedlloverride_update "steam_api,steam_api64,steamclient,steamclient64=n;dotnetfx35.exe,dotnetfx35setup.exe=b;lsteamclient,winemenubuilder=d"
-
-    # export TOTAL_VRAM=`"${PW_WINELIB}/runtime/files/bin/glxinfo" -B | grep Total | awk -F: '{print $2}' | awk '{print $1}'`
-    # echo "TOTAL_VRAM=${TOTAL_VRAM}"
 
     echo "Try link wine DXGI by default..."
     if ! try_force_link_file "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/dxgi.dll"
