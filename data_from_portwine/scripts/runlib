@@ -124,7 +124,6 @@ start_portwine () {
         try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/" 
         try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.ini" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
         enabled_fake_nvidia_videocard 1
-        export DXVK_NVAPIHACK=0
         export DXVK_ENABLE_NVAPI=1
         export WINE_HIDE_NVIDIA_GPU=0
     elif [[ ! -z "${PW_USE_NVAPI_AND_DLSS}" && "${PW_USE_NVAPI_AND_DLSS}" == 1 ]] && [[ -d "${WINEDIR}/lib/wine/nvapi/" ]]
@@ -144,13 +143,11 @@ start_portwine () {
         # echo "Try link nvml.dll.so to prefix"
         try_force_link_file "${PW_PLUGINS_PATH}"/nvml/lib/wine/nvml.dll.so "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/nvml.dll"
         try_force_link_file "${PW_PLUGINS_PATH}"/nvml/lib64/wine/nvml.dll.so "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/nvml.dll"
-        export DXVK_NVAPIHACK=0
         export DXVK_ENABLE_NVAPI=1
         export WINE_HIDE_NVIDIA_GPU=0
         enabled_fake_nvidia_videocard 0
     else
         enabled_fake_nvidia_videocard 0
-        export DXVK_NVAPIHACK=1
         export DXVK_ENABLE_NVAPI=0
         export WINE_HIDE_NVIDIA_GPU=1
     fi
@@ -173,14 +170,10 @@ start_portwine () {
     fi
     
     [[ ! -z "${PW_MANGOHUD_USER_CONF}" && "${PW_MANGOHUD_USER_CONF}" != 0 ]] && unset MANGOHUD_CONFIG
-    if [[ ! -z "${PW_USE_DXR11}" && "${PW_USE_DXR11}" != 0 ]] ; then 
-        var_vkd3d_config_update dxr11
+    if [[ "${PW_USE_DXR11}" == 1 ]] || [[ "${PW_USE_DXR10}" == 1 ]] || [[ "${PW_USE_RAY_TRACING}" == 1 ]]; then
+        var_vkd3d_config_update dxr10
         var_radv_perftest_config_update rt,gpl
-        export VKD3D_FEATURE_LEVEL=12_1
-    elif [[ ! -z "${PW_USE_DXR10}" && "${PW_USE_DXR10}" != 0 ]] ; then 
-        var_vkd3d_config_update dxr
-        var_radv_perftest_config_update rt,gpl
-        export VKD3D_FEATURE_LEVEL=12_1
+        # export VKD3D_FEATURE_LEVEL=12_1
     fi
     export optirun_on=""
 
@@ -239,9 +232,21 @@ start_portwine () {
         try_force_link_file "${WINEDIR}/share/wine/fonts/"tahoma.ttf "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/Fonts/"tahoma.ttf
     }
 
+    PROGPFX_URL="github.com/Castro-Fidel/PortWINE/releases/download/progpfx${DEFPFX_VER}/progpfx${DEFPFX_VER}.tar.xz"
+    if [[ "${PW_PREFIX_NAME}" == "PROGRAMS" && ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/.progpfx ]] ; then
+        print_info "Download and install PROGRAMS pfx..."
+        if try_download "${PROGPFX_URL}" "${PORT_WINE_PATH}/data/tmp/progpfx.tar.xz" ; then
+            unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/progpfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/"
+            try_remove_file "${PORT_WINE_PATH}/data/tmp/progpfx.tar.xz"
+        else
+            try_remove_file "${PORT_WINE_PATH}/data/tmp/progpfx.tar.xz"
+            zenity_error_download && exit 1
+        fi
+    fi
+        
     DOTPFX_URL="github.com/Castro-Fidel/PortWINE/releases/download/dotpfx${DOTPFX_VER}/dotpfx${DOTPFX_VER}.tar.xz"
-    if [[ "${update_loc}" == "RUS" && "${PW_PREFIX_NAME}" == "DOTNET" && ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/.dotnet48 ]] ; then
-        print_info "Download and install DOTNET..."
+    if [[ "${PW_PREFIX_NAME}" == "DOTNET" && ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/.dotnet48 ]] ; then
+        print_info "Download and install DOTNET pfx..."
         if try_download "${DOTPFX_URL}" "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz" ; then
             unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/"
             try_remove_file "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz"
@@ -295,6 +300,9 @@ start_portwine () {
     then PATH_TO_D3DEXTRAS="${PW_PLUGINS_PATH}/d3d_extras"
     else PATH_TO_D3DEXTRAS="${PW_WINELIB}/d3d_extras"
     fi
+    if [[ -z "`grep d3dx9 "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"`" ]] ; then
+        echo "d3dx9" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
+    fi
     for d3d_extras_from_plugins in d3dcompiler_33 d3dcompiler_34 d3dcompiler_35 d3dcompiler_36 d3dcompiler_37 \
     d3dcompiler_38 d3dcompiler_39 d3dcompiler_40 d3dcompiler_41 d3dcompiler_42 d3dcompiler_43 d3dcompiler_46 \
     d3dcompiler_47 d3dx10_33 d3dx10_34 d3dx10_35 d3dx10_36 d3dx10_37 d3dx10_38 d3dx10_39 d3dx10_40 d3dx10_41 \
@@ -304,24 +312,12 @@ start_portwine () {
         if [[ "${PW_USE_D3D_EXTRAS}" == 1 ]] ; then
             try_force_link_file "${PATH_TO_D3DEXTRAS}/x64/${d3d_extras_from_plugins}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
             try_force_link_file "${PATH_TO_D3DEXTRAS}/x32/${d3d_extras_from_plugins}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/"
-            var_winedlloverride_update "${d3d_extras_from_plugins}=n,b"
-        else
-            if ! try_force_link_file "${WINEDIR}"/lib/wine/fakedlls/${d3d_extras_from_plugins}.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/"
-            then try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/${d3d_extras_from_plugins}.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/"
-            fi
-            if ! try_force_link_file "${WINEDIR}"/lib64/wine/fakedlls/${d3d_extras_from_plugins}.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
-            then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/${d3d_extras_from_plugins}.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
-            fi
+            var_winedlloverride_update "${d3d_extras_from_plugins}=n"
         fi
         if [[ -z "`grep "${d3d_extras_from_plugins}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"`" ]] ; then
             echo "${d3d_extras_from_plugins}" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
         fi
     done
-    if [[ -z "`grep d3dx9 "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"`" ]] ; then
-        echo "d3dx9" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
-    fi
-    var_winedlloverride_update "steam_api,steam_api64,steamclient,steamclient64=n;dotnetfx35.exe,dotnetfx35setup.exe=b;lsteamclient,winemenubuilder=d"
-
     echo "Try link wine DXGI by default..."
     if ! try_force_link_file "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/dxgi.dll"
     then try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/dxgi.dll"
@@ -621,8 +617,9 @@ if [[ -d "${PORT_WINE_PATH}/data/dist" ]] ; then
     IFS="$orig_IFS"
 fi
 
-create_new_dir "${PORT_WINE_PATH}/data/prefixes"
+create_new_dir "${PORT_WINE_PATH}/data/prefixes/DEFAULT"
 create_new_dir "${PORT_WINE_PATH}/data/prefixes/DOTNET"
+create_new_dir "${PORT_WINE_PATH}/data/prefixes/PROGRAMS"
 try_force_link_dir "${PORT_WINE_PATH}/data/prefixes" "${PORT_WINE_PATH}"
 
 orig_IFS="$IFS"
