@@ -3,22 +3,16 @@
 ########################################################################
 export PW_WINDOWS_VER=10
 export PW_DLL_INSTALL="vcrun2017"
-export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/EveLauncher-1892908.exe"
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/EveLauncher-2198233.exe"
 start_portwine
-if try_download "binaries.eveonline.com/EveLauncher-1892908.exe" "${PW_AUTOINSTALL_EXE}"
+if try_download "binaries.eveonline.com/EveLauncher-2198233.exe" "${PW_AUTOINSTALL_EXE}"
 then
-    pw_start_progress_bar_block "${loc_gui_installing_the} EVE Launcher. ${loc_gui_please_wait} "
-    if [ ! -f "$WINEPREFIX/drive_c/Games/EVE Online/Launcher/evelauncher.exe" ] ; then
-        try_remove_dir "$WINEPREFIX/drive_c/Games/EVE Online"
-        dd if="${PW_AUTOINSTALL_EXE}" of="${PW_AUTOINSTALL_EXE}".7z bs=1M skip=31646603 count=196171208 iflag=skip_bytes,count_bytes
-        "$pw_7z" x "${PW_AUTOINSTALL_EXE}".7z -o"$WINEPREFIX/drive_c/Games/EVE Online"
-        try_remove_file "${PW_AUTOINSTALL_EXE}"
-    try_remove_file "${portwine_exe}.ppdb"
-        try_remove_file "${PW_AUTOINSTALL_EXE}"
-    try_remove_file "${portwine_exe}.ppdb".7z
-    fi
-    portwine_exe="$WINEPREFIX/drive_c/Games/EVE Online/Launcher/evelauncher.exe"
+    pw_kill_autostart evelauncher.exe &
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe=`find "$WINEPREFIX/drive_c/" -type f -name "evelauncher.exe"`
     pw_stop_progress_bar
     portwine_create_shortcut
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
 fi
 stop_portwine
