@@ -842,7 +842,7 @@ if [[ -z "${PW_DISABLED_CREATE_DB}" ]] ; then
     edit_db_from_gui PW_VULKAN_USE PW_WINE_USE PW_PREFIX_NAME 
 fi
 
-case "$PW_YAD_SET" in
+[ -n "$PW_YAD_SET" ] && case "$PW_YAD_SET" in
     98) portwine_delete_shortcut ;;
     100) portwine_create_shortcut ;;
     DEBUG|102) portwine_start_debug ;;
