@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Author: Castro-Fidel (linux-gaming.ru)
+########################################################################
+export LAUNCH_PARAMETERS=("/q" )
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/gi_installer.exe"
+export PW_USE_D3D_EXTRAS=1
+
+start_portwine
+
+if try_download "https://ys-api-os.mihoyo.com/event/download_porter/link/ys_global/genshinimpactpc/default" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_start_progress_bar_block "Installing Genshin Impact Launcher. ${loc_gui_please_wait} "
+    pw_kill_autostart launcher.exe &
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files/Genshin Impact/launcher.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    kill_portwine
+    pw_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="Genshin Impact"
+    portwine_create_shortcut
+fi
+
+stop_portwine
