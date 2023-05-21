@@ -171,9 +171,11 @@ start_portwine () {
     
     [[ ! -z "${PW_MANGOHUD_USER_CONF}" && "${PW_MANGOHUD_USER_CONF}" != 0 ]] && unset MANGOHUD_CONFIG
     if [[ "${PW_USE_DXR11}" == 1 ]] || [[ "${PW_USE_DXR10}" == 1 ]] || [[ "${PW_USE_RAY_TRACING}" == 1 ]]; then
-        var_vkd3d_config_update dxr10
-        var_radv_perftest_config_update rt,gpl
-        # export VKD3D_FEATURE_LEVEL=12_1
+        var_vkd3d_config_update dxr11
+        var_radv_perftest_config_update rt
+        export VKD3D_FEATURE_LEVEL="12_1"
+        export DXVK_ENABLE_NVAPI=1
+        export WINE_HIDE_NVIDIA_GPU=0
     fi
     export optirun_on=""
 
@@ -462,7 +464,7 @@ start_portwine () {
         unset WINE_FULLSCREEN_FAKE_CURRENT_RES WINE_FULLSCREEN_FSR_STRENGTH WINE_FULLSCREEN_INTEGER_SCALING
     fi
 
-    for try_cp_dll_from_wine in "ntdll.dll" "vulkan-1.dll" ; do
+    for try_cp_dll_from_wine in "ntdll.dll" "vulkan-1.dll" "winevulkan.dll" ; do
         if ! try_copy_file "${WINEDIR}"/lib/wine/fakedlls/${try_cp_dll_from_wine} "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${try_cp_dll_from_wine}"
         then try_copy_file "${WINEDIR}"/lib/wine/i386-windows/${try_cp_dll_from_wine} "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${try_cp_dll_from_wine}"
         fi
