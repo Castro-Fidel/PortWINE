@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Author: chal55rus
+########################################################################
+export PW_PREFIX_NAME="CONTRACT_WARS"
+export LAUNCH_PARAMETERS=("/VERYSILENT")
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/CWClient_Install.exe"
+start_portwine
+if try_download "https://cdn-01.contractwarsgame.com/standalone/CWClient_Install.exe" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_start_progress_bar_block "${loc_gui_installing_the} CONTRACT WARS Client. ${loc_gui_please_wait} "
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/Games/CWClient/CWClientLauncher.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    kill_portwine
+    pw_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="CONTRACT WARS"
+    portwine_create_shortcut
+fi
+stop_portwine

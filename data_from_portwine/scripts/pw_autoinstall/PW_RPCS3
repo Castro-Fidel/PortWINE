@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Author: chal55rus (Sergey P.)
+########################################################################
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/rpcs3-v0.0.27-14790-2de4c03f_win64.7z"
+start_portwine
+if try_download "https://github.com/RPCS3/rpcs3-binaries-win/releases/download/build-2de4c03faa54f001910c1cc5bafda62cc23fa803/rpcs3-v0.0.27-14790-2de4c03f_win64.7z" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_start_progress_bar_block "${loc_gui_installing_the} RPCS3. ${loc_gui_please_wait} "
+    "$pw_7z" x -y "${PW_AUTOINSTALL_EXE}" -o"$WINEPREFIX/drive_c/Program Files (x86)/RPCS3"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/RPCS3/rpcs3.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    kill_portwine
+    pw_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="RPCS3"
+    portwine_create_shortcut
+fi
+stop_portwine
