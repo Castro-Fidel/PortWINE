@@ -26,6 +26,7 @@ fi
 . "$(dirname $(readlink -f "$0"))/functions_helper"
 
 start_portwine () {
+    var_winedlloverride_update "${PW_MUST_WINEDLLOVERRIDES}"
     export WINEPREFIX="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"
     create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/"
     try_force_link_dir "${PORT_WINE_PATH}/data/prefixes" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/"
@@ -542,7 +543,8 @@ start_portwine () {
 
 pw_run () {
     unset GDK_BACKEND
-    if [[ ! -z "$portwine_exe" ]] ; then
+    if [[ -n "${PATH_TO_GAME}" ]] ; then
+        echo "cd to ${PATH_TO_GAME}"
         cd "${PATH_TO_GAME}"
     else
         cd "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c"
