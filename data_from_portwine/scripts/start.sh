@@ -8,7 +8,7 @@ if [ -f "$1" ]; then
 fi
 . "$(dirname $(readlink -f "$0"))/runlib"
 kill_portwine
-killall -15 yad_new 2>/dev/null
+killall -15 yad_v12_3 2>/dev/null
 kill -TERM `pgrep -a yad | grep ${portname} | head -n 1 | awk '{print $1}'` 2>/dev/null
 
 if [[ -f "/usr/bin/portproton" ]] && [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]] ; then
@@ -188,7 +188,7 @@ portwine_start_debug () {
     sleep 3
     pw_stop_progress_bar_cover
     unset PW_TIMER
-    while read -r line || [[ -n $(pgrep -a yad | grep "yad_new --text-info --tail --button="STOP":0 --title="DEBUG"" | awk '{print $1}') ]] ; do
+    while read -r line || [[ -n $(pgrep -a yad | grep "yad_v12_3 --text-info --tail --button="STOP":0 --title="DEBUG"" | awk '{print $1}') ]] ; do
             sleep 0.005
             if [[ -n "${line}" ]] && [[ -z "$(echo "${line}" | grep -i "kerberos")" ]] \
                                     && [[ -z "$(echo "${line}" | grep -i "ntlm")" ]]
@@ -199,7 +199,7 @@ portwine_start_debug () {
                 sleep 3
                 PW_TIMER=1
             fi
-    done < "${PORT_WINE_PATH}/${portname}.log" | "${pw_yad_new}" --text-info --tail --button="STOP":0 --title="DEBUG" \
+    done < "${PORT_WINE_PATH}/${portname}.log" | "${pw_yad_v12_3}" --text-info --tail --button="STOP":0 --title="DEBUG" \
     --skip-taskbar --center --width=800 --height=400 --text "${port_debug}" &&
     kill_portwine
 #    sleep 1 && zenity --info --title "DEBUG" --text "${port_debug}" --no-wrap &> /dev/null && kill_portwine
@@ -290,19 +290,19 @@ pw_prefix_manager () {
         pw_stop_progress_bar
 
         KEY_EDIT_MANAGER_GUI=$RANDOM
-        "${pw_yad_new}" --plug=$KEY_EDIT_MANAGER_GUI --tabnum=1 --list --checklist \
+        "${pw_yad_v12_3}" --plug=$KEY_EDIT_MANAGER_GUI --tabnum=1 --list --checklist \
         --text="Select components to install in prefix: <b>\"${PW_PREFIX_NAME}\"</b>, using wine: <b>\"${PW_WINE_USE}\"</b>" \
         --column=set --column=dll --column=info < "${PORT_WINE_TMP_PATH}/dll_list_tmp" 1>> "${PORT_WINE_TMP_PATH}/to_winetricks" &
 
-        "${pw_yad_new}" --plug=$KEY_EDIT_MANAGER_GUI --tabnum=2 --list --checklist \
+        "${pw_yad_v12_3}" --plug=$KEY_EDIT_MANAGER_GUI --tabnum=2 --list --checklist \
         --text="Select fonts to install in prefix: <b>\"${PW_PREFIX_NAME}\"</b>, using wine: <b>\"${PW_WINE_USE}\"</b>" \
         --column=set --column=dll --column=info < "${PORT_WINE_TMP_PATH}/fonts_list_tmp" 1>> "${PORT_WINE_TMP_PATH}/to_winetricks" &
 
-        "${pw_yad_new}" --plug=$KEY_EDIT_MANAGER_GUI --tabnum=3 --list --checklist \
+        "${pw_yad_v12_3}" --plug=$KEY_EDIT_MANAGER_GUI --tabnum=3 --list --checklist \
         --text="Change config for prefix: <b>\"${PW_PREFIX_NAME}\"</b>" \
         --column=set --column=dll --column=info < "${PORT_WINE_TMP_PATH}/settings_list_tmp" 1>> "${PORT_WINE_TMP_PATH}/to_winetricks" &
 
-        "${pw_yad_new}" --key=$KEY_EDIT_MANAGER_GUI --notebook --borders=5 --width=900 --height=800 --center \
+        "${pw_yad_v12_3}" --key=$KEY_EDIT_MANAGER_GUI --notebook --borders=5 --width=900 --height=800 --center \
         --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "PREFIX MANAGER..." --tab-pos=bottom --tab="DLL" --tab="FONTS" --tab="SETTINGS"
         YAD_STATUS="$?"
         if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
@@ -343,7 +343,7 @@ pw_winetricks () {
     pw_stop_progress_bar
     echo "WINETRICKS..." > "${PORT_WINE_TMP_PATH}/update_pfx_log"
     unset PW_TIMER
-    while read -r line || [[ -n $(pgrep -a yad | grep "yad_new --text-info --tail --no-buttons --title="WINETRICKS"" | awk '{print $1}') ]] ; do
+    while read -r line || [[ -n $(pgrep -a yad | grep "yad_v12_3 --text-info --tail --no-buttons --title="WINETRICKS"" | awk '{print $1}') ]] ; do
             sleep 0.005
             if [[ -n "${line}" ]] && [[ -z "$(echo "${line}" | grep -i "gstreamer")" ]] \
                                     && [[ -z "$(echo "${line}" | grep -i "kerberos")" ]] \
@@ -355,11 +355,11 @@ pw_winetricks () {
                 sleep 3
                 PW_TIMER=1
             fi
-    done < "${PORT_WINE_TMP_PATH}/update_pfx_log" | "${pw_yad_new}" --text-info --tail --no-buttons --title="WINETRICKS" \
+    done < "${PORT_WINE_TMP_PATH}/update_pfx_log" | "${pw_yad_v12_3}" --text-info --tail --no-buttons --title="WINETRICKS" \
     --auto-close --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y &
     "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
     try_remove_file "${PORT_WINE_TMP_PATH}/update_pfx_log"
-    kill -s SIGTERM "$(pgrep -a yad_new | grep "title=WINETRICKS" | awk '{print $1}')" > /dev/null 2>&1    
+    kill -s SIGTERM "$(pgrep -a yad_v12_3 | grep "title=WINETRICKS" | awk '{print $1}')" > /dev/null 2>&1    
     stop_portwine
 }
 
@@ -368,12 +368,19 @@ pw_start_cont_xterm () {
     unset PW_SANDBOX_HOME_PATH
     # export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
     pw_init_runtime
-    ${pw_runtime} xterm
+    ${optirun_on} ${PW_GAMEMODERUN_SLR} ${pw_runtime} \
+    env ${PW_MANGOHUD_SLR} \
+    PATH="${PATH}" \
+    LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
+    LD_PRELOAD="${PW_LD_PRELOAD}" \
+    VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+    VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
+    xterm
 }
 
 pw_create_prefix_backup () {
     cd "$HOME"
-    PW_PREFIX_TO_BACKUP=$("${pw_yad_new}" --file --directory --borders=5 --width=650 --height=500 --auto-close --center \
+    PW_PREFIX_TO_BACKUP=$("${pw_yad_v12_3}" --file --directory --borders=5 --width=650 --height=500 --auto-close --center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "BACKUP PREFIX TO...")
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
@@ -562,7 +569,7 @@ if [ -n "${portwine_exe}" ]; then
         else
             PW_SHORTCUT="${loc_gui_delete_shortcut}!$PW_GUI_ICON_PATH/separator.png!${loc_delete_shortcut}:98"
         fi
-        OUTPUT_START=$("${pw_yad}" --text-align=center --text "$PW_COMMENT_DB" --wrap-width=150 --borders=7 --form --center  \
+        OUTPUT_START=$("${pw_yad}" --text-align=center --text "$PW_COMMENT_DB" --wrap-width=150 --borders=10 --form --center  \
         --title "${portname}-${install_ver} (${scripts_install_ver})" --image "${PW_ICON_FOR_YAD}" --separator=";" --keep-icon-size \
         --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
         --field="3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
@@ -590,7 +597,7 @@ if [ -n "${portwine_exe}" ]; then
 else
     button_click () {
         [[ -n "$1" ]] && echo "$1" > "${PORT_WINE_TMP_PATH}/tmp_yad_form"
-        if [[ -n $(pidof -s yad) ]] || [[ -n $(pidof -s yad_new) ]] ; then
+        if [[ -n $(pidof -s yad) ]] || [[ -n $(pidof -s yad_v12_3) ]] ; then
             kill -s SIGUSR1 $(pgrep -a yad | grep "\-\-key=${KEY} \-\-notebook" | awk '{print $1}') > /dev/null 2>&1
         fi
     }
@@ -598,7 +605,7 @@ else
 
     run_desktop_b_click () {
         [[ -n "$1" ]] && echo "$1" > "${PORT_WINE_TMP_PATH}/tmp_yad_form"
-        if [[ -n $(pidof -s yad) ]] || [[ -n $(pidof -s yad_new) ]] ; then
+        if [[ -n $(pidof -s yad) ]] || [[ -n $(pidof -s yad_v12_3) ]] ; then
             kill -s SIGUSR1 $(pgrep -a yad | grep "\-\-key=${KEY} \-\-notebook" | awk '{print $1}') > /dev/null 2>&1
         fi
         PW_EXEC_FROM_DESKTOP="$(cat "${PORT_WINE_PATH}/${PW_YAD_SET//¬/" "}" | grep Exec | head -n 1 | awk -F"=env " '{print $2}')"
@@ -659,7 +666,7 @@ else
 
     gui_open_scripts_from_backup () {
         cd "${PORT_WINE_TMP_PATH}/scripts_backup/"
-        PW_SCRIPT_FROM_BACKUP=$("${pw_yad_new}" --file --borders=5 --width=650 --height=500 --auto-close --center \
+        PW_SCRIPT_FROM_BACKUP=$("${pw_yad_v12_3}" --file --borders=5 --width=650 --height=500 --auto-close --center \
         --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "SCRIPTS FROM BACKUP" --file-filter="backup_scripts|scripts_v*.tar.gz")
         YAD_STATUS="$?"
         if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
@@ -691,10 +698,10 @@ else
     done
     IFS="$orig_IFS"
     old_IFS=$IFS && IFS="%"
-    "${pw_yad_new}" --plug=$KEY --tabnum=${PW_GUI_SORT_TABS[4]} --form --columns=3 --align-buttons --keep-icon-size --scroll --separator=" " ${PW_GENERATE_BUTTONS} &
+    "${pw_yad_v12_3}" --plug=$KEY --tabnum=${PW_GUI_SORT_TABS[4]} --form --columns=3 --align-buttons --keep-icon-size --scroll --separator=" " ${PW_GENERATE_BUTTONS} &
     IFS="$orig_IFS"
 
-    "${pw_yad_new}" --plug=${KEY} --tabnum=${PW_GUI_SORT_TABS[3]} --form --columns=3 --align-buttons --keep-icon-size --separator=";" \
+    "${pw_yad_v12_3}" --plug=${KEY} --tabnum=${PW_GUI_SORT_TABS[3]} --form --columns=3 --align-buttons --keep-icon-size --separator=";" \
     --field="   $loc_gui_pw_reinstall_pp"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_pw_reinstall_pp"' \
     --field="   $loc_gui_rm_pp"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_rm_portproton"' \
     --field="   $loc_gui_upd_pp"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_pw_update"' \
@@ -705,7 +712,7 @@ else
     --field="   Xterm"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click pw_start_cont_xterm"' \
     --field="   $loc_gui_credits"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_credits"' &
 
-    "${pw_yad_new}" --plug=${KEY} --tabnum=${PW_GUI_SORT_TABS[2]} --form --columns=3 --align-buttons --keep-icon-size --separator=";" \
+    "${pw_yad_v12_3}" --plug=${KEY} --tabnum=${PW_GUI_SORT_TABS[2]} --form --columns=3 --align-buttons --keep-icon-size --separator=";" \
     --field="  3D API  : :CB" "${loc_gui_vulkan_stable}!${loc_gui_vulkan_git}!${loc_gui_open_gl}!${loc_gui_gallium_nine}" \
     --field="  PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
     --field="  WINE    : :CB" "${PW_DEFAULT_WINE_USE}" \
@@ -719,7 +726,7 @@ else
     --field="   CLEAR PREFIX"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_clear_pfx"' \
     --field="   CREATE PFX BACKUP"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click pw_create_prefix_backup"' &> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" &
 
-    "${pw_yad_new}" --plug=$KEY --tabnum=${PW_GUI_SORT_TABS[1]} --form --columns=3 --align-buttons --keep-icon-size --scroll  \
+    "${pw_yad_v12_3}" --plug=$KEY --tabnum=${PW_GUI_SORT_TABS[1]} --form --columns=3 --align-buttons --keep-icon-size --scroll  \
     --field="   Dolphin 5.0"!"$PW_GUI_ICON_PATH/dolphin.png"!"":"FBTN" '@bash -c "button_click PW_DOLPHIN"' \
     --field="   MAME"!"$PW_GUI_ICON_PATH/mame.png"!"":"FBTN" '@bash -c "button_click PW_MAME"' \
     --field="   ScummVM"!"$PW_GUI_ICON_PATH/scummvm.png"!"":"FBTN" '@bash -c "button_click PW_SCUMMVM"' \
@@ -738,7 +745,7 @@ else
     --field="   Demul"!"$PW_GUI_ICON_PATH/demul.png"!"":"FBTN" '@bash -c "button_click PW_DEMUL"' \
     --field="   Rpcs3"!"$PW_GUI_ICON_PATH/rpcs3.png"!"":"FBTN" '@bash -c "button_click PW_RPCS3"' &
 
-    "${pw_yad_new}" --plug=$KEY --tabnum=${PW_GUI_SORT_TABS[0]} --form --columns=3 --align-buttons --keep-icon-size --scroll \
+    "${pw_yad_v12_3}" --plug=$KEY --tabnum=${PW_GUI_SORT_TABS[0]} --form --columns=3 --align-buttons --keep-icon-size --scroll \
     --field="   Lesta Game Center"!"$PW_GUI_ICON_PATH/lgc.png"!"":"FBTN" '@bash -c "button_click PW_LGC"' \
     --field="   Wargaming Game Center"!"$PW_GUI_ICON_PATH/wgc.png"!"":"FBTN" '@bash -c "button_click PW_WGC"' \
     --field="   vkPlay Games Center"!"$PW_GUI_ICON_PATH/mygames.png"!"":"FBTN" '@bash -c "button_click PW_VKPLAY"' \
@@ -765,18 +772,18 @@ else
     --field="   Metal War Online"!"$PW_GUI_ICON_PATH/mwo.png"!"":"FBTN" '@bash -c "button_click PW_MWO"' \
     --field="   Ankama Launcher"!"$PW_GUI_ICON_PATH/ankama.png"!"":"FBTN" '@bash -c "button_click PW_ANKAMA"' \
     --field="   Indiegala Client"!"$PW_GUI_ICON_PATH/igclient.png"!"":"FBTN" '@bash -c "button_click PW_IGCLIENT"' \
+    --field="   Plarium Play"!"$PW_GUI_ICON_PATH/plariumplay.png"!"":"FBTN" '@bash -c "button_click PW_PLARIUM_PLAY"' \
     --field="   Path of Exile"!"$PW_GUI_ICON_PATH/poe.png"!"":"FBTN" '@bash -c "button_click PW_POE"' &
 
     # --field="   Electronic Arts App"!"$PW_GUI_ICON_PATH/eaapp.png"!"":"FBTN" '@bash -c "button_click PW_EAAPP"'
     # --field="   Genshin Impact"!"$PW_GUI_ICON_PATH/genshinimpact.png"!"":"FBTN" '@bash -c "button_click PW_GENSHIN_IMPACT"'
-    # --field="   Plarium Play"!"$PW_GUI_ICON_PATH/plariumplay.png"!"":"FBTN" '@bash -c "button_click PW_PLARIUM_PLAY"'
     # --field="   Secret World Legends (ENG)"!"$PW_GUI_ICON_PATH/swl.png"!"":"FBTN" '@bash -c "button_click PW_SWL"'
     # --field="   Guild Wars 2"!"$PW_GUI_ICON_PATH/gw2.png"!"":"FBTN" '@bash -c "button_click PW_GUILD_WARS_2"'
     # --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"'
 
     if  [[ `which wmctrl` ]] &>/dev/null ; then
         sleep 2
-        while [[ $(pgrep -a yad_new | head -n 1 | awk '{print $1}' 2>/dev/null) ]] ; do
+        while [[ $(pgrep -a yad_v12_3 | head -n 1 | awk '{print $1}' 2>/dev/null) ]] ; do
             sleep 2
             PW_MAIN_GUI_SIZE_TMP="$(wmctrl -lG | grep PortProton-1.0 | awk '{print $5" "$6}' 2>/dev/null)"
             if [[ -n "${PW_MAIN_GUI_SIZE_TMP}" ]] ; then
@@ -786,7 +793,7 @@ else
     fi &
 
     if [[ -z "${PW_ALL_DF}" ]] ; then
-        "${pw_yad_new}" --key=$KEY --notebook --borders=5 --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons --auto-close --center \
+        "${pw_yad_v12_3}" --key=$KEY --notebook --borders=5 --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons --auto-close --center \
         --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "${portname}-${install_ver} (${scripts_install_ver})" \
         --tab-pos=bottom --keep-icon-size \
         --tab="$loc_mg_autoinstall"!"$PW_GUI_ICON_PATH/separator.png"!"" \
@@ -796,7 +803,7 @@ else
         --tab="$loc_mg_installed"!"$PW_GUI_ICON_PATH/separator.png"!""
         YAD_STATUS="$?"
     else
-        "${pw_yad_new}" --key=$KEY --notebook --borders=5 --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons --auto-close --center \
+        "${pw_yad_v12_3}" --key=$KEY --notebook --borders=5 --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons --auto-close --center \
         --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "${portname}-${install_ver} (${scripts_install_ver})" \
         --tab-pos=bottom --keep-icon-size \
         --tab="$loc_mg_installed"!"$PW_GUI_ICON_PATH/separator.png"!"" \

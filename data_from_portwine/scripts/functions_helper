@@ -384,8 +384,8 @@ init_wine_ver () {
             echo 'HKLM,System\ControlSet001\Services\nvlddmkm,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
             sed -i '/Steam.exe/d' "${WINEDIR}/share/wine/wine.inf"
             sed -i '/\\Valve\\Steam/d' "${WINEDIR}/share/wine/wine.inf"
+            sed -i '/winemenubuilder/d' "${WINEDIR}/share/wine/wine.inf"
         fi
-        sed -i '/winemenubuilder/d' "${WINEDIR}/share/wine/wine.inf"
     fi
     return 0
 }
@@ -606,12 +606,12 @@ stop_portwine () {
     kill_portwine &&
     try_remove_dir "${PW_WINELIB}/var"
     find "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/" -maxdepth 1 -type f -name "*.tmp" -delete
-    if [ ! -z "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" ] ; then
-        kill -s SIGUSR1 "`pgrep -a yad_new | grep "\-\-notification" | awk '{print $1}'`" 2>/dev/null
+    if [ ! -z "`pgrep -a yad_v12_3 | grep "\-\-notification" | awk '{print $1}'`" ] ; then
+        kill -s SIGUSR1 "`pgrep -a yad_v12_3 | grep "\-\-notification" | awk '{print $1}'`" 2>/dev/null
     fi
     add_in_stop_portwine #&>/dev/null
     kill -n 9 `pgrep -a start.sh | grep -i '/PortProton/' | awk '{print $1}'` > /dev/null 2>&1
-    killall yad_new &>/dev/null
+    killall yad_v12_3 &>/dev/null
     exit 0
 }
 export -f stop_portwine
@@ -640,7 +640,7 @@ pw_download_libs () {
         fi
     fi
     export pw_yad="${PW_WINELIB}/portable/bin/yad"
-    export pw_yad_new="${PW_WINELIB}/portable/bin/yad_new"
+    export pw_yad_v12_3="${PW_WINELIB}/portable/bin/yad_v12_3"
     export pw_zstd="${PW_WINELIB}/portable/bin/zstd"
     export pw_7z="${PW_WINELIB}/portable/lib/p7zip/7z"
     if [ -x "`which xterm 2>/dev/null`" ]; then
@@ -792,7 +792,7 @@ pw_init_db () {
                         export ADD_CB_DBFILE="${PW_CHECK_DB_FILE}!${ADD_CB_DBFILE}"
                     fi
                 done
-                PORTWINE_DB_FILE=`"${pw_yad_new}" --text-align=center --text "${PW_SELECTION_DB_LOC}" --borders=15 --form --center  \
+                PORTWINE_DB_FILE=`"${pw_yad_v12_3}" --text-align=center --text "${PW_SELECTION_DB_LOC}" --borders=15 --form --center  \
                 --title "Database file selection..." --window-icon="$PW_GUI_ICON_PATH/port_proton.png"  --form --separator="" \
                 --field="DB FILE: :CB" "${ADD_CB_DBFILE}"`
                 if [[ "$?" == "1" || "$?" == "252" ]] ; then exit 0 ; fi
@@ -819,7 +819,7 @@ pw_init_db () {
             print_info "Use ${PORTWINE_DB_FILE} db file."
         fi
         if [ -z "$PATH_TO_GAME" ] ; then
-            export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
+            export PATH_TO_GAME="$(dirname $(readlink -f "${portwine_exe}"))" 
         fi
     fi
     return 0
@@ -841,11 +841,11 @@ pw_port_update () {
         print_info "Scripts version in github = ${scripts_current_ver}"
         print_info "Scripts version local = ${scripts_install_ver}"
         if [[ ! -z "${scripts_current_ver}" ]] &&  [[ "${scripts_current_ver}" -gt "${scripts_install_ver}" ]] ; then
-            if [[ -f "${PW_WINELIB}/portable/bin/yad_new" ]] ; then
-                export pw_yad_new="${PW_WINELIB}/portable/bin/yad_new"
+            if [[ -f "${PW_WINELIB}/portable/bin/yad_v12_3" ]] ; then
+                export pw_yad_v12_3="${PW_WINELIB}/portable/bin/yad_v12_3"
                 curl -s --list-only "https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine/${PW_CHANGELOG_FILE}" | tee "${PORT_WINE_TMP_PATH}/curent_var_ver" | sszen
                 CHANGLOG_NEWS=`cat "${PORT_WINE_TMP_PATH}/curent_var_ver" | sed "/Scripts version ${scripts_install_ver}/,$ d" | sed '1,/---/ d' `
-                xcsd=`"${pw_yad_new}" --title "${scripts_upd2} v.${scripts_current_ver}" --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
+                xcsd=`"${pw_yad_v12_3}" --title "${scripts_upd2} v.${scripts_current_ver}" --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
                 --borders=5 --form --separator='%%%' --width=1200 --height=600 --center \
                 --field=":TXT" "${CHANGLOG_NEWS}" \
                 --field="   ${scripts_upd3} :CB" "${scripts_upd4}!${scripts_upd5}!${scripts_upd6}" `
@@ -874,7 +874,7 @@ pw_port_update () {
                             try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
                             try_remove_dir "${PORT_WINE_TMP_PATH}/PortWINE-master/"
                             echo "${scripts_current_ver}" > "${PORT_WINE_TMP_PATH}/scripts_ver"
-                            if [[ -z "${pw_yad_new}" ]] ; then
+                            if [[ -z "${pw_yad_v12_3}" ]] ; then
                                 zenity --title="Changelog" --text-info --width=1200 --height=550 \
                                 --filename="${PORT_WINE_PATH}/data/${PW_CHANGELOG_FILE}"
                             fi 
@@ -992,7 +992,7 @@ pw_find_exe () {
     done < "${PORT_WINE_TMP_PATH}/tmp_yad_find_exe"
 
     OrigIFS="$IFS" && IFS=%
-    PW_SET_FIND_EXE="$("${pw_yad_new}" --height="300" --width="1000" --center --list \
+    PW_SET_FIND_EXE="$("${pw_yad_v12_3}" --height="300" --width="1000" --center --list \
     --text-align=center --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "Create shortcut for..." \
     --text="\n${loc_gui_create_shortcut_for_exe}" --column="path to .exe file:" ${FIND_TO_GUI})"
     YAD_STATUS="$?"

@@ -301,29 +301,31 @@ start_portwine () {
     else
         unset PROTON_BATTLEYE_RUNTIME PROTON_EAC_RUNTIME
     fi
-    #try link d3d extras libs
-    if  [[ -d "${PW_PLUGINS_PATH}/d3d_extras" ]]
-    then PATH_TO_D3DEXTRAS="${PW_PLUGINS_PATH}/d3d_extras"
-    else PATH_TO_D3DEXTRAS="${PW_WINELIB}/d3d_extras"
-    fi
-    if [[ -z "`grep d3dx9 "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"`" ]] ; then
-        echo "d3dx9" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
-    fi
-    for d3d_extras_from_plugins in d3dcompiler_33 d3dcompiler_34 d3dcompiler_35 d3dcompiler_36 d3dcompiler_37 \
-    d3dcompiler_38 d3dcompiler_39 d3dcompiler_40 d3dcompiler_41 d3dcompiler_42 d3dcompiler_43 d3dcompiler_46 \
-    d3dcompiler_47 d3dx10_33 d3dx10_34 d3dx10_35 d3dx10_36 d3dx10_37 d3dx10_38 d3dx10_39 d3dx10_40 d3dx10_41 \
-    d3dx10_42 d3dx10_43 d3dx10 d3dx11_42 d3dx11_43 d3dx9_24 d3dx9_25 d3dx9_26 d3dx9_27 d3dx9_28 d3dx9_29 d3dx9_30 \
-    d3dx9_31 d3dx9_32 d3dx9_33 d3dx9_34 d3dx9_35 d3dx9_36 d3dx9_37 d3dx9_38 d3dx9_39 d3dx9_40 d3dx9_41 d3dx9_42 d3dx9_43
-    do
-        if [[ "${PW_USE_D3D_EXTRAS}" == 1 ]] ; then
+
+
+    if [[ "${PW_USE_D3D_EXTRAS}" == 1 ]] ; then
+        if [[ -z "`grep d3dx9 "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"`" ]] ; then
+            echo "d3dx9" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
+        fi
+        if  [[ -d "${PW_PLUGINS_PATH}/d3d_extras" ]]
+        then PATH_TO_D3DEXTRAS="${PW_PLUGINS_PATH}/d3d_extras"
+        else PATH_TO_D3DEXTRAS="${PW_WINELIB}/d3d_extras"
+        fi
+        #try link d3d extras libs
+        for d3d_extras_from_plugins in d3dcompiler_33 d3dcompiler_34 d3dcompiler_35 d3dcompiler_36 d3dcompiler_37 \
+        d3dcompiler_38 d3dcompiler_39 d3dcompiler_40 d3dcompiler_41 d3dcompiler_42 d3dcompiler_43 d3dcompiler_46 \
+        d3dcompiler_47 d3dx10_33 d3dx10_34 d3dx10_35 d3dx10_36 d3dx10_37 d3dx10_38 d3dx10_39 d3dx10_40 d3dx10_41 \
+        d3dx10_42 d3dx10_43 d3dx10 d3dx11_42 d3dx11_43 d3dx9_24 d3dx9_25 d3dx9_26 d3dx9_27 d3dx9_28 d3dx9_29 d3dx9_30 \
+        d3dx9_31 d3dx9_32 d3dx9_33 d3dx9_34 d3dx9_35 d3dx9_36 d3dx9_37 d3dx9_38 d3dx9_39 d3dx9_40 d3dx9_41 d3dx9_42 d3dx9_43
+        do
             try_force_link_file "${PATH_TO_D3DEXTRAS}/x64/${d3d_extras_from_plugins}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
             try_force_link_file "${PATH_TO_D3DEXTRAS}/x32/${d3d_extras_from_plugins}.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/"
             var_winedlloverride_update "${d3d_extras_from_plugins}=n"
-        fi
-        if [[ -z "`grep "${d3d_extras_from_plugins}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"`" ]] ; then
-            echo "${d3d_extras_from_plugins}" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
-        fi
-    done
+            if [[ -z "`grep "${d3d_extras_from_plugins}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"`" ]] ; then
+                echo "${d3d_extras_from_plugins}" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
+            fi
+        done
+    fi
     echo "Try link wine DXGI by default..."
     if ! try_force_link_file "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/dxgi.dll"
     then try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/dxgi.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/dxgi.dll"
@@ -431,11 +433,6 @@ start_portwine () {
         then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/vrclient_x64.dll "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/vrclient/bin/vrclient_x64.dll"
         fi
     fi
-
-    try_remove_dir "${PORT_WINE_TMP_PATH}/mesa_shader_cache"
-    try_remove_dir "${PORT_WINE_TMP_PATH}/vkd3d_cache"
-    try_remove_dir "${PORT_WINE_TMP_PATH}/dxvk_cache"
-    try_remove_dir "${PORT_WINE_TMP_PATH}/gl_shader_cache"
  
     if [[ "${PW_USE_SHADER_CACHE}" == 1 ]] ; then
         create_new_dir "${PATH_TO_DXVK_FILES}/gl_shader_cache"
@@ -465,11 +462,11 @@ start_portwine () {
     fi
 
     for try_cp_dll_from_wine in "ntdll.dll" "vulkan-1.dll" "winevulkan.dll" ; do
-        if ! try_copy_file "${WINEDIR}"/lib/wine/fakedlls/${try_cp_dll_from_wine} "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${try_cp_dll_from_wine}"
-        then try_copy_file "${WINEDIR}"/lib/wine/i386-windows/${try_cp_dll_from_wine} "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${try_cp_dll_from_wine}"
+        if ! try_copy_file "${WINEDIR}"/lib/wine/i386-windows/${try_cp_dll_from_wine} "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${try_cp_dll_from_wine}"
+        then try_copy_file "${WINEDIR}"/lib/wine/fakedlls/${try_cp_dll_from_wine} "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/${try_cp_dll_from_wine}"
         fi
-        if ! try_copy_file "${WINEDIR}"/lib64/wine/fakedlls/${try_cp_dll_from_wine} "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${try_cp_dll_from_wine}"
-        then try_copy_file "${WINEDIR}"/lib64/wine/x86_64-windows/${try_cp_dll_from_wine} "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${try_cp_dll_from_wine}"
+        if ! try_copy_file "${WINEDIR}"/lib64/wine/x86_64-windows/${try_cp_dll_from_wine} "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${try_cp_dll_from_wine}"
+        then try_copy_file "${WINEDIR}"/lib64/wine/fakedlls/${try_cp_dll_from_wine} "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/${try_cp_dll_from_wine}"
         fi
     done
 
@@ -512,7 +509,7 @@ start_portwine () {
             kill_portwine
         fi
     fi
-    if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" ]] && [[ -z `cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" | grep "Windows $PW_WINDOWS_VER"` ]] ; then
+    if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" ]] && [[ -z `grep "Windows $PW_WINDOWS_VER" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"` ]] ; then
         if [[ ! -z "${PW_WINDOWS_VER}" && `echo "$PW_WINDOWS_VER" | sed 's/.*/\L&/'` == "xp" ]] ; then
             export PW_WINDOWS_VER="xp64"
         fi
