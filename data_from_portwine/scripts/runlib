@@ -126,30 +126,35 @@ start_portwine () {
     if ! try_force_link_file "${WINEDIR}/lib64/wine/nvapi/nvapi64.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/" ; then
         try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x64/nvapi64.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/" 
     fi
-    try_force_link_file "${PW_PLUGINS_PATH}"/nvml/lib/wine/nvml.dll.so "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/nvml.dll"
-    try_force_link_file "${PW_PLUGINS_PATH}"/nvml/lib64/wine/nvml.dll.so "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/nvml.dll"
 
-    if [[ ! -z "${PW_USE_FAKE_DLSS}" && "${PW_USE_FAKE_DLSS}" == 1 && -d "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/" ]]
-    then
+    try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/syswow64/nvml.dll"
+    try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/nvml.dll"
+    try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/nvngx.ini"
+    try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/nvngx.dll"
+    try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/_nvngx.dll"
+    if [[ "${PW_USE_FAKE_DLSS}" == 1 ]] && [[ -d "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/" ]] ; then
         try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/" 
         try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.ini" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
         enabled_fake_nvidia_videocard 1
-        export DXVK_ENABLE_NVAPI=1
+        var_winedlloverride_update "nvngx=n;_nvngx="
+        export DXVK_ENABLE_NVAPI=0
         export WINE_HIDE_NVIDIA_GPU=0
-    elif [[ ! -z "${PW_USE_NVAPI_AND_DLSS}" && "${PW_USE_NVAPI_AND_DLSS}" == 1 ]] && [[ -d "${WINEDIR}/lib/wine/nvapi/" ]]
-    then
-        try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/nvngx.ini"
-        if [[ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/nvngx.dll" || ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/_nvngx.dll" ]] ; then
-            try_copy_file `find /usr/* -type f -name "nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'` "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
-            try_copy_file `find /usr/* -type f -name "_nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'` "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"       
-        fi
+    elif [[ "${PW_USE_NVAPI_AND_DLSS}" == 1 ]] && [[ -d "${WINEDIR}/lib/wine/nvapi/" ]] ; then
+        try_copy_file `find /usr/* -type f -name "nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'` "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
+        try_copy_file `find /usr/* -type f -name "_nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'` "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"       
         enabled_fake_nvidia_videocard 1
         export DXVK_ENABLE_NVAPI=1
         export WINE_HIDE_NVIDIA_GPU=0
     else
         enabled_fake_nvidia_videocard 0
         export DXVK_ENABLE_NVAPI=0
-        export WINE_HIDE_NVIDIA_GPU=1
+        var_winedlloverride_update "nvngx,_nvngx="
+    fi
+
+    grep '"renderer"=' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" 
+    if [[ "$?" == 0 ]] ; then
+        sed -i /'"renderer"='/d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
+        sed -i /'renderer='/d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
     fi
 
     if [[ ! -z "${PW_PRIME_RENDER_OFFLOAD}" && "${PW_PRIME_RENDER_OFFLOAD}" != 0 ]] ; then
@@ -170,14 +175,14 @@ start_portwine () {
     fi
     
     [[ ! -z "${PW_MANGOHUD_USER_CONF}" && "${PW_MANGOHUD_USER_CONF}" != 0 ]] && unset MANGOHUD_CONFIG
+
     if [[ "${PW_USE_DXR11}" == 1 ]] || [[ "${PW_USE_DXR10}" == 1 ]] || [[ "${PW_USE_RAY_TRACING}" == 1 ]]; then
-        var_vkd3d_config_update dxr11
-        var_radv_perftest_config_update rt
+        var_vkd3d_config_update dxr
+        var_radv_perftest_config_update rt,gpl
         export VKD3D_FEATURE_LEVEL="12_1"
-        export DXVK_ENABLE_NVAPI=1
         export WINE_HIDE_NVIDIA_GPU=0
+        export DXVK_ENABLE_NVAPI=1
     fi
-    export optirun_on=""
 
     case "$PW_FORCE_USE_VSYNC" in  # 0-FORCE_OFF, 1-FORCE_ON, 2-BY_DEFAULT
         "0")
