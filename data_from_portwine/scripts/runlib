@@ -68,6 +68,7 @@ start_portwine () {
         export WINE_MONO_TRACE="E:System.NotImplementedException"
         export VK_LOADER_DEBUG="warn"
         export VKBASALT_LOG_LEVEL="warn"
+        export DXVK_NVAPI_LOG_LEVEL=warn
     else
         export WINEDEBUG="-all"
         export DXVK_LOG_LEVEL="none"
@@ -75,6 +76,7 @@ start_portwine () {
         export VKD3D_DEBUG="none"
         export DXVK_LOG_PATH="none"
         export VKBASALT_LOG_LEVEL="none"
+        export DXVK_NVAPI_LOG_LEVEL=none
     fi
 
     #default wine-mono override for FNA games
@@ -139,12 +141,21 @@ start_portwine () {
         var_winedlloverride_update "nvngx=n;_nvngx="
         export DXVK_ENABLE_NVAPI=0
         export WINE_HIDE_NVIDIA_GPU=0
-    elif [[ "${PW_USE_NVAPI_AND_DLSS}" == 1 ]] && [[ -d "${WINEDIR}/lib/wine/nvapi/" ]] ; then
-        try_copy_file `find /usr/* -type f -name "nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'` "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
-        try_copy_file `find /usr/* -type f -name "_nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'` "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"       
-        enabled_fake_nvidia_videocard 1
+        export VKD3D_FEATURE_LEVEL="12_1"
+        # export DXVK_NVAPI_DRIVER_VERSION=
+    elif [[ "${PW_USE_NVAPI_AND_DLSS}" == 1 ]] ; then
+        if ! try_copy_file `find /usr/* -type f -name "nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'` "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
+        then try_copy_file "${PW_PLUGINS_PATH}/nvngx/nvngx.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
+        fi
+        if ! try_copy_file `find /usr/* -type f -name "_nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'` "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"       
+        then try_copy_file "${PW_PLUGINS_PATH}/nvngx/_nvngx.dll" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
+        fi 
+        enabled_fake_nvidia_videocard 0
         export DXVK_ENABLE_NVAPI=1
         export WINE_HIDE_NVIDIA_GPU=0
+        export VKD3D_FEATURE_LEVEL="12_1"
+        # export DXVK_NVAPI_DRIVER_VERSION=
+        var_winedlloverride_update "nvngx,_nvngx,nvapi,nvapi64=n"
     else
         enabled_fake_nvidia_videocard 0
         export DXVK_ENABLE_NVAPI=0
@@ -178,7 +189,7 @@ start_portwine () {
 
     if [[ "${PW_USE_DXR11}" == 1 ]] || [[ "${PW_USE_DXR10}" == 1 ]] || [[ "${PW_USE_RAY_TRACING}" == 1 ]]; then
         var_vkd3d_config_update dxr
-        var_radv_perftest_config_update rt,gpl
+        var_radv_perftest_config_update rt
         export VKD3D_FEATURE_LEVEL="12_1"
         export WINE_HIDE_NVIDIA_GPU=0
         export DXVK_ENABLE_NVAPI=1
