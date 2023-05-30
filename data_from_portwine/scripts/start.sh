@@ -25,8 +25,8 @@ if [[ -f "${PORT_WINE_TMP_PATH}/tmp_main_gui_size" ]] && [[ -n "$(cat ${PORT_WIN
     export PW_MAIN_SIZE_W="$(cat ${PORT_WINE_TMP_PATH}/tmp_main_gui_size | awk '{print $1}')"
     export PW_MAIN_SIZE_H="$(cat ${PORT_WINE_TMP_PATH}/tmp_main_gui_size | awk '{print $2}')"
 else
-    export PW_MAIN_SIZE_W="1200"
-    export PW_MAIN_SIZE_H="350"
+    export PW_MAIN_SIZE_W="1100"
+    export PW_MAIN_SIZE_H="300"
 fi    
 
 if [[ -n $(basename "${portwine_exe}" | grep .ppack) ]] ; then
@@ -210,7 +210,7 @@ portwine_start_debug () {
     sed -i '/Uploading is disabled/d' "${PORT_WINE_PATH}/${portname}.log"
     deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++') 
     echo "$deb_text" > "${PORT_WINE_PATH}/${portname}.log"
-    "$pw_yad" --title="${portname}.log" --borders=7 --no-buttons --text-align=center \
+    "$pw_yad" --title="${portname}.log" --borders=5 --no-buttons --text-align=center \
     --text-info --show-uri --wrap --center --width=1200 --height=550  --uri-color=red \
     --filename="${PORT_WINE_PATH}/${portname}.log"
     stop_portwine
@@ -302,7 +302,7 @@ pw_prefix_manager () {
         --text="Change config for prefix: <b>\"${PW_PREFIX_NAME}\"</b>" \
         --column=set --column=dll --column=info < "${PORT_WINE_TMP_PATH}/settings_list_tmp" 1>> "${PORT_WINE_TMP_PATH}/to_winetricks" &
 
-        "${pw_yad_v12_3}" --key=$KEY_EDIT_MANAGER_GUI --notebook --borders=5 --width=900 --height=800 --center \
+        "${pw_yad_v12_3}" --key=$KEY_EDIT_MANAGER_GUI --notebook --borders=1 --width=900 --height=800 --center \
         --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "PREFIX MANAGER..." --tab-pos=bottom --tab="DLL" --tab="FONTS" --tab="SETTINGS"
         YAD_STATUS="$?"
         if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
@@ -380,7 +380,7 @@ pw_start_cont_xterm () {
 
 pw_create_prefix_backup () {
     cd "$HOME"
-    PW_PREFIX_TO_BACKUP=$("${pw_yad_v12_3}" --file --directory --borders=5 --width=650 --height=500 --auto-close --center \
+    PW_PREFIX_TO_BACKUP=$("${pw_yad_v12_3}" --file --directory --borders=1 --width=650 --height=500 --auto-close --center \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "BACKUP PREFIX TO...")
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
@@ -569,7 +569,7 @@ if [ -n "${portwine_exe}" ]; then
         else
             PW_SHORTCUT="${loc_gui_delete_shortcut}!$PW_GUI_ICON_PATH/separator.png!${loc_delete_shortcut}:98"
         fi
-        OUTPUT_START=$("${pw_yad}" --text-align=center --text "$PW_COMMENT_DB" --wrap-width=150 --borders=10 --form --center  \
+        OUTPUT_START=$("${pw_yad}" --text-align=center --text "$PW_COMMENT_DB" --wrap-width=150 --borders=1 --form --center  \
         --title "${portname}-${install_ver} (${scripts_install_ver})" --image "${PW_ICON_FOR_YAD}" --separator=";" --keep-icon-size \
         --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
         --field="3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
@@ -793,7 +793,7 @@ else
     fi &
 
     if [[ -z "${PW_ALL_DF}" ]] ; then
-        "${pw_yad_v12_3}" --key=$KEY --notebook --borders=5 --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons --auto-close --center \
+        "${pw_yad_v12_3}" --key=$KEY --notebook --borders=1 --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons --auto-close --center \
         --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "${portname}-${install_ver} (${scripts_install_ver})" \
         --tab-pos=bottom --keep-icon-size \
         --tab="$loc_mg_autoinstall"!"$PW_GUI_ICON_PATH/separator.png"!"" \
@@ -803,7 +803,7 @@ else
         --tab="$loc_mg_installed"!"$PW_GUI_ICON_PATH/separator.png"!""
         YAD_STATUS="$?"
     else
-        "${pw_yad_v12_3}" --key=$KEY --notebook --borders=5 --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons --auto-close --center \
+        "${pw_yad_v12_3}" --key=$KEY --notebook --borders=1 --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons --auto-close --center \
         --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "${portname}-${install_ver} (${scripts_install_ver})" \
         --tab-pos=bottom --keep-icon-size \
         --tab="$loc_mg_installed"!"$PW_GUI_ICON_PATH/separator.png"!"" \
