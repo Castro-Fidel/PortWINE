@@ -792,7 +792,7 @@ pw_init_db () {
                         export ADD_CB_DBFILE="${PW_CHECK_DB_FILE}!${ADD_CB_DBFILE}"
                     fi
                 done
-                PORTWINE_DB_FILE=`"${pw_yad_v12_3}" --text-align=center --text "${PW_SELECTION_DB_LOC}" --borders=15 --form --center  \
+                PORTWINE_DB_FILE=`"${pw_yad_v12_3}" --text-align=center --text "${PW_SELECTION_DB_LOC}" --borders=15 --form \
                 --title "Database file selection..." --window-icon="$PW_GUI_ICON_PATH/port_proton.png"  --form --separator="" \
                 --field="DB FILE: :CB" "${ADD_CB_DBFILE}"`
                 if [[ "$?" == "1" || "$?" == "252" ]] ; then exit 0 ; fi
@@ -819,7 +819,7 @@ pw_init_db () {
             print_info "Use ${PORTWINE_DB_FILE} db file."
         fi
         if [ -z "$PATH_TO_GAME" ] ; then
-            export PATH_TO_GAME="$(dirname $(readlink -f "${portwine_exe}"))" 
+            export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"        
         fi
     fi
     return 0
@@ -846,7 +846,7 @@ pw_port_update () {
                 curl -s --list-only "https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine/${PW_CHANGELOG_FILE}" | tee "${PORT_WINE_TMP_PATH}/curent_var_ver" | sszen
                 CHANGLOG_NEWS=`cat "${PORT_WINE_TMP_PATH}/curent_var_ver" | sed "/Scripts version ${scripts_install_ver}/,$ d" | sed '1,/---/ d' `
                 xcsd=`"${pw_yad_v12_3}" --title "${scripts_upd2} v.${scripts_current_ver}" --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
-                --borders=5 --form --separator='%%%' --width=1200 --height=600 --center \
+                --borders=5 --form --separator='%%%' --width=1200 --height=600 \
                 --field=":TXT" "${CHANGLOG_NEWS}" \
                 --field="   ${scripts_upd3} :CB" "${scripts_upd4}!${scripts_upd5}!${scripts_upd6}" `
                 YAD_STATUS="$?"
@@ -992,7 +992,7 @@ pw_find_exe () {
     done < "${PORT_WINE_TMP_PATH}/tmp_yad_find_exe"
 
     OrigIFS="$IFS" && IFS=%
-    PW_SET_FIND_EXE="$("${pw_yad_v12_3}" --height="300" --width="1000" --center --list \
+    PW_SET_FIND_EXE="$("${pw_yad_v12_3}" --height="300" --width="1000" --list \
     --text-align=center --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "Create shortcut for..." \
     --text="\n${loc_gui_create_shortcut_for_exe}" --column="path to .exe file:" ${FIND_TO_GUI})"
     YAD_STATUS="$?"
