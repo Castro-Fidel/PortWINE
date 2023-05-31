@@ -4,6 +4,11 @@
 if [[ -f "${PORT_WINE_TMP_PATH}/${portname}_loc" ]] ; then
 	read "update_loc" < "${PORT_WINE_TMP_PATH}/${portname}_loc"
 	export update_loc=${update_loc}
+else
+	SET_LANG=`zenity --title  "LAUNGUAGE" --text "Select the language" --list --radiolist \
+	--column="Set:" --column "Choose language:" TRUE "RUS" FALSE "ENG" `
+	echo "${SET_LANG}" > "${PORT_WINE_TMP_PATH}/${portname}_loc"
+	export update_loc=${SET_LANG}
 fi
 
 if [ "${update_loc}" = "RUS" ]
@@ -337,9 +342,4 @@ then
 	export loc_edit_db="Edit database file for"
 
 	export loc_find_d3dadapter9_error="not found in the system.\nInstall it and try again."
-else
-	SET_LANG=`zenity --title  "LAUNGUAGE" --text "Select the language" --list --radiolist \
-	--column="Set:" --column "Choose language:" TRUE "RUS" FALSE "ENG" `
-	echo "${SET_LANG}" > "${PORT_WINE_TMP_PATH}/${portname}_loc"
-	exit 0
 fi
