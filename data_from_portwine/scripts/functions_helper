@@ -27,7 +27,7 @@ try_copy_file () {
     else
         cp -f "$1" "$2"
         if [ "$?" != 0 ]
-        then print_error "failed to copy file $1 to $2" || return 1
+        then print_error "failed to copy file $1 to $2" && return 1
         else return 0
         fi
     fi
@@ -46,7 +46,7 @@ try_copy_dir () {
 export -f try_copy_dir
 
 try_remove_file () {
-    if [ -f "$1" ] ; then
+    if [ -f "$1" ] || [ ! -e "$1" ] ; then
         rm -f "$1"
         [ "$?" == 0 ] && return 0 || return 1
     fi
@@ -286,7 +286,13 @@ check_user_conf () {
     if [ ! -f "${USER_CONF}" ]; then
         echo "#!/usr/bin/env bash" > "${USER_CONF}"
         echo "# User overides db and var settings..." >> "${USER_CONF}"
+        echo "# export DXVK_HUD=full" >> "${USER_CONF}"
+        echo "# export GALLIUM_HUD=fps" >> "${USER_CONF}"
+        echo "export optirun_on=      #nvidia-prime-run or prime-run" >> "${USER_CONF}"
         chmod u+x "${USER_CONF}"
+    else
+        grep "optirun_on" "${USER_CONF}" >/dev/null
+        [[ "$?" != 0 ]] && echo "export optirun_on=" >> "${USER_CONF}"
     fi
     return 0
 }
@@ -844,7 +850,7 @@ pw_port_update () {
                 curl -s --list-only "https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine/${PW_CHANGELOG_FILE}" | tee "${PORT_WINE_TMP_PATH}/curent_var_ver" | sszen
                 CHANGLOG_NEWS=`cat "${PORT_WINE_TMP_PATH}/curent_var_ver" | sed "/Scripts version ${scripts_install_ver}/,$ d" | sed '1,/---/ d' `
                 xcsd=`"${pw_yad_v12_3}" --title "${scripts_upd2} v.${scripts_current_ver}" --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
-                --borders=5 --form --separator='%%%' --width=1200 --height=600 \
+                --borders=3 --form --separator='%%%' --width=1200 --height=600 \
                 --field=":TXT" "${CHANGLOG_NEWS}" \
                 --field="   ${scripts_upd3} :CB" "${scripts_upd4}!${scripts_upd5}!${scripts_upd6}" `
                 YAD_STATUS="$?"
