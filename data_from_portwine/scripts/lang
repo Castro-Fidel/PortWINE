@@ -1,14 +1,22 @@
 #!/usr/bin/env bash
 # Author: linux-gaming.ru
 
+unset update_loc
 if [[ -f "${PORT_WINE_TMP_PATH}/${portname}_loc" ]] ; then
 	read "update_loc" < "${PORT_WINE_TMP_PATH}/${portname}_loc"
 	export update_loc=${update_loc}
+fi
+
+if [[ "${update_loc}" == "RUS" || "${update_loc}" == "ENG" ]] && [[ -f "${PORT_WINE_TMP_PATH}/${portname}_loc" ]] ; then
+	echo "language ${update_loc}"
 else
 	SET_LANG=`zenity --title  "LAUNGUAGE" --text "Select the language" --list --radiolist \
 	--column="Set:" --column "Choose language:" TRUE "RUS" FALSE "ENG" `
 	echo "${SET_LANG}" > "${PORT_WINE_TMP_PATH}/${portname}_loc"
-	export update_loc=${SET_LANG}
+	if [[ ! -z "${SET_LANG}" ]]
+	then export update_loc=${SET_LANG}
+	else exit 1
+	fi
 fi
 
 if [ "${update_loc}" = "RUS" ]

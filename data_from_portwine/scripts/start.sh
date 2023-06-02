@@ -647,7 +647,7 @@ else
     }
 
     change_loc () {
-        try_remove_file "${PORT_WINE_TMP_PATH}/PortProton_loc"
+        try_remove_file "${PORT_WINE_TMP_PATH}/${portname}_loc"
         echo "Restarting PP for change language..."
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0

@@ -146,23 +146,19 @@ start_portwine () {
         var_winedlloverride_update "nvapi,nvapi64,nvngx=n;_nvngx="
         export DXVK_ENABLE_NVAPI=1
         export WINE_HIDE_NVIDIA_GPU=0
-        export VKD3D_FEATURE_LEVEL="12_1"
+        export VKD3D_FEATURE_LEVEL="12_2"
         # export DXVK_NVAPI_DRIVER_VERSION=
     elif [[ "${PW_USE_NVAPI_AND_DLSS}" == 1 ]] ; then
-        FIND_NVNGX_DLL=`find /usr/* -type f -name "nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'`
-        [[ -f "${FIND_NVNGX_DLL}" ]] && FIND__NVNGX_DLL=`find /usr/* -type f -name "nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'`
-        if [[ ! -z "${FIND_NVNGX_DLL}" ]] && [[ -f "${FIND_NVNGX_DLL}" ]]
-        then try_copy_file "${FIND_NVNGX_DLL}" "${WINEPREFIX}/drive_c/windows/system32/"
-        else try_copy_file "${PW_PLUGINS_PATH}/nvngx/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+        if ! try_copy_file `find /usr/* -type f -name "nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'` "${WINEPREFIX}/drive_c/windows/system32/"
+        then try_copy_file "${PW_PLUGINS_PATH}/nvngx/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
         fi
-        if [[ ! -z "${FIND__NVNGX_DLL}" ]] && [[ -f "${FIND__NVNGX_DLL}" ]]
-        then try_copy_file "${FIND__NVNGX_DLL}" "${PORT__WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/"
-        else try_copy_file "${PW_PLUGINS_PATH}/nvngx/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-        fi
+        if ! try_copy_file `find /usr/* -type f -name "_nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'` "${WINEPREFIX}/drive_c/windows/system32/"       
+        then try_copy_file "${PW_PLUGINS_PATH}/nvngx/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+        fi 
         enabled_fake_nvidia_videocard 0
         export DXVK_ENABLE_NVAPI=1
         export WINE_HIDE_NVIDIA_GPU=0
-        export VKD3D_FEATURE_LEVEL="12_1"
+        export VKD3D_FEATURE_LEVEL="12_2"
         # export DXVK_NVAPI_DRIVER_VERSION=
         var_winedlloverride_update "nvngx,_nvngx,nvapi,nvapi64=n"
     else
@@ -171,10 +167,10 @@ start_portwine () {
         var_winedlloverride_update "nvngx,_nvngx="
     fi
 
-    grep '"renderer"=' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" 
+    grep '"renderer"=' "${WINEPREFIX}/user.reg" 
     if [[ "$?" == 0 ]] ; then
-        sed -i /'"renderer"='/d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
-        sed -i /'renderer='/d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
+        sed -i /'"renderer"='/d "${WINEPREFIX}/user.reg"
+        sed -i /'renderer='/d "${WINEPREFIX}/winetricks.log"
     fi
 
     if [[ ! -z "${optirun_on}" && "${optirun_on}" != "" ]] ; then
@@ -205,9 +201,9 @@ start_portwine () {
     [[ "${PW_MANGOHUD_USER_CONF}" == 1 ]] && unset MANGOHUD_CONFIG
 
     if [[ "${PW_USE_DXR11}" == 1 ]] || [[ "${PW_USE_DXR10}" == 1 ]] || [[ "${PW_USE_RAY_TRACING}" == 1 ]]; then
-        var_vkd3d_config_update dxr
+        var_vkd3d_config_update dxr,dxr11
         var_radv_perftest_config_update rt
-        export VKD3D_FEATURE_LEVEL="12_1"
+        export VKD3D_FEATURE_LEVEL="12_2"
         export WINE_HIDE_NVIDIA_GPU=0
         export DXVK_ENABLE_NVAPI=1
     fi
@@ -247,13 +243,13 @@ start_portwine () {
     pw_other_fixes
 
     check_dirs_and_files_in_pfx () {
-        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"
-        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c"
-        create_new_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices"
+        create_new_dir "${WINEPREFIX}"
+        create_new_dir "${WINEPREFIX}/drive_c"
+        create_new_dir "${WINEPREFIX}/dosdevices"
         create_new_dir "${WINEPREFIX}/drive_c/windows/syswow64/"
         create_new_dir "${WINEPREFIX}/drive_c/windows/system32/"
-        [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/c:" ] && try_force_link_dir "${WINEPREFIX}/drive_c/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/c:"
-        [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/z:" ] && try_force_link_dir "/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/z:"
+        [ ! -d "${WINEPREFIX}/dosdevices/c:" ] && try_force_link_dir "${WINEPREFIX}/drive_c/" "${WINEPREFIX}/dosdevices/c:"
+        [ ! -d "${WINEPREFIX}/dosdevices/z:" ] && try_force_link_dir "/" "${WINEPREFIX}/dosdevices/z:"
         create_new_dir "${WINEPREFIX}/drive_c/windows/Fonts/"
         try_force_link_file "${WINEDIR}/share/fonts/"LiberationSans-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arial.ttf
         try_force_link_file "${WINEDIR}/share/fonts/"LiberationSans-Bold.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arialbd.ttf
@@ -272,7 +268,7 @@ start_portwine () {
     }
 
     PROGPFX_URL="github.com/Castro-Fidel/PortWINE/releases/download/progpfx${PROGPFX_VER}/progpfx${PROGPFX_VER}.tar.xz"
-    if [[ "${PW_PREFIX_NAME}" == "PROGRAMS" && ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/.progpfx ]] ; then
+    if [[ "${PW_PREFIX_NAME}" == "PROGRAMS" && ! -f "${WINEPREFIX}"/.progpfx ]] ; then
         print_info "Download and install PROGRAMS pfx..."
         if try_download "${PROGPFX_URL}" "${PORT_WINE_PATH}/data/tmp/progpfx.tar.xz" ; then
             unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/progpfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/"
@@ -284,7 +280,7 @@ start_portwine () {
     fi
         
     DOTPFX_URL="github.com/Castro-Fidel/PortWINE/releases/download/dotpfx${DOTPFX_VER}/dotpfx${DOTPFX_VER}.tar.xz"
-    if [[ "${PW_PREFIX_NAME}" == "DOTNET" && ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/.dotnet48 ]] ; then
+    if [[ "${PW_PREFIX_NAME}" == "DOTNET" && ! -f "${WINEPREFIX}"/.dotnet48 ]] ; then
         print_info "Download and install DOTNET pfx..."
         if try_download "${DOTPFX_URL}" "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz" ; then
             unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/"
