@@ -28,8 +28,8 @@ WINE-PROTON-GE: https://github.com/GloriousEggroll/proton-ge-custom/
 
 ```
 su -
-epm full-upgrade
 epm ei
+epm full-upgrade
 epm play portproton
 ```
 
