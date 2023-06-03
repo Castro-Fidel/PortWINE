@@ -24,13 +24,14 @@ WINE-PROTON-GE: https://github.com/GloriousEggroll/proton-ge-custom/
 [portproton-1.0-8-x86_64.pkg.tar.zst](https://github.com/Castro-Fidel/PortProton_PKGBUILD/releases/download/portproton-1.0-8-x86_64/portproton-1.0-8-x86_64.pkg.tar.zst)
 * **ROSA Linux** (package in the official repository) is installed with the command:  
 `sudo urpmi portproton`
-* **Alt Linux (Sisyphus)** (package in the official repository) is installed with the command:  
+* **Alt Linux** (package in the official repository) is installed with the command:  
 
 ```
 su -
 epm ei
 epm full-upgrade
 epm play portproton
+exit
 ```
 
 
