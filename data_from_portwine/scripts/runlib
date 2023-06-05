@@ -180,7 +180,7 @@ start_portwine () {
 
     if [[ "${PW_PRIME_RENDER_OFFLOAD}" == 1 ]] ; then
         export __NV_PRIME_RENDER_OFFLOAD=1
-        check_nvidia_vk_icd_file
+        export __GLX_VENDOR_LIBRARY_NAME=nvidia
     fi
 
     if [[ "${PW_HEAP_DELAY_FREE}" == 1 ]]
@@ -417,6 +417,7 @@ start_portwine () {
         export WINE_FULLSCREEN_FSR=0
     else
         echo "Use VKD3D-PROTON and DXVK (DX 9-12 to vulkan)"
+        # export WINE_D3D_CONFIG='renderer=vulkan'
         if [[ "${PW_USE_WINE_DXGI}" == 1 ]] ; then 
             export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxvk_config openvr_api_dxvk"  
         elif [[ "${USE_ALL_DXVK_DLLS}" == 1 ]] ; then 
@@ -424,7 +425,6 @@ start_portwine () {
         else
             export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi dxvk_config openvr_api_dxvk" 
         fi
-
         if [[ "${PW_VULKAN_USE}" == "1" ]] ; then
             PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
