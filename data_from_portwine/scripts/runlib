@@ -235,7 +235,7 @@ start_portwine () {
         # else export PW_LD_PRELOAD="${MANGOHUD_LIB_NAME}"
         # fi
         systemctl enable --now --user gamemoded &>/dev/null
-        echo "Gamemod will be launched."
+        print_info "Gamemod will be launched."
     else
         export GAMEMODERUN=0
         echo "Gamemod is not installed or disabled in vars script or db file: PW_USE_GAMEMODE=$PW_USE_GAMEMODE"
@@ -359,14 +359,14 @@ start_portwine () {
             fi
         done
     fi
-    echo "Try link wine DXGI by default..."
+    print_info "Try link wine DXGI by default..."
     if ! try_force_link_file "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/dxgi.dll"
     then try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/dxgi.dll"
     fi
     if ! try_force_link_file "${WINEDIR}"/lib64/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/system32/dxgi.dll"
     then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/dxgi.dll "${WINEPREFIX}/drive_c/windows/system32/dxgi.dll"
     fi
-    echo "Try link wine d3d filese by default..."
+    print_info "Try link wine d3d filese by default..."
     for wine_build_dll in d3d12core d3d12 d3d11 d3d10 d3d10core d3d10_1 d3d9 dxgi ; do
         if ! try_force_link_file "${WINEDIR}/lib/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_build_dll}.dll"
         then try_force_link_file "${WINEDIR}/lib/wine/i386-windows/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_build_dll}.dll"
@@ -381,12 +381,12 @@ start_portwine () {
     PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/opengl"
     
     if [[ "${PW_VULKAN_USE}" == "0" ]] ; then
-        echo "Use OpenGL"
+        print_info "Use OpenGL"
         export GL_YIELD="NOTHING"
         export mesa_glthread=true
         var_winedlloverride_update "d3d11,d3d10,d3d10core,d3d10_1,d3d9,dxgi=b;d3d12,d3d12core="
     elif [[ "${PW_VULKAN_USE}" == "3" ]] ; then
-        echo "Use GALLIUM-NINE (Native DX9 on MESA drivers)"
+        print_info "Use GALLIUM-NINE (Native DX9 on MESA drivers)"
         export PW_GALLIUM_NINE_VER="0.8"
         export PW_GALLIUM_NINE_PATH="${PW_PLUGINS_PATH}/gallium_nine_v.${PW_GALLIUM_NINE_VER}"
         try_force_link_file "${PW_GALLIUM_NINE_PATH}/lib32/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/syswow64/d3d9.dll"
@@ -416,7 +416,7 @@ start_portwine () {
         export PW_MANGOHUD=0
         export WINE_FULLSCREEN_FSR=0
     else
-        echo "Use VKD3D-PROTON and DXVK (DX 9-12 to vulkan)"
+        print_info "Use VKD3D-PROTON and DXVK (DX 9-12 to vulkan)"
         # export WINE_D3D_CONFIG='renderer=vulkan'
         if [[ "${PW_USE_WINE_DXGI}" == 1 ]] ; then 
             export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxvk_config openvr_api_dxvk"  
@@ -428,23 +428,23 @@ start_portwine () {
         if [[ "${PW_VULKAN_USE}" == "1" ]] ; then
             PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
-            echo "DXVK v.${DXVK_STABLE_VER} in use"
-            echo "VKD3D-PROTON v.${VKD3D_STABLE_VER} in use"
+            print_info "DXVK v.${DXVK_STABLE_VER} in use"
+            print_info "VKD3D-PROTON v.${VKD3D_STABLE_VER} in use"
         elif [[ "${PW_VULKAN_USE}" == "2" ]] ; then
             PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
-            echo "DXVK v.${DXVK_GIT_VER} in use"
-            echo "VKD3D-PROTON v.${VKD3D_GIT_VER} in use"
+            print_info "DXVK v.${DXVK_GIT_VER} in use"
+            print_info "VKD3D-PROTON v.${VKD3D_GIT_VER} in use"
         fi
 
-        echo "Try link native DXVK files..."
+        print_info "Try link native DXVK files..."
         for wine_dxvk_dll in ${CP_DXVK_FILES} ; do
             try_force_link_file "${PATH_TO_DXVK_FILES}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
             try_force_link_file "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
             [[ "$?" == 0 ]] && var_winedlloverride_update "${wine_dxvk_dll}=n"
         done
 
-        echo "Try link native VKD3D files..."
+        print_info "Try link native VKD3D files..."
         for wine_vkd3d_dll in d3d12 d3d12core libvkd3d-shader-1 libvkd3d-1 ; do
             try_force_link_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
             try_force_link_file "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
@@ -526,7 +526,7 @@ start_portwine () {
                 sed -i '/vcrun2015/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
                 sed -i '/vcrun2017/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
             fi
-            grep "${need_install_dll_to_pfx}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
+            grep "${need_install_dll_to_pfx}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" &>/dev/null
             if [[ "$?" == "1" ]] ; then
                 if [[ -z "${PW_DLL_NEED_INSTALL}" ]]
                 then export PW_DLL_NEED_INSTALL="${need_install_dll_to_pfx}"
@@ -594,6 +594,8 @@ pw_run () {
         echo "WINEDLLOVERRIDES=${WINEDLLOVERRIDES}" >> "${PW_LOG_TO_FILE}"
         echo "------------------------------------" >> "${PW_LOG_TO_FILE}"
         echo "Log WINE:" >> "${PW_LOG_TO_FILE}"
+        echo ""
+        print_debug "Log from RUNTIME and WINE:"
         env ${optirun_on} ${PW_GAMEMODERUN_SLR} ${pw_runtime} \
         env ${PW_MANGOHUD_SLR} \
         PATH="${PATH}" \
@@ -607,6 +609,8 @@ pw_run () {
             export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
             pw_init_runtime
         fi
+        echo ""
+        print_debug "Log from RUNTIME and WINE:"
         env ${optirun_on} ${PW_GAMEMODERUN_SLR} ${pw_runtime} \
         env ${PW_MANGOHUD_SLR} \
         PATH="${PATH}" \
