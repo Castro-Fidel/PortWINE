@@ -169,8 +169,8 @@ start_portwine () {
 
     grep '"renderer"=' "${WINEPREFIX}/user.reg" 
     if [[ "$?" == 0 ]] ; then
-        sed -i /'"renderer"='/d "${WINEPREFIX}/user.reg"
-        sed -i /'renderer='/d "${WINEPREFIX}/winetricks.log"
+        sed -i /'"renderer"='/d "${WINEPREFIX}/user.reg" &>/dev/null
+        sed -i /'renderer='/d "${WINEPREFIX}/winetricks.log" &>/dev/null
     fi
 
     if [[ ! -z "${optirun_on}" && "${optirun_on}" != "" ]] ; then
@@ -419,7 +419,9 @@ start_portwine () {
         print_info "Use VKD3D-PROTON and DXVK (DX 9-12 to vulkan)"
         # export WINE_D3D_CONFIG='renderer=vulkan'
         if [[ "${PW_USE_WINE_DXGI}" == 1 ]] ; then 
-            export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxvk_config openvr_api_dxvk"  
+            export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxvk_config openvr_api_dxvk dxgi"
+            var_winedlloverride_update dxgi=n
+            var_winedlloverride_update dxgi=b
         elif [[ "${USE_ALL_DXVK_DLLS}" == 1 ]] ; then 
             export CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi dxvk_config openvr_api_dxvk" 
         else
