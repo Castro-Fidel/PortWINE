@@ -456,13 +456,6 @@ export -f gui_credits
 
 ###MAIN###
 
-# HOTFIX WGC TO LGC
-if [[ ! -z "$(echo ${1} | grep 'wgc_api.exe')" ]] && [[ ! -f "${1}" ]] ; then
-    export PW_YAD_SET=PW_LGC
-    pw_autoinstall_from_db 
-    exit 0
-fi
-
 # HOTFIX CALIBRE
 if [[ ! -z "$(echo ${1} | grep '/Caliber/')" ]] ; then
     export PW_WINE_USE=PROTON_STEAM_6.3-8
