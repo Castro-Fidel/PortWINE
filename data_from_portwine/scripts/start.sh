@@ -446,6 +446,7 @@ pw_autoinstall_from_db () {
     export PW_MANGOHUD=0
     export ENABLE_VKBASALT=0
     export PW_USE_D3D_EXTRAS=1
+    export PW_LOG=1
     . "${PORT_SCRIPTS_PATH}/pw_autoinstall/${PW_YAD_SET}"
 }
 
@@ -766,11 +767,12 @@ else
     --field="   ITCH.IO"!"$PW_GUI_ICON_PATH/itch.png"!"":"FBTN" '@bash -c "button_click PW_ITCH"' \
     --field="   Steam (unstable)"!"$PW_GUI_ICON_PATH/steam.png"!"":"FBTN" '@bash -c "button_click PW_STEAM"' \
     --field="   Path of Exile"!"$PW_GUI_ICON_PATH/poe.png"!"":"FBTN" '@bash -c "button_click PW_POE"' \
+    --field="   Guild Wars 2"!"$PW_GUI_ICON_PATH/gw2.png"!"":"FBTN" '@bash -c "button_click PW_GUILD_WARS_2"' \
     --field="   Genshin Impact"!"$PW_GUI_ICON_PATH/genshinimpact.png"!"":"FBTN" '@bash -c "button_click PW_GENSHIN_IMPACT"' 2>/dev/null  &
     
     # --field="   Electronic Arts App"!"$PW_GUI_ICON_PATH/eaapp.png"!"":"FBTN" '@bash -c "button_click PW_EAAPP"' 
     # --field="   Secret World Legends (ENG)"!"$PW_GUI_ICON_PATH/swl.png"!"":"FBTN" '@bash -c "button_click PW_SWL"'
-    # --field="   Guild Wars 2"!"$PW_GUI_ICON_PATH/gw2.png"!"":"FBTN" '@bash -c "button_click PW_GUILD_WARS_2"'
+    # 
     # --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"'
     # --field="   ROBLOX"!"$PW_GUI_ICON_PATH/roblox.png"!"":"FBTN" '@bash -c "button_click PW_ROBLOX"'
 
