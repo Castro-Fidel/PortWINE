@@ -53,7 +53,11 @@ if [ "${PW_SILENT_INSTALL}" = "1" ] ; then
 				ln -s "${PW_OLD_PATH}/PortProton" "${XDG_DATA_HOME}/PortWINE"
 			fi
 		fi
-		ln -s "${XDG_DATA_HOME}/PortWINE" "${HOME}/"
+		if [ ! -L "${HOME}/PortWINE" ]; then
+		    ln -s "${XDG_DATA_HOME}/PortWINE" "${HOME}/"
+		else
+		    echo "Symbolic link already exists."
+		fi
 		echo "Restarting PP after installing..."
 		/usr/bin/env bash -c "${XDG_DATA_HOME}/PortWINE/PortProton/data/scripts/start.sh" $@ & 
 		exit 0
@@ -62,6 +66,6 @@ if [ "${PW_SILENT_INSTALL}" = "1" ] ; then
 	fi
 else
 	`zenity --info --title "${inst_set_top}" --text "${inst_succ}" --no-wrap ` > /dev/null 2>&1
-	xdg-open "https://linux-gaming.ru/portproton/" > /dev/null 2>&1 & exit 0
+	 xdg-open "https://linux-gaming.ru/portproton/" > /dev/null 2>&1 & exit 0
 fi
 unset INSTALLING_PORT
