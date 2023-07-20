@@ -463,38 +463,49 @@ gui_vkBasalt () {
 portwine_create_shortcut () {
     pw_create_gui_png
     name_desktop="${PORTPROTON_NAME}"
-    try_remove_file "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    echo "Name=${PORTPROTON_NAME}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    if [ -z "${PW_CHECK_AUTOINSTAL}" ]
-    then echo "Exec=env "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" "" \
-    >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    else echo "Exec=env "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" "" \
-    >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    fi
-    echo "Type=Application" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    echo "Categories=Game" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    echo "StartupNotify=true" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    echo "Path="${PORT_SCRIPTS_PATH}/"" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    echo "Icon="${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    "${pw_yad}" --title="${inst_set}." --form --borders=3 \
+    OUTPUT=$("${pw_yad}" --title="${inst_set}." --form --borders=3 \
     --window-icon "$PW_GUI_ICON_PATH/port_proton.png" \
     --image "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" \
-    --field="\n    <b>${name_desktop}.desktop</b>:LBL" "" \
-    --field="\n    ${ss_done}:LBL" "" \
-    --button="$loc_gui_no":1 \
-    --button="$loc_gui_yes":0 
+    --field="${sc_name}:" "${name_desktop}" \
+    --field="${sc_menu_desktop}":CHK "TRUE" \
+    --button="$loc_gui_create_shortcut":0)
     if [ $? -eq "0" ]; then
-        try_remove_file "${HOME}/.local/share/applications/${name_desktop}.desktop"
-        cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" "${HOME}/.local/share/applications/"
-        if [[ -d "${HOME}/Desktop" ]] ; then
-            cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" "${HOME}/Desktop/"
-        elif [[ -d "${HOME}/Рабочий стол" ]] ; then
-            cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" "${HOME}/Рабочий стол/"
+        name_desktop=$(echo "$OUTPUT" | awk -F'|' '{ print $1 }')
+        create_menu_desktop_shortcut=$(echo "$OUTPUT" | awk -F'|' '{ print $2 }')
+
+        try_remove_file "${PORT_WINE_PATH}/${name_desktop}.desktop"
+        
+        mv -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" "${PORT_WINE_PATH}/data/img/${name_desktop}.png"
+
+        echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
+        echo "Name=${name_desktop}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+        if [ -z "${PW_CHECK_AUTOINSTAL}" ]
+        then echo "Exec=env "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" "" \
+        >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+        else echo "Exec=env "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" "" \
+        >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
         fi
+        echo "Type=Application" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+        echo "Categories=Game" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+        echo "StartupNotify=true" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+        echo "Path="${PORT_SCRIPTS_PATH}/"" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+        echo "Icon="${PORT_WINE_PATH}/data/img/${name_desktop}.png"" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+        chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
+
+        if [[ "${create_menu_desktop_shortcut}" == "TRUE" ]]; then
+            echo "${name_desktop}" > "${PORT_WINE_PATH}/${name_desktop}.DD"
+            try_remove_file "${HOME}/.local/share/applications/${name_desktop}.desktop"
+            cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" "${HOME}/.local/share/applications/"
+            if [[ -d "${HOME}/Desktop" ]] ; then
+                cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" "${HOME}/Desktop/"
+            elif [[ -d "${HOME}/Рабочий стол" ]] ; then
+                cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" "${HOME}/Рабочий стол/"
+            fi
+        fi
+
+
+        [[ "$1" != silent ]] && xdg-open "${PORT_WINE_PATH}" 2>1 >/dev/null &
     fi
-    [[ "$1" != silent ]] && xdg-open "${PORT_WINE_PATH}" 2>1 >/dev/null &
 }
 
 portwine_delete_shortcut () {
