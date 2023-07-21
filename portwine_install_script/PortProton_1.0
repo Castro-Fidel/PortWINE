@@ -35,7 +35,7 @@ export PROGS_INST=""
 export vexit=0
 ########################################################################
 for PROGS in "wget" "curl" "tar" "awk" "zenity" "cabextract" "pidof" ; do
-	if [ ! -x "$(which "${PROGS}" 2>/dev/null)" ] ; then
+	if [ ! -x "$(command -v "${PROGS}" 2>/dev/null)" ] ; then
 		PROGS_INST="${PROGS_INST} ${PROGS}" && vexit=1
 	fi
 done
@@ -62,9 +62,9 @@ elif [ -z "${PW_SET_LANG}" ] ; then
 	if [ $? -eq 1 ] ; then echo "Installation language not set!" && exit 1 ; fi
 	case $PW_SET_LANG in
 		"$RUS_LANG")
-			INFO_TEXT="Вы запустили установщик PortWINE ${portname} версии ${port_ver}. \n\nЭто некоммерческий продукт и развивается исключительно за идею и Ваши пожертвования. \nВсе права стороннего программного обеспечения принадлежат их владельцам! \nПродолжая установку, Вы автоматически соглашаетесь с данными условиями." > /dev/null 2>&1 ;;
+			INFO_TEXT="Вы запустили установщик ${portname} версии ${port_ver}. \n\nЭто некоммерческий продукт и развивается исключительно за идею и Ваши пожертвования. \nВсе права стороннего программного обеспечения принадлежат их владельцам! \nПродолжая установку, Вы автоматически соглашаетесь с данными условиями." > /dev/null 2>&1 ;;
 		"$ENG_LANG")
-			INFO_TEXT="You’ve started PortWINE ${portname} installer v.${port_ver}. \n\nIt is a non-commercial product and is developed only for the idea and with the help of your donations. \nAll third-party software rights belong to their respective owners! \nIf you continue installation, you agree to these terms." > /dev/null 2>&1 ;;
+			INFO_TEXT="You’ve started ${portname} installer v.${port_ver}. \n\nIt is a non-commercial product and is developed only for the idea and with the help of your donations. \nAll third-party software rights belong to their respective owners! \nIf you continue installation, you agree to these terms." > /dev/null 2>&1 ;;
 	esac
 	zenity --info --title "INFO" --text "$INFO_TEXT" --no-wrap 2> /dev/null
 	if [ $? -eq 1 ] ; then echo "INFO message not displayed!" && exit 1 ; fi
@@ -76,7 +76,7 @@ if [ "${PW_SILENT_INSTALL}" = "1" ] ; then
 else
 	case $PW_SET_LANG in
 		"$RUS_LANG")
-			inst1=$(zenity --title  "Установка ${portname}" --text "Выберите путь для установки (обновления) PortWINE \nили оставьте его по умолчанию." --list --radiolist --width=350 --height=220 \
+			inst1=$(zenity --title  "Установка ${portname}" --text "Выберите путь для установки (обновления) ${portname} \nили оставьте его по умолчанию." --list --radiolist --width=350 --height=220 \
 			--column="" --column "Путь:" \
 			TRUE  "${deflink}" \
 			FALSE "Другой путь..." ) 2> /dev/null
@@ -89,7 +89,7 @@ else
 					D_PATH="${D_PATH}/${portname}" ;;
 			esac ;;
 		"$ENG_LANG")
-			inst1=$(zenity --title  "Install ${portname}" --text "Choose path to install (update) PortWINE \nor leave it as default." --list --radiolist --width=350 --height=220 \
+			inst1=$(zenity --title  "Install ${portname}" --text "Choose path to install (update) ${portname} \nor leave it as default." --list --radiolist --width=350 --height=220 \
 			--column="" --column "Path:" \
 			TRUE  "${deflink}" \
 			FALSE "Other path..." ) 2> /dev/null
@@ -108,7 +108,7 @@ fi
 case $PW_SET_LANG in
 	"$RUS_LANG")
 		progress_bar() {
-			zenity --progress --title="Установка..." --text="Настройка ${portname}" --pulsate --auto-close --auto-kill --width=450 > /dev/null 2>&1
+			zenity --progress --title="Установка..." --text="Установка ${portname}" --pulsate --auto-close --auto-kill --width=450 > /dev/null 2>&1
 		} ;;
 	"$ENG_LANG")
 		progress_bar() {
