@@ -446,7 +446,6 @@ pw_autoinstall_from_db () {
     export PW_MANGOHUD=0
     export ENABLE_VKBASALT=0
     export PW_USE_D3D_EXTRAS=1
-    export PW_LOG=1
     . "${PORT_SCRIPTS_PATH}/pw_autoinstall/${PW_YAD_SET}"
 }
 
