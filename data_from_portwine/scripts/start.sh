@@ -439,6 +439,7 @@ pw_autoinstall_from_db () {
     export PW_WINEDBG_DISABLE=1
     export PW_NO_WRITE_WATCH=0
     export PW_VULKAN_USE=0
+    export PW_USE_EAC_AND_BE=1
     export PW_NO_FSYNC=1
     export PW_NO_ESYNC=1
     unset PORTWINE_CREATE_SHORTCUT_NAME
