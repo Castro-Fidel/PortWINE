@@ -205,7 +205,7 @@ var_vk_istance_layers_config_update () {
 unpack_tar_zst () {
     set -o pipefail
     unset PW_ZSTD_PORT
-    if  [[ `which zstd` ]] &>/dev/null ; then
+    if  [[ `command -v zstd` ]] &>/dev/null ; then
         tar -I zstd -xhvf "$1" -C "$2" | sszen
         [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
     else
@@ -651,8 +651,8 @@ pw_download_libs () {
     export pw_yad_v12_3="${PW_WINELIB}/portable/bin/yad_v12_3"
     export pw_zstd="${PW_WINELIB}/portable/bin/zstd"
     export pw_7z="${PW_WINELIB}/portable/lib/p7zip/7z"
-    if [ -x "`which xterm 2>/dev/null`" ]; then
-        export SYS_XTERM=`which xterm`
+    if [ -x "`command -v xterm 2>/dev/null`" ]; then
+        export SYS_XTERM=`command -v xterm`
         export PW_XTERM="${SYS_XTERM} -geometry 159x37 -e"
     else
         export PW_XTERM="${PW_WINELIB}/runtime/files/bin/xterm -geometry 159x37 -e"
@@ -949,7 +949,7 @@ pw_create_gui_png () {
     try_remove_file "${PORT_WINE_PATH}/data/img/Setup.png"
     try_remove_file "${PORT_WINE_PATH}/data/img/launcher.png"
     try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
-    if [[ -x "`which wrestool 2>/dev/null`" ]] && [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
+    if [[ -x "`command -v wrestool 2>/dev/null`" ]] && [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
         try_remove_dir "${PORT_WINE_TMP_PATH}/tmp_img"
         create_new_dir "${PORT_WINE_TMP_PATH}/tmp_img"
         wrestool -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" -t14 "${portwine_exe}"
@@ -964,7 +964,7 @@ pw_create_gui_png () {
         cp -f "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.png" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
     fi
     if [[ -z "`file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}"`" ]] && \
-       [[ -x "`which "convert" 2>/dev/null`" ]] && [[ -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
+       [[ -x "`command -v "convert" 2>/dev/null`" ]] && [[ -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
         convert "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" -resize ${PW_RESIZE_TO}x${PW_RESIZE_TO} "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" 
     fi
     if [[ -z "${PW_ICON_FOR_YAD}" ]] ; then
