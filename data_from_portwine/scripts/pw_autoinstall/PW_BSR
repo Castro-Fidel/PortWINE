@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Author: Boria138
+########################################################################
+export LAUNCH_PARAMETERS=("/VERYSILENT /SUPPRESSMSGBOXES")
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/bsr_setup.exe"
+start_portwine
+if try_download "battleofspaceraiders.com/install/bsr_setup.exe" "${PW_AUTOINSTALL_EXE}"
+then
+    pw_start_progress_bar_block "${loc_gui_installing_the} Battle Of Space Raiders. ${loc_gui_please_wait} "
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/Battle Of Space Raiders/aops.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    kill_portwine
+    pw_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="Battle Of Space Raiders"
+    portwine_create_shortcut
+fi
+stop_portwine
