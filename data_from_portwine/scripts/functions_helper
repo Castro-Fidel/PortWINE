@@ -116,7 +116,7 @@ try_download () {
     PW_DOWNLOAD_FILE_NAME="$(basename $1)"
     set -o pipefail
     wget -O "$2" --read-timeout 300 --retry-connrefused --timeout 4 --tries 2 --no-dns-cache --no-cache \
-    --user-agent="Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" "${1}" 2>&1 | \
+    --user-agent="Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" "$1" 2>&1 | \
     tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
     zenity --progress --percentage=0 --title="Download ${PW_DOWNLOAD_FILE_NAME}" --text=Starting... --auto-close --width=500 --height=90
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
@@ -886,7 +886,7 @@ pw_port_update () {
                             exit 0
                         fi
                     else
-                        zenity_error_download && pw_scripts_update
+                        zenity_error_download && pw_port_update
                     fi ;;
                 "${scripts_upd5}")
                     echo " " ;;
