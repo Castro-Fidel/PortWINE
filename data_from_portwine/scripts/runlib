@@ -446,15 +446,20 @@ start_portwine () {
         done
 
         print_info "Try link native VKD3D files..."
-        for wine_vkd3d_dll in d3d12 d3d12core libvkd3d-shader-1 libvkd3d-1 ; do
-            try_force_link_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
-            try_force_link_file "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
+        for wine_vkd3d_dll in d3d12 d3d12core libvkd3d-shader-1 libvkd3d-proton-utils-3 libvkd3d-1 ; do
+            if [[ -f "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" ]] ; then
+                try_force_link_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
+                try_force_link_file "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
+            else
+                try_force_link_file "${WINEDIR}/lib/vkd3d/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
+                try_force_link_file "${WINEDIR}/lib64/vkd3d/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
+            fi
         done
     fi
      
     if [[ "${PW_DX12_DISABLE}" == 1 ]]  
-    then var_winedlloverride_update "d3d12,d3d12core="
-    else var_winedlloverride_update "d3d12,d3d12core=n"
+    then var_winedlloverride_update "d3d12,d3d12core,libvkd3d-1="
+    else var_winedlloverride_update "d3d12,d3d12core,libvkd3d-1=n"
     fi
 
     if [[ ! -d "${WINEPREFIX}/drive_c/vrclient/bin" ]] ; then
