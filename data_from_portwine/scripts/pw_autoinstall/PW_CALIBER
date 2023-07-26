@@ -20,16 +20,8 @@ if [ ! -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ] ; then
     [[ "${UNPACK_STATUS}" != 0 ]] && exit 1
 fi
 
-try_download_caliber () {
-    set -o pipefail
-    wget -t 5 -T 3 "$1" --no-check-certificate --output-document="$2" 2>&1 | \
-    tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
-    "${pw_yad_v12_3}" --center --progress --percentage=0 --title="Download $(basename $1)" --text=Starting... --auto-close --auto-kill --width=500 --height=90
-    [ "${PIPESTATUS[0]}" != 0 ] && print_error "failed to download $1. Scipping." && return 1 || return 0
-}
-
 start_portwine
-if try_download_caliber "https://cdn.playcaliber.com/p1/a88c3b70f76a0e56b1e08b62c9895cfe/launcher/setup/CaliberSetup.exe" "${PW_AUTOINSTALL_EXE}"
+if try_download "https://caliber-files.gcdn.co/caliber-s3/p1/a88c3b70f76a0e56b1e08b62c9895cfe/launcher/setup/CaliberSetup.exe" "${PW_AUTOINSTALL_EXE}"
 then
     pw_start_progress_bar_block "${loc_gui_installing_the} CALIBER. ${loc_gui_please_wait} "
     pw_kill_autostart VC_redist.x64.exe 3 &
