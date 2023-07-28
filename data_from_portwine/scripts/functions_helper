@@ -376,9 +376,6 @@ init_wine_ver () {
             mv -f "${WINEDIR}/lib/wine/x86_64-windows" "${WINEDIR}/lib64/wine/"
         fi
 
-        try_remove_file "${WINEDIR}/lib/libsteam_api.so"
-        try_remove_file "${WINEDIR}/lib64/libsteam_api.so"
-        
         for mono_gecko_chk in "mono" "gecko" ; do
             if check_symlink "${WINEDIR}/share/wine/${mono_gecko_chk}" ; then
                 print_info "${WINEDIR}/share/wine/${mono_gecko_chk} is symlink. OK."
@@ -403,6 +400,10 @@ init_wine_ver () {
             sed -i '/winemenubuilder/d' "${WINEDIR}/share/wine/wine.inf"
         fi
     fi
+
+    rm -f "${WINEDIR}"/*/*steam* &>/dev/null
+    rm -f "${WINEDIR}"/*/wine/*/*steam* &>/dev/null
+
     return 0
 }
 
@@ -431,14 +432,13 @@ pw_init_runtime () {
     if [ "${PW_USE_GSTREAMER}" = 1 ] ; then 
         if [ -d "${WINEDIR}/lib64/gstreamer-1.0" ] ; then
             export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/gstreamer-1.0:${WINEDIR}/lib/gstreamer-1.0"
-        elif [ -d "${PW_WINELIB}/portable/lib/lib64/gstreamer-1.0" ] ; then
-            export GST_PLUGIN_SYSTEM_PATH_1_0="${PW_WINELIB}/portable/lib/lib64/gstreamer-1.0:${PW_WINELIB}/portable/lib/lib32/gstreamer-1.0"
         fi
-        export WINE_GST_REGISTRY_DIR="${PORT_WINE_TMP_PATH}"
-        export MEDIACONV_AUDIO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/audio.foz
-        export MEDIACONV_AUDIO_TRANSCODED_FILE="${PORT_WINE_TMP_PATH}"/transcoded_audio.foz
-        export MEDIACONV_VIDEO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/video.foz
-        export MEDIACONV_VIDEO_TRANSCODED_FILE="${PORT_WINE_TMP_PATH}"/transcoded_video.foz
+        create_new_dir "${WINEDIR}"/gstreamer_tmp/
+        export WINE_GST_REGISTRY_DIR="${WINEDIR}"/gstreamer_tmp/
+        export MEDIACONV_AUDIO_DUMP_FILE="${WINEDIR}"/gstreamer_tmp/audio.foz
+        export MEDIACONV_AUDIO_TRANSCODED_FILE="${WINEDIR}"/gstreamer_tmp/transcoded_audio.foz
+        export MEDIACONV_VIDEO_DUMP_FILE="${WINEDIR}"/gstreamer_tmp/video.foz
+        export MEDIACONV_VIDEO_TRANSCODED_FILE="${WINEDIR}"/gstreamer_tmp/transcoded_video.foz
     else
         var_winedlloverride_update "winegstreamer="
     fi
