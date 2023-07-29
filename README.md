@@ -143,20 +143,12 @@ sudo zypper install curl icoutils wget zenity bubblewrap zstd cabextract tar ste
 
 * **Fedora**
 
-Enable Non-free repository:
-
-```sh
-sudo dnf install https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
-```
-
-Install the required dependencies:
-
 ```sh
 sudo dnf update
 
 sudo dnf upgrade --refresh
 
-sudo dnf install curl gamemode icoutils libcurl  wget zenity bubblewrap zstd cabextract tar goverlay openssl steam
+sudo dnf install curl gamemode gamemode.i686 icoutils wget zenity bubblewrap zstd cabextract tar openssl mesa-dri-drivers.i686 mesa-vulkan-drivers mesa-vulkan-drivers.i686 vulkan-loader vulkan-loader.i686 nss.i686 alsa-lib.i686 mesa-libGL.i686 mesa-libEGL.i686 wmctrl ImageMagick
 ```
 
 * **Alt Linux**
