@@ -3,7 +3,6 @@
 
 export NO_AT_BRIDGE=1
 export pw_full_command_line=("$0" $*)
-unset WINE_CPU_TOPOLOGY
 if [ -f "$1" ]; then
     export portwine_exe="$(readlink -f "$1")"
 fi
