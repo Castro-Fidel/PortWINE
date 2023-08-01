@@ -747,6 +747,24 @@ pw_check_and_download_dxvk_and_vkd3d () {
             fi
         fi
     done
+
+    #Download D8VK
+    if [ ! -d "${PW_VULKAN_DIR}/d8vk-${D8VK_VER}" ] ; then
+        print_info "Download and install D8VK v.${D8VK_VER}"
+        if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/d8vk-${D8VK_VER}/d8vk-${D8VK_VER}.tar.xz" "${PW_VULKAN_DIR}/d8vk-${D8VK_VER}.tar.xz" ; then
+            if unpack_tar_xz "${PW_VULKAN_DIR}/d8vk-${D8VK_VER}.tar.xz" "${PW_VULKAN_DIR}" ; then
+                try_remove_file "${PW_VULKAN_DIR}/d8vk-${D8VK_VER}.tar.xz"
+            else
+                try_remove_file "${PW_VULKAN_DIR}/d8vk-${D8VK_VER}.tar.xz"
+                try_remove_dir "d8vk-${D8VK_VER}"
+
+                zenity_error_download && pw_check_and_download_dxvk_and_vkd3d
+            fi
+        else
+            zenity_error_download && pw_check_and_download_dxvk_and_vkd3d
+        fi
+    fi
+
     return 0
 }
 
