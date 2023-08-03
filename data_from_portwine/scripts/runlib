@@ -511,6 +511,12 @@ start_portwine () {
         unset WINE_FULLSCREEN_FAKE_CURRENT_RES WINE_FULLSCREEN_FSR_STRENGTH WINE_FULLSCREEN_INTEGER_SCALING
     fi
 
+    if [[ "${PW_WINE_CPU_TOPOLOGY}" != "disabled" ]] ; then
+        export WINE_CPU_TOPOLOGY="${PW_WINE_CPU_TOPOLOGY}"
+    else
+        unset WINE_CPU_TOPOLOGY
+    fi
+
     for try_cp_dll_from_wine in "ntdll.dll" "vulkan-1.dll" "winevulkan.dll" "amd_ags_x64.dll" "ir50_32.dll" ; do
         if try_copy_file "${WINEDIR}/lib/wine/i386-windows/${try_cp_dll_from_wine}" "${WINEPREFIX}/drive_c/windows/syswow64/${try_cp_dll_from_wine}" 
         then print_info "Try copy $try_cp_dll_from_wine to syswow64... OK."
@@ -607,7 +613,7 @@ pw_run () {
     pw_vkbasalt_check
     PW_LOG_TO_FILE="${PORT_WINE_PATH}/${portname}.log"
     print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VKD3D_CONFIG" \
-    "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2" "WINEDLLPATH"
+    "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2" "WINEDLLPATH" "WINE_CPU_TOPOLOGY"
     if [[ "${PW_LOG}" == 1 ]] ; then
         echo "WINEDLLOVERRIDES=${WINEDLLOVERRIDES}" >> "${PW_LOG_TO_FILE}"
         echo "------------------------------------" >> "${PW_LOG_TO_FILE}"
@@ -658,14 +664,10 @@ fi
 unset MANGOHUD MANGOHUD_DLSYM PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_YAD_SET PW_ICON_FOR_YAD
 unset PW_CHECK_AUTOINSTAL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PORTWINE_DB_FILE PW_DISABLED_CREATE_DB
 unset CHK_SYMLINK_FILE MESA_GL_VERSION_OVERRIDE PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME PORTWINE_CREATE_SHORTCUT_NAME
-unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD 
+unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD PW_WINE_CPU_TOPOLOGY
 unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_ALL_DF PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
 
 export portname=PortProton
-
-logical_cores=$(grep -c "^processor" /proc/cpuinfo)
-half_cores=$((logical_cores / 2))
-export half_cores
 
 cd "$(dirname "`readlink -f "$0"`")" && export PORT_SCRIPTS_PATH="$(pwd)"
 cd "${PORT_SCRIPTS_PATH}/../../" && export PORT_WINE_PATH="$(pwd)"

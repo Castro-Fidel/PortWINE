@@ -840,8 +840,19 @@ pw_init_db () {
             init_wine_ver &&
             print_info "Use ${PORTWINE_DB_FILE} db file."
         fi
-        if [ -z "$PATH_TO_GAME" ] ; then
+        if [ -z "${PATH_TO_GAME}" ] ; then
             export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"        
+        fi
+
+        if [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] && [[ -n "${WINE_CPU_TOPOLOGY}" ]] ; then
+            export PW_WINE_CPU_TOPOLOGY="${WINE_CPU_TOPOLOGY}"
+        fi
+        if ls "${PATH_TO_GAME}"/*_Data/Resources/ | grep "unity" &>/dev/null && \
+           [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] && \
+           [[ $(grep -c "^processor" /proc/cpuinfo) -gt "8" ]]
+        then
+                export PW_WINE_CPU_TOPOLOGY="8:0,1,2,3,4,5,6,7"
+                print_info "Automatic added fix for unity games: WINE_CPU_TOPOLOGY=8:0,1,2,3,4,5,6,7"
         fi
     fi
     return 0
