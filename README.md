@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/Castro-Fidel/PortProton_PKGBUILD/main/portproton.png" width="64">
+  <img src="https://raw.githubusercontent.com/Castro-Fidel/PortProton_PKGBUILD/main/portproton.svg" width="64">
   <h1 align="center">PortProton</h1>
   <p align="center">Project designed to make it easy and convenient to run Windows games on Linux for both beginners and advanced users.
 The project strives to make launching games (and other software) as simple as possible, but at the same time provides flexible settings for advanced users.</p>
@@ -48,8 +48,6 @@ sudo dnf install portproton
 * [**openSUSE Leap 15.4**](https://software.opensuse.org/ymp/home:Boria138/15.4/portproton.ymp?base=openSUSE%3ALeap%3A15.4&query=portproton)
 * [**openSUSE Leap 15.5**](https://software.opensuse.org/ymp/home:Boria138/15.5/portproton.ymp?base=openSUSE%3ALeap%3A15.5&query=portproton)
 * [**openSUSE Tumbleweed**](https://software.opensuse.org/ymp/home:Boria138/openSUSE_Tumbleweed/portproton.ymp?base=openSUSE%3AFactory&query=portproton)
-
-**Just click on link and YaST start PortProton installation**
 
 * **Alt Linux** (package in the official repository) is installed with the command:
 
