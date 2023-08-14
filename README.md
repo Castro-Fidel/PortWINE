@@ -107,6 +107,16 @@ sudo apt install curl file libc6 libnss3 policykit-1 xz-utils zenity bubblewrap 
 
 * **Arch Linux / Manjaro**
 
+First check if the **multilib** repository is enabled
+
+```sh
+/etc/pacman.conf
+===================================
+[multilib]
+Include = /etc/pacman.d/mirrorlist
+====================================
+```
+
 ```sh
 sudo pacman -Syu bash icoutils wget bubblewrap zstd cabextract bc tar openssl gamemode desktop-file-utils curl dbus freetype2 gdk-pixbuf2 ttf-font zenity gzip nss xorg-xrandr vulkan-driver vulkan-icd-loader lsof lib32-freetype2 lib32-libgl lib32-gcc-libs lib32-libx11 lib32-libxss lib32-alsa-plugins lib32-libgpg-error lib32-nss lib32-vulkan-driver lib32-vulkan-icd-loader lib32-gamemode lib32-openssl
 ```
