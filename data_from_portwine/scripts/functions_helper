@@ -401,8 +401,9 @@ init_wine_ver () {
         fi
     fi
 
-    rm -f "${WINEDIR}"/*/*steam* &>/dev/null
-    rm -f "${WINEDIR}"/*/wine/*/*steam* &>/dev/null
+    rm -f "${WINEDIR}"/lib*/*steam* &>/dev/null
+    rm -f "${WINEDIR}"/lib*/wine/*/*steam* &>/dev/null
+    rm -f "${WINEDIR}"/lib*/wine/*-windows/winemenubuilder.exe &>/dev/null
 
     return 0
 }
@@ -847,7 +848,7 @@ pw_init_db () {
         if [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] && [[ -n "${WINE_CPU_TOPOLOGY}" ]] ; then
             export PW_WINE_CPU_TOPOLOGY="${WINE_CPU_TOPOLOGY}"
         fi
-        if ls "${PATH_TO_GAME}"/*_Data/Resources/ | grep "unity" &>/dev/null && \
+        if ls "${PATH_TO_GAME}"/*_Data/Resources/ 2>/dev/null | grep "unity" &>/dev/null && \
            [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] && \
            [[ $(grep -c "^processor" /proc/cpuinfo) -gt "8" ]]
         then
@@ -865,8 +866,22 @@ pw_port_update () {
     fi
     export scripts_install_ver=`cat "${PORT_WINE_TMP_PATH}/scripts_ver" | head -n 1`
     print_info "Check update..."
-    curl -s --list-only https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine/scripts/var > "${PORT_WINE_TMP_PATH}/curent_var_ver"
-    [[ $? == 0 ]] && print_info "OK!" || print_info "ERROR!"
+    if curl -s --list-only --connect-timeout 3 "https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine/scripts/var" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+    then
+        URL_FOR_CHANGELOG="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine"
+        URL_TO_PW_MASTER="https://github.com/Castro-Fidel/PortWINE/archive/refs/heads/master.tar.gz"
+        print_info "OK."
+    else
+        if curl -s --list-only --connect-timeout 3 "https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/raw/master/data_from_portwine/scripts/var" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+        then
+            URL_FOR_CHANGELOG="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/raw/master/data_from_portwine"
+            URL_TO_PW_MASTER="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/-/archive/master/PortWINE-master.tar.gz"
+            print_info "OK."
+        else
+            print_error "Unable to determine the version on the server. Skip it..."
+            return 1
+        fi
+    fi
     [[ ! -f "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ]] && echo "1" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     read "scripts_update_not" < "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     if [[ "${scripts_update_not}" == "1" ]] ; then
@@ -876,7 +891,7 @@ pw_port_update () {
         if [[ ! -z "${scripts_current_ver}" ]] &&  [[ "${scripts_current_ver}" -gt "${scripts_install_ver}" ]] ; then
             if [[ -f "${PW_WINELIB}/portable/bin/yad_v12_3" ]] ; then
                 export pw_yad_v12_3="${PW_WINELIB}/portable/bin/yad_v12_3"
-                curl -s --list-only "https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine/${PW_CHANGELOG_FILE}" | tee "${PORT_WINE_TMP_PATH}/curent_var_ver" | sszen
+                curl -s --list-only "${URL_FOR_CHANGELOG}/${PW_CHANGELOG_FILE}" | tee "${PORT_WINE_TMP_PATH}/curent_var_ver" | sszen
                 CHANGLOG_NEWS=`cat "${PORT_WINE_TMP_PATH}/curent_var_ver" | sed "/Scripts version ${scripts_install_ver}/,$ d" | sed '1,/---/ d' `
                 xcsd=`"${pw_yad_v12_3}" --title "${scripts_upd2} v.${scripts_current_ver}" --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
                 --borders=3 --form --separator='%%%' --width=1200 --height=600 \
@@ -896,7 +911,7 @@ pw_port_update () {
                     echo "######################################################"
                     print_info "Update scripts..."
                     try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
-                    if try_download "github.com/Castro-Fidel/PortWINE/archive/refs/heads/master.tar.gz" "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" ; then
+                    if try_download "${URL_TO_PW_MASTER}" "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" ; then
                         if unpack_tar_gz "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" "${PORT_WINE_TMP_PATH}"
                         then
                             create_new_dir "${PORT_WINE_TMP_PATH}/scripts_backup"
