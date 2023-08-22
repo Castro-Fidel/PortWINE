@@ -1061,3 +1061,54 @@ pw_find_exe () {
         exit 0
     fi
 }
+
+nvidia_check_arch(){
+ local gpu_info=$(lspci | grep "VGA\|3D")
+ 
+ if [[ "$gpu_info" =~ NVIDIA ]]; then
+        if [[ "$gpu_info" =~ G[0-9]*|GT[0-9]*|MCP[0-9]* ]]; then
+            nv_arch=Tesla
+        elif [[ "$gpu_info" =~ GF[0-9]* ]]; then
+            nv_arch=Fermi
+        elif [[ "$gpu_info" =~ GK[0-9]* ]]; then
+            nv_arch=Kepler
+        elif [[ "$gpu_info" =~ GM[0-9]* ]]; then
+            nv_arch=Maxwell
+        elif [[ "$gpu_info" =~ GP[0-9]* ]]; then
+            nv_arch=Pascal
+        elif [[ "$gpu_info" =~ GV[0-9]* ]]; then
+            nv_arch=Volta
+        elif [[ "$gpu_info" =~ TU[0-9]* ]]; then
+            nv_arch=Turing
+        elif [[ "$gpu_info" =~ GA[0-9]* ]]; then
+            nv_arch=Ampere
+        elif [[ "$gpu_info" =~ AD[0-9]* ]]; then
+            nv_arch=Ada_Lovelace
+        fi
+    fi
+}
+
+nvidia_check_arch
+
+# Check for Nvidia GPU available
+if [[ -n "$nv_arch" ]]; then
+    case "$nv_arch" in
+        Turing)
+            if [[ "$gpu_info" =~ TU16[0-9]* ]]; then
+            # Nvida GTX 16 series
+                export PW_USE_NVAPI_AND_DLSS=0
+            else
+            # Nvidia RTX 20 series
+                export PW_USE_NVAPI_AND_DLSS=1
+            fi
+            ;;
+            # Nvidia RTX 30 and 40 series
+         Ampere|Ada_Lovelace)
+            export PW_USE_NVAPI_AND_DLSS=1
+            ;;
+        *)
+            # Everything else nvidia cards
+            export PW_USE_NVAPI_AND_DLSS=0
+            ;;
+    esac
+fi
