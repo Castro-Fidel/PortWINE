@@ -1063,52 +1063,31 @@ pw_find_exe () {
 }
 
 nvidia_check_arch(){
- local gpu_info=$(lspci | grep "VGA\|3D")
- 
- if [[ "$gpu_info" =~ NVIDIA ]]; then
-        if [[ "$gpu_info" =~ G[0-9]*|GT[0-9]*|MCP[0-9]* ]]; then
-            nv_arch=Tesla
-        elif [[ "$gpu_info" =~ GF[0-9]* ]]; then
-            nv_arch=Fermi
-        elif [[ "$gpu_info" =~ GK[0-9]* ]]; then
-            nv_arch=Kepler
-        elif [[ "$gpu_info" =~ GM[0-9]* ]]; then
-            nv_arch=Maxwell
-        elif [[ "$gpu_info" =~ GP[0-9]* ]]; then
-            nv_arch=Pascal
-        elif [[ "$gpu_info" =~ GV[0-9]* ]]; then
-            nv_arch=Volta
-        elif [[ "$gpu_info" =~ TU[0-9]* ]]; then
-            nv_arch=Turing
-        elif [[ "$gpu_info" =~ GA[0-9]* ]]; then
-            nv_arch=Ampere
-        elif [[ "$gpu_info" =~ AD[0-9]* ]]; then
-            nv_arch=Ada_Lovelace
-        fi
+    if [[ $(lspci | grep "VGA\|3D" | sed -rn 's/.*(NVIDIA).*/\1/p') ]]; then
+        [[ $(lspci | grep VGA | sed -rn 's/.*(G[0-9]*).*/\1/p') == G[0-9]* ]] && nv_arch=Tesla
+        [[ $(lspci | grep VGA | sed -rn 's/.*(GT[0-9]*).*/\1/p') == GT[0-9]* ]] && nv_arch=Tesla
+        [[ $(lspci | grep VGA | sed -rn 's/.*(MCP[0-9]*).*/\1/p') == MCP[0-9]* ]] && nv_arch=Tesla
+        [[ $(lspci | grep VGA | sed -rn 's/.*(GF[0-9]*).*/\1/p') == GF[0-9]* ]] && nv_arch=Fermi
+        [[ $(lspci | grep VGA | sed -rn 's/.*(GK[0-9]*).*/\1/p') == GK[0-9]* ]] && nv_arch=Kepler
+        [[ $(lspci | grep VGA | sed -rn 's/.*(GM[0-9]*).*/\1/p') == GM[0-9]* ]] && nv_arch=Maxwell
+        [[ $(lspci | grep VGA | sed -rn 's/.*(GP[0-9]*).*/\1/p') == GP[0-9]* ]] && nv_arch=Pascal
+        [[ $(lspci | grep VGA | sed -rn 's/.*(GV[0-9]*).*/\1/p') == GV[0-9]* ]] && nv_arch=Volta
+        [[ $(lspci | grep VGA | sed -rn 's/.*(TU[0-9]*).*/\1/p') == TU[0-9]* ]] && nv_arch=Turing
+        [[ $(lspci | grep VGA | sed -rn 's/.*(TU[0-9]*).*/\1/p') == TU116 ]] && nv_arch=Turing_16
+        [[ $(lspci | grep VGA | sed -rn 's/.*(TU[0-9]*).*/\1/p') == TU117 ]] && nv_arch=Turing_16
+        [[ $(lspci | grep VGA | sed -rn 's/.*(GA[0-9]*).*/\1/p') == GA[0-9]* ]] && nv_arch=Ampere
+        [[ $(lspci | grep VGA | sed -rn 's/.*(AD[0-9]*).*/\1/p') == AD[0-9]* ]] && nv_arch=Ada_Lovelace
     fi
 }
 
 nvidia_check_arch
 
+
 # Check for Nvidia GPU available
 if [[ -n "$nv_arch" ]]; then
-    case "$nv_arch" in
-        Turing)
-            if [[ "$gpu_info" =~ TU16[0-9]* ]]; then
-            # Nvida GTX 16 series
-                export PW_USE_NVAPI_AND_DLSS=0
-            else
-            # Nvidia RTX 20 series
-                export PW_USE_NVAPI_AND_DLSS=1
-            fi
-            ;;
-            # Nvidia RTX 30 and 40 series
-         Ampere|Ada_Lovelace)
-            export PW_USE_NVAPI_AND_DLSS=1
-            ;;
-        *)
-            # Everything else nvidia cards
-            export PW_USE_NVAPI_AND_DLSS=0
-            ;;
-    esac
+    if [[ $nv_arch == Turing || $nv_arch == Ampere || $nv_arch == Ada_Lovelace ]]; then
+        export PW_USE_NVAPI_AND_DLSS=1
+    else
+        exit 0
+    fi
 fi
