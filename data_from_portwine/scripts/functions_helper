@@ -1062,26 +1062,77 @@ pw_find_exe () {
     fi
 }
 
-nvidia_check_arch(){
-    if [[ $(lspci | grep "VGA\|3D" | sed -rn 's/.*(NVIDIA).*/\1/p') ]]; then
-        [[ $(lspci | grep VGA | sed -rn 's/.*(G[0-9]*).*/\1/p') == G[0-9]* ]] && nv_arch=Tesla
-        [[ $(lspci | grep VGA | sed -rn 's/.*(GT[0-9]*).*/\1/p') == GT[0-9]* ]] && nv_arch=Tesla
-        [[ $(lspci | grep VGA | sed -rn 's/.*(MCP[0-9]*).*/\1/p') == MCP[0-9]* ]] && nv_arch=Tesla
-        [[ $(lspci | grep VGA | sed -rn 's/.*(GF[0-9]*).*/\1/p') == GF[0-9]* ]] && nv_arch=Fermi
-        [[ $(lspci | grep VGA | sed -rn 's/.*(GK[0-9]*).*/\1/p') == GK[0-9]* ]] && nv_arch=Kepler
-        [[ $(lspci | grep VGA | sed -rn 's/.*(GM[0-9]*).*/\1/p') == GM[0-9]* ]] && nv_arch=Maxwell
-        [[ $(lspci | grep VGA | sed -rn 's/.*(GP[0-9]*).*/\1/p') == GP[0-9]* ]] && nv_arch=Pascal
-        [[ $(lspci | grep VGA | sed -rn 's/.*(GV[0-9]*).*/\1/p') == GV[0-9]* ]] && nv_arch=Volta
-        [[ $(lspci | grep VGA | sed -rn 's/.*(TU[0-9]*).*/\1/p') == TU[0-9]* ]] && nv_arch=Turing
-        [[ $(lspci | grep VGA | sed -rn 's/.*(TU[0-9]*).*/\1/p') == TU116 ]] && nv_arch=Turing_16
-        [[ $(lspci | grep VGA | sed -rn 's/.*(TU[0-9]*).*/\1/p') == TU117 ]] && nv_arch=Turing_16
-        [[ $(lspci | grep VGA | sed -rn 's/.*(GA[0-9]*).*/\1/p') == GA[0-9]* ]] && nv_arch=Ampere
-        [[ $(lspci | grep VGA | sed -rn 's/.*(AD[0-9]*).*/\1/p') == AD[0-9]* ]] && nv_arch=Ada_Lovelace
+nvidia_check_arch() {
+    lspci_output=$(lspci | grep VGA)
+    if echo "$lspci_output" | grep -i "nvidia"; then
+        arch=$(echo "$lspci_output" | sed -rn 's/.*(G[0-9]*).*/\1/p')
+        if [[ $arch == G[0-9]* ]]; then
+            nv_arch=Tesla
+        fi
+
+        arch=$(echo "$lspci_output" | sed -rn 's/.*(GT[0-9]*).*/\1/p')
+        if [[ $arch == GT[0-9]* ]]; then
+            nv_arch=Tesla
+        fi
+
+        arch=$(echo "$lspci_output" | sed -rn 's/.*(MCP[0-9]*).*/\1/p')
+        if [[ $arch == MCP[0-9]* ]]; then
+            nv_arch=Tesla
+        fi
+
+        arch=$(echo "$lspci_output" | sed -rn 's/.*(GF[0-9]*).*/\1/p')
+        if [[ $arch == GF[0-9]* ]]; then
+            nv_arch=Fermi
+        fi
+
+        arch=$(echo "$lspci_output" | sed -rn 's/.*(GK[0-9]*).*/\1/p')
+        if [[ $arch == GK[0-9]* ]]; then
+            nv_arch=Kepler
+        fi
+
+        arch=$(echo "$lspci_output" | sed -rn 's/.*(GM[0-9]*).*/\1/p')
+        if [[ $arch == GM[0-9]* ]]; then
+            nv_arch=Maxwell
+        fi
+
+        arch=$(echo "$lspci_output" | sed -rn 's/.*(GP[0-9]*).*/\1/p')
+        if [[ $arch == GP[0-9]* ]]; then
+            nv_arch=Pascal
+        fi
+
+        arch=$(echo "$lspci_output" | sed -rn 's/.*(GV[0-9]*).*/\1/p')
+        if [[ $arch == GV[0-9]* ]]; then
+            nv_arch=Volta
+        fi
+
+        arch=$(echo "$lspci_output" | sed -rn 's/.*(TU[0-9]*).*/\1/p')
+        if [[ $arch == TU[0-9]* ]]; then
+            nv_arch=Turing
+        fi
+
+        arch=$(echo "$lspci_output" | sed -rn 's/.*(TU116).*/\1/p')
+        if [[ $arch == TU116 ]]; then
+            nv_arch=Turing_16
+        fi
+
+        arch=$(echo "$lspci_output" | sed -rn 's/.*(TU117).*/\1/p')
+        if [[ $arch == TU117 ]]; then
+            nv_arch=Turing_16
+        fi
+
+        arch=$(echo "$lspci_output" | sed -rn 's/.*(GA[0-9]*).*/\1/p')
+        if [[ $arch == GA[0-9]* ]]; then
+            nv_arch=Ampere
+        fi
+
+        arch=$(echo "$lspci_output" | sed -rn 's/.*(AD[0-9]*).*/\1/p')
+        if [[ $arch == AD[0-9]* ]]; then
+            nv_arch=Ada_Lovelace
+        fi
     fi
 }
 
 nvidia_check_arch
-
 
 # Check for Nvidia GPU available
 if [[ -n "$nv_arch" ]]; then
