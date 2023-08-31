@@ -514,13 +514,13 @@ if [[ -n "${PORTWINE_DB_FILE}" ]] ; then
     [[ -z "${PW_COMMENT_DB}" ]] && PW_COMMENT_DB="${loc_gui_db_comments} <b>${PORTWINE_DB}</b>."
     if [[ -z "${PW_VULKAN_USE}" || -z "${PW_WINE_USE}" ]] ; then
         unset PW_GUI_DISABLED_CS
-        [[ -z "${PW_VULKAN_USE}" ]] && export PW_VULKAN_USE=1
+        [[ -z "${PW_VULKAN_USE}" ]] && export PW_VULKAN_USE=2
     fi
     case "${PW_VULKAN_USE}" in
-            "0") export PW_DEFAULT_VULKAN_USE="${loc_gui_open_gl}!${loc_gui_vulkan_stable}!${loc_gui_vulkan_git}!${loc_gui_gallium_nine}" ;;
-            "2") export PW_DEFAULT_VULKAN_USE="${loc_gui_vulkan_git}!${loc_gui_vulkan_stable}!${loc_gui_open_gl}!${loc_gui_gallium_nine}" ;;
-            "3") export PW_DEFAULT_VULKAN_USE="${loc_gui_gallium_nine}!${loc_gui_vulkan_stable}!${loc_gui_vulkan_git}!${loc_gui_open_gl}" ;;
-              *) export PW_DEFAULT_VULKAN_USE="${loc_gui_vulkan_stable}!${loc_gui_vulkan_git}!${loc_gui_open_gl}!${loc_gui_gallium_nine}" ;;
+        0) export PW_DEFAULT_VULKAN_USE="${loc_gui_open_gl}!${loc_gui_vulkan_stable}!${loc_gui_vulkan_git}!${loc_gui_gallium_nine}" ;;
+        1) export PW_DEFAULT_VULKAN_USE="${loc_gui_vulkan_stable}!${loc_gui_vulkan_git}!${loc_gui_open_gl}!${loc_gui_gallium_nine}" ;;
+        3) export PW_DEFAULT_VULKAN_USE="${loc_gui_gallium_nine}!${loc_gui_vulkan_stable}!${loc_gui_vulkan_git}!${loc_gui_open_gl}" ;;
+        *) export PW_DEFAULT_VULKAN_USE="${loc_gui_vulkan_git}!${loc_gui_vulkan_stable}!${loc_gui_open_gl}!${loc_gui_gallium_nine}" ;;
     esac
     if [[ -n $(echo "${PW_WINE_USE}" | grep "^PROTON_LG$") ]] ; then
         export PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
@@ -537,7 +537,7 @@ if [[ -n "${PORTWINE_DB_FILE}" ]] ; then
         fi
     fi
 else
-    export PW_DEFAULT_VULKAN_USE="${loc_gui_vulkan_stable}!${loc_gui_vulkan_git}!${loc_gui_open_gl}!${loc_gui_gallium_nine}"
+    export PW_DEFAULT_VULKAN_USE="${loc_gui_vulkan_git}!${loc_gui_vulkan_stable}!${loc_gui_open_gl}!${loc_gui_gallium_nine}"
     if [[ -n $(echo "${PW_WINE_USE}" | grep "^PROTON_LG$") ]] ; then
         export PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
     elif [[ -n $(echo "${PW_WINE_USE}" | grep "^PROTON_GE$") ]] ; then
@@ -690,6 +690,7 @@ else
         fi
         PW_GENERATE_BUTTONS+="--field=   ${PW_DESKTOP_FILES//".desktop"/""}!${PW_NAME_D_ICON_48}!:FBTN%@bash -c \"run_desktop_b_click "${PW_DESKTOP_FILES//" "/¬}"\"%"
     done
+
     IFS="$orig_IFS"
     old_IFS=$IFS && IFS="%"
     "${pw_yad_v12_3}" --plug=$KEY --tabnum=${PW_GUI_SORT_TABS[4]} --form --columns=3 --align-buttons --keep-icon-size --scroll --separator=" " ${PW_GENERATE_BUTTONS} 2>/dev/null &
@@ -707,7 +708,7 @@ else
     --field="   $loc_gui_credits"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_credits"'  2>/dev/null &
 
     "${pw_yad_v12_3}" --plug=${KEY} --tabnum=${PW_GUI_SORT_TABS[2]} --form --columns=3 --align-buttons --keep-icon-size --separator=";" \
-    --field="  3D API  : :CB" "${loc_gui_vulkan_stable}!${loc_gui_vulkan_git}!${loc_gui_open_gl}!${loc_gui_gallium_nine}" \
+    --field="  3D API  : :CB" "${loc_gui_vulkan_git}!${loc_gui_vulkan_stable}!${loc_gui_open_gl}!${loc_gui_gallium_nine}" \
     --field="  PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
     --field="  WINE    : :CB" "${PW_DEFAULT_WINE_USE}" \
     --field="                  DOWNLOAD OTHER WINE"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_download_other_wine}":"FBTN" '@bash -c "button_click gui_proton_downloader"' \
