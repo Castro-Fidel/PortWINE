@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #Author: Castro-Fidel (linux-gaming.ru)
-#SCRIPTS_NEXT_VERSION=2215
+#SCRIPTS_NEXT_VERSION=2216
 ########################################################################
 export PW_MANGOHUD=0
 export MANGOHUD_CONFIG=cpu_stats,cpu_temp,cpu_mhz,cpu_color=2e97cb,cpu_text=CPU,gpu_stats,gpu_temp,gpu_core_clock,gpu_mem_clock,vulkan_driver,gpu_name,gpu_color=2e9762,gpu_text=GPU,vram,vram_color=ad64c1,ram,ram_color=c26693,io_color=a491d3,frame_timing=1,frametime_color=00ff00,time,arch,wine,wine_color=eb5b5b,engine_color=eb5b5b,background_alpha=0.2,font_size=24,background_color=020202,text_color=ffffff,toggle_hud=Shift_R+F12,resolution,vkbasalt
@@ -16,7 +16,7 @@ export PW_USE_TERMINAL="0"
 export PW_WINEDBG_DISABLE="1"
 export PW_WINDOWS_VER="10"
 export WINEARCH="win64"
-export PW_LIBS_VER="_v43"
+export PW_LIBS_VER="_v44"
 export GDK_BACKEND="x11"
 export PW_USE_GSTREAMER="1"
 export PW_USE_D3D_EXTRAS="1"
@@ -38,20 +38,24 @@ export PW_WINE_USE="PROTON_LG"
 export PW_PLUGINS_VER="_v12"
 export PW_FAKE_DLSS_VER="230506"
 ###WINE_PROTON_LG###
-export PW_LG_VER="8-11"
+export PW_LG_VER="8-14"
 export PW_PROTON_LG_VER="PROTON_LG_${PW_LG_VER}"
 ###WINE_PROTON_GE###
 export PW_GE_VER="8-3"
 export PW_PROTON_GE_VER="PROTON_GE_${PW_GE_VER}"
 export PW_WINE_FULLSCREEN_FSR="1"
 ###DXVK_AND_VKD3D###
-export VKD3D_FEATURE_LEVEL="12_0"
-# export VKD3D_LIMIT_TESS_FACTORS="16"
+export VKD3D_LIMIT_TESS_FACTORS="32"
 export D8VK_VER="1.0"
-export DXVK_STABLE_VER="1.10.3-28"
-export DXVK_GIT_VER="2.2-137"
-export VKD3D_STABLE_VER="1.1-2602"
-export VKD3D_GIT_VER="1.1-3516"
+if [[ $VULKAN_API_VERSION == 1.2.* ]] ; then
+    export DXVK_STABLE_VER="1.10.3-28"
+    export VKD3D_STABLE_VER="1.1-2602"
+else
+    export DXVK_STABLE_VER="2.2-34"
+    export VKD3D_STABLE_VER="1.1-3445"
+fi
+export DXVK_GIT_VER="2.2-164"
+export VKD3D_GIT_VER="1.1-3556"
 ###PREFIX_VERSION###
 export DOTPFX_VER="48v1"
 export DEFPFX_VER="v1"
@@ -64,7 +68,7 @@ export DXVK_CONFIG_FILE="${PORT_WINE_PATH}/data/dxvk.conf"
 pw_install_dll_in_prefix ()
 {
     case $PW_PREFIX_NAME in
-        DEFAULT) export PW_MUST_HAVE_DLL="d3dx9 d3dcompiler_43 physx mfc42 vcrun2022" ;;
+        DEFAULT) export PW_MUST_HAVE_DLL="d3dx9 d3dcompiler_43 physx mfc42 vcrun2022 sandbox" ;;
          DOTNET) export PW_MUST_HAVE_DLL="physx mfc42 vcrun2019 faudio dotnet48" ;;
               *) export PW_MUST_HAVE_DLL="" ;;
     esac

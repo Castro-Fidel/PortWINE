@@ -299,12 +299,10 @@ check_user_conf () {
         echo "# export DXVK_HUD=full" >> "${USER_CONF}"
         echo "# export GALLIUM_HUD=fps" >> "${USER_CONF}"
         echo "export optirun_on=      #nvidia-prime-run or prime-run" >> "${USER_CONF}"
-        chmod u+x "${USER_CONF}"
     else
         grep "optirun_on" "${USER_CONF}" >/dev/null
         [[ "$?" != 0 ]] && echo "export optirun_on=" >> "${USER_CONF}"
     fi
-    return 0
 }
 
 init_wine_ver () {
@@ -793,6 +791,22 @@ pw_check_and_download_plugins () {
     return 0
 }
 
+nvidia_check_rtx () {
+    lspci_output=$(lspci | grep VGA)
+    if echo "$lspci_output" | grep -i "nvidia" ; then          
+        # Turing (without nvidia 16XX)
+        nv_arch=$(echo "$lspci_output" | sed -rn 's/.*(TU[0-9]*).*/\1/p')
+        [[ $nv_arch == TU[0-9]* ]] && [[ $nv_arch != TU11[6-7]* ]] && return 0
+        # Ampere
+        nv_arch=$(echo "$lspci_output" | sed -rn 's/.*(GA[0-9]*).*/\1/p')
+        [[ $nv_arch == GA[0-9]* ]] && return 0
+        # Ada_Lovelace
+        nv_arch=$(echo "$lspci_output" | sed -rn 's/.*(AD[0-9]*).*/\1/p')
+        [[ $nv_arch == AD[0-9]* ]] && return 0
+    fi
+    return 1
+}
+
 pw_init_db () {
     if [[ ! -z "${portwine_exe}" ]] ; then
         try_remove_file "${PORT_SCRIPTS_PATH}/portwine_db/setup"
@@ -848,12 +862,18 @@ pw_init_db () {
         if [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] && [[ -n "${WINE_CPU_TOPOLOGY}" ]] ; then
             export PW_WINE_CPU_TOPOLOGY="${WINE_CPU_TOPOLOGY}"
         fi
-        if ls "${PATH_TO_GAME}"/*_Data/Resources/ 2>/dev/null | grep "unity" &>/dev/null && \
-           [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] && \
-           [[ $(grep -c "^processor" /proc/cpuinfo) -gt "8" ]]
+        if ls "${PATH_TO_GAME}"/*_Data/Resources/ 2>/dev/null | grep "unity" &>/dev/null \
+        && [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] \
+        && [[ $(grep -c "^processor" /proc/cpuinfo) -gt "8" ]]
         then
                 export PW_WINE_CPU_TOPOLOGY="8:0,1,2,3,4,5,6,7"
                 print_info "Automatic added fix for unity games: WINE_CPU_TOPOLOGY=8:0,1,2,3,4,5,6,7"
+        fi
+
+        if nvidia_check_rtx ; then
+            export PW_USE_NVAPI_AND_DLSS=1
+            export PW_USE_FAKE_DLSS=0
+            export PW_USE_RAY_TRACING=1
         fi
     fi
     return 0
@@ -1061,84 +1081,3 @@ pw_find_exe () {
         exit 0
     fi
 }
-
-nvidia_check_arch() {
-    lspci_output=$(lspci | grep VGA)
-    if echo "$lspci_output" | grep -i "nvidia"; then
-        arch=$(echo "$lspci_output" | sed -rn 's/.*(G[0-9]*).*/\1/p')
-        if [[ $arch == G[0-9]* ]]; then
-            nv_arch=Tesla
-        fi
-
-        arch=$(echo "$lspci_output" | sed -rn 's/.*(GT[0-9]*).*/\1/p')
-        if [[ $arch == GT[0-9]* ]]; then
-            nv_arch=Tesla
-        fi
-
-        arch=$(echo "$lspci_output" | sed -rn 's/.*(MCP[0-9]*).*/\1/p')
-        if [[ $arch == MCP[0-9]* ]]; then
-            nv_arch=Tesla
-        fi
-
-        arch=$(echo "$lspci_output" | sed -rn 's/.*(GF[0-9]*).*/\1/p')
-        if [[ $arch == GF[0-9]* ]]; then
-            nv_arch=Fermi
-        fi
-
-        arch=$(echo "$lspci_output" | sed -rn 's/.*(GK[0-9]*).*/\1/p')
-        if [[ $arch == GK[0-9]* ]]; then
-            nv_arch=Kepler
-        fi
-
-        arch=$(echo "$lspci_output" | sed -rn 's/.*(GM[0-9]*).*/\1/p')
-        if [[ $arch == GM[0-9]* ]]; then
-            nv_arch=Maxwell
-        fi
-
-        arch=$(echo "$lspci_output" | sed -rn 's/.*(GP[0-9]*).*/\1/p')
-        if [[ $arch == GP[0-9]* ]]; then
-            nv_arch=Pascal
-        fi
-
-        arch=$(echo "$lspci_output" | sed -rn 's/.*(GV[0-9]*).*/\1/p')
-        if [[ $arch == GV[0-9]* ]]; then
-            nv_arch=Volta
-        fi
-
-        arch=$(echo "$lspci_output" | sed -rn 's/.*(TU[0-9]*).*/\1/p')
-        if [[ $arch == TU[0-9]* ]]; then
-            nv_arch=Turing
-        fi
-
-        arch=$(echo "$lspci_output" | sed -rn 's/.*(TU116).*/\1/p')
-        if [[ $arch == TU116 ]]; then
-            nv_arch=Turing_16
-        fi
-
-        arch=$(echo "$lspci_output" | sed -rn 's/.*(TU117).*/\1/p')
-        if [[ $arch == TU117 ]]; then
-            nv_arch=Turing_16
-        fi
-
-        arch=$(echo "$lspci_output" | sed -rn 's/.*(GA[0-9]*).*/\1/p')
-        if [[ $arch == GA[0-9]* ]]; then
-            nv_arch=Ampere
-        fi
-
-        arch=$(echo "$lspci_output" | sed -rn 's/.*(AD[0-9]*).*/\1/p')
-        if [[ $arch == AD[0-9]* ]]; then
-            nv_arch=Ada_Lovelace
-        fi
-    fi
-}
-
-nvidia_check_arch
-
-# Check for Nvidia GPU available
-if [[ -n "$nv_arch" ]]; then
-    if [[ $nv_arch == Turing || $nv_arch == Ampere || $nv_arch == Ada_Lovelace ]]; then
-        export PW_USE_NVAPI_AND_DLSS=1
-    else
-        exit 0
-    fi
-fi
