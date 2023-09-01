@@ -791,8 +791,9 @@ pw_check_and_download_plugins () {
     return 0
 }
 
+lspci_output=$(lspci | grep VGA)
+
 nvidia_check_rtx () {
-    lspci_output=$(lspci | grep VGA)
     if echo "$lspci_output" | grep -i "nvidia" ; then          
         # Turing (without nvidia 16XX)
         nv_arch=$(echo "$lspci_output" | sed -rn 's/.*(TU[0-9]*).*/\1/p')
@@ -806,6 +807,14 @@ nvidia_check_rtx () {
     fi
     return 1
 }
+
+# Hybrid graphics (Intel + NVIDIA)
+if echo "$lspci_output" | grep -i "intel" && echo "$lspci_output" | grep -i "nvidia"; then
+    export PW_PRIME_RENDER_OFFLOAD=1
+# Hybrid graphics (AMD + NVIDIA)
+elif echo "$lspci_output" | grep -i "amd" && echo "$lspci_output" | grep -i "nvidia"; then
+    export PW_PRIME_RENDER_OFFLOAD=1
+fi
 
 pw_init_db () {
     if [[ ! -z "${portwine_exe}" ]] ; then
