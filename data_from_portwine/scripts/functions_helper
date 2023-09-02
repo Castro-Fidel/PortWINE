@@ -808,12 +808,9 @@ nvidia_check_rtx () {
     return 1
 }
 
-# Hybrid graphics (Intel + NVIDIA)
-if echo "$lspci_output" | grep -i "intel" && echo "$lspci_output" | grep -i "nvidia"; then
-    export PW_PRIME_RENDER_OFFLOAD=1
-# Hybrid graphics (AMD + NVIDIA)
-elif echo "$lspci_output" | grep -i "amd" && echo "$lspci_output" | grep -i "nvidia"; then
-    export PW_PRIME_RENDER_OFFLOAD=1
+# Hybrid graphics detect
+if echo "$lspci_output" | grep -i "nvidia" && echo "$lspci_output" | grep -i "intel") || (echo "$lspci_output" | grep -i "nvidia" && echo "$lspci_output" | grep -i "amd"); then
+  export PW_PRIME_RENDER_OFFLOAD=1
 fi
 
 pw_init_db () {
