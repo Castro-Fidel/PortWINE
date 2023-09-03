@@ -14,10 +14,9 @@ zenity_error () {
 export -f zenity_error
 
 zenity_error_download () {
-    `zenity --question --title "$loc_gui_error" --text "$loc_gui_error_download\n" --no-wrap --ok-label="Repeat" --cancel-label="Exit" `
+    `zenity --question --title "$loc_gui_error" --text "$loc_gui_error_download\n" --no-wrap --ok-label="Repeat" --cancel-label="Skip" `
     if [[ "$?" != 0 ]] ; then
-        stop_portwine
-        exit 1
+        return 1
     else
         return 0
     fi
@@ -300,7 +299,7 @@ gui_proton_downloader () {
         for PPWGIT in ${PROTON_PW_GIT[@]} ; do
             echo ${PPWGIT} | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
         done
-        sed -i /${PW_PROTON_GE_VER}/d "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
+        sed -i /${PW_WINE_LG_VER}/d "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
         sed -i '/plugins/d' "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
     fi
     pw_stop_progress_bar
@@ -399,12 +398,12 @@ gui_proton_downloader () {
                 else
                     try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}"
                     try_remove_dir "${PORT_WINE_PATH}/data/dist/${PW_WINE_ARCHIVE}"
-                    zenity_error_download && gui_proton_downloader
+                    zenity_error_download && gui_proton_downloader || exit 1
                 fi
             fi
         done
     else
-        zenity_error_download && gui_proton_downloader
+        zenity_error_download && gui_proton_downloader || exit 1
     fi
 
     if [[ "$1" != "silent" ]] ; then

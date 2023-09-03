@@ -140,8 +140,8 @@ portwine_start_debug () {
     free -m >> "${PORT_WINE_PATH}/${portname}.log"
     echo "-----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Graphic cards and drivers:" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo 'lspci -k | grep -EA3 VGA|3D|Display:' >> "${PORT_WINE_PATH}/${portname}.log"
-    echo $(lspci -k | grep -EA3 'VGA|3D|Display') >> "${PORT_WINE_PATH}/${portname}.log"
+    echo 'lspci | grep VGA:' >> "${PORT_WINE_PATH}/${portname}.log"
+    echo $LSPCI_VGA >> "${PORT_WINE_PATH}/${portname}.log"
     [[ `command -v glxinfo` ]] && glxinfo -B >> "${PORT_WINE_PATH}/${portname}.log"
     echo " " >> "${PORT_WINE_PATH}/${portname}.log"
     echo "inxi -G:" >> "${PORT_WINE_PATH}/${portname}.log"
@@ -438,7 +438,7 @@ pw_autoinstall_from_db () {
     export PW_GUI_DISABLED_CS=1
     export PW_WINEDBG_DISABLE=1
     export PW_NO_WRITE_WATCH=0
-    export PW_VULKAN_USE=0
+    export PW_VULKAN_USE=1
     export PW_USE_EAC_AND_BE=0
     export PW_NO_FSYNC=1
     export PW_NO_ESYNC=1
@@ -504,52 +504,55 @@ done
 IFS=$IFS_OLD
 export PW_ADD_PREFIXES_TO_GUI="${PW_PREFIX_NAME^^}${PW_ADD_PREFIXES_TO_GUI}"
 
-PW_ALL_DIST=$(ls "${PORT_WINE_PATH}/data/dist/" | sed -e s/"${PW_PROTON_GE_VER}$//g" | sed -e s/"${PW_PROTON_LG_VER}$//g")
+PW_ALL_DIST=$(ls "${PORT_WINE_PATH}/data/dist/" | sed -e s/"${PW_WINE_LG_VER}$//g" | sed -e s/"${PW_PROTON_LG_VER}$//g")
 unset DIST_ADD_TO_GUI
 for DAIG in ${PW_ALL_DIST}
 do
     export DIST_ADD_TO_GUI="${DIST_ADD_TO_GUI}!${DAIG}"
 done
+
+if [[ $VULKAN_API_DRIVER_VERSION == 1.[1-2].* ]]
+then check_variables PW_VULKAN_USE "1"
+else check_variables PW_VULKAN_USE "2"
+fi
+check_nvidia_rtx && check_variables PW_VULKAN_USE "2"
+
+case "${PW_VULKAN_USE}" in
+    0) export PW_DEFAULT_VULKAN_USE="${loc_gui_open_gl}!${loc_gui_vulkan_stable}!${loc_gui_vulkan_git}!${loc_gui_gallium_nine}" ;;
+    1) export PW_DEFAULT_VULKAN_USE="${loc_gui_vulkan_stable}!${loc_gui_vulkan_git}!${loc_gui_open_gl}!${loc_gui_gallium_nine}" ;;
+    3) export PW_DEFAULT_VULKAN_USE="${loc_gui_gallium_nine}!${loc_gui_vulkan_stable}!${loc_gui_vulkan_git}!${loc_gui_open_gl}" ;;
+    *) export PW_DEFAULT_VULKAN_USE="${loc_gui_vulkan_git}!${loc_gui_vulkan_stable}!${loc_gui_open_gl}!${loc_gui_gallium_nine}" ;;
+esac
+
 if [[ -n "${PORTWINE_DB_FILE}" ]] ; then
     [[ -z "${PW_COMMENT_DB}" ]] && PW_COMMENT_DB="${loc_gui_db_comments} <b>${PORTWINE_DB}</b>."
-    if [[ -z "${PW_VULKAN_USE}" || -z "${PW_WINE_USE}" ]] ; then
-        unset PW_GUI_DISABLED_CS
-        [[ -z "${PW_VULKAN_USE}" ]] && export PW_VULKAN_USE=2
-    fi
-    case "${PW_VULKAN_USE}" in
-        0) export PW_DEFAULT_VULKAN_USE="${loc_gui_open_gl}!${loc_gui_vulkan_stable}!${loc_gui_vulkan_git}!${loc_gui_gallium_nine}" ;;
-        1) export PW_DEFAULT_VULKAN_USE="${loc_gui_vulkan_stable}!${loc_gui_vulkan_git}!${loc_gui_open_gl}!${loc_gui_gallium_nine}" ;;
-        3) export PW_DEFAULT_VULKAN_USE="${loc_gui_gallium_nine}!${loc_gui_vulkan_stable}!${loc_gui_vulkan_git}!${loc_gui_open_gl}" ;;
-        *) export PW_DEFAULT_VULKAN_USE="${loc_gui_vulkan_git}!${loc_gui_vulkan_stable}!${loc_gui_open_gl}!${loc_gui_gallium_nine}" ;;
-    esac
     if [[ -n $(echo "${PW_WINE_USE}" | grep "^PROTON_LG$") ]] ; then
-        export PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
+        export PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
     elif [[ -n $(echo "${PW_WINE_USE}" | grep "^PROTON_GE$") ]] ; then
-        export PW_DEFAULT_WINE_USE="${PW_PROTON_GE_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
+        export PW_DEFAULT_WINE_USE="${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
     else
         if [[ "${PW_WINE_USE}" == "${PW_PROTON_LG_VER}" ]] ; then
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE" 
-        elif [[ "${PW_WINE_USE}" == "${PW_PROTON_GE_VER}" ]] ; then
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE" 
+        elif [[ "${PW_WINE_USE}" == "${PW_WINE_LG_VER}" ]] ; then
             export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE" 
         else
             export DIST_ADD_TO_GUI=$(echo "${DIST_ADD_TO_GUI}" | sed -e s/"\!${PW_WINE_USE}$//g")
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
         fi
     fi
 else
-    export PW_DEFAULT_VULKAN_USE="${loc_gui_vulkan_git}!${loc_gui_vulkan_stable}!${loc_gui_open_gl}!${loc_gui_gallium_nine}"
-    if [[ -n $(echo "${PW_WINE_USE}" | grep "^PROTON_LG$") ]] ; then
-        export PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
-    elif [[ -n $(echo "${PW_WINE_USE}" | grep "^PROTON_GE$") ]] ; then
-        export PW_DEFAULT_WINE_USE="${PW_PROTON_GE_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
+    if [[ $PW_WINE_USE == PROTON_LG ]] ; then
+        export PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
+    elif [[ $PW_WINE_USE == WINE_*_LG ]] ; then
+        export PW_DEFAULT_WINE_USE="${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
     else
         if [[ "${PW_WINE_USE}" == "${PW_PROTON_LG_VER}" ]] ; then
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE" 
-        elif [[ "${PW_WINE_USE}" == "${PW_PROTON_GE_VER}" ]] ; then
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE" 
+        elif [[ "${PW_WINE_USE}" == "${PW_WINE_LG_VER}" ]] ; then
             export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE" 
         else
             export DIST_ADD_TO_GUI=$(echo "${DIST_ADD_TO_GUI}" | sed -e s/"\!${PW_WINE_USE}$//g")
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_GE_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
         fi     
     fi
     unset PW_GUI_DISABLED_CS
@@ -708,7 +711,7 @@ else
     --field="   $loc_gui_credits"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_credits"'  2>/dev/null &
 
     "${pw_yad_v12_3}" --plug=${KEY} --tabnum=${PW_GUI_SORT_TABS[2]} --form --columns=3 --align-buttons --keep-icon-size --separator=";" \
-    --field="  3D API  : :CB" "${loc_gui_vulkan_git}!${loc_gui_vulkan_stable}!${loc_gui_open_gl}!${loc_gui_gallium_nine}" \
+    --field="  3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
     --field="  PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
     --field="  WINE    : :CB" "${PW_DEFAULT_WINE_USE}" \
     --field="                  DOWNLOAD OTHER WINE"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_download_other_wine}":"FBTN" '@bash -c "button_click gui_proton_downloader"' \

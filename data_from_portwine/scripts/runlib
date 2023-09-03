@@ -68,7 +68,7 @@ start_portwine () {
         export VKD3D_DEBUG="warn"
         export WINE_MONO_TRACE="E:System.NotImplementedException"
         export VK_LOADER_DEBUG="none"
-        export VKBASALT_LOG_LEVEL="warn"
+        export VKBASALT_LOG_LEVEL="none"
         export DXVK_NVAPI_LOG_LEVEL=warn
     else
         export WINEDEBUG="-all"
@@ -143,7 +143,6 @@ start_portwine () {
         var_winedlloverride_update "nvapi,nvapi64,nvngx=n;_nvngx="
         export DXVK_ENABLE_NVAPI=1
         export WINE_HIDE_NVIDIA_GPU=0
-        export VKD3D_FEATURE_LEVEL="12_2"
         # export DXVK_NVAPI_DRIVER_VERSION=
     elif [[ "${PW_USE_NVAPI_AND_DLSS}" == 1 ]] ; then
         if ! try_copy_file `find /usr/* -type f -name "nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'` "${WINEPREFIX}/drive_c/windows/system32/"
@@ -155,7 +154,6 @@ start_portwine () {
         enabled_fake_nvidia_videocard 0
         export DXVK_ENABLE_NVAPI=1
         export WINE_HIDE_NVIDIA_GPU=0
-        export VKD3D_FEATURE_LEVEL="12_2"
         # export DXVK_NVAPI_DRIVER_VERSION=
         var_winedlloverride_update "nvngx,_nvngx,nvapi,nvapi64=n"
     else
@@ -164,14 +162,10 @@ start_portwine () {
         var_winedlloverride_update "nvngx,_nvngx="
     fi
 
-    if [[ ! -z "${optirun_on}" && "${optirun_on}" != "" ]] ; then
-        export PW_PRIME_RENDER_OFFLOAD=1
-        print_info "force PW_PRIME_RENDER_OFFLOAD=1"
-    fi
-
     if [[ "${PW_PRIME_RENDER_OFFLOAD}" == 1 ]] ; then
         export __NV_PRIME_RENDER_OFFLOAD=1
         export __GLX_VENDOR_LIBRARY_NAME=nvidia
+        export __VK_LAYER_NV_optimus=NVIDIA_only
     fi
 
     if [[ "${PW_HEAP_DELAY_FREE}" == 1 ]]
@@ -194,7 +188,6 @@ start_portwine () {
     if [[ "${PW_USE_DXR11}" == 1 ]] || [[ "${PW_USE_DXR10}" == 1 ]] || [[ "${PW_USE_RAY_TRACING}" == 1 ]]; then
         var_vkd3d_config_update dxr,dxr11
         var_radv_perftest_config_update rt
-        export VKD3D_FEATURE_LEVEL="12_2"
         export WINE_HIDE_NVIDIA_GPU=0
         export DXVK_ENABLE_NVAPI=1
     fi
@@ -431,11 +424,13 @@ start_portwine () {
         if [[ "${PW_VULKAN_USE}" == "1" ]] ; then
             PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
+            export VKD3D_FEATURE_LEVEL="12_0"
             print_info "DXVK v.${DXVK_STABLE_VER} in use"
             print_info "VKD3D-PROTON v.${VKD3D_STABLE_VER} in use"
         elif [[ "${PW_VULKAN_USE}" == "2" ]] ; then
             PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
+            export VKD3D_FEATURE_LEVEL="12_2"
             print_info "DXVK v.${DXVK_GIT_VER} in use"
             print_info "VKD3D-PROTON v.${VKD3D_GIT_VER} in use"
         fi
@@ -703,12 +698,13 @@ create_new_dir "${PORT_WINE_TMP_PATH}"/mono
 export PW_VULKAN_DIR="${PORT_WINE_TMP_PATH}/VULKAN"
 create_new_dir "${PW_VULKAN_DIR}"
 
-# export VULKAN_API_VERSION="$(vulkaninfo 2>/dev/null | grep "api" | head -n 1 | awk '{print $3}')"
+export VULKAN_API_DRIVER_VERSION="$(vulkaninfo 2>/dev/null | grep "api" | head -n 1 | awk '{print $3}')"
+export LSPCI_VGA="$(lspci -k | grep VGA | tr -d '\n')"
 
 cd "${PORT_SCRIPTS_PATH}"
 . "${PORT_SCRIPTS_PATH}/var"
 
-export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"  
+export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
 
 . "${PORT_SCRIPTS_PATH}"/lang
 . "${PORT_SCRIPTS_PATH}"/zen_yad_gui

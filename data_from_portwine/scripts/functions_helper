@@ -31,6 +31,8 @@ print_var () {
 }
 export -f print_var
 
+check_variables () { [[ -z ${!1} ]] && export $1="$2" ;}
+
 try_copy_file () {
     if [ ! -f "$1" ] ; then	print_info "file $1 not found for copy" && return 1
     elif [ -z "$2" ] ; then	print_error "no way to copy file $1" && return 1
@@ -115,21 +117,19 @@ export -f check_process
 try_download () {
     PW_DOWNLOAD_FILE_NAME="$(basename $1)"
     set -o pipefail
-    wget -O "$2" --read-timeout 300 --retry-connrefused --timeout 4 --tries 2 --no-dns-cache --no-cache \
+    wget -c -O "$2" --read-timeout 300 --retry-connrefused --timeout 3 --tries 2 --no-dns-cache --no-cache \
     --user-agent="Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" "$1" 2>&1 | \
     tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
     zenity --progress --percentage=0 --title="Download ${PW_DOWNLOAD_FILE_NAME}" --text=Starting... --auto-close --width=500 --height=90
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
         print_error "Failed to download ${PW_DOWNLOAD_FILE_NAME} from GitHub."
         print_info "Try download ${PW_DOWNLOAD_FILE_NAME} from FTP"
-        try_remove_file "$2"
-        wget -O "$2" --read-timeout 300 --retry-connrefused --timeout 4 --tries 2 --no-dns-cache --no-cache \
+        wget -c -O "$2" --read-timeout 300 --retry-connrefused --timeout 3 --tries 2 --no-dns-cache --no-cache \
         --user-agent="Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" --ftp-user=anonymous "ftp://171.22.215.18/archives/${PW_DOWNLOAD_FILE_NAME}" 2>&1 | \
         tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
         zenity --progress --percentage=0 --title="Try download ${PW_DOWNLOAD_FILE_NAME} from FTP" --text=Starting... --auto-close --width=500 --height=90
         if [ "${PIPESTATUS[0]}" != 0 ] ; then
             print_error "Failed to download ${PW_DOWNLOAD_FILE_NAME} from FTP."
-            try_remove_file "$2"
             return 1   
         fi
     fi
@@ -327,7 +327,7 @@ init_wine_ver () {
     if [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_LG$"` ]] 
     then export PW_WINE_USE="${PW_PROTON_LG_VER}"
     elif [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_GE$"` ]]
-    then export PW_WINE_USE="${PW_PROTON_GE_VER}"
+    then export PW_WINE_USE="${PW_WINE_LG_VER}"
     fi
     [ ! -z "${PW_WINE_VER}" ] && export PW_WINE_USE=`echo "${PW_WINE_VER}" | tr [[:lower:]] [[:upper:]]`
     [ ! -z "${PW_WINE_USE}" ] && export PW_WINE_USE=`echo "${PW_WINE_USE}" | tr [[:lower:]] [[:upper:]]`
@@ -408,7 +408,7 @@ init_wine_ver () {
 
 pw_init_runtime () {
 
-    if [[ -n "$(grep "ROSA Fresh" "/etc/os-release")" ]] ; then
+    if [[ -n "$(grep -E '(ROSA Fresh|RED OS)' "/etc/os-release")" ]] ; then
         export LOCPATH="/run/host/usr/share/locale/"
     elif [[ -n "$(grep "altlinux" "/etc/os-release")" ]] ; then
         export LIBGL_DRIVERS_PATH="/usr/lib/X11/modules/dri:/usr/lib64/X11/modules/dri"
@@ -624,12 +624,6 @@ stop_portwine () {
 export -f stop_portwine
 
 pw_download_libs () {
-    if [ ! -z "`ls ${PORT_WINE_TMP_PATH} | grep libs_v | grep -v libs${PW_LIBS_VER}`" ] ; then
-        for RM_LIBS in `ls ${PORT_WINE_TMP_PATH} | grep libs_v | grep -v libs${PW_LIBS_VER}`
-        do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_LIBS}"
-        done
-        pw_clear_pfx
-    fi
     if [[ ! -e "${PW_WINELIB}/portable/bin/yad" || ! -e "${PW_WINELIB}/portable/lib/p7zip/7z" \
     || ! -e "${PW_WINELIB}/runtime/files/bin/vkcube" || -e "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" ]] ;
     then
@@ -637,13 +631,29 @@ pw_download_libs () {
         if try_download "github.com/Castro-Fidel/PortWINE/releases/download/libs${PW_LIBS_VER}/libs${PW_LIBS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" ; then
             if unpack_tar_xz "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/" ; then
                 try_remove_file "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz"
+                if [ ! -z "`ls ${PORT_WINE_TMP_PATH} | grep libs_v | grep -v libs${PW_LIBS_VER}`" ] ; then
+                    for RM_LIBS in `ls ${PORT_WINE_TMP_PATH} | grep libs_v | grep -v libs${PW_LIBS_VER}`
+                    do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_LIBS}"
+                    done
+                    pw_clear_pfx
+                fi
             else
                 try_remove_dir "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
                 try_remove_file "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz"
-                zenity_error_download && pw_download_libs
+                if zenity_error_download
+                then pw_download_libs
+                else
+                    export PW_LIBS_VER="$(echo _v$(($(echo $PW_LIBS_VER | sed 's/_v//') - 1)))"
+                    export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
+                fi
             fi
         else
-            zenity_error_download && pw_download_libs
+            if zenity_error_download
+            then pw_download_libs
+            else
+                export PW_LIBS_VER="$(echo _v$(($(echo $PW_LIBS_VER | sed 's/_v//') - 1)))"
+                export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
+            fi
         fi
     fi
     export pw_yad="${PW_WINELIB}/portable/bin/yad"
@@ -664,10 +674,10 @@ pw_check_and_download_wine () {
     if [[ "${PW_WINE_USE}" == "GET-OTHER-WINE" ]] ; then
         gui_proton_downloader
     fi
-    if [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_LG$"` ]] 
+    if [[ $PW_WINE_USE == PROTON_LG ]] 
     then export PW_WINE_USE="${PW_PROTON_LG_VER}"
-    elif [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_GE$"` ]]
-    then export PW_WINE_USE="${PW_PROTON_GE_VER}"
+    elif [[ PW_WINE_USE == WINE_*_LG ]]
+    then export PW_WINE_USE="${PW_WINE_LG_VER}"
     fi
     if [ ! -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ] ; then
         print_info "Download and install ${PW_WINE_USE}..."
@@ -681,10 +691,10 @@ pw_check_and_download_wine () {
                 try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}"
                 try_remove_dir "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}"
 
-                zenity_error_download && pw_check_and_download_wine
+                zenity_error_download && pw_check_and_download_wine || exit 1
             fi
         else
-            zenity_error_download && pw_check_and_download_wine
+            zenity_error_download && pw_check_and_download_wine || exit 1
         fi
     fi
     return 0
@@ -702,7 +712,7 @@ pw_check_and_download_dxvk_and_vkd3d () {
                     try_remove_file "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.xz"
                     try_remove_dir dxvk-${DXVK_VAR_VER}
 
-                    zenity_error_download && pw_check_and_download_dxvk_and_vkd3d
+                    zenity_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
                 fi
             elif try_download "https://github.com/doitsujin/dxvk/releases/download/v${DXVK_VAR_VER}/dxvk-${DXVK_VAR_VER}.tar.gz" "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz" ; then
                 if unpack_tar_gz "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz" "${PW_VULKAN_DIR}" ; then
@@ -711,10 +721,10 @@ pw_check_and_download_dxvk_and_vkd3d () {
                     try_remove_file "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz"
                     try_remove_dir dxvk-${DXVK_VAR_VER}
 
-                    zenity_error_download && pw_check_and_download_dxvk_and_vkd3d
+                    zenity_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
                 fi
             else
-                zenity_error_download && pw_check_and_download_dxvk_and_vkd3d
+                zenity_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
             fi
         fi
     done
@@ -730,7 +740,7 @@ pw_check_and_download_dxvk_and_vkd3d () {
                     try_remove_file "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.xz"
                     try_remove_dir vkd3d-proton-${VKD3D_VAR_VER}
 
-                    zenity_error_download && pw_check_and_download_dxvk_and_vkd3d
+                    zenity_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
                 fi
             elif try_download "https://github.com/HansKristian-Work/vkd3d-proton/releases/download/v${VKD3D_VAR_VER}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" ; then
                 if unpack_tar_zst "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" "${PW_VULKAN_DIR}" ; then
@@ -739,10 +749,10 @@ pw_check_and_download_dxvk_and_vkd3d () {
                     try_remove_file "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst"
                     try_remove_dir vkd3d-proton-${VKD3D_VAR_VER}
 
-                    zenity_error_download && pw_check_and_download_dxvk_and_vkd3d
+                    zenity_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
                 fi
             else
-                zenity_error_download && pw_check_and_download_dxvk_and_vkd3d
+                zenity_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
             fi
         fi
     done
@@ -757,10 +767,10 @@ pw_check_and_download_dxvk_and_vkd3d () {
                 try_remove_file "${PW_VULKAN_DIR}/d8vk-${D8VK_VER}.tar.xz"
                 try_remove_dir "d8vk-${D8VK_VER}"
 
-                zenity_error_download && pw_check_and_download_dxvk_and_vkd3d
+                zenity_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
             fi
         else
-            zenity_error_download && pw_check_and_download_dxvk_and_vkd3d
+            zenity_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
         fi
     fi
 
@@ -768,43 +778,55 @@ pw_check_and_download_dxvk_and_vkd3d () {
 }
 
 pw_check_and_download_plugins () {
-    if [ ! -z "`ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`" ] ; then
-        for RM_PLUGINS in `ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`
-        do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_PLUGINS}"
-        done
-    fi
     if [[ ! -d "${PW_PLUGINS_PATH}/fake_dlss" ]] || [[ ! -d "${PW_PLUGINS_PATH}/nvapi" ]] ; then
         print_info "Download and install plugins${PW_PLUGINS_VER}..."
         if try_download "github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" ; then
             if unpack_tar_xz "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}" ; then
                 try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" 
+                    if [ ! -z "`ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`" ] ; then
+                        for RM_PLUGINS in `ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`
+                        do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_PLUGINS}"
+                        done
+                    fi
             else
                 try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz"
                 try_remove_dir "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
-
-                zenity_error_download && pw_check_and_download_wine
+                if zenity_error_download
+                then pw_check_and_download_plugins
+                else
+                    export PW_PLUGINS_VER="$(echo _v$(($(echo $PW_PLUGINS_VER | sed 's/_v//') - 1)))"
+                    export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"  
+                fi
             fi
         else
-            zenity_error_download && pw_check_and_download_wine
+            if zenity_error_download
+            then pw_check_and_download_plugins
+            else
+                export PW_PLUGINS_VER="$(echo _v$(($(echo $PW_PLUGINS_VER | sed 's/_v//') - 1)))"
+                export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"  
+            fi
         fi
     fi
     return 0
 }
 
-nvidia_check_rtx () {
-    lspci_output=$(lspci | grep VGA)
-    if echo "$lspci_output" | grep -i "nvidia" ; then          
+check_nvidia_rtx () {
+    if echo "$LSPCI_VGA" | grep -i "nvidia" ; then          
         # Turing (without nvidia 16XX)
-        nv_arch=$(echo "$lspci_output" | sed -rn 's/.*(TU[0-9]*).*/\1/p')
-        [[ $nv_arch == TU[0-9]* ]] && [[ $nv_arch != TU11[6-7]* ]] && return 0
+        [[ "$LSPCI_VGA" == *TU[0-9]* ]] && [[ "$LSPCI_VGA" != *TU11[6-7]* ]] && return 0
         # Ampere
-        nv_arch=$(echo "$lspci_output" | sed -rn 's/.*(GA[0-9]*).*/\1/p')
-        [[ $nv_arch == GA[0-9]* ]] && return 0
+        [[ "$LSPCI_VGA" == *GA[0-9]* ]] && return 0
         # Ada_Lovelace
-        nv_arch=$(echo "$lspci_output" | sed -rn 's/.*(AD[0-9]*).*/\1/p')
-        [[ $nv_arch == AD[0-9]* ]] && return 0
+        [[ "$LSPCI_VGA" == *AD[0-9]* ]] || [[ "$LSPCI_VGA" == *2[6-8][0-9]* ]] && return 0
     fi
     return 1
+}
+
+check_hybrid_graphicks () {
+    if echo "$LSPCI_VGA" | grep -i nvidia | grep -iE '(intel|amd)'
+    then return 0
+    else return 1
+    fi
 }
 
 pw_init_db () {
@@ -870,11 +892,12 @@ pw_init_db () {
                 print_info "Automatic added fix for unity games: WINE_CPU_TOPOLOGY=8:0,1,2,3,4,5,6,7"
         fi
 
-        if nvidia_check_rtx ; then
-            export PW_USE_NVAPI_AND_DLSS=1
-            export PW_USE_FAKE_DLSS=0
-            export PW_USE_RAY_TRACING=1
+        if check_nvidia_rtx ; then
+            check_variables PW_USE_NVAPI_AND_DLSS "1"
+            check_variables PW_USE_FAKE_DLSS "0"
+            check_variables PW_USE_RAY_TRACING "1"
         fi
+        check_hybrid_graphicks && check_variables PW_PRIME_RENDER_OFFLOAD "1"
     fi
     return 0
 }
@@ -950,7 +973,7 @@ pw_port_update () {
                             exit 0
                         fi
                     else
-                        zenity_error_download && pw_port_update
+                        zenity_error_download && pw_port_update || exit 1
                     fi ;;
                 "${scripts_upd5}")
                     echo " " ;;
