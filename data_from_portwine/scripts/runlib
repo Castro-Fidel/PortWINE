@@ -124,23 +124,16 @@ start_portwine () {
         fi
     }
 
-    if ! try_force_link_file "${WINEDIR}/lib/wine/nvapi/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/" ; then
-        try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-    fi
-    if ! try_force_link_file "${WINEDIR}/lib64/wine/nvapi/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/" ; then
-        try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/" 
-    fi
+    for rm_dll in "nvml.dll" "nvngx.ini" "nvngx.dll" "_nvngx.dll" ; do
+        try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/$rm_dll"
+        try_remove_file "${WINEPREFIX}/drive_c/windows/system32/$rm_dll"
+    done
 
-    try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/nvml.dll"
-    try_remove_file "${WINEPREFIX}/drive_c/windows/system32/nvml.dll"
-    try_remove_file "${WINEPREFIX}/drive_c/windows/system32/nvngx.ini"
-    try_remove_file "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
-    try_remove_file "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll"
     if [[ "${PW_USE_FAKE_DLSS}" == 1 ]] && [[ -d "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/" ]] ; then
         try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/" 
         try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.ini" "${WINEPREFIX}/drive_c/windows/system32/"
         enabled_fake_nvidia_videocard 1
-        var_winedlloverride_update "nvapi,nvapi64,nvngx=n;_nvngx="
+        var_winedlloverride_update "nvapi,nvapi64,nvngx=n;_nvngx=;nvcuda=b"
         export DXVK_ENABLE_NVAPI=1
         export WINE_HIDE_NVIDIA_GPU=0
         # export DXVK_NVAPI_DRIVER_VERSION=
@@ -155,7 +148,7 @@ start_portwine () {
         export DXVK_ENABLE_NVAPI=1
         export WINE_HIDE_NVIDIA_GPU=0
         # export DXVK_NVAPI_DRIVER_VERSION=
-        var_winedlloverride_update "nvngx,_nvngx,nvapi,nvapi64=n"
+        var_winedlloverride_update "nvngx,_nvngx,nvapi,nvapi64=n;nvcuda=b"
     else
         enabled_fake_nvidia_videocard 0
         export DXVK_ENABLE_NVAPI=0
@@ -412,7 +405,7 @@ start_portwine () {
         print_info "Use DAMAVAND (DirectX to wined3d vulkan)"
         export WINE_D3D_CONFIG='renderer=vulkan'
     else
-        print_info "Use VKD3D-PROTON, DXVK and D8VK (DirectX to vulkan)"
+        print_info "Use VKD3D-PROTON, DXVK and D8VK (DirectX 8-12 to vulkan)"
         if [[ "${PW_USE_WINE_DXGI}" == 1 ]] ; then 
             export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxvk_config" # openvr_api_dxvk
             var_winedlloverride_update dxgi=b
@@ -443,8 +436,15 @@ start_portwine () {
             [[ "$?" == 0 ]] && var_winedlloverride_update "${wine_dxvk_dll}=n"
         done
 
+        try_force_link_file "${PATH_TO_DXVK_FILES}/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/" || \
+        try_force_link_file "${WINEDIR}/lib/wine/nvapi/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/" || \
+        try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+
+        try_force_link_file "${PATH_TO_DXVK_FILES}/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/" || \
+        try_force_link_file "${WINEDIR}/lib64/wine/nvapi/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/" || \
+        try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/" 
+
         print_info "Try link native VKD3D files..."
-        # libvkd3d-proton-utils-
         for wine_vkd3d_dll in d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1; do 
             if [[ -f "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" ]] ; then
                 try_force_link_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
