@@ -179,6 +179,12 @@ sudo dnf upgrade --refresh
 sudo dnf install sysvinit-tools curl libcurl4 icoutils wget zenity bubblewrap zstd cabextract tar libvulkan1 lib64vulkan1 vulkan.x86_64 vulkan.i686 vkd3d.x86_64 vkd3d.i686 coreutils file libc6 libnss3 xz bubblewrap xdg-utils openssl bc libgl1 lib64freetype2 libfreetype2 lib64txc-dxtn libtxc-dxtn lib64opencl1 libopencl1 libdrm2 libdrm2.i686 mesa.i686
 ```
 
+* **RED OS**
+
+```sh
+sudo -E dnf install curl icoutils libcurl wget zenity bubblewrap zstd cabextract tar goverlay openssl steam
+```
+
 * **Solus 4.x**
 
 ```sh
