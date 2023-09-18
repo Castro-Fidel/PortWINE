@@ -198,12 +198,6 @@ start_portwine () {
         killall xneur
         export int_xneur=1
     fi
-    if [[ "${PW_XKBD_RU_HACK}" == 1 ]] ; then
-        export PW_XKBD="$(setxkbmap -query | grep -w ru | awk '{print($2)}')"
-        if [ ! -z ${PW_XKBD} ]; then
-            setxkbmap us,ru
-        fi
-    fi
     if [[ -x "`command -v "gamemoderun" 2>/dev/null`" ]] && [[ "$PW_USE_GAMEMODE" = "1" ]] ; then
         export GAMEMODERUN=1
         PW_GAMEMODERUN_SLR="gamemoderun"
@@ -325,6 +319,10 @@ start_portwine () {
         export PULSE_LATENCY_MSEC=60
     else
         unset PULSE_LATENCY_MSEC
+    fi
+
+    if [[ "${PW_USE_US_LAYOUT}" == 1 ]] ; then
+        setxkbmap -model pc101 us -print | xkbcomp - $DISPLAY
     fi
 
     if [[ "${PW_USE_D3D_EXTRAS}" == 1 ]] ; then
