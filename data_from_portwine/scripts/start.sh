@@ -153,7 +153,7 @@ portwine_start_debug () {
     if [ $? -eq 0 ]; then
         echo "Vulkan cube test passed successfully" >> "${PORT_WINE_PATH}/${portname}.log"
     else
-        echo "Vkcube test completed with error" >> "${PORT_WINE_PATH}/${portname}.log"
+        echo "Vulkan cube test completed with error" >> "${PORT_WINE_PATH}/${portname}.log"
     fi
     if [ ! -x "$(command -v gamemoderun 2>/dev/null)" ]
     then

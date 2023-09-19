@@ -325,6 +325,12 @@ start_portwine () {
         setxkbmap -model pc101 us -print | xkbcomp - $DISPLAY
     fi
 
+	if ! "${PW_WINELIB}/portable/bin/vkcube" --c 50; then
+		print_info "Vulkan cube test error use OpenGL"
+		export PW_VULKAN_USE=0
+	fi
+	
+
     if [[ "${PW_USE_D3D_EXTRAS}" == 1 ]] ; then
         if [[ -z "`grep d3dx9 "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"`" ]] ; then
             echo "d3dx9" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
