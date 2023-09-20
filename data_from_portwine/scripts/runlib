@@ -539,13 +539,12 @@ start_portwine () {
             touch "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
         fi
         for need_install_dll_to_pfx in ${PW_DLL_INSTALL} ; do
-            if [[ "${need_install_dll_to_pfx}" == "vcrun2015" || "${need_install_dll_to_pfx}" == "vcrun2017" ]] ; then
-                need_install_dll_to_pfx="vcrun2019"
+            if [[ "${need_install_dll_to_pfx}" == vcrun201[5-9] ]] \
+            || [[ "${need_install_dll_to_pfx}" == vcrun2022 ]] ; then
+                need_install_dll_to_pfx="vcrun2022"
                 sed -i '/vcrun2015/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
                 sed -i '/vcrun2017/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
-            elif [ "${need_install_dll_to_pfx}" == "vcrun2019" ] ; then
-                sed -i '/vcrun2015/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
-                sed -i '/vcrun2017/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
+                sed -i '/vcrun2019/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
             fi
             grep "${need_install_dll_to_pfx}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" &>/dev/null
             if [[ "$?" == "1" ]] ; then
