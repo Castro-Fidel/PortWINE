@@ -233,6 +233,8 @@ unpack_tar () {
 }
 
 pw_clear_pfx () {
+    try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.dotnet48"
+    try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
     try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
     try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
     try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/userdef.reg"
@@ -408,9 +410,9 @@ init_wine_ver () {
 
 pw_init_runtime () {
 
-    if [[ -n "$(grep -E '(ROSA Fresh|RED OS)' "/etc/os-release")" ]] ; then
+    if [[ ! -z "$(grep -E '(ROSA Fresh|RED OS)' "/etc/os-release")" ]] ; then
         export LOCPATH="/run/host/usr/share/locale/"
-    elif [[ -n "$(grep "altlinux" "/etc/os-release")" ]] ; then
+    elif [[ ! -z "$(grep "altlinux" "/etc/os-release")" ]] ; then
         export LIBGL_DRIVERS_PATH="/usr/lib/X11/modules/dri:/usr/lib64/X11/modules/dri"
     fi
 
@@ -601,10 +603,10 @@ pw_kill_autostart () {
 export -f pw_kill_autostart
 
 stop_portwine () { 
-    if [ "$int_xneur" = "1"  ]; then
+    if [[ "$int_xneur" == "1"  ]] ; then
         xneur &
     fi
-    if [ "$PW_USE_US_LAYOUT" != "0" ]; then
+    if [[ "$PW_USE_US_LAYOUT" == "1" ]] ; then
         setxkbmap
     fi
     pw_stop_progress_bar
@@ -613,8 +615,8 @@ stop_portwine () {
     kill_portwine &&
     try_remove_dir "${PW_WINELIB}/var"
     find "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/" -maxdepth 1 -type f -name "*.tmp" -delete
-    if [ ! -z "`pgrep -a yad_v12_3 | grep "\-\-notification" | awk '{print $1}'`" ] ; then
-        kill -s SIGUSR1 "`pgrep -a yad_v12_3 | grep "\-\-notification" | awk '{print $1}'`" 2>/dev/null
+    if [ ! -z "`pgrep -a yad_v12_3 | grep "\--notification" | awk '{print $1}'`" ] ; then
+        kill -s SIGUSR1 "`pgrep -a yad_v12_3 | grep "\--notification" | awk '{print $1}'`" 2>/dev/null
     fi
     add_in_stop_portwine #&>/dev/null
     kill -n 9 `pgrep -a start.sh | grep -i '/PortProton/' | awk '{print $1}'` > /dev/null 2>&1
@@ -874,6 +876,10 @@ pw_init_db () {
         fi
         if [ ! -z "${PORTWINE_DB_FILE}" ]; then
             . "${PORTWINE_DB_FILE}"
+
+            # HOTFIX: update prefix 
+            [[ "$PW_WINE_USE" == "PROTON_LG_8-15" ]] && export PW_WINE_USE="$PW_PROTON_LG_VER"
+            
             init_wine_ver &&
             print_info "Use ${PORTWINE_DB_FILE} db file."
         fi
@@ -881,7 +887,7 @@ pw_init_db () {
             export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"        
         fi
 
-        if [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] && [[ -n "${WINE_CPU_TOPOLOGY}" ]] ; then
+        if [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] && [[ ! -z "${WINE_CPU_TOPOLOGY}" ]] ; then
             export PW_WINE_CPU_TOPOLOGY="${WINE_CPU_TOPOLOGY}"
         fi
         if ls "${PATH_TO_GAME}"/*_Data/Resources/ 2>/dev/null | grep "unity" &>/dev/null \
@@ -961,6 +967,7 @@ pw_port_update () {
                             cd "${PORT_WINE_PATH}/data/"
                             tar -czpf "${PORT_WINE_TMP_PATH}/scripts_backup/scripts_v.${scripts_install_ver}.tar.gz" ./scripts ./img \
                             ./changelog* ./dxvk.conf ./vkBasalt.conf ./tmp/scripts_ver
+                            try_remove_dir "${PORT_WINE_PATH}/data/scripts/portwine_db"
                             cp -fr "${PORT_WINE_TMP_PATH}/PortWINE-master/data_from_portwine/"* "${PORT_WINE_PATH}/data/"
                             try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
                             try_remove_dir "${PORT_WINE_TMP_PATH}/PortWINE-master/"
@@ -1098,7 +1105,7 @@ pw_find_exe () {
     fi
     IFS=$OrigIFS
 
-    if [[ -n "${PW_SET_FIND_EXE}" ]] ; then
+    if [[ ! -z "${PW_SET_FIND_EXE}" ]] ; then
         portwine_exe="${PW_PATH_FOR_FIND}$(echo "${PW_SET_FIND_EXE}" | awk -F'|' '{print $1}')"
         portwine_create_shortcut silent
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
