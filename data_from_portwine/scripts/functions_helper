@@ -503,22 +503,27 @@ pw_mangohud_check () {
     return 0
 }
 
-pw_vkbasalt_check () {
-    if [[ "${ENABLE_VKBASALT}" == 1 ]] && [[ "${PW_VULKAN_USE}" != "0" ]] && [[ "${PW_VULKAN_USE}" != "3" ]] ; then
-        if [[ -z "${PW_VKBASALT_EFFECTS}" ]] ; then
-            export PW_VKBASALT_EFFECTS="Curves:cas" 
+pw_reshade_check () {
+    if [[ "${ENABLE_RESHADE}" == 1 ]] && [[ "${PW_VULKAN_USE}" != "0" ]] ; then
+        if [[ $(file "$portwine_exe") =~ x86-64 ]]; then
+        	portwine_exe_arch=64
         fi
-        sed -ri "s/effects = .*/effects = ${PW_VKBASALT_EFFECTS}/g" "${PORT_WINE_PATH}/data/vkBasalt.conf"
-        if [[ -z "${PW_VKBASALT_FFX_CAS}" ]] ; then
-            export PW_VKBASALT_FFX_CAS="0.7" 
+        if [[ "$portwine_exe_arch" == "64" ]] ; then
+        	$WINEDLLOVERRIDES="d3dcompiler_47=n,dxgi=n,b"
+        	ln -is /run/pressure-vessel/pv-from-host/reshade/ReShade64.dll "$portwine_exe/dxgi.dll"
+        else
+        	$WINEDLLOVERRIDES="d3dcompiler_47=n,d3d9=n.b"
+        	ln -is /run/pressure-vessel/pv-from-host/reshade/ReShade32.dll "$portwine_exe/d3d9.dll"
         fi
-        sed -ri "s/casSharpness .*/casSharpness = ${PW_VKBASALT_FFX_CAS}/g" "${PORT_WINE_PATH}/data/vkBasalt.conf"
-        export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
-        var_vk_istance_layers_config_update "VK_LAYER_VKBASALT_post_processing64:VK_LAYER_VKBASALT_post_processing32"
-        print_info "vkBasalt is enabled"
+
+        ln -is /run/pressure-vessel/pv-from-host/ReShade32.json "$portwine_exe/"
+	ln -is /run/pressure-vessel/pv-from-host/ "$portwine_exe/"
+	ln -is /run/pressure-vessel/pv-from-host/reshade/textures "$portwine_exe/"
+	ln -is /run/pressure-vessel/pv-from-host/reshade "$portwine_exe/"
+        print_info "Reshade is enabled"
     else
-        export DISABLE_VKBASALT=1
-        print_info "vkBasalt is disabled"
+        export DISABLE_RESHADE=1
+        print_info "Reshade is disabled"
     fi
     return 0
 }

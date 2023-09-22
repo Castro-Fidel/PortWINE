@@ -418,7 +418,7 @@ pw_create_prefix_backup () {
 
 pw_edit_db () {
     pw_gui_for_edit_db \
-    PW_MANGOHUD PW_MANGOHUD_x32 PW_MANGOHUD_USER_CONF ENABLE_VKBASALT PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING \
+    PW_MANGOHUD PW_MANGOHUD_x32 PW_MANGOHUD_USER_CONF ENABLE_RESHADE PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING \
     PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL \
     PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_DX12_DISABLE PW_PRIME_RENDER_OFFLOAD PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY \
     PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE
@@ -445,7 +445,7 @@ pw_autoinstall_from_db () {
     unset PORTWINE_CREATE_SHORTCUT_NAME
     export PW_DISABLED_CREATE_DB=1
     export PW_MANGOHUD=0
-    export ENABLE_VKBASALT=0
+    export ENABLE_RESHADE=0
     export PW_USE_D3D_EXTRAS=1
     . "${PORT_SCRIPTS_PATH}/pw_autoinstall/${PW_YAD_SET}"
 }
@@ -573,7 +573,6 @@ if [ -n "${portwine_exe}" ]; then
         --field="  WINE  : :CB" "${PW_DEFAULT_WINE_USE}" \
         --field="PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
         --field=":LBL" "" \
-        --button="${loc_gui_vkbasalt_start}"!"$PW_GUI_ICON_PATH/separator.png"!"${ENABLE_VKBASALT_INFO}":120 \
         --button="${loc_gui_edit_db_start}"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_edit_db} ${PORTWINE_DB}":118 \
         --button="${PW_SHORTCUT}" \
         --button="${loc_gui_debug}"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_debug}":102 \
@@ -878,7 +877,6 @@ fi
     gui_open_scripts_from_backup) gui_open_scripts_from_backup ;;
     open_changelog) open_changelog ;;
     change_loc) change_loc ;;
-    120) gui_vkBasalt ;;
     pw_create_prefix_backup) pw_create_prefix_backup ;;
     gui_credits) gui_credits ;;
     pw_start_cont_xterm) pw_start_cont_xterm ;;
