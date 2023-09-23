@@ -510,30 +510,32 @@ pw_reshade_check () {
         	portwine_exe_arch=64
         fi
         if [[ "$portwine_exe_arch" == "64" ]] ; then
-                export needed_dll="dxgi.dll"
-        	export WINEDLLOVERRIDES="d3dcompiler_47=n,dxgi=n,b"
-        	ln -is /run/pressure-vessel/pv-from-host/reshade/ReShade64.dll "$portwine_exe/$needed_dll"
+            export needed_dll="dxgi.dll"
+        	#export WINEDLLOVERRIDES="d3dcompiler_47=n,dxgi=n,b"
+        	ln -is "${PORT_WINE_PATH}/data/Reshade/ReShade64.dll" "${PATH_TO_GAME}/$needed_dll"
         else
-                export needed_dll="d3d9.dll"
+            export needed_dll="d3d9.dll"
         	export WINEDLLOVERRIDES="d3dcompiler_47=n,d3d9=n.b"
-        	ln -is /run/pressure-vessel/pv-from-host/reshade/ReShade32.dll "$portwine_exe/$needed_dll"
+        	ln -is "${PORT_WINE_PATH}/data/Reshade/ReShade32.dll" "${PATH_TO_GAME}/$needed_dll"
         fi
 
         LINKS="ReShade32.json  ReShade64.json ReShade.ini textures reshade $needed_dll"
 
 	for link in $LINKS; do
-	    ln -is /run/pressure-vessel/pv-from-host/"$link" "$portwine_exe/"
+	    if [[ -L "${PATH_TO_GAME}/$link" ]] ; then
+	        unlink "${PATH_TO_GAME}/$link"
+	    fi
         done
         print_info "Reshade is enabled"
     else
         export DISABLE_RESHADE=1
 
 	for link in $LINKS; do
-	    if [[ -L "$portwine_exe/$link" ]] ; then
-	        unlink "$portwine_exe/$link"
+	    if [[ -L "${PATH_TO_GAME}/$link" ]] ; then
+	        unlink "${PATH_TO_GAME}/$link"
 	    fi
         done
-        unset WINEDLLOVERRIDES
+        #unset WINEDLLOVERRIDES
         print_info "Reshade is disabled"
     fi
     return 0
