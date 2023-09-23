@@ -595,7 +595,7 @@ else
     button_click () {
         [[ ! -z "$1" ]] && echo "$1" > "${PORT_WINE_TMP_PATH}/tmp_yad_form"
         if [[ ! -z $(pidof -s yad) ]] || [[ ! -z $(pidof -s yad_v12_3) ]] ; then
-            kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \-\-notebook" | awk '{print $1}') > /dev/null 2>&1
+            kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \--notebook" | awk '{print $1}') > /dev/null 2>&1
         fi
     }
     export -f button_click
@@ -603,7 +603,7 @@ else
     run_desktop_b_click () {
         [[ ! -z "$1" ]] && echo "$1" > "${PORT_WINE_TMP_PATH}/tmp_yad_form"
         if [[ ! -z $(pidof -s yad) ]] || [[ ! -z $(pidof -s yad_v12_3) ]] ; then
-            kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \-\-notebook" | awk '{print $1}') > /dev/null 2>&1
+            kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \--notebook" | awk '{print $1}') > /dev/null 2>&1
         fi
         PW_EXEC_FROM_DESKTOP="$(cat "${PORT_WINE_PATH}/${PW_YAD_SET//¬/" "}" | grep Exec | head -n 1 | awk -F"=env " '{print $2}')"
 
@@ -773,12 +773,12 @@ else
     --field="   Path of Exile"!"$PW_GUI_ICON_PATH/poe.png"!"":"FBTN" '@bash -c "button_click PW_POE"' \
     --field="   Guild Wars 2"!"$PW_GUI_ICON_PATH/gw2.png"!"":"FBTN" '@bash -c "button_click PW_GUILD_WARS_2"' \
     --field="   Genshin Impact"!"$PW_GUI_ICON_PATH/genshinimpact.png"!"":"FBTN" '@bash -c "button_click PW_GENSHIN_IMPACT"' \
-    --field="   Battle Of Space Raiders"!"$PW_GUI_ICON_PATH/bsr.png"!"":"FBTN" '@bash -c "button_click PW_BSR"' &
-    
+    --field="   Battle Of Space Raiders"!"$PW_GUI_ICON_PATH/bsr.png"!"":"FBTN" '@bash -c "button_click PW_BSR"' 2>/dev/null &
+
     # --field="   Electronic Arts App"!"$PW_GUI_ICON_PATH/eaapp.png"!"":"FBTN" '@bash -c "button_click PW_EAAPP"' 
     # --field="   Secret World Legends (ENG)"!"$PW_GUI_ICON_PATH/swl.png"!"":"FBTN" '@bash -c "button_click PW_SWL"'
-    # --field="   ROBLOX"!"$PW_GUI_ICON_PATH/roblox.png"!"":"FBTN" '@bash -c "button_click PW_ROBLOX"' 2>/dev/null 
     # --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"'
+    # --field="   ROBLOX"!"$PW_GUI_ICON_PATH/roblox.png"!"":"FBTN" '@bash -c "button_click PW_ROBLOX"'
 
     if  [[ `command -v wmctrl` ]] &>/dev/null ; then
         sleep 2

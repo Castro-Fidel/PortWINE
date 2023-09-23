@@ -251,7 +251,7 @@ start_portwine () {
     fi
         
     DOTPFX_URL="github.com/Castro-Fidel/PortWINE/releases/download/dotpfx${DOTPFX_VER}/dotpfx${DOTPFX_VER}.tar.xz"
-    if [[ "${PW_PREFIX_NAME}" == "DOTNET" && ! -f "${WINEPREFIX}"/.dotnet48 ]] ; then
+    if [[ "${PW_PREFIX_NAME}" == "DOTNET" ]] && [[ ! -f "${WINEPREFIX}"/.dotnet${DOTPFX_VER} ]] ; then
         print_info "Download and install DOTNET pfx..."
         if try_download "${DOTPFX_URL}" "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz" ; then
             unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/"
@@ -323,8 +323,10 @@ start_portwine () {
         unset PULSE_LATENCY_MSEC
     fi
 
-    if [[ "${PW_USE_US_LAYOUT}" == "1" ]] ; then
-        setxkbmap -model pc101 us -print | xkbcomp - $DISPLAY
+    if [[ "${PW_USE_US_LAYOUT}" == "1" ]] && ! grep 1 "${PORT_WINE_TMP_PATH}/check_wayland" &>/dev/null ; then
+        setxkbmap -model pc101 us -print | xkbcomp - $DISPLAY &>/dev/null
+    else
+        export PW_USE_US_LAYOUT="0"
     fi
 
     if [[ "${PW_USE_D3D_EXTRAS}" == 1 ]] ; then
