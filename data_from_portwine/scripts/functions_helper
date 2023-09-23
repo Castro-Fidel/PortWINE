@@ -504,25 +504,36 @@ pw_mangohud_check () {
 }
 
 pw_reshade_check () {
-    if [[ "${ENABLE_RESHADE}" == 1 ]] && [[ "${PW_VULKAN_USE}" != "0" ]] ; then
+    if [[ "${ENABLE_RESHADE}" == 1 ]] && [[ "${PW_VULKAN_USE}" != "0" ]] && [[ "${PW_VULKAN_USE}" != "3" ]] ; then
+       
         if [[ $(file "$portwine_exe") =~ x86-64 ]]; then
         	portwine_exe_arch=64
         fi
         if [[ "$portwine_exe_arch" == "64" ]] ; then
-        	$WINEDLLOVERRIDES="d3dcompiler_47=n,dxgi=n,b"
-        	ln -is /run/pressure-vessel/pv-from-host/reshade/ReShade64.dll "$portwine_exe/dxgi.dll"
+                export needed_dll="dxgi.dll"
+        	export WINEDLLOVERRIDES="d3dcompiler_47=n,dxgi=n,b"
+        	ln -is /run/pressure-vessel/pv-from-host/reshade/ReShade64.dll "$portwine_exe/$needed_dll"
         else
-        	$WINEDLLOVERRIDES="d3dcompiler_47=n,d3d9=n.b"
-        	ln -is /run/pressure-vessel/pv-from-host/reshade/ReShade32.dll "$portwine_exe/d3d9.dll"
+                export needed_dll="d3d9.dll"
+        	export WINEDLLOVERRIDES="d3dcompiler_47=n,d3d9=n.b"
+        	ln -is /run/pressure-vessel/pv-from-host/reshade/ReShade32.dll "$portwine_exe/$needed_dll"
         fi
 
-        ln -is /run/pressure-vessel/pv-from-host/ReShade32.json "$portwine_exe/"
-	ln -is /run/pressure-vessel/pv-from-host/ "$portwine_exe/"
-	ln -is /run/pressure-vessel/pv-from-host/reshade/textures "$portwine_exe/"
-	ln -is /run/pressure-vessel/pv-from-host/reshade "$portwine_exe/"
+        LINKS="ReShade32.json  ReShade64.json ReShade.ini textures reshade $needed_dll"
+
+	for link in $LINKS; do
+	    ln -is /run/pressure-vessel/pv-from-host/$link "$portwine_exe/"
+        done
         print_info "Reshade is enabled"
     else
         export DISABLE_RESHADE=1
+
+	for link in $LINKS; do
+	    if [[ -L "$portwine_exe/$link" ]]
+	        unlink "$portwine_exe/$link"
+	    fi
+        done
+        unset WINEDLLOVERRIDES
         print_info "Reshade is disabled"
     fi
     return 0
