@@ -275,14 +275,16 @@ start_portwine () {
         if [[ -f "${PW_WINELIB}/default_pfx.tar.xz" ]] && [[ "${DISABLE_CP_DEFPFX}" != 1 ]] ; then
             unpack_tar_xz "${PW_WINELIB}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" 2>/dev/null
         fi
-        ${pw_runtime} env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -u &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
+        ${pw_runtime} env WINEDLLOVERRIDES="winegstreamer=" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
+        "${WINELOADER}" wineboot -u &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
         wait_wineserver &&
         echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
     elif [[ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver" ]] \
         || [[ -z "`cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver" | grep ${PW_WINE_USE}`" ]] \
         || [[ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices" ]] ; then 
         check_dirs_and_files_in_pfx
-        ${pw_runtime} env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${WINELOADER}" wineboot -i &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
+        ${pw_runtime} env WINEDLLOVERRIDES="winegstreamer=" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
+        "${WINELOADER}" wineboot -i &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
         wait_wineserver &&
         echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
     fi
@@ -321,7 +323,7 @@ start_portwine () {
         unset PULSE_LATENCY_MSEC
     fi
 
-    if [[ "${PW_USE_US_LAYOUT}" == 1 ]] ; then
+    if [[ "${PW_USE_US_LAYOUT}" == "1" ]] ; then
         setxkbmap -model pc101 us -print | xkbcomp - $DISPLAY
     fi
 
@@ -603,7 +605,7 @@ start_portwine () {
 
 pw_run () {
     unset GDK_BACKEND
-    if [[ -n "${PATH_TO_GAME}" ]] ; then
+    if [[ ! -z "${PATH_TO_GAME}" ]] ; then
         cd "${PATH_TO_GAME}"
     else
         cd "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c"

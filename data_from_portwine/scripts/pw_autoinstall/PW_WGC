@@ -5,6 +5,7 @@ export LAUNCH_PARAMETERS=("/VERYSILENT")
 [ "${update_loc}" = "RUS" ] && export WGC_LOC=RU || export WGC_LOC=EU
 export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/Wargaming_Game_Center_Install_WoT_${WGC_LOC}.exe"
 export PW_PREFIX_NAME="WGC"
+export PW_WINE_USE="PROTON_LG_8-4"
 
 try_download_wgc () {
     set -o pipefail
@@ -15,8 +16,9 @@ try_download_wgc () {
 }
 
 pw_clear_pfx
-gui_proton_downloader silent "PROTON_LG_8-4"
+gui_proton_downloader silent "${PW_WINE_USE}"
 start_portwine
+
 if try_download_wgc "redirect.wargaming.net/WGC/Wargaming_Game_Center_Install_WoT_${WGC_LOC}.exe"  "${PW_AUTOINSTALL_EXE}"
 then
     pw_start_progress_bar_block "Starting WGC installation..."

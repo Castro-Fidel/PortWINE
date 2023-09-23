@@ -21,7 +21,7 @@ if [[ "${XDG_SESSION_TYPE}" = "wayland" ]] && [[ ! -f "${PORT_WINE_TMP_PATH}/che
     echo "1" > "${PORT_WINE_TMP_PATH}/check_wayland"
 fi
 
-if [[ -f "${PORT_WINE_TMP_PATH}/tmp_main_gui_size" ]] && [[ -n "$(cat ${PORT_WINE_TMP_PATH}/tmp_main_gui_size)" ]] ; then
+if [[ -f "${PORT_WINE_TMP_PATH}/tmp_main_gui_size" ]] && [[ ! -z "$(cat ${PORT_WINE_TMP_PATH}/tmp_main_gui_size)" ]] ; then
     export PW_MAIN_SIZE_W="$(cat ${PORT_WINE_TMP_PATH}/tmp_main_gui_size | awk '{print $1}')"
     export PW_MAIN_SIZE_H="$(cat ${PORT_WINE_TMP_PATH}/tmp_main_gui_size | awk '{print $2}')"
 else
@@ -29,7 +29,7 @@ else
     export PW_MAIN_SIZE_H="300"
 fi    
 
-if [[ -n $(basename "${portwine_exe}" | grep .ppack) ]] ; then
+if [[ ! -z $(basename "${portwine_exe}" | grep .ppack) ]] ; then
     export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
     unset PW_SANDBOX_HOME_PATH
     pw_init_runtime
@@ -37,7 +37,7 @@ if [[ -n $(basename "${portwine_exe}" | grep .ppack) ]] ; then
     ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" unsquashfs -f -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" "$1" &
     sleep 10
     while true ; do
-        if [[ -n $(pgrep -a xterm | grep ".ppack" | head -n 1 | awk '{print $1}') ]] ; then
+        if [[ ! -z $(pgrep -a xterm | grep ".ppack" | head -n 1 | awk '{print $1}') ]] ; then
             sleep 0.5
         else
             kill -TERM $(pgrep -a unsquashfs | grep ".ppack" | head -n 1 | awk '{print $1}')
@@ -64,12 +64,12 @@ portwine_launch () {
     start_portwine
     PORTWINE_MSI=$(basename "${portwine_exe}" | grep .msi)
     PORTWINE_BAT=$(basename "${portwine_exe}" | grep .bat)
-    if [[ -n "${PW_VIRTUAL_DESKTOP}" && "${PW_VIRTUAL_DESKTOP}" == "1" ]] ; then
+    if [[ ! -z "${PW_VIRTUAL_DESKTOP}" && "${PW_VIRTUAL_DESKTOP}" == "1" ]] ; then
         pw_screen_resolution=$(xrandr --current | grep "*" | awk '{print $1;}' | head -1)
         pw_run explorer "/desktop=PortProton,${pw_screen_resolution}" ${WINE_WIN_START} "$portwine_exe"
-    elif [ -n "${PORTWINE_MSI}" ]; then
+    elif [ ! -z "${PORTWINE_MSI}" ]; then
         pw_run msiexec /i "$portwine_exe"
-    elif [[ -n "${PORTWINE_BAT}" || -n "${portwine_exe}" ]] ; then
+    elif [[ ! -z "${PORTWINE_BAT}" || -n "${portwine_exe}" ]] ; then
         pw_run ${WINE_WIN_START} "$portwine_exe"
     else
         pw_run winefile
@@ -96,7 +96,7 @@ portwine_start_debug () {
         echo "RUNTIME is enabled" >> "${PORT_WINE_PATH}/${portname}.log"
     fi
     echo "----------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    if [ -n "${portwine_exe}" ] ; then
+    if [ ! -z "${portwine_exe}" ] ; then
         echo "Debug for programm:" >> "${PORT_WINE_PATH}/${portname}.log"
         echo "${portwine_exe}" >> "${PORT_WINE_PATH}/${portname}.log"
         echo "---------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
@@ -169,7 +169,7 @@ portwine_start_debug () {
     echo "winetricks.log:" >> "${PORT_WINE_PATH}/${portname}.log"
     cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" | sed -e /"^d3dcomp*"/d -e /"^d3dx*"/d >> "${PORT_WINE_PATH}/${portname}.log"
     echo "-----------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    if [ -n "${PORTWINE_DB_FILE}" ]; then
+    if [ ! -z "${PORTWINE_DB_FILE}" ]; then
         echo "Use ${PORTWINE_DB_FILE} db file:" >> "${PORT_WINE_PATH}/${portname}.log"
         cat "${PORTWINE_DB_FILE}" | sed '/##/d' >> "${PORT_WINE_PATH}/${portname}.log"
     else
@@ -188,9 +188,9 @@ portwine_start_debug () {
     sleep 3
     pw_stop_progress_bar_cover
     unset PW_TIMER
-    while read -r line || [[ -n $(pgrep -a yad | grep "yad_v12_3 --text-info --tail --button="STOP":0 --title="DEBUG"" | awk '{print $1}') ]] ; do
+    while read -r line || [[ ! -z $(pgrep -a yad | grep "yad_v12_3 --text-info --tail --button="STOP":0 --title="DEBUG"" | awk '{print $1}') ]] ; do
             sleep 0.005
-            if [[ -n "${line}" ]] && [[ -z "$(echo "${line}" | grep -i "kerberos")" ]] \
+            if [[ ! -z "${line}" ]] && [[ -z "$(echo "${line}" | grep -i "kerberos")" ]] \
                                     && [[ -z "$(echo "${line}" | grep -i "ntlm")" ]]
             then
                 echo "# ${line}"
@@ -316,13 +316,13 @@ pw_prefix_manager () {
         for STPFXMNG in $(cat "${PORT_WINE_TMP_PATH}/to_winetricks") ; do
             grep $(echo ${STPFXMNG} | awk -F'|' '{print $2}') "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" &>/dev/null
             if [ "$?" == "1" ] ; then
-                [[ -n "${STPFXMNG}" ]] && SET_FROM_PFX_MANAGER+="$(echo "${STPFXMNG}" | awk -F'|' '{print $2}') "
+                [[ ! -z "${STPFXMNG}" ]] && SET_FROM_PFX_MANAGER+="$(echo "${STPFXMNG}" | awk -F'|' '{print $2}') "
             fi
         done
         IFS=${old_IFS}
         try_remove_file  "${PORT_WINE_TMP_PATH}/to_winetricks"
 
-        if [[ -n ${SET_FROM_PFX_MANAGER} ]] ; then
+        if [[ ! -z ${SET_FROM_PFX_MANAGER} ]] ; then
             export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
             pw_init_runtime
             ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${SET_FROM_PFX_MANAGER}
@@ -343,9 +343,9 @@ pw_winetricks () {
     pw_stop_progress_bar
     echo "WINETRICKS..." > "${PORT_WINE_TMP_PATH}/update_pfx_log"
     unset PW_TIMER
-    while read -r line || [[ -n $(pgrep -a yad | grep "yad_v12_3 --text-info --tail --no-buttons --title="WINETRICKS"" | awk '{print $1}') ]] ; do
+    while read -r line || [[ ! -z $(pgrep -a yad | grep "yad_v12_3 --text-info --tail --no-buttons --title="WINETRICKS"" | awk '{print $1}') ]] ; do
             sleep 0.005
-            if [[ -n "${line}" ]] && [[ -z "$(echo "${line}" | grep -i "gstreamer")" ]] \
+            if [[ ! -z "${line}" ]] && [[ -z "$(echo "${line}" | grep -i "gstreamer")" ]] \
                                     && [[ -z "$(echo "${line}" | grep -i "kerberos")" ]] \
                                     && [[ -z "$(echo "${line}" | grep -i "ntlm")" ]]
             then
@@ -384,7 +384,7 @@ pw_create_prefix_backup () {
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "BACKUP PREFIX TO..." 2>/dev/null )
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
-    if [[ -n "$(grep "/${PW_PREFIX_NAME}/" "${PORT_WINE_PATH}"/*.desktop )" ]] ; then
+    if [[ ! -z "$(grep "/${PW_PREFIX_NAME}/" "${PORT_WINE_PATH}"/*.desktop )" ]] ; then
         try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut"
         grep "/${PW_PREFIX_NAME}/" "${PORT_WINE_PATH}"/*.desktop | awk -F"/${PW_PREFIX_NAME}/" '{print $2}' \
         | awk -F\" '{print $1}' > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut"
@@ -396,7 +396,7 @@ pw_create_prefix_backup () {
     ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" mksquashfs "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" -comp zstd &
     sleep 10
     while true ; do
-        if [[ -n $(pgrep -a xterm | grep ".ppack.part" | head -n 1 | awk '{print $1}') ]] ; then
+        if [[ ! -z $(pgrep -a xterm | grep ".ppack.part" | head -n 1 | awk '{print $1}') ]] ; then
             sleep 0.5
         else
             kill -TERM $(pgrep -a mksquashfs | grep ".ppack.part" | head -n 1 | awk '{print $1}')
@@ -490,7 +490,7 @@ PW_PREFIX_NAME="$(echo "${PW_PREFIX_NAME}" | sed -e s/[[:blank:]]/_/g)"
 PW_ALL_PREFIXES=$(ls "${PORT_WINE_PATH}/data/prefixes/" | sed -e s/"${PW_PREFIX_NAME}$"//g)
 export PW_PREFIX_NAME PW_ALL_PREFIXES
 
-# if [[ -n "${PORTWINE_DB}" ]] && [[ -z `echo "${PW_PREFIX_NAME}" | grep -i "$(echo "${PORTWINE_DB}" | sed -e s/[[:blank:]]/_/g)"` ]] ; then 
+# if [[ ! -z "${PORTWINE_DB}" ]] && [[ -z `echo "${PW_PREFIX_NAME}" | grep -i "$(echo "${PORTWINE_DB}" | sed -e s/[[:blank:]]/_/g)"` ]] ; then 
 #     export PW_PREFIX_NAME="${PW_PREFIX_NAME}!`echo "${PORTWINE_DB}" | sed -e s/[[:blank:]]/_/g`"
 # fi
 
@@ -524,11 +524,11 @@ case "${PW_VULKAN_USE}" in
     *) export PW_DEFAULT_VULKAN_USE="${loc_gui_vulkan_git}!${loc_gui_vulkan_stable}!${loc_gui_open_gl}!${loc_gui_gallium_nine}" ;;
 esac
 
-if [[ -n "${PORTWINE_DB_FILE}" ]] ; then
+if [[ ! -z "${PORTWINE_DB_FILE}" ]] ; then
     [[ -z "${PW_COMMENT_DB}" ]] && PW_COMMENT_DB="${loc_gui_db_comments} <b>${PORTWINE_DB}</b>."
-    if [[ -n $(echo "${PW_WINE_USE}" | grep "^PROTON_LG$") ]] ; then
+    if [[ ! -z $(echo "${PW_WINE_USE}" | grep "^PROTON_LG$") ]] ; then
         export PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
-    elif [[ -n $(echo "${PW_WINE_USE}" | grep "^PROTON_GE$") ]] ; then
+    elif [[ ! -z $(echo "${PW_WINE_USE}" | grep "^PROTON_GE$") ]] ; then
         export PW_DEFAULT_WINE_USE="${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
     else
         if [[ "${PW_WINE_USE}" == "${PW_PROTON_LG_VER}" ]] ; then
@@ -557,7 +557,7 @@ else
     fi
     unset PW_GUI_DISABLED_CS
 fi
-if [ -n "${portwine_exe}" ]; then
+if [ ! -z "${portwine_exe}" ]; then
     if [[ -z "${PW_GUI_DISABLED_CS}" || "${PW_GUI_DISABLED_CS}" == 0 ]] ; then  
         pw_create_gui_png
         grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop
@@ -583,27 +583,27 @@ if [ -n "${portwine_exe}" ]; then
         export VULKAN_MOD=$(echo "${OUTPUT_START}" | grep \;\; | awk -F";" '{print $1}')
         export PW_WINE_VER=$(echo "${OUTPUT_START}" | grep \;\; | awk -F";" '{print $2}')
         export PW_PREFIX_NAME=$(echo "${OUTPUT_START}" | grep \;\; | awk -F";" '{print $3}' | sed -e s/[[:blank:]]/_/g)
-        if [[ -z "${PW_PREFIX_NAME}" ]] || [[ -n "$(echo "${PW_PREFIX_NAME}" | grep -E '^_.*' )" ]] ; then
+        if [[ -z "${PW_PREFIX_NAME}" ]] || [[ ! -z "$(echo "${PW_PREFIX_NAME}" | grep -E '^_.*' )" ]] ; then
             export PW_PREFIX_NAME="DEFAULT"
         else
             export PW_PREFIX_NAME="${PW_PREFIX_NAME^^}"
         fi
-    elif [ -n "${PORTWINE_DB_FILE}" ]; then
+    elif [ ! -z "${PORTWINE_DB_FILE}" ]; then
         portwine_launch
     fi
 else
     button_click () {
-        [[ -n "$1" ]] && echo "$1" > "${PORT_WINE_TMP_PATH}/tmp_yad_form"
-        if [[ -n $(pidof -s yad) ]] || [[ -n $(pidof -s yad_v12_3) ]] ; then
-            kill -s SIGUSR1 $(pgrep -a yad | grep "\-\-key=${KEY} \-\-notebook" | awk '{print $1}') > /dev/null 2>&1
+        [[ ! -z "$1" ]] && echo "$1" > "${PORT_WINE_TMP_PATH}/tmp_yad_form"
+        if [[ ! -z $(pidof -s yad) ]] || [[ ! -z $(pidof -s yad_v12_3) ]] ; then
+            kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \-\-notebook" | awk '{print $1}') > /dev/null 2>&1
         fi
     }
     export -f button_click
 
     run_desktop_b_click () {
-        [[ -n "$1" ]] && echo "$1" > "${PORT_WINE_TMP_PATH}/tmp_yad_form"
-        if [[ -n $(pidof -s yad) ]] || [[ -n $(pidof -s yad_v12_3) ]] ; then
-            kill -s SIGUSR1 $(pgrep -a yad | grep "\-\-key=${KEY} \-\-notebook" | awk '{print $1}') > /dev/null 2>&1
+        [[ ! -z "$1" ]] && echo "$1" > "${PORT_WINE_TMP_PATH}/tmp_yad_form"
+        if [[ ! -z $(pidof -s yad) ]] || [[ ! -z $(pidof -s yad_v12_3) ]] ; then
+            kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \-\-notebook" | awk '{print $1}') > /dev/null 2>&1
         fi
         PW_EXEC_FROM_DESKTOP="$(cat "${PORT_WINE_PATH}/${PW_YAD_SET//¬/" "}" | grep Exec | head -n 1 | awk -F"=env " '{print $2}')"
 
@@ -714,15 +714,15 @@ else
     --field="  3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
     --field="  PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
     --field="  WINE    : :CB" "${PW_DEFAULT_WINE_USE}" \
-    --field="                  DOWNLOAD OTHER WINE"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_download_other_wine}":"FBTN" '@bash -c "button_click gui_proton_downloader"' \
+    --field="              CREATE PFX BACKUP"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click pw_create_prefix_backup"' \
+    --field='   WINETRICKS'!"$PW_GUI_ICON_PATH/separator.png"!"${loc_winetricks}":"FBTN" '@bash -c "button_click WINETRICKS"' \
+    --field="   CLEAR PREFIX"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_clear_pfx"' \
+    --field="   DOWNLOAD OTHER WINE"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_download_other_wine}":"FBTN" '@bash -c "button_click gui_proton_downloader"' \
+    --field="   WINE UNINSTALLER"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_wine_uninstaller"' \
     --field='   WINECFG'!"$PW_GUI_ICON_PATH/separator.png"!"${loc_winecfg}":"FBTN" '@bash -c "button_click WINECFG"' \
     --field='   WINEFILE'!"$PW_GUI_ICON_PATH/separator.png"!"${loc_winefile}":"FBTN" '@bash -c "button_click WINEFILE"' \
     --field='   WINECMD'!"$PW_GUI_ICON_PATH/separator.png"!"${loc_winecmd}":"FBTN" '@bash -c "button_click WINECMD"' \
-    --field='   WINEREG'!"$PW_GUI_ICON_PATH/separator.png"!"${loc_winereg}":"FBTN" '@bash -c "button_click WINEREG"' \
-    --field='   WINETRICKS'!"$PW_GUI_ICON_PATH/separator.png"!"${loc_winetricks}":"FBTN" '@bash -c "button_click WINETRICKS"' \
-    --field="   WINE UNINSTALLER"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_wine_uninstaller"' \
-    --field="   CLEAR PREFIX"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_clear_pfx"' \
-    --field="   CREATE PFX BACKUP"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click pw_create_prefix_backup"' 2>/dev/null 1> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" &
+    --field='   WINEREG'!"$PW_GUI_ICON_PATH/separator.png"!"${loc_winereg}":"FBTN" '@bash -c "button_click WINEREG"' 2>/dev/null 1> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" &
 
     "${pw_yad_v12_3}" --plug=$KEY --tabnum=${PW_GUI_SORT_TABS[1]} --form --columns=3 --align-buttons --keep-icon-size --scroll  \
     --field="   Dolphin 5.0"!"$PW_GUI_ICON_PATH/dolphin.png"!"":"FBTN" '@bash -c "button_click PW_DOLPHIN"' \
@@ -773,12 +773,11 @@ else
     --field="   Path of Exile"!"$PW_GUI_ICON_PATH/poe.png"!"":"FBTN" '@bash -c "button_click PW_POE"' \
     --field="   Guild Wars 2"!"$PW_GUI_ICON_PATH/gw2.png"!"":"FBTN" '@bash -c "button_click PW_GUILD_WARS_2"' \
     --field="   Genshin Impact"!"$PW_GUI_ICON_PATH/genshinimpact.png"!"":"FBTN" '@bash -c "button_click PW_GENSHIN_IMPACT"' \
-    --field="   Battle Of Space Raiders"!"$PW_GUI_ICON_PATH/bsr.png"!"":"FBTN" '@bash -c "button_click PW_BSR"' \
-    --field="   ROBLOX"!"$PW_GUI_ICON_PATH/roblox.png"!"":"FBTN" '@bash -c "button_click PW_ROBLOX"' 2>/dev/null  &
+    --field="   Battle Of Space Raiders"!"$PW_GUI_ICON_PATH/bsr.png"!"":"FBTN" '@bash -c "button_click PW_BSR"' &
     
     # --field="   Electronic Arts App"!"$PW_GUI_ICON_PATH/eaapp.png"!"":"FBTN" '@bash -c "button_click PW_EAAPP"' 
     # --field="   Secret World Legends (ENG)"!"$PW_GUI_ICON_PATH/swl.png"!"":"FBTN" '@bash -c "button_click PW_SWL"'
-    # 
+    # --field="   ROBLOX"!"$PW_GUI_ICON_PATH/roblox.png"!"":"FBTN" '@bash -c "button_click PW_ROBLOX"' 2>/dev/null 
     # --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"'
 
     if  [[ `command -v wmctrl` ]] &>/dev/null ; then
@@ -786,7 +785,7 @@ else
         while [[ $(pgrep -a yad_v12_3 | head -n 1 | awk '{print $1}' 2>/dev/null) ]] ; do
             sleep 2
             PW_MAIN_GUI_SIZE_TMP="$(wmctrl -lG | grep PortProton-1.0 | awk '{print $5" "$6}' 2>/dev/null)"
-            if [[ -n "${PW_MAIN_GUI_SIZE_TMP}" ]] ; then
+            if [[ ! -z "${PW_MAIN_GUI_SIZE_TMP}" ]] ; then
                 echo "${PW_MAIN_GUI_SIZE_TMP}" > "${PORT_WINE_TMP_PATH}/tmp_main_gui_size"
             fi
         done
@@ -823,7 +822,7 @@ else
         export VULKAN_MOD=$(cat "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" | grep \;\;  | awk -F";" '{print $1}')
         export PW_PREFIX_NAME=$(cat "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" | grep \;\;  | awk -F";" '{print $2}' | sed -e "s/[[:blank:]]/_/g" )
         export PW_WINE_VER=$(cat "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" | grep \;\; | awk -F";" '{print $3}')
-        if [[ -z "${PW_PREFIX_NAME}" ]] || [[ -n "$(echo "${PW_PREFIX_NAME}" | grep -E '^_.*' )" ]] ; then
+        if [[ -z "${PW_PREFIX_NAME}" ]] || [[ ! -z "$(echo "${PW_PREFIX_NAME}" | grep -E '^_.*' )" ]] ; then
             export PW_PREFIX_NAME="DEFAULT"
         else
             export PW_PREFIX_NAME="${PW_PREFIX_NAME^^}"
@@ -843,7 +842,7 @@ esac
 init_wine_ver
 
 if [[ -z "${PW_DISABLED_CREATE_DB}" ]] ; then
-    if [[ -n "${PORTWINE_DB}" ]] && [[ -z "${PORTWINE_DB_FILE}" ]] ; then
+    if [[ ! -z "${PORTWINE_DB}" ]] && [[ -z "${PORTWINE_DB_FILE}" ]] ; then
         PORTWINE_DB_FILE=$(grep -il "\#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/*)
         if [[ -z "${PORTWINE_DB_FILE}" ]] ; then
             echo "#!/usr/bin/env bash"  > "${portwine_exe}".ppdb
@@ -857,7 +856,7 @@ if [[ -z "${PW_DISABLED_CREATE_DB}" ]] ; then
     edit_db_from_gui PW_VULKAN_USE PW_WINE_USE PW_PREFIX_NAME 
 fi
 
-[ -n "$PW_YAD_SET" ] && case "$PW_YAD_SET" in
+[ ! -z "$PW_YAD_SET" ] && case "$PW_YAD_SET" in
     98) portwine_delete_shortcut ;;
     100) portwine_create_shortcut ;;
     DEBUG|102) portwine_start_debug ;;
