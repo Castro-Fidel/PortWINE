@@ -504,26 +504,16 @@ pw_mangohud_check () {
 }
 
 pw_reshade_check () {
-    if [[ "${ENABLE_RESHADE}" == 1 ]] && [[ "${PW_VULKAN_USE}" != "0" ]] && [[ "${PW_VULKAN_USE}" != "3" ]] ; then
-       
-        if [[ $(file "$portwine_exe") =~ x86-64 ]]; then
-        	portwine_exe_arch=64
-        fi
-        if [[ "$portwine_exe_arch" == "64" ]] ; then
-            export needed_dll="dxgi.dll"
-        	#export WINEDLLOVERRIDES="d3dcompiler_47=n,dxgi=n,b"
-        	ln -is "${PORT_WINE_PATH}/data/Reshade/ReShade64.dll" "${PATH_TO_GAME}/$needed_dll"
-        else
-            export needed_dll="d3d9.dll"
-        	export WINEDLLOVERRIDES="d3dcompiler_47=n,d3d9=n.b"
-        	ln -is "${PORT_WINE_PATH}/data/Reshade/ReShade32.dll" "${PATH_TO_GAME}/$needed_dll"
-        fi
+    if [[ "${ENABLE_RESHADE}" == 1 ]] && [[ "${PW_VULKAN_USE}" != "3" ]] ; then
+        ln -is "${PORT_WINE_PATH}/data/Reshade/ReShade64.dll" "${PATH_TO_GAME}/dxgi.dll"
+        ln -is "${PORT_WINE_PATH}/data/Reshade/ReShade32.dll" "${PATH_TO_GAME}/d3d9.dll"
+        var_winedlloverride_update "d3d9,dxgi=n,b"
 
-        LINKS="ReShade32.json  ReShade64.json ReShade.ini textures reshade $needed_dll"
+        LINKS="ReShade32.json ReShade64.json Shaders Textures"
 
 	for link in $LINKS; do
-	    if [[ -L "${PATH_TO_GAME}/$link" ]] ; then
-	        unlink "${PATH_TO_GAME}/$link"
+	    if [[ ! -L "${PATH_TO_GAME}/$link" ]] ; then
+	        ln -is "${PORT_WINE_PATH}/data/Reshade/$link" "${PATH_TO_GAME}/"
 	    fi
         done
         print_info "Reshade is enabled"
@@ -535,7 +525,6 @@ pw_reshade_check () {
 	        unlink "${PATH_TO_GAME}/$link"
 	    fi
         done
-        #unset WINEDLLOVERRIDES
         print_info "Reshade is disabled"
     fi
     return 0
