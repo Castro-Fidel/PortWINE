@@ -3,8 +3,13 @@
 
 export NO_AT_BRIDGE=1
 export pw_full_command_line=("$0" $*)
-if [ -f "$1" ]; then
+MISSING_DESKTOP_FILE=0
+
+if [[ -f "$1" ]] ; then
     export portwine_exe="$(readlink -f "$1")"
+elif [[ "$1" == *.exe ]] ; then
+    export portwine_exe="$1"
+    MISSING_DESKTOP_FILE=1
 fi
 . "$(dirname $(readlink -f "$0"))/runlib"
 kill_portwine
@@ -15,6 +20,8 @@ if [[ -f "/usr/bin/portproton" ]] && [[ -f "${HOME}/.local/share/applications/Po
     /usr/bin/env bash "/usr/bin/portproton" "$@" & 
     exit 0
 fi
+
+[[ "$MISSING_DESKTOP_FILE" == 1 ]] && portwine_missing_shortcut
 
 if [[ "${XDG_SESSION_TYPE}" = "wayland" ]] && [[ ! -f "${PORT_WINE_TMP_PATH}/check_wayland" ]]; then
     zenity_info "$PW_WAYLAND_INFO"
@@ -140,8 +147,8 @@ portwine_start_debug () {
     free -m >> "${PORT_WINE_PATH}/${portname}.log"
     echo "-----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Graphic cards and drivers:" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo 'lspci | grep VGA:' >> "${PORT_WINE_PATH}/${portname}.log"
-    echo $LSPCI_VGA >> "${PORT_WINE_PATH}/${portname}.log"
+    echo 'lspci -k | grep -EA3 VGA|3D|Display :' >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "$(lspci -k | grep -EA3 'VGA|3D|Display')" >> "${PORT_WINE_PATH}/${portname}.log"
     [[ `command -v glxinfo` ]] && glxinfo -B >> "${PORT_WINE_PATH}/${portname}.log"
     echo " " >> "${PORT_WINE_PATH}/${portname}.log"
     echo "inxi -G:" >> "${PORT_WINE_PATH}/${portname}.log"

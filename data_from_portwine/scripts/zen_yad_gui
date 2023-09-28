@@ -534,11 +534,24 @@ portwine_create_shortcut () {
 }
 
 portwine_delete_shortcut () {
-    rm -f "`grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop`"
-    rm -f "`grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop`"
+    rm -f "$(grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop)" $>/dev/null
+    rm -f "$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop)" $>/dev/null
     if [[ -d "${HOME}/Desktop" ]] ; then
-        rm -f "`grep -il "${portwine_exe}" "${HOME}/Desktop"/*.desktop`"
+        rm -f "$(grep -il "${portwine_exe}" "${HOME}/Desktop"/*.desktop)" $>/dev/null
     elif [[ -d "${HOME}/Рабочий стол" ]] ; then
-        rm -f "`grep -il "${portwine_exe}" "${HOME}/Рабочий стол"/*.desktop`"
+        rm -f "$(grep -il "${portwine_exe}" "${HOME}/Рабочий стол"/*.desktop)" $>/dev/null
     fi
+}
+
+portwine_missing_shortcut () {
+    "${pw_yad}" --title="${loc_gui_error}." --form --borders=3 \
+    --window-icon "$PW_GUI_ICON_PATH/port_proton.png" \
+    --image "$PW_GUI_ICON_PATH/error_file.png" \
+    --text "$loc_gui_missing_shortcut" \
+    --button="$loc_gui_delete_shortcut":0 \
+    --button="$loc_cancel":1
+    if [ $? -eq "0" ] ; then
+        portwine_delete_shortcut
+    fi
+    exit 0
 }

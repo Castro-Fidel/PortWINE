@@ -64,12 +64,12 @@ start_portwine () {
 
     if [[ "${PW_LOG}" == 1 ]] ; then
         export WINEDEBUG="fixme-all,err+loaddll,err+dll,err+file,err+reg"
-        export DXVK_LOG_LEVEL="warn"
-        export VKD3D_DEBUG="warn"
+        export DXVK_LOG_LEVEL="err"
+        export VKD3D_DEBUG="err"
         export WINE_MONO_TRACE="E:System.NotImplementedException"
         export VK_LOADER_DEBUG="none"
         export VKBASALT_LOG_LEVEL="none"
-        export DXVK_NVAPI_LOG_LEVEL=warn
+        export DXVK_NVAPI_LOG_LEVEL="err"
     else
         export WINEDEBUG="-all"
         export DXVK_LOG_LEVEL="none"
@@ -77,7 +77,7 @@ start_portwine () {
         export VKD3D_DEBUG="none"
         export DXVK_LOG_PATH="none"
         export VKBASALT_LOG_LEVEL="none"
-        export DXVK_NVAPI_LOG_LEVEL=none
+        export DXVK_NVAPI_LOG_LEVEL="none"
     fi
 
     if [[ "${PW_NO_ESYNC}" == 1 ]]
@@ -138,11 +138,13 @@ start_portwine () {
         export WINE_HIDE_NVIDIA_GPU=0
         # export DXVK_NVAPI_DRIVER_VERSION=
     elif [[ "${PW_USE_NVAPI_AND_DLSS}" == 1 ]] ; then
-        if ! try_copy_file `find /usr/* -type f -name "nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'` "${WINEPREFIX}/drive_c/windows/system32/"
-        then try_copy_file "${PW_PLUGINS_PATH}/nvngx/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-        fi
-        if ! try_copy_file `find /usr/* -type f -name "_nvngx.dll" 2>/dev/null | awk '{print $1}' | grep '/lib/'` "${WINEPREFIX}/drive_c/windows/system32/"       
-        then try_copy_file "${PW_PLUGINS_PATH}/nvngx/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+        FIND_NVNGX="$(dirname $(find /usr/* -type f -name "nvngx.dll" 2>/dev/null | head -n 1 | awk '{print $1}'))"
+        if [[ ! -z "$FIND_NVNGX" ]] ; then
+            try_copy_file "${FIND_NVNGX}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_copy_file "${FIND_NVNGX}/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+        else
+            try_copy_file "${PW_PLUGINS_PATH}/nvngx/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_copy_file "${PW_PLUGINS_PATH}/nvngx/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
         fi 
         enabled_fake_nvidia_videocard 0
         export DXVK_ENABLE_NVAPI=1
