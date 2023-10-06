@@ -13,10 +13,15 @@ export PW_USE_D3D_EXTRAS=1
 gui_proton_downloader silent "${PW_WINE_USE}"
 
 start_portwine
-if try_download "lol.secure.dyn.riotcdn.net/channels/public/x/installer/current/live.na.exe" "${PW_AUTOINSTALL_EXE}"
+if try_download "https://lol.secure.dyn.riotcdn.net/channels/public/x/installer/current/live.na.exe" "${PW_AUTOINSTALL_EXE}"
 then
     pw_start_progress_bar_block "Installing League of Legends. ${loc_gui_please_wait} "
-    zenity --info --width=500 --text "You must click the install button without changing the settings!"   
+    if [ "${update_loc}" = "RUS" ] ; then
+       zenity --info --width=500 --text "Вы должны нажать кнопку установки, не изменяя настроек!"
+   fi
+   if [ "${update_loc}" = "ENG" ] ; then
+       zenity --info --width=500 --text "You must click the install button without changing the settings!"
+  fi
     pw_kill_autostart RiotClientServices.exe &
     pw_run "${PW_AUTOINSTALL_EXE}" 
     portwine_exe="$WINEPREFIX/drive_c/Riot Games/Riot Client/RiotClientServices.exe"
