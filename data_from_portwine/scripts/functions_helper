@@ -410,16 +410,14 @@ init_wine_ver () {
 
 pw_init_runtime () {
 
-    if [[ ! -z "$(grep -E '(ROSA Fresh|RED OS)' "/etc/os-release")" ]] ; then
+    if grep -q -E '(ROSA Fresh|RED OS)' "/etc/os-release" ; then
         export LOCPATH="/run/host/usr/share/locale/"
-    elif [[ ! -z "$(grep "altlinux" "/etc/os-release")" ]] ; then
+    elif grep -q "altlinux" "/etc/os-release" ; then
         export LIBGL_DRIVERS_PATH="/usr/lib/X11/modules/dri:/usr/lib64/X11/modules/dri"
     fi
 
     PW_PV_OVERRIDES="/usr/lib/pressure-vessel/overrides/lib" 
     export PW_LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${PW_WINELIB}/portable/lib/lib64:${PW_WINELIB}/portable/lib/lib32:${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:${PW_PV_OVERRIDES}/i386-linux-gnu/aliases"
-
-    export PW_VK_LAYER_PATH="${PW_WINELIB}/portable/share/vulkan/implicit_layer.d"
 
     if [ ! -z ${PATH_TMP} ]
     then export PATH="${PATH_TMP}"
@@ -455,7 +453,14 @@ pw_init_runtime () {
         ${PW_ADD_TO_ARGS_IN_RUNTIME} --"
     fi
 
-    export PRESSURE_VESSEL_IMPORT_VULKAN_LAYERS=0
+    if [[ "$PW_USE_SYSTEM_VK_LAYERS" == "1" ]] ; then
+        export PRESSURE_VESSEL_IMPORT_VULKAN_LAYERS=1
+        unset PW_VK_LAYER_PATH
+    else
+        export PRESSURE_VESSEL_IMPORT_VULKAN_LAYERS=0
+        export PW_VK_LAYER_PATH="${PW_WINELIB}/portable/share/vulkan/implicit_layer.d"
+    fi
+
     # export PRESSURE_VESSEL_GRAPHICS_PROVIDER="/"
 
     unset PRESSURE_VESSEL_RUNTIME_ARCHIVE
