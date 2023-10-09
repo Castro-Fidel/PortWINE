@@ -67,23 +67,18 @@ start_portwine () {
     fi
 
     pw_init_runtime
-
+    
+    check_variables VKD3D_DEBUG none
+    check_variables DXVK_LOG_LEVEL none
+    check_variables VK_LOADER_DEBUG none
+    check_variables VKBASALT_LOG_LEVEL none
+    check_variables DXVK_NVAPI_LOG_LEVEL none
     if [[ "${PW_LOG}" == 1 ]] ; then
         export WINEDEBUG="fixme-all,err+loaddll,err+dll,err+file,err+reg"
-        export DXVK_LOG_LEVEL="err"
-        export VKD3D_DEBUG="err"
         export WINE_MONO_TRACE="E:System.NotImplementedException"
-        export VK_LOADER_DEBUG="none"
-        export VKBASALT_LOG_LEVEL="none"
-        export DXVK_NVAPI_LOG_LEVEL="err"
     else
         export WINEDEBUG="-all"
-        export DXVK_LOG_LEVEL="none"
-        export VKD3D_SHADER_DEBUG="none"
-        export VKD3D_DEBUG="none"
-        export DXVK_LOG_PATH="none"
-        export VKBASALT_LOG_LEVEL="none"
-        export DXVK_NVAPI_LOG_LEVEL="none"
+        unset WINE_MONO_TRACE
     fi
 
     if [[ "${PW_NO_ESYNC}" == 1 ]]
@@ -380,7 +375,7 @@ start_portwine () {
     create_new_dir "${PW_VULKAN_DIR}/opengl"
     PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/opengl"
     PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/opengl"
-    
+
     if [[ "${PW_VULKAN_USE}" == "0" ]] ; then
         print_info "Use OpenGL"
         export GL_YIELD="NOTHING"
@@ -473,8 +468,8 @@ start_portwine () {
     fi
      
     if [[ "${PW_DX12_DISABLE}" == 1 ]]  
-    then var_winedlloverride_update "d3d12,d3d12core,libvkd3d-1="
-    else var_winedlloverride_update "d3d12,d3d12core,libvkd3d-1=n"
+    then var_winedlloverride_update "d3d12,d3d12core="
+    else var_winedlloverride_update "d3d12,d3d12core=n"
     fi
 
     if [[ ! -d "${WINEPREFIX}/drive_c/vrclient/bin" ]] ; then
@@ -622,7 +617,8 @@ pw_run () {
         echo "Log WINE:" >> "${PW_LOG_TO_FILE}"
         echo ""
         print_debug "Log from RUNTIME and WINE:"
-        env ${optirun_on} ${PW_GAMEMODERUN_SLR} ${pw_runtime} \
+        env ${optirun_on} ${PW_GAMEMODERUN_SLR} \
+        NO_AT_BRIDGE=0 ${pw_runtime} \
         env ${PW_MANGOHUD_SLR} \
         PATH="${PATH}" \
         LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
@@ -637,7 +633,8 @@ pw_run () {
         fi
         echo ""
         print_debug "Log from RUNTIME and WINE:"
-        env ${optirun_on} ${PW_GAMEMODERUN_SLR} ${pw_runtime} \
+        env ${optirun_on} ${PW_GAMEMODERUN_SLR} \
+        NO_AT_BRIDGE=0 ${pw_runtime} \
         env ${PW_MANGOHUD_SLR} \
         PATH="${PATH}" \
         LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \

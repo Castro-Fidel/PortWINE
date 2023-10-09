@@ -120,8 +120,7 @@ portwine_start_debug () {
     fi
     echo "--------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Version WINE in the Port:" >> "${PORT_WINE_PATH}/${portname}.log"
-    print_var PW_WINE_USE >> "${PORT_WINE_PATH}/${portname}.log"
-    [ -f "${WINEDIR}/version" ] && cat "${WINEDIR}/version" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "$PW_WINE_USE" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Date and time of start debug for ${portname}:" >> "${PORT_WINE_PATH}/${portname}.log"
     date >> "${PORT_WINE_PATH}/${portname}.log"
@@ -216,10 +215,7 @@ portwine_start_debug () {
     done < "${PORT_WINE_PATH}/${portname}.log" | "${pw_yad_v12_3}" --text-info --tail --button="STOP":0 --title="DEBUG" \
     --skip-taskbar --width=800 --height=400 --text "${port_debug}" 2>/dev/null &&
     kill_portwine
-#    sleep 1 && zenity --info --title "DEBUG" --text "${port_debug}" --no-wrap &> /dev/null && kill_portwine
     sed -i '/.fx$/d' "${PORT_WINE_PATH}/${portname}.log"
-    sed -i '/kerberos/d' "${PORT_WINE_PATH}/${portname}.log"
-    sed -i '/ntlm/d' "${PORT_WINE_PATH}/${portname}.log"
     sed -i '/HACK_does_openvr_work/d' "${PORT_WINE_PATH}/${portname}.log"
     sed -i '/Uploading is disabled/d' "${PORT_WINE_PATH}/${portname}.log"
     deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++') 
@@ -436,13 +432,13 @@ pw_edit_db () {
     PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL \
     PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_DX12_DISABLE PW_PRIME_RENDER_OFFLOAD PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME  \
     PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE \
-    PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE
+    PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE 
     if [ "$?" == 0 ] ; then
         print_info "Restarting PP after update ppdb file..."
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     fi
-    # PW_WINE_ALLOW_XIM PW_FORCE_USE_VSYNC PW_WINEDBG_DISABLE PW_USE_AMDVLK_DRIVER
+    # PW_FORCE_USE_VSYNC PW_WINEDBG_DISABLE PW_USE_AMDVLK_DRIVER HEAP_DELAY_FREE
 }
 
 pw_autoinstall_from_db () {
