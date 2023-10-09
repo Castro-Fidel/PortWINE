@@ -6,19 +6,7 @@ export LAUNCH_PARAMETERS=("/VERYSILENT")
 export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/CaliberSetup.exe"
 export PW_WINE_USE=PROTON_STEAM_6.3-8
 
-if [ ! -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ] ; then
-    if try_download "github.com/Castro-Fidel/wine_builds/releases/download/${PW_WINE_USE}/${PW_WINE_USE}.tar.xz" \
-    "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" ; then
-        if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
-            try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz"
-            UNPACK_STATUS=0
-        else
-            try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz"
-            try_remove_dir "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}"
-        fi
-    fi
-    [[ "${UNPACK_STATUS}" != 0 ]] && exit 1
-fi
+gui_proton_downloader silent "${PW_WINE_USE}"
 
 start_portwine
 if try_download "https://caliber-files.gcdn.co/caliber-s3/p1/a88c3b70f76a0e56b1e08b62c9895cfe/launcher/setup/CaliberSetup.exe" "${PW_AUTOINSTALL_EXE}"
