@@ -438,7 +438,7 @@ pw_edit_db () {
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     fi
-    # PW_FORCE_USE_VSYNC PW_WINEDBG_DISABLE PW_USE_AMDVLK_DRIVER HEAP_DELAY_FREE
+    # PW_FORCE_USE_VSYNC PW_WINEDBG_DISABLE HEAP_DELAY_FREE
 }
 
 pw_autoinstall_from_db () {
