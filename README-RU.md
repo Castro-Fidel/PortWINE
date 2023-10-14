@@ -194,7 +194,7 @@ sudo -E dnf install curl icoutils libcurl wget zenity bubblewrap zstd cabextract
 sudo eopkg it curl file zenity bubblewrap curl icoutils tar wget zenity zstd cabextract xdg-utils openssl bc vulkan vulkan-32bit mesalib-32bit samba
 ```
 
-## Contacts
+## Контакты
 
 <p>
     <a href="https://discord.gg/FTaheP99wE">
