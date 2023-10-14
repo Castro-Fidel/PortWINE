@@ -198,6 +198,6 @@ sudo eopkg it curl file zenity bubblewrap curl icoutils tar wget zenity zstd cab
 
 <p>
     <a href="https://discord.gg/FTaheP99wE">
-        <img src="https://img.shields.io/discord/308323056592486420?logo=discord"
+        <img src="https://img.shields.io/discord/378683352946835456?logo=discord"
             alt="chat on Discord"></a>
 </p>
