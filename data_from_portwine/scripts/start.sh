@@ -389,13 +389,13 @@ pw_start_cont_xterm () {
 }
 
 pw_create_prefix_backup () {
-    if [[ ! -f "${PORT_WINE_TMP_PATH}/pfx_backup" ]]; then
+    if [[ ! -f "${PORT_WINE_TMP_PATH}/pfx_backup_info" ]]; then
         zenity_info "$PW_PFX_BACKUP_INFO"
-        echo "1" > "${PORT_WINE_TMP_PATH}/pfx_backup"
+        echo "1" > "${PORT_WINE_TMP_PATH}/pfx_backup_info"
     fi
     cd "$HOME"
     PW_PREFIX_TO_BACKUP=$("${pw_yad_v12_3}" --file --directory --borders=3 --width=650 --height=500 --auto-close \
-    --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "BACKUP PREFIX TO..." 2>/dev/null )
+    --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "$loc_create_pfx_backup_path" 2>/dev/null )
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
     if [[ ! -z "$(grep "/${PW_PREFIX_NAME}/" "${PORT_WINE_PATH}"/*.desktop )" ]] ; then
