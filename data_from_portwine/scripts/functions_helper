@@ -202,6 +202,15 @@ var_vk_istance_layers_config_update () {
     return 0
 }
 
+var_ld_library_path_update() {
+    if [ ! -z "${LD_LIBRARY_PATH}" ]; then
+        export LD_LIBRARY_PATH="$1:$LD_LIBRARY_PATH"
+    else
+        export LD_LIBRARY_PATH="$1"
+    fi
+    return 0
+}
+
 unpack_tar_zst () {
     set -o pipefail
     unset PW_ZSTD_PORT
@@ -818,7 +827,7 @@ pw_check_and_download_plugins () {
 }
 
 check_nvidia_rtx () {
-    if echo "$LSPCI_VGA" | grep -i "nvidia" ; then          
+    if [[ $(echo "$LSPCI_VGA" | grep -i "nvidia") ]] ; then
         # Turing (without nvidia 16XX)
         [[ "$LSPCI_VGA" == *TU[0-9]* ]] && [[ "$LSPCI_VGA" != *TU11[6-7]* ]] && return 0
         # Ampere
@@ -830,7 +839,7 @@ check_nvidia_rtx () {
 }
 
 check_hybrid_graphicks () {
-    if echo "$LSPCI_VGA" | grep -i nvidia | grep -iE '(intel|amd)'
+    if [[ $(echo "$LSPCI_VGA" | grep -i nvidia | grep -i -E '(intel|amd)') ]]
     then return 0
     else return 1
     fi
