@@ -152,17 +152,17 @@ pw_gui_for_edit_db () {
     if echo "${MANGOHUD_CONFIG}" | grep "fps_limit" ; then
         FPS_LIMIT_VAR="$(echo ${MANGOHUD_CONFIG} | sed 's/.*fps_limit=//' | awk -F, '{print $1}')"
     else
-        FPS_LIMIT_VAR="$loc_disabled"
+        FPS_LIMIT_VAR="disabled"
     fi
-    if [[ ! -z "${PW_WINE_CPU_TOPOLOGY}" ]] && [[ "${PW_WINE_CPU_TOPOLOGY}" != "$loc_disabled" ]] ; then
+    if [[ ! -z "${PW_WINE_CPU_TOPOLOGY}" ]] && [[ "${PW_WINE_CPU_TOPOLOGY}" != "disabled" ]] ; then
         CPU_LIMIT_VAR="`echo ${PW_WINE_CPU_TOPOLOGY%%:*}`"
     else
-        CPU_LIMIT_VAR="$loc_disabled"
+        CPU_LIMIT_VAR="disabled"
     fi
-    if [[ ! -z "${PW_AMD_VULKAN_USE}" ]] && [[ "${PW_AMD_VULKAN_USE}" != "$loc_disabled" ]] ; then
+    if [[ ! -z "${PW_AMD_VULKAN_USE}" ]] && [[ "${PW_AMD_VULKAN_USE}" != "disabled" ]] ; then
         AMD_VULKAN_VAR="${PW_AMD_VULKAN_USE}"
     else
-        AMD_VULKAN_VAR="$loc_disabled"
+        AMD_VULKAN_VAR="disabled"
     fi
 
     GET_REFRASH_RATE="30!45!60!75!120!144!165!240"
@@ -205,10 +205,10 @@ pw_gui_for_edit_db () {
     --field=":LBL" "" \
     --field="${loc_gui_arg_exe}!${loc_gui_arg_exe_help} :CBE" "\\${LAUNCH_PARAMETERS[@]}!-dx11 -skipintro 1" \
     --field=":LBL" "" \
-    --field="${loc_gui_cpu_limit}!${loc_gui_cpu_limit_help} :CB" "${CPU_LIMIT_VAR}!${loc_disabled}!${GET_LOGICAL_CORE}" \
-    --field="${loc_gui_amd_vulkan_select}!${loc_gui_amd_vulkan_select_help} :CB" "${AMD_VULKAN_VAR}!${loc_disabled}!amdvlk!amdgpupro!radv!radv_gpl!radv_aco" \
-    --field="${loc_gui_mango_fps}!${loc_gui_mango_fps_help} :CB" "${FPS_LIMIT_VAR}!${loc_disabled}!${GET_REFRASH_RATE}"  2>/dev/null 1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
-    "${pw_yad_v12_3}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="650" \
+    --field="${loc_gui_cpu_limit}!${loc_gui_cpu_limit_help} :CB" "${CPU_LIMIT_VAR}!disabled!${GET_LOGICAL_CORE}" \
+    --field="${loc_gui_amd_vulkan_select}!${loc_gui_amd_vulkan_select_help} :CB" "${AMD_VULKAN_VAR}!disabled!amdvlk!amdgpupro!radv!radv_gpl!radv_aco" \
+    --field="${loc_gui_mango_fps}!${loc_gui_mango_fps_help} :CB" "${FPS_LIMIT_VAR}!disabled!${GET_REFRASH_RATE}"  2>/dev/null 1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
+    "${pw_yad_v12_3}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="700" \
     --text "${loc_gui_edit_db} <b>${PORTWINE_DB}</b>\n ${loc_gui_edit_db_help}" --separator=" " --borders=3 \
     --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
     --button="${loc_gui_cancel}"!!"${loc_gui_cancel_help}":1 \
@@ -241,30 +241,32 @@ pw_gui_for_edit_db () {
     PW_AMD_VULKAN_USE="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $8}'`"
     FPS_LIMIT="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $9}'`"
 
-    if [[ "${FPS_LIMIT}" != "$loc_disabled" ]] && [[ "${FPS_LIMIT_VAR}" != "$loc_disabled" ]] ; then
+    if [[ "${FPS_LIMIT}" != "disabled" ]] && [[ "${FPS_LIMIT_VAR}" != "disabled" ]] ; then
         export MANGOHUD_CONFIG="$(echo ${MANGOHUD_CONFIG} | sed "s/fps_limit=${FPS_LIMIT_VAR}/fps_limit=${FPS_LIMIT}/")"
         export PW_MANGOHUD=1
-    elif [[ "${FPS_LIMIT}" != "$loc_disabled" ]] && [[ "${FPS_LIMIT_VAR}" == "$loc_disabled" ]] ; then
+    elif [[ "${FPS_LIMIT}" != "disabled" ]] && [[ "${FPS_LIMIT_VAR}" == "disabled" ]] ; then
         export MANGOHUD_CONFIG=${MANGOHUD_CONFIG},fps_limit=${FPS_LIMIT}
         export PW_MANGOHUD=1
-    elif [[ "${FPS_LIMIT}" == "$loc_disabled" ]] && [[ "${FPS_LIMIT_VAR}" != "$loc_disabled" ]] ; then
+    elif [[ "${FPS_LIMIT}" == "disabled" ]] && [[ "${FPS_LIMIT_VAR}" != "disabled" ]] ; then
         export MANGOHUD_CONFIG="$(echo ${MANGOHUD_CONFIG} | sed "s/,fps_limit=${FPS_LIMIT_VAR}//")"
     fi
-    if [[ "${CPU_LIMIT}" != "$loc_disabled" ]] ; then
+    if [[ "${CPU_LIMIT}" != "disabled" ]] ; then
         export PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $((${CPU_LIMIT} - 1)))"
     else
-        export PW_WINE_CPU_TOPOLOGY="$loc_disabled"
+            export PW_WINE_CPU_TOPOLOGY="disabled"
     fi
     if [[ "${PW_AMD_VULKAN_USE}" == "amdvlk" ]] ; then
         export DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1=1
-        if [[ $(grep -i -E '(rosa|redos|nobara|linuxmint|ubuntu|centos|rhel|fedora)' "/etc/os-release") ]] ; then
+        if grep -i -q -E '(rosa|redos|nobara|linuxmint|ubuntu|centos|rhel|fedora)' "/etc/os-release" ; then
             export VK_ICD_FILENAMES="/opt/amdgpu/etc/vulkan/icd.d/amd_icd32.json:/opt/amdgpu/etc/vulkan/icd.d/amd_icd64.json"
+        elif grep -i -q "altlinux" '/etc/os-release' ; then
+            export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/amd_icd.json"
         else
             export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/amd_icd32.json:/usr/share/vulkan/icd.d/amd_icd64.json"
         fi
     elif [[ "${PW_AMD_VULKAN_USE}" == "amdgpupro" ]] ; then
         export DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1=1
-        if [[ $(grep -i -E '(rosa|redos|nobara|linuxmint|ubuntu|centos|rhel|fedora)' "/etc/os-release") ]] ; then
+        if grep -i -q -E '(rosa|redos|nobara|linuxmint|ubuntu|centos|rhel|fedora)' "/etc/os-release" ; then
             export VK_ICD_FILENAMES="/opt/amdgpu-pro/etc/vulkan/icd.d/amd_icd32.json:/opt/amdgpu-pro/etc/vulkan/icd.d/amd_icd64.json"
             var_ld_library_path_update "/opt/amdgpu/libdrm/lib64:/opt/amdgpu/libdrm/lib32"
         else
@@ -274,14 +276,12 @@ pw_gui_for_edit_db () {
         export DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1=1
         export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/radeon_icd.i686.json:/usr/share/vulkan/icd.d/radeon_icd.x86_64.json"
     elif [[ "${PW_AMD_VULKAN_USE}" == "radv_aco" ]] ; then
-        unset RADV_PERFTEST
         export DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1=1
-        export RADV_PERFTEST=aco
+        var_radv_perftest_config_update aco
         export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/radeon_icd.i686.json:/usr/share/vulkan/icd.d/radeon_icd.x86_64.json"
     elif [[ "${PW_AMD_VULKAN_USE}" == "radv_gpl" ]] ; then
-        unset RADV_PERFTEST
         export DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1=1
-        export RADV_PERFTEST=gpl
+        var_radv_perftest_config_update gpl
         export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/radeon_icd.i686.json:/usr/share/vulkan/icd.d/radeon_icd.x86_64.json"
     fi
     echo "pw_gui_for_edit_db PORTWINE_DB_FILE=$PORTWINE_DB_FILE"

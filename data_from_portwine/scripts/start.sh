@@ -420,13 +420,14 @@ pw_create_prefix_backup () {
     if [[ -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" ]] ; then
         mv -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack"
         zenity_info "$PW_PFX_BACKUP_SUCCESS"
+        if [[ ! -f "${PORT_WINE_TMP_PATH}/pfx_backup_info" ]] ; then
+            zenity_info "$PW_PFX_BACKUP_INFO"
+            echo "1" > "${PORT_WINE_TMP_PATH}/pfx_backup_info"
+        fi
     else 
         zenity_error "$PW_PFX_BACKUP_ERROR"
     fi
-    if [[ ! -f "${PORT_WINE_TMP_PATH}/pfx_backup_info" ]]; then
-        zenity_info "$PW_PFX_BACKUP_INFO"
-        echo "1" > "${PORT_WINE_TMP_PATH}/pfx_backup_info"
-    fi
+
     return 0
 }
 
@@ -734,7 +735,7 @@ else
     --field="   $loc_gui_clear_pfx"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_clear_pfx}":"FBTN" '@bash -c "button_click gui_clear_pfx"' \
     --field="   $loc_gui_download_other_wine"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_download_other_wine}":"FBTN" '@bash -c "button_click gui_proton_downloader"' \
     --field="   $loc_gui_wine_uninstaller"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_wineuninstaller}":"FBTN" '@bash -c "button_click gui_wine_uninstaller"' \
-    --field="   $loc_gui_wine_cfg"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_winecfg}":"FBTN" '@bash -c "button_click WINECFG"' \
+    --field="   $loc_gui_wine_cfg     "!"$PW_GUI_ICON_PATH/separator.png"!"${loc_winecfg}":"FBTN" '@bash -c "button_click WINECFG"' \
     --field="   $loc_gui_wine_file"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_winefile}":"FBTN" '@bash -c "button_click WINEFILE"' \
     --field="   $loc_gui_wine_cmd"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_winecmd}":"FBTN" '@bash -c "button_click WINECMD"' \
     --field="   $loc_gui_wine_reg"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_winereg}":"FBTN" '@bash -c "button_click WINEREG"' 2>/dev/null 1> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" &

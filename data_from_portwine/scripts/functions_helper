@@ -171,42 +171,41 @@ create_new_dir () {
 }
 
 var_winedlloverride_update () {
-    if [ ! -z "${WINEDLLOVERRIDES}" ]
-    then export WINEDLLOVERRIDES="${1};${WINEDLLOVERRIDES}"
-    else export WINEDLLOVERRIDES="${1}"
+    if [ ! -z "$WINEDLLOVERRIDES" ]
+    then export WINEDLLOVERRIDES="$1;$WINEDLLOVERRIDES"
+    else export WINEDLLOVERRIDES="$1"
     fi
     return 0
 }
 
 var_vkd3d_config_update () {
-    if [ ! -z "${VKD3D_CONFIG}" ]
-    then export VKD3D_CONFIG="${1};${VKD3D_CONFIG}"
-    else export VKD3D_CONFIG="${1}"
+    if [ ! -z "$VKD3D_CONFIG" ]
+    then export VKD3D_CONFIG="$1;$VKD3D_CONFIG"
+    else export VKD3D_CONFIG="$1"
     fi
     return 0
 }
 
 var_radv_perftest_config_update () {
-    if [ ! -z "${RADV_PERFTEST}" ]
-    then export RADV_PERFTEST="${1};${RADV_PERFTEST}"
-    else export RADV_PERFTEST="${1}"
+    if [ ! -z "$RADV_PERFTEST" ]
+    then export RADV_PERFTEST="$1;$RADV_PERFTEST"
+    else export RADV_PERFTEST="$1"
     fi
     return 0
 }
 
 var_vk_istance_layers_config_update () {
-    if [ ! -z "${PW_VK_INSTANCE_LAYERS}" ]
-    then export PW_VK_INSTANCE_LAYERS="${1}:${PW_VK_INSTANCE_LAYERS}"
-    else export PW_VK_INSTANCE_LAYERS="${1}"
+    if [ ! -z "$PW_VK_INSTANCE_LAYERS" ]
+    then export PW_VK_INSTANCE_LAYERS="$1:$PW_VK_INSTANCE_LAYERS"
+    else export PW_VK_INSTANCE_LAYERS="$1"
     fi
     return 0
 }
 
 var_ld_library_path_update() {
-    if [ ! -z "${LD_LIBRARY_PATH}" ]; then
-        export LD_LIBRARY_PATH="$1:$LD_LIBRARY_PATH"
-    else
-        export LD_LIBRARY_PATH="$1"
+    if [ ! -z "$LD_LIBRARY_PATH" ]
+    then export LD_LIBRARY_PATH="$1:$LD_LIBRARY_PATH"
+    else export LD_LIBRARY_PATH="$1"
     fi
     return 0
 }
@@ -329,15 +328,14 @@ init_wine_ver () {
         IFS="$orig_IFS"
     fi
     if [[ -z `ls "${PORT_WINE_PATH}/data/dist/" | grep "${PW_WINE_USE}"` ]] ; then
-        if [[ ! -z `echo "${PW_WINE_USE}" | grep "PROTON_LG"` ]] ; then
-            export PW_WINE_USE=PROTON_LG
-        else
-            export PW_WINE_USE=PROTON_GE
+        if [[ "$PW_WINE_USE" =~ PROTON_LG* ]]
+        then export PW_WINE_USE=PROTON_LG
+        else export PW_WINE_USE=WINE_LG
         fi
     fi
-    if [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_LG$"` ]] 
+    if [[ "$PW_WINE_USE" == PROTON_LG ]] 
     then export PW_WINE_USE="${PW_PROTON_LG_VER}"
-    elif [[ ! -z `echo "${PW_WINE_USE}" | grep "^PROTON_GE$"` ]]
+    elif [[ "$PW_WINE_USE" == WINE_LG ]]
     then export PW_WINE_USE="${PW_WINE_LG_VER}"
     fi
     [ ! -z "${PW_WINE_VER}" ] && export PW_WINE_USE=`echo "${PW_WINE_VER}" | tr [[:lower:]] [[:upper:]]`
@@ -690,9 +688,9 @@ pw_check_and_download_wine () {
     if [[ "${PW_WINE_USE}" == "GET-OTHER-WINE" ]] ; then
         gui_proton_downloader
     fi
-    if [[ $PW_WINE_USE == PROTON_LG ]] 
+    if [[ "$PW_WINE_USE" == PROTON_LG ]] 
     then export PW_WINE_USE="${PW_PROTON_LG_VER}"
-    elif [[ PW_WINE_USE == WINE_*_LG ]]
+    elif [[ "$PW_WINE_USE" == WINE_*_LG ]] || [[ "$PW_WINE_USE" == WINE_LG ]]
     then export PW_WINE_USE="${PW_WINE_LG_VER}"
     fi
     if [ ! -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ] ; then
@@ -827,7 +825,7 @@ pw_check_and_download_plugins () {
 }
 
 check_nvidia_rtx () {
-    if [[ $(echo "$LSPCI_VGA" | grep -i "nvidia") ]] ; then
+    if echo "$LSPCI_VGA" | grep -i "nvidia" &>/dev/null ; then
         # Turing (without nvidia 16XX)
         [[ "$LSPCI_VGA" == *TU[0-9]* ]] && [[ "$LSPCI_VGA" != *TU11[6-7]* ]] && return 0
         # Ampere
@@ -839,7 +837,7 @@ check_nvidia_rtx () {
 }
 
 check_hybrid_graphicks () {
-    if [[ $(echo "$LSPCI_VGA" | grep -i nvidia | grep -i -E '(intel|amd)') ]]
+    if echo "$LSPCI_VGA" | grep -i nvidia | grep -i -E '(intel|amd)' &>/dev/null
     then return 0
     else return 1
     fi
