@@ -159,9 +159,17 @@ start_portwine () {
     fi
 
     if [[ "${PW_PRIME_RENDER_OFFLOAD}" == 1 ]] ; then
-        export __NV_PRIME_RENDER_OFFLOAD=1
-        export __GLX_VENDOR_LIBRARY_NAME=nvidia
-        export __VK_LAYER_NV_optimus=NVIDIA_only
+        if [[ ! -z $(command -v glxinfo) ]] \
+        && [[ ! -z $(glxinfo -B | grep "OpenGL renderer" | grep -i "nvidia") ]]
+        then
+            print_debug "Nvidia used by default. Force disabled PRIME_RENDER_OFFLOAD"
+            export __NV_PRIME_RENDER_OFFLOAD=0
+            unset __GLX_VENDOR_LIBRARY_NAME __VK_LAYER_NV_optimus
+        else
+            export __NV_PRIME_RENDER_OFFLOAD=1
+            export __GLX_VENDOR_LIBRARY_NAME=nvidia
+            export __VK_LAYER_NV_optimus=NVIDIA_only
+        fi
     fi
 
     if [[ "${PW_HEAP_DELAY_FREE}" == 1 ]]
@@ -709,7 +717,7 @@ export PW_VULKAN_DIR="${PORT_WINE_TMP_PATH}/VULKAN"
 create_new_dir "${PW_VULKAN_DIR}"
 
 export VULKAN_API_DRIVER_VERSION="$(vulkaninfo 2>/dev/null | grep "api" | head -n 1 | awk '{print $3}')"
-export LSPCI_VGA="$(lspci -k | grep VGA | tr -d '\n')"
+export LSPCI_VGA="$(lspci -k | grep -E 'VGA|3D' | tr -d '\n')"
 
 cd "${PORT_SCRIPTS_PATH}"
 . "${PORT_SCRIPTS_PATH}/var"
