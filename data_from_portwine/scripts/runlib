@@ -158,6 +158,16 @@ start_portwine () {
         var_winedlloverride_update "nvngx,_nvngx="
     fi
 
+    if [[ "${PW_USE_LATENCY_FLEX}" == 1 ]] ; then
+        try_copy_file "${PW_PLUGINS_PATH}/latency_flex/latencyflex_layer.so" "${WINEDIR}/lib64/wine/x86_64-unix/"
+        try_copy_file "${PW_PLUGINS_PATH}/latency_flex/latencyflex_layer.dll" "${WINEDIR}/lib64/wine/x86_64-windows/"
+        try_copy_file "${PW_PLUGINS_PATH}/latency_flex/latencyflex_wine.dll" "${WINEDIR}/lib64/wine/x86_64-windows/"
+        try_force_link_file "${PW_PLUGINS_PATH}/latency_flex/latencyflex_layer.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+        try_force_link_file "${PW_PLUGINS_PATH}/latency_flex/latencyflex_wine.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+        export PW_USE_NVAPI_AND_DLSS=1
+        export LFX=1
+    fi
+
     if [[ "${PW_PRIME_RENDER_OFFLOAD}" == 1 ]] ; then
         export __NV_PRIME_RENDER_OFFLOAD=1
         export __GLX_VENDOR_LIBRARY_NAME=nvidia
