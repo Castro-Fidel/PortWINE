@@ -122,6 +122,15 @@ portwine_start_debug () {
     echo "Version WINE in the Port:" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "$PW_WINE_USE" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "Program bit depth" >> "${PORT_WINE_PATH}/${portname}.log"
+    if [[ $(file "$portwine_exe") =~ x86-64 ]]; then
+        echo "64 bit" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "-----------------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    else
+        echo "32 bit" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    fi
+    echo "--------------------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Date and time of start debug for ${portname}:" >> "${PORT_WINE_PATH}/${portname}.log"
     date >> "${PORT_WINE_PATH}/${portname}.log"
     echo "-----------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
