@@ -227,6 +227,8 @@ portwine_start_debug () {
     sed -i '/.fx$/d' "${PORT_WINE_PATH}/${portname}.log"
     sed -i '/HACK_does_openvr_work/d' "${PORT_WINE_PATH}/${portname}.log"
     sed -i '/Uploading is disabled/d' "${PORT_WINE_PATH}/${portname}.log"
+    sed -i '/dlopen failed - libgamemode.so/d' "${PORT_WINE_PATH}/${portname}.log"
+    sed -i '/wine: RLIMIT_NICE is <= 20/d' "${PORT_WINE_PATH}/${portname}.log"
     deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++') 
     echo "$deb_text" > "${PORT_WINE_PATH}/${portname}.log"
     "$pw_yad" --title="${portname}.log" --borders=3 --no-buttons --text-align=center \
