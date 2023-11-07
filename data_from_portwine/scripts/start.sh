@@ -180,10 +180,10 @@ portwine_start_debug () {
     fi
     echo "----------------------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "GameMode status:" >> "${PORT_WINE_PATH}/${portname}.log"
-    if gamemoded -s | grep -q "active";
+    if gamemoded -s | grep "is active";
     then
         echo "gamemode is active"  >> "${PORT_WINE_PATH}/${portname}.log"
-    elif gamemoded -s | grep -q "inactive";
+    elif gamemoded -s | grep "is inactive";
     then
         echo "gamemode is inactive"  >> "${PORT_WINE_PATH}/${portname}.log"
     else
