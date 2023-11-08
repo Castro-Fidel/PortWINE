@@ -157,6 +157,9 @@ start_portwine () {
         export DXVK_ENABLE_NVAPI=0
         var_winedlloverride_update "nvngx,_nvngx="
     fi
+        if [[ "${PW_USE_GALLIUM_ZINK}" == 1 ]] ; then
+        export PW_VULKAN_USE=5
+    fi
 
     if [[ "${PW_PRIME_RENDER_OFFLOAD}" == 1 ]] ; then
         if [[ ! -z $(command -v glxinfo) ]] \
@@ -388,6 +391,14 @@ start_portwine () {
         print_info "Use OpenGL"
         export GL_YIELD="NOTHING"
         export mesa_glthread=true
+        var_winedlloverride_update "d3d11,d3d10,d3d10core,d3d10_1,d3d9,wined3d9,dxgi=b;d3d12,d3d12core="
+    elif [[ "${PW_VULKAN_USE}" == "5" ]] ; then
+        print_info "Use OpenGL Zink"
+        export GL_YIELD="NOTHING"
+        export mesa_glthread=true
+        export  __GLX_VENDOR_LIBRARY_NAME=mesa
+        export MESA_LOADER_DRIVER_OVERRIDE=zink
+        export GALLIUM_DRIVER=zink
         var_winedlloverride_update "d3d11,d3d10,d3d10core,d3d10_1,d3d9,wined3d9,dxgi=b;d3d12,d3d12core="
     elif [[ "${PW_VULKAN_USE}" == "3" ]] ; then
         print_info "Use GALLIUM-NINE (Native DX9 on MESA drivers)"
