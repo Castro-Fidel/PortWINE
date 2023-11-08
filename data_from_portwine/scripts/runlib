@@ -162,8 +162,7 @@ start_portwine () {
     fi
 
     if [[ "${PW_PRIME_RENDER_OFFLOAD}" == 1 ]] ; then
-        if [[ ! -z $(command -v glxinfo) ]] \
-        && [[ ! -z $(glxinfo -B | grep "OpenGL renderer" | grep -i "nvidia") ]]
+        if ${PW_WINELIB}/portable/bin/inxi -Gc0 | grep "renderer" | grep -i "nvidia" ;
         then
             print_debug "Nvidia used by default. Force disabled PRIME_RENDER_OFFLOAD"
             export __NV_PRIME_RENDER_OFFLOAD=0
@@ -223,7 +222,7 @@ start_portwine () {
         print_info "Gamemod will be launched."
     else
         export GAMEMODERUN=0
-        echo "Gamemod is not installed or disabled in vars script or db file: PW_USE_GAMEMODE=$PW_USE_GAMEMODE"
+        print_info "Gamemod is not installed or disabled in vars script or db file: PW_USE_GAMEMODE=$PW_USE_GAMEMODE"
     fi
     pw_other_fixes
 

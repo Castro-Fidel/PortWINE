@@ -113,36 +113,52 @@ portwine_start_debug () {
     echo "--------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     if [[ "${PW_VULKAN_USE}" = "0" ]] ; then 
         echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DX9-11 to ${loc_gui_open_gl}" >> "${PORT_WINE_PATH}/${portname}.log"
+    elif [[ "${PW_VULKAN_USE}" = "1" ]] ; then
+        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_STABLE_VER} and VKD3D-PROTON v.${VKD3D_STABLE_VER}" >> "${PORT_WINE_PATH}/${portname}.log"
+    elif [[ "${PW_VULKAN_USE}" = "2" ]] ; then
+        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_GIT_VER} and VKD3D-PROTON v.${VKD3D_GIT_VER}" >> "${PORT_WINE_PATH}/${portname}.log"
     elif [[ "${PW_VULKAN_USE}" = "3" ]] ; then 
         echo "PW_VULKAN_USE=${PW_VULKAN_USE} - native DX9 on MESA drivers" >> "${PORT_WINE_PATH}/${portname}.log"
+    elif [[ "${PW_VULKAN_USE}" = "4" ]] ; then
+        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DirectX to wined3d vulkan" >> "${PORT_WINE_PATH}/${portname}.log"
     else 
         echo "PW_VULKAN_USE=${PW_VULKAN_USE}" >> "${PORT_WINE_PATH}/${portname}.log"
     fi
     echo "--------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "Version WINE in the Port:" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "Version WINE in use:" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "$PW_WINE_USE" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "-------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "Program bit depth:" >> "${PORT_WINE_PATH}/${portname}.log"
+    if [[ $(file "$portwine_exe") =~ x86-64 ]]; then
+        echo "64 bit" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "-----------------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    else
+        echo "32 bit" >> "${PORT_WINE_PATH}/${portname}.log"
+    fi
+    echo "--------------------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Date and time of start debug for ${portname}:" >> "${PORT_WINE_PATH}/${portname}.log"
     date >> "${PORT_WINE_PATH}/${portname}.log"
     echo "-----------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "The installation path of the ${portname}:" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "$PORT_WINE_PATH" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "----------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "Operating system" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "Operating system:" >> "${PORT_WINE_PATH}/${portname}.log"
     cat /etc/os-release | grep -oP 'PRETTY_NAME="\K[^"]+' >> "${PORT_WINE_PATH}/${portname}.log"
     echo "--------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Desktop environment:" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Desktop session: ${DESKTOP_SESSION}" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Current desktop: ${XDG_CURRENT_DESKTOP}" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Session type: ${XDG_SESSION_TYPE}" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "--------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "Kernel" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "---------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "Kernel:" >> "${PORT_WINE_PATH}/${portname}.log"
     uname -r >> "${PORT_WINE_PATH}/${portname}.log"
     echo "-------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "CPU" >> "${PORT_WINE_PATH}/${portname}.log"
-    cat /proc/cpuinfo | grep "model name" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "CPU:" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "CPU physical cores:$(cat /proc/cpuinfo | grep 'cpu cores' | sort -u | cut -d':' -f2)" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "CPU logical cores: $(cat /proc/cpuinfo | grep 'processor' | wc -l)" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "CPU model name:$(cat /proc/cpuinfo | grep 'model name' | sort -u | cut -d':' -f2)" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "RAM" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "RAM:" >> "${PORT_WINE_PATH}/${portname}.log"
     free -m >> "${PORT_WINE_PATH}/${portname}.log"
     echo "-----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Graphic cards and drivers:" >> "${PORT_WINE_PATH}/${portname}.log"
@@ -160,15 +176,21 @@ portwine_start_debug () {
     if [ $? -eq 0 ]; then
         echo "Vulkan cube test passed successfully" >> "${PORT_WINE_PATH}/${portname}.log"
     else
-        echo "Vkcube test completed with error" >> "${PORT_WINE_PATH}/${portname}.log"
+        echo "Vulkan cube test completed with error" >> "${PORT_WINE_PATH}/${portname}.log"
     fi
-    if [ ! -x "$(command -v gamemoderun 2>/dev/null)" ]
+    echo "----------------------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "GameMode status:" >> "${PORT_WINE_PATH}/${portname}.log"
+    if gamemoded -s | grep "is active";
     then
-        echo "---------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-        echo "!!!gamemod not found!!!"  >> "${PORT_WINE_PATH}/${portname}.log"
+        echo "gamemode is active"  >> "${PORT_WINE_PATH}/${portname}.log"
+    elif gamemoded -s | grep "is inactive";
+    then
+        echo "gamemode is inactive"  >> "${PORT_WINE_PATH}/${portname}.log"
+    else
+        echo "gamemode is not found"  >> "${PORT_WINE_PATH}/${portname}.log"
     fi
-    echo "---------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo 'locale :' >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "----------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo 'locale:' >> "${PORT_WINE_PATH}/${portname}.log"
     locale >> "${PORT_WINE_PATH}/${portname}.log"
     echo "---" >> "${PORT_WINE_PATH}/${portname}.log"
     echo 'locale -a | grep -i "$(locale | grep -e '^LANG=' | sed 's/LANG=//' | sed  's/\-8//')" :' >> "${PORT_WINE_PATH}/${portname}.log"
@@ -218,6 +240,8 @@ portwine_start_debug () {
     sed -i '/.fx$/d' "${PORT_WINE_PATH}/${portname}.log"
     sed -i '/HACK_does_openvr_work/d' "${PORT_WINE_PATH}/${portname}.log"
     sed -i '/Uploading is disabled/d' "${PORT_WINE_PATH}/${portname}.log"
+    sed -i '/dlopen failed - libgamemode.so/d' "${PORT_WINE_PATH}/${portname}.log"
+    sed -i '/wine: RLIMIT_NICE is <= 20/d' "${PORT_WINE_PATH}/${portname}.log"
     deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++') 
     echo "$deb_text" > "${PORT_WINE_PATH}/${portname}.log"
     "$pw_yad" --title="${portname}.log" --borders=3 --no-buttons --text-align=center \
