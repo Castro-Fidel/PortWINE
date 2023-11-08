@@ -158,6 +158,15 @@ start_portwine () {
         var_winedlloverride_update "nvngx,_nvngx="
     fi
 
+    if [[ "${PW_USE_DGVOODOO2}" == 1 ]] ; then
+        PATH_TO_DGVOODOO2_FILES="${PW_VULKAN_DIR}/dgvoodoo2-${DGVOODOO2_VER}"
+        print_info "dgvoodoo2-${DGVOODOO2_VER} in use"
+        try_force_link_file "${PATH_TO_DGVOODOO2_FILES}/x32/glide.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+        try_force_link_file "${PATH_TO_DGVOODOO2_FILES}/x32/glide2x.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+        try_force_link_file "${PATH_TO_DGVOODOO2_FILES}/x32/glide3x.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+        try_force_link_file "${PATH_TO_DGVOODOO2_FILES}/dgVoodoo.conf" "${WINEPREFIX}/drive_c/windows/syswow64/"
+    fi
+
     if [[ "${PW_PRIME_RENDER_OFFLOAD}" == 1 ]] ; then
         if [[ ! -z $(command -v glxinfo) ]] \
         && [[ ! -z $(glxinfo -B | grep "OpenGL renderer" | grep -i "nvidia") ]]
