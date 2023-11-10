@@ -23,8 +23,8 @@ update-desktop-database -q "${HOME}/.local/share/applications"
 xdg-mime default PortProton.desktop "application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program"
 
 name_desktop="readme"
-echo "[Desktop Entry]"					 > "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Name=${name_desktop}"				>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "[Desktop Entry]"				 > "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Name=${name_desktop}"			>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "Version=1.0"					>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "Type=Link"					>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "Icon="${PORT_WINE_PATH}/data/img/readme.png""	>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
@@ -53,13 +53,13 @@ if [ "${PW_SILENT_INSTALL}" = "1" ] ; then
 				ln -s "${PW_OLD_PATH}/PortProton" "${XDG_DATA_HOME}/PortWINE"
 			fi
 		fi
-		if [ ! -L "${HOME}/PortWINE" ]; then
+		if [ ! -L "${HOME}/PortWINE" ] && [ -d "${XDG_DATA_HOME}/PortWINE" ] ; then
 		    ln -s "${XDG_DATA_HOME}/PortWINE" "${HOME}/"
 		else
 		    echo "Symbolic link already exists."
 		fi
 		echo "Restarting PP after installing..."
-		/usr/bin/env bash -c "${XDG_DATA_HOME}/PortWINE/PortProton/data/scripts/start.sh" $@ & 
+		/usr/bin/env bash -c "${PORT_WINE_PATH}/data/scripts/start.sh" $@ & 
 		exit 0
 	else
 		echo "Installation completed successfully."
