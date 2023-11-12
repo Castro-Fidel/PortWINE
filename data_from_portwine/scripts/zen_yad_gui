@@ -540,18 +540,20 @@ portwine_create_shortcut () {
 
         echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
         echo "Name=${name_desktop}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-        if [ -z "${PW_CHECK_AUTOINSTAL}" ]
-        then echo "Exec=env "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" "" \
-        >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-        else echo "Exec=env "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" "" \
-        >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-        fi
+        echo "Exec=\"${PATH_TO_GAME}/${name_desktop}.sh\"" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
         echo "Type=Application" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
         echo "Categories=Game" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
         echo "StartupNotify=true" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
         echo "Path="${PORT_SCRIPTS_PATH}/"" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
         echo "Icon="${PORT_WINE_PATH}/data/img/${name_desktop}.png"" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+
+        echo "#!/usr/bin/env bash" > "${PATH_TO_GAME}/${name_desktop}.sh"
+        echo "##########################################################"
+        echo "env "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" "" \
+        >> "${PATH_TO_GAME}/${name_desktop}.sh"
+
         chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
+        chmod u+x "${PATH_TO_GAME}/${name_desktop}.sh"
 
         if [[ "${create_menu_desktop_shortcut}" == "TRUE" ]]; then
             try_remove_file "${HOME}/.local/share/applications/${name_desktop}.desktop"
@@ -569,12 +571,13 @@ portwine_create_shortcut () {
 }
 
 portwine_delete_shortcut () {
-    rm -f "$(grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop)" $>/dev/null
-    rm -f "$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop)" $>/dev/null
+    rm -f "$(grep -il "${PATH_TO_GAME}" "${HOME}/.local/share/applications"/*.desktop)" $>/dev/null
+    rm -f "$(grep -il "${PATH_TO_GAME}" "${PORT_WINE_PATH}"/*.desktop)" $>/dev/null
+    rm -f "$(grep -il "${PATH_TO_GAME}" "${PATH_TO_GAME}"/*.sh)" $>/dev/null
     if [[ -d "${HOME}/Desktop" ]] ; then
-        rm -f "$(grep -il "${portwine_exe}" "${HOME}/Desktop"/*.desktop)" $>/dev/null
+        rm -f "$(grep -il "${PATH_TO_GAME}" "${HOME}/Desktop"/*.desktop)" $>/dev/null
     elif [[ -d "${HOME}/Рабочий стол" ]] ; then
-        rm -f "$(grep -il "${portwine_exe}" "${HOME}/Рабочий стол"/*.desktop)" $>/dev/null
+        rm -f "$(grep -il "${PATH_TO_GAME}" "${HOME}/Рабочий стол"/*.desktop)" $>/dev/null
     fi
 }
 

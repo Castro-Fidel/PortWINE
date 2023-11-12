@@ -600,11 +600,10 @@ fi
 if [ ! -z "${portwine_exe}" ]; then
     if [[ -z "${PW_GUI_DISABLED_CS}" || "${PW_GUI_DISABLED_CS}" == 0 ]] ; then  
         pw_create_gui_png
-        grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop
-        if [[ "$?" != "0" ]] ; then
-            PW_SHORTCUT="${loc_gui_create_shortcut}!$PW_GUI_ICON_PATH/separator.png!${loc_create_shortcut}:100"
+        if ! grep -il "${PATH_TO_GAME}" "${HOME}/.local/share/applications"/*.desktop; then
+            PW_SHORTCUT="${loc_gui_create_shortcut}!${PW_GUI_ICON_PATH}/separator.png!${loc_create_shortcut}:100"
         else
-            PW_SHORTCUT="${loc_gui_delete_shortcut}!$PW_GUI_ICON_PATH/separator.png!${loc_delete_shortcut}:98"
+            PW_SHORTCUT="${loc_gui_delete_shortcut}!${PW_GUI_ICON_PATH}/separator.png!${loc_delete_shortcut}:98"
         fi
         OUTPUT_START=$("${pw_yad}" --text-align=center --text "$PW_COMMENT_DB" --borders=3 --form \
         --title "${portname}-${install_ver} (${scripts_install_ver})" --image "${PW_ICON_FOR_YAD}" --separator=";" --keep-icon-size \
@@ -645,7 +644,7 @@ else
         if [[ ! -z $(pidof -s yad) ]] || [[ ! -z $(pidof -s yad_v12_3) ]] ; then
             kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \--notebook" | awk '{print $1}') > /dev/null 2>&1
         fi
-        PW_EXEC_FROM_DESKTOP="$(cat "${PORT_WINE_PATH}/${PW_YAD_SET//¬/" "}" | grep Exec | head -n 1 | awk -F"=env " '{print $2}')"
+        PW_EXEC_FROM_DESKTOP="$(cat "${PORT_WINE_PATH}/${PW_YAD_SET//¬/" "}" | grep Exec | head -n 1 | awk -F"=" '{print $2}')"
 
         print_info "Restarting PP after choose desktop file..."
         # stop_portwine
