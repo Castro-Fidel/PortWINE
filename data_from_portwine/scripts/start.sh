@@ -28,6 +28,11 @@ if [[ "${XDG_SESSION_TYPE}" = "wayland" ]] && [[ ! -f "${PORT_WINE_TMP_PATH}/che
     echo "1" > "${PORT_WINE_TMP_PATH}/check_wayland"
 fi
 
+if pgrep -i steam >/dev/null && pgrep -a . | grep -i ${portname} >/dev/null; then
+    print_debug "${portname} started with Steam, force use PW_GUI_DISABLED_CS"
+    export PW_GUI_DISABLED_CS=1
+fi
+
 if [[ -f "${PORT_WINE_TMP_PATH}/tmp_main_gui_size" ]] && [[ ! -z "$(cat ${PORT_WINE_TMP_PATH}/tmp_main_gui_size)" ]] ; then
     export PW_MAIN_SIZE_W="$(cat ${PORT_WINE_TMP_PATH}/tmp_main_gui_size | awk '{print $1}')"
     export PW_MAIN_SIZE_H="$(cat ${PORT_WINE_TMP_PATH}/tmp_main_gui_size | awk '{print $2}')"
