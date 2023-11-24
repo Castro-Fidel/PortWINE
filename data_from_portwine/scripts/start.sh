@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Author: linux-gaming.ru
 
-export NO_AT_BRIDGE=1
+ [[ "${START_FROM_STEAM}" == 1 ]] || export NO_AT_BRIDGE=1
 export pw_full_command_line=("$0" $*)
 MISSING_DESKTOP_FILE=0
 

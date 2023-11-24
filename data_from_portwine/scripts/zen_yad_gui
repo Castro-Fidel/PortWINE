@@ -522,7 +522,7 @@ gui_vkBasalt () {
 
 portwine_create_shortcut () {
     pw_create_gui_png
-    name_desktop="${PORTPROTON_NAME}"
+    export name_desktop="${PORTPROTON_NAME}"
     OUTPUT=$("${pw_yad}" --title="${inst_set}." --form --borders=3 \
     --window-icon "$PW_GUI_ICON_PATH/port_proton.png" \
     --image "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" \
@@ -540,18 +540,21 @@ portwine_create_shortcut () {
 
         echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
         echo "Name=${name_desktop}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-        if [ -z "${PW_CHECK_AUTOINSTAL}" ]
-        then echo "Exec=env "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" "" \
-        >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-        else echo "Exec=env "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" "" \
-        >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-        fi
+        echo "Exec=env "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" "" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
         echo "Type=Application" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
         echo "Categories=Game" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
         echo "StartupNotify=true" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
         echo "Path="${PORT_SCRIPTS_PATH}/"" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
         echo "Icon="${PORT_WINE_PATH}/data/img/${name_desktop}.png"" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
         chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
+
+        # TODO: for steam
+        # echo "#!/usr/bin/env bash" > "${STEAM_SCRIPTS}/${name_desktop}.sh"
+        # echo "export START_FROM_STEAM=1" >> "${STEAM_SCRIPTS}/${name_desktop}.sh"
+        # echo "export LD_PRELOAD=\"\"" >> "${STEAM_SCRIPTS}/${name_desktop}.sh"
+        # echo "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" " >> "${STEAM_SCRIPTS}/${name_desktop}.sh"
+        # chmod u+x "${STEAM_SCRIPTS}/${name_desktop}.sh"
+        # "${PORT_SCRIPTS_PATH}/add_in_steam.sh"
 
         if [[ "${create_menu_desktop_shortcut}" == "TRUE" ]]; then
             try_remove_file "${HOME}/.local/share/applications/${name_desktop}.desktop"
@@ -571,6 +574,7 @@ portwine_create_shortcut () {
 portwine_delete_shortcut () {
     rm -f "$(grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop)" $>/dev/null
     rm -f "$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop)" $>/dev/null
+    rm -f "$(grep -il "${portwine_exe}" "${STEAM_SCRIPTS}"/*.sh)" $>/dev/null
     if [[ -d "${HOME}/Desktop" ]] ; then
         rm -f "$(grep -il "${portwine_exe}" "${HOME}/Desktop"/*.desktop)" $>/dev/null
     elif [[ -d "${HOME}/Рабочий стол" ]] ; then
