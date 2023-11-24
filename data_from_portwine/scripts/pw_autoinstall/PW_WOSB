@@ -3,18 +3,21 @@
 ########################################################################
 export PW_PREFIX_NAME="DOTNET"
 export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/wos_client.exe"
-export LAUNCH_PARAMETERS=("/VERYSILENT")
+export LAUNCH_PARAMETERS=("/S")
 export PW_DLL_INSTALL="faudio dotnet48"
 export PW_VULKAN_USE=1
 
+WOSB_VERSION="$(curl -s --list-only --connect-timeout 3 https://www.worldofseabattle.com/download2 2>/dev/null | grep '/web_installer.exe' | awk -F'xsolla-launcher-update/' '{print $2}' | awk -F'/' '{print $1}')"
+[[ ! -z "$WOSB_VERSION" ]] && print_info "Found version: $WOSB_VERSION" || zenity_error "Error while get version of WOSB INSTALLER."
+
 start_portwine
-if try_download "https://165311.selcdn.ru/wosb_installer/wos_client.exe" "${PW_AUTOINSTALL_EXE}"
+if try_download "https://installer.launcher.xsolla.com/xlauncher-builds/xsolla-launcher-update/${WOSB_VERSION}/bin/installer.exe" "${PW_AUTOINSTALL_EXE}"
 then
     pw_start_progress_bar_block "Installing World of Sea Battle. ${loc_gui_please_wait} "
 
-    pw_kill_autostart WorldOfSeaBattleClient.exe &
+   #  pw_kill_autostart WorldOfSeaBattleClient.exe &
     pw_run "${PW_AUTOINSTALL_EXE}" 
-    portwine_exe="$WINEPREFIX/drive_c/Games/World Of Sea Battle/WorldOfSeaBattleClient.exe"
+    portwine_exe="$WINEPREFIX/drive_c/users/$USER/AppData/Local/Wosb Launcher/launcher.exe"
     try_remove_file "${PW_AUTOINSTALL_EXE}"
     try_remove_file "${portwine_exe}.ppdb"
     kill_portwine

@@ -169,6 +169,13 @@ portwine_start_debug () {
     echo "-----" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "inxi -G:" >> "${PORT_WINE_PATH}/${portname}.log"
     "${PW_WINELIB}/portable/bin/inxi" -Gc0 >> "${PORT_WINE_PATH}/${portname}.log"
+    if echo "$LSPCI_VGA" | grep -i nvidia &>/dev/null ; then 
+        if command -v ldconfig &>/dev/null ; then
+            echo "------" >> "${PORT_WINE_PATH}/${portname}.log"
+            echo "ldconfig -p | grep libGLX_nvidia" >> "${PORT_WINE_PATH}/${portname}.log"
+            ldconfig -p | grep libGLX_nvidia >> "${PORT_WINE_PATH}/${portname}.log"
+        fi
+    fi
     echo "----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Vulkan info device name:" >> "${PORT_WINE_PATH}/${portname}.log"
     [[ `command -v vulkaninfo` ]] && vulkaninfo --summary 2>/dev/null | grep -E '^GPU|deviceName|driverName' >> "${PORT_WINE_PATH}/${portname}.log"
@@ -794,7 +801,7 @@ else
     --field="   Rockstar Games Launcher"!"$PW_GUI_ICON_PATH/Rockstar.png"!"":"FBTN" '@bash -c "button_click PW_ROCKSTAR"' \
     --field="   League of Legends"!"$PW_GUI_ICON_PATH/lol.png"!"":"FBTN" '@bash -c "button_click PW_LOL"' \
     --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png"!"":"FBTN" '@bash -c "button_click  PW_GAMEFORGE"' \
-    --field="   World of Sea Battle (BETA)"!"$PW_GUI_ICON_PATH/wosb.png"!"":"FBTN" '@bash -c "button_click PW_WOSB"' \
+    --field="   World of Sea Battle (x64)"!"$PW_GUI_ICON_PATH/wosb.png"!"":"FBTN" '@bash -c "button_click PW_WOSB"' \
     --field="   CALIBER"!"$PW_GUI_ICON_PATH/caliber.png"!"":"FBTN" '@bash -c "button_click PW_CALIBER"' \
     --field="   Crossout"!"$PW_GUI_ICON_PATH/crossout.png"!"":"FBTN" '@bash -c "button_click PW_CROSSOUT"' \
     --field="   Warframe"!"$PW_GUI_ICON_PATH/warframe.png"!"":"FBTN" '@bash -c "button_click PW_WARFRAME"' \
