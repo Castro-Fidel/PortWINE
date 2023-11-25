@@ -165,6 +165,14 @@ pw_gui_for_edit_db () {
         AMD_VULKAN_VAR="disabled"
     fi
 
+    if [[ ! -z "${PW_GPU_USE}" ]] && [[ "${PW_GPU_USE}" != "disabled" ]] ; then
+        GPU_VAR="${PW_GPU_USE}"
+    else
+        GPU_VAR="disabled"
+    fi
+
+    GET_GPU_NAMES=$(vulkaninfo | awk -F '=' '/deviceName/{print $2}' | paste -sd '!')
+
     GET_REFRASH_RATE="30!45!60!75!120!144!165!240"
 
     logical_cores=$(grep -c "^processor" /proc/cpuinfo)
@@ -207,6 +215,7 @@ pw_gui_for_edit_db () {
     --field=":LBL" "" \
     --field="${loc_gui_cpu_limit}!${loc_gui_cpu_limit_help} :CB" "${CPU_LIMIT_VAR}!disabled!${GET_LOGICAL_CORE}" \
     --field="${loc_gui_amd_vulkan_select}!${loc_gui_amd_vulkan_select_help} :CB" "${AMD_VULKAN_VAR}!disabled!amdvlk!amdgpupro!radv!radv_gpl!radv_aco" \
+    --field="${loc_gui_gpu_select}!${loc_gui_gpu_select_help} :CB" "${GPU_VAR}!disabled!${GET_GPU_NAMES}" \
     --field="${loc_gui_mango_fps}!${loc_gui_mango_fps_help} :CB" "${FPS_LIMIT_VAR}!disabled!${GET_REFRASH_RATE}"  2>/dev/null 1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
     "${pw_yad_v12_3}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="700" \
     --text "${loc_gui_edit_db} <b>${PORTWINE_DB}</b>\n ${loc_gui_edit_db_help}" --separator=" " --borders=3 \
@@ -239,7 +248,8 @@ pw_gui_for_edit_db () {
     LAUNCH_PARAMETERS=`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $5}'`
     CPU_LIMIT="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $7}'`"
     PW_AMD_VULKAN_USE="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $8}'`"
-    FPS_LIMIT="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $9}'`"
+    PW_GPU_USE="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $9}'`"
+    FPS_LIMIT="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $10}'`"
 
     if [[ "${FPS_LIMIT}" != "disabled" ]] && [[ "${FPS_LIMIT_VAR}" != "disabled" ]] ; then
         export MANGOHUD_CONFIG="$(echo ${MANGOHUD_CONFIG} | sed "s/fps_limit=${FPS_LIMIT_VAR}/fps_limit=${FPS_LIMIT}/")"
@@ -253,7 +263,7 @@ pw_gui_for_edit_db () {
     if [[ "${CPU_LIMIT}" != "disabled" ]] ; then
         export PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $((${CPU_LIMIT} - 1)))"
     else
-            export PW_WINE_CPU_TOPOLOGY="disabled"
+        export PW_WINE_CPU_TOPOLOGY="disabled"
     fi
     if [[ "${PW_AMD_VULKAN_USE}" == "amdvlk" ]] ; then
         export DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1=1
@@ -284,8 +294,11 @@ pw_gui_for_edit_db () {
         var_radv_perftest_config_update gpl
         export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/radeon_icd.i686.json:/usr/share/vulkan/icd.d/radeon_icd.x86_64.json"
     fi
+    if [[ "${PW_GPU_USE}" != "disabled" ]]; then
+        export DXVK_FILTER_DEVICE_NAME=$PW_GPU_USE
+    fi
     echo "pw_gui_for_edit_db PORTWINE_DB_FILE=$PORTWINE_DB_FILE"
-    edit_db_from_gui $@ MANGOHUD_CONFIG LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY PW_AMD_VULKAN_USE
+    edit_db_from_gui $@ MANGOHUD_CONFIG LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY PW_AMD_VULKAN_USE PW_GPU_USE
     return 0
 }
 
