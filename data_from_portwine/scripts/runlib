@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Author: Castro-Fidel (linux-gaming.ru)
-# Development assistants: Cefeiko; Dezert1r; Taz_mania; Anton_Famillianov; gavr; RidBowt; chal55rus; UserDiscord
+# Development assistants: Cefeiko; Dezert1r; Taz_mania; Anton_Famillianov; gavr; RidBowt; chal55rus; UserDiscord; Boria138
 ########################################################################
 echo '
             █░░ █ █▄░█ █░█ ▀▄▀ ▄▄ █▀▀ ▄▀█ █▀▄▀█ █ █▄░█ █▀▀ ░ █▀█ █░█
@@ -160,18 +160,6 @@ start_portwine () {
     
     if [[ "${PW_USE_GALLIUM_ZINK}" == 1 ]] ; then
         export PW_VULKAN_USE=5
-    fi
-
-    if [[ "${PW_PRIME_RENDER_OFFLOAD}" == 1 ]] ; then
-        if ${PW_WINELIB}/portable/bin/inxi -Gc0 | grep "renderer" | grep -i "nvidia" ; then
-            print_debug "Nvidia used by default. Force disabled PRIME_RENDER_OFFLOAD"
-            export __NV_PRIME_RENDER_OFFLOAD=0
-            unset __GLX_VENDOR_LIBRARY_NAME __VK_LAYER_NV_optimus
-        else
-            export __NV_PRIME_RENDER_OFFLOAD=1
-            export __GLX_VENDOR_LIBRARY_NAME=nvidia
-            export __VK_LAYER_NV_optimus=NVIDIA_only
-        fi
     fi
 
     if [[ "${PW_HEAP_DELAY_FREE}" == 1 ]]
@@ -636,7 +624,7 @@ pw_run () {
         echo "Log WINE:" >> "${PW_LOG_TO_FILE}"
         echo ""
         print_debug "Log from RUNTIME and WINE:"
-        env ${optirun_on} ${PW_GAMEMODERUN_SLR} \
+        ${PW_GAMEMODERUN_SLR} \
         NO_AT_BRIDGE=0 ${pw_runtime} \
         env ${PW_MANGOHUD_SLR} \
         PATH="${PATH}" \
@@ -652,7 +640,7 @@ pw_run () {
         fi
         echo ""
         print_debug "Log from RUNTIME and WINE:"
-        env ${optirun_on} ${PW_GAMEMODERUN_SLR} \
+        ${PW_GAMEMODERUN_SLR} \
         NO_AT_BRIDGE=0 ${pw_runtime} \
         env ${PW_MANGOHUD_SLR} \
         PATH="${PATH}" \
