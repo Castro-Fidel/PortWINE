@@ -4,11 +4,15 @@
 export LAUNCH_PARAMETERS=("/s" "/nr" "/l=Russian")
 export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/MWO_Launcher_Setup.exe"
 start_portwine
-if try_download "http://mwogame.com/download.php" "${PW_AUTOINSTALL_EXE}"
+if try_download_game "http://mwogame.com/download.php" "${PW_AUTOINSTALL_EXE}"
 then
     pw_start_progress_bar_block "${loc_gui_installing_the} Metal War Online. ${loc_gui_please_wait} "
     pw_run "${PW_AUTOINSTALL_EXE}"
-    portwine_exe="$WINEPREFIX/drive_c/Games/MetalWarOnline/MWOLauncher.exe"
+    if [[ -d "$WINEPREFIX/drive_c/games/" ]] ; then
+        portwine_exe="$WINEPREFIX/drive_c/games/MetalWarOnline/MWOLauncher.exe"
+    else
+        portwine_exe="$WINEPREFIX/drive_c/Games/MetalWarOnline/MWOLauncher.exe"
+    fi
     try_remove_file "${PW_AUTOINSTALL_EXE}"
     try_remove_file "${portwine_exe}.ppdb"
     kill_portwine

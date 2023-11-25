@@ -114,6 +114,22 @@ check_process () {
 }
 export -f check_process
 
+try_download_game () {
+    [[ -f "${PW_AUTOINSTALL_EXE}" ]] && try_remove_file "${PW_AUTOINSTALL_EXE}"
+    PW_DOWNLOAD_FILE_NAME="$(basename $1)"
+    set -o pipefail
+    wget -O "$2" --read-timeout 300 --retry-connrefused --timeout 3 --tries 2 --no-dns-cache --no-cache \
+    --user-agent="Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" "$1" 2>&1 | \
+    tr '\r' '\n' | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9,.]\+.\) \(.*\)/\1\n#Downloading at \1\/, \2\/s, ETA \3/; s/^20[0-9][0-9].*/#Done./' | \
+    zenity --progress --percentage=0 --title="Download ${PW_DOWNLOAD_FILE_NAME}" --text=Starting... --auto-close --width=500 --height=90
+    if [ "${PIPESTATUS[0]}" != 0 ] ; then
+        print_error "Failed to download ${PW_DOWNLOAD_FILE_NAME}."
+        return 1   
+    else
+        return 0
+    fi
+}
+
 try_download () {
     PW_DOWNLOAD_FILE_NAME="$(basename $1)"
     set -o pipefail
@@ -308,7 +324,7 @@ check_user_conf () {
         echo "# User overides db and var settings..." >> "${USER_CONF}"
         echo "# export DXVK_HUD=full" >> "${USER_CONF}"
         echo "# export GALLIUM_HUD=fps" >> "${USER_CONF}"
-    elif grep "optirun_on" "${USER_CONF}" ; then
+    elif grep "optirun_on" "${USER_CONF}" &>/dev/null ; then
         sed -i '/optirun_on/d' "${USER_CONF}"
     fi
 }
@@ -369,11 +385,6 @@ init_wine_ver () {
     fi
     if [[ -d "${WINEDIR}" ]] ; then
         [[ ! -f "${WINEDIR}/version" ]] && echo "${PW_WINE_USE}" > "${WINEDIR}/version"
-
-        # if [[ -d "${WINEDIR}/lib32/" ]] ; then
-        #     mv -f "${WINEDIR}/lib" "${WINEDIR}/lib64"
-        #     mv -f "${WINEDIR}/lib32" "${WINEDIR}/lib"
-        # fi
 
         if [[ ! -d "${WINEDIR}/lib64/" && -d "${WINEDIR}/lib/wine/x86_64-unix" ]] ; then
             create_new_dir "${WINEDIR}/lib64/wine"
@@ -842,9 +853,8 @@ check_hybrid_graphicks () {
 }
 
 pw_init_db () {
-    if [[ ! -z "${portwine_exe}" ]] ; then
-        try_remove_file "${PORT_SCRIPTS_PATH}/portwine_db/setup"
-        export PORTWINE_DB=`echo "${portwine_exe}" | awk -F '/' 'NF>1{print $NF}' | sed s/".exe"/""/gi`
+    if [[ -f "${portwine_exe}" ]] ; then
+        export PORTWINE_DB="$(basename "${portwine_exe}" .exe)"
         if [[ -f "${portwine_exe}".ppdb ]] && [[ "${PORTWINE_DB}" != "RiotClientServices" ]] ; then
             export PORTWINE_DB_FILE="${portwine_exe}".ppdb
             . "${PORTWINE_DB_FILE}"
@@ -855,7 +865,12 @@ pw_init_db () {
         else
             orig_IFS="$IFS"
             IFS=$'\n'
-            PW_FIND_DB_FILE=`grep -ilw "#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
+            if [[ "$START_FROM_STEAM" != 1 ]] ; then
+                PW_FIND_DB_FILE=`grep -ilw "#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
+            else
+                # BpeMeHHblu` KocTblJlb =)
+                PW_FIND_DB_FILE=`grep -ilw "#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi | head -n 1`
+            fi
             if [[ `echo "$PW_FIND_DB_FILE" | wc -l` -gt 1 ]] ; then
                 unset ADD_CB_DBFILE
                 for PW_CHECK_DB_FILE in $PW_FIND_DB_FILE ; do
@@ -884,16 +899,13 @@ pw_init_db () {
                 edit_db_from_gui PW_PREFIX_NAME
             fi
         fi
-        if [ ! -z "${PORTWINE_DB_FILE}" ]; then
+        if [[ -f "${PORTWINE_DB_FILE}" ]] ; then
             . "${PORTWINE_DB_FILE}"
 
-            # HOTFIX: update prefix 
-            [[ "$PW_WINE_USE" == "PROTON_LG_8-15" ]] && export PW_WINE_USE="$PW_PROTON_LG_VER"
-            
-            init_wine_ver &&
+            init_wine_ver && 
             print_info "Use ${PORTWINE_DB_FILE} db file."
         fi
-        if [ -z "${PATH_TO_GAME}" ] ; then
+        if [[ -d "${PATH_TO_GAME}" ]] ; then
             export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"        
         fi
 
@@ -1038,6 +1050,22 @@ edit_db_from_gui () {
             fi
         elif [ "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}="`" != "export ${mod_db}=${!mod_db}" ] ; then
             sed -ri "s/.*export ${mod_db}=.*/export ${mod_db}=\"${!mod_db}\"/g" "${PORTWINE_DB_FILE}"
+        fi
+    done
+    return 0
+}
+
+edit_user_conf_from_gui () {
+    for mod_db in $@ ; do
+        print_info "${mod_db}=${!mod_db}"
+        if [ -z "`cat "${USER_CONF}" | grep "export ${mod_db}="`" ] ; then
+            echo "export ${mod_db}=\"${!mod_db}\"" >> "${USER_CONF}"
+        elif [ "`cat "${USER_CONF}" | grep "export ${mod_db}=" | grep -v "#"`" ] ; then
+            if [ "`cat "${USER_CONF}" | grep "export ${mod_db}=" | grep -v "#"`" != "export ${mod_db}=\"${!mod_db}\"" ] ; then
+                sed -ri "s/^export ${mod_db}=.*/export ${mod_db}=\"${!mod_db}\"/" "${USER_CONF}"
+            fi
+        elif [ "`cat "${USER_CONF}" | grep "export ${mod_db}="`" != "export ${mod_db}=${!mod_db}" ] ; then
+            sed -ri "s/.*export ${mod_db}=.*/export ${mod_db}=\"${!mod_db}\"/g" "${USER_CONF}"
         fi
     done
     return 0

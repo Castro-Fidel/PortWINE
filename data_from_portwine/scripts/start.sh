@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Author: linux-gaming.ru
 
- [[ "${START_FROM_STEAM}" == 1 ]] || export NO_AT_BRIDGE=1
+export NO_AT_BRIDGE=1
 export pw_full_command_line=("$0" $*)
 MISSING_DESKTOP_FILE=0
 
@@ -604,8 +604,8 @@ else
     fi
     unset PW_GUI_DISABLED_CS
 fi
-if [ ! -z "${portwine_exe}" ]; then
-    if [[ -z "${PW_GUI_DISABLED_CS}" || "${PW_GUI_DISABLED_CS}" == 0 ]] ; then  
+if [[ -f "${portwine_exe}" ]] ; then
+    if [[ "${PW_GUI_DISABLED_CS}" != 1 ]] ; then 
         pw_create_gui_png
         grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop
         if [[ "$?" != "0" ]] ; then
@@ -635,7 +635,7 @@ if [ ! -z "${portwine_exe}" ]; then
         else
             export PW_PREFIX_NAME="${PW_PREFIX_NAME^^}"
         fi
-    elif [ ! -z "${PORTWINE_DB_FILE}" ]; then
+    elif [[ -f "${PORTWINE_DB_FILE}" ]] ; then
         portwine_launch
     fi
 else
@@ -888,7 +888,7 @@ esac
 
 init_wine_ver
 
-if [[ -z "${PW_DISABLED_CREATE_DB}" ]] ; then
+if [[ "${PW_DISABLED_CREATE_DB}" != 1 ]] ; then
     if [[ ! -z "${PORTWINE_DB}" ]] && [[ -z "${PORTWINE_DB_FILE}" ]] ; then
         PORTWINE_DB_FILE=$(grep -il "\#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/*)
         if [[ -z "${PORTWINE_DB_FILE}" ]] ; then

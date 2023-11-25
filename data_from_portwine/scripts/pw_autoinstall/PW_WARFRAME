@@ -5,12 +5,16 @@ export LAUNCH_PARAMETERS=("/q")
 export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/Warframe.msi"
 
 start_portwine
-if try_download "http://content.warframe.com/dl/Warframe.msi" "${PW_AUTOINSTALL_EXE}"
+if try_download_game "http://content.warframe.com/dl/Warframe.msi" "${PW_AUTOINSTALL_EXE}"
 then
     pw_start_progress_bar_block "${loc_gui_installing_the} Warframe. ${loc_gui_please_wait} "
     pw_kill_autostart Launcher.exe 3 &
     pw_run msiexec /i "${PW_AUTOINSTALL_EXE}"
-    portwine_exe="${WINEPREFIX}/drive_c/users/$USER/AppData/Local/Warframe/Downloaded/Public/Tools/Launcher.exe"
+
+    pushd "${WINEPREFIX}/drive_c/users/$USER/AppData/Local/Warframe/Downloaded/Public/Tools/"
+        ln -s Launcher.exe Warframe_Launcher.exe
+    popd
+    portwine_exe="${WINEPREFIX}/drive_c/users/$USER/AppData/Local/Warframe/Downloaded/Public/Tools/Warframe_Launcher.exe"
     try_remove_file "${PW_AUTOINSTALL_EXE}"
     try_remove_file "${portwine_exe}.ppdb"
     kill_portwine

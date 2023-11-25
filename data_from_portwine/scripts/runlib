@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Author: Castro-Fidel (linux-gaming.ru)
-# Development assistants: Cefeiko; Dezert1r; Taz_mania; Anton_Famillianov; gavr; RidBowt; chal55rus; UserDiscord; Boria138
+# Development assistants: Cefeiko; Dezert1r; Taz_mania; Anton_Famillianov; gavr; RidBowt; chal55rus; UserDiscord; Boria138; Vano; Akai
 ########################################################################
 echo '
             █░░ █ █▄░█ █░█ ▀▄▀ ▄▄ █▀▀ ▄▀█ █▀▄▀█ █ █▄░█ █▀▀ ░ █▀█ █░█
@@ -186,6 +186,41 @@ start_portwine () {
         export DXVK_ENABLE_NVAPI=1
     fi
 
+    if [[ "${PW_GPU_USE}" != "disabled" ]] ; then
+        export DXVK_FILTER_DEVICE_NAME="${PW_GPU_USE}"
+        export VKD3D_FILTER_DEVICE_NAME="${PW_GPU_USE}"
+    fi
+
+    # if [[ "${PW_AMD_VULKAN_USE}" == "amdvlk" ]] ; then
+    #     export DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1=1
+    #     if grep -i -q -E '(rosa|redos|nobara|linuxmint|ubuntu|centos|rhel|fedora)' "/etc/os-release" ; then
+    #         export VK_ICD_FILENAMES="/opt/amdgpu/etc/vulkan/icd.d/amd_icd32.json:/opt/amdgpu/etc/vulkan/icd.d/amd_icd64.json"
+    #     elif grep -i -q "altlinux" '/etc/os-release' ; then
+    #         export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/amd_icd.json"
+    #     else
+    #         export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/amd_icd32.json:/usr/share/vulkan/icd.d/amd_icd64.json"
+    #     fi
+    # elif [[ "${PW_AMD_VULKAN_USE}" == "amdgpupro" ]] ; then
+    #     export DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1=1
+    #     if grep -i -q -E '(rosa|redos|nobara|linuxmint|ubuntu|centos|rhel|fedora)' "/etc/os-release" ; then
+    #         export VK_ICD_FILENAMES="/opt/amdgpu-pro/etc/vulkan/icd.d/amd_icd32.json:/opt/amdgpu-pro/etc/vulkan/icd.d/amd_icd64.json"
+    #         var_ld_library_path_update "/opt/amdgpu/libdrm/lib64:/opt/amdgpu/libdrm/lib32"
+    #     else
+    #         export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/amd_pro_icd32.json:/usr/share/vulkan/icd.d/amd_pro_icd64.json"
+    #     fi
+    # elif [[ "${PW_AMD_VULKAN_USE}" == "radv" ]] ; then
+    #     export DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1=1
+    #     export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/radeon_icd.i686.json:/usr/share/vulkan/icd.d/radeon_icd.x86_64.json"
+    # elif [[ "${PW_AMD_VULKAN_USE}" == "radv_aco" ]] ; then
+    #     export DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1=1
+    #     var_radv_perftest_config_update aco
+    #     export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/radeon_icd.i686.json:/usr/share/vulkan/icd.d/radeon_icd.x86_64.json"
+    # elif [[ "${PW_AMD_VULKAN_USE}" == "radv_gpl" ]] ; then
+    #     export DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1=1
+    #     var_radv_perftest_config_update gpl
+    #     export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/radeon_icd.i686.json:/usr/share/vulkan/icd.d/radeon_icd.x86_64.json"
+    # fi
+
     case "$PW_FORCE_USE_VSYNC" in  # 0-FORCE_OFF, 1-FORCE_ON, 2-BY_DEFAULT
         "0")
             unset vblank_mode
@@ -202,10 +237,6 @@ start_portwine () {
     if [[ -x "`command -v "gamemoderun" 2>/dev/null`" ]] && [[ "$PW_USE_GAMEMODE" = "1" ]] ; then
         export GAMEMODERUN=1
         PW_GAMEMODERUN_SLR="gamemoderun"
-        # if [[ ! -z "${PW_LD_PRELOAD}" ]]
-        # then export PW_LD_PRELOAD="${PW_LD_PRELOAD}:${MANGOHUD_LIB_NAME}"
-        # else export PW_LD_PRELOAD="${MANGOHUD_LIB_NAME}"
-        # fi
         systemctl enable --now --user gamemoded &>/dev/null
         print_info "Gamemod will be launched."
     else
@@ -263,7 +294,7 @@ start_portwine () {
         fi
     fi
     
-    [[ "${START_FROM_STEAM}" != 1 ]] || pw_update_pfx_cover_gui
+    pw_update_pfx_cover_gui
 
     if [[ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" \
     || ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/windows \
@@ -589,15 +620,11 @@ start_portwine () {
         echo "Disable EAC"
         [[ -z "${LAUNCH_PARAMETERS}" ]] && export LAUNCH_PARAMETERS+=" -eac-nop-loaded "
     fi
-
+    pw_stop_progress_bar &&
+    [[ "${START_FROM_STEAM}" != 1 ]] && pw_tray_icon
     sleep 0.5
-    if  [[ "${START_FROM_STEAM}" != 1 ]] ; then
-        pw_stop_progress_bar &&
-        pw_tray_icon &&
-
-        if [[ "${PW_CHECK_AUTOINSTAL}" != "1" ]] && [[ "${START_FROM_STEAM}" != 1 ]] ; then
-            pw_start_progress_bar_cover "${PW_GUI_ICON_PATH}/covers/pw_loading_cover.gif"
-        fi
+    if [[ "${PW_CHECK_AUTOINSTAL}" != "1" ]] ; then
+        pw_start_progress_bar_cover "${PW_GUI_ICON_PATH}/covers/pw_loading_cover.gif"
     fi
     add_in_start_portwine
 
@@ -618,6 +645,7 @@ pw_run () {
     PW_LOG_TO_FILE="${PORT_WINE_PATH}/${portname}.log"
     print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VKD3D_CONFIG" \
     "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2" "WINEDLLPATH" "WINE_CPU_TOPOLOGY"
+    kill -s SIGUSR1 "$PW_YAD_PID_PFX_COVER_UI" &>/dev/null
     if [[ "${PW_LOG}" == 1 ]] ; then
         echo "WINEDLLOVERRIDES=${WINEDLLOVERRIDES}" >> "${PW_LOG_TO_FILE}"
         echo "------------------------------------" >> "${PW_LOG_TO_FILE}"
@@ -625,7 +653,7 @@ pw_run () {
         echo ""
         print_debug "Log from RUNTIME and WINE:"
         ${PW_GAMEMODERUN_SLR} \
-        NO_AT_BRIDGE=0 ${pw_runtime} \
+        ${pw_runtime} \
         env ${PW_MANGOHUD_SLR} \
         PATH="${PATH}" \
         LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
@@ -641,7 +669,7 @@ pw_run () {
         echo ""
         print_debug "Log from RUNTIME and WINE:"
         ${PW_GAMEMODERUN_SLR} \
-        NO_AT_BRIDGE=0 ${pw_runtime} \
+        ${pw_runtime} \
         env ${PW_MANGOHUD_SLR} \
         PATH="${PATH}" \
         LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
@@ -714,9 +742,8 @@ create_new_dir "${PORT_WINE_TMP_PATH}"/mono
 export PW_VULKAN_DIR="${PORT_WINE_TMP_PATH}/VULKAN"
 create_new_dir "${PW_VULKAN_DIR}"
 
-# TODO: for steam
-# export STEAM_SCRIPTS="${PORT_WINE_PATH}/steam_scripts"
-# create_new_dir "${STEAM_SCRIPTS}"
+export STEAM_SCRIPTS="${PORT_WINE_PATH}/steam_scripts"
+create_new_dir "${STEAM_SCRIPTS}"
 
 export VULKAN_API_DRIVER_VERSION="$(vulkaninfo 2>/dev/null | grep "api" | head -n 1 | awk '{print $3}')"
 export LSPCI_VGA="$(lspci -k | grep -E 'VGA|3D' | tr -d '\n')"
