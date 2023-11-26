@@ -48,9 +48,9 @@ sudo dnf copr enable boria138/portproton
 sudo dnf install portproton
 ```
 
-* [**openSUSE Leap 15.4**](https://software.opensuse.org/ymp/home:Boria138/15.4/portproton.ymp?base=openSUSE%3ALeap%3A15.4&query=portproton)
-* [**openSUSE Leap 15.5**](https://software.opensuse.org/ymp/home:Boria138/15.5/portproton.ymp?base=openSUSE%3ALeap%3A15.5&query=portproton)
-* [**openSUSE Tumbleweed**](https://software.opensuse.org/ymp/home:Boria138/openSUSE_Tumbleweed/portproton.ymp?base=openSUSE%3AFactory&query=portproton)
+* [**openSUSE Leap 15.4**](https://software.opensuse.org/ymp/home:Boria138:PortProton/15.4/portproton.ymp)
+* [**openSUSE Leap 15.5**](https://software.opensuse.org/ymp/home:Boria138:PortProton/15.5/portproton.ymp)
+* [**openSUSE Tumbleweed**](https://software.opensuse.org/ymp/home:Boria138:PortProton/openSUSE_Tumbleweed/portproton.ymp)
 
 * **Alt Linux** устанавливается с помощью этой команды:
 
