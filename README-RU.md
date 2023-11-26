@@ -34,6 +34,8 @@
 [portproton_1.0-2_amd64.deb](https://github.com/Castro-Fidel/PortProton_dpkg/releases/download/portproton_1.0-2_amd64/portproton_1.0-2_amd64.deb)
 * **Arch Linux** и производные (Manjaro, Garuda, и т.д.) :
 [AUR](https://aur.archlinux.org/packages/portproton)
+* **OpenSuse**:
+[OBS](https://software.opensuse.org/download/package?package=portproton&project=home%3ABoria138%3APortProton)
 * **ROSA Linux** устанавливается с помощью этой команды:
 
 ```sh
@@ -47,10 +49,6 @@ sudo dnf copr enable boria138/portproton
 
 sudo dnf install portproton
 ```
-
-* [**openSUSE Leap 15.4**](https://software.opensuse.org/ymp/home:Boria138/15.4/portproton.ymp?base=openSUSE%3ALeap%3A15.4&query=portproton)
-* [**openSUSE Leap 15.5**](https://software.opensuse.org/ymp/home:Boria138/15.5/portproton.ymp?base=openSUSE%3ALeap%3A15.5&query=portproton)
-* [**openSUSE Tumbleweed**](https://software.opensuse.org/ymp/home:Boria138/openSUSE_Tumbleweed/portproton.ymp?base=openSUSE%3AFactory&query=portproton)
 
 * **Alt Linux** устанавливается с помощью этой команды:
 
