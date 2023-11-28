@@ -833,25 +833,6 @@ pw_check_and_download_plugins () {
     return 0
 }
 
-check_nvidia_rtx () {
-    if [[ ! -z $(echo "$LSPCI_VGA" | grep -i "nvidia") ]]; then
-        # Turing (without nvidia 16XX)
-        [[ "$LSPCI_VGA" == *TU[0-9]* ]] && [[ "$LSPCI_VGA" != *TU11[6-7]* ]] && return 0
-        # Ampere
-        [[ "$LSPCI_VGA" == *GA[0-9]* ]] && return 0
-        # Ada_Lovelace
-        [[ "$LSPCI_VGA" == *AD[0-9]* ]] || [[ "$LSPCI_VGA" == *2[6-8][0-9]* ]] && return 0
-    fi
-    return 1
-}
-
-check_hybrid_graphicks () {
-    if [[ ! -z "$(echo "$LSPCI_VGA" | grep -i nvidia | grep -i -E '(intel|amd)')" ]]
-    then return 0
-    else return 1
-    fi
-}
-
 pw_init_db () {
     if [[ -f "${portwine_exe}" ]] ; then
         export PORTWINE_DB="$(basename "${portwine_exe}" .exe)"
@@ -919,13 +900,6 @@ pw_init_db () {
                 export PW_WINE_CPU_TOPOLOGY="8:0,1,2,3,4,5,6,7"
                 print_info "Automatic added fix for unity games: WINE_CPU_TOPOLOGY=8:0,1,2,3,4,5,6,7"
         fi
-
-        if check_nvidia_rtx ; then
-            check_variables PW_USE_NVAPI_AND_DLSS "1"
-            check_variables PW_USE_FAKE_DLSS "0"
-            check_variables PW_USE_RAY_TRACING "1"
-        fi
-        check_hybrid_graphicks && check_variables PW_PRIME_RENDER_OFFLOAD "1"
     fi
     [[ "${START_FROM_STEAM}" == 1 ]] && export PW_GUI_DISABLED_CS=1
     return 0
