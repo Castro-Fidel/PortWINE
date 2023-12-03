@@ -5,9 +5,12 @@
 PROGNAME="PortProton"
 # PERSONAL_NAME="$(grep PersonaName "$HOME/.local/share/Steam/config/loginusers.vdf" | awk -F'"' '{print $4}')"
 
-STUIDPATH="$(find "$HOME/.local/share/Steam/userdata/" -maxdepth 1 -type d -name "[1-9]*" | head -n1)"
 SCVDF="shortcuts.vdf"
 SCPATH="$STUIDPATH/config/$SCVDF"
+
+if [[ ! -f "$SCPATH" ]] ; then
+	echo '0073686f727463757473000808' | xxd -r -p > "$SCPATH"
+fi
 
 NOSTAPPNAME="$name_desktop"
 NOSTEXEPATH="\"${STEAM_SCRIPTS}/${name_desktop}.sh\""
@@ -95,21 +98,10 @@ if [ -n "${NOSTEXEPATH}" ]; then
 		printf '\x02%s\x00\x00\x00\x00\x00' "openvr"
 	fi
 
-	# splitTags () {
-	# 	mapfile -d "," -t -O "${#TAGARR[@]}" TAGARR < <(printf '%s' "$1")
-	# 	for i in "${!TAGARR[@]}"; do
-	# 		if grep -q "${TAGARR[$i]}" <<< "$(getActiveSteamCollections)"; then
-	# 			printf '\x01%s\x00%s\x00' "$i" "${TAGARR[i]}"
-	# 		fi
-	# 	done
-	# }
-
 	printf '\x02%s\x00\x00\x00\x00\x00' "Devkit"
 	printf '\x01%s\x00\x00' "DevkitGameID"
-
 	printf '\x02%s\x00\x00\x00\x00\x00' "LastPlayTime"
 	printf '\x00%s\x00' "tags"
-	# splitTags "PortProton"
 	printf '\x08'
 	printf '\x08'
 
@@ -117,4 +109,6 @@ if [ -n "${NOSTEXEPATH}" ]; then
 	printf '\x08'
 	printf '\x08'
 	} >> "$SCPATH"
+	
+	# echo '00013000504f727450726f746f6e0008080808' | xxd -r -p >> "$SCPATH"
 fi

@@ -6,7 +6,7 @@ export pw_full_command_line=("$0" $*)
 MISSING_DESKTOP_FILE=0
 
 if [[ -f "$1" ]] ; then
-    export portwine_exe="$(readlink -f "$1")"
+    export portwine_exe="$1"
 elif [[ "$1" == *.exe ]] ; then
     export portwine_exe="$1"
     MISSING_DESKTOP_FILE=1

@@ -3,6 +3,8 @@
 ########################################################################
 export PW_VULKAN_USE="1"
 export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/Rockstar-Games-Launcher.exe"
+export PORTWINE_CREATE_SHORTCUT_NAME="Rockstar"
+
 start_portwine
 if try_download_game "https://gamedownloads.rockstargames.com/public/installer/Rockstar-Games-Launcher.exe" "${PW_AUTOINSTALL_EXE}"
 then
@@ -11,11 +13,11 @@ then
     pw_kill_autostart RockstarService.exe &
     pw_run "${PW_AUTOINSTALL_EXE}"
     portwine_exe=`find "$WINEPREFIX/drive_c/" -type f -name "Launcher.exe" | grep "Rockstar Games/Launcher/Launcher.exe"`
+    pw_create_unique_exe "rockstar_launcher_pp"
     try_remove_file "${PW_AUTOINSTALL_EXE}"
     try_remove_file "${portwine_exe}.ppdb"
     kill_portwine
     pw_stop_progress_bar
-    export PORTWINE_CREATE_SHORTCUT_NAME="Rockstar"
     portwine_create_shortcut
 fi
 stop_portwine

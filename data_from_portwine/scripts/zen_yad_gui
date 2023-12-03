@@ -507,25 +507,54 @@ gui_vkBasalt () {
 portwine_create_shortcut () {
     pw_create_gui_png
     pw_stop_progress_bar
-    if ls "$HOME/.local/share/Steam/userdata/"*"/config/shortcuts.vdf" &>/dev/null
-    then PW_FOUND_VDF=TRUE
-    else PW_FOUND_VDF=FALSE
+    if [[ ! -z "$PW_STEAM_ID" ]]
+    then STUIDPATH="$HOME/.local/share/Steam/userdata/$PW_STEAM_ID"
+    else STUIDPATH="$(find "$HOME/.local/share/Steam/userdata/" -maxdepth 1 -type d -name "[1-9]*" | head -n1)"
     fi
-    export name_desktop="${PORTPROTON_NAME}"
-    OUTPUT=$("${pw_yad}" --title="${inst_set}." --form --borders=3 \
-    --window-icon "$PW_GUI_ICON_PATH/port_proton.png" \
-    --image "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" \
-    --field="${sc_info}":LBL "" \
-    --field="${sc_name}:" "${name_desktop}" \
-    --field="  ${sc_menu_desktop}":CHK "TRUE" \
-    --field="  ${sc_add_in_steam}":CHK "$PW_FOUND_VDF" \
-    --button="$loc_gui_create_shortcut":0)
-    if [ $? -eq "0" ]; then
-        name_desktop=$(echo "$OUTPUT" | awk -F'|' '{print $2}')
+    if [[ -d "$STUIDPATH" ]] ; then
+        export STUIDPATH
+        PW_FOUND_VDF=TRUE
+    else
+        PW_FOUND_VDF=FALSE
+    fi
+
+    if [[ "$1" == "block_name" ]] ; then
+        export name_desktop="${PORTPROTON_NAME}"
+        OUTPUT=$("${pw_yad}" --title="${inst_set}." --form --borders=3 \
+        --window-icon "$PW_GUI_ICON_PATH/port_proton.png" \
+        --image "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" \
+        --field="${sc_info}":LBL "" \
+        --field="  ${name_desktop}":LBL "" \
+        --field="  ${sc_menu_desktop}":CHK "TRUE" \
+        --field="  ${sc_add_in_steam}":CHK "$PW_FOUND_VDF" \
+        --button="$loc_gui_create_shortcut":0)
+        PW_YAD_OUT=$?
+    else
+        export name_desktop="${PORTPROTON_NAME}"
+        OUTPUT=$("${pw_yad}" --title="${inst_set}." --form --borders=3 \
+        --window-icon "$PW_GUI_ICON_PATH/port_proton.png" \
+        --image "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" \
+        --field="${sc_info}":LBL "" \
+        --field="${sc_name}:" "${name_desktop}" \
+        --field="  ${sc_menu_desktop}":CHK "TRUE" \
+        --field="  ${sc_add_in_steam}":CHK "$PW_FOUND_VDF" \
+        --button="$loc_gui_create_shortcut":0)
+        PW_YAD_OUT=$?
+    fi
+
+    if [[ "$PW_YAD_OUT" == "0" ]] ; then
+        if [[ "$1" == "block_name" ]]
+        then name_desktop="$PORTWINE_CREATE_SHORTCUT_NAME"
+        else name_desktop=$(echo "$OUTPUT" | awk -F'|' '{print $2}')
+        fi
         create_menu_desktop_shortcut=$(echo "$OUTPUT" | awk -F'|' '{print $3}')
         create_menu_steam_shortcut=$(echo "$OUTPUT" | awk -F'|' '{print $4}')
 
         try_remove_file "${PORT_WINE_PATH}/${name_desktop}.desktop"
+
+        if [[ "${PORTPROTON_NAME}" != "${name_desktop}" ]]
+        then mv -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" "${PORT_WINE_PATH}/data/img/${name_desktop}.png"
+        fi
 
         echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
         echo "Name=${name_desktop}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
@@ -556,7 +585,7 @@ portwine_create_shortcut () {
             echo "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" " >> "${STEAM_SCRIPTS}/${name_desktop}.sh"
             chmod u+x "${STEAM_SCRIPTS}/${name_desktop}.sh"
             "${PORT_SCRIPTS_PATH}/add_in_steam.sh"
-            if pgrep -i steam &>/dev/null ; then
+            if [[ "${PW_SKIP_RESTART_STEAM}" != 1 ]] && pgrep -i steam &>/dev/null ; then
                 if gui_question "$sc_restert_steam" ; then
                     pw_start_progress_bar_block "Restarting STEAM... Please wait."
                     kill -s SIGTERM $(pgrep -a steam) &>/dev/null
@@ -569,9 +598,10 @@ portwine_create_shortcut () {
                     exit 0
                 fi
             fi
+            unset PW_SKIP_RESTART_STEAM
         fi
-
-        [[ "$1" != silent ]] && xdg-open "${PORT_WINE_PATH}" 2>1 >/dev/null &
+        
+        [[ "$1" != silent ]] && [[ "${PW_SKIP_RESTART_STEAM}" != 1 ]] && "${PORT_WINE_PATH}" 2>1 >/dev/null &
     fi
 }
 

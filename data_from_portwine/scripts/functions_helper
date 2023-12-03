@@ -896,7 +896,6 @@ pw_init_db () {
                 [[ -z `echo "${portwine_exe}" | grep "/data/prefixes/DEFAULT/"` ]]
             then 
                 export PW_PREFIX_NAME=`echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}'`
-                edit_db_from_gui PW_PREFIX_NAME
             fi
         fi
         if [[ -f "${PORTWINE_DB_FILE}" ]] ; then
@@ -1086,7 +1085,7 @@ pw_create_gui_png () {
     if [[ -x "`command -v wrestool 2>/dev/null`" ]] && [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
         try_remove_dir "${PORT_WINE_TMP_PATH}/tmp_img"
         create_new_dir "${PORT_WINE_TMP_PATH}/tmp_img"
-        wrestool -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" -t14 "${portwine_exe}"
+        wrestool -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" -t14 "$(readlink -f "${portwine_exe}")"
         cp "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".ico" | head -n 1)" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
         icotool -x --width=${PW_RESIZE_TO} --height=${PW_RESIZE_TO} --output="${PORT_WINE_TMP_PATH}/tmp_img/" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
         if [[ ! -f "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".png" | grep "${PW_RESIZE_TO}x${PW_RESIZE_TO}")" ]] ; then 
@@ -1149,5 +1148,24 @@ pw_find_exe () {
         portwine_create_shortcut silent
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
+    fi
+}
+
+pw_create_unique_exe () {
+    BASEDIR_GAME="$(dirname "$portwine_exe")"
+    if [[ -d "$BASEDIR_GAME" ]] ; then
+        pushd "$BASEDIR_GAME"
+        BASENAME_GAME_EXE="$(basename "$portwine_exe")"
+        if [[ ! -z "$1" ]] ; then
+            BASENAME_GAME="$(echo "$(basename "$1" .exe).exe")"
+            ln -sf "$BASENAME_GAME_EXE" "$BASENAME_GAME"
+            export portwine_exe="$BASEDIR_GAME/$BASENAME_GAME"
+        elif [[ ! -z "$PORTWINE_CREATE_SHORTCUT_NAME" ]] ; then
+            ln -sf "$BASENAME_GAME_EXE" "$PORTWINE_CREATE_SHORTCUT_NAME.exe"
+            export portwine_exe="$BASEDIR_GAME/$PORTWINE_CREATE_SHORTCUT_NAME.exe"
+        else 
+            print_warning "There are no arguments for creating a symbolic link! Skip it..."
+        fi
+        popd
     fi
 }

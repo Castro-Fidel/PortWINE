@@ -14,15 +14,25 @@ start_portwine
 if try_download_game "https://installer.launcher.xsolla.com/xlauncher-builds/xsolla-launcher-update/${WOSB_VERSION}/bin/installer.exe" "${PW_AUTOINSTALL_EXE}"
 then
     pw_start_progress_bar_block "Installing World of Sea Battle. ${loc_gui_please_wait} "
-
-   #  pw_kill_autostart WorldOfSeaBattleClient.exe &
     pw_run "${PW_AUTOINSTALL_EXE}" 
-    portwine_exe="$WINEPREFIX/drive_c/users/$USER/AppData/Local/Wosb Launcher/launcher.exe"
     try_remove_file "${PW_AUTOINSTALL_EXE}"
-    try_remove_file "${portwine_exe}.ppdb"
-    kill_portwine
     pw_stop_progress_bar
-    export PORTWINE_CREATE_SHORTCUT_NAME="World of Sea Battle"
-    portwine_create_shortcut
+    kill_portwine
+
+    if [[ "${update_loc}" == "RUS" ]] ; then
+        export portwine_exe="$WINEPREFIX/drive_c/users/$USER/AppData/Local/Wosb Launcher/launcher.exe"
+        export PORTWINE_CREATE_SHORTCUT_NAME="World of Sea Battle (RU)"
+        pw_create_unique_exe "wosb_launcher_ru"
+        try_remove_file "${portwine_exe}.ppdb"
+        export PW_SKIP_RESTART_STEAM=1
+        portwine_create_shortcut block_name
+    fi
+
+    export portwine_exe="$WINEPREFIX/drive_c/users/$USER/AppData/Local/Wosb Launcher/launcher.exe"
+    export PORTWINE_CREATE_SHORTCUT_NAME="World of Sea Battle (EN)"
+    pw_create_unique_exe "wosb_launcher_en"
+    try_remove_file "${portwine_exe}.ppdb"
+    portwine_create_shortcut block_name
+
 fi
 stop_portwine
