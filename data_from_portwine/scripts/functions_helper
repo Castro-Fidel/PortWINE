@@ -361,7 +361,7 @@ init_wine_ver () {
     export WINESERVER="${WINEDIR}/bin/wineserver"
 
     export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
-    if [[ ! -z "${PATH_TO_GAME}" ]] ; then
+    if [[ -d "${PATH_TO_GAME}" ]] ; then
         export WINEDLLPATH+=":${PATH_TO_GAME}"
     fi
 
@@ -462,10 +462,12 @@ pw_init_runtime () {
         export pw_runtime="${PW_WINELIB}/pressure-vessel/bin/pressure-vessel-unruntime \
         --unshare-home \
         --home="${PW_SANDBOX_HOME_PATH}" \
+        --remove-game-overlay \
         ${PW_ADD_TO_ARGS_IN_RUNTIME} --"
     else
         export pw_runtime="${PW_WINELIB}/pressure-vessel/bin/pressure-vessel-unruntime \
         --share-home \
+        --remove-game-overlay \
         ${PW_ADD_TO_ARGS_IN_RUNTIME} --"
     fi
 
@@ -865,12 +867,7 @@ pw_init_db () {
         else
             orig_IFS="$IFS"
             IFS=$'\n'
-            if [[ "$START_FROM_STEAM" != 1 ]] ; then
-                PW_FIND_DB_FILE=`grep -ilw "#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
-            else
-                # BpeMeHHblu` KocTblJlb =)
-                PW_FIND_DB_FILE=`grep -ilw "#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi | head -n 1`
-            fi
+            PW_FIND_DB_FILE=`grep -ilw "#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
             if [[ `echo "$PW_FIND_DB_FILE" | wc -l` -gt 1 ]] ; then
                 unset ADD_CB_DBFILE
                 for PW_CHECK_DB_FILE in $PW_FIND_DB_FILE ; do
@@ -904,7 +901,7 @@ pw_init_db () {
             init_wine_ver && 
             print_info "Use ${PORTWINE_DB_FILE} db file."
         fi
-        if [[ -d "${PATH_TO_GAME}" ]] ; then
+        if [[ -z "${PATH_TO_GAME}" ]] || [[ ! -d "${PATH_TO_GAME}" ]]; then
             export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"        
         fi
 

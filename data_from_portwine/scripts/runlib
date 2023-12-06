@@ -639,7 +639,10 @@ start_portwine () {
 
 pw_run () {
     unset GDK_BACKEND
-    if [[ ! -z "${PATH_TO_GAME}" ]] ; then
+    if [[ ! -z "${PATH_TO_GAME}" ]] && [[ -d "${PATH_TO_GAME}" ]] ; then
+        cd "${PATH_TO_GAME}"
+    elif [[ -f "$portwine_exe" ]] ; then
+        export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )" 
         cd "${PATH_TO_GAME}"
     else
         cd "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c"
