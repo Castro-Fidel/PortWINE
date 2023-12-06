@@ -2,21 +2,26 @@
 # Author: cefeiko
 ########################################################################
 export PW_PREFIX_NAME=DOTNET
+export PORTWINE_CREATE_SHORTCUT_NAME="OSU"
+
 start_portwine
-#export PW_DLL_INSTALL="dotnet48"
+
 mkdir -p "${WINEPREFIX}/drive_c/Program Files (x86)/OSU/"
 export PW_AUTOINSTALL_EXE="${WINEPREFIX}/drive_c/Program Files (x86)/OSU/osu!.exe"
+
 if try_download_game "https://m1.ppy.sh/r/osu!install.exe" "${PW_AUTOINSTALL_EXE}"
 then
     pw_start_progress_bar_block "${loc_gui_installing_the} OSU!. ${loc_gui_please_wait} "
     if  [ -f "${PORT_WINE_PATH}/data/pfx_dotnet/drive_c/Program Files (x86)/OSU/osu!install.exe" ]; then
         mv -f  "${PORT_WINE_PATH}/data/pfx_dotnet/drive_c/Program Files (x86)/OSU/osu!install.exe" "${PORT_WINE_PATH}/data/pfx_dotnet/drive_c/Program Files (x86)/OSU/osu!.exe"
     fi
-    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/OSU/osu!.exe"
+    export portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/OSU/osu!.exe"
+    pw_create_unique_exe
     try_remove_file "${portwine_exe}.ppdb"
     # pw_run "${PW_AUTOINSTALL_EXE}"
     pw_stop_progress_bar
     portwine_create_shortcut
     kill_portwine
 fi
+
 stop_portwine
