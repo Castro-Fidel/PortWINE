@@ -3,17 +3,26 @@
 ########################################################################
 #export LAUNCH_PARAMETERS=("")
 export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/citra-setup-windows.exe"
+export PORTWINE_CREATE_SHORTCUT_NAME="Citra"
+
 start_portwine
+
 if try_download_game "github.com/citra-emu/citra-web/releases/download/1.0/citra-setup-windows.exe" "${PW_AUTOINSTALL_EXE}"
 then
     pw_start_progress_bar_block "${loc_gui_installing_the} Citra. ${loc_gui_please_wait} "
     pw_run "${PW_AUTOINSTALL_EXE}"
-    portwine_exe="$WINEPREFIX/drive_c/users/steamuser/AppData/Local/Citra/nightly-mingw/citra-qt.exe"
+    if [[ -f "$WINEPREFIX/drive_c/users/steamuser/AppData/Local/Citra/nightly/citra-qt.exe" ]] ; then
+        export portwine_exe="$WINEPREFIX/drive_c/users/steamuser/AppData/Local/Citra/nightly/citra-qt.exe"
+    elif [[ -f "$WINEPREFIX/drive_c/users/steamuser/AppData/Local/Citra/canary/citra-qt.exe" ]] ; then
+        export portwine_exe="$WINEPREFIX/drive_c/users/steamuser/AppData/Local/Citra/canary/citra-qt.exe"
+    else
+        export portwine_exe=`find "$WINEPREFIX/drive_c/" -type f -name "citra-qt.exe"`
+    fi
     try_remove_file "${PW_AUTOINSTALL_EXE}"
     try_remove_file "${portwine_exe}.ppdb"
     kill_portwine
     pw_stop_progress_bar
-    export PORTWINE_CREATE_SHORTCUT_NAME="Citra"
     portwine_create_shortcut
 fi
+
 stop_portwine

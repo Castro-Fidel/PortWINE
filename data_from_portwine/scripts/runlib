@@ -114,6 +114,17 @@ start_portwine () {
         var_vkd3d_config_update single_queue
     fi
 
+    if [[ "${PW_USE_GAMESCOPE}" == 1 ]] && command -v gamescope &>/dev/null ; then
+        if [[ ! -z "$GAMESCOPE_ARGS" ]]
+        then export PW_RUN_GAMESCOPE="gamescope -o 30 ${GAMESCOPE_ARGS} --"
+        else export PW_RUN_GAMESCOPE="gamescope -o 30 --"
+        fi
+        export PW_WINE_FULLSCREEN_FSR=0
+    else
+        export PW_USE_GAMESCOPE=0
+        unset PW_RUN_GAMESCOPE
+    fi
+    
     enabled_fake_nvidia_videocard () 
     {
         if [[ "${1}" == 1 ]] ; then
@@ -660,6 +671,7 @@ pw_run () {
         echo ""
         print_debug "Log from RUNTIME and WINE:"
         ${PW_GAMEMODERUN_SLR} \
+        ${PW_RUN_GAMESCOPE} \
         ${pw_runtime} \
         env ${PW_MANGOHUD_SLR} \
         PATH="${PATH}" \
@@ -676,6 +688,7 @@ pw_run () {
         echo ""
         print_debug "Log from RUNTIME and WINE:"
         ${PW_GAMEMODERUN_SLR} \
+        ${PW_RUN_GAMESCOPE} \
         ${pw_runtime} \
         env ${PW_MANGOHUD_SLR} \
         PATH="${PATH}" \
