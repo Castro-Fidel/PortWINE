@@ -52,6 +52,16 @@ sudo dnf install portproton
 
 * **Alt Linux** (package in the official repository) is installed with the command:
 
+`apt-get`:
+```sh
+sudo apt-get update
+
+sudo apt-get dist-upgrade -y
+
+sudo apt-get install bubblewrap cabextract curl gamemode icoutils i586-libvulkan1 libvulkan1 steam vulkan-tools wget zenity zstd
+```
+
+`epm`:
 ```sh
 su -
 
