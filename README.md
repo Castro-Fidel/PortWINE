@@ -167,7 +167,7 @@ sudo apt-get update
 
 sudo apt-get dist-upgrade -y
 
-sudo apt-get install bubblewrap cabextract curl gamemode icoutils i586-libvulkan1 libvulkan1 steam vulkan-tools wget zenity zstd
+sudo apt-get install bubblewrap cabextract curl gamemode icoutils i586-libvulkan1 libvulkan1 portproton steam vulkan-tools wget zenity zstd
 ```
 
 * **ROSA DESKTOP FRESH R12**
