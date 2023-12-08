@@ -118,11 +118,14 @@ start_portwine () {
         if [[ ! -z "$GAMESCOPE_ARGS" ]]
         then export PW_RUN_GAMESCOPE="gamescope -o 30 ${GAMESCOPE_ARGS} --"
         else export PW_RUN_GAMESCOPE="gamescope -o 30 --"
+        # Workaround for https://gitlab.freedesktop.org/mesa/mesa/-/issues/6029
+        if grep -q "i915" <<< $(lsmod); then
+            export INTEL_DEBUG=norbc
         fi
         export PW_WINE_FULLSCREEN_FSR=0
     else
         export PW_USE_GAMESCOPE=0
-        unset PW_RUN_GAMESCOPE
+        unset PW_RUN_GAMESCOPE INTEL_DEBUG
     fi
     
     enabled_fake_nvidia_videocard () 
