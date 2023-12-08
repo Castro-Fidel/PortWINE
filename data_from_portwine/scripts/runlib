@@ -116,13 +116,17 @@ start_portwine () {
 
     if [[ "${PW_USE_GAMESCOPE}" == 1 ]] && command -v gamescope &>/dev/null ; then
         # Workaround for https://gitlab.freedesktop.org/mesa/mesa/-/issues/6029
-        if grep -q "i915" <<< $(lsmod); then
+        if [[ -d "/sys/module/i915" ]] ; then
             export INTEL_DEBUG=norbc
         fi
-        if [[ ! -z "$GAMESCOPE_ARGS" ]]
-        then export PW_RUN_GAMESCOPE="gamescope -o 30 ${GAMESCOPE_ARGS} --"
-        else export PW_RUN_GAMESCOPE="gamescope -o 30 --"
+        if [[ "${PW_GPU_USE}" != "disabled" ]] ; then
+            PW_vendorID="$(vulkaninfo 2>/dev/null | grep -B3 "${PW_GPU_USE}" | grep vendorID | awk -F'0x' '{print $2}')"
+            PW_deviceID="$(vulkaninfo 2>/dev/null | grep -B3 "${PW_GPU_USE}" | grep deviceID | awk -F'0x' '{print $2}')"
+            PW_ID_VIDEO="--prefer-vk-device ${PW_vendorID}:${PW_deviceID}"
+        else
+            unset PW_ID_VIDEO
         fi
+        export PW_RUN_GAMESCOPE="gamescope -o 30 ${PW_ID_VIDEO} ${GAMESCOPE_ARGS} --"
         export PW_WINE_FULLSCREEN_FSR=0
     else
         export PW_USE_GAMESCOPE=0
@@ -666,7 +670,7 @@ pw_run () {
     pw_vkbasalt_check
     PW_LOG_TO_FILE="${PORT_WINE_PATH}/${portname}.log"
     print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VKD3D_CONFIG" \
-    "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2" "WINEDLLPATH" "WINE_CPU_TOPOLOGY"
+    "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2" "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE"
     kill -s SIGUSR1 "$PW_YAD_PID_PFX_COVER_UI" &>/dev/null
     if [[ "${PW_LOG}" == 1 ]] ; then
         echo "WINEDLLOVERRIDES=${WINEDLLOVERRIDES}" >> "${PW_LOG_TO_FILE}"
@@ -690,6 +694,7 @@ pw_run () {
             pw_init_runtime
         fi
         echo ""
+        echo "Log WINE:" > "${PW_LOG_TO_FILE}"
         print_debug "Log from RUNTIME and WINE:"
         ${PW_GAMEMODERUN_SLR} \
         ${PW_RUN_GAMESCOPE} \
@@ -700,7 +705,8 @@ pw_run () {
         LD_PRELOAD="${PW_LD_PRELOAD}" \
         VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
         VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
-        "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]}
+        "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
+        cat "${PW_LOG_TO_FILE}"
     fi
 }
 export -f pw_run
@@ -734,6 +740,7 @@ export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 echo "" > "${PORT_WINE_TMP_PATH}/tmp_yad_form"
 
 if [[ -d "${PORT_WINE_PATH}/data/dist" ]] ; then
+    try_remove_file "${PORT_WINE_PATH}/data/dist/VERSION"
     orig_IFS="$IFS"
     IFS=$'\n'
     for dist_dir in $(ls -1 "${PORT_WINE_PATH}/data/dist/") ; do
@@ -791,7 +798,7 @@ if [[ -z "${INSTALLING_PORT}" ]] ; then
     . "${USER_CONF}"
     pw_port_update
     pw_download_libs
-    pw_check_and_download_wine ${PW_PROTON_LG_VER}
+    # pw_check_and_download_wine ${PW_PROTON_LG_VER}
     pw_check_and_download_plugins
     pw_init_db
     . "${PORT_SCRIPTS_PATH}"/lang
