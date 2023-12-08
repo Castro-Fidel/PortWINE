@@ -115,12 +115,13 @@ start_portwine () {
     fi
 
     if [[ "${PW_USE_GAMESCOPE}" == 1 ]] && command -v gamescope &>/dev/null ; then
-        if [[ ! -z "$GAMESCOPE_ARGS" ]]
-        then export PW_RUN_GAMESCOPE="gamescope -o 30 ${GAMESCOPE_ARGS} --"
-        else export PW_RUN_GAMESCOPE="gamescope -o 30 --"
         # Workaround for https://gitlab.freedesktop.org/mesa/mesa/-/issues/6029
         if grep -q "i915" <<< $(lsmod); then
             export INTEL_DEBUG=norbc
+        fi
+        if [[ ! -z "$GAMESCOPE_ARGS" ]]
+        then export PW_RUN_GAMESCOPE="gamescope -o 30 ${GAMESCOPE_ARGS} --"
+        else export PW_RUN_GAMESCOPE="gamescope -o 30 --"
         fi
         export PW_WINE_FULLSCREEN_FSR=0
     else
