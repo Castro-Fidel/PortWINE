@@ -898,12 +898,24 @@ pw_init_db () {
         if [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] && [[ ! -z "${WINE_CPU_TOPOLOGY}" ]] ; then
             export PW_WINE_CPU_TOPOLOGY="${WINE_CPU_TOPOLOGY}"
         fi
-        if ls "${PATH_TO_GAME}"/*_Data/Resources/ 2>/dev/null | grep "unity" &>/dev/null \
-        && [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] \
-        && [[ $(grep -c "^processor" /proc/cpuinfo) -gt "8" ]]
+        if ls "${PATH_TO_GAME}"/*_Data/Resources/ 2>/dev/null | grep "unity" &>/dev/null && \
+            [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] && \
+            [[ $(grep -c "^processor" /proc/cpuinfo) -gt "8" ]]
         then
-                export PW_WINE_CPU_TOPOLOGY="8:0,1,2,3,4,5,6,7"
-                print_info "Automatic added fix for unity games: WINE_CPU_TOPOLOGY=8:0,1,2,3,4,5,6,7"
+            export PW_WINE_CPU_TOPOLOGY="8:0,1,2,3,4,5,6,7"
+            print_info "Automatic fix added for Unity games: WINE_CPU_TOPOLOGY=8:0,1,2,3,4,5,6,7"
+        elif "${portwine_exe}" | grep "Cyberpunk" && \
+            [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] && \
+            [[ $(grep -c "^processor" /proc/cpuinfo) -gt "8" ]]
+        then
+            export PW_WINE_CPU_TOPOLOGY="8:0,1,2,3,4,5,6,7"
+            print_info "Automatic fix added for Cyberpunk 2077: WINE_CPU_TOPOLOGY=8:0,1,2,3,4,5,6,7"
+        elif "${portwine_exe}" | grep "HorizonZeroDawn" && \
+            [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] && \
+            [[ $(grep -c "^processor" /proc/cpuinfo) -gt "8" ]]
+        then
+            export PW_WINE_CPU_TOPOLOGY="8:0,1,2,3,4,5,6,7"
+            print_info "Automatic fix added for Horizon Zero Dawn: WINE_CPU_TOPOLOGY=8:0,1,2,3,4,5,6,7"
         fi
 
         if check_nvidia_rtx ; then
