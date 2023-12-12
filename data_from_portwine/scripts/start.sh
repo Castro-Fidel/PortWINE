@@ -28,6 +28,11 @@ if [[ "${XDG_SESSION_TYPE}" = "wayland" ]] && [[ ! -f "${PORT_WINE_TMP_PATH}/che
     echo "1" > "${PORT_WINE_TMP_PATH}/check_wayland"
 fi
 
+if [[ -z "$VULKAN_DRIVER_NAME" ]] || [[ "$VULKAN_DRIVER_NAME" =~ "llvmpipe" ]] || [[ ! -f "${PORT_WINE_TMP_PATH}/check_vulkan" ]] ; then
+	zenity_info "Attention working version of vulkan not detected!\nIt is recommended to run games in OpenGL (low performance possible)!"
+	echo "1" > "${PORT_WINE_TMP_PATH}/check_vulkan"
+fi
+
 if [[ -f "${PORT_WINE_TMP_PATH}/tmp_main_gui_size" ]] && [[ ! -z "$(cat ${PORT_WINE_TMP_PATH}/tmp_main_gui_size)" ]] ; then
     export PW_MAIN_SIZE_W="$(cat ${PORT_WINE_TMP_PATH}/tmp_main_gui_size | awk '{print $1}')"
     export PW_MAIN_SIZE_H="$(cat ${PORT_WINE_TMP_PATH}/tmp_main_gui_size | awk '{print $2}')"

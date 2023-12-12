@@ -120,8 +120,8 @@ start_portwine () {
             export INTEL_DEBUG=norbc
         fi
         if [[ "${PW_GPU_USE}" != "disabled" ]] ; then
-            PW_vendorID="$(vulkaninfo 2>/dev/null | grep -B3 "${PW_GPU_USE}" | grep vendorID | awk -F'0x' '{print $2}')"
-            PW_deviceID="$(vulkaninfo 2>/dev/null | grep -B3 "${PW_GPU_USE}" | grep deviceID | awk -F'0x' '{print $2}')"
+            PW_vendorID="$(vulkaninfo --summary 2>/dev/null | grep -B3 "${PW_GPU_USE}" | grep vendorID | awk -F'0x' '{print $2}')"
+            PW_deviceID="$(vulkaninfo --summary 2>/dev/null | grep -B3 "${PW_GPU_USE}" | grep deviceID | awk -F'0x' '{print $2}')"
             PW_ID_VIDEO="--prefer-vk-device ${PW_vendorID}:${PW_deviceID}"
         else
             unset PW_ID_VIDEO
@@ -774,6 +774,7 @@ export PW_VULKAN_DIR="${PORT_WINE_TMP_PATH}/VULKAN"
 create_new_dir "${PW_VULKAN_DIR}"
 
 export VULKAN_API_DRIVER_VERSION="$(vulkaninfo 2>/dev/null | grep "api" | head -n 1 | awk '{print $3}')"
+export VULKAN_DRIVER_NAME="$(vulkaninfo --summary 2>/dev/null | grep driverName | awk '{print$3}' | head -1)"
 export LSPCI_VGA="$(lspci -k | grep -E 'VGA|3D' | tr -d '\n')"
 
 cd "${PORT_SCRIPTS_PATH}"
