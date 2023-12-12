@@ -27,7 +27,11 @@ fi
 
 start_portwine () {
     var_winedlloverride_update "${PW_MUST_WINEDLLOVERRIDES}"
-    export WINEPREFIX="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"
+    export WINEPREFIX="$(readlink -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}")"
+    if [[ "$WINEPREFIX" != "${PORT_WINE_PATH}/data/prefixes/"* ]] && [[ ! -d "$WINEPREFIX" ]] ; then
+        zenity_error "Path to PREFIX not found:\n$WINEPREFIX"
+        exit 1
+    fi
     create_new_dir "${WINEPREFIX}/drive_c/windows/system32/"
     create_new_dir "${WINEPREFIX}/drive_c/windows/syswow64/"
     try_force_link_dir "${PORT_WINE_PATH}/data/prefixes" "${WINEPREFIX}/drive_c/"
@@ -128,9 +132,10 @@ start_portwine () {
         fi
         export PW_RUN_GAMESCOPE="gamescope -o 30 ${PW_ID_VIDEO} ${GAMESCOPE_ARGS} --"
         export PW_WINE_FULLSCREEN_FSR=0
+        export vk_xwayland_wait_ready=false
     else
         export PW_USE_GAMESCOPE=0
-        unset PW_RUN_GAMESCOPE INTEL_DEBUG
+        unset PW_RUN_GAMESCOPE INTEL_DEBUG vk_xwayland_wait_ready
     fi
     
     enabled_fake_nvidia_videocard () 
@@ -324,21 +329,16 @@ start_portwine () {
         pw_clear_pfx
         check_dirs_and_files_in_pfx
         if [[ -f "${PW_WINELIB}/default_pfx.tar.xz" ]] && [[ "${DISABLE_CP_DEFPFX}" != 1 ]] ; then
-            unpack_tar_xz "${PW_WINELIB}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" 2>/dev/null
+            unpack_tar_xz "${PW_WINELIB}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
         fi
-        ${pw_runtime} env WINEDLLOVERRIDES="winegstreamer=" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
-        "${WINELOADER}" wineboot -u &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
-        wait_wineserver &&
         echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
     elif [[ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver" ]] \
         || [[ -z "`cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver" | grep ${PW_WINE_USE}`" ]] \
         || [[ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices" ]] ; then 
         check_dirs_and_files_in_pfx
-        ${pw_runtime} env WINEDLLOVERRIDES="winegstreamer=" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
-        "${WINELOADER}" wineboot -i &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
-        wait_wineserver &&
         echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
     fi
+
     [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/c:" ] && try_force_link_dir "${WINEPREFIX}/drive_c/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/c:"
     [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/z:" ] && try_force_link_dir "/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/z:"
     create_new_dir "${WINEPREFIX}/drive_c/users/steamuser"
@@ -381,7 +381,9 @@ start_portwine () {
     fi
 
     if [[ "${PW_USE_D3D_EXTRAS}" == 1 ]] ; then
-        if [[ -z "`grep d3dx9 "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"`" ]] ; then
+        if [[ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ]] \
+        || [[ -z "`grep d3dx9 "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"`" ]]
+        then
             echo "d3dx9" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
         fi
         if  [[ -d "${PW_PLUGINS_PATH}/d3d_extras" ]]

@@ -838,6 +838,8 @@ else
         done
     fi &
 
+    export START_FROM_PP_GUI=1
+
     if [[ -z "${PW_ALL_DF}" ]] ; then
         "${pw_yad_v12_3}" --key=$KEY --notebook --borders=3 --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons --auto-close \
         --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "${portname}-${install_ver} (${scripts_install_ver})" \
