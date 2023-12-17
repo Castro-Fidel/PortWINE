@@ -278,6 +278,7 @@ start_portwine () {
         create_new_dir "${WINEPREFIX}/drive_c/windows/system32/"
         [ ! -d "${WINEPREFIX}/dosdevices/c:" ] && try_force_link_dir "${WINEPREFIX}/drive_c/" "${WINEPREFIX}/dosdevices/c:"
         [ ! -d "${WINEPREFIX}/dosdevices/z:" ] && try_force_link_dir "/" "${WINEPREFIX}/dosdevices/z:"
+        [ ! -d "${WINEPREFIX}/dosdevices/h:" ] && try_force_link_dir "$HOME" "${WINEPREFIX}/dosdevices/h:"
         create_new_dir "${WINEPREFIX}/drive_c/windows/Fonts/"
         try_force_link_file "${WINEDIR}/share/fonts/"LiberationSans-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arial.ttf
         try_force_link_file "${WINEDIR}/share/fonts/"LiberationSans-Bold.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arialbd.ttf
@@ -294,6 +295,27 @@ start_portwine () {
         
         try_force_link_file "${WINEDIR}/share/wine/fonts/"tahoma.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"tahoma.ttf
     }
+
+    check_user_drives() {
+        DRIVES=(a b d e f g i j k l m n o p q r s t u v w x y)
+        DEF_MOUNT_DIRS=('/media' "/media/$USER" '/mnt' '/run/media' "/run/media/$USER")
+        MOUNT_DIRS=($(find "${DEF_MOUNT_DIRS[@]}" -maxdepth 1 -type d 2>/dev/null | sort -u))
+
+        for drive_dir in "${MOUNT_DIRS[@]}"; do
+            if [[ ! "${DEF_MOUNT_DIRS[@]}" =~ "$drive_dir" ]]; then
+                drive_num=0
+                while [[ "$drive_num" -lt "${#DRIVES[@]}" ]]; do
+                    drive_path="${WINEPREFIX}/dosdevices/${DRIVES[$drive_num]}:"
+                    if [ ! -d "$drive_path" ]; then
+                        ln -sf "$drive_dir" "$drive_path"
+                        break
+                    else
+                        drive_num="$((drive_num + 1))"
+                    fi
+                done
+            fi
+    done
+}
 
     PROGPFX_URL="github.com/Castro-Fidel/PortWINE/releases/download/progpfx${PROGPFX_VER}/progpfx${PROGPFX_VER}.tar.xz"
     if [[ "${PW_PREFIX_NAME}" == "PROGRAMS" && ! -f "${WINEPREFIX}"/.progpfx ]] ; then
@@ -329,6 +351,7 @@ start_portwine () {
     then
         pw_clear_pfx
         check_dirs_and_files_in_pfx
+        check_user_drives
         if [[ -f "${PW_WINELIB}/default_pfx.tar.xz" ]] && [[ "${DISABLE_CP_DEFPFX}" != 1 ]] ; then
             unpack_tar_xz "${PW_WINELIB}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
         fi
@@ -337,6 +360,7 @@ start_portwine () {
         || [[ -z "`cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver" | grep ${PW_WINE_USE}`" ]] \
         || [[ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices" ]] ; then 
         check_dirs_and_files_in_pfx
+        check_user_drives
         echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
     fi
 
