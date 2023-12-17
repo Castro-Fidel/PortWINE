@@ -125,8 +125,8 @@ start_portwine () {
             export INTEL_DEBUG=norbc
         fi
         if [[ "${PW_GPU_USE}" != "disabled" ]] ; then
-            PW_vendorID="$(vulkaninfo --summary 2>/dev/null | grep -B3 "${PW_GPU_USE}" | grep vendorID | sort -u | awk -F'0x' '{print $2}')"
-            PW_deviceID="$(vulkaninfo --summary 2>/dev/null | grep -B3 "${PW_GPU_USE}" | grep deviceID | sort -u | awk -F'0x' '{print $2}')"
+            PW_vendorID="$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep -B3 "${PW_GPU_USE}" | grep vendorID | sort -u | awk -F'0x' '{print $2}')"
+            PW_deviceID="$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep -B3 "${PW_GPU_USE}" | grep deviceID | sort -u | awk -F'0x' '{print $2}')"
             PW_ID_VIDEO="--prefer-vk-device ${PW_vendorID}:${PW_deviceID}"
         else
             unset PW_ID_VIDEO
@@ -294,28 +294,30 @@ start_portwine () {
         try_force_link_file "${WINEDIR}/share/fonts/"msgothic.ttc "${WINEPREFIX}/drive_c/windows/Fonts/"msgothic.ttc
         
         try_force_link_file "${WINEDIR}/share/wine/fonts/"tahoma.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"tahoma.ttf
-    }
 
-    check_user_drives() {
-        DRIVES=(a b d e f g i j k l m n o p q r s t u v w x y)
+        find "${WINEPREFIX}/dosdevices" -xtype l -maxdepth 1 2>/dev/null -exec rm {} \;
+
+        rm -f "${WINEPREFIX}/dosdevices/"*::
+        DRIVES=(d e f g i j k l m n o p q r s t u v w x y)
         DEF_MOUNT_DIRS=('/media' "/media/$USER" '/mnt' '/run/media' "/run/media/$USER")
         MOUNT_DIRS=($(find "${DEF_MOUNT_DIRS[@]}" -maxdepth 1 -type d 2>/dev/null | sort -u))
 
-        for drive_dir in "${MOUNT_DIRS[@]}"; do
-            if [[ ! "${DEF_MOUNT_DIRS[@]}" =~ "$drive_dir" ]]; then
+        for drive_dir in "${MOUNT_DIRS[@]}" ; do
+            if [[ ! "${DEF_MOUNT_DIRS[@]}" =~ "$drive_dir" ]] \
+            && ! realpath "${WINEPREFIX}/dosdevices"/*: | grep "$drive_dir" &>/dev/null ; then
                 drive_num=0
-                while [[ "$drive_num" -lt "${#DRIVES[@]}" ]]; do
+                while [[ "$drive_num" -lt "${#DRIVES[@]}" ]] ; do
                     drive_path="${WINEPREFIX}/dosdevices/${DRIVES[$drive_num]}:"
-                    if [ ! -d "$drive_path" ]; then
+                    if [ ! -d "$drive_path" ] ; then
                         ln -sf "$drive_dir" "$drive_path"
                         break
                     else
-                        drive_num="$((drive_num + 1))"
+                        ((drive_num++))
                     fi
                 done
             fi
-    done
-}
+        done
+    }
 
     PROGPFX_URL="github.com/Castro-Fidel/PortWINE/releases/download/progpfx${PROGPFX_VER}/progpfx${PROGPFX_VER}.tar.xz"
     if [[ "${PW_PREFIX_NAME}" == "PROGRAMS" && ! -f "${WINEPREFIX}"/.progpfx ]] ; then
@@ -351,21 +353,13 @@ start_portwine () {
     then
         pw_clear_pfx
         check_dirs_and_files_in_pfx
-        check_user_drives
         if [[ -f "${PW_WINELIB}/default_pfx.tar.xz" ]] && [[ "${DISABLE_CP_DEFPFX}" != 1 ]] ; then
             unpack_tar_xz "${PW_WINELIB}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
-        fi
-        echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
-    elif [[ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver" ]] \
-        || [[ -z "`cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver" | grep ${PW_WINE_USE}`" ]] \
-        || [[ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices" ]] ; then 
-        check_dirs_and_files_in_pfx
-        check_user_drives
-        echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
+        fi      
     fi
+    echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
+    check_dirs_and_files_in_pfx
 
-    [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/c:" ] && try_force_link_dir "${WINEPREFIX}/drive_c/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/c:"
-    [ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/z:" ] && try_force_link_dir "/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/dosdevices/z:"
     create_new_dir "${WINEPREFIX}/drive_c/users/steamuser"
     if [ ! -d "${WINEPREFIX}/drive_c/users/${USER}" ]; then
 	    try_force_link_dir "${WINEPREFIX}/drive_c/users/steamuser" "${WINEPREFIX}/drive_c/users/${USER}"
@@ -800,8 +794,7 @@ create_new_dir "${PORT_WINE_TMP_PATH}"/mono
 export PW_VULKAN_DIR="${PORT_WINE_TMP_PATH}/VULKAN"
 create_new_dir "${PW_VULKAN_DIR}"
 
-export VULKAN_API_DRIVER_VERSION="$(vulkaninfo --summary 2>/dev/null | grep "api" | head -n 1 | awk '{print $3}')"
-export VULKAN_DRIVER_NAME="$(vulkaninfo --summary 2>/dev/null | grep driverName | awk '{print$3}' | head -1)"
+
 export LSPCI_VGA="$(lspci -k | grep -E 'VGA|3D' | tr -d '\n')"
 
 cd "${PORT_SCRIPTS_PATH}"
@@ -826,7 +819,9 @@ if [[ -z "${INSTALLING_PORT}" ]] ; then
     . "${USER_CONF}"
     pw_port_update
     pw_download_libs
-    # pw_check_and_download_wine ${PW_PROTON_LG_VER}
+    export PW_VULKANINFO_PORTABLE="$PW_WINELIB/pressure-vessel/libexec/steam-runtime-tools-0/x86_64-linux-gnu-vulkaninfo"
+    export VULKAN_API_DRIVER_VERSION="$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep "api" | head -n 1 | awk '{print $3}')"
+    export VULKAN_DRIVER_NAME="$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep driverName | awk '{print$3}' | head -1)"
     pw_check_and_download_plugins
     pw_init_db
     . "${PORT_SCRIPTS_PATH}"/lang

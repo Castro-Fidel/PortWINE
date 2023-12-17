@@ -10,11 +10,12 @@ export PW_WINE_USE=WINE_LOL_GE_8.27
 # export WINEDLLOVERRIDES="mscoree,mshtml="
 export PW_USE_D3D_EXTRAS=1
 export DISABLE_CP_DEFPFX=1
-export GST_GL_WINDOW=x11
 
 gui_proton_downloader silent "${PW_WINE_USE}"
 
+pw_clear_pfx
 start_portwine
+wait_wineserver
 if try_download_game "https://lol.secure.dyn.riotcdn.net/channels/public/x/installer/current/live.na.exe" "${PW_AUTOINSTALL_EXE}"
 then
     pw_start_progress_bar_block "Installing League of Legends. ${loc_gui_please_wait} "
@@ -24,7 +25,6 @@ then
    if [ "${update_loc}" = "ENG" ] ; then
        zenity --info --width=500 --text "You must click the install button without changing the settings!"
   fi
-    rm -f "$WINEPREFIX"/*.reg &>/dev/null
     pw_kill_autostart RiotClientServices.exe &
     pw_run "${PW_AUTOINSTALL_EXE}" 
     portwine_exe="$WINEPREFIX/drive_c/Riot Games/Riot Client/RiotClientServices.exe"
