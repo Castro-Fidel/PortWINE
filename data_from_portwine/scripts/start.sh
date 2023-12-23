@@ -28,10 +28,6 @@ if [[ "${XDG_SESSION_TYPE}" = "wayland" ]] && [[ ! -f "${PORT_WINE_TMP_PATH}/che
     echo "1" > "${PORT_WINE_TMP_PATH}/check_wayland"
 fi
 
-if [[ -z "$VULKAN_DRIVER_NAME" ]] || [[ "$VULKAN_DRIVER_NAME" == "llvmpipe" ]] ; then
-	zenity_info "Attention working version of vulkan not detected!\nIt is recommended to run games in OpenGL (low performance possible)!"
-fi
-
 if [[ -f "${PORT_WINE_TMP_PATH}/tmp_main_gui_size" ]] && [[ ! -z "$(cat ${PORT_WINE_TMP_PATH}/tmp_main_gui_size)" ]] ; then
     export PW_MAIN_SIZE_W="$(cat ${PORT_WINE_TMP_PATH}/tmp_main_gui_size | awk '{print $1}')"
     export PW_MAIN_SIZE_H="$(cat ${PORT_WINE_TMP_PATH}/tmp_main_gui_size | awk '{print $2}')"
@@ -91,6 +87,9 @@ portwine_start_debug () {
     kill_portwine
     export PW_LOG=1
     export PW_WINEDBG_DISABLE=0
+    if [[ -z "$VULKAN_DRIVER_NAME" ]] || [[ "$VULKAN_DRIVER_NAME" == "llvmpipe" ]] ; then
+	zenity_info "Attention working version of vulkan not detected!\nIt is recommended to run games in OpenGL (low performance possible)!"
+    fi
     echo "${port_deb1}" > "${PORT_WINE_PATH}/${portname}.log"
     echo "${port_deb2}" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "-------------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
@@ -182,7 +181,7 @@ portwine_start_debug () {
     fi
     echo "----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Vulkan info device name:" >> "${PORT_WINE_PATH}/${portname}.log"
-    [[ `command -v vulkaninfo` ]] && "$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep -E '^GPU|deviceName|driverName' >> "${PORT_WINE_PATH}/${portname}.log"
+    "$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep -E '^GPU|deviceName|driverName' >> "${PORT_WINE_PATH}/${portname}.log"
     "${PW_WINELIB}/portable/bin/vkcube" --c 50
     if [ $? -eq 0 ]; then
         echo "Vulkan cube test passed successfully" >> "${PORT_WINE_PATH}/${portname}.log"
