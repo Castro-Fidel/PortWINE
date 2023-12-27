@@ -631,8 +631,13 @@ stop_portwine () {
     if [[ "$int_xneur" == "1"  ]] ; then
         xneur &
     fi
-    if [[ "$PW_USE_US_LAYOUT" == "1" ]] ; then
+    if [[ "$PW_USE_US_LAYOUT" == "1" ]] && [[ "${XDG_SESSION_TYPE}" != "wayland" ]] && command -v setxkbmap &>/dev/null ; then
         setxkbmap
+    fi
+    if [[ "${PW_RESTORE_RESOLUTION}" == "1" ]] && [[ "${XDG_SESSION_TYPE}" != "wayland" ]] && command -v xrandr &>/dev/null ; then
+        RESOLUTION=$(sed -n '1p' "${PORT_WINE_TMP_PATH}/tmp_screen_configuration")
+        OUTPUT_SCREEN=$(sed -n '2p' "${PORT_WINE_TMP_PATH}/tmp_screen_configuration")
+        xrandr --output "$OUTPUT_SCREEN" --mode "$RESOLUTION"
     fi
     pw_stop_progress_bar
     try_remove_file "${PORT_SCRIPTS_PATH}/0"

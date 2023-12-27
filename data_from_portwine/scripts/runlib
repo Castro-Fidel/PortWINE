@@ -389,11 +389,17 @@ start_portwine () {
 
     if [[ "${PW_REDUCE_PULSE_LATENCY}" == 1 ]] ; then
         export PULSE_LATENCY_MSEC=60
+        # export PIPEWIRE_LATENCY=128/48000
     else
         unset PULSE_LATENCY_MSEC
     fi
 
-    if [[ "${PW_USE_US_LAYOUT}" == "1" ]] && ! grep 1 "${PORT_WINE_TMP_PATH}/check_wayland" &>/dev/null ; then
+    if [[ "${PW_RESTORE_RESOLUTION}" == "1" ]] && [[ "${XDG_SESSION_TYPE}" != "wayland" ]] && command -v xrandr &>/dev/null ; then
+        xrandr | grep -oP 'current\s+\K[0-9]+ x [0-9]+' | tr -d ' ' > "${PORT_WINE_TMP_PATH}/tmp_screen_configuration"
+        xrandr | grep " connected" | awk '{print $1}' >> "${PORT_WINE_TMP_PATH}/tmp_screen_configuration"
+    fi
+
+    if [[ "$PW_USE_US_LAYOUT" == "1" ]] && [[ "${XDG_SESSION_TYPE}" != "wayland" ]] && command -v setxkbmap &>/dev/null ; then
         setxkbmap -model pc101 us -print | xkbcomp - $DISPLAY &>/dev/null
     else
         export PW_USE_US_LAYOUT="0"
