@@ -30,17 +30,44 @@ Includes a set of scripts combined with wine-proton itself, a Steam Runtime Snip
 
 ## Installation using packages
 
-* **Ubuntu 20.04** (Kubuntu, Xubuntu, Lubuntu, etc.), **Linux Mint 20.x** :
-[portproton_1.0-2_amd64.deb](https://github.com/Castro-Fidel/PortProton_dpkg/releases/download/portproton_1.0-2_amd64/portproton_1.0-2_amd64.deb)
-* **Arch Linux** and derivatives (Manjaro, Garuda, etc.) :
-[AUR](https://aur.archlinux.org/packages/portproton)
-* **OpenSuse**:
-[OBS](https://software.opensuse.org/download/package?package=portproton&project=home%3ABoria138%3APortProton)
+* **Alt Linux** (package in the official repository) is installed with the command:
+
+`apt-get`:
+```sh
+su -
+
+apt-get update && apt-get dist-upgrade -y
+
+apt-get install portproton i586-{libvulkan1,libd3d,libGL,libgio,libnm,libnsl1,libnss,glibc-nss,glibc-pthread,libunwind,xorg-dri-swrast}
+
+exit
+```
+
+`epm`:
+```sh
+su -
+
+epm full-upgrade
+
+epm play portproton
+
+exit
+```
+
 * **ROSA Linux** (package in the official repository) is installed with the command:
 
 ```sh
 sudo urpmi portproton
 ```
+
+* **Ubuntu 20.04** (Kubuntu, Xubuntu, Lubuntu, etc.), **Linux Mint 20.x** :
+[portproton_1.0-2_amd64.deb](https://github.com/Castro-Fidel/PortProton_dpkg/releases/download/portproton_1.0-2_amd64/portproton_1.0-2_amd64.deb)
+
+* **Arch Linux** and derivatives (Manjaro, Garuda, etc.) :
+[AUR](https://aur.archlinux.org/packages/portproton)
+
+* **OpenSuse**:
+[OBS](https://software.opensuse.org/download/package?package=portproton&project=home%3ABoria138%3APortProton)
 
 * **Fedora 37+** and **Nobara**:
 
@@ -50,29 +77,6 @@ sudo dnf copr enable boria138/portproton
 sudo dnf install portproton
 ```
 
-* **Alt Linux** (package in the official repository) is installed with the command:
-
-`apt-get`:
-```sh
-sudo apt-get update
-
-sudo apt-get dist-upgrade -y
-
-sudo apt-get install bubblewrap cabextract curl gamemode icoutils i586-libvulkan1 libvulkan1 steam vulkan-tools wget zenity zstd
-```
-
-`epm`:
-```sh
-su -
-
-epm ei
-
-epm full-upgrade
-
-epm play portproton
-
-exit
-```
 
 ## Universal (manual) installation
 
@@ -173,11 +177,13 @@ sudo dnf install curl gamemode gamemode.i686 icoutils wget zenity bubblewrap zst
 * **Alt Linux**
 
 ```sh
-sudo apt-get update
+su -
 
-sudo apt-get dist-upgrade -y
+apt-get update && apt-get dist-upgrade -y
 
-sudo apt-get install bubblewrap cabextract curl gamemode icoutils i586-libvulkan1 libvulkan1 portproton steam vulkan-tools wget zenity zstd
+apt-get install bubblewrap cabextract wget zstd gawk tar xz pciutils bc coreutils file curl icoutils wmctrl zenity xdg-utils desktop-file-utils libvulkan1 vulkan-tools libd3d libGL gamemode fontconfig xrdb libcurl libgio libnm libnsl1 libnss glibc-nss glibc-pthread i586-{libvulkan1,libd3d,libGL,libgio,libnm,libnsl1,libnss,glibc-nss,glibc-pthread,libunwind,xorg-dri-swrast}
+
+exit
 ```
 
 * **ROSA DESKTOP FRESH R12**
