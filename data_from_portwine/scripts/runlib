@@ -187,6 +187,34 @@ start_portwine () {
         export PW_VULKAN_USE=5
     fi
 
+    if [[ "${PW_USE_DGVOODOO2}" == 1 ]] ; then
+        export DGVOODOO2_VER="v2.8.2"
+
+        if [ ! -d "${PW_VULKAN_DIR}/dgvoodoo2-${DGVOODOO2_VER}" ] ; then
+        print_info "Download and install DGVOODOO2 v.${DGVOODOO2_VER}"
+        try_download "github.com/lutris/dgvoodoo2/releases/download/${DGVOODOO2_VER}/dgvoodoo2-${DGVOODOO2_VER}.tar.xz" "${PW_VULKAN_DIR}/dgvoodoo2-${DGVOODOO2_VER}.tar.xz"
+        unpack_tar_xz "${PW_VULKAN_DIR}/dgvoodoo2-${DGVOODOO2_VER}.tar.xz" "${PW_VULKAN_DIR}/"
+        try_remove_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGVOODOO2_VER}.tar.xz"
+        else
+        try_remove_file "${PW_VULKAN_DIR}/dgvoodoo2-${PW_DGVOODOO2_VER}.tar.xz"
+        try_remove_dir "dgvoodoo2-${PW_DGVOODOO2_VER}"
+        fi
+
+        try_copy_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGVOODOO2_VER}/x32/d3dimm.dll" "${PATH_TO_GAME}"
+        try_copy_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGVOODOO2_VER}/x32/ddraw.dll" "${PATH_TO_GAME}"
+        try_copy_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGVOODOO2_VER}/x32/glide.dll" "${PATH_TO_GAME}"
+        try_copy_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGVOODOO2_VER}/x32/glide2x.dll" "${PATH_TO_GAME}"
+        try_copy_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGVOODOO2_VER}/x32/glide3x.dll" "${PATH_TO_GAME}"
+        echo "[General]
+OutputAPI                            = d3d11_fl11_0
+[Glide]
+3DfxWatermark                       = false
+3DfxSplashScreen                    = false
+[DirectX]
+dgVoodooWatermark                   = false" > "${PATH_TO_GAME}/dgVoodoo.conf"
+        var_winedlloverride_update "ddraw=n"
+    fi
+
     if [[ "${PW_HEAP_DELAY_FREE}" == 1 ]]
     then export WINE_HEAP_DELAY_FREE="1"
     else export WINE_HEAP_DELAY_FREE="0"
