@@ -628,6 +628,7 @@ if [[ -f "${portwine_exe}" ]] ; then
         --field="PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
         --field=":LBL" "" \
         --button="${loc_gui_vkbasalt_start}"!"$PW_GUI_ICON_PATH/separator.png"!"${ENABLE_VKBASALT_INFO}":120 \
+        --button="${loc_gui_mh_start}"!"$PW_GUI_ICON_PATH/separator.png"!"${ENABLE_MANGOHUD_INFO}":119 \
         --button="${loc_gui_edit_db_start}"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_edit_db} ${PORTWINE_DB}":118 \
         --button="${PW_SHORTCUT}" \
         --button="${loc_gui_debug}"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_debug}":102 \
@@ -934,6 +935,7 @@ fi
     open_changelog) open_changelog ;;
     change_loc) change_loc ;;
     120) gui_vkBasalt ;;
+    119) gui_MangoHud ;;
     pw_create_prefix_backup) pw_create_prefix_backup ;;
     gui_credits) gui_credits ;;
     pw_start_cont_xterm) pw_start_cont_xterm ;;
