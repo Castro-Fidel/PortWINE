@@ -183,17 +183,6 @@ portwine_start_debug () {
     else
         echo "Vulkan cube test completed with error" >> "${PORT_WINE_PATH}/${portname}.log"
     fi
-    echo "----------------------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "GameMode status:" >> "${PORT_WINE_PATH}/${portname}.log"
-    if gamemoded -s | grep "is active";
-    then
-        echo "gamemode is active"  >> "${PORT_WINE_PATH}/${portname}.log"
-    elif gamemoded -s | grep "is inactive";
-    then
-        echo "gamemode is inactive"  >> "${PORT_WINE_PATH}/${portname}.log"
-    else
-        echo "gamemode is not found"  >> "${PORT_WINE_PATH}/${portname}.log"
-    fi
     echo "----------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo 'locale:' >> "${PORT_WINE_PATH}/${portname}.log"
     locale >> "${PORT_WINE_PATH}/${portname}.log"
@@ -246,6 +235,7 @@ portwine_start_debug () {
     sed -i '/HACK_does_openvr_work/d' "${PORT_WINE_PATH}/${portname}.log"
     sed -i '/Uploading is disabled/d' "${PORT_WINE_PATH}/${portname}.log"
     sed -i '/dlopen failed - libgamemode.so/d' "${PORT_WINE_PATH}/${portname}.log"
+    sed -i '/gamemodeauto: /d' "${PORT_WINE_PATH}/${portname}.log"
     sed -i '/wine: RLIMIT_NICE is <= 20/d' "${PORT_WINE_PATH}/${portname}.log"
     deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++') 
     echo "$deb_text" > "${PORT_WINE_PATH}/${portname}.log"
@@ -407,13 +397,14 @@ pw_start_cont_xterm () {
     unset PW_SANDBOX_HOME_PATH
     # export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
     pw_init_runtime
-    ${PW_GAMEMODERUN_SLR} ${pw_runtime} \
-    env ${PW_MANGOHUD_SLR} \
-    PATH="${PATH}" \
+    ${pw_runtime} \
+    env PATH="${PATH}" \
     LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
     LD_PRELOAD="${PW_LD_PRELOAD}" \
     VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
     VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
+    ${PW_GAMEMODERUN_SLR} \
+    ${PW_MANGOHUD_SLR} \
     xterm
 }
 

@@ -259,10 +259,12 @@ start_portwine () {
         killall xneur
         export int_xneur=1
     fi
-    if [[ -x "`command -v "gamemoderun" 2>/dev/null`" ]] && [[ "$PW_USE_GAMEMODE" = "1" ]] ; then
+    if [[ "$PW_USE_GAMEMODE" = "1" ]] ; then
         export GAMEMODERUN=1
         PW_GAMEMODERUN_SLR="gamemoderun"
-        systemctl enable --now --user gamemoded &>/dev/null
+        pkill gamemoded
+        sleep 0.1
+        "${PW_WINELIB}/portable/bin/gamemoded" > /dev/null 2>&1 &
         print_info "Gamemod will be launched."
     else
         export GAMEMODERUN=0
@@ -691,15 +693,15 @@ pw_run () {
         echo "Log WINE:" >> "${PW_LOG_TO_FILE}"
         echo ""
         print_debug "Log from RUNTIME and WINE:"
-        ${PW_GAMEMODERUN_SLR} \
-        ${PW_RUN_GAMESCOPE} \
         ${pw_runtime} \
-        env ${PW_MANGOHUD_SLR} \
-        PATH="${PATH}" \
+        env PATH="${PATH}" \
         LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
         LD_PRELOAD="${PW_LD_PRELOAD}" \
         VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
         VK_INSTANCE_LAYERS=${PW_VK_INSTANCE_LAYERS} \
+        ${PW_GAMEMODERUN_SLR} \
+        ${PW_RUN_GAMESCOPE} \
+        ${PW_MANGOHUD_SLR} \
         "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
     else
         if [[ "${PW_USE_TERMINAL}" == "1" ]] ; then
@@ -709,15 +711,15 @@ pw_run () {
         echo ""
         echo "Log WINE:" > "${PW_LOG_TO_FILE}"
         print_debug "Log from RUNTIME and WINE:"
-        ${PW_GAMEMODERUN_SLR} \
-        ${PW_RUN_GAMESCOPE} \
         ${pw_runtime} \
-        env ${PW_MANGOHUD_SLR} \
-        PATH="${PATH}" \
+        env PATH="${PATH}" \
         LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
         LD_PRELOAD="${PW_LD_PRELOAD}" \
         VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
         VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
+        ${PW_GAMEMODERUN_SLR} \
+        ${PW_RUN_GAMESCOPE} \
+        ${PW_MANGOHUD_SLR} \
         "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
         cat "${PW_LOG_TO_FILE}"
     fi
