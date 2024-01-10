@@ -30,12 +30,40 @@
 
 ## Установка с помощью пакетов
 
+
+* **Alt Linux**
+
+`apt-get` :
+```sh
+su -
+
+apt-get update && apt-get dist-upgrade -y
+
+apt-get install portproton i586-{libvulkan1,libd3d,libGL,libgio,libnm,libnsl1,libnss,glibc-nss,glibc-pthread,libunwind,xorg-dri-swrast}
+
+exit
+```
+
+`Вариант установки с помощью eepm`:
+```sh
+su -
+
+epm full-upgrade
+
+epm play portproton
+
+exit
+```
+
 * **Ubuntu 20.04** (Kubuntu, Xubuntu, Lubuntu, и т.д.), **Linux Mint 20.x** :
 [portproton_1.0-2_amd64.deb](https://github.com/Castro-Fidel/PortProton_dpkg/releases/download/portproton_1.0-2_amd64/portproton_1.0-2_amd64.deb)
+
 * **Arch Linux** и производные (Manjaro, Garuda, и т.д.) :
 [AUR](https://aur.archlinux.org/packages/portproton)
+
 * **OpenSuse**:
 [OBS](https://software.opensuse.org/download/package?package=portproton&project=home%3ABoria138%3APortProton)
+
 * **ROSA Linux** устанавливается с помощью этой команды:
 
 ```sh
@@ -48,20 +76,6 @@ sudo urpmi portproton
 sudo dnf copr enable boria138/portproton
 
 sudo dnf install portproton
-```
-
-* **Alt Linux** устанавливается с помощью этой команды:
-
-```sh
-su -
-
-epm ei
-
-epm full-upgrade
-
-epm play portproton
-
-exit
 ```
 
 ## Универсальный (ручной) метод установки

@@ -389,11 +389,17 @@ start_portwine () {
 
     if [[ "${PW_REDUCE_PULSE_LATENCY}" == 1 ]] ; then
         export PULSE_LATENCY_MSEC=60
+        # export PIPEWIRE_LATENCY=128/48000
     else
         unset PULSE_LATENCY_MSEC
     fi
 
-    if [[ "${PW_USE_US_LAYOUT}" == "1" ]] && ! grep 1 "${PORT_WINE_TMP_PATH}/check_wayland" &>/dev/null ; then
+    if [[ "${PW_RESTORE_RESOLUTION}" == "1" ]] && [[ "${XDG_SESSION_TYPE}" != "wayland" ]] && command -v xrandr &>/dev/null ; then
+        xrandr | grep -oP 'current\s+\K[0-9]+ x [0-9]+' | tr -d ' ' > "${PORT_WINE_TMP_PATH}/tmp_screen_configuration"
+        xrandr | grep " connected" | awk '{print $1}' >> "${PORT_WINE_TMP_PATH}/tmp_screen_configuration"
+    fi
+
+    if [[ "$PW_USE_US_LAYOUT" == "1" ]] && [[ "${XDG_SESSION_TYPE}" != "wayland" ]] && command -v setxkbmap &>/dev/null ; then
         setxkbmap -model pc101 us -print | xkbcomp - $DISPLAY &>/dev/null
     else
         export PW_USE_US_LAYOUT="0"
@@ -424,25 +430,14 @@ start_portwine () {
             fi
         done
     fi
-    print_info "Try link wine DXGI by default..."
-    if ! try_force_link_file "${WINEDIR}"/lib/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/dxgi.dll"
-    then try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/dxgi.dll "${WINEPREFIX}/drive_c/windows/syswow64/dxgi.dll"
-    fi
-    if ! try_force_link_file "${WINEDIR}"/lib64/wine/fakedlls/dxgi.dll "${WINEPREFIX}/drive_c/windows/system32/dxgi.dll"
-    then try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/dxgi.dll "${WINEPREFIX}/drive_c/windows/system32/dxgi.dll"
-    fi
-    print_info "Try link wine d3d filese by default..."
-    for rm_vulkan_dll in libvkd3d-1 libvkd3d-shader-1 dxvk_config nvapi nvapi64 ; do
-        try_remove_file "${WINEPREFIX}/drive_c/windows/system32/${wine_build_dll}.dll"
-        try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/${wine_build_dll}.dll"
+    print_info "Try link wine d3d files by default..."
+    for rm_vulkan_dll in libvkd3d-1 libvkd3d-shader-1 dxvk_config nvapi nvapi64 d3d12core d3d12 d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d ; do
+        try_remove_file "${WINEPREFIX}/drive_c/windows/system32/${rm_vulkan_dll}.dll"
+        try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/${rm_vulkan_dll}.dll"
     done
     for wine_build_dll in d3d12core d3d12 d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d ; do
-        if ! try_force_link_file "${WINEDIR}/lib/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_build_dll}.dll"
-        then try_force_link_file "${WINEDIR}/lib/wine/i386-windows/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_build_dll}.dll"
-        fi
-        if ! try_force_link_file "${WINEDIR}/lib64/wine/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_build_dll}.dll"
-        then try_force_link_file "${WINEDIR}/lib64/wine/x86_64-windows/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_build_dll}.dll"
-        fi
+        try_force_link_file "${WINEDIR}/lib/wine/i386-windows/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_build_dll}.dll"
+        try_force_link_file "${WINEDIR}/lib64/wine/x86_64-windows/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_build_dll}.dll"
     done
 
     create_new_dir "${PW_VULKAN_DIR}/opengl"
@@ -521,9 +516,11 @@ start_portwine () {
 
         print_info "Try link native DXVK files..."
         for wine_dxvk_dll in ${CP_DXVK_FILES} ; do
-            try_force_link_file "${PATH_TO_DXVK_FILES}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
-            try_force_link_file "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
-            [[ "$?" == 0 ]] && var_winedlloverride_update "${wine_dxvk_dll}=n"
+            if [[ -f "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll"  ]] ; then
+                try_force_link_file "${PATH_TO_DXVK_FILES}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
+                try_force_link_file "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
+                var_winedlloverride_update "${wine_dxvk_dll}=n"
+            fi
         done
 
         try_force_link_file "${PATH_TO_DXVK_FILES}/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/" || \
@@ -539,6 +536,7 @@ start_portwine () {
             if [[ -f "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" ]] ; then
                 try_force_link_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
                 try_force_link_file "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
+                var_winedlloverride_update "${wine_vkd3d_dll}=n"
             fi
         done
 

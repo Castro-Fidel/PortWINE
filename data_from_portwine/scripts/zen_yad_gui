@@ -148,11 +148,6 @@ pw_tray_icon () {
 
 pw_gui_for_edit_db () {
     KEY_EDIT_DB_GUI=$RANDOM
-    if [[ "${MANGOHUD_CONFIG}" == *fps_limit=[0-9]* ]] ; then
-        FPS_LIMIT_VAR="$(echo ${MANGOHUD_CONFIG} | sed 's/.*fps_limit=//' | awk -F, '{print $1}')"
-    else
-        FPS_LIMIT_VAR="disabled"
-    fi
     if [[ "${PW_WINE_CPU_TOPOLOGY}" == *[0-9]:* ]] && [[ "${PW_WINE_CPU_TOPOLOGY}" != "disabled" ]] ; then
         CPU_LIMIT_VAR="`echo ${PW_WINE_CPU_TOPOLOGY%%:*}`"
     else
@@ -172,7 +167,6 @@ pw_gui_for_edit_db () {
 
     GET_GPU_NAMES=$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | awk -F '=' '/deviceName/{print $2}' | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
 
-    GET_REFRASH_RATE="30!45!60!75!120!144!165!240"
 
     logical_cores=$(grep -c "^processor" /proc/cpuinfo)
     if [[ "${logical_cores}" -le "4" ]] ; then
@@ -217,7 +211,6 @@ pw_gui_for_edit_db () {
     --field=":LBL" "" \
     --field="${loc_gui_cpu_limit}!${loc_gui_cpu_limit_help} :CB" "${CPU_LIMIT_VAR}!disabled!${GET_LOGICAL_CORE}" \
     --field="${loc_gui_gpu_select}!${loc_gui_gpu_select_help} :CB" "${GPU_VAR}!disabled!${GET_GPU_NAMES}" \
-    --field="${loc_gui_mango_fps}!${loc_gui_mango_fps_help} :CB" "${FPS_LIMIT_VAR}!disabled!${GET_REFRASH_RATE}" \
     --field="${loc_gui_arg_gamescope}!${loc_gui_arg_gamescope_help} :CBE" "\\${GAMESCOPE_ARGS}!-r 60 -F fsr!" 2>/dev/null 1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
     
     "${pw_yad_v12_3}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="800" \
@@ -254,26 +247,16 @@ pw_gui_for_edit_db () {
     LAUNCH_PARAMETERS=`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $5}'`
     CPU_LIMIT="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $7}'`"
     PW_GPU_USE="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $8}'`"
-    FPS_LIMIT="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $9}'`"
-    GAMESCOPE_ARGS="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $10}'`"
+    GAMESCOPE_ARGS="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $9}'`"
     # PW_AMD_VULKAN_USE="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $10}'`"
 
-    if [[ "${FPS_LIMIT}" != "disabled" ]] && [[ "${FPS_LIMIT_VAR}" != "disabled" ]] ; then
-        export MANGOHUD_CONFIG="$(echo ${MANGOHUD_CONFIG} | sed "s/fps_limit=${FPS_LIMIT_VAR}/fps_limit=${FPS_LIMIT}/")"
-        export PW_MANGOHUD=1
-    elif [[ "${FPS_LIMIT}" != "disabled" ]] && [[ "${FPS_LIMIT_VAR}" == "disabled" ]] ; then
-        export MANGOHUD_CONFIG=${MANGOHUD_CONFIG},fps_limit=${FPS_LIMIT}
-        export PW_MANGOHUD=1
-    elif [[ "${FPS_LIMIT}" == "disabled" ]] ; then
-        export MANGOHUD_CONFIG="$(echo ${MANGOHUD_CONFIG} | sed "s/,fps_limit=${FPS_LIMIT_VAR}//" | sed "s/,fps_limit=//")"
-    fi
     if [[ "${CPU_LIMIT}" != "disabled" ]] ; then
         export PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $((${CPU_LIMIT} - 1)))"
     else
         export PW_WINE_CPU_TOPOLOGY="disabled"
     fi
     echo "pw_gui_for_edit_db PORTWINE_DB_FILE=$PORTWINE_DB_FILE"
-    edit_db_from_gui $@ MANGOHUD_CONFIG LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY GAMESCOPE_ARGS
+    edit_db_from_gui $@ LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY GAMESCOPE_ARGS
     edit_user_conf_from_gui PW_GPU_USE
     # PW_AMD_VULKAN_USE
     return 0
@@ -509,6 +492,114 @@ gui_vkBasalt () {
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
+
+
+gui_MangoHud() {
+    KEY_MH_GUI=$RANDOM
+    LIST_MH=(
+        arch battery battery_icon battery_time battery_watt core_bars core_load
+        cpu_mhz cpu_power cpu_temp device_battery_icon engine_short_names
+        engine_version exec_name fcat fps_metrics fps_only frame_count full
+        gamemode gpu_core_clock gpu_fan gpu_junction_temp gpu_mem_clock
+        gpu_mem_temp gpu_name gpu_power gpu_temp gpu_voltage histogram horizontal
+        horizontal_stretch hud_compact hud_no_margin io_read io_write no_display
+        no_small_font procmem procmem_shared procmem_virt ram resolution
+        show_fps_limit swap temp_fahrenheit throttling_status throttling_status_graph
+        time version vkbasalt vram vulkan_driver wine
+    )
+
+    unset ADD_GUI_MH GUI_MH_RESULT
+
+    GET_REFRASH_RATE="30!45!60!75!120!144!165!240"
+
+    if [[ -z "$FPS_LIMIT" ]]; then
+        FPS_LIMIT_VAR="disabled"
+    else
+        FPS_LIMIT_VAR="${FPS_LIMIT}"
+    fi
+
+    if [ -n "$MANGOHUD_CONFIG" ]; then
+        PW_MANGOHUD_CONFIG=($(echo "$MANGOHUD_CONFIG" | tr ',' '\n' | grep -v '='))
+    else
+        PW_MANGOHUD_CONFIG=($(echo "$DEFAULT_MANGOHUD_CONFIG" | tr ',' '\n' | grep -v '='))
+    fi
+
+    for add_list_mh in "${LIST_MH[@]}"; do
+        PW_MH_GUI_HELP="PW_MH_${add_list_mh}_INFO"
+        if [[ -n "$(grep -wo "$add_list_mh" <<<"${PW_MANGOHUD_CONFIG[@]}")" ]]; then
+            ADD_GUI_MH+="--field=$add_list_mh!${!PW_MH_GUI_HELP}:CHK%TRUE%"
+        else
+            ADD_GUI_MH+="--field=$add_list_mh!${!PW_MH_GUI_HELP}:CHK%FALSE%"
+        fi
+    done
+
+    export old_IFS=$IFS
+    export IFS="%"
+    "${pw_yad_v12_3}" --plug=$KEY_MH_GUI --tabnum="1" --form --columns=5 --separator=" " \
+        --text-align=center --text="$loc_gui_mh_top" \
+        ${ADD_GUI_MH} 1> "${PORT_WINE_TMP_PATH}/tmp_yad_mh_set" 2>/dev/null &
+    export IFS="${old_IFS}"
+
+    "${pw_yad_v12_3}" --plug=$KEY_MH_GUI --tabnum="2" --separator=" " --form \
+        --field="${loc_gui_mango_fps}!${loc_gui_mango_fps_help} :CB" "${FPS_LIMIT_VAR}!disabled!${GET_REFRASH_RATE}" \
+        1> "${PORT_WINE_TMP_PATH}/tmp_yad_mh_fps_limit" 2>/dev/null &
+
+    "${pw_yad_v12_3}" --paned --key="$KEY_MH_GUI" --height="650" --title="MangoHud" --center --borders=3 \
+        --separator=" " --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
+        --button="$loc_gui_cancel"!!"$loc_gui_cancel_help":1 \
+        --button="$loc_gui_disabled_mh"!!"$loc_gui_disabled_mh_help":183 \
+        --button="$loc_gui_save_changes"!!"$loc_gui_save_changes_help":184 2>/dev/null
+    YAD_MANGOHUD_STATUS="$?"
+
+    case "${YAD_MANGOHUD_STATUS}" in
+        1 | 252)
+            /usr/bin/env bash -c "${pw_full_command_line[*]}" &
+            exit 0
+            ;;
+        183)
+            export PW_MANGOHUD=0
+            ;;
+        184)
+            export PW_MANGOHUD=1
+            ;;
+    esac
+
+    YAD_MH_SET=$(<"${PORT_WINE_TMP_PATH}/tmp_yad_mh_set")
+    FPS_LIMIT=$(<"${PORT_WINE_TMP_PATH}/tmp_yad_mh_fps_limit")
+
+    if command -v xrand 2>/dev/null; then
+        MONITOR_HEIGHT=$(xrandr | grep -oP 'current\s+\K[0-9]+ x [0-9]+' | awk '{print $3}')
+        MH_FONT_SIZE="font_size=$(expr  $MONITOR_HEIGHT / 45)"
+    fi
+
+    INT_COUNT_FX=0
+    for read_list_mh in ${YAD_MH_SET}; do
+        if [[ "$read_list_mh" == "TRUE" ]]; then
+            export GUI_MH_RESULT+="${LIST_MH[$INT_COUNT_FX]},"
+        fi
+        export INT_COUNT_FX=$((INT_COUNT_FX + 1))
+    done
+
+    if [ -n "$MH_FONT_SIZE" ]; then
+        GUI_MH_RESULT="${GUI_MH_RESULT}${MH_FONT_SIZE}"
+    else
+        GUI_MH_RESULT="${GUI_MH_RESULT%,}"
+    fi
+
+    if [[ "${FPS_LIMIT}" != "disabled" ]] ; then
+        export GUI_MH_RESULT=${GUI_MH_RESULT},fps_limit=${FPS_LIMIT}
+        export PW_MANGOHUD=1
+    elif [[ "${FPS_LIMIT}" == "disabled" ]] ; then
+        export GUI_MH_RESULT="$(echo ${GUI_MH_RESULT} | sed "s/,fps_limit=${FPS_LIMIT_VAR}//" | sed "s/,fps_limit=//")"
+    fi
+
+    export MANGOHUD_CONFIG="${GUI_MH_RESULT}"
+
+    edit_db_from_gui MANGOHUD_CONFIG PW_MANGOHUD FPS_LIMIT
+    /usr/bin/env bash -c "${pw_full_command_line[*]}" &
+    exit 0
+}
+
 
 portwine_create_shortcut () {
     pw_create_gui_png
