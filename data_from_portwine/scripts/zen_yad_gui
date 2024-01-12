@@ -493,7 +493,6 @@ gui_vkBasalt () {
     exit 0
 }
 
-
 gui_MangoHud () {
     KEY_MH_GUI=$RANDOM
     LIST_MH=(
@@ -547,7 +546,7 @@ gui_MangoHud () {
     "${pw_yad_v12_3}" --paned --key="$KEY_MH_GUI" --height="650" --title="MangoHud" --center --borders=3 \
         --separator=" " --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
         --button="$loc_gui_cancel"!!"$loc_gui_cancel_help":1 \
-        --button="$loc_gui_disabled_mh"!!"$loc_gui_disabled_mh_help":183 \
+        --button="$loc_gui_disabled_mh"!!"$loc_gui_disabled_mh_help":182 \
         --button="$loc_gui_save_changes"!!"$loc_gui_save_changes_help":184 2>/dev/null
     YAD_MANGOHUD_STATUS="$?"
 
@@ -556,8 +555,12 @@ gui_MangoHud () {
             /usr/bin/env bash -c "${pw_full_command_line[*]}" &
             exit 0
             ;;
-        183)
+        182)
             export PW_MANGOHUD=0
+            export FPS_LIMIT="disabled"
+            edit_db_from_gui PW_MANGOHUD FPS_LIMIT
+            /usr/bin/env bash -c "${pw_full_command_line[*]}" &
+            exit 0
             ;;
         184)
             export PW_MANGOHUD=1
@@ -567,7 +570,7 @@ gui_MangoHud () {
     YAD_MH_SET=$(<"${PORT_WINE_TMP_PATH}/tmp_yad_mh_set")
     FPS_LIMIT=$(<"${PORT_WINE_TMP_PATH}/tmp_yad_mh_fps_limit")
 
-    if command -v xrand 2>/dev/null ; then
+    if command -v xrandr 2>/dev/null ; then
         MONITOR_HEIGHT=$(xrandr | grep -oP 'current\s+\K[0-9]+ x [0-9]+' | awk '{print $3}')
         MH_FONT_SIZE="font_size=$(expr  $MONITOR_HEIGHT / 45)"
     fi
