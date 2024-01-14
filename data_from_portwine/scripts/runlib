@@ -279,24 +279,14 @@ start_portwine () {
         [ ! -d "${WINEPREFIX}/dosdevices/c:" ] && try_force_link_dir "${WINEPREFIX}/drive_c/" "${WINEPREFIX}/dosdevices/c:"
         [ ! -d "${WINEPREFIX}/dosdevices/z:" ] && try_force_link_dir "/" "${WINEPREFIX}/dosdevices/z:"
         [ ! -d "${WINEPREFIX}/dosdevices/h:" ] && try_force_link_dir "$HOME" "${WINEPREFIX}/dosdevices/h:"
-        create_new_dir "${WINEPREFIX}/drive_c/windows/Fonts/"
-        try_force_link_file "${WINEDIR}/share/fonts/"LiberationSans-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arial.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"LiberationSans-Bold.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"arialbd.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"LiberationSerif-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"times.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"LiberationMono-Regular.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"cour.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"LiberationMono-Bold.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"courbd.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"msyh.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"msyh.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"malgun.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"malgun.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"micross.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"micross.ttf
-        try_force_link_file "${WINEDIR}/share/fonts/"nirmala.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"nirmala.ttf
-
-        try_force_link_file "${WINEDIR}/share/fonts/"simsun.ttc "${WINEPREFIX}/drive_c/windows/Fonts/"simsun.ttc
-        try_force_link_file "${WINEDIR}/share/fonts/"msgothic.ttc "${WINEPREFIX}/drive_c/windows/Fonts/"msgothic.ttc
         
-        try_force_link_file "${WINEDIR}/share/wine/fonts/"tahoma.ttf "${WINEPREFIX}/drive_c/windows/Fonts/"tahoma.ttf
+        create_new_dir "${WINEPREFIX}/drive_c/windows/Fonts/"
+        LN_FONTS="arialbd.ttf courbd.ttf georgia.ttf micross.ttf msyh.ttf simsun.ttc arial.ttf cour.ttf malgun.ttf msgothic.ttc nirmala.ttf times.ttf"
+        for link_font in $LN_FONTS ; do
+            try_force_link_file "${WINEDIR}/share/fonts/${link_font}" "${WINEPREFIX}/drive_c/windows/Fonts/${link_font}"
+        done
 
         find "${WINEPREFIX}/dosdevices" -xtype l -maxdepth 1 2>/dev/null -exec rm {} \;
-
         rm -f "${WINEPREFIX}/dosdevices/"*::
         DRIVES=(d e f g i j k l m n o p q r s t u v w x y)
         DEF_MOUNT_DIRS=('/media' "/media/$USER" '/mnt' '/run/media' "/run/media/$USER")
