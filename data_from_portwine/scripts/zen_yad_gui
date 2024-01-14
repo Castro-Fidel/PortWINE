@@ -568,7 +568,7 @@ gui_MangoHud () {
     esac
 
     YAD_MH_SET=$(<"${PORT_WINE_TMP_PATH}/tmp_yad_mh_set")
-    FPS_LIMIT=$(<"${PORT_WINE_TMP_PATH}/tmp_yad_mh_fps_limit")
+    FPS_LIMIT=$(cat "${PORT_WINE_TMP_PATH}/tmp_yad_mh_fps_limit" | awk '{print $1}')
 
     if command -v xrandr 2>/dev/null ; then
         MONITOR_HEIGHT=$(xrandr | grep -oP 'current\s+\K[0-9]+ x [0-9]+' | awk '{print $3}')
@@ -592,7 +592,7 @@ gui_MangoHud () {
         export GUI_MH_RESULT=${GUI_MH_RESULT},fps_limit=${FPS_LIMIT}
         export PW_MANGOHUD=1
     elif [[ "${FPS_LIMIT}" == "disabled" ]]
-    then export GUI_MH_RESULT="$(echo ${GUI_MH_RESULT} | sed "s/,fps_limit=${FPS_LIMIT_VAR}//" | sed "s/,fps_limit=//")"
+    then export GUI_MH_RESULT="$(echo ${GUI_MH_RESULT} | sed "s/,fps_limit=${FPS_LIMIT_VAR}//" | sed "s/,fps_limit=disabled//")"
     fi
     export MANGOHUD_CONFIG="${GUI_MH_RESULT}"
 
