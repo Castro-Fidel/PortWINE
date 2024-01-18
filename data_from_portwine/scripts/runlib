@@ -214,6 +214,11 @@ start_portwine () {
     if [[ "${PW_GPU_USE}" != "disabled" ]] ; then
         export DXVK_FILTER_DEVICE_NAME="${PW_GPU_USE}"
         export VKD3D_FILTER_DEVICE_NAME="${PW_GPU_USE}"
+        if echo "${PW_GPU_USE}" | grep -i nvidia &>/dev/null ; then
+            if [[ -f "/usr/share/vulkan/icd.d/nvidia_icd.json" ]] ; then
+                export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/nvidia_icd.json"
+            fi
+        fi
     fi
 
     # if [[ "${PW_AMD_VULKAN_USE}" == "amdvlk" ]] ; then

@@ -330,19 +330,19 @@ pw_prefix_manager () {
 
         KEY_EDIT_MANAGER_GUI=$RANDOM
         "${pw_yad_v12_3}" --plug=$KEY_EDIT_MANAGER_GUI --tabnum=1 --list --checklist \
-        --text="Select components to install in prefix: <b>\"${PW_PREFIX_NAME}\"</b>, using wine: <b>\"${PW_WINE_USE}\"</b>" \
+        --text="${loc_prefix_manager_comp} <b>\"${PW_PREFIX_NAME}\"</b>, ${loc_prefix_manager_wine} <b>\"${PW_WINE_USE}\"</b>" \
         --column=set --column=dll --column=info < "${PORT_WINE_TMP_PATH}/dll_list_tmp" 1>> "${PORT_WINE_TMP_PATH}/to_winetricks" 2>/dev/null &
 
         "${pw_yad_v12_3}" --plug=$KEY_EDIT_MANAGER_GUI --tabnum=2 --list --checklist \
-        --text="Select fonts to install in prefix: <b>\"${PW_PREFIX_NAME}\"</b>, using wine: <b>\"${PW_WINE_USE}\"</b>" \
+        --text="${loc_prefix_manager_font} <b>\"${PW_PREFIX_NAME}\"</b>, ${loc_prefix_manager_wine} <b>\"${PW_WINE_USE}\"</b>" \
         --column=set --column=dll --column=info < "${PORT_WINE_TMP_PATH}/fonts_list_tmp" 1>> "${PORT_WINE_TMP_PATH}/to_winetricks" 2>/dev/null &
 
         "${pw_yad_v12_3}" --plug=$KEY_EDIT_MANAGER_GUI --tabnum=3 --list --checklist \
-        --text="Change config for prefix: <b>\"${PW_PREFIX_NAME}\"</b>" \
+        --text="${loc_prefix_manager_conf} <b>\"${PW_PREFIX_NAME}\"</b>" \
         --column=set --column=dll --column=info < "${PORT_WINE_TMP_PATH}/settings_list_tmp" 1>> "${PORT_WINE_TMP_PATH}/to_winetricks" 2>/dev/null &
 
         "${pw_yad_v12_3}" --key=$KEY_EDIT_MANAGER_GUI --notebook --borders=3 --width=900 --height=800 \
-        --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "PREFIX MANAGER..." --tab-pos=bottom --tab="DLL" --tab="FONTS" --tab="SETTINGS" 2>/dev/null
+        --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "$loc_pm" --tab-pos=bottom --tab="$loc_pm_dlls" --tab="$loc_pm_fonts" --tab="$loc_pm_settings" 2>/dev/null
         YAD_STATUS="$?"
         if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
             stop_portwine
