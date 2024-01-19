@@ -4,7 +4,9 @@
 export PW_PREFIX_NAME="CALIBER"
 export LAUNCH_PARAMETERS=("/VERYSILENT")
 export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/CaliberSetup.exe"
-export PW_WINE_USE=PROTON_STEAM_6.3-8
+export PW_WINE_USE=WINE_LG_9-0
+export DISABLE_CP_DEFPFX=1
+export PORTWINE_CREATE_SHORTCUT_NAME="CALIBER"
 
 gui_proton_downloader silent "${PW_WINE_USE}"
 
@@ -15,11 +17,11 @@ then
     pw_kill_autostart VC_redist.x64.exe 3 &
     pw_run "${PW_AUTOINSTALL_EXE}"
     portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/1C Game Studios/Caliber/Launcher.exe"
+    pw_create_unique_exe "caliber_launcher_pp"
     try_remove_file "${PW_AUTOINSTALL_EXE}"
     try_remove_file "${portwine_exe}.ppdb"
     kill_portwine
     pw_stop_progress_bar
-    export PORTWINE_CREATE_SHORTCUT_NAME="CALIBER"
     portwine_create_shortcut
 fi
 stop_portwine

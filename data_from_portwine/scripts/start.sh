@@ -502,11 +502,6 @@ export -f gui_credits
 
 ###MAIN###
 
-# HOTFIX CALIBRE
-if [[ ! -z "$(echo ${1} | grep '/Caliber/')" ]] ; then
-    export PW_WINE_USE=PROTON_STEAM_6.3-8
-fi
-
 # CLI
 case "${1}" in
     '--help' )
