@@ -167,8 +167,13 @@ pw_gui_for_edit_db () {
 
     GET_GPU_NAMES=$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | awk -F '=' '/deviceName/{print $2}' | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
 
-
-    logical_cores=$(grep -c "^processor" /proc/cpuinfo)
+    logical_cores=$(nproc 2>/dev/null)
+    
+    if [[ $(cat "/sys/devices/system/cpu/smt/active") == "1" ]] ; then
+    	# Currently (2024) SMT allows 2 threads per core, this might change in the future
+    	logical_cores=$(( logical_cores / 2 ))
+    fi
+    
     if [[ "${logical_cores}" -le "4" ]] ; then
         GET_LOGICAL_CORE="1!$(seq -s! 1 $((${logical_cores} - 1)))"
     else
@@ -249,9 +254,9 @@ pw_gui_for_edit_db () {
     PW_GPU_USE="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $8}'`"
     GAMESCOPE_ARGS="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $9}'`"
     # PW_AMD_VULKAN_USE="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $10}'`"
-
+    
     if [[ "${CPU_LIMIT}" != "disabled" ]] ; then
-        export PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $((${CPU_LIMIT} - 1)))"
+	export PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $((${CPU_LIMIT} - 1)))"
     else
         export PW_WINE_CPU_TOPOLOGY="disabled"
     fi
