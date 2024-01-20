@@ -509,7 +509,7 @@ gui_MangoHud () {
 
     unset ADD_GUI_MH GUI_MH_RESULT
 
-    GET_REFRASH_RATE="30!45!60!75!120!144!165!240"
+    GET_REFRESH_RATE="30!45!60!75!120!144!165!240"
 
     if [[ -z "$FPS_LIMIT" ]]; then
         FPS_LIMIT_VAR="disabled"
@@ -526,9 +526,9 @@ gui_MangoHud () {
     for add_list_mh in "${LIST_MH[@]}"; do
         PW_MH_GUI_HELP="PW_MH_${add_list_mh}_INFO"
         if [[ -n "$(grep -wo "$add_list_mh" <<<"${PW_MANGOHUD_CONFIG[@]}")" ]]; then
-            ADD_GUI_MH+="--field=$add_list_mh!${!PW_MH_GUI_HELP}:CHK%TRUE%"
+            ADD_GUI_MH+="--field=  $add_list_mh  !${!PW_MH_GUI_HELP}:CHK%TRUE%"
         else
-            ADD_GUI_MH+="--field=$add_list_mh!${!PW_MH_GUI_HELP}:CHK%FALSE%"
+            ADD_GUI_MH+="--field=  $add_list_mh  !${!PW_MH_GUI_HELP}:CHK%FALSE%"
         fi
     done
 
@@ -540,7 +540,7 @@ gui_MangoHud () {
     export IFS="${old_IFS}"
 
     "${pw_yad_v12_3}" --plug=$KEY_MH_GUI --tabnum="2" --separator=" " --form \
-        --field="${loc_gui_mango_fps}!${loc_gui_mango_fps_help} :CB" "${FPS_LIMIT_VAR}!disabled!${GET_REFRASH_RATE}" \
+        --field="${loc_gui_mango_fps}!${loc_gui_mango_fps_help} :CB" "${FPS_LIMIT_VAR}!disabled!${GET_REFRESH_RATE}" \
         1> "${PORT_WINE_TMP_PATH}/tmp_yad_mh_fps_limit" 2>/dev/null &
 
     "${pw_yad_v12_3}" --paned --key="$KEY_MH_GUI" --height="650" --title="MangoHud" --center --borders=3 \
@@ -570,10 +570,9 @@ gui_MangoHud () {
     YAD_MH_SET=$(<"${PORT_WINE_TMP_PATH}/tmp_yad_mh_set")
     FPS_LIMIT=$(cat "${PORT_WINE_TMP_PATH}/tmp_yad_mh_fps_limit" | awk '{print $1}')
 
-    if command -v xrandr 2>/dev/null ; then
-        MONITOR_HEIGHT=$(xrandr | grep -oP 'current\s+\K[0-9]+ x [0-9]+' | awk '{print $3}')
-        MH_FONT_SIZE="font_size=$(expr  $MONITOR_HEIGHT / 45)"
-    fi
+    MONITOR_HEIGHT="$(echo $PW_SCREEN_RESOLUTION | awk -F'x' '{print $2}')"
+    MH_FONT_SIZE="font_size=(( $MONITOR_HEIGHT / 45 ))"
+
 
     export INT_COUNT_FX=0
     for read_list_mh in ${YAD_MH_SET} ; do
@@ -624,7 +623,7 @@ portwine_create_shortcut () {
         --field="${sc_info}":LBL "" \
         --field="  ${name_desktop}":LBL "" \
         --field="  ${sc_menu_desktop}":CHK "TRUE" \
-        --field="  ${sc_add_in_steam}":CHK "$PW_FOUND_VDF" \
+        --field="  ${sc_add_in_steam}":CHK "FALSE" \
         --button="$loc_gui_create_shortcut":0)
         PW_YAD_OUT=$?
     else
@@ -635,7 +634,7 @@ portwine_create_shortcut () {
         --field="${sc_info}":LBL "" \
         --field="${sc_name}:" "${name_desktop}" \
         --field="  ${sc_menu_desktop}":CHK "TRUE" \
-        --field="  ${sc_add_in_steam}":CHK "$PW_FOUND_VDF" \
+        --field="  ${sc_add_in_steam}":CHK "FALSE" \
         --button="$loc_gui_create_shortcut":0)
         PW_YAD_OUT=$?
     fi

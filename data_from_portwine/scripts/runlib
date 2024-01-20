@@ -391,11 +391,6 @@ start_portwine () {
         unset PULSE_LATENCY_MSEC
     fi
 
-    if [[ "${PW_RESTORE_RESOLUTION}" == "1" ]] && [[ "${XDG_SESSION_TYPE}" != "wayland" ]] && command -v xrandr &>/dev/null ; then
-        xrandr | grep -oP 'current\s+\K[0-9]+ x [0-9]+' | tr -d ' ' > "${PORT_WINE_TMP_PATH}/tmp_screen_configuration"
-        xrandr | grep " connected" | awk '{print $1}' >> "${PORT_WINE_TMP_PATH}/tmp_screen_configuration"
-    fi
-
     if [[ "$PW_USE_US_LAYOUT" == "1" ]] && [[ "${XDG_SESSION_TYPE}" != "wayland" ]] && command -v setxkbmap &>/dev/null ; then
         setxkbmap -model pc101 us -print | xkbcomp - $DISPLAY &>/dev/null
     else
@@ -688,6 +683,7 @@ pw_run () {
         echo "Log WINE:" >> "${PW_LOG_TO_FILE}"
         echo ""
         print_debug "Log from RUNTIME and WINE:"
+        ${PW_RUN_GAMESCOPE} \
         ${pw_runtime} \
         env PATH="${PATH}" \
         LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
@@ -695,7 +691,6 @@ pw_run () {
         VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
         VK_INSTANCE_LAYERS=${PW_VK_INSTANCE_LAYERS} \
         ${PW_GAMEMODERUN_SLR} \
-        ${PW_RUN_GAMESCOPE} \
         ${PW_MANGOHUD_SLR} \
         "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
     else
@@ -706,6 +701,7 @@ pw_run () {
         echo ""
         echo "Log WINE:" > "${PW_LOG_TO_FILE}"
         print_debug "Log from RUNTIME and WINE:"
+        ${PW_RUN_GAMESCOPE} \
         ${pw_runtime} \
         env PATH="${PATH}" \
         LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
@@ -713,7 +709,6 @@ pw_run () {
         VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
         VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
         ${PW_GAMEMODERUN_SLR} \
-        ${PW_RUN_GAMESCOPE} \
         ${PW_MANGOHUD_SLR} \
         "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
         cat "${PW_LOG_TO_FILE}"
@@ -785,6 +780,15 @@ create_new_dir "${PW_VULKAN_DIR}"
 
 
 export LSPCI_VGA="$(lspci -k | grep -E 'VGA|3D' | tr -d '\n')"
+
+if command -v xrandr &>/dev/null ; then
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_screen_configuration"
+    export PW_SCREEN_RESOLUTION="$(xrandr | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
+    export PW_SCREEN_PRIMARY="$(xrandr | grep "primary" | awk '{print $1}')"
+    print_var PW_SCREEN_RESOLUTION PW_SCREEN_PRIMARY
+else
+    print_error "xrandr - not found!"
+fi
 
 cd "${PORT_SCRIPTS_PATH}"
 . "${PORT_SCRIPTS_PATH}/var"

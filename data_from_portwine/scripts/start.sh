@@ -11,6 +11,15 @@ elif [[ "$1" == *.exe ]] ; then
     export portwine_exe="$1"
     MISSING_DESKTOP_FILE=1
 fi
+
+# HOTFIX - ModernWarships
+if echo "$portwine_exe" | grep ModernWarships &>/dev/null \
+&& [[ -f "$(dirname "${portwine_exe}")/Modern Warships.exe" ]]
+then
+    export portwine_exe="$(dirname "${portwine_exe}")/Modern Warships.exe"
+    MISSING_DESKTOP_FILE=0
+fi
+
 . "$(dirname $(readlink -f "$0"))/runlib"
 kill_portwine
 killall -15 yad_v12_3 2>/dev/null
@@ -67,8 +76,7 @@ portwine_launch () {
     PORTWINE_MSI=$(basename "${portwine_exe}" | grep .msi)
     PORTWINE_BAT=$(basename "${portwine_exe}" | grep .bat)
     if [[ ! -z "${PW_VIRTUAL_DESKTOP}" && "${PW_VIRTUAL_DESKTOP}" == "1" ]] ; then
-        pw_screen_resolution=$(xrandr --current | grep "*" | awk '{print $1;}' | head -1)
-        pw_run explorer "/desktop=PortProton,${pw_screen_resolution}" ${WINE_WIN_START} "$portwine_exe"
+        pw_run explorer "/desktop=PortProton,${PW_SCREEN_RESOLUTION}" ${WINE_WIN_START} "$portwine_exe"
     elif [ ! -z "${PORTWINE_MSI}" ]; then
         pw_run msiexec /i "$portwine_exe"
     elif [[ ! -z "${PORTWINE_BAT}" || -n "${portwine_exe}" ]] ; then
@@ -456,7 +464,7 @@ pw_edit_db () {
         pw_gui_for_edit_db \
         PW_MANGOHUD PW_MANGOHUD_USER_CONF ENABLE_VKBASALT PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING \
         PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL \
-        PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME  \
+        PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY \
         PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE \
         PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_USE_GALLIUM_ZINK PW_USE_GAMESCOPE
     else
@@ -464,7 +472,7 @@ pw_edit_db () {
         PW_MANGOHUD PW_MANGOHUD_USER_CONF ENABLE_VKBASALT PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING \
         PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL \
         PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME  \
-        PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_RESTORE_RESOLUTION PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE \
+        PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE \
         PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_USE_GALLIUM_ZINK PW_USE_GAMESCOPE
     fi
     if [[ "$?" == 0 ]] ; then
