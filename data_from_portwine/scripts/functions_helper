@@ -1035,16 +1035,18 @@ update_winetricks () {
 
 edit_db_from_gui () {
     print_info "edit_db_from_gui PORTWINE_DB_FILE=$PORTWINE_DB_FILE"
-    for mod_db in $@ ; do
+    for mod_db in "$@" ; do
         print_info "${mod_db}=${!mod_db}"
-        if [ -z "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}="`" ] ; then
-            echo "export ${mod_db}=\"${!mod_db}\"" >> "${PORTWINE_DB_FILE}"
-        elif [ "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}=" | grep -v "#"`" ] ; then
-            if [ "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}=" | grep -v "#"`" != "export ${mod_db}=\"${!mod_db}\"" ] ; then
-                sed -ri "s/^export ${mod_db}=.*/export ${mod_db}=\"${!mod_db}\"/" "${PORTWINE_DB_FILE}"
+        escaped_value=$(printf "%s" "${!mod_db}" | sed 's/\\/\\\\/g; s/,/\\,/g')
+
+        if [ -z "`grep "export ${mod_db}=" "${PORTWINE_DB_FILE}"`" ] ; then
+            echo "export ${mod_db}=\"${escaped_value}\"" >> "${PORTWINE_DB_FILE}"
+        elif [ "`grep "export ${mod_db}=" "${PORTWINE_DB_FILE}" | grep -v "#"`" ] ; then
+            if [ "`grep "export ${mod_db}=" "${PORTWINE_DB_FILE}" | grep -v "#"`" != "export ${mod_db}=\"${escaped_value}\"" ] ; then
+                sed -ri "s/^export ${mod_db}=.*/export ${mod_db}=\"${escaped_value}\"/" "${PORTWINE_DB_FILE}"
             fi
-        elif [ "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}="`" != "export ${mod_db}=${!mod_db}" ] ; then
-            sed -ri "s/.*export ${mod_db}=.*/export ${mod_db}=\"${!mod_db}\"/g" "${PORTWINE_DB_FILE}"
+        elif [ "`grep "export ${mod_db}=" "${PORTWINE_DB_FILE}"`" != "export ${mod_db}=${escaped_value}" ] ; then
+            sed -ri "s/.*export ${mod_db}=.*/export ${mod_db}=\"${escaped_value}\"/g" "${PORTWINE_DB_FILE}"
         fi
     done
     return 0
