@@ -507,7 +507,7 @@ gui_MangoHud () {
         time version vkbasalt vram vulkan_driver wine
     )
 
-    unset ADD_GUI_MH GUI_MH_RESULT ADD_GUI_MH_FPS FPS_LIMIT
+    unset ADD_GUI_MH GUI_MH_RESULT ADD_GUI_MH_FPS GUI_MH_FPS_RESULT
 
     GET_REFRESH_RATE=(30 40 45 48 60 75 90 120 144 165 175 240)
 
@@ -519,6 +519,8 @@ gui_MangoHud () {
 
     if [ -n "$PW_FPS_LIMIT" ]; then
         PW_FPS_LIMIT_VAR=($(echo "$PW_FPS_LIMIT" | tr '' '\n' | grep -v '='))
+   elif [ -n "$FPS_LIMIT" ] ; then
+   	PW_FPS_LIMIT_VAR=($(echo "$FPS_LIMIT" | tr '' '\n' | grep -v '='))
     fi
 
     for add_list_mh in "${LIST_MH[@]}"; do
@@ -592,15 +594,15 @@ gui_MangoHud () {
     export INT_COUNT_MH_FPS=0
     for read_list_mh_fps in ${YAD_MH_FPS_LIMIT} ; do
         if [[ "$read_list_mh_fps" == "TRUE" ]]
-        then export FPS_LIMIT+="${GET_REFRESH_RATE[$INT_COUNT_MH_FPS]}\,"
+        then export GUI_MH_FPS_RESULT+="${GET_REFRESH_RATE[$INT_COUNT_MH_FPS]}\,"
         fi
         ((INT_COUNT_MH_FPS++))
     done
 
-    FPS_LIMIT="${FPS_LIMIT}"
-    if [ "$(echo "${FPS_LIMIT}" | awk -F',' '{print $2}')" ]
-    then export PW_FPS_LIMIT="0\,${FPS_LIMIT%\\,}"
-    else export PW_FPS_LIMIT="${FPS_LIMIT%\\,}"
+    GUI_MH_FPS_RESULT="${GUI_MH_FPS_RESULT}"
+    if [ "$(echo "${GUI_MH_FPS_RESULT}" | awk -F',' '{print $2}')" ]
+    then export PW_FPS_LIMIT="0\,${GUI_MH_FPS_RESULT%\\,}"
+    else export PW_FPS_LIMIT="${GUI_MH_FPS_RESULT%\\,}"
     fi
 
     if [[ -n "$MH_FONT_SIZE" ]]
@@ -612,6 +614,7 @@ gui_MangoHud () {
         GUI_MH_RESULT="${GUI_MH_RESULT},fps_limit=$PW_FPS_LIMIT"
     elif [[ "$FPS_LIMIT" == "disabled" ]] ; then
         GUI_MH_RESULT="${GUI_MH_RESULT},fps_limit=0"
+        unset PW_FPS_LIMIT
     fi
 
     export MANGOHUD_CONFIG="${GUI_MH_RESULT}"
