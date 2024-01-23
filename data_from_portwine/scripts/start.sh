@@ -362,7 +362,8 @@ pw_prefix_manager () {
         if [[ ! -z ${SET_FROM_PFX_MANAGER} ]] ; then
             export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
             pw_init_runtime
-            ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${SET_FROM_PFX_MANAGER}
+            ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
+            "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${PW_DLL_NEED_INSTALL} &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
             gui_prefix_manager
         else
             print_info "Nothing to do. Restarting PortProton..."
