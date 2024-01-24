@@ -266,10 +266,18 @@ start_portwine () {
     fi
     if [[ "$PW_USE_GAMEMODE" = "1" ]] ; then
         export GAMEMODERUN=1
-        PW_GAMEMODERUN_SLR="gamemoderun"
         pkill gamemoded
         sleep 0.1
-        "${PW_WINELIB}/portable/bin/gamemoded" > /dev/null 2>&1 &
+
+        GAMEMODEAUTO_NAME="libgamemodeauto.so.0"
+        if [[ ! -z "${PW_LD_PRELOAD}" ]]
+        then export PW_LD_PRELOAD="${PW_LD_PRELOAD}:${GAMEMODEAUTO_NAME}"
+        else export PW_LD_PRELOAD="${GAMEMODEAUTO_NAME}"
+        fi
+        
+        env LD_LIBRARY_PATH="${PW_WINELIB}/portable/lib/lib64:${PW_WINELIB}/portable/lib/lib32" \
+        "${PW_WINELIB}/portable/bin/gamemoded" &>/dev/null &
+
         print_info "Gamemod will be launched."
     else
         export GAMEMODERUN=0
@@ -283,6 +291,9 @@ start_portwine () {
         create_new_dir "${WINEPREFIX}/dosdevices"
         create_new_dir "${WINEPREFIX}/drive_c/windows/syswow64/"
         create_new_dir "${WINEPREFIX}/drive_c/windows/system32/"
+        create_new_dir "${WINEPREFIX}/drive_c/tmp/.private/$USER/"
+        create_new_dir "${WINEPREFIX}/drive_c/tmp/.private/steamuser/"
+
         [ ! -d "${WINEPREFIX}/dosdevices/c:" ] && try_force_link_dir "${WINEPREFIX}/drive_c/" "${WINEPREFIX}/dosdevices/c:"
         [ ! -d "${WINEPREFIX}/dosdevices/z:" ] && try_force_link_dir "/" "${WINEPREFIX}/dosdevices/z:"
         [ ! -d "${WINEPREFIX}/dosdevices/h:" ] && try_force_link_dir "$HOME" "${WINEPREFIX}/dosdevices/h:"
@@ -674,8 +685,9 @@ pw_run () {
     pw_mangohud_check
     pw_vkbasalt_check
     PW_LOG_TO_FILE="${PORT_WINE_PATH}/${portname}.log"
-    print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VULKAN_DRIVER_NAME" "VULKAN_API_DRIVER_VERSION" \
-    "VKD3D_CONFIG" "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2" "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE"
+    print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VULKAN_DRIVER_NAME"
+    print_var "VULKAN_API_DRIVER_VERSION" "VKD3D_CONFIG" "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2"
+    print_var "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH"
     kill -s SIGUSR1 "$PW_YAD_PID_PFX_COVER_UI" &>/dev/null
     if [[ "${PW_LOG}" == 1 ]] ; then
         echo "WINEDLLOVERRIDES=${WINEDLLOVERRIDES}" >> "${PW_LOG_TO_FILE}"
@@ -690,7 +702,6 @@ pw_run () {
         LD_PRELOAD="${PW_LD_PRELOAD}" \
         VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
         VK_INSTANCE_LAYERS=${PW_VK_INSTANCE_LAYERS} \
-        ${PW_GAMEMODERUN_SLR} \
         ${PW_MANGOHUD_SLR} \
         "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
     else
@@ -708,7 +719,6 @@ pw_run () {
         LD_PRELOAD="${PW_LD_PRELOAD}" \
         VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
         VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
-        ${PW_GAMEMODERUN_SLR} \
         ${PW_MANGOHUD_SLR} \
         "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
         cat "${PW_LOG_TO_FILE}"
@@ -741,6 +751,8 @@ export portname=PortProton
 cd "$(dirname "`readlink -f "$0"`")" && export PORT_SCRIPTS_PATH="$(pwd)"
 cd "${PORT_SCRIPTS_PATH}/../../" && export PORT_WINE_PATH="$(pwd)"
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
+
+rm -f $PORT_WINE_TMP_PATH/*{exe,msi,tar}*
 
 echo "" > "${PORT_WINE_TMP_PATH}/tmp_yad_form"
 
