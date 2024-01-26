@@ -302,7 +302,9 @@ start_portwine () {
         create_new_dir "${WINEPREFIX}/drive_c/windows/Fonts/"
         LN_FONTS="arialbd.ttf courbd.ttf georgia.ttf micross.ttf msyh.ttf simsun.ttc arial.ttf cour.ttf malgun.ttf msgothic.ttc nirmala.ttf times.ttf"
         for link_font in $LN_FONTS ; do
-            try_force_link_file "${WINEDIR}/share/fonts/${link_font}" "${WINEPREFIX}/drive_c/windows/Fonts/${link_font}"
+            if [[ ! -f "${WINEPREFIX}/drive_c/windows/Fonts/${link_font}" ]] ; then
+                try_force_link_file "${WINEDIR}/share/fonts/${link_font}" "${WINEPREFIX}/drive_c/windows/Fonts/${link_font}"
+            fi
         done
 
         find "${WINEPREFIX}/dosdevices" -xtype l -maxdepth 1 2>/dev/null -exec rm {} \;
@@ -638,7 +640,7 @@ start_portwine () {
             echo "START WINETRICKS..." >> "${PORT_WINE_TMP_PATH}/update_pfx_log"
             echo "Try to install DLL in prefix: ${PW_DLL_NEED_INSTALL}" >> "${PORT_WINE_TMP_PATH}/update_pfx_log"
             print_info "Try to install DLL in prefix: ${PW_DLL_NEED_INSTALL}"
-            ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
+            ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
             "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${PW_DLL_NEED_INSTALL} &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
             wait_wineserver
             kill_portwine
@@ -649,7 +651,7 @@ start_portwine () {
         if [[ ! -z "${PW_WINDOWS_VER}" && `echo "$PW_WINDOWS_VER" | sed 's/.*/\L&/'` == "xp" ]] ; then
             export PW_WINDOWS_VER="xp64"
         fi
-        ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
+        ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
         "${WINELOADER}" winecfg -v `echo "win${PW_WINDOWS_VER}" | sed 's/.*/\L&/'`
         wait_wineserver
         kill_portwine

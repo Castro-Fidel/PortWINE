@@ -77,7 +77,7 @@ try_force_link_file () {
     if [ ! -f "$1" ] ; then :
     elif [ -z "$2" ] ; then	print_error "no way to link file $1"
     else
-        ln -sf "$1" "$2"
+        ln -s -f -r "$1" "$2"
         [ "$?" != 0 ] && print_error "failed to link file $1 to $2" || return 0
     fi
     return 1
@@ -102,7 +102,7 @@ try_force_link_dir () {
     if [ ! -d "$1" ] ; then	print_info "directory $1 not found for link"
     elif [ -z "$2" ] ; then	print_error "no way to link directory $1"
     else
-        ln -sf "$1" "$2"
+        ln -s -f -r "$1" "$2"
         [ "$?" != 0 ] && print_error "failed to link directory $1 to $2" || return 0
     fi
     return 1
@@ -493,6 +493,7 @@ pw_init_runtime () {
     export PRESSURE_VESSEL_RUNTIME_BASE="${PW_WINELIB}"
     export PRESSURE_VESSEL_VARIABLE_DIR="${PW_WINELIB}/var"
     export PRESSURE_VESSEL_PREFIX="${PW_WINELIB}/pressure-vessel"
+    export FONTCONFIG_PATH=''
 
     unset PRESSURE_VESSEL_FILESYSTEMS_RO PRESSURE_VESSEL_FILESYSTEMS_RW
     for PWRTMRO in ${PW_RT_MOUNT_RO[*]} ; do

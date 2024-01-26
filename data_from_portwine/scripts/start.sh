@@ -255,6 +255,7 @@ portwine_start_debug () {
 
 pw_winecfg () {
     start_portwine
+    export GST_PLUGIN_SYSTEM_PATH_1_0=""
     pw_run winecfg
 }
 
@@ -273,6 +274,7 @@ pw_winecmd () {
 
 pw_winereg () {
     start_portwine
+    export GST_PLUGIN_SYSTEM_PATH_1_0=""
     pw_run regedit
 }
 
@@ -362,8 +364,8 @@ pw_prefix_manager () {
         if [[ ! -z ${SET_FROM_PFX_MANAGER} ]] ; then
             export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
             pw_init_runtime
-            ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
-            "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${PW_DLL_NEED_INSTALL} &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
+            ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
+            "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${SET_FROM_PFX_MANAGER} &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
             gui_prefix_manager
         else
             print_info "Nothing to do. Restarting PortProton..."
@@ -395,7 +397,8 @@ pw_winetricks () {
             fi
     done < "${PORT_WINE_TMP_PATH}/update_pfx_log" | "${pw_yad_v12_3}" --text-info --tail --no-buttons --title="WINETRICKS" \
     --auto-close --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y 2>/dev/null &
-    "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
+    ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
+    "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${PW_DLL_NEED_INSTALL} &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
     try_remove_file "${PORT_WINE_TMP_PATH}/update_pfx_log"
     kill -s SIGTERM "$(pgrep -a yad_v12_3 | grep "title=WINETRICKS" | awk '{print $1}')" > /dev/null 2>&1    
     stop_portwine
