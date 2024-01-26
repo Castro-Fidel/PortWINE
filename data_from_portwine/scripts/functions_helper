@@ -535,16 +535,12 @@ pw_mangohud_check () {
 
 pw_vkbasalt_check () {
     if [[ "${ENABLE_VKBASALT}" == 1 ]] && [[ "${PW_VULKAN_USE}" != "0" ]] && [[ "${PW_VULKAN_USE}" != "3" ]] ; then
-        export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
-        if [[ -z "${PW_VKBASALT_EFFECTS}" ]] ; then
-            export PW_VKBASALT_EFFECTS="Curves:cas" 
+        if [[ ! -z "${PW_VKBASALT_EFFECTS}" ]] && [[ ! -z "${PW_VKBASALT_FFX_CAS}" ]] ; then
+            export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
+            sed -ri "s/effects = .*/effects = ${PW_VKBASALT_EFFECTS}/g" "${VKBASALT_CONFIG_FILE}"
+            sed -ri "s/casSharpness .*/casSharpness = ${PW_VKBASALT_FFX_CAS}/g" "${VKBASALT_CONFIG_FILE}"
+            sed -ri "s|= .*/reshade|= \"${PW_WINELIB}\"/pressure-vessel/reshade|g" "${VKBASALT_CONFIG_FILE}"
         fi
-        sed -ri "s/effects = .*/effects = ${PW_VKBASALT_EFFECTS}/g" "${VKBASALT_CONFIG_FILE}"
-        if [[ -z "${PW_VKBASALT_FFX_CAS}" ]] ; then
-            export PW_VKBASALT_FFX_CAS="0.7" 
-        fi
-        sed -ri "s/casSharpness .*/casSharpness = ${PW_VKBASALT_FFX_CAS}/g" "${VKBASALT_CONFIG_FILE}"
-        sed -ri "s|= .*/reshade|= \"${PW_WINELIB}/pressure-vessel/reshade\"|g" "${VKBASALT_CONFIG_FILE}"
         var_vk_istance_layers_config_update "VK_LAYER_VKBASALT_post_processing64:VK_LAYER_VKBASALT_post_processing32"
         print_info "vkBasalt is enabled"
     else
@@ -923,8 +919,6 @@ pw_init_db () {
     fi
     [[ "${START_FROM_STEAM}" == 1 ]] && export PW_GUI_DISABLED_CS=1
     [[ "${START_FROM_PP_GUI}" == 1 ]] && export PW_GUI_DISABLED_CS=0 && unset START_FROM_PP_GUI
-
-    [[ -z "$GAMESCOPE_ARGS" ]] && export GAMESCOPE_ARGS="-F fsr"
     return 0
 }
 
