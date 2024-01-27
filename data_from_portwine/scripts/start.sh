@@ -255,6 +255,7 @@ portwine_start_debug () {
 
 pw_winecfg () {
     start_portwine
+    export GST_PLUGIN_SYSTEM_PATH_1_0=""
     pw_run winecfg
 }
 
@@ -273,6 +274,7 @@ pw_winecmd () {
 
 pw_winereg () {
     start_portwine
+    export GST_PLUGIN_SYSTEM_PATH_1_0=""
     pw_run regedit
 }
 
@@ -362,8 +364,8 @@ pw_prefix_manager () {
         if [[ ! -z ${SET_FROM_PFX_MANAGER} ]] ; then
             export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
             pw_init_runtime
-            ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
-            "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${PW_DLL_NEED_INSTALL} &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
+            ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
+            "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${SET_FROM_PFX_MANAGER} &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
             gui_prefix_manager
         else
             print_info "Nothing to do. Restarting PortProton..."
@@ -395,7 +397,8 @@ pw_winetricks () {
             fi
     done < "${PORT_WINE_TMP_PATH}/update_pfx_log" | "${pw_yad_v12_3}" --text-info --tail --no-buttons --title="WINETRICKS" \
     --auto-close --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y 2>/dev/null &
-    "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
+    ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
+    "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${PW_DLL_NEED_INSTALL} &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
     try_remove_file "${PORT_WINE_TMP_PATH}/update_pfx_log"
     kill -s SIGTERM "$(pgrep -a yad_v12_3 | grep "title=WINETRICKS" | awk '{print $1}')" > /dev/null 2>&1    
     stop_portwine
@@ -463,14 +466,14 @@ pw_create_prefix_backup () {
 pw_edit_db () {
     if [[ "${XDG_SESSION_TYPE}" == "wayland" ]] ; then
         pw_gui_for_edit_db \
-        PW_MANGOHUD PW_MANGOHUD_USER_CONF ENABLE_VKBASALT PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING \
+        PW_MANGOHUD PW_MANGOHUD_USER_CONF ENABLE_VKBASALT PW_VKBASALT_USER_CONF PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING \
         PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL \
         PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY \
         PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE \
         PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_USE_GALLIUM_ZINK PW_USE_GAMESCOPE
     else
         pw_gui_for_edit_db \
-        PW_MANGOHUD PW_MANGOHUD_USER_CONF ENABLE_VKBASALT PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING \
+        PW_MANGOHUD PW_MANGOHUD_USER_CONF ENABLE_VKBASALT PW_VKBASALT_USER_CONF PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING \
         PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL \
         PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME  \
         PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE \
