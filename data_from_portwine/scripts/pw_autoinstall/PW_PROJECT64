@@ -1,11 +1,21 @@
 #!/usr/bin/env bash
 # Author: chal55rus (Sergey P.)
 ########################################################################
+PR64_VER="$(curl https://www.pj64-emu.com/public-releases | grep 'installer' | head -n 1 \
+| awk -F'/project64' '{print $2}' \
+| awk -F'installer"' '{print $1}')"
+[[ "${PR64_VER}" != *-3-* ]] && zenity_error "ERROR: Get the Project64 version." && exit 1
+
 export LAUNCH_PARAMETERS=("/VERYSILENT")
-export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/Setup Project64 3.0.1-5664-2df3434.exe"
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/Project64${PR64_VER}setup.exe"
+export PORTWINE_CREATE_SHORTCUT_NAME="Project64"
+
 start_portwine
-if try_download_game "https://pj64-emu.com/file/setup-project64-3-0-0-5632-f83bee9/" "${PW_AUTOINSTALL_EXE}"
+if try_download_game "https://www.pj64-emu.com/download/project64${PR64_VER}installer" "${PW_AUTOINSTALL_EXE}"
 then
+    GET_URL_POSTFIX="$(cat "${PW_AUTOINSTALL_EXE}" | grep "Did your download not start?" | awk -F"$PR64_VER" '{print $2}' | awk -F'/' '{print $1}')"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_download_game "https://www.pj64-emu.com/file/setup-project64${PR64_VER}${GET_URL_POSTFIX}/" "${PW_AUTOINSTALL_EXE}"
     pw_start_progress_bar_block "${loc_gui_installing_the} Project64. ${loc_gui_please_wait} "
     pw_run "${PW_AUTOINSTALL_EXE}"
     portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/Project64 3.0/Project64.exe"
@@ -13,7 +23,6 @@ then
     try_remove_file "${portwine_exe}.ppdb"
     kill_portwine
     pw_stop_progress_bar
-    export PORTWINE_CREATE_SHORTCUT_NAME="Project64"
     portwine_create_shortcut
 fi
 stop_portwine
