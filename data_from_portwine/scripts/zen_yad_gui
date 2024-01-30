@@ -594,15 +594,15 @@ gui_MangoHud () {
     export INT_COUNT_MH_FPS=0
     for read_list_mh_fps in ${YAD_MH_FPS_LIMIT} ; do
         if [[ "$read_list_mh_fps" == "TRUE" ]]
-        then export GUI_MH_FPS_RESULT+="${GET_REFRESH_RATE[$INT_COUNT_MH_FPS]}\,"
+        then export GUI_MH_FPS_RESULT+="${GET_REFRESH_RATE[$INT_COUNT_MH_FPS]}+"
         fi
         ((INT_COUNT_MH_FPS++))
     done
 
     GUI_MH_FPS_RESULT="${GUI_MH_FPS_RESULT}"
-    if [ "$(echo "${GUI_MH_FPS_RESULT}" | awk -F',' '{print $2}')" ]
-    then export PW_FPS_LIMIT="0\,${GUI_MH_FPS_RESULT%\\,}"
-    else export PW_FPS_LIMIT="${GUI_MH_FPS_RESULT%\\,}"
+    if [ "$(echo "${GUI_MH_FPS_RESULT}" | awk -F'+' '{print $2}')" ]
+    then export PW_FPS_LIMIT="0+${GUI_MH_FPS_RESULT%+}"
+    else export PW_FPS_LIMIT="${GUI_MH_FPS_RESULT%+}"
     fi
 
     if [[ -n "$MH_FONT_SIZE" ]]
@@ -619,8 +619,7 @@ gui_MangoHud () {
 
     export MANGOHUD_CONFIG="${GUI_MH_RESULT}"
 
-    edit_db_from_gui PW_MANGOHUD PW_FPS_LIMIT
-    edit_mh_config_from_gui MANGOHUD_CONFIG
+    edit_db_from_gui PW_MANGOHUD PW_FPS_LIMIT MANGOHUD_CONFIG
     /usr/bin/env bash -c "${pw_full_command_line[*]}" &
     exit 0
 }

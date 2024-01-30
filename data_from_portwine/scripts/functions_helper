@@ -1047,23 +1047,6 @@ edit_db_from_gui () {
     return 0
 }
 
-edit_mh_config_from_gui () {
-    print_info "edit_mh_config_from_gui MANGOHUD_CONFIG=$MANGOHUD_CONFIG"
-    for mod_db in $@ ; do
-        escaped_value=$(printf "%s" "${!mod_db}" | sed 's/\\/\\\\/g; s/,/\\,/g')
-        if [ -z "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}="`" ] ; then
-            echo "export ${mod_db}=\"${escaped_value}\"" >> "${PORTWINE_DB_FILE}"
-        elif [ "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}=" | grep -v "#"`" ] ; then
-            if [ "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}=" | grep -v "#"`" != "export ${mod_db}=\"${escaped_value}\"" ] ; then
-                sed -ri "s/^export ${mod_db}=.*/export ${mod_db}=\"${escaped_value}\"/" "${PORTWINE_DB_FILE}"
-            fi
-        elif [ "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}="`" != "export ${mod_db}=${escaped_value}" ] ; then
-            sed -ri "s/.*export ${mod_db}=.*/export ${mod_db}=\"${escaped_value}\"/g" "${PORTWINE_DB_FILE}"
-        fi
-    done
-    return 0
-}
-
 edit_user_conf_from_gui () {
     for mod_db in $@ ; do
         print_info "${mod_db}=${!mod_db}"
