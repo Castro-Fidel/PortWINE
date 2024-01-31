@@ -498,7 +498,7 @@ gui_MangoHud () {
     LIST_MH=(
         arch battery battery_icon battery_time battery_watt core_bars core_load
         cpu_mhz cpu_power cpu_temp device_battery_icon engine_short_names
-        engine_version exec_name fcat fps_metrics fps_only frame_count full
+        engine_version exec_name fcat fps_metrics frame_count frametime full
         gamemode gpu_core_clock gpu_fan gpu_junction_temp gpu_mem_clock
         gpu_mem_temp gpu_name gpu_power gpu_temp gpu_voltage histogram horizontal
         horizontal_stretch hud_compact hud_no_margin io_read io_write no_display
@@ -506,7 +506,8 @@ gui_MangoHud () {
         show_fps_limit swap temp_fahrenheit throttling_status throttling_status_graph
         time version vkbasalt vram vulkan_driver wine
     )
-
+    # fps_only
+    
     unset ADD_GUI_MH GUI_MH_RESULT
 
     GET_REFRESH_RATE="30!45!60!75!120!144!165!240"
@@ -593,6 +594,12 @@ gui_MangoHud () {
     elif [[ "${FPS_LIMIT}" == "disabled" ]]
     then export GUI_MH_RESULT="$(echo ${GUI_MH_RESULT} | sed "s/,fps_limit=${FPS_LIMIT_VAR}//" | sed "s/,fps_limit=disabled//")"
     fi
+
+    if [[ "${GUI_MH_RESULT}" =~ "fps_only" ]]; then
+        export GUI_MH_RESULT="fps_only"
+        print_info "In the MangoHud config fps_only is detected all settings are reseted"
+    fi
+    
     export MANGOHUD_CONFIG="${GUI_MH_RESULT}"
 
     edit_db_from_gui MANGOHUD_CONFIG PW_MANGOHUD FPS_LIMIT
@@ -679,6 +686,8 @@ portwine_create_shortcut () {
                 cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" "${HOME}/Desktop/"
             elif [[ -d "${HOME}/Рабочий стол" ]] ; then
                 cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" "${HOME}/Рабочий стол/"
+            elif [[ $(xdg-user-dir DESKTOP) ]] ; then
+                cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" "$(xdg-user-dir DESKTOP)"
             fi
         fi
 

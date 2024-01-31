@@ -784,12 +784,10 @@ else
     "${pw_yad_v12_3}" --plug=$KEY --tabnum=${PW_GUI_SORT_TABS[1]} --form --columns=3 --align-buttons --keep-icon-size --scroll  \
     --field="   Dolphin 5.0"!"$PW_GUI_ICON_PATH/dolphin.png"!"${loc_dolphin}":"FBTN" '@bash -c "button_click PW_DOLPHIN"' \
     --field="   MAME"!"$PW_GUI_ICON_PATH/mame.png"!"${loc_mame}":"FBTN" '@bash -c "button_click PW_MAME"' \
-    --field="   ScummVM"!"$PW_GUI_ICON_PATH/scummvm.png"!"${loc_scummvm}":"FBTN" '@bash -c "button_click PW_SCUMMVM"' \
     --field="   RetroArch"!"$PW_GUI_ICON_PATH/retroarch.png"!"${loc_retroarch}":"FBTN" '@bash -c "button_click PW_RETROARCH"' \
     --field="   PPSSPP Windows"!"$PW_GUI_ICON_PATH/ppsspp.png"!"${loc_ppsspp_windows}":"FBTN" '@bash -c "button_click PW_PPSSPP"' \
     --field="   Citra"!"$PW_GUI_ICON_PATH/citra.png"!"${loc_citra}":"FBTN" '@bash -c "button_click PW_CITRA"' \
     --field="   Cemu"!"$PW_GUI_ICON_PATH/cemu.png"!"${loc_cemu}":"FBTN" '@bash -c "button_click PW_CEMU"' \
-    --field="   DuckStation"!"$PW_GUI_ICON_PATH/duckstation.png"!"${loc_duckstation}":"FBTN" '@bash -c "button_click PW_DUCKSTATION"' \
     --field="   ePSXe"!"$PW_GUI_ICON_PATH/epsxe.png"!"${loc_epsxe}":"FBTN" '@bash -c "button_click PW_EPSXE"' \
     --field="   Project64"!"$PW_GUI_ICON_PATH/project64.png"!"${loc_project64}":"FBTN" '@bash -c "button_click PW_PROJECT64"' \
     --field="   VBA-M"!"$PW_GUI_ICON_PATH/vba-m.png"!"${loc_vba_m}":"FBTN" '@bash -c "button_click PW_VBA-M"' \
@@ -797,8 +795,7 @@ else
     --field="   Xenia"!"$PW_GUI_ICON_PATH/xenia.png"!"${loc_xenia}":"FBTN" '@bash -c "button_click PW_XENIA"' \
     --field="   FCEUX"!"$PW_GUI_ICON_PATH/fceux.png"!"${loc_fceux}":"FBTN" '@bash -c "button_click PW_FCEUX"' \
     --field="   xemu"!"$PW_GUI_ICON_PATH/xemu.png"!"${loc_xemu}":"FBTN" '@bash -c "button_click PW_XEMU"' \
-    --field="   Demul"!"$PW_GUI_ICON_PATH/demul.png"!"${loc_demul}":"FBTN" '@bash -c "button_click PW_DEMUL"' \
-    --field="   Rpcs3"!"$PW_GUI_ICON_PATH/rpcs3.png"!"${loc_rpcs3}":"FBTN" '@bash -c "button_click PW_RPCS3"' 2>/dev/null &
+    --field="   Demul"!"$PW_GUI_ICON_PATH/demul.png"!"${loc_demul}":"FBTN" '@bash -c "button_click PW_DEMUL"' 2>/dev/null &
 
     "${pw_yad_v12_3}" --plug=$KEY --tabnum=${PW_GUI_SORT_TABS[0]} --form --columns=3 --align-buttons --keep-icon-size --scroll \
     --field="   Lesta Game Center"!"$PW_GUI_ICON_PATH/lgc.png"!"":"FBTN" '@bash -c "button_click PW_LGC"' \
@@ -837,6 +834,10 @@ else
     # --field="   Secret World Legends (ENG)"!"$PW_GUI_ICON_PATH/swl.png"!"":"FBTN" '@bash -c "button_click PW_SWL"'
     # --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"'
     # --field="   ROBLOX"!"$PW_GUI_ICON_PATH/roblox.png"!"":"FBTN" '@bash -c "button_click PW_ROBLOX"'
+
+    # --field="   DuckStation"!"$PW_GUI_ICON_PATH/duckstation.png"!"${loc_duckstation}":"FBTN" '@bash -c "button_click PW_DUCKSTATION"'
+    # --field="   ScummVM"!"$PW_GUI_ICON_PATH/scummvm.png"!"${loc_scummvm}":"FBTN" '@bash -c "button_click PW_SCUMMVM"'
+    # --field="   Rpcs3"!"$PW_GUI_ICON_PATH/rpcs3.png"!"${loc_rpcs3}":"FBTN" '@bash -c "button_click PW_RPCS3"'
 
     if  [[ `command -v wmctrl` ]] &>/dev/null ; then
         sleep 2
