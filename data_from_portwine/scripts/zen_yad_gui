@@ -522,8 +522,8 @@ gui_MangoHud () {
 
     if [ -n "$PW_FPS_LIMIT" ]; then
         PW_FPS_LIMIT_VAR=($(echo "$PW_FPS_LIMIT" | tr '' '\n' | grep -v '='))
-   elif [ -n "$FPS_LIMIT" ] ; then
-   	PW_FPS_LIMIT_VAR=($(echo "$FPS_LIMIT" | tr '' '\n' | grep -v '='))
+    elif [ -n "$FPS_LIMIT" ] ; then
+        PW_FPS_LIMIT_VAR=($(echo "$FPS_LIMIT" | tr '' '\n' | grep -v '='))
     fi
 
     for add_list_mh in "${LIST_MH[@]}"; do
@@ -603,9 +603,13 @@ gui_MangoHud () {
     done
 
     GUI_MH_FPS_RESULT="${GUI_MH_FPS_RESULT}"
-    if [ "$(echo "${GUI_MH_FPS_RESULT}" | awk -F'+' '{print $2}')" ]
-    then export PW_FPS_LIMIT="0+${GUI_MH_FPS_RESULT%+}"
-    else export PW_FPS_LIMIT="${GUI_MH_FPS_RESULT%+}"
+    if [ "$(echo "${GUI_MH_FPS_RESULT}" | awk -F'+' '{print $2}')" ] ; then
+        export PW_FPS_LIMIT="0+${GUI_MH_FPS_RESULT%+}"
+        if [[ ! "${GUI_MH_RESULT}" =~ "show_fps_limit" ]] ; then
+            GUI_MH_RESULT="${GUI_MH_RESULT}show_fps_limit,"
+        fi
+    else
+        export PW_FPS_LIMIT="${GUI_MH_FPS_RESULT%+}"
     fi
 
     if [[ -n "$MH_FONT_SIZE" ]]
