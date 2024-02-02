@@ -5,10 +5,7 @@
 PROGNAME="PortProton"
 # PERSONAL_NAME="$(grep PersonaName "$HOME/.local/share/Steam/config/loginusers.vdf" | awk -F'"' '{print $4}')"
 
-SCVDF="shortcuts.vdf"
-SCPATH="$STUIDPATH/config/$SCVDF"
-
-if [[ ! -f "$SCPATH" ]] ; then
+if [[ ! -f "$SCPATH" ]] ; then 
 	echo '0073686f727463757473000808' | xxd -r -p > "$SCPATH"
 fi
 

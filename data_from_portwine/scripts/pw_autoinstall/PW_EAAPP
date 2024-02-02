@@ -3,17 +3,17 @@
 ########################################################################
 export LAUNCH_PARAMETERS=("/silent" "/repair" )
 export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/EAappInstaller.exe"
-export PW_VULKAN_USE=1
-# export PW_USE_D3D_EXTRAS="0"
-# export DISABLE_CP_DEFPFX=1
+export PORTWINE_CREATE_SHORTCUT_NAME="EALauncher"
+export PW_VULKAN_USE="2"
+export PW_WINE_USE="PROTON_LG"
 export PW_PREFIX_NAME="EAAPP"
+export PW_USE_EAC_AND_BE="1"
 
 start_portwine
 if try_download_game "https://origin-a.akamaihd.net/EA-Desktop-Client-Download/installer-releases/EAappInstaller.exe" "${PW_AUTOINSTALL_EXE}"
 then
     pw_start_progress_bar_block "${loc_gui_installing_the} EA Launcher. ${loc_gui_please_wait} "
-    # pw_kill_autostart EABackgroundService.exe &
-    # pw_kill_autostart EALocalHostSvc.exe &
+    pw_kill_autostart EABackgroundService.exe 5 please &
     mkdir -p "$WINEPREFIX/drive_c/Program Files/Electronic Arts/EA Desktop/EA Desktop"
     pw_run "${PW_AUTOINSTALL_EXE}"
     portwine_exe="$WINEPREFIX/drive_c/Program Files/Electronic Arts/EA Desktop/EA Desktop/EALauncher.exe"
