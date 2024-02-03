@@ -14,7 +14,7 @@ zenity_error () {
 export -f zenity_error
 
 zenity_error_download () {
-    `zenity --question --title "$loc_gui_error" --text "$loc_gui_error_download\n" --no-wrap --ok-label="Repeat" --cancel-label="Skip" `
+    zenity --question --title "$loc_gui_error" --text "$loc_gui_error_download\n" --no-wrap --ok-label="Repeat" --cancel-label="Skip"
     if [[ "$?" != 0 ]] ; then
         return 1
     else
@@ -22,12 +22,18 @@ zenity_error_download () {
     fi
 }
 
-sszen() {
+sszen () {
     zenity --progress --title="$loc_gui_settings" --text="$loc_gui_sett_info" --pulsate --auto-close --width=500 --height=90 --no-cancel
 }
 
+ssyad () {
+    "${pw_yad_v12_3}" --progress --pulsate --log-expanded --undecorated --center \
+    --title="$loc_gui_settings" --progress-text="$loc_gui_sett_info" --enable-log="log" \
+    --log-height=60 --width=500 --height=150 --no-buttons --auto-close &>/dev/null
+}
+
 gui_question () {
-    `zenity --question --title "${inst_set}." --text "$1" --no-wrap ` &> /dev/null
+    zenity --question --title "${inst_set}." --text "$1" --no-wrap &>/dev/null
     [ $? -eq "0" ] && return 0 || return 1
 }
 
@@ -611,16 +617,6 @@ gui_MangoHud () {
 portwine_create_shortcut () {
     pw_create_gui_png
     pw_stop_progress_bar
-    if [[ ! -z "$PW_STEAM_ID" ]]
-    then STUIDPATH="$HOME/.local/share/Steam/userdata/$PW_STEAM_ID"
-    else STUIDPATH="$(find "$HOME/.local/share/Steam/userdata/" -maxdepth 1 -type d -name "[1-9]*" | head -n1)"
-    fi
-    if [[ -d "$STUIDPATH" ]] ; then
-        export STUIDPATH
-        PW_FOUND_VDF=TRUE
-    else
-        PW_FOUND_VDF=FALSE
-    fi
 
     if [[ "$1" == "block_name" ]] ; then
         export name_desktop="${PORTPROTON_NAME}"
@@ -691,7 +687,7 @@ portwine_create_shortcut () {
             fi
         fi
 
-        if [[ "${PW_FOUND_VDF}" == "TRUE" ]] && [[ "${create_menu_steam_shortcut}" == "TRUE" ]] ; then
+        if [[ "${create_menu_steam_shortcut}" == "TRUE" ]] ; then
             export STEAM_SCRIPTS="${PORT_WINE_PATH}/steam_scripts"
             create_new_dir "${STEAM_SCRIPTS}"
             echo "#!/usr/bin/env bash" > "${STEAM_SCRIPTS}/${name_desktop}.sh"
@@ -702,7 +698,12 @@ portwine_create_shortcut () {
             else echo "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" " >> "${STEAM_SCRIPTS}/${name_desktop}.sh"
             fi
             chmod u+x "${STEAM_SCRIPTS}/${name_desktop}.sh"
-            "${PORT_SCRIPTS_PATH}/add_in_steam.sh"
+            export SCVDF="shortcuts.vdf"
+            for STUIDPATH in "${HOME}"/.local/share/Steam/userdata/*/ ; do
+                create_new_dir "${STUIDPATH}/config/"
+                export SCPATH="${STUIDPATH}/config/$SCVDF"
+                "${PORT_SCRIPTS_PATH}/add_in_steam.sh"
+            done
             if [[ "${PW_SKIP_RESTART_STEAM}" != 1 ]] && pgrep -i steam &>/dev/null ; then
                 if gui_question "$sc_restert_steam" ; then
                     pw_start_progress_bar_block "Restarting STEAM... Please wait."
