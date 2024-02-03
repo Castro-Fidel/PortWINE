@@ -610,12 +610,15 @@ pw_kill_autostart () {
     sleep 5
     
     while true ; do
-        if  [[ -z "`ps aux | grep -m 1 "$1" | grep -v grep | awk '{print $2}'`" ]] && [[ ! -z "`ps aux | grep wrap | grep -v grep | grep -i ${portname} | head -n 1`" ]] ; then
+        if  [[ -z "`ps aux | grep -m 1 -i "$1" | grep -v grep | awk '{print $2}'`" ]] && [[ ! -z "`ps aux | grep wrap | grep -v grep | grep -i ${portname} | head -n 1`" ]] ; then
             echo -e "PID "$1" not found"
             sleep "${SWAIT}"
         else
             sleep "${SWAIT}"
-            kill_portwine 
+            if [[ "$3" == please ]]
+            then kill -s SIGTERM `ps aux | grep -m 1 -i "$1" | grep -v grep | awk '{print $2}'`
+            else kill_portwine
+            fi
             break
         fi
     done
@@ -916,6 +919,11 @@ pw_init_db () {
             check_variables PW_USE_NVAPI_AND_DLSS "1"
             check_variables PW_USE_FAKE_DLSS "0"
             check_variables PW_USE_RAY_TRACING "1"
+        fi
+
+        if [[ -f "${PATH_TO_GAME}"/steam_emu.ini ]] && [[ "${update_loc}" == "RUS" ]] ; then
+            sed -i "s/Language=english/Language=russian/" "${PATH_TO_GAME}"/steam_emu.ini
+            sed -i "/UserName=/c\UserName=${USER}" "${PATH_TO_GAME}"/steam_emu.ini
         fi
     fi
     [[ "${START_FROM_STEAM}" == 1 ]] && export PW_GUI_DISABLED_CS=1

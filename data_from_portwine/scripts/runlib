@@ -162,7 +162,8 @@ start_portwine () {
         var_winedlloverride_update "nvapi,nvapi64,nvngx=n;_nvngx=;nvcuda=b"
         export DXVK_ENABLE_NVAPI=1
         export WINE_HIDE_NVIDIA_GPU=0
-        # export DXVK_NVAPI_DRIVER_VERSION=
+        export WINE_HIDE_AMD_GPU=1
+        export DXVK_NVAPI_DRIVER_VERSION=99999
     elif [[ "${PW_USE_NVAPI_AND_DLSS}" == 1 ]] ; then
         FIND_NVNGX="$(dirname $(find /usr/* -type f -name "nvngx.dll" 2>/dev/null | head -n 1 | awk '{print $1}'))"
         if [[ ! -z "$FIND_NVNGX" ]] ; then
@@ -175,7 +176,6 @@ start_portwine () {
         enabled_fake_nvidia_videocard 0
         export DXVK_ENABLE_NVAPI=1
         export WINE_HIDE_NVIDIA_GPU=0
-        # export DXVK_NVAPI_DRIVER_VERSION=
         var_winedlloverride_update "nvngx,_nvngx,nvapi,nvapi64=n;nvcuda=b"
     else
         enabled_fake_nvidia_videocard 0
@@ -208,8 +208,8 @@ start_portwine () {
     if [[ "${PW_USE_DXR11}" == 1 ]] || [[ "${PW_USE_DXR10}" == 1 ]] || [[ "${PW_USE_RAY_TRACING}" == 1 ]]; then
         var_vkd3d_config_update dxr,dxr11
         var_radv_perftest_config_update rt
-        export WINE_HIDE_NVIDIA_GPU=0
-        export DXVK_ENABLE_NVAPI=1
+    else
+        var_vkd3d_config_update nodxr
     fi
 
     if [[ "${PW_GPU_USE}" != "disabled" ]] ; then
@@ -253,12 +253,17 @@ start_portwine () {
     # fi
 
     case "$PW_FORCE_USE_VSYNC" in  # 0-FORCE_OFF, 1-FORCE_ON, 2-BY_DEFAULT
-        "0")
-            unset vblank_mode
-            unset __GL_SYNC_TO_VBLANK ;;
-        "1")
+        0)
+            export  vblank_mode=0
+            export __GL_SYNC_TO_VBLANK=0
+            ;;
+        1)
             export vblank_mode=1
-            export __GL_SYNC_TO_VBLANK=1 ;;
+            export __GL_SYNC_TO_VBLANK=1
+            ;;
+        *)
+            unset vblank_mode __GL_SYNC_TO_VBLANK
+            ;;
     esac
     export int_xneur=0
     if [[ ! -z "`pgrep xneur`" ]]; then
@@ -505,7 +510,7 @@ start_portwine () {
         else
             export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi dxvk_config" # openvr_api_dxvk
         fi
-        check_variables VKD3D_FEATURE_LEVEL "12_1"
+        check_variables VKD3D_FEATURE_LEVEL "12_0"
         if [[ "${PW_VULKAN_USE}" == "1" ]] ; then
             PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
@@ -734,7 +739,15 @@ if [[ $(id -u) -eq 0 ]] ; then
     zenity_error "Do not run the script from the superuser!"
     exit 1
 fi
-[[ -z "${LANG}" ]] && export LANG=C
+
+if [[ -z "${LANG}" ]] ; then
+    export LANG=C
+    export FORCE_ENG_LANG=1
+elif [[ "${START_FROM_STEAM}" == 1 ]] ; then
+    export FORCE_ENG_LANG=1
+else 
+    unset FORCE_ENG_LANG
+fi
 
 create_new_dir "${HOME}/.local/share/applications"
 if [[ "${PW_SILENT_RESTART}" == 1 ]] || [[ "${START_FROM_STEAM}" == 1 ]] ; then
@@ -770,8 +783,9 @@ if [[ -d "${PORT_WINE_PATH}/data/dist" ]] ; then
         fi
     done
     IFS="$orig_IFS"
+else
+    create_new_dir "${PORT_WINE_PATH}/data/dist"
 fi
-
 create_new_dir "${PORT_WINE_PATH}/data/prefixes/DEFAULT"
 create_new_dir "${PORT_WINE_PATH}/data/prefixes/DOTNET"
 create_new_dir "${PORT_WINE_PATH}/data/prefixes/PROGRAMS"

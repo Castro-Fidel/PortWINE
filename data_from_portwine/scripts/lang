@@ -8,15 +8,19 @@ if [[ -f "${PORT_WINE_TMP_PATH}/${portname}_loc" ]] ; then
 	export update_loc=${update_loc}
 fi
 
-if [[ "${update_loc}" == "RUS" || "${update_loc}" == "ENG" ]] && [[ -f "${PORT_WINE_TMP_PATH}/${portname}_loc" ]] ; then
-	echo ""
+if [[ "${FORCE_ENG_LANG}" == "1" ]] ; then
+	export update_loc="ENG"
 else
-	SET_LANG=`zenity --title  "LAUNGUAGE" --text "Select the language" --list --radiolist \
-	--column="Set:" --column "Choose language:" TRUE "RUS" FALSE "ENG" `
-	echo "${SET_LANG}" > "${PORT_WINE_TMP_PATH}/${portname}_loc"
-	if [[ ! -z "${SET_LANG}" ]]
-	then export update_loc=${SET_LANG}
-	else exit 1
+	if [[ "${update_loc}" == "RUS" || "${update_loc}" == "ENG" ]] && [[ -f "${PORT_WINE_TMP_PATH}/${portname}_loc" ]] ; then
+		echo ""
+	else
+		SET_LANG=`zenity --title  "LAUNGUAGE" --text "Select the language" --list --radiolist \
+		--column="Set:" --column "Choose language:" TRUE "RUS" FALSE "ENG" `
+		echo "${SET_LANG}" > "${PORT_WINE_TMP_PATH}/${portname}_loc"
+		if [[ ! -z "${SET_LANG}" ]]
+		then export update_loc=${SET_LANG}
+		else exit 1
+		fi
 	fi
 fi
 
