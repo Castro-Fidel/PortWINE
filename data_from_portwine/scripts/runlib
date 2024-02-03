@@ -462,12 +462,22 @@ start_portwine () {
         export WINE_D3D_CONFIG='renderer=gl'
     elif [[ "${PW_VULKAN_USE}" == "5" ]] ; then
         print_info "Use OpenGL Zink"
+        if [[ "${XDG_SESSION_TYPE}" == "wayland" ]] || [[ "${PW_USE_GAMESCOPE}" == 1 ]] ; then
         export GL_YIELD="NOTHING"
         export mesa_glthread=true
         export WINE_D3D_CONFIG='renderer=gl'
         export  __GLX_VENDOR_LIBRARY_NAME=mesa
         export MESA_LOADER_DRIVER_OVERRIDE=zink
         export GALLIUM_DRIVER=zink
+        else
+        export GL_YIELD="NOTHING"
+        export mesa_glthread=true
+        export WINE_D3D_CONFIG='renderer=gl'
+        export  __GLX_VENDOR_LIBRARY_NAME=mesa
+        export MESA_LOADER_DRIVER_OVERRIDE=zink
+        export GALLIUM_DRIVER=zink
+        export LIBGL_KOPPER_DRI2=1
+        fi
     elif [[ "${PW_VULKAN_USE}" == "3" ]] ; then
         print_info "Use GALLIUM-NINE (Native DX9 on MESA drivers)"
         export PW_GALLIUM_NINE_VER="0.8"
