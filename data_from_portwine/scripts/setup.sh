@@ -2,7 +2,7 @@
 # Author: linux-gaming.ru
 . "$(dirname $(readlink -f "$0"))/runlib"
 
-if [[ $(cat /etc/os-release | grep -i "flatpak")  ]] ; then
+if  grep -i "flatpak" /etc/os-release &>/dev/null ; then
 	name_desktop="PortProton"
 	echo "[Desktop Entry]"	 					  		 > "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Name=${name_desktop}" 				 		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
@@ -36,7 +36,7 @@ fi
 
 update-desktop-database -q "${HOME}/.local/share/applications"
 
-if [[ ! $(cat /etc/os-release | grep -i "flatpak")  ]]
+if ! grep -i "flatpak" /etc/os-release &>/dev/null ; then
 	xdg-mime default PortProton.desktop "application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program"
 fi
 

@@ -121,7 +121,8 @@ try_download_game () {
     curl -C - -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2" 2>&1 | \
     tr '\r' '\n' | sed -u -e 's/#//g' -e 's/ //g' -e 's/\.[[:digit:]]%//' | \
     "${pw_yad_v12_3}" --progress --percentage=0 --text="Download ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
-                --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90
+    --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
+    --window-icon="$PW_GUI_ICON_PATH/port_proton.png"
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
         print_error "Failed to download ${PW_DOWNLOAD_FILE_NAME}."
         return 1   
@@ -132,18 +133,21 @@ try_download_game () {
 
 try_download () {
     PW_DOWNLOAD_FILE_NAME="$(basename $1)"
+    [[ ! -f "${pw_yad_v12_3}" ]] && local pw_yad_v12_3="yad"
     set -o pipefail
     curl -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2" 2>&1 | \
     tr '\r' '\n' | sed -u -e 's/#//g' -e 's/ //g' -e 's/\.[[:digit:]]%//' | \
     "${pw_yad_v12_3}" --progress --percentage=0 --text="Download ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
-                --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90
+    --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
+    --window-icon="$PW_GUI_ICON_PATH/port_proton.png"
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
         print_error "Failed to download ${PW_DOWNLOAD_FILE_NAME} from GitHub."
         print_info "Try download ${PW_DOWNLOAD_FILE_NAME} from FTP"
         curl -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -L "ftp://171.22.215.18/archives/${PW_DOWNLOAD_FILE_NAME}" -o "$2" 2>&1 | \
         tr '\r' '\n' | sed -u -e 's/#//g' -e 's/ //g' -e 's/\.[[:digit:]]%//' | \
         "${pw_yad_v12_3}" --progress --percentage=0 --text="Download ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
-                --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90
+        --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
+        --window-icon="$PW_GUI_ICON_PATH/port_proton.png"
         if [ "${PIPESTATUS[0]}" != 0 ] ; then
             print_error "Failed to download ${PW_DOWNLOAD_FILE_NAME} from FTP."
             return 1   
@@ -159,7 +163,8 @@ try_download_to_path () {
     curl -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2/$PW_DOWNLOAD_FILE_NAME" 2>&1 | \
     tr '\r' '\n' | sed -u -e 's/#//g' -e 's/ //g' -e 's/\.[[:digit:]]%//' | \
     "${pw_yad_v12_3}" --progress --percentage=0 --text="Download ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
-                --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90
+    --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
+    --window-icon="$PW_GUI_ICON_PATH/port_proton.png"
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
         print_error "Failed to download $1."
         return 1 
@@ -229,11 +234,14 @@ var_ld_library_path_update() {
 unpack_tar_zst () {
     set -o pipefail
     unset PW_ZSTD_PORT
+    pw_start_progress_bar_cover_block "${PW_GUI_ICON_PATH}/covers/pw_loading_cover.gif"
     if  [[ `command -v zstd` ]] &>/dev/null ; then
-        tar -I zstd -xhvf "$1" -C "$2" | sszen
+        tar -I zstd -xhvf "$1" -C "$2"
+        pw_stop_progress_bar_cover_block
         [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
     else
-        env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_WINELIB}/portable/lib/lib64:${PW_WINELIB}/portable/lib/lib" tar -I "${PW_WINELIB}/portable/bin/zstd" -xhvf "$1" -C "$2" | sszen
+        env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_WINELIB}/portable/lib/lib64:${PW_WINELIB}/portable/lib/lib" tar -I "${PW_WINELIB}/portable/bin/zstd" -xhvf "$1" -C "$2"
+        pw_stop_progress_bar_cover_block
         [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
     fi
 }
@@ -243,20 +251,26 @@ unpack_tar_xz () {
         tar -Jxhvf "$1" -C "$2" && return 0 || return 1
     else
         set -o pipefail
-        tar -Jxhvf "$1" -C "$2" | sszen
+        pw_start_progress_bar_cover_block "${PW_GUI_ICON_PATH}/covers/pw_loading_cover.gif"
+        tar -Jxhvf "$1" -C "$2"
+        pw_stop_progress_bar_cover_block
         [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
     fi
 }
 
 unpack_tar_gz () {
     set -o pipefail
-    tar -xhzvf "$1" -C "$2" | sszen
+    pw_start_progress_bar_cover_block "${PW_GUI_ICON_PATH}/covers/pw_loading_cover.gif"
+    tar -xhzvf "$1" -C "$2"
+    pw_stop_progress_bar_cover_block
     [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
 }
 
 unpack_tar () {
     set -o pipefail
-    tar -xhvf "$1" -C "$2" | sszen
+    pw_start_progress_bar_cover_block "${PW_GUI_ICON_PATH}/covers/pw_loading_cover.gif"
+    tar -xhvf "$1" -C "$2"
+    pw_stop_progress_bar_cover_block
     [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
 }
 
@@ -401,10 +415,12 @@ init_wine_ver () {
             if check_symlink "${WINEDIR}/share/wine/${mono_gecko_chk}" ; then
                 print_info "${WINEDIR}/share/wine/${mono_gecko_chk} is symlink. OK."
             elif [[ -d "${WINEDIR}/share/wine/${mono_gecko_chk}" ]] ; then
-                try_copy_dir "${WINEDIR}/share/wine/${mono_gecko_chk}" "${PORT_WINE_TMP_PATH}" | sszen
+                pw_start_progress_bar_cover_block "${PW_GUI_ICON_PATH}/covers/pw_loading_cover.gif" 
+                try_copy_dir "${WINEDIR}/share/wine/${mono_gecko_chk}" "${PORT_WINE_TMP_PATH}"
                 try_remove_dir "${WINEDIR}/share/wine/${mono_gecko_chk}"
                 try_force_link_dir "${PORT_WINE_TMP_PATH}/${mono_gecko_chk}" "${WINEDIR}"/share/wine/
                 print_info "Copy ${WINEDIR}/share/wine/${mono_gecko_chk} to tmp and create symlink to ${WINEDIR}/share/wine/. OK."
+                pw_stop_progress_bar_cover_block
             else
                 try_remove_dir "${WINEDIR}/share/wine/${mono_gecko_chk}"
                 try_force_link_dir "${PORT_WINE_TMP_PATH}/${mono_gecko_chk}" "${WINEDIR}"/share/wine
@@ -964,7 +980,7 @@ pw_port_update () {
         if [[ ! -z "${scripts_current_ver}" ]] &&  [[ "${scripts_current_ver}" -gt "${scripts_install_ver}" ]] ; then
             if [[ -f "${PW_WINELIB}/portable/bin/yad_v12_3" ]] ; then
                 export pw_yad_v12_3="${PW_WINELIB}/portable/bin/yad_v12_3"
-                curl -s --list-only "${URL_FOR_CHANGELOG}/${PW_CHANGELOG_FILE}" | tee "${PORT_WINE_TMP_PATH}/curent_var_ver" | sszen
+                curl -s --list-only "${URL_FOR_CHANGELOG}/${PW_CHANGELOG_FILE}" | tee "${PORT_WINE_TMP_PATH}/curent_var_ver"
                 CHANGLOG_NEWS=`cat "${PORT_WINE_TMP_PATH}/curent_var_ver" | sed "/Scripts version ${scripts_install_ver}/,$ d" | sed '1,/---/ d' `
                 xcsd=`"${pw_yad_v12_3}" --title "${scripts_upd2} v.${scripts_current_ver}" --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
                 --borders=3 --form --separator='%%%' --width=1200 --height=600 \

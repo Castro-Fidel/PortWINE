@@ -667,7 +667,7 @@ else
             kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \--notebook" | awk '{print $1}') > /dev/null 2>&1
         fi
 
-        if [[ $(cat /etc/os-release | grep -i "flatpak") ]] ;
+        if grep -i "flatpak" /etc/os-release &>/dev/null ;
         then PW_EXEC_FROM_DESKTOP="$(cat "${PORT_WINE_PATH}/${PW_YAD_SET//¬/" "}" | grep Exec | head -n 1 | sed 's|flatpak run com.castrofidel.portproton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
         else PW_EXEC_FROM_DESKTOP="$(cat "${PORT_WINE_PATH}/${PW_YAD_SET//¬/" "}" | grep Exec | head -n 1 | awk -F"=env " '{print $2}')"
         fi
