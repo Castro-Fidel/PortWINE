@@ -32,6 +32,14 @@ fi
 
 [[ "$MISSING_DESKTOP_FILE" == 1 ]] && portwine_missing_shortcut
 
+if [[ -f "$portwine_exe" ]] \
+&& [[ "${WARN_CYRILLIC_IN_PATH}" != 1 ]] \
+&& echo "${portwine_exe}" | grep -e $'[\u0430-\u044F\u0410-\u042F]' &>/dev/null
+then
+    zenity_info "$loc_warn_cyrillic_in_path"
+    export WARN_CYRILLIC_IN_PATH="1"
+fi
+
 if [[ -f "${PORT_WINE_TMP_PATH}/tmp_main_gui_size" ]] && [[ ! -z "$(cat ${PORT_WINE_TMP_PATH}/tmp_main_gui_size)" ]] ; then
     export PW_MAIN_SIZE_W="$(cat ${PORT_WINE_TMP_PATH}/tmp_main_gui_size | awk '{print $1}')"
     export PW_MAIN_SIZE_H="$(cat ${PORT_WINE_TMP_PATH}/tmp_main_gui_size | awk '{print $2}')"
