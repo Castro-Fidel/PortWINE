@@ -2,30 +2,48 @@
 # Author: linux-gaming.ru
 . "$(dirname $(readlink -f "$0"))/runlib"
 
-name_desktop="PortProton"
-echo "[Desktop Entry]"	 					  > "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Name=${name_desktop}" 				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Exec=env "${PORT_SCRIPTS_PATH}/start.sh %F""	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Type=Application" 					 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Terminal=False" 						 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Categories=Game"	    				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "StartupNotify=true" 	    			 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "MimeType=application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program"  >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Path="${PORT_SCRIPTS_PATH}/""			 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Icon="${PORT_WINE_PATH}/data/img/w.png""   	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
+if [[ $(cat /etc/os-release | grep -i "flatpak")  ]] ; then
+	name_desktop="PortProton"
+	echo "[Desktop Entry]"	 					  		 > "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Name=${name_desktop}" 				 		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Exec=flatpak run com.castrofidel.portproton"	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Type=Application" 						 	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Terminal=False" 						 		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Categories=Game"	    				 		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "StartupNotify=true" 	    			 		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "MimeType=application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program"  >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Path="${PORT_SCRIPTS_PATH}/""			 		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Icon="${PORT_WINE_PATH}/data/img/w.png""   	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
+else
+	name_desktop="PortProton"
+	echo "[Desktop Entry]"	 					  > "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Name=${name_desktop}" 				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Exec=env "${PORT_SCRIPTS_PATH}/start.sh %F""	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Type=Application" 					 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Terminal=False" 						 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Categories=Game"	    				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "StartupNotify=true" 	    			 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "MimeType=application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program"  >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Path="${PORT_SCRIPTS_PATH}/""			 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Icon="${PORT_WINE_PATH}/data/img/w.png""   	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
+fi
 
 if [ -z "${PW_AUTOPLAY}" ] ; then
 	cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" ${HOME}/.local/share/applications/
 fi
 
 update-desktop-database -q "${HOME}/.local/share/applications"
-xdg-mime default PortProton.desktop "application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program"
+
+if [[ ! $(cat /etc/os-release | grep -i "flatpak")  ]]
+	xdg-mime default PortProton.desktop "application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program"
+fi
 
 name_desktop="readme"
 echo "[Desktop Entry]"				 > "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "Name=${name_desktop}"			>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Version=1.0"					>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Version=1.3"					>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "Type=Link"					>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "Icon="${PORT_WINE_PATH}/data/img/readme.png""	>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 echo "URL=${urlg}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
