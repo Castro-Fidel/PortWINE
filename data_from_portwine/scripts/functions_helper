@@ -119,9 +119,9 @@ try_download_game () {
     PW_DOWNLOAD_FILE_NAME="$(basename $1)"
     set -o pipefail
     curl -C - -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2" 2>&1 | \
-    tr '\r' '\n' | sed -u -e 's/#//g' -e 's/ //g' -e 's/\.[[:digit:]]%//' | \
+    tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
     "${pw_yad_v12_3}" --progress --percentage=0 --text="Download ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
-                --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90
+                --auto-kill --center --text-align="center" --fixed --no-buttons --title "$portname" --width=500 --height=90
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
         print_error "Failed to download ${PW_DOWNLOAD_FILE_NAME}."
         return 1   
@@ -134,16 +134,16 @@ try_download () {
     PW_DOWNLOAD_FILE_NAME="$(basename $1)"
     set -o pipefail
     curl -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2" 2>&1 | \
-    tr '\r' '\n' | sed -u -e 's/#//g' -e 's/ //g' -e 's/\.[[:digit:]]%//' | \
+    tr '\r' '\n' |  sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
     "${pw_yad_v12_3}" --progress --percentage=0 --text="Download ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
-                --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90
+                --auto-kill --center --text-align="center" --fixed --no-buttons --title "$portname" --width=500 --height=90
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
         print_error "Failed to download ${PW_DOWNLOAD_FILE_NAME} from GitHub."
         print_info "Try download ${PW_DOWNLOAD_FILE_NAME} from FTP"
         curl -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -L "ftp://171.22.215.18/archives/${PW_DOWNLOAD_FILE_NAME}" -o "$2" 2>&1 | \
-        tr '\r' '\n' | sed -u -e 's/#//g' -e 's/ //g' -e 's/\.[[:digit:]]%//' | \
+        tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
         "${pw_yad_v12_3}" --progress --percentage=0 --text="Download ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
-                --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90
+                --auto-kill --center --text-align="center" --fixed --no-buttons --title "$portname" --width=500 --height=90
         if [ "${PIPESTATUS[0]}" != 0 ] ; then
             print_error "Failed to download ${PW_DOWNLOAD_FILE_NAME} from FTP."
             return 1   
@@ -157,9 +157,9 @@ try_download_to_path () {
     PW_DOWNLOAD_FILE_NAME="$(basename $1)"
     set -o pipefail
     curl -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2/$PW_DOWNLOAD_FILE_NAME" 2>&1 | \
-    tr '\r' '\n' | sed -u -e 's/#//g' -e 's/ //g' -e 's/\.[[:digit:]]%//' | \
+    tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
     "${pw_yad_v12_3}" --progress --percentage=0 --text="Download ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
-                --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90
+                --auto-kill --center --text-align="center" --fixed --no-buttons --title "$portname" --width=500 --height=90
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
         print_error "Failed to download $1."
         return 1 
