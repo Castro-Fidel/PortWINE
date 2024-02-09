@@ -83,7 +83,7 @@ sudo dnf install portproton
 **ATTENTION** : with the universal method of installing PortProton, dependencies must be installed manually!
 
 ```sh
-wget -c "https://github.com/Castro-Fidel/PortProton_ALT/raw/main/portproton" && sh PortProton_Installer
+wget -c "https://github.com/Castro-Fidel/PortProton_ALT/raw/main/portproton" && sh portproton
 ```
 
 ## Dependencies
