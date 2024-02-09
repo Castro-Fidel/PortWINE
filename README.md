@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/Castro-Fidel/PortProton_PKGBUILD/main/portproton.svg" width="64">
+  <img src="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/data_from_portwine/img/gui/port_proton.svg" width="64">
   <h1 align="center">PortProton</h1>
   <p align="center">Project designed to make it easy and convenient to run Windows games on Linux for both beginners and advanced users.
 The project strives to make launching games (and other software) as simple as possible, but at the same time provides flexible settings for advanced users.</p>
@@ -60,8 +60,8 @@ exit
 sudo urpmi portproton
 ```
 
-* **Ubuntu 20.04** (Kubuntu, Xubuntu, Lubuntu, etc.), **Linux Mint 20.x** :
-[portproton_1.0-2_amd64.deb](https://github.com/Castro-Fidel/PortProton_dpkg/releases/download/portproton_1.0-2_amd64/portproton_1.0-2_amd64.deb)
+* **Ubuntu 24.04**, **Debian 12**, **Linux Mint 21.x** **Deepin** :
+[portproton_1.4-1_amd64.deb](https://github.com/Castro-Fidel/PortProton_dpkg/releases/download/portproton_1.4-1_amd64/portproton_1.4-1_amd64.deb)
 
 * **Arch Linux** and derivatives (Manjaro, Garuda, etc.) :
 [AUR](https://aur.archlinux.org/packages/portproton)
@@ -69,7 +69,7 @@ sudo urpmi portproton
 * **OpenSuse**:
 [OBS](https://software.opensuse.org/download/package?package=portproton&project=home%3ABoria138%3APortProton)
 
-* **Fedora 37+** and **Nobara**:
+* **Fedora 38+** and **Nobara**:
 
 ```sh
 sudo dnf copr enable boria138/portproton
@@ -82,22 +82,8 @@ sudo dnf install portproton
 
 **ATTENTION** : with the universal method of installing PortProton, dependencies must be installed manually!
 
-Normal installation:
-
 ```sh
-wget -c "https://github.com/Castro-Fidel/PortWINE/raw/master/portwine_install_script/PortProton_1.0" && sh PortProton_1.0
-```
-
-Silent installation (ENG):
-
-```sh
-wget -c "https://github.com/Castro-Fidel/PortWINE/raw/master/portwine_install_script/PortProton_1.0" && sh PortProton_1.0 -eng
-```
-
-Silent installation (RUS):
-
-```sh
-wget -c "https://github.com/Castro-Fidel/PortWINE/raw/master/portwine_install_script/PortProton_1.0" && sh PortProton_1.0 -rus
+wget -c "https://github.com/Castro-Fidel/PortProton_ALT/raw/main/portproton" && sh PortProton_Installer
 ```
 
 ## Dependencies
@@ -117,7 +103,7 @@ sudo apt update
 
 sudo apt upgrade
 
-sudo apt install curl file libc6 libnss3 policykit-1 xz-utils zenity bubblewrap curl icoutils tar libvulkan1 libvulkan1:i386 wget zenity zstd cabextract xdg-utils openssl bc libgl1-mesa-glx libgl1-mesa-glx:i386
+sudo apt install curl file libc6 libnss3 policykit-1 xz-utils bubblewrap curl icoutils tar libvulkan1 libvulkan1:i386  zstd cabextract xdg-utils openssl libgl libgl1:i386
 ```
 
 * **Arch Linux / Manjaro**
@@ -133,7 +119,7 @@ Include = /etc/pacman.d/mirrorlist
 ```
 
 ```sh
-sudo pacman -Syu bash icoutils wget bubblewrap zstd cabextract bc tar openssl gamemode desktop-file-utils curl dbus freetype2 gdk-pixbuf2 ttf-font zenity gzip nss xorg-xrandr vulkan-driver vulkan-icd-loader lsof lib32-freetype2 lib32-libgl lib32-gcc-libs lib32-libx11 lib32-libxss lib32-alsa-plugins lib32-libgpg-error lib32-nss lib32-vulkan-driver lib32-vulkan-icd-loader lib32-gamemode lib32-openssl
+sudo pacman -Syu bash bubblewrap zstd cabextract tar openssl desktop-file-utils curl dbus freetype2 gdk-pixbuf2 ttf-font gzip nss xorg-xrandr vulkan-driver vulkan-icd-loader lsof lib32-freetype2 lib32-libgl lib32-gcc-libs lib32-libx11 lib32-libxss lib32-alsa-plugins lib32-libgpg-error lib32-nss lib32-vulkan-driver lib32-vulkan-icd-loader lib32-openssl
 ```
 
 If you have a video card from **NVIDIA** , be sure to check if the **lib32-nvidia-utils** package is installed
@@ -142,26 +128,10 @@ If you have a video card from **NVIDIA** , be sure to check if the **lib32-nvidi
 sudo pacman -Syu lib32-nvidia-utils
 ```
 
-* **Debian/Deepin**
-
-```sh
-sudo apt install software-properties-common -y
-
-sudo apt-add-repository non-free
-
-sudo dpkg --add-architecture i386
-
-sudo apt update
-
-sudo apt upgrade
-
-sudo apt install bubblewrap curl gamemode icoutils tar wget zenity zstd libvulkan1 libvulkan1:i386 steam cabextract
-```
-
 * **openSUSE**
 
 ```sh
-sudo zypper install curl icoutils wget zenity bubblewrap zstd cabextract tar steam zenity zenity-lang gamemoded libgamemode0 libgamemodeauto0
+sudo zypper install curl bubblewrap zstd cabextract tar steam
 ```
 
 * **Fedora**
@@ -171,7 +141,7 @@ sudo dnf update
 
 sudo dnf upgrade --refresh
 
-sudo dnf install curl gamemode gamemode.i686 icoutils wget zenity bubblewrap zstd cabextract tar openssl mesa-dri-drivers.i686 mesa-vulkan-drivers mesa-vulkan-drivers.i686 vulkan-loader vulkan-loader.i686 nss.i686 alsa-lib.i686 mesa-libGL.i686 mesa-libEGL.i686 wmctrl ImageMagick
+sudo dnf install curl bubblewrap zstd cabextract tar openssl mesa-dri-drivers.i686 mesa-vulkan-drivers mesa-vulkan-drivers.i686 vulkan-loader vulkan-loader.i686 nss.i686 alsa-lib.i686 mesa-libGL.i686 mesa-libEGL.i686 wmctrl ImageMagick
 ```
 
 * **Alt Linux**
@@ -181,7 +151,7 @@ su -
 
 apt-get update && apt-get dist-upgrade -y
 
-apt-get install bubblewrap cabextract wget zstd gawk tar xz pciutils bc coreutils file curl icoutils wmctrl zenity xdg-utils desktop-file-utils libvulkan1 vulkan-tools libd3d libGL gamemode fontconfig xrdb libcurl libgio libnm libnsl1 libnss glibc-nss glibc-pthread i586-{libvulkan1,libd3d,libGL,libgio,libnm,libnsl1,libnss,glibc-nss,glibc-pthread,libunwind,xorg-dri-swrast}
+apt-get install bubblewrap cabextract  zstd gawk tar xz pciutils coreutils file curl icoutils wmctrl xdg-utils desktop-file-utils libvulkan1 vulkan-tools libd3d libGL fontconfig xrdb libcurl libgio libnm libnsl1 libnss glibc-nss glibc-pthread i586-{libvulkan1,libd3d,libGL,libgio,libnm,libnsl1,libnss,glibc-nss,glibc-pthread,libunwind,xorg-dri-swrast}
 
 exit
 ```
@@ -193,19 +163,19 @@ sudo dnf update
 
 sudo dnf upgrade --refresh
 
-sudo dnf install sysvinit-tools curl libcurl4 icoutils wget zenity bubblewrap zstd cabextract tar libvulkan1 lib64vulkan1 vulkan.x86_64 vulkan.i686 vkd3d.x86_64 vkd3d.i686 coreutils file libc6 libnss3 xz bubblewrap xdg-utils openssl bc libgl1 lib64freetype2 libfreetype2 lib64txc-dxtn libtxc-dxtn lib64opencl1 libopencl1 libdrm2 libdrm2.i686 mesa.i686
+sudo dnf install sysvinit-tools curl libcurl4 bubblewrap zstd cabextract tar libvulkan1 lib64vulkan1 vulkan.x86_64 vulkan.i686 vkd3d.x86_64 vkd3d.i686 coreutils file libc6 libnss3 xz bubblewrap xdg-utils openssl libgl1 lib64freetype2 libfreetype2 lib64txc-dxtn libtxc-dxtn lib64opencl1 libopencl1 libdrm2 libdrm2.i686 mesa.i686
 ```
 
 * **RED OS**
 
 ```sh
-sudo -E dnf install curl icoutils libcurl wget zenity bubblewrap zstd cabextract tar goverlay openssl steam
+sudo -E dnf install curl icoutils libcurl bubblewrap zstd cabextract tar goverlay openssl steam
 ```
 
 * **Solus 4.x**
 
 ```sh
-sudo eopkg it curl file zenity bubblewrap curl icoutils tar wget zenity zstd cabextract xdg-utils openssl bc vulkan vulkan-32bit mesalib-32bit samba
+sudo eopkg it curl file bubblewrap curl icoutils tar zstd cabextract xdg-utils openssl bc vulkan vulkan-32bit mesalib-32bit samba
 ```
 
 ## Contacts

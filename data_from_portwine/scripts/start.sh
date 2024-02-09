@@ -3,6 +3,7 @@
 
 export NO_AT_BRIDGE=1
 export pw_full_command_line=("$0" $*)
+export YAD_BORDERS=5
 MISSING_DESKTOP_FILE=0
 
 if [[ -f "$1" ]] ; then
@@ -36,7 +37,7 @@ if [[ -f "$portwine_exe" ]] \
 && [[ "${WARN_CYRILLIC_IN_PATH}" != 1 ]] \
 && echo "${portwine_exe}" | grep -e $'[\u0430-\u044F\u0410-\u042F]' &>/dev/null
 then
-    zenity_info "$loc_warn_cyrillic_in_path"
+    yad_info "$loc_warn_cyrillic_in_path"
     export WARN_CYRILLIC_IN_PATH="1"
 fi
 
@@ -99,7 +100,7 @@ portwine_start_debug () {
     export PW_LOG=1
     export PW_WINEDBG_DISABLE=0
     if [[ -z "$VULKAN_DRIVER_NAME" ]] || [[ "$VULKAN_DRIVER_NAME" == "llvmpipe" ]] ; then
-	zenity_info "Attention working version of vulkan not detected!\nIt is recommended to run games in OpenGL (low performance possible)!"
+	yad_info "Attention working version of vulkan not detected!\nIt is recommended to run games in OpenGL (low performance possible)!"
     fi
     echo "${port_deb1}" > "${PORT_WINE_PATH}/${portname}.log"
     echo "${port_deb2}" >> "${PORT_WINE_PATH}/${portname}.log"
@@ -182,7 +183,7 @@ portwine_start_debug () {
     [[ `command -v glxinfo` ]] && glxinfo -B >> "${PORT_WINE_PATH}/${portname}.log"
     echo "-----" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "inxi -G:" >> "${PORT_WINE_PATH}/${portname}.log"
-    "${PW_WINELIB}/portable/bin/inxi" -Gc0 >> "${PORT_WINE_PATH}/${portname}.log"
+    "${PW_PLUGINS_PATH}/portable/bin/inxi" -Gc0 >> "${PORT_WINE_PATH}/${portname}.log"
     if echo "$LSPCI_VGA" | grep -i nvidia &>/dev/null ; then 
         if command -v ldconfig &>/dev/null ; then
             echo "------" >> "${PORT_WINE_PATH}/${portname}.log"
@@ -193,7 +194,7 @@ portwine_start_debug () {
     echo "----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Vulkan info device name:" >> "${PORT_WINE_PATH}/${portname}.log"
     "$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep -E '^GPU|deviceName|driverName' >> "${PORT_WINE_PATH}/${portname}.log"
-    "${PW_WINELIB}/portable/bin/vkcube" --c 50
+    "${PW_PLUGINS_PATH}/portable/bin/vkcube" --c 50
     if [ $? -eq 0 ]; then
         echo "Vulkan cube test passed successfully" >> "${PORT_WINE_PATH}/${portname}.log"
     else
@@ -255,7 +256,7 @@ portwine_start_debug () {
     sed -i '/wine: RLIMIT_NICE is <= 20/d' "${PORT_WINE_PATH}/${portname}.log"
     deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++') 
     echo "$deb_text" > "${PORT_WINE_PATH}/${portname}.log"
-    "$pw_yad" --title="${portname}.log" --borders=3 --no-buttons --text-align=center \
+    "$pw_yad" --title="${portname}.log" --borders=${YAD_BORDERS} --no-buttons --text-align=center \
     --text-info --show-uri --wrap --width=1200 --height=550  --uri-color=red \
     --filename="${PORT_WINE_PATH}/${portname}.log"
     stop_portwine
@@ -349,8 +350,8 @@ pw_prefix_manager () {
         --text="${loc_prefix_manager_conf} <b>\"${PW_PREFIX_NAME}\"</b>" \
         --column=set --column=dll --column=info < "${PORT_WINE_TMP_PATH}/settings_list_tmp" 1>> "${PORT_WINE_TMP_PATH}/to_winetricks" 2>/dev/null &
 
-        "${pw_yad_v12_3}" --key=$KEY_EDIT_MANAGER_GUI --notebook --borders=3 --width=900 --height=800 \
-        --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "$loc_pm" --tab-pos=bottom --tab="$loc_pm_dlls" --tab="$loc_pm_fonts" --tab="$loc_pm_settings" 2>/dev/null
+        "${pw_yad_v12_3}" --key=$KEY_EDIT_MANAGER_GUI --notebook --borders=${YAD_BORDERS} --width=900 --height=800 \
+        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "$loc_pm" --tab-pos=bottom --tab="$loc_pm_dlls" --tab="$loc_pm_fonts" --tab="$loc_pm_settings" 2>/dev/null
         YAD_STATUS="$?"
         if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
             stop_portwine
@@ -430,8 +431,8 @@ pw_start_cont_xterm () {
 
 pw_create_prefix_backup () {
     cd "$HOME"
-    PW_PREFIX_TO_BACKUP=$("${pw_yad_v12_3}" --file --directory --borders=3 --width=650 --height=500 --auto-close \
-    --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "$loc_create_pfx_backup_path" 2>/dev/null )
+    PW_PREFIX_TO_BACKUP=$("${pw_yad_v12_3}" --file --directory --borders=${YAD_BORDERS} --width=650 --height=500 --auto-close \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "$loc_create_pfx_backup_path" 2>/dev/null )
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
     if [[ ! -z "$(grep "/${PW_PREFIX_NAME}/" "${PORT_WINE_PATH}"/*.desktop )" ]] ; then
@@ -459,13 +460,13 @@ pw_create_prefix_backup () {
     done
     if [[ -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" ]] ; then
         mv -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack"
-        zenity_info "$PW_PFX_BACKUP_SUCCESS"
+        yad_info "$PW_PFX_BACKUP_SUCCESS"
         if [[ ! -f "${PORT_WINE_TMP_PATH}/pfx_backup_info" ]] ; then
-            zenity_info "$PW_PFX_BACKUP_INFO"
+            yad_info "$PW_PFX_BACKUP_INFO"
             echo "1" > "${PORT_WINE_TMP_PATH}/pfx_backup_info"
         fi
     else 
-        zenity_error "$PW_PFX_BACKUP_ERROR"
+        yad_error "$PW_PFX_BACKUP_ERROR"
     fi
 
     return 0
@@ -475,14 +476,14 @@ pw_edit_db () {
     if [[ "${XDG_SESSION_TYPE}" == "wayland" ]] ; then
         pw_gui_for_edit_db \
         PW_MANGOHUD PW_MANGOHUD_USER_CONF ENABLE_VKBASALT PW_VKBASALT_USER_CONF PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING \
-        PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL \
+        PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_USE_FAKE_DLSS_3 PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL \
         PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY \
         PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE \
         PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_USE_GALLIUM_ZINK PW_USE_GAMESCOPE
     else
         pw_gui_for_edit_db \
         PW_MANGOHUD PW_MANGOHUD_USER_CONF ENABLE_VKBASALT PW_VKBASALT_USER_CONF PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING \
-        PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL \
+        PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_USE_FAKE_DLSS_3 PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL \
         PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME  \
         PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE \
         PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_USE_GALLIUM_ZINK PW_USE_GAMESCOPE
@@ -626,9 +627,9 @@ if [[ -f "${portwine_exe}" ]] ; then
         else
             PW_SHORTCUT="${loc_gui_delete_shortcut}!$PW_GUI_ICON_PATH/separator.png!${loc_delete_shortcut}:98"
         fi
-        OUTPUT_START=$("${pw_yad}" --text-align=center --text "$PW_COMMENT_DB" --borders=3 --form \
+        OUTPUT_START=$("${pw_yad}" --text-align=center --text "$PW_COMMENT_DB" --borders=${YAD_BORDERS} --form \
         --title "${portname}-${install_ver} (${scripts_install_ver})" --image "${PW_ICON_FOR_YAD}" --separator=";" --keep-icon-size \
-        --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
+        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
         --field="3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
         --field="  WINE  : :CB" "${PW_DEFAULT_WINE_USE}" \
         --field="PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
@@ -728,8 +729,8 @@ else
 
     gui_open_scripts_from_backup () {
         cd "${PORT_WINE_TMP_PATH}/scripts_backup/"
-        PW_SCRIPT_FROM_BACKUP=$("${pw_yad_v12_3}" --file --borders=3 --width=650 --height=500 --auto-close \
-        --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "SCRIPTS FROM BACKUP" --file-filter="backup_scripts|scripts_v*.tar.gz" 2>/dev/null )
+        PW_SCRIPT_FROM_BACKUP=$("${pw_yad_v12_3}" --file --borders=${YAD_BORDERS} --width=650 --height=500 --auto-close \
+        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "SCRIPTS FROM BACKUP" --file-filter="backup_scripts|scripts_v*.tar.gz" 2>/dev/null )
         YAD_STATUS="$?"
         if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
         unpack_tar_gz "$PW_SCRIPT_FROM_BACKUP" "${PORT_WINE_PATH}/data/"
@@ -861,8 +862,8 @@ else
     export START_FROM_PP_GUI=1
 
     if [[ -z "${PW_ALL_DF}" ]] ; then
-        "${pw_yad_v12_3}" --key=$KEY --notebook --borders=3 --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons --auto-close \
-        --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "${portname}-${install_ver} (${scripts_install_ver})" \
+        "${pw_yad_v12_3}" --key=$KEY --notebook --borders=${YAD_BORDERS} --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons --auto-close \
+        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "${portname}-${install_ver} (${scripts_install_ver})" \
         --tab-pos=bottom --keep-icon-size \
         --tab="$loc_mg_autoinstall"!"$PW_GUI_ICON_PATH/separator.png"!"" \
         --tab="$loc_mg_emulators"!"$PW_GUI_ICON_PATH/separator.png"!"" \
@@ -871,8 +872,8 @@ else
         --tab="$loc_mg_installed"!"$PW_GUI_ICON_PATH/separator.png"!"" 2>/dev/null
         YAD_STATUS="$?"
     else
-        "${pw_yad_v12_3}" --key=$KEY --notebook --borders=3 --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons --auto-close \
-        --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "${portname}-${install_ver} (${scripts_install_ver})" \
+        "${pw_yad_v12_3}" --key=$KEY --notebook --borders=${YAD_BORDERS} --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons --auto-close \
+        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "${portname}-${install_ver} (${scripts_install_ver})" \
         --tab-pos=bottom --keep-icon-size \
         --tab="$loc_mg_installed"!"$PW_GUI_ICON_PATH/separator.png"!"" \
         --tab="$loc_mg_autoinstall"!"$PW_GUI_ICON_PATH/separator.png"!"" \

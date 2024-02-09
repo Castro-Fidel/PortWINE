@@ -6,6 +6,7 @@ if  grep -i "flatpak" /etc/os-release &>/dev/null ; then
 	name_desktop="PortProton"
 	echo "[Desktop Entry]"	 					  		 > "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Name=${name_desktop}" 				 		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Version=${install_ver}"						 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Exec=flatpak run com.castrofidel.portproton"	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Type=Application" 						 	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Terminal=False" 						 		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
@@ -17,20 +18,21 @@ if  grep -i "flatpak" /etc/os-release &>/dev/null ; then
 	chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 else
 	name_desktop="PortProton"
-	echo "[Desktop Entry]"	 					  > "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Name=${name_desktop}" 				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "[Desktop Entry]"	 					  		 > "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Name=${name_desktop}" 				 		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Version=${install_ver}"						 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Exec=env "${PORT_SCRIPTS_PATH}/start.sh %F""	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Type=Application" 					 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Terminal=False" 						 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Categories=Game"	    				 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "StartupNotify=true" 	    			 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Type=Application" 							 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Terminal=False" 								 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Categories=Game"	    						 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "StartupNotify=true" 	    					 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "MimeType=application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program"  >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Path="${PORT_SCRIPTS_PATH}/""			 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Path="${PORT_SCRIPTS_PATH}/""					 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Icon="${PORT_WINE_PATH}/data/img/w.png""   	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 fi
 
-if [ -z "${PW_AUTOPLAY}" ] ; then
+if [[ ! -f /usr/bin/portproton ]]; then
 	cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" ${HOME}/.local/share/applications/
 fi
 
@@ -41,40 +43,19 @@ if ! grep -i "flatpak" /etc/os-release &>/dev/null ; then
 fi
 
 name_desktop="readme"
-echo "[Desktop Entry]"				 > "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Name=${name_desktop}"			>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Version=1.3"					>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Type=Link"					>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "Icon="${PORT_WINE_PATH}/data/img/readme.png""	>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-echo "URL=${urlg}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "[Desktop Entry]"				 					> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Name=${name_desktop}"								>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Version=${install_ver}"							>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Type=Link"										>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "Icon="${PORT_WINE_PATH}/data/img/readme.png""		>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+echo "URL=${urlg}" 										>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 
 if [ "${PW_SILENT_INSTALL}" = "1" ] ; then
 	if [ "${PW_AUTOPLAY}" = "1" ] ; then
 		unset INSTALLING_PORT
-		if [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]] ; then
-			export PW_OLD_PATH=`cat "${HOME}/.local/share/applications/PortProton.desktop" | grep -w 'Path=' | sed -E 's/Path=//' | sed -E 's%\/PortProton\/data\/scripts\/%%g' `
-			echo "PW_OLD_PATH=${PW_OLD_PATH}"
+		if [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]] && [[ -f /usr/bin/portproton ]] ; then
 			try_remove_file "${HOME}/.local/share/applications/PortProton.desktop"
-		fi
-		if [[ ! -z "${PW_OLD_PATH}" ]]	; then 
-			if [[ "${PW_OLD_PATH}"* == "${HOME}/PortWINE"* ]] & [[ -d "${HOME}/PortWINE" ]] ; then
-				echo "Old path = ${HOME}/PortWINE"
-				try_remove_dir "${XDG_DATA_HOME}/PortWINE"
-				mv -f "${HOME}/PortWINE" "${XDG_DATA_HOME}"
-			elif [[ "${PW_OLD_PATH}"* == "${PW_OLD_PATH}/PortWINE"* ]] & [[ -d "${PW_OLD_PATH}/PortWINE" ]] ; then
-				try_remove_dir "${XDG_DATA_HOME}/PortWINE"
-				ln -s "${PW_OLD_PATH}/PortWINE" "${XDG_DATA_HOME}/"
-			elif [[ "${PW_OLD_PATH}"* == "${PW_OLD_PATH}/PortProton"* ]] & [[ -d "${PW_OLD_PATH}/PortProton" ]] ; then
-				try_remove_dir "${XDG_DATA_HOME}/PortWINE"
-				create_new_dir "${XDG_DATA_HOME}/PortWINE"
-				ln -s "${PW_OLD_PATH}/PortProton" "${XDG_DATA_HOME}/PortWINE"
-			fi
-		fi
-		if [ ! -L "${HOME}/PortWINE" ] && [ -d "${XDG_DATA_HOME}/PortWINE" ] ; then
-		    ln -s "${XDG_DATA_HOME}/PortWINE" "${HOME}/"
-		else
-		    echo "Symbolic link already exists."
 		fi
 		echo "Restarting PP after installing..."
 		/usr/bin/env bash -c "${PORT_WINE_PATH}/data/scripts/start.sh" $@ & 
@@ -82,8 +63,5 @@ if [ "${PW_SILENT_INSTALL}" = "1" ] ; then
 	else
 		echo "Installation completed successfully."
 	fi
-else
-	`zenity --info --title "${inst_set_top}" --text "${inst_succ}" --no-wrap ` > /dev/null 2>&1
-	 xdg-open "https://linux-gaming.ru/portproton/" > /dev/null 2>&1 & exit 0
 fi
 unset INSTALLING_PORT

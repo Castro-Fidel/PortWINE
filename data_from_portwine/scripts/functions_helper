@@ -11,6 +11,11 @@ print_error () {
 }
 export -f print_error
 
+fatal () {
+    print_error "$@"
+    exit 1
+}
+
 print_warning () {
     printf "\E[33m%s Warning: $@ %s\e[0m\n"
 }
@@ -119,10 +124,10 @@ try_download_game () {
     PW_DOWNLOAD_FILE_NAME="$(basename $1)"
     set -o pipefail
     curl -C - -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2" 2>&1 | \
-    tr '\r' '\n' | sed -u -e 's/#//g' -e 's/ //g' -e 's/\.[[:digit:]]%//' | \
+    tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
     "${pw_yad_v12_3}" --progress --percentage=0 --text="Download ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
     --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
-    --window-icon="$PW_GUI_ICON_PATH/port_proton.png"
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders=15
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
         print_error "Failed to download ${PW_DOWNLOAD_FILE_NAME}."
         return 1   
@@ -136,18 +141,18 @@ try_download () {
     [[ ! -f "${pw_yad_v12_3}" ]] && local pw_yad_v12_3="yad"
     set -o pipefail
     curl -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2" 2>&1 | \
-    tr '\r' '\n' | sed -u -e 's/#//g' -e 's/ //g' -e 's/\.[[:digit:]]%//' | \
+    tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
     "${pw_yad_v12_3}" --progress --percentage=0 --text="Download ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
     --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
-    --window-icon="$PW_GUI_ICON_PATH/port_proton.png"
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders=15
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
         print_error "Failed to download ${PW_DOWNLOAD_FILE_NAME} from GitHub."
         print_info "Try download ${PW_DOWNLOAD_FILE_NAME} from FTP"
         curl -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -L "ftp://171.22.215.18/archives/${PW_DOWNLOAD_FILE_NAME}" -o "$2" 2>&1 | \
-        tr '\r' '\n' | sed -u -e 's/#//g' -e 's/ //g' -e 's/\.[[:digit:]]%//' | \
+        tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
         "${pw_yad_v12_3}" --progress --percentage=0 --text="Download ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
         --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
-        --window-icon="$PW_GUI_ICON_PATH/port_proton.png"
+        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders=15
         if [ "${PIPESTATUS[0]}" != 0 ] ; then
             print_error "Failed to download ${PW_DOWNLOAD_FILE_NAME} from FTP."
             return 1   
@@ -161,10 +166,10 @@ try_download_to_path () {
     PW_DOWNLOAD_FILE_NAME="$(basename $1)"
     set -o pipefail
     curl -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2/$PW_DOWNLOAD_FILE_NAME" 2>&1 | \
-    tr '\r' '\n' | sed -u -e 's/#//g' -e 's/ //g' -e 's/\.[[:digit:]]%//' | \
+    tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
     "${pw_yad_v12_3}" --progress --percentage=0 --text="Download ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
     --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
-    --window-icon="$PW_GUI_ICON_PATH/port_proton.png"
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders=15
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
         print_error "Failed to download $1."
         return 1 
@@ -231,6 +236,15 @@ var_ld_library_path_update() {
     return 0
 }
 
+pw_notify_send () {
+    if command -v notify-send &>/dev/null ; then
+        if [[ -f "$PW_GUI_ICON_PATH/portproton.svg" ]]
+        then notify-send -a PortProton -i "$PW_GUI_ICON_PATH/portproton.svg" $@ "${PW_NOTIFY_TEXT}"
+        else notify-send -a PortProton $@ "${PW_NOTIFY_TEXT}"
+        fi
+    fi
+}
+
 unpack_tar_zst () {
     set -o pipefail
     unset PW_ZSTD_PORT
@@ -240,7 +254,7 @@ unpack_tar_zst () {
         pw_stop_progress_bar_cover_block
         [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
     else
-        env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_WINELIB}/portable/lib/lib64:${PW_WINELIB}/portable/lib/lib" tar -I "${PW_WINELIB}/portable/bin/zstd" -xhvf "$1" -C "$2"
+        env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib" tar -I "${PW_PLUGINS_PATH}/portable/bin/zstd" -xhvf "$1" -C "$2"
         pw_stop_progress_bar_cover_block
         [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
     fi
@@ -445,6 +459,22 @@ init_wine_ver () {
     return 0
 }
 
+pw_use_command () {
+    if command -v "$1" $>/dev/null ; then
+        $@
+    else
+        if [[ -f "${PW_PLUGINS_PATH}/portable/bin/${1}" ]] ; then
+            if [ ! -z "$LD_LIBRARY_PATH" ]
+            then env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64:$LD_LIBRARY_PATH" "${PW_PLUGINS_PATH}/portable/bin/"$@ 
+            else env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" "${PW_PLUGINS_PATH}/portable/bin/"$@ 
+            fi
+        else
+            print_error "command $1 - not found"
+            exit 1
+        fi
+    fi
+}
+
 pw_init_runtime () {
 
     if grep -q -E '(ROSA Fresh|RED OS)' "/etc/os-release" ; then
@@ -454,15 +484,15 @@ pw_init_runtime () {
     fi
 
     PW_PV_OVERRIDES="/usr/lib/pressure-vessel/overrides/lib" 
-    export PW_LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${PW_WINELIB}/portable/lib/lib64:${PW_WINELIB}/portable/lib/lib32:${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:${PW_PV_OVERRIDES}/i386-linux-gnu/aliases"
+    export PW_LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32:${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:${PW_PV_OVERRIDES}/i386-linux-gnu/aliases"
 
     if [ ! -z ${PATH_TMP} ]
     then export PATH="${PATH_TMP}"
     else export PATH_TMP="${PATH}"
     fi
     if [ ! -z "${PATH}" ]
-    then export PATH="${WINEDIR}/bin:${PATH}:${PW_WINELIB}/portable/bin"
-    else export PATH="${WINEDIR}/bin:${PW_WINELIB}/portable/bin"
+    then export PATH="${WINEDIR}/bin:${PATH}:${PW_PLUGINS_PATH}/portable/bin"
+    else export PATH="${WINEDIR}/bin:${PW_PLUGINS_PATH}/portable/bin"
     fi
 
     if [ "${PW_USE_GSTREAMER}" = 1 ] ; then 
@@ -497,7 +527,7 @@ pw_init_runtime () {
         unset PW_VK_LAYER_PATH
     else
         export PRESSURE_VESSEL_IMPORT_VULKAN_LAYERS=0
-        export PW_VK_LAYER_PATH="${PW_WINELIB}/portable/share/vulkan/implicit_layer.d"
+        export PW_VK_LAYER_PATH="${PW_PLUGINS_PATH}/portable/share/vulkan/implicit_layer.d"
     fi
 
     # export PRESSURE_VESSEL_GRAPHICS_PROVIDER="/"
@@ -526,7 +556,7 @@ pw_init_runtime () {
     done
 
     # drop portable: libssl 32-bit
-    try_remove_file "${PW_WINELIB}/portable/lib/lib32/libssl.so.1.1"
+    try_remove_file "${PW_PLUGINS_PATH}/portable/lib/lib32/libssl.so.1.1"
     print_info "RUNTIME is enabled"
 }
 
@@ -676,8 +706,8 @@ stop_portwine () {
 export -f stop_portwine
 
 pw_download_libs () {
-    if [[ ! -e "${PW_WINELIB}/portable/bin/yad" || ! -e "${PW_WINELIB}/portable/lib/p7zip/7z" \
-    || ! -e "${PW_WINELIB}/runtime/files/bin/vkcube" || -e "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" ]] ;
+    if [[ ! -e "${PW_WINELIB}/runtime/files/bin/vkcube" ]] \
+    || [[ ! -f "${PW_WINELIB}/pressure-vessel/bin/pv-bwrap" ]]
     then
         print_info "Download and install libraries..."
         if try_download "github.com/Castro-Fidel/PortWINE/releases/download/libs${PW_LIBS_VER}/libs${PW_LIBS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" ; then
@@ -687,12 +717,13 @@ pw_download_libs () {
                     for RM_LIBS in `ls ${PORT_WINE_TMP_PATH} | grep libs_v | grep -v libs${PW_LIBS_VER}`
                     do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_LIBS}"
                     done
+                    # TODO: drop clear prefix, and add update prefix from new libs 
                     pw_clear_pfx
                 fi
             else
                 try_remove_dir "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
                 try_remove_file "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz"
-                if zenity_error_download
+                if yad_error_download
                 then pw_download_libs
                 else
                     export PW_LIBS_VER="$(echo _v$(($(echo $PW_LIBS_VER | sed 's/_v//') - 1)))"
@@ -700,7 +731,7 @@ pw_download_libs () {
                 fi
             fi
         else
-            if zenity_error_download
+            if yad_error_download
             then pw_download_libs
             else
                 export PW_LIBS_VER="$(echo _v$(($(echo $PW_LIBS_VER | sed 's/_v//') - 1)))"
@@ -708,11 +739,7 @@ pw_download_libs () {
             fi
         fi
     fi
-    export pw_yad="${PW_WINELIB}/portable/bin/yad"
-    export pw_yad_v12_3="${PW_WINELIB}/portable/bin/yad_v12_3"
-    export pw_zstd="${PW_WINELIB}/portable/bin/zstd"
-    export pw_7z="${PW_WINELIB}/portable/lib/p7zip/7z"
-    export PW_XTERM="${PW_WINELIB}/portable/bin/xterm -geometry 159x37 -e"
+    try_remove_dir "${PW_WINELIB}/portable"
     return 0
 }
 
@@ -738,10 +765,10 @@ pw_check_and_download_wine () {
                 try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}"
                 try_remove_dir "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}"
 
-                zenity_error_download && pw_check_and_download_wine || exit 1
+                yad_error_download && pw_check_and_download_wine || exit 1
             fi
         else
-            zenity_error_download && pw_check_and_download_wine || exit 1
+            yad_error_download && pw_check_and_download_wine || exit 1
         fi
     fi
     return 0
@@ -759,7 +786,7 @@ pw_check_and_download_dxvk_and_vkd3d () {
                     try_remove_file "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.xz"
                     try_remove_dir dxvk-${DXVK_VAR_VER}
 
-                    zenity_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
+                    yad_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
                 fi
             elif try_download "https://github.com/doitsujin/dxvk/releases/download/v${DXVK_VAR_VER}/dxvk-${DXVK_VAR_VER}.tar.gz" "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz" ; then
                 if unpack_tar_gz "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz" "${PW_VULKAN_DIR}" ; then
@@ -768,10 +795,10 @@ pw_check_and_download_dxvk_and_vkd3d () {
                     try_remove_file "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz"
                     try_remove_dir dxvk-${DXVK_VAR_VER}
 
-                    zenity_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
+                    yad_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
                 fi
             else
-                zenity_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
+                yad_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
             fi
         fi
     done
@@ -787,7 +814,7 @@ pw_check_and_download_dxvk_and_vkd3d () {
                     try_remove_file "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.xz"
                     try_remove_dir vkd3d-proton-${VKD3D_VAR_VER}
 
-                    zenity_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
+                    yad_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
                 fi
             elif try_download "https://github.com/HansKristian-Work/vkd3d-proton/releases/download/v${VKD3D_VAR_VER}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" ; then
                 if unpack_tar_zst "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" "${PW_VULKAN_DIR}" ; then
@@ -796,10 +823,10 @@ pw_check_and_download_dxvk_and_vkd3d () {
                     try_remove_file "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst"
                     try_remove_dir vkd3d-proton-${VKD3D_VAR_VER}
 
-                    zenity_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
+                    yad_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
                 fi
             else
-                zenity_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
+                yad_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
             fi
         fi
     done
@@ -814,10 +841,10 @@ pw_check_and_download_dxvk_and_vkd3d () {
                 try_remove_file "${PW_VULKAN_DIR}/d8vk-${D8VK_VER}.tar.xz"
                 try_remove_dir "d8vk-${D8VK_VER}"
 
-                zenity_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
+                yad_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
             fi
         else
-            zenity_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
+            yad_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
         fi
     fi
 
@@ -825,20 +852,31 @@ pw_check_and_download_dxvk_and_vkd3d () {
 }
 
 pw_check_and_download_plugins () {
-    if [[ ! -d "${PW_PLUGINS_PATH}/fake_dlss" ]] || [[ ! -d "${PW_PLUGINS_PATH}/nvapi" ]] ; then
+    if [[ ! -f "${PW_PLUGINS_PATH}/portable/bin/yad_new" ]] \
+    || [[ ! -f "${PW_PLUGINS_PATH}/portable/bin/yad_v12_3" ]]
+    then
         print_info "Download and install plugins${PW_PLUGINS_VER}..."
-        if try_download "github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" ; then
-            if unpack_tar_xz "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}" ; then
-                try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" 
-                    if [ ! -z "`ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`" ] ; then
-                        for RM_PLUGINS in `ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`
-                        do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_PLUGINS}"
-                        done
+        if command -v yad &>/dev/null ; then
+            if try_download "github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" ; then
+                if unpack_tar_xz "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}" ; then
+                    try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" 
+                        if [ ! -z "`ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`" ] ; then
+                            for RM_PLUGINS in `ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`
+                            do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_PLUGINS}"
+                            done
+                        fi
+                else
+                    try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz"
+                    try_remove_dir "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
+                    if yad_error_download
+                    then pw_check_and_download_plugins
+                    else
+                        export PW_PLUGINS_VER="$(echo _v$(($(echo $PW_PLUGINS_VER | sed 's/_v//') - 1)))"
+                        export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"  
                     fi
+                fi
             else
-                try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz"
-                try_remove_dir "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
-                if zenity_error_download
+                if yad_error_download
                 then pw_check_and_download_plugins
                 else
                     export PW_PLUGINS_VER="$(echo _v$(($(echo $PW_PLUGINS_VER | sed 's/_v//') - 1)))"
@@ -846,14 +884,29 @@ pw_check_and_download_plugins () {
                 fi
             fi
         else
-            if zenity_error_download
-            then pw_check_and_download_plugins
-            else
-                export PW_PLUGINS_VER="$(echo _v$(($(echo $PW_PLUGINS_VER | sed 's/_v//') - 1)))"
-                export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"  
+            PW_NOTIFY_TEXT="Please wait for update PortProton"
+            pw_notify_send -u normal 
+            if try_download_silent "github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" ; then
+                if unpack_tar_xz "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}" ; then
+                    try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" 
+                    if [ ! -z "`ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`" ] ; then
+                        for RM_PLUGINS in `ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`
+                        do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_PLUGINS}"
+                        done
+                    fi
+                else
+                    PW_NOTIFY_TEXT="Failed updating PortProton!"
+                    pw_notify_send -u critical 
+                    print_error "Failed updating PortProton!"
+                fi
             fi
         fi
     fi
+    export pw_yad="${PW_PLUGINS_PATH}/portable/bin/yad"
+    export pw_yad_v12_3="${PW_PLUGINS_PATH}/portable/bin/yad_v12_3"
+    export pw_zstd="${PW_PLUGINS_PATH}/portable/bin/zstd"
+    export pw_7z="${PW_PLUGINS_PATH}/portable/lib/p7zip/7z"
+    export PW_XTERM="${PW_PLUGINS_PATH}/portable/bin/xterm -geometry 159x37 -e"
     return 0
 }
 
@@ -892,8 +945,9 @@ pw_init_db () {
                         export ADD_CB_DBFILE="`echo ${PW_CHECK_DB_FILE} | awk -F'/' '{print $NF}'`!${ADD_CB_DBFILE}"
                     fi
                 done
-                PORTWINE_DB_FILE="${PORT_SCRIPTS_PATH}/portwine_db"/`"${pw_yad_v12_3}" --text-align=center --text "${PW_SELECTION_DB_LOC}" --borders=15 --form \
-                --title "Database file selection..." --window-icon="$PW_GUI_ICON_PATH/port_proton.png"  --form --separator="" \
+                PORTWINE_DB_FILE="${PORT_SCRIPTS_PATH}/portwine_db"/`"${pw_yad_v12_3}" --text-align=center \
+                --text "${PW_SELECTION_DB_LOC}" --borders="${YAD_BORDERS}" --form \
+                --title "Database file selection..." --window-icon="$PW_GUI_ICON_PATH/portproton.svg"  --form --separator="" \
                 --field="DB FILE: :CB" "${ADD_CB_DBFILE}" 2>/dev/null`
                 if [[ "$?" == "1" || "$?" == "252" ]] ; then exit 0 ; fi
             elif [[ `echo "$PW_FIND_DB_FILE" | wc -l` -eq 1 ]] ; then
@@ -937,9 +991,13 @@ pw_init_db () {
             check_variables PW_USE_RAY_TRACING "1"
         fi
 
-        if [[ -f "${PATH_TO_GAME}"/steam_emu.ini ]] && [[ "${update_loc}" == "RUS" ]] ; then
-            sed -i "s/Language=english/Language=russian/" "${PATH_TO_GAME}"/steam_emu.ini
-            sed -i "/UserName=/c\UserName=${USER}" "${PATH_TO_GAME}"/steam_emu.ini
+        if [[ "${update_loc}" == "RUS" ]] ; then
+            for chk_lang_and_uname in "steam_emu.ini" "steam_api.ini" "steam_api64.ini" ; do
+                if [[ -f "${PATH_TO_GAME}/${chk_lang_and_uname}" ]] ; then
+                    sed -i "s/Language=english/Language=russian/" "${PATH_TO_GAME}/${chk_lang_and_uname}"
+                    sed -i "/UserName=/c\UserName=${USER}" "${PATH_TO_GAME}/${chk_lang_and_uname}"
+                fi
+            done
         fi
     fi
     [[ "${START_FROM_STEAM}" == 1 ]] && export PW_GUI_DISABLED_CS=1
@@ -978,22 +1036,24 @@ pw_port_update () {
         print_info "Scripts version in github = ${scripts_current_ver}"
         print_info "Scripts version local = ${scripts_install_ver}"
         if [[ ! -z "${scripts_current_ver}" ]] &&  [[ "${scripts_current_ver}" -gt "${scripts_install_ver}" ]] ; then
-            if [[ -f "${PW_WINELIB}/portable/bin/yad_v12_3" ]] ; then
-                export pw_yad_v12_3="${PW_WINELIB}/portable/bin/yad_v12_3"
+            if [[ -f "${PW_PLUGINS_PATH}/portable/bin/yad_v12_3" ]]
+            then export pw_yad_v12_3="${PW_PLUGINS_PATH}/portable/bin/yad_v12_3"
+            elif command -v yad &>/dev/null
+            then local pw_yad_v12_3="yad"
+            else local pw_yad_v12_3="not_found"
+            fi
+            if [[ "${pw_yad_v12_3}" == "not_found" ]] ; then
+                xcsd="${scripts_upd4}"
+            else
                 curl -s --list-only "${URL_FOR_CHANGELOG}/${PW_CHANGELOG_FILE}" | tee "${PORT_WINE_TMP_PATH}/curent_var_ver"
                 CHANGLOG_NEWS=`cat "${PORT_WINE_TMP_PATH}/curent_var_ver" | sed "/Scripts version ${scripts_install_ver}/,$ d" | sed '1,/---/ d' `
-                xcsd=`"${pw_yad_v12_3}" --title "${scripts_upd2} v.${scripts_current_ver}" --window-icon="$PW_GUI_ICON_PATH/port_proton.png" \
-                --borders=3 --form --separator='%%%' --width=1200 --height=600 \
+                xcsd=`"${pw_yad_v12_3}" --title "${scripts_upd2} v.${scripts_current_ver}" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+                --borders=${YAD_BORDERS} --form --separator='%%%' --width=1200 --height=600 \
                 --field=":TXT" "${CHANGLOG_NEWS}" \
                 --field="   ${scripts_upd3} :CB" "${scripts_upd4}!${scripts_upd5}!${scripts_upd6}" 2>/dev/null`
                 YAD_STATUS="$?"
                 if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
                 xcsd=`echo "${xcsd}" | awk -F'%%%' '{print $2}'`
-            else
-                xcsd=`zenity --title  "${scripts_upd1}" --text "${scripts_upd2}" --list --radiolist --height=240 --column="${inst_set}" --column "${scripts_upd3}" \
-                TRUE "${scripts_upd4}" \
-                FALSE "${scripts_upd5}" \
-                FALSE "${scripts_upd6}"`
             fi
             case $xcsd in
                 "${scripts_upd4}")
@@ -1012,15 +1072,11 @@ pw_port_update () {
                             try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
                             try_remove_dir "${PORT_WINE_TMP_PATH}/PortWINE-master/"
                             echo "${scripts_current_ver}" > "${PORT_WINE_TMP_PATH}/scripts_ver"
-                            if [[ -z "${pw_yad_v12_3}" ]] ; then
-                                zenity --title="Changelog" --text-info --width=1200 --height=550 \
-                                --filename="${PORT_WINE_PATH}/data/${PW_CHANGELOG_FILE}"
-                            fi 
                             [ "$?" == 0 ] && echo "Restarting PP after update..." && /usr/bin/env bash -c ${pw_full_command_line[*]} &
                             exit 0
                         fi
                     else
-                        zenity_error_download && pw_port_update || exit 1
+                        yad_error_download && pw_port_update || exit 1
                     fi ;;
                 "${scripts_upd5}")
                     echo " " ;;
@@ -1099,14 +1155,14 @@ pw_create_gui_png () {
     try_remove_file "${PORT_WINE_PATH}/data/img/Setup.png"
     try_remove_file "${PORT_WINE_PATH}/data/img/launcher.png"
     try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
-    if [[ -x "`command -v wrestool 2>/dev/null`" ]] && [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
+    if [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
         try_remove_dir "${PORT_WINE_TMP_PATH}/tmp_img"
         create_new_dir "${PORT_WINE_TMP_PATH}/tmp_img"
-        wrestool -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" -t14 "$(readlink -f "${portwine_exe}")"
+        pw_use_command wrestool -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" -t14 "$(readlink -f "${portwine_exe}")"
         cp "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".ico" | head -n 1)" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
-        icotool -x --width=${PW_RESIZE_TO} --height=${PW_RESIZE_TO} --output="${PORT_WINE_TMP_PATH}/tmp_img/" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
+        pw_use_command icotool -x --width=${PW_RESIZE_TO} --height=${PW_RESIZE_TO} --output="${PORT_WINE_TMP_PATH}/tmp_img/" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
         if [[ ! -f "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".png" | grep "${PW_RESIZE_TO}x${PW_RESIZE_TO}")" ]] ; then 
-            icotool -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
+            pw_use_command icotool -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
             cp "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".png" | head -n 1)" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.png"
         else
             cp "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".png" | grep "${PW_RESIZE_TO}x${PW_RESIZE_TO}" | head -n 1)" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.png"
@@ -1147,7 +1203,7 @@ pw_find_exe () {
 
     OrigIFS="$IFS" && IFS=%
     PW_SET_FIND_EXE="$("${pw_yad_v12_3}" --height="300" --width="1000" --list \
-    --text-align=center --window-icon="$PW_GUI_ICON_PATH/port_proton.png" --title "Create shortcut for..." \
+    --text-align=center --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "Create shortcut for..." \
     --text="\n${loc_gui_create_shortcut_for_exe}" --column="path to .exe file:" ${FIND_TO_GUI} 2>/dev/null)"
     YAD_STATUS="$?"
     print_var YAD_STATUS
