@@ -459,22 +459,6 @@ init_wine_ver () {
     return 0
 }
 
-pw_use_command () {
-    if command -v "$1" $>/dev/null ; then
-        $@
-    else
-        if [[ -f "${PW_PLUGINS_PATH}/portable/bin/${1}" ]] ; then
-            if [ ! -z "$LD_LIBRARY_PATH" ]
-            then env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64:$LD_LIBRARY_PATH" "${PW_PLUGINS_PATH}/portable/bin/"$@ 
-            else env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" "${PW_PLUGINS_PATH}/portable/bin/"$@ 
-            fi
-        else
-            print_error "command $1 - not found"
-            exit 1
-        fi
-    fi
-}
-
 pw_init_runtime () {
 
     if grep -q -E '(ROSA Fresh|RED OS)' "/etc/os-release" ; then
@@ -885,7 +869,7 @@ pw_check_and_download_plugins () {
             fi
         else
             PW_NOTIFY_TEXT="Please wait for update PortProton"
-            pw_notify_send -u normal 
+            pw_notify_send -u critical 
             if try_download_silent "github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" ; then
                 if unpack_tar_xz "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}" ; then
                     try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" 
@@ -1158,11 +1142,11 @@ pw_create_gui_png () {
     if [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
         try_remove_dir "${PORT_WINE_TMP_PATH}/tmp_img"
         create_new_dir "${PORT_WINE_TMP_PATH}/tmp_img"
-        pw_use_command wrestool -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" -t14 "$(readlink -f "${portwine_exe}")"
+        env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" "${PW_PLUGINS_PATH}/portable/bin/wrestool" -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" -t14 "$(readlink -f "${portwine_exe}")"
         cp "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".ico" | head -n 1)" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
-        pw_use_command icotool -x --width=${PW_RESIZE_TO} --height=${PW_RESIZE_TO} --output="${PORT_WINE_TMP_PATH}/tmp_img/" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
+        env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" "${PW_PLUGINS_PATH}/portable/bin/icotool" -x --width=${PW_RESIZE_TO} --height=${PW_RESIZE_TO} --output="${PORT_WINE_TMP_PATH}/tmp_img/" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
         if [[ ! -f "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".png" | grep "${PW_RESIZE_TO}x${PW_RESIZE_TO}")" ]] ; then 
-            pw_use_command icotool -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
+            env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" "${PW_PLUGINS_PATH}/portable/bin/icotool" -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
             cp "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".png" | head -n 1)" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.png"
         else
             cp "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".png" | grep "${PW_RESIZE_TO}x${PW_RESIZE_TO}" | head -n 1)" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.png"
