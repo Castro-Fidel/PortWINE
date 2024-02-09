@@ -83,7 +83,7 @@ sudo dnf install portproton
 **ВНИМАНИЕ** : при универсальном способе установки PortProton зависимости должны быть установлены вручную!
 
 ```sh
-wget -c "https://github.com/Castro-Fidel/PortProton_ALT/raw/main/portproton" && sh PortProton_Installer
+wget -c "https://github.com/Castro-Fidel/PortProton_ALT/raw/main/portproton" && sh portproton
 ```
 
 ## Зависимости
