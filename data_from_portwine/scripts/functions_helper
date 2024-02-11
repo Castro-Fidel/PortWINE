@@ -228,7 +228,7 @@ var_vk_istance_layers_config_update () {
     return 0
 }
 
-var_ld_library_path_update() {
+var_ld_library_path_update () {
     if [ ! -z "$LD_LIBRARY_PATH" ]
     then export LD_LIBRARY_PATH="$1:$LD_LIBRARY_PATH"
     else export LD_LIBRARY_PATH="$1"
@@ -245,10 +245,17 @@ pw_notify_send () {
     fi
 }
 
+check_start_from_steam () {
+    if [[ "${START_FROM_STEAM}" == 1 ]]
+    then return 0
+    else return 1
+    fi
+}
+
 unpack_tar_zst () {
     set -o pipefail
     unset PW_ZSTD_PORT
-    pw_start_progress_bar_cover_block "${PW_GUI_ICON_PATH}/covers/pw_loading_cover.gif"
+    pw_start_progress_bar_cover_block "${PW_GUI_ICON_PATH}/covers/unpacking_${update_loc}.gif"
     if  [[ `command -v zstd` ]] &>/dev/null ; then
         tar -I zstd -xhvf "$1" -C "$2"
         pw_stop_progress_bar_cover_block
@@ -265,7 +272,7 @@ unpack_tar_xz () {
         tar -Jxhvf "$1" -C "$2" && return 0 || return 1
     else
         set -o pipefail
-        pw_start_progress_bar_cover_block "${PW_GUI_ICON_PATH}/covers/pw_loading_cover.gif"
+        pw_start_progress_bar_cover_block "${PW_GUI_ICON_PATH}/covers/unpacking_${update_loc}.gif"
         tar -Jxhvf "$1" -C "$2"
         pw_stop_progress_bar_cover_block
         [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
@@ -274,7 +281,7 @@ unpack_tar_xz () {
 
 unpack_tar_gz () {
     set -o pipefail
-    pw_start_progress_bar_cover_block "${PW_GUI_ICON_PATH}/covers/pw_loading_cover.gif"
+    pw_start_progress_bar_cover_block "${PW_GUI_ICON_PATH}/covers/unpacking_${update_loc}.gif"
     tar -xhzvf "$1" -C "$2"
     pw_stop_progress_bar_cover_block
     [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
@@ -282,7 +289,7 @@ unpack_tar_gz () {
 
 unpack_tar () {
     set -o pipefail
-    pw_start_progress_bar_cover_block "${PW_GUI_ICON_PATH}/covers/pw_loading_cover.gif"
+    pw_start_progress_bar_cover_block "${PW_GUI_ICON_PATH}/covers/unpacking_${update_loc}.gif"
     tar -xhvf "$1" -C "$2"
     pw_stop_progress_bar_cover_block
     [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
@@ -347,6 +354,7 @@ pw_reinstall_pp () {
     try_remove_file "${PORT_WINE_TMP_PATH}/scripts_ver"
     echo
     print_info "Restarting PP for reinstall files..."
+    export SKIP_CHECK_UPDATES=1
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
@@ -429,7 +437,7 @@ init_wine_ver () {
             if check_symlink "${WINEDIR}/share/wine/${mono_gecko_chk}" ; then
                 print_info "${WINEDIR}/share/wine/${mono_gecko_chk} is symlink. OK."
             elif [[ -d "${WINEDIR}/share/wine/${mono_gecko_chk}" ]] ; then
-                pw_start_progress_bar_cover_block "${PW_GUI_ICON_PATH}/covers/pw_loading_cover.gif" 
+                pw_start_progress_bar_cover_block "${PW_GUI_ICON_PATH}/covers/loading_${update_loc}.gif" 
                 try_copy_dir "${WINEDIR}/share/wine/${mono_gecko_chk}" "${PORT_WINE_TMP_PATH}"
                 try_remove_dir "${WINEDIR}/share/wine/${mono_gecko_chk}"
                 try_force_link_dir "${PORT_WINE_TMP_PATH}/${mono_gecko_chk}" "${WINEDIR}"/share/wine/
@@ -1056,7 +1064,9 @@ pw_port_update () {
                             try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
                             try_remove_dir "${PORT_WINE_TMP_PATH}/PortWINE-master/"
                             echo "${scripts_current_ver}" > "${PORT_WINE_TMP_PATH}/scripts_ver"
-                            [ "$?" == 0 ] && echo "Restarting PP after update..." && /usr/bin/env bash -c ${pw_full_command_line[*]} &
+                            echo "Restarting PP after update..."
+                            export SKIP_CHECK_UPDATES=1
+                            /usr/bin/env bash -c ${pw_full_command_line[*]} &
                             exit 0
                         fi
                     else
@@ -1193,6 +1203,7 @@ pw_find_exe () {
     print_var YAD_STATUS
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
         if [[ -z "${PW_SET_FIND_EXE}" ]] ; then
+            export SKIP_CHECK_UPDATES=1
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             print_info "Restarting..."
         fi
@@ -1203,6 +1214,7 @@ pw_find_exe () {
     if [[ ! -z "${PW_SET_FIND_EXE}" ]] ; then
         portwine_exe="${PW_PATH_FOR_FIND}$(echo "${PW_SET_FIND_EXE}" | awk -F'|' '{print $1}')"
         portwine_create_shortcut silent
+        export SKIP_CHECK_UPDATES=1
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     fi

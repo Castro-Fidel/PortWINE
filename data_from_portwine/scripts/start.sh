@@ -27,6 +27,7 @@ killall -15 yad_v12_3 2>/dev/null
 kill -TERM `pgrep -a yad | grep ${portname} | head -n 1 | awk '{print $1}'` 2>/dev/null
 
 if [[ -f "/usr/bin/portproton" ]] && [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]] ; then
+    export SKIP_CHECK_UPDATES=1
     /usr/bin/env bash "/usr/bin/portproton" "$@" & 
     exit 0
 fi
@@ -490,6 +491,7 @@ pw_edit_db () {
     fi
     if [[ "$?" == 0 ]] ; then
         print_info "Restarting PP after update ppdb file..."
+        export SKIP_CHECK_UPDATES=1
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     fi
@@ -675,6 +677,7 @@ else
 
         print_info "Restarting PP after choose desktop file..."
         # stop_portwine
+        export SKIP_CHECK_UPDATES=1
         /usr/bin/env bash -c "${PW_EXEC_FROM_DESKTOP}" &
         exit 0
     }
@@ -684,6 +687,7 @@ else
         if gui_question "${port_clear_pfx}" ; then
             pw_clear_pfx
             print_info "Restarting PP after clearing prefix..."
+            export SKIP_CHECK_UPDATES=1
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
         fi
@@ -705,6 +709,7 @@ else
     gui_pw_update () {
         try_remove_file "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
         print_info "Restarting PP for check update..."
+        export SKIP_CHECK_UPDATES=1
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     }
@@ -712,6 +717,7 @@ else
     change_loc () {
         try_remove_file "${PORT_WINE_TMP_PATH}/${portname}_loc"
         print_info "Restarting PP for change language..."
+        export SKIP_CHECK_UPDATES=1
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     }
@@ -736,6 +742,7 @@ else
         unpack_tar_gz "$PW_SCRIPT_FROM_BACKUP" "${PORT_WINE_PATH}/data/"
         echo "0" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
         print_info "Restarting PP after backup..."
+        export SKIP_CHECK_UPDATES=1
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     }

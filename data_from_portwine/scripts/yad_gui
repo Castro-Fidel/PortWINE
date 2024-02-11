@@ -48,66 +48,76 @@ gui_question () {
 }
 
 pw_start_progress_bar_cover () {
-    PW_GIF_FILE="$1"
-    PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 20}'`
-    PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 20}'`
-    "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated --center \
-    --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y --window-icon="$PW_GUI_ICON_PATH/portproton.svg" > /dev/null 2>&1 &
-    export PW_YAD_PID_PROGRESS_BAR_COVER="$!"
-    return 0
+    if ! check_start_from_steam ; then
+        PW_GIF_FILE="$1"
+        PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 20}'`
+        PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 20}'`
+        "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated --center \
+        --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y --window-icon="$PW_GUI_ICON_PATH/portproton.svg" > /dev/null 2>&1 &
+        export PW_YAD_PID_PROGRESS_BAR_COVER="$!"
+        return 0
+    fi
 }
 
 pw_start_progress_bar_cover_block () {
-    [[ ! -f "${pw_yad}" ]] && local pw_yad="yad"
-    PW_GIF_FILE="$1"
-    PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 20}'`
-    PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 20}'`
-    "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated --center \
-    --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y --window-icon="$PW_GUI_ICON_PATH/portproton.svg" > /dev/null 2>&1 &
-    export PW_YAD_PID_PROGRESS_BAR_COVER_BLOCK="$!"
-    return 0 
+    if ! check_start_from_steam ; then
+        [[ ! -f "${pw_yad}" ]] && local pw_yad="yad"
+        PW_GIF_FILE="$1"
+        PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 20}'`
+        PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 20}'`
+        "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated --center \
+        --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y --window-icon="$PW_GUI_ICON_PATH/portproton.svg" > /dev/null 2>&1 &
+        export PW_YAD_PID_PROGRESS_BAR_COVER_BLOCK="$!"
+        return 0
+    fi
 }
 
 pw_update_pfx_cover_gui () {
-    PW_KEY_PROGRESS_BAR=$RANDOM
-    PW_GIF_FILE="${PW_GUI_ICON_PATH}/covers/pw_update_pfx_cover.gif"
-    PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 40}'`
-    PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 80}'`
-    echo "UPDATE PREFIX..." > "${PORT_WINE_TMP_PATH}/update_pfx_log"
-    export PW_TIMER=0
-    while read -r line || [[ ! -z `pgrep -a yad | grep "yad_v12_3 --notebook --key="$PW_KEY_PROGRESS_BAR"" | awk '{print $1}'` ]] ; do
-            sleep 0.005
-            if [[ ! -z "${line}" ]] && [[ -z "`echo "${line}" | grep -i "gstreamer"`" ]] \
-                                    && [[ -z "`echo "${line}" | grep -i "kerberos"`" ]] \
-                                    && [[ -z "`echo "${line}" | grep -i "ntlm"`" ]]
-            then
-                echo "# ${line}"
-            fi
-            if [[ "${PW_TIMER}" != 1 ]] ; then
-                sleep 3
-                PW_TIMER=1
-            fi
-    done < "${PORT_WINE_TMP_PATH}/update_pfx_log" | "${pw_yad_v12_3}" --plug=$PW_KEY_PROGRESS_BAR --tabnum="2" --text-info --tail  2>/dev/null &
-    "${pw_yad_v12_3}" --plug=$PW_KEY_PROGRESS_BAR --tabnum="1" --picture --filename="${PW_GIF_FILE}" --image-on-top 2>/dev/null &
+    if ! check_start_from_steam ; then
+        PW_KEY_PROGRESS_BAR=$RANDOM
+        PW_GIF_FILE="${PW_GUI_ICON_PATH}/covers/update_prefix_${update_loc}.gif" 
+        PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 40}'`
+        PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 80}'`
+        echo "UPDATE PREFIX..." > "${PORT_WINE_TMP_PATH}/update_pfx_log"
+        export PW_TIMER=0
+        while read -r line || [[ ! -z `pgrep -a yad | grep "yad_v12_3 --notebook --key="$PW_KEY_PROGRESS_BAR"" | awk '{print $1}'` ]] ; do
+                sleep 0.005
+                if [[ ! -z "${line}" ]] && [[ -z "`echo "${line}" | grep -i "gstreamer"`" ]] \
+                                        && [[ -z "`echo "${line}" | grep -i "kerberos"`" ]] \
+                                        && [[ -z "`echo "${line}" | grep -i "ntlm"`" ]]
+                then
+                    echo "# ${line}"
+                fi
+                if [[ "${PW_TIMER}" != 1 ]] ; then
+                    sleep 3
+                    PW_TIMER=1
+                fi
+        done < "${PORT_WINE_TMP_PATH}/update_pfx_log" | "${pw_yad_v12_3}" --plug=$PW_KEY_PROGRESS_BAR --tabnum="2" --text-info --tail  2>/dev/null &
+        "${pw_yad_v12_3}" --plug=$PW_KEY_PROGRESS_BAR --tabnum="1" --picture --filename="${PW_GIF_FILE}" --image-on-top 2>/dev/null &
 
-    "${pw_yad_v12_3}" --notebook --key="$PW_KEY_PROGRESS_BAR" --tab=LOGO --tab=TERMINAL --no-buttons --undecorated \
-    --center --auto-close --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y --tab-pos=bottom 2>/dev/null &
-    export PW_YAD_PID_PFX_COVER_UI="$!"
-    return 0
+        "${pw_yad_v12_3}" --notebook --key="$PW_KEY_PROGRESS_BAR" --tab=LOGO --tab=TERMINAL --no-buttons --undecorated \
+        --center --auto-close --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y --tab-pos=bottom 2>/dev/null &
+        export PW_YAD_PID_PFX_COVER_UI="$!"
+        return 0
+    fi
 }
 
 pw_start_progress_bar_cs () {
-    "${pw_yad}" --progress --progress-text="$@" --pulsate --close-on-unfocus \
-    --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 > /dev/null 2>&1 &
-    export PW_YAD_PID_PROGRESS_BAR_CS="$!"
-    return 0
+    if ! check_start_from_steam ; then
+        "${pw_yad}" --progress --progress-text="$@" --pulsate --close-on-unfocus \
+        --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 > /dev/null 2>&1 &
+        export PW_YAD_PID_PROGRESS_BAR_CS="$!"
+        return 0
+    fi
 }
 
 pw_start_progress_bar_block () {
-    "${pw_yad}" --progress --progress-text="$@" --pulsate \
-    --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 > /dev/null 2>&1 &
-    export PW_YAD_PID_PROGRESS_BAR_BLOCK="$!"
-    return 0
+    if ! check_start_from_steam ; then
+        "${pw_yad}" --progress --progress-text="$@" --pulsate \
+        --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 > /dev/null 2>&1 &
+        export PW_YAD_PID_PROGRESS_BAR_BLOCK="$!"
+        return 0
+    fi
 }
 
 pw_stop_progress_bar () {
@@ -254,6 +264,7 @@ pw_gui_for_edit_db () {
     --button="${loc_gui_open_db}"!!"${loc_gui_open_db_help}":150 \
     --button="${loc_gui_save_changes}"!!"${loc_gui_save_changes_help}":0 2>/dev/null
     YAD_STATUS="$?"
+    export SKIP_CHECK_UPDATES=1
     case "$YAD_STATUS" in
           1) /usr/bin/env bash -c ${pw_full_command_line[*]} & exit 0 ;;
           2) try_remove_file "$portwine_exe".ppdb             
@@ -346,6 +357,7 @@ gui_proton_downloader () {
     pw_stop_progress_bar
     if [[ -z "${PROTON_GE_GIT}" ]] || [[ -z "${PROTON_PW_GIT}" ]] ; then
         yad_error "$loc_gui_check_new_wine_error"
+        export SKIP_CHECK_UPDATES=1
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     fi
@@ -381,6 +393,7 @@ gui_proton_downloader () {
         --tab-pos=top --tab="PROTON-LG" --tab="WINE-KRON4EK"  --tab="PROTON-GE" --tab="WINE-GE-CUSTOM" --tab="$loc_gui_installed_wine" 2>/dev/null`
         YAD_WINE_STATUS="$?"
         if [[ "$YAD_WINE_STATUS" == "1" || "$YAD_WINE_STATUS" == "252" ]] ; then
+            export SKIP_CHECK_UPDATES=1
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
         fi
@@ -397,6 +410,7 @@ gui_proton_downloader () {
             export VERSION_INSTALLED_WINE="`cat "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set"`"
         else
             print_info "Nothing to do."
+            export SKIP_CHECK_UPDATES=1
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
         fi
@@ -421,6 +435,7 @@ gui_proton_downloader () {
 	if [[ ! -z "${VERSION_INSTALLED_WINE}" ]]; then
 		try_remove_dir "${PORT_WINE_PATH}/data/dist/${VERSION_INSTALLED_WINE}"
 		unset VERSION_INSTALLED_WINE
+        export SKIP_CHECK_UPDATES=1
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
 	fi
@@ -448,6 +463,7 @@ gui_proton_downloader () {
     fi
 
     if [[ "$1" != "silent" ]] ; then
+        export SKIP_CHECK_UPDATES=1
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     else
@@ -501,6 +517,7 @@ gui_vkBasalt () {
     YAD_VKBASALT_STATUS="$?"
     case "${YAD_VKBASALT_STATUS}" in
         1|252)
+            export SKIP_CHECK_UPDATES=1
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0 ;;
         180)
@@ -530,6 +547,7 @@ gui_vkBasalt () {
     else export PW_VKBASALT_FFX_CAS="0.$YAD_CAS_SET"
     fi
     edit_db_from_gui PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS ENABLE_VKBASALT
+    export SKIP_CHECK_UPDATES=1
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
@@ -594,6 +612,7 @@ gui_MangoHud () {
 
     case "${YAD_MANGOHUD_STATUS}" in
         1 | 252)
+            export SKIP_CHECK_UPDATES=1
             /usr/bin/env bash -c "${pw_full_command_line[*]}" &
             exit 0
             ;;
@@ -601,6 +620,7 @@ gui_MangoHud () {
             export PW_MANGOHUD=0
             export FPS_LIMIT="disabled"
             edit_db_from_gui PW_MANGOHUD FPS_LIMIT
+            export SKIP_CHECK_UPDATES=1
             /usr/bin/env bash -c "${pw_full_command_line[*]}" &
             exit 0
             ;;
@@ -644,6 +664,7 @@ gui_MangoHud () {
     export MANGOHUD_CONFIG="${GUI_MH_RESULT}"
 
     edit_db_from_gui MANGOHUD_CONFIG PW_MANGOHUD FPS_LIMIT
+    export SKIP_CHECK_UPDATES=1
     /usr/bin/env bash -c "${pw_full_command_line[*]}" &
     exit 0
 }
