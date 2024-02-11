@@ -293,20 +293,28 @@ start_portwine () {
         export int_xneur=1
     fi
     if [[ "$PW_USE_GAMEMODE" = "1" ]] ; then
-        export GAMEMODERUN=1
-        pkill gamemoded
-        sleep 0.1
 
-        GAMEMODEAUTO_NAME="libgamemodeauto.so.0"
-        if [[ ! -z "${PW_LD_PRELOAD}" ]]
-        then export PW_LD_PRELOAD="${PW_LD_PRELOAD}:${GAMEMODEAUTO_NAME}"
-        else export PW_LD_PRELOAD="${GAMEMODEAUTO_NAME}"
+        if command -v gamemoded ; then
+            export GAMEMODERUN=1
+            PW_GAMEMODERUN_SLR="gamemoderun"
+            systemctl enable --now --user gamemoded &>/dev/null
+            print_info "Gamemod will be launched."
+        else
+            export GAMEMODERUN=1
+            if ! pidof gamemoded &>/dev/null ; then
+                GAMEMODEAUTO_NAME="libgamemodeauto.so.0"
+                if [[ ! -z "${PW_LD_PRELOAD}" ]]
+                then export PW_LD_PRELOAD="${PW_LD_PRELOAD}:${GAMEMODEAUTO_NAME}"
+                else export PW_LD_PRELOAD="${GAMEMODEAUTO_NAME}"
+                fi
+
+                env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32" \
+                "${PW_PLUGINS_PATH}/portable/bin/gamemoded" &>/dev/null &
+
+                print_info "Gamemod will be launched."
+                sleep 0.1
+            fi
         fi
-        
-        env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32" \
-        "${PW_PLUGINS_PATH}/portable/bin/gamemoded" &>/dev/null &
-
-        print_info "Gamemod will be launched."
     else
         export GAMEMODERUN=0
         print_info "Gamemod is not installed or disabled in vars script or db file: PW_USE_GAMEMODE=$PW_USE_GAMEMODE"
@@ -723,15 +731,28 @@ pw_run () {
         echo "Log WINE:" >> "${PW_LOG_TO_FILE}"
         echo ""
         print_debug "Log from RUNTIME and WINE:"
-        ${PW_RUN_GAMESCOPE} \
-        ${pw_runtime} \
-        env PATH="${PATH}" \
-        LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
-        LD_PRELOAD="${PW_LD_PRELOAD}" \
-        VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
-        VK_INSTANCE_LAYERS=${PW_VK_INSTANCE_LAYERS} \
-        ${PW_MANGOHUD_SLR} \
-        "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
+        if [[ ! -z "$PW_GAMEMODERUN_SLR" ]] ; then
+            ${PW_RUN_GAMESCOPE} \
+            ${pw_runtime} \
+            env PATH="${PATH}" \
+            LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
+            LD_PRELOAD="${PW_LD_PRELOAD}" \
+            VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+            VK_INSTANCE_LAYERS=${PW_VK_INSTANCE_LAYERS} \
+            ${PW_GAMEMODERUN_SLR} \
+            ${PW_MANGOHUD_SLR} \
+            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
+        else
+            ${PW_RUN_GAMESCOPE} \
+            ${pw_runtime} \
+            env PATH="${PATH}" \
+            LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
+            LD_PRELOAD="${PW_LD_PRELOAD}" \
+            VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+            VK_INSTANCE_LAYERS=${PW_VK_INSTANCE_LAYERS} \
+            ${PW_MANGOHUD_SLR} \
+            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
+        fi
     else
         if [[ "${PW_USE_TERMINAL}" == "1" ]] ; then
             export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
@@ -740,16 +761,19 @@ pw_run () {
         echo ""
         echo "Log WINE:" > "${PW_LOG_TO_FILE}"
         print_debug "Log from RUNTIME and WINE:"
-        ${PW_RUN_GAMESCOPE} \
-        ${pw_runtime} \
-        env PATH="${PATH}" \
-        LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
-        LD_PRELOAD="${PW_LD_PRELOAD}" \
-        VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
-        VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
-        ${PW_MANGOHUD_SLR} \
-        "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
-        cat "${PW_LOG_TO_FILE}"
+        if [[ ! -z "$PW_GAMEMODERUN_SLR" ]] ; then
+            ${PW_RUN_GAMESCOPE} \
+            ${pw_runtime} \
+            env PATH="${PATH}" \
+            LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
+            LD_PRELOAD="${PW_LD_PRELOAD}" \
+            VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+            VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
+            ${PW_GAMEMODERUN_SLR} \
+            ${PW_MANGOHUD_SLR} \
+            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
+            cat "${PW_LOG_TO_FILE}"
+        fi
     fi
 }
 export -f pw_run
