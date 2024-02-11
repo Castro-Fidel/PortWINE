@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/data_from_portwine/img/gui/port_proton.svg" width="64">
+  <img src="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine/img/gui/portproton.svg" width="64">
   <h1 align="center">PortProton</h1>
   <p align="center">Проект, призванный сделать запуск Windows-игр в Linux простым и удобным как для начинающих, так и для опытных пользователей.
 Проект стремится сделать запуск игр (и другого программного обеспечения) максимально простым, но в то же время предоставляет гибкие настройки для опытных пользователей.</p>
