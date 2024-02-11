@@ -32,8 +32,12 @@ else
 	chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 fi
 
-if [[ ! -f /usr/bin/portproton ]]; then
+if [[ ! -f /usr/bin/portproton ]] ; then
 	cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" ${HOME}/.local/share/applications/
+fi
+
+if grep "SteamOS" "/etc/os-release" &>/dev/null ; then
+	cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" "$(xdg-user-dir DESKTOP)"
 fi
 
 update-desktop-database -q "${HOME}/.local/share/applications"

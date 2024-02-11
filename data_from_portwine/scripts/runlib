@@ -115,10 +115,10 @@ start_portwine () {
         var_vkd3d_config_update single_queue
     fi
 
-    if [[ "${PW_USE_GAMESCOPE}" == 1 ]] && command -v gamescope &>/dev/null ; then
+    if [[ "${PW_USE_GAMESCOPE}" == 1 ]] && command -v gamescope &>/dev/null && ! check_gamescope_session ; then
         # Workaround for https://gitlab.freedesktop.org/mesa/mesa/-/issues/6029
         if [[ -d "/sys/module/i915" ]] ; then
-            export INTEL_DEBUG=norbc
+            export INTEL_DEBUG="norbc"
         fi
         if [[ "${PW_GPU_USE}" != "disabled" ]] ; then
             PW_vendorID="$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep -B3 "${PW_GPU_USE}" | grep vendorID | sort -u | awk -F'0x' '{print $2}')"
@@ -128,11 +128,11 @@ start_portwine () {
             unset PW_ID_VIDEO
         fi
         export PW_RUN_GAMESCOPE="gamescope -o 30 ${PW_ID_VIDEO} ${GAMESCOPE_ARGS} --"
-        export PW_WINE_FULLSCREEN_FSR=0
-        export vk_xwayland_wait_ready=false
+        export PW_WINE_FULLSCREEN_FSR="0"
+        export vk_xwayland_wait_ready="false"
     else
-        export PW_USE_GAMESCOPE=0
-        unset PW_RUN_GAMESCOPE INTEL_DEBUG vk_xwayland_wait_ready
+        export PW_USE_GAMESCOPE="0"
+        export PW_RUN_GAMESCOPE=""
     fi
     
     enabled_fake_nvidia_videocard () 
@@ -729,6 +729,13 @@ pw_run () {
     print_var "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH"
     kill -s SIGUSR1 "$PW_YAD_PID_PFX_COVER_UI" &>/dev/null
     if [[ "${PW_LOG}" == 1 ]] ; then
+        if check_start_from_steam ; then
+            for VAR_LOGGER in PW_WINE_USE WINEDIR WINEDLLPATH WINEPREFIX PATH_TO_GAME PW_VULKAN_USE PW_LD_LIBRARY_PATH LD_LIBRARY_PATH PATH \
+                              VKD3D_CONFIG WINEESYNC WINEFSYNC WINEFSYNC_FUTEX2 WINE_CPU_TOPOLOGY DESKTOP_SESSION
+            do
+                echo "${VAR_LOGGER}=${!VAR_LOGGER}" >> "${PW_LOG_TO_FILE}"
+            done
+        fi
         echo "WINEDLLOVERRIDES=${WINEDLLOVERRIDES}" >> "${PW_LOG_TO_FILE}"
         echo "------------------------------------" >> "${PW_LOG_TO_FILE}"
         echo "Log WINE:" >> "${PW_LOG_TO_FILE}"
@@ -869,6 +876,7 @@ export install_ver=`cat "${PORT_WINE_TMP_PATH}/${portname}_ver" | head -n 1`
 export WINETRICKS_DOWNLOADER="curl"
 export USER_CONF="${PORT_WINE_PATH}/data/user.conf"
 check_user_conf 
+check_variables PW_LOG "0"
 
 if [[ -z "${INSTALLING_PORT}" ]] ; then
     . "${USER_CONF}"

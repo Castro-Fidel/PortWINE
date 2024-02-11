@@ -252,6 +252,13 @@ check_start_from_steam () {
     fi
 }
 
+check_gamescope_session () {
+    if echo "${DESKTOP_SESSION}" | grep -i "gamescope" &>/dev/null
+    then return 0
+    else return 1
+    fi
+}
+
 unpack_tar_zst () {
     set -o pipefail
     unset PW_ZSTD_PORT
@@ -469,9 +476,9 @@ init_wine_ver () {
 
 pw_init_runtime () {
 
-    if grep -q -E '(ROSA Fresh|RED OS)' "/etc/os-release" ; then
+    if grep -i -E '(ROSA|RED OS)' "/etc/os-release" &>/dev/null ; then
         export LOCPATH="/run/host/usr/share/locale/"
-    elif grep -q "altlinux" "/etc/os-release" ; then
+    elif grep -i "altlinux" "/etc/os-release" &>/dev/null ; then
         export LIBGL_DRIVERS_PATH="/usr/lib/X11/modules/dri:/usr/lib64/X11/modules/dri"
     fi
 
@@ -553,7 +560,7 @@ pw_init_runtime () {
 }
 
 pw_mangohud_check () {
-    if [[ "${PW_MANGOHUD}" == "1" ]] ; then
+    if [[ "${PW_MANGOHUD}" == "1" ]] && ! check_gamescope_session ; then
         export PW_MANGOHUD_SLR='MANGOHUD=1'
         MANGOHUD_LIB_NAME="libMangoHud.so"
         if [[ "${PW_VULKAN_USE}" = "0" ]] ; then 
@@ -564,10 +571,10 @@ pw_mangohud_check () {
         else export PW_LD_PRELOAD="${MANGOHUD_LIB_NAME}"
         fi
         var_vk_istance_layers_config_update "VK_LAYER_MANGOHUD_overlay64:VK_LAYER_MANGOHUD_overlay32"
-        print_info "MANGOHUD is enabled"
+        print_info "Portable MANGOHUD is enabled"
     else
-        export PW_MANGOHUD_SLR='DISABLE_MANGOHUD=1'
-        print_info "MANGOHUD is disabled"
+        export PW_MANGOHUD_SLR=""
+        print_info "Portable MANGOHUD is disabled"
     fi
     return 0
 }
@@ -1152,19 +1159,40 @@ pw_create_gui_png () {
     if [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
         try_remove_dir "${PORT_WINE_TMP_PATH}/tmp_img"
         create_new_dir "${PORT_WINE_TMP_PATH}/tmp_img"
-        env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" "${PW_PLUGINS_PATH}/portable/bin/wrestool" -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" -t14 "$(readlink -f "${portwine_exe}")"
+        if command -v wrestool &>/dev/null ; then
+            wrestool -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" -t14 "$(readlink -f "${portwine_exe}")"
+        else
+            env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" "${PW_PLUGINS_PATH}/portable/bin/wrestool" \
+            -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" -t14 "$(readlink -f "${portwine_exe}")"
+        fi
         cp "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".ico" | head -n 1)" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
-        env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" "${PW_PLUGINS_PATH}/portable/bin/icotool" -x --width=${PW_RESIZE_TO} --height=${PW_RESIZE_TO} --output="${PORT_WINE_TMP_PATH}/tmp_img/" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
+        
+        if command -v icotool &>/dev/null ; then
+            icotool -x --width=${PW_RESIZE_TO} --height=${PW_RESIZE_TO} --output="${PORT_WINE_TMP_PATH}/tmp_img/" \
+            "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
+        else
+            env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" "${PW_PLUGINS_PATH}/portable/bin/icotool" \
+            -x --width=${PW_RESIZE_TO} --height=${PW_RESIZE_TO} --output="${PORT_WINE_TMP_PATH}/tmp_img/" \
+            "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
+        fi
         if [[ ! -f "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".png" | grep "${PW_RESIZE_TO}x${PW_RESIZE_TO}")" ]] ; then 
-            env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" "${PW_PLUGINS_PATH}/portable/bin/icotool" -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
+            if command -v icotool &>/dev/null ; then
+                icotool -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
+            else
+                env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" "${PW_PLUGINS_PATH}/portable/bin/icotool" \
+                -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
+            fi
             cp "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".png" | head -n 1)" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.png"
         else
-            cp "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".png" | grep "${PW_RESIZE_TO}x${PW_RESIZE_TO}" | head -n 1)" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.png"
+            cp "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".png" | grep "${PW_RESIZE_TO}x${PW_RESIZE_TO}" | head -n 1)" \
+            "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.png"
         fi
         cp -f "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.png" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
     fi
-    if [[ -z "`file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}"`" ]] && \
-       [[ -x "`command -v "convert" 2>/dev/null`" ]] && [[ -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
+    if [[ -z "`file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}"`" ]] \
+    && command -v convert &>/dev/null \
+    && [[ -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]]
+    then
         convert "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" -resize ${PW_RESIZE_TO}x${PW_RESIZE_TO} "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" 
     fi
     if [[ -z "${PW_ICON_FOR_YAD}" ]] ; then

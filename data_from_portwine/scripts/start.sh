@@ -99,7 +99,6 @@ portwine_launch () {
 portwine_start_debug () {
     kill_portwine
     export PW_LOG=1
-    export PW_WINEDBG_DISABLE=0
     if [[ -z "$VULKAN_DRIVER_NAME" ]] || [[ "$VULKAN_DRIVER_NAME" == "llvmpipe" ]] ; then
 	yad_info "Attention working version of vulkan not detected!\nIt is recommended to run games in OpenGL (low performance possible)!"
     fi
@@ -495,7 +494,7 @@ pw_edit_db () {
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     fi
-    # PW_FORCE_USE_VSYNC PW_WINEDBG_DISABLE HEAP_DELAY_FREE
+    # PW_FORCE_USE_VSYNC HEAP_DELAY_FREE
 }
 
 pw_autoinstall_from_db () {
@@ -504,7 +503,6 @@ pw_autoinstall_from_db () {
     export PW_USE_GAMEMODE=0
     export PW_CHECK_AUTOINSTAL=1
     export PW_GUI_DISABLED_CS=1
-    export PW_WINEDBG_DISABLE=1
     export PW_NO_WRITE_WATCH=0
     export PW_VULKAN_USE=1
     export PW_USE_EAC_AND_BE=0
