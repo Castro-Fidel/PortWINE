@@ -27,9 +27,7 @@ killall -15 yad_v12_3 2>/dev/null
 kill -TERM `pgrep -a yad | grep ${portname} | head -n 1 | awk '{print $1}'` 2>/dev/null
 
 if [[ -f "/usr/bin/portproton" ]] && [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]] ; then
-    export SKIP_CHECK_UPDATES=1
-    /usr/bin/env bash "/usr/bin/portproton" "$@" & 
-    exit 0
+    rm -f "${HOME}/.local/share/applications/PortProton.desktop"
 fi
 
 [[ "$MISSING_DESKTOP_FILE" == 1 ]] && portwine_missing_shortcut
