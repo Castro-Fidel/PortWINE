@@ -4,7 +4,7 @@
 ########################################################################
 unset PW_AUTOPLAY PW_SET_LANG PW_SILENT_INSTALL
 export portname="PortProton"
-export port_ver=1.4
+export port_ver=1.5
 ########################################################################
 cd "$(dirname "$(readlink -f "$0")")"
 script_path="$(pwd)"
@@ -14,27 +14,12 @@ fatal () {
 	echo -e "\n${1}\n"
 	exit 1
 }
-
-pw_notify_send () {
-	if command -v notify-send &>/dev/null ; then
-		if [[ -f "/usr/share/icons/hicolor/scalable/apps/portproton.svg" ]]
-		then notify-send -u normal -a PortProton -i "/usr/share/icons/hicolor/scalable/apps/portproton.svg" $@ "${PW_NOTIFY_TEXT}"
-		else notify-send -u normal -a PortProton $@ "${PW_NOTIFY_TEXT}"
-		fi
-	fi
-}
 ########################################################################
 if [ "$(id -u)" == "0" ] ; then
 	$yad_gui --error --text "\nDo not run ${portname} from the superuser!" 2>/dev/null
 	fatal "Do not run the script from the superuser!"
 fi
 ########################################################################
-unset PW_USE_NS
-if command -v yad &>/dev/null
-then yad_gui="yad --window-icon=portproton.svg --borders=10 --center --text-align=center"
-else PW_USE_NS=1
-fi
-
 [ -z "${XDG_DATA_HOME}" ] && export XDG_DATA_HOME="$HOME/.local/share"
 PP_CONFIG_FILE="${HOME}/.config/${portname}.conf"
 if [ -f "${XDG_DATA_HOME}/PortWINE/PortProton/data/scripts/start.sh" ] ; then
@@ -53,9 +38,37 @@ if [ "$script_path" == "/usr/bin" ] && [ -f "${PP_CONFIG_FILE}" ] ; then
 		rm -f "${PP_CONFIG_FILE}"
 	fi
 fi
-if locale | grep "LANG=ru_RU.UTF-8" 2>/dev/null
+if [[ "${LANG}" == "ru_RU.UTF-8" ]]
 then PW_SET_LANG="Russian"
 else PW_SET_LANG="English"
+fi
+########################################################################
+pw_notify_send () {
+	if command -v notify-send &>/dev/null ; then
+		if [[ -f "/usr/share/icons/hicolor/scalable/apps/portproton.svg" ]]
+		then notify-send -u normal -a PortProton -i "/usr/share/icons/hicolor/scalable/apps/portproton.svg" $@ "${PW_NOTIFY_TEXT}"
+		else notify-send -u normal -a PortProton $@ "${PW_NOTIFY_TEXT}"
+		fi
+	fi
+}
+########################################################################
+unset PW_USE_NS
+YAD_PORTABLE_VER="12_3"
+if command -v yad &>/dev/null ; then
+	yad_gui="yad --window-icon=portproton.svg --borders=10 --center --text-align=center"
+elif curl -f -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" \
+	-H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' \
+	-L "https://github.com/Castro-Fidel/PortWINE/releases/download/yad_portable_v${YAD_PORTABLE_VER}/yad_portable_v${YAD_PORTABLE_VER}.tar.xz" \
+	-o "${HOME}/yad_portable_v${YAD_PORTABLE_VER}.tar.xz"
+then
+	mkdir -p "${HOME}/.local/bin/" &>/dev/null
+	tar -Jxhvf "${HOME}/yad_portable_v${YAD_PORTABLE_VER}.tar.xz" -C "${HOME}/.local/bin/"
+	if [[ -f "${HOME}/.local/bin/yad_portable_v${YAD_PORTABLE_VER}" ]]
+	then yad_gui="${HOME}/.local/bin/yad_portable_v${YAD_PORTABLE_VER} --borders=10 --center --text-align=center"
+	else PW_USE_NS=1
+	fi
+else
+	PW_USE_NS=1
 fi
 ########################################################################
 export PW_SILENT_INSTALL=1
@@ -75,7 +88,6 @@ if [[ "${PW_USE_NS}" != "1" ]] ; then
 				"${def_path}")
 					D_PATH="${def_path}" ;;
 				"Другой путь...")
-					echo 111
 					D_PATH="$($yad_gui --file --directory --title="Выберите путь..." --width=800 --height=800)" ;;
 			esac ;;
 		"English")
@@ -134,12 +146,12 @@ fi
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 cd "${PORT_WINE_PATH}"
 echo -e "\nTry download scripts from gitlab.eterfund.ru..."
-if ! curl -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' \
+if ! curl -f -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' \
 	-L "https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/-/archive/master/PortWINE-master.tar.gz" \
 	-o "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
 then
 	echo -e "\nError.\nTry download scripts from github.com..."
-	curl -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' \
+	curl -f -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' \
 	-L "https://github.com/Castro-Fidel/PortWINE/archive/refs/heads/master.tar.gz" \
 	-o "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
 	[ "$?" != "0" ] && fatal "Critical error during file download!"

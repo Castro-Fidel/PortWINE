@@ -62,7 +62,6 @@ if [ "${PW_SILENT_INSTALL}" = "1" ] ; then
 			try_remove_file "${HOME}/.local/share/applications/PortProton.desktop"
 		fi
 		echo "Restarting PP after installing..."
-		export SKIP_CHECK_UPDATES=1
 		/usr/bin/env bash -c "${PORT_WINE_PATH}/data/scripts/start.sh" $@ & 
 		exit 0
 	else
