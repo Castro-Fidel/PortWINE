@@ -105,7 +105,7 @@ pw_update_pfx_cover_gui () {
 pw_start_progress_bar_cs () {
     if ! check_start_from_steam ; then
         "${pw_yad}" --progress --progress-text="$@" --pulsate --close-on-unfocus \
-        --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 > /dev/null 2>&1 &
+        --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 &>/dev/null &
         export PW_YAD_PID_PROGRESS_BAR_CS="$!"
         return 0
     fi
@@ -114,7 +114,7 @@ pw_start_progress_bar_cs () {
 pw_start_progress_bar_block () {
     if ! check_start_from_steam ; then
         "${pw_yad}" --progress --progress-text="$@" --pulsate \
-        --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 > /dev/null 2>&1 &
+        --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 &>/dev/null &
         export PW_YAD_PID_PROGRESS_BAR_BLOCK="$!"
         return 0
     fi
@@ -124,20 +124,20 @@ pw_stop_progress_bar () {
     for PW_KILL_YAD_PID in "$PW_YAD_PID_PROGRESS_BAR_BLOCK" "$PW_YAD_PID_PROGRESS_BAR_CS" \
                            "$PW_YAD_PID_PFX_COVER_UI" "$PW_YAD_PID_PROGRESS_BAR_COVER"
     do
-        kill -s SIGUSR1 "$PW_KILL_YAD_PID" > /dev/null 2>&1
+        kill -s SIGUSR1 "$PW_KILL_YAD_PID" &>/dev/null
     done
     return 0
 }
 export -f pw_stop_progress_bar
 
 pw_stop_progress_bar_cover () {
-    kill -s KILL "$PW_YAD_PID_PROGRESS_BAR_COVER" > /dev/null 2>&1
+    kill -s KILL "$PW_YAD_PID_PROGRESS_BAR_COVER" &>/dev/null
     return 0
 }
 export -f pw_stop_progress_bar_cover
 
 pw_stop_progress_bar_cover_block () {
-    kill -s KILL "$PW_YAD_PID_PROGRESS_BAR_COVER_BLOCK" > /dev/null 2>&1
+    kill -s KILL "$PW_YAD_PID_PROGRESS_BAR_COVER_BLOCK" &>/dev/null
     return 0
 }
 export -f pw_stop_progress_bar_cover_block
@@ -145,7 +145,7 @@ export -f pw_stop_progress_bar_cover_block
 open_changelog () {
     "${pw_yad}" --title="$loc_gui_changelog" --borders=${YAD_BORDERS} --no-buttons --text-align=center \
     --text-info --show-uri --wrap --width=1200 --height=700 --uri-color=red \
-    --filename="${PORT_WINE_PATH}/data/${PW_CHANGELOG_FILE}"
+    --filename="${PORT_WINE_PATH}/data/${PW_CHANGELOG_FILE}" &>/dev/null
 }
 export -f open_changelog
 
@@ -209,7 +209,6 @@ pw_gui_for_edit_db () {
     fi
 
     GET_GPU_NAMES=$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | awk -F '=' '/deviceName/{print $2}' | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
-
 
     logical_cores=$(grep -c "^processor" /proc/cpuinfo)
     if [[ "${logical_cores}" -le "4" ]] ; then
@@ -308,6 +307,11 @@ pw_gui_for_edit_db () {
 
 
 gui_proton_downloader () {
+    if [[ "$PW_WINE_USE" == PROTON_LG ]] 
+    then export PW_WINE_USE="${PW_PROTON_LG_VER}"
+    elif [[ "$PW_WINE_USE" == WINE_*_LG ]] || [[ "$PW_WINE_USE" == WINE_LG ]]
+    then export PW_WINE_USE="${PW_WINE_LG_VER}"
+    fi
     if [[ "$1" == "silent" ]] && [[ -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ]] ; then
         return 0
     fi

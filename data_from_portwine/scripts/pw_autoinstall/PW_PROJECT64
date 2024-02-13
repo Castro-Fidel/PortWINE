@@ -11,11 +11,11 @@ export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/Project64${PR64_VER}setup.exe"
 export PORTWINE_CREATE_SHORTCUT_NAME="Project64"
 
 start_portwine
-if try_download_game "https://www.pj64-emu.com/download/project64${PR64_VER}installer" "${PW_AUTOINSTALL_EXE}"
+if try_download_no_mirror "https://www.pj64-emu.com/download/project64${PR64_VER}installer" "${PW_AUTOINSTALL_EXE}"
 then
     GET_URL_POSTFIX="$(cat "${PW_AUTOINSTALL_EXE}" | grep "Did your download not start?" | awk -F"$PR64_VER" '{print $2}' | awk -F'/' '{print $1}')"
     try_remove_file "${PW_AUTOINSTALL_EXE}"
-    try_download_game "https://www.pj64-emu.com/file/setup-project64${PR64_VER}${GET_URL_POSTFIX}/" "${PW_AUTOINSTALL_EXE}"
+    try_download_no_mirror "https://www.pj64-emu.com/file/setup-project64${PR64_VER}${GET_URL_POSTFIX}/" "${PW_AUTOINSTALL_EXE}"
     pw_start_progress_bar_block "${loc_gui_installing_the} Project64. ${loc_gui_please_wait} "
     pw_run "${PW_AUTOINSTALL_EXE}"
     portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/Project64 3.0/Project64.exe"

@@ -137,7 +137,15 @@ start_portwine () {
     
     enabled_fake_nvidia_videocard () 
     {
-        if [[ "${1}" == 1 ]] ; then
+        if [[ "${1}" == old ]] ; then
+            sed -i /'dxgi.customDeviceDesc =/c # dxgi.customDeviceDesc =' "${DXVK_CONFIG_FILE}"
+            sed -i /'dxgi.customDeviceId =/c dxgi.customDeviceId = 222F' "${DXVK_CONFIG_FILE}"
+            sed -i /'dxgi.customVendorId =/c dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
+            sed -i /'dxgi.hideAmdGpu =/c # dxgi.hideAmdGpu =' "${DXVK_CONFIG_FILE}"
+            sed -i /'dxgi.hideNvidiaGpu =/c # dxgi.hideNvidiaGpu =' "${DXVK_CONFIG_FILE}"
+            unset WINE_HIDE_NVIDIA_GPU WINE_HIDE_AMD_GPU 
+            unset DXVK_NVAPI_DRIVER_VERSION DXVK_NVAPI_ALLOW_OTHER_DRIVERS
+        elif [[ "${1}" == new ]] ; then
             sed -i /'dxgi.customDeviceDesc =/c dxgi.customDeviceDesc = "NVIDIA GeForce RTX 4090"' "${DXVK_CONFIG_FILE}"
             sed -i /'dxgi.customDeviceId =/c dxgi.customDeviceId = 2684' "${DXVK_CONFIG_FILE}"
             sed -i /'dxgi.customVendorId =/c dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
@@ -148,11 +156,11 @@ start_portwine () {
             export DXVK_NVAPI_DRIVER_VERSION=53713
             export DXVK_NVAPI_ALLOW_OTHER_DRIVERS=1
         elif [[ "${1}" == 0 ]] ; then
-            sed -i /'dxgi.customDeviceDesc =/c # dxgi.customDeviceDesc = "NVIDIA GeForce RTX 4090"' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.customDeviceId =/c # dxgi.customDeviceId = 2684' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.customVendorId =/c # dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.hideAmdGpu =/c # dxgi.hideAmdGpu = True' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.hideNvidiaGpu =/c # dxgi.hideNvidiaGpu = False' "${DXVK_CONFIG_FILE}"
+            sed -i /'dxgi.customDeviceDesc =/c # dxgi.customDeviceDesc =' "${DXVK_CONFIG_FILE}"
+            sed -i /'dxgi.customDeviceId =/c # dxgi.customDeviceId =' "${DXVK_CONFIG_FILE}"
+            sed -i /'dxgi.customVendorId =/c # dxgi.customVendorId =' "${DXVK_CONFIG_FILE}"
+            sed -i /'dxgi.hideAmdGpu =/c # dxgi.hideAmdGpu =' "${DXVK_CONFIG_FILE}"
+            sed -i /'dxgi.hideNvidiaGpu =/c # dxgi.hideNvidiaGpu =' "${DXVK_CONFIG_FILE}"
             unset WINE_HIDE_NVIDIA_GPU WINE_HIDE_AMD_GPU 
             unset DXVK_NVAPI_DRIVER_VERSION DXVK_NVAPI_ALLOW_OTHER_DRIVERS
         fi
@@ -178,12 +186,12 @@ start_portwine () {
         try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_3_VER}/dlssg_to_fsr3_amd_is_better.dll" "${WINEPREFIX}/drive_c/windows/system32/"
         try_force_link_file "${PW_PLUGINS_PATH}/nvngx/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
         var_winedlloverride_update "nvapi,nvapi64,nvngx,_nvngx,dlssg_to_fsr3_amd_is_better=n;nvcuda=b"
-        enabled_fake_nvidia_videocard 1
+        enabled_fake_nvidia_videocard new
         export WINEHAGS=1
     elif [[ "${PW_USE_FAKE_DLSS}" == 1 ]] && [[ -d "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/" ]] ; then
         try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/" 
         try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.ini" "${WINEPREFIX}/drive_c/windows/system32/"
-        enabled_fake_nvidia_videocard 1
+        enabled_fake_nvidia_videocard old
         var_winedlloverride_update "nvapi,nvapi64,nvngx=n;_nvngx=;nvcuda=b"
     elif [[ "${PW_USE_NVAPI_AND_DLSS}" == 1 ]] ; then
         FIND_NVNGX="$(dirname $(find /usr/* -type f -name "nvngx.dll" 2>/dev/null | head -n 1 | awk '{print $1}'))"
@@ -228,6 +236,7 @@ start_portwine () {
     || [[ "${PW_USE_DXR10}" == 1 ]] \
     || [[ "${PW_USE_RAY_TRACING}" == 1 ]]
     then
+        export VKD3D_FEATURE_LEVEL="12_1"
         var_vkd3d_config_update dxr
         var_radv_perftest_config_update rt
     else
@@ -588,6 +597,7 @@ start_portwine () {
 
         print_info "Try link native D8VK file..."
         try_force_link_file "${PATH_TO_D8VK_FILES}/x32/d3d8.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+        try_force_link_file "${PATH_TO_D8VK_FILES}/x64/d3d8.dll" "${WINEPREFIX}/drive_c/windows/system32/"
         var_winedlloverride_update d3d8=n
     fi
 
@@ -740,7 +750,7 @@ pw_run () {
         echo "------------------------------------" >> "${PW_LOG_TO_FILE}"
         echo "Log WINE:" >> "${PW_LOG_TO_FILE}"
         echo ""
-        print_debug "Log from RUNTIME and WINE:"
+        print_info "Log from RUNTIME and WINE:"
         ${PW_RUN_GAMESCOPE} \
         ${pw_runtime} \
         env PATH="${PATH}" \
@@ -758,7 +768,7 @@ pw_run () {
         fi
         echo ""
         echo "Log WINE:" > "${PW_LOG_TO_FILE}"
-        print_debug "Log from RUNTIME and WINE:"
+        print_info "Log from RUNTIME and WINE:"
         ${PW_RUN_GAMESCOPE} \
         ${pw_runtime} \
         env PATH="${PATH}" \
