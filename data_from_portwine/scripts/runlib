@@ -134,6 +134,18 @@ start_portwine () {
         export PW_USE_GAMESCOPE="0"
         export PW_RUN_GAMESCOPE=""
     fi
+
+    if [[ "${PW_DISABLE_COMPOSITING}" == "1" ]] ; then
+        if [[ "${DESKTOP_SESSION}" =~ "plasma" ]] ; then
+            qdbus org.kde.KWin /Compositor suspend
+        elif [[ "${DESKTOP_SESSION}" =~ "mate" ]] ; then
+            gsettings set org.mate.Marco.general compositing-manager false
+        elif [[ "${DESKTOP_SESSION}" =~ "xfce" ]] ; then
+            xfconf-query -c xfwm4 -p /general/use_compositing -s false
+        elif [[ "${DESKTOP_SESSION}" =~ "cinnamon" ]] ; then
+            gsettings set org.cinnamon.muffin unredirect-fullscreen-windows true
+        fi
+    fi
     
     enabled_fake_nvidia_videocard () 
     {
