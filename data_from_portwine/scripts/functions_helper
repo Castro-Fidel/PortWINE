@@ -693,6 +693,17 @@ stop_portwine () {
     then
         xrandr --output "$PW_SCREEN_PRIMARY" --mode "$PW_SCREEN_RESOLUTION"
     fi
+    if [[ "${PW_DISABLE_COMPOSITING}" == "1" ]] ; then
+        if [[ "${DESKTOP_SESSION}" =~ "plasma" ]] ; then
+            qdbus org.kde.KWin /Compositor resume
+        elif [[ "${DESKTOP_SESSION}" =~ "mate" ]] ; then
+            gsettings set org.mate.Marco.general compositing-manager true
+        elif [[ "${DESKTOP_SESSION}" =~ "xfce" ]] ; then
+            xfconf-query -c xfwm4 -p /general/use_compositing -s true
+        elif [[ "${DESKTOP_SESSION}" =~ "cinnamon" ]] ; then
+            gsettings set org.cinnamon.muffin unredirect-fullscreen-windows false
+        fi
+    fi
     pw_stop_progress_bar
     try_remove_file "${PORT_SCRIPTS_PATH}/0"
     try_remove_file "${PORT_SCRIPTS_PATH}/1"
