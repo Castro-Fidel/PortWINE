@@ -68,6 +68,14 @@ start_portwine () {
         unset WINE_MONO_TRACE
     fi
 
+    pw_wineboot () {
+        print_info "Used wineboot $@ for prefix: ${PW_PREFIX_NAME}"
+        ${pw_runtime} env GST_PLUGIN_SYSTEM_PATH_1_0="" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
+        "${WINELOADER}" wineboot $@ &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
+        wait_wineserver
+        print_info "The prefix has been updated."
+    }
+    
     if [[ ! -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/windows ]] \
     || [[ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/userdef.reg ]] \
     || [[ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/system.reg ]] \
@@ -75,14 +83,6 @@ start_portwine () {
     then
         pw_clear_pfx
         check_dirs_and_files_in_pfx
-
-        pw_wineboot () {
-            print_info "Used wineboot $@ for prefix: ${PW_PREFIX_NAME}"
-            ${pw_runtime} env GST_PLUGIN_SYSTEM_PATH_1_0="" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
-            "${WINELOADER}" wineboot $@ &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
-            wait_wineserver
-            print_info "The prefix has been updated."
-        }
 
         if [[ "${PW_PREFIX_NAME}" == DEFAULT ]] ; then
             pw_update_pfx_cover_gui
