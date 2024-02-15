@@ -125,7 +125,7 @@ try_download_no_mirror () {
     set -o pipefail
     curl -f -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2" 2>&1 | \
     tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
-    "${pw_yad_v12_3}" --progress --percentage=0 --text="Download ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
+    "${pw_yad_v12_3}" --progress --percentage=0 --text="${loc_downloading} ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
     --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders=15
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
@@ -143,7 +143,7 @@ try_download () {
     set -o pipefail
     curl -f -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2" 2>&1 | \
     tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
-    "${pw_yad_v12_3}" --progress --percentage=0 --text="Download ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
+    "${pw_yad_v12_3}" --progress --percentage=0 --text="${loc_downloading} ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
     --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders=15
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
@@ -151,7 +151,7 @@ try_download () {
         print_info "Try download ${PW_DOWNLOAD_FILE_NAME} from FTP"
         curl -f -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -L "ftp://171.22.215.18/archives/${PW_DOWNLOAD_FILE_NAME}" -o "$2" 2>&1 | \
         tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
-        "${pw_yad_v12_3}" --progress --percentage=0 --text="Download ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
+        "${pw_yad_v12_3}" --progress --percentage=0 --text="${loc_downloading} ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
         --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders=15
         if [ "${PIPESTATUS[0]}" != 0 ] ; then
@@ -169,7 +169,7 @@ try_download_to_path () {
     set -o pipefail
     curl -f -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2/$PW_DOWNLOAD_FILE_NAME" 2>&1 | \
     tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
-    "${pw_yad_v12_3}" --progress --percentage=0 --text="Download ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
+    "${pw_yad_v12_3}" --progress --percentage=0 --text="${loc_downloading} ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
     --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders=15
     if [ "${PIPESTATUS[0]}" != 0 ] ; then
@@ -354,7 +354,7 @@ pw_reinstall_pp () {
             echo ""
             exit 1
         fi
-    elif ! gui_question "${port_reinstall}" 
+    elif ! yad_question "${port_reinstall}" 
     then exit 1
     fi
     pw_clear_pfx
@@ -682,18 +682,24 @@ pw_kill_autostart () {
 export -f pw_kill_autostart
 
 stop_portwine () { 
-    if [[ "$int_xneur" == "1"  ]] ; then
-        xneur &
-    fi
-    if [[ "$PW_USE_US_LAYOUT" == "1" ]] && [[ "${XDG_SESSION_TYPE}" != "wayland" ]] && command -v setxkbmap &>/dev/null ; then
+    [[ "$int_xneur" == "1"  ]] && xneur &
+    
+    if [[ "$PW_USE_US_LAYOUT" == "1" ]] \
+    && [[ "${XDG_SESSION_TYPE}" != "wayland" ]] \
+    && command -v setxkbmap &>/dev/null
+    then
         setxkbmap
     fi
+
     if [[ "${XDG_SESSION_TYPE}" != "wayland" ]] \
     && [[ "$(xrandr | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')" != "$PW_SCREEN_RESOLUTION" ]]
     then
         xrandr --output "$PW_SCREEN_PRIMARY" --mode "$PW_SCREEN_RESOLUTION"
     fi
-    if [[ "${PW_DISABLE_COMPOSITING}" == "1" ]] ; then
+
+    if [[ "${PW_DISABLE_COMPOSITING}" == "1" ]] \
+    && ! check_gamescope_session 
+    then
         if [[ "${DESKTOP_SESSION}" =~ "plasma" ]] ; then
             qdbus org.kde.KWin /Compositor resume
         elif [[ "${DESKTOP_SESSION}" =~ "mate" ]] ; then
@@ -704,13 +710,14 @@ stop_portwine () {
             gsettings set org.cinnamon.muffin unredirect-fullscreen-windows false
         fi
     fi
+
     pw_stop_progress_bar
     try_remove_file "${PORT_SCRIPTS_PATH}/0"
     try_remove_file "${PORT_SCRIPTS_PATH}/1"
     kill_portwine &&
     try_remove_dir "${PW_WINELIB}/var"
     find "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/" -maxdepth 1 -type f -name "*.tmp" -delete
-    if [ ! -z "`pgrep -a yad_v12_3 | grep "\--notification" | awk '{print $1}'`" ] ; then
+    if [[ ! -z "$(pgrep -a yad_v12_3 | grep "\--notification" | awk '{print $1}')" ]] ; then
         kill -s SIGUSR1 "`pgrep -a yad_v12_3 | grep "\--notification" | awk '{print $1}'`" 2>/dev/null
     fi
     add_in_stop_portwine #&>/dev/null
@@ -881,11 +888,11 @@ pw_check_and_download_plugins () {
             if try_download "github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" ; then
                 if unpack_tar_xz "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}" ; then
                     try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" 
-                        if [ ! -z "`ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`" ] ; then
-                            for RM_PLUGINS in `ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`
-                            do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_PLUGINS}"
-                            done
-                        fi
+                    if [ ! -z "`ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`" ] ; then
+                        for RM_PLUGINS in `ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`
+                        do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_PLUGINS}"
+                        done
+                    fi
                 else
                     try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz"
                     try_remove_dir "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
@@ -906,7 +913,7 @@ pw_check_and_download_plugins () {
             fi
         else
             PW_NOTIFY_TEXT="Please wait for update PortProton"
-            pw_notify_send -u critical 
+            pw_notify_send -u normal 
             if try_download_silent "github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" \
                                    "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" ; then
                 if unpack_tar_xz "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}" ; then
@@ -931,6 +938,70 @@ pw_check_and_download_plugins () {
     export PW_XTERM="${PW_PLUGINS_PATH}/portable/bin/xterm -geometry 159x37 -e"
     return 0
 }
+
+check_dirs_and_files_in_pfx () {
+        create_new_dir "${WINEPREFIX}/dosdevices"
+        create_new_dir "${WINEPREFIX}/drive_c/windows/syswow64/"
+        create_new_dir "${WINEPREFIX}/drive_c/windows/system32/"
+        create_new_dir "${WINEPREFIX}/drive_c/tmp/.private/$USER/"
+        create_new_dir "${WINEPREFIX}/drive_c/tmp/.private/steamuser/"
+
+        [ ! -d "${WINEPREFIX}/dosdevices/c:" ] && try_force_link_dir "${WINEPREFIX}/drive_c/" "${WINEPREFIX}/dosdevices/c:"
+        [ ! -d "${WINEPREFIX}/dosdevices/z:" ] && try_force_link_dir "/" "${WINEPREFIX}/dosdevices/z:"
+        [ ! -d "${WINEPREFIX}/dosdevices/h:" ] && try_force_link_dir "$HOME" "${WINEPREFIX}/dosdevices/h:"
+        
+        create_new_dir "${WINEPREFIX}/drive_c/windows/Fonts/"
+        LN_FONTS="arialbd.ttf courbd.ttf georgia.ttf micross.ttf msyh.ttf simsun.ttc arial.ttf cour.ttf malgun.ttf msgothic.ttc nirmala.ttf times.ttf"
+        for link_font in $LN_FONTS ; do
+            if [[ ! -f "${WINEPREFIX}/drive_c/windows/Fonts/${link_font}" ]] ; then
+                try_force_link_file "${WINEDIR}/share/fonts/${link_font}" "${WINEPREFIX}/drive_c/windows/Fonts/"
+            fi
+        done
+
+        create_new_dir "${WINEPREFIX}/drive_c/users/steamuser"
+        if [[ ! -d "${WINEPREFIX}/drive_c/users/${USER}" ]]
+        then try_force_link_dir "${WINEPREFIX}/drive_c/users/steamuser" "${WINEPREFIX}/drive_c/users/${USER}"
+        fi
+
+        create_new_dir "${WINEPREFIX}/drive_c/users/Public/Documents/Steam"
+        create_new_dir "${WINEPREFIX}/drive_c/users/steamuser/Documents/Steam"
+        if [[ ! -d "${WINEPREFIX}/drive_c/users/steamuser/My Documents" ]]
+        then try_force_link_dir "${WINEPREFIX}/drive_c/users/steamuser/Documents" "${WINEPREFIX}/drive_c/users/steamuser/My Documents"
+        fi
+
+        create_new_dir "${WINEPREFIX}/drive_c/users/steamuser/AppData/Roaming"
+        if [[ ! -d "${WINEPREFIX}/drive_c/users/steamuser/Application Data" ]]
+        then try_force_link_dir "${WINEPREFIX}/drive_c/users/steamuser/AppData/Roaming" "${WINEPREFIX}/drive_c/users/steamuser/Application Data"
+        fi
+
+        create_new_dir "${WINEPREFIX}/drive_c/users/steamuser/AppData/Local"
+        create_new_dir "${WINEPREFIX}/drive_c/users/steamuser/Local Settings"
+        if [[ ! -d "${WINEPREFIX}/drive_c/users/steamuser/Local Settings/Application Data" ]]
+        then try_force_link_dir "${WINEPREFIX}/drive_c/users/steamuser/AppData/Local" "${WINEPREFIX}/drive_c/users/steamuser/Local Settings/Application Data"
+        fi
+
+        find "${WINEPREFIX}/dosdevices" -xtype l -maxdepth 1 2>/dev/null -exec rm {} \;
+        rm -f "${WINEPREFIX}/dosdevices/"*::
+        DRIVES=(d e f g i j k l m n o p q r s t u v w x y)
+        DEF_MOUNT_DIRS=('/media' "/media/$USER" '/mnt' '/run/media' "/run/media/$USER")
+        MOUNT_DIRS=($(find "${DEF_MOUNT_DIRS[@]}" -maxdepth 1 -type d 2>/dev/null | sort -u))
+
+        for drive_dir in "${MOUNT_DIRS[@]}" ; do
+            if [[ ! "${DEF_MOUNT_DIRS[@]}" =~ "$drive_dir" ]] \
+            && ! realpath "${WINEPREFIX}/dosdevices"/*: | grep "$drive_dir" &>/dev/null ; then
+                drive_num=0
+                while [[ "$drive_num" -lt "${#DRIVES[@]}" ]] ; do
+                    drive_path="${WINEPREFIX}/dosdevices/${DRIVES[$drive_num]}:"
+                    if [ ! -d "$drive_path" ] ; then
+                        ln -sf "$drive_dir" "$drive_path"
+                        break
+                    else
+                        ((drive_num++))
+                    fi
+                done
+            fi
+        done
+    }
 
 check_nvidia_rtx () {
     if [[ ! -z $(echo "$LSPCI_VGA" | grep -i "nvidia") ]]; then
@@ -1138,15 +1209,15 @@ update_winetricks () {
 edit_db_from_gui () {
     print_info "edit_db_from_gui PORTWINE_DB_FILE=$PORTWINE_DB_FILE"
     for mod_db in $@ ; do
-        print_info "${mod_db}=${!mod_db}"
-        if [ -z "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}="`" ] ; then
-            echo "export ${mod_db}=\"${!mod_db}\"" >> "${PORTWINE_DB_FILE}"
-        elif [ "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}=" | grep -v "#"`" ] ; then
-            if [ "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}=" | grep -v "#"`" != "export ${mod_db}=\"${!mod_db}\"" ] ; then
-                sed -ri "s/^export ${mod_db}=.*/export ${mod_db}=\"${!mod_db}\"/" "${PORTWINE_DB_FILE}"
+        if ! grep "export ${mod_db}=" "${PORTWINE_DB_FILE}" &>/dev/null
+        then echo "export ${mod_db}=\"${!mod_db}\"" >> "${PORTWINE_DB_FILE}"
+        elif grep "export ${mod_db}=" "${PORTWINE_DB_FILE}" | grep -v "#" &>/dev/null
+        then
+            if [[ "$(grep "export ${mod_db}=" "${PORTWINE_DB_FILE}" | grep -v "#")" != "export ${mod_db}=\"${!mod_db}\"" ]]
+            then sed -ri "s/^export ${mod_db}=.*/export ${mod_db}=\"${!mod_db}\"/" "${PORTWINE_DB_FILE}"
             fi
-        elif [ "`cat "${PORTWINE_DB_FILE}" | grep "export ${mod_db}="`" != "export ${mod_db}=${!mod_db}" ] ; then
-            sed -ri "s/.*export ${mod_db}=.*/export ${mod_db}=\"${!mod_db}\"/g" "${PORTWINE_DB_FILE}"
+        elif [[ "$(grep "export ${mod_db}=" "${PORTWINE_DB_FILE}")" != "export ${mod_db}=${!mod_db}" ]]
+        then sed -ri "s/.*export ${mod_db}=.*/export ${mod_db}=\"${!mod_db}\"/g" "${PORTWINE_DB_FILE}"
         fi
     done
     return 0
@@ -1154,15 +1225,15 @@ edit_db_from_gui () {
 
 edit_user_conf_from_gui () {
     for mod_db in $@ ; do
-        print_info "${mod_db}=${!mod_db}"
-        if [ -z "`cat "${USER_CONF}" | grep "export ${mod_db}="`" ] ; then
-            echo "export ${mod_db}=\"${!mod_db}\"" >> "${USER_CONF}"
-        elif [ "`cat "${USER_CONF}" | grep "export ${mod_db}=" | grep -v "#"`" ] ; then
-            if [ "`cat "${USER_CONF}" | grep "export ${mod_db}=" | grep -v "#"`" != "export ${mod_db}=\"${!mod_db}\"" ] ; then
-                sed -ri "s/^export ${mod_db}=.*/export ${mod_db}=\"${!mod_db}\"/" "${USER_CONF}"
+        if ! grep "export ${mod_db}=" "${USER_CONF}" &>/dev/null
+        then echo "export ${mod_db}=\"${!mod_db}\"" >> "${USER_CONF}"
+        elif grep "export ${mod_db}=" "${USER_CONF}" | grep -v "#" &>/dev/null
+        then
+            if [[ "$(grep "export ${mod_db}=" "${USER_CONF}" | grep -v "#")" != "export ${mod_db}=\"${!mod_db}\"" ]]
+            then sed -ri "s/^export ${mod_db}=.*/export ${mod_db}=\"${!mod_db}\"/" "${USER_CONF}"
             fi
-        elif [ "`cat "${USER_CONF}" | grep "export ${mod_db}="`" != "export ${mod_db}=${!mod_db}" ] ; then
-            sed -ri "s/.*export ${mod_db}=.*/export ${mod_db}=\"${!mod_db}\"/g" "${USER_CONF}"
+        elif [[ "$(grep "export ${mod_db}=" "${USER_CONF}")" != "export ${mod_db}=${!mod_db}" ]]
+        then sed -ri "s/.*export ${mod_db}=.*/export ${mod_db}=\"${!mod_db}\"/g" "${USER_CONF}"
         fi
     done
     return 0

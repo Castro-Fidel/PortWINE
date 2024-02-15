@@ -36,7 +36,7 @@ yad_error_download () {
     [[ "$?" != 0 ]] && return 1 || return 0
 }
 
-gui_question () {
+yad_question () {
     if [[ ! -f "${pw_yad_v12_3}" ]] ; then
         local pw_yad_v12_3="yad" 
         command -v "${pw_yad_v12_3}" &>/dev/null || fatal "yad not found"
@@ -73,14 +73,14 @@ pw_start_progress_bar_cover_block () {
 }
 
 pw_update_pfx_cover_gui () {
-    if ! check_start_from_steam ; then
-        PW_KEY_PROGRESS_BAR=$RANDOM
+    if ! check_start_from_steam && ! pgrep -a yad | grep "yad_v12_3 --notebook --key=$PW_KEY_PROGRESS_BAR_UP" &>/dev/null ; then
+        PW_KEY_PROGRESS_BAR_UP=$RANDOM
         PW_GIF_FILE="${PW_GUI_ICON_PATH}/covers/update_prefix_${update_loc}.gif" 
         PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 40}'`
         PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 80}'`
         echo "UPDATE PREFIX..." > "${PORT_WINE_TMP_PATH}/update_pfx_log"
         export PW_TIMER=0
-        while read -r line || [[ ! -z `pgrep -a yad | grep "yad_v12_3 --notebook --key="$PW_KEY_PROGRESS_BAR"" | awk '{print $1}'` ]] ; do
+        while read -r line || [[ ! -z `pgrep -a yad | grep "yad_v12_3 --notebook --key=$PW_KEY_PROGRESS_BAR_UP" | awk '{print $1}'` ]] ; do
                 sleep 0.005
                 if [[ ! -z "${line}" ]] && [[ -z "`echo "${line}" | grep -i "gstreamer"`" ]] \
                                         && [[ -z "`echo "${line}" | grep -i "kerberos"`" ]] \
@@ -92,10 +92,10 @@ pw_update_pfx_cover_gui () {
                     sleep 3
                     PW_TIMER=1
                 fi
-        done < "${PORT_WINE_TMP_PATH}/update_pfx_log" | "${pw_yad_v12_3}" --plug=$PW_KEY_PROGRESS_BAR --tabnum="2" --text-info --tail  2>/dev/null &
-        "${pw_yad_v12_3}" --plug=$PW_KEY_PROGRESS_BAR --tabnum="1" --picture --filename="${PW_GIF_FILE}" --image-on-top 2>/dev/null &
+        done < "${PORT_WINE_TMP_PATH}/update_pfx_log" | "${pw_yad_v12_3}" --plug=$PW_KEY_PROGRESS_BAR_UP --tabnum="2" --text-info --tail  2>/dev/null &
+        "${pw_yad_v12_3}" --plug=$PW_KEY_PROGRESS_BAR_UP --tabnum="1" --picture --filename="${PW_GIF_FILE}" --image-on-top 2>/dev/null &
 
-        "${pw_yad_v12_3}" --notebook --key="$PW_KEY_PROGRESS_BAR" --tab=LOGO --tab=TERMINAL --no-buttons --undecorated \
+        "${pw_yad_v12_3}" --notebook --key="$PW_KEY_PROGRESS_BAR_UP" --tab=LOGO --tab=TERMINAL --no-buttons --undecorated \
         --center --auto-close --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y --tab-pos=bottom 2>/dev/null &
         export PW_YAD_PID_PFX_COVER_UI="$!"
         return 0
@@ -452,7 +452,7 @@ gui_proton_downloader () {
                 if unpack_tar_${archive_type} "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}" "${PORT_WINE_PATH}/data/dist/" ; then
                     try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}"
                     if [ ! -z "${portwine_exe}" ]; then
-                        PW_WINE_USE=${VERSION_WINE_GIT}
+                        PW_WINE_USE="$(echo ${VERSION_WINE_GIT} | tr [[:lower:]] [[:upper:]])"
                         edit_db_from_gui PW_WINE_USE
                     fi
                 else
@@ -468,6 +468,7 @@ gui_proton_downloader () {
 
     if [[ "$1" != "silent" ]] ; then
         export SKIP_CHECK_UPDATES=1
+        edit_db_from_gui
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     else
@@ -765,7 +766,7 @@ portwine_create_shortcut () {
                 "${PORT_SCRIPTS_PATH}/add_in_steam.sh"
             done
             if [[ "${PW_SKIP_RESTART_STEAM}" != 1 ]] && pgrep -i steam &>/dev/null ; then
-                if gui_question "$sc_restert_steam" ; then
+                if yad_question "$sc_restert_steam" ; then
                     pw_start_progress_bar_block "Restarting STEAM... Please wait."
                     kill -s SIGTERM $(pgrep -a steam) &>/dev/null
                     while pgrep -i steam &>/dev/null ; do

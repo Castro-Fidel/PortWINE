@@ -45,7 +45,7 @@ if [[ -f "${PORT_WINE_TMP_PATH}/tmp_main_gui_size" ]] && [[ ! -z "$(cat ${PORT_W
     export PW_MAIN_SIZE_H="$(cat ${PORT_WINE_TMP_PATH}/tmp_main_gui_size | awk '{print $2}')"
 else
     export PW_MAIN_SIZE_W="1100"
-    export PW_MAIN_SIZE_H="300"
+    export PW_MAIN_SIZE_H="350"
 fi    
 
 if [[ ! -z $(basename "${portwine_exe}" | grep .ppack) ]] ; then
@@ -249,9 +249,9 @@ portwine_start_debug () {
     sed -i '/.fx$/d' "${PORT_WINE_PATH}/${portname}.log"
     sed -i '/HACK_does_openvr_work/d' "${PORT_WINE_PATH}/${portname}.log"
     sed -i '/Uploading is disabled/d' "${PORT_WINE_PATH}/${portname}.log"
-    sed -i '/dlopen failed - libgamemode.so/d' "${PORT_WINE_PATH}/${portname}.log"
-    sed -i '/gamemodeauto: /d' "${PORT_WINE_PATH}/${portname}.log"
     sed -i '/wine: RLIMIT_NICE is <= 20/d' "${PORT_WINE_PATH}/${portname}.log"
+    sed -i '/ALT_2.24/d' "${PORT_WINE_PATH}/${portname}.log"
+    sed -i '/UDEV monitor/d' "${PORT_WINE_PATH}/${portname}.log"
     deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++') 
     echo "$deb_text" > "${PORT_WINE_PATH}/${portname}.log"
     "$pw_yad" --title="${portname}.log" --borders=${YAD_BORDERS} --no-buttons --text-align=center \
@@ -680,7 +680,7 @@ else
     export -f run_desktop_b_click
 
     gui_clear_pfx () {
-        if gui_question "${port_clear_pfx}" ; then
+        if yad_question "${port_clear_pfx}" ; then
             pw_clear_pfx
             print_info "Restarting PP after clearing prefix..."
             export SKIP_CHECK_UPDATES=1
@@ -691,7 +691,7 @@ else
     export -f gui_clear_pfx
 
     gui_rm_portproton () {
-        if gui_question "${port_del2}" ; then
+        if yad_question "${port_del2}" ; then
             rm -fr "${PORT_WINE_PATH}"
             rm -fr "${PORT_WINE_TMP_PATH}"
             rm -fr "${HOME}/PortWINE"
@@ -847,20 +847,16 @@ else
     # --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"'
     # --field="   ROBLOX"!"$PW_GUI_ICON_PATH/roblox.png"!"":"FBTN" '@bash -c "button_click PW_ROBLOX"'
 
-    # --field="   DuckStation"!"$PW_GUI_ICON_PATH/duckstation.png"!"${loc_duckstation}":"FBTN" '@bash -c "button_click PW_DUCKSTATION"'
-    # --field="   ScummVM"!"$PW_GUI_ICON_PATH/scummvm.png"!"${loc_scummvm}":"FBTN" '@bash -c "button_click PW_SCUMMVM"'
-    # --field="   Rpcs3"!"$PW_GUI_ICON_PATH/rpcs3.png"!"${loc_rpcs3}":"FBTN" '@bash -c "button_click PW_RPCS3"'
-
-    if  [[ `command -v wmctrl` ]] &>/dev/null ; then
-        sleep 2
-        while [[ $(pgrep -a yad_v12_3 | head -n 1 | awk '{print $1}' 2>/dev/null) ]] ; do
-            sleep 2
-            PW_MAIN_GUI_SIZE_TMP="$(wmctrl -lG | grep PortProton-1.0 | awk '{print $5" "$6}' 2>/dev/null)"
-            if [[ ! -z "${PW_MAIN_GUI_SIZE_TMP}" ]] ; then
-                echo "${PW_MAIN_GUI_SIZE_TMP}" > "${PORT_WINE_TMP_PATH}/tmp_main_gui_size"
-            fi
-        done
-    fi &
+    # if command -v wmctrl &>/dev/null ; then
+    #     sleep 2
+    #     while [[ -n $(pgrep -a yad_v12_3 | head -n 1 | awk '{print $1}' 2>/dev/null) ]] ; do
+    #         sleep 2
+    #         PW_MAIN_GUI_SIZE_TMP="$(wmctrl -lG | grep "PortProton-${install_ver}" | awk '{print $5" "$6}' 2>/dev/null)"
+    #         if [[ ! -z "${PW_MAIN_GUI_SIZE_TMP}" ]] ; then
+    #             echo "${PW_MAIN_GUI_SIZE_TMP}" > "${PORT_WINE_TMP_PATH}/tmp_main_gui_size"
+    #         fi
+    #     done
+    # fi &
 
     export START_FROM_PP_GUI=1
 
