@@ -570,7 +570,6 @@ gui_MangoHud () {
         show_fps_limit swap temp_fahrenheit throttling_status throttling_status_graph
         time version vkbasalt vram vulkan_driver wine
     )
-    # fps_only
     
     unset ADD_GUI_MH GUI_MH_RESULT
 
@@ -582,10 +581,9 @@ gui_MangoHud () {
         FPS_LIMIT_VAR="${FPS_LIMIT}"
     fi
 
-    if [ -n "$MANGOHUD_CONFIG" ]; then
-        PW_MANGOHUD_CONFIG=($(echo "$MANGOHUD_CONFIG" | tr ',' '\n' | grep -v '='))
-    else
-        PW_MANGOHUD_CONFIG=($(echo "$DEFAULT_MANGOHUD_CONFIG" | tr ',' '\n' | grep -v '='))
+    if [ ! -z "${MANGOHUD_CONFIG}" ]
+	then PW_MANGOHUD_CONFIG=($(echo "$MANGOHUD_CONFIG" | tr ',' '\n' | grep -v '='))
+    else PW_MANGOHUD_CONFIG=($(echo "$DEFAULT_MANGOHUD_CONFIG" | tr ',' '\n' | grep -v '='))
     fi
 
     for add_list_mh in "${LIST_MH[@]}"; do
@@ -636,10 +634,13 @@ gui_MangoHud () {
 
     YAD_MH_SET=$(<"${PORT_WINE_TMP_PATH}/tmp_yad_mh_set")
     FPS_LIMIT=$(cat "${PORT_WINE_TMP_PATH}/tmp_yad_mh_fps_limit" | awk '{print $1}')
+	if [[ ! -z "${PW_SCREEN_RESOLUTION}" ]]
+	then MONITOR_HEIGHT="$(echo $PW_SCREEN_RESOLUTION | awk -F'x' '{print $2}')"
+	fi
 
-    MONITOR_HEIGHT="$(echo $PW_SCREEN_RESOLUTION | awk -F'x' '{print $2}')"
-    MH_FONT_SIZE="font_size=$(( MONITOR_HEIGHT / 45 ))"
-
+	if [[ ! -z "${MONITOR_HEIGHT}" ]]
+	then MH_FONT_SIZE="font_size=$(( MONITOR_HEIGHT / 45 ))"
+	fi
 
     export INT_COUNT_MH=0
     for read_list_mh in ${YAD_MH_SET} ; do
@@ -649,7 +650,7 @@ gui_MangoHud () {
         ((INT_COUNT_MH++))
     done
 
-    if [[ -n "$MH_FONT_SIZE" ]]
+    if [[ ! -z "$MH_FONT_SIZE" ]]
     then GUI_MH_RESULT="${GUI_MH_RESULT}${MH_FONT_SIZE}"
     else GUI_MH_RESULT="${GUI_MH_RESULT%,}"
     fi
@@ -659,11 +660,6 @@ gui_MangoHud () {
         export PW_MANGOHUD=1
     elif [[ "${FPS_LIMIT}" == "disabled" ]]
     then export GUI_MH_RESULT="$(echo ${GUI_MH_RESULT} | sed "s/,fps_limit=${FPS_LIMIT_VAR}//" | sed "s/,fps_limit=disabled//")"
-    fi
-
-    if [[ "${GUI_MH_RESULT}" =~ "fps_only" ]]; then
-        export GUI_MH_RESULT="fps_only"
-        print_info "In the MangoHud config fps_only is detected all settings are reseted"
     fi
     
     export MANGOHUD_CONFIG="${GUI_MH_RESULT}"
