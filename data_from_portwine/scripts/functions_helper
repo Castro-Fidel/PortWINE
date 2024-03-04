@@ -1075,11 +1075,9 @@ pw_create_gui_png () {
 	if [ ! -z "${PORTWINE_CREATE_SHORTCUT_NAME}" ] ; then
 		export PORTPROTON_NAME="${PORTWINE_CREATE_SHORTCUT_NAME}"
 	else
-		if [[ ! -z "$PW_EXIFTOOL" ]] ; then
-			PW_PRODUCTNAME=$($PW_EXIFTOOL -ProductName "${portwine_exe}" 2>/dev/null | sed -n 's/^Product Name\s*:\s*//p')
-			if [[ "$PW_PRODUCTNAME" =~ "Launcher" ]] || [[ "$PW_PRODUCTNAME" =~ "RU" ]] ; then
-				PW_PRODUCTNAME=$(echo "$PW_PRODUCTNAME" | sed 's/Launcher\|RU//g')
-			fi
+		PW_PRODUCTNAME=$(env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" -ProductName "${portwine_exe}" 2>/dev/null | sed -n 's/^Product Name\s*:\s*//p')
+		if [[ "$PW_PRODUCTNAME" =~ "Launcher" ]] || [[ "$PW_PRODUCTNAME" =~ "RU" ]] ; then
+			PW_PRODUCTNAME=$(echo "$PW_PRODUCTNAME" | sed 's/Launcher\|RU//g')
 		fi
 
 		if [[ ! -z "$PW_PRODUCTNAME" ]] ; then
