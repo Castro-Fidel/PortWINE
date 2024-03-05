@@ -2,8 +2,8 @@
 # Author: linux-gaming.ru
 . "$(dirname $(readlink -f "$0"))/runlib"
 
+name_desktop="PortProton"
 if  grep -i "flatpak" /etc/os-release &>/dev/null ; then
-	name_desktop="PortProton"
 	echo "[Desktop Entry]"	 					  		 > "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Name=${name_desktop}" 				 		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Version=${install_ver}"						 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
@@ -17,7 +17,6 @@ if  grep -i "flatpak" /etc/os-release &>/dev/null ; then
 	echo "Icon="${PORT_WINE_PATH}/data/img/w.png""   	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 else
-	name_desktop="PortProton"
 	echo "[Desktop Entry]"	 					  		 > "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Name=${name_desktop}" 				 		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Version=${install_ver}"						 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"

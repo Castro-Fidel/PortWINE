@@ -26,8 +26,17 @@ kill_portwine
 killall -15 yad_v12_3 2>/dev/null
 kill -TERM `pgrep -a yad | grep ${portname} | head -n 1 | awk '{print $1}'` 2>/dev/null
 
-if [[ -f "/usr/bin/portproton" ]] && [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]] ; then
+if [[ -f "/usr/bin/portproton" ]] \
+&& [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]]
+then
     rm -f "${HOME}/.local/share/applications/PortProton.desktop"
+fi
+
+if grep "SteamOS" "/etc/os-release" &>/dev/null \
+&& [[ ! -f  "${HOME}/.local/share/applications/PortProton.desktop" ]]
+then
+	cp -f "${PORT_WINE_PATH}/PortProton.desktop" "${HOME}/.local/share/applications/"
+	update-desktop-database -q "${HOME}/.local/share/applications"
 fi
 
 [[ "$MISSING_DESKTOP_FILE" == 1 ]] && portwine_missing_shortcut
