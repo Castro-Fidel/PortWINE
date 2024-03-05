@@ -619,6 +619,14 @@ start_portwine () {
         echo "Set to win${PW_WINDOWS_VER}"
     fi
 
+    if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" ]] &&  [[ -z `grep -o "\"y:\"=\"cdrom\"" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"` ]] ; then
+        if [[ $(grep -Fo '[Software\\Wine\\Drives]' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg") ]] ; then
+           sed -i '/\[Software\\\\Wine\\\\Drives\]/a "y:"="cdrom"' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
+        else
+            echo -e "\n[Software\\\\\\Wine\\\\\\Drives]\n\"y:\"=\"cdrom\"" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
+        fi
+    fi
+
     if [[ "${portwine_exe}" == *-Shipping.exe ]] ; then 
         echo "Disable EAC"
         [[ -z "${LAUNCH_PARAMETERS}" ]] && export LAUNCH_PARAMETERS+=" -eac-nop-loaded "
