@@ -275,7 +275,7 @@ pw_winecmd () {
     export PW_USE_TERMINAL=1
     start_portwine
     cd "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c"
-    ${pw_runtime} env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" xterm -e "${WINELOADER}" cmd
+    ${pw_runtime} env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${PW_PLUGINS_PATH}/portable/bin/xterm" -e "${WINELOADER}" cmd
     stop_portwine
 }
 
@@ -424,7 +424,7 @@ pw_start_cont_xterm () {
     VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
     ${PW_GAMEMODERUN_SLR} \
     ${PW_MANGOHUD_SLR} \
-    xterm
+    "${PW_PLUGINS_PATH}/portable/bin/xterm"
 }
 
 pw_create_prefix_backup () {
