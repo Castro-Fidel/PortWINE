@@ -122,6 +122,11 @@ export -f check_process
 try_download_no_mirror () {
     [[ -f "${PW_AUTOINSTALL_EXE}" ]] && try_remove_file "${PW_AUTOINSTALL_EXE}"
     PW_DOWNLOAD_FILE_NAME="$(basename $2)"
+    if check_gamescope_session ; then
+        $PW_TERM curl -f -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" \
+        -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2"
+        [ "$?" != 0 ] && return 1 || return 0
+    fi
     set -o pipefail
     curl -f -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2" 2>&1 | \
     tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
@@ -139,6 +144,13 @@ try_download_no_mirror () {
 
 try_download () {
     PW_DOWNLOAD_FILE_NAME="$(basename $1)"
+    if check_gamescope_session ; then
+        $PW_TERM curl -f -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" \
+        -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2"
+        # $PW_TERM curl -f -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" \
+        # -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "ftp://171.22.215.18/archives/${PW_DOWNLOAD_FILE_NAME}" -o "$2"
+        return 0
+    fi
     [[ ! -f "${pw_yad_v12_3}" ]] && local pw_yad_v12_3="yad"
     set -o pipefail
     curl -f -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2" 2>&1 | \
@@ -166,8 +178,14 @@ try_download () {
 
 try_download_to_path () {
     PW_DOWNLOAD_FILE_NAME="$(basename $1)"
+    if check_gamescope_session ; then
+        $PW_TERM curl -f -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" \
+        -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2/$PW_DOWNLOAD_FILE_NAME"
+        [ "$?" != 0 ] && return 1 || return 0
+    fi
     set -o pipefail
-    curl -f -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2/$PW_DOWNLOAD_FILE_NAME" 2>&1 | \
+    curl -f -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' \
+    -H 'Pragma: no-cache' -L "$1" -o "$2/$PW_DOWNLOAD_FILE_NAME" 2>&1 | \
     tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
     "${pw_yad_v12_3}" --progress --percentage=0 --text="${loc_downloading} ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
     --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
@@ -258,9 +276,19 @@ check_start_from_steam () {
 }
 
 check_gamescope_session () {
-    if echo "${DESKTOP_SESSION}" | grep -i "gamescope" &>/dev/null
-    then return 0
-    else return 1
+    if [[ ! -z "$GAMESCOPE_IN_USE" ]]
+    then [[ "$GAMESCOPE_IN_USE" == 1 ]] && return 0 || return 1
+    fi
+    if echo "${DESKTOP_SESSION}" | grep -i "gamescope" &>/dev/null ; then
+        if command -v konsole &>/dev/null
+        then export PW_TERM="konsole --hide-menubar --fullscreen -e" 
+        else export PW_TERM="xdg-terminal"
+        fi
+        export GAMESCOPE_IN_USE=1
+        return 0
+    else
+        export GAMESCOPE_IN_USE=0
+        return 1
     fi
 }
 
