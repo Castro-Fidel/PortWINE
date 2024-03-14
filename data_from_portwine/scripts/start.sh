@@ -535,7 +535,7 @@ case "${1}" in
     '--help' )
         files_from_autoinstall=$(ls "${PORT_SCRIPTS_PATH}/pw_autoinstall") 
         echo -e "
-usege: [--reinstall] [--autoinstall]
+usage: [--reinstall] [--autoinstall]
 
 --reinstall                                         reinstall files of the portproton to default settings
 --autoinstall [script_frome_pw_autoinstall]         autoinstall from the list below:
