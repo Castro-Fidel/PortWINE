@@ -411,7 +411,16 @@ check_user_conf () {
 }
 
 init_wine_ver () {
-    if [[ -d "${PORT_WINE_PATH}/data/dist" ]] ; then
+    if [[ "${PW_WINE_USE}" == "USE_SYSTEM_WINE" ]] \
+    && command -v wine &>/dev/null ; then
+        export WINEDIR="$RT_PREFIX/usr"
+        export WINE="$RT_PREFIX/$(command -v wine)"
+        export WINELOADER="$WINE"
+        export WINESERVER="$RT_PREFIX/$(command -v wineserver)"
+        export PW_USE_RUNTIME=0
+        export PW_NO_FSYNC=1
+    else
+        if [[ -d "${PORT_WINE_PATH}/data/dist" ]] ; then
         orig_IFS="$IFS"
         IFS=$'\n'
         for dist_dir in $(ls -1 "${PORT_WINE_PATH}/data/dist/") ; do
@@ -421,93 +430,113 @@ init_wine_ver () {
             fi
         done
         IFS="$orig_IFS"
-    fi
-    if [[ -z `ls "${PORT_WINE_PATH}/data/dist/" | grep "${PW_WINE_USE}"` ]] ; then
-        if [[ "$PW_WINE_USE" =~ PROTON_LG* ]]
-        then export PW_WINE_USE=PROTON_LG
-        else export PW_WINE_USE=WINE_LG
         fi
-    fi
-    if [[ "$PW_WINE_USE" == PROTON_LG ]] 
-    then export PW_WINE_USE="${PW_PROTON_LG_VER}"
-    elif [[ "$PW_WINE_USE" == WINE_LG ]]
-    then export PW_WINE_USE="${PW_WINE_LG_VER}"
-    fi
-    [ ! -z "${PW_WINE_VER}" ] && export PW_WINE_USE=`echo "${PW_WINE_VER}" | tr [[:lower:]] [[:upper:]]`
-    [ ! -z "${PW_WINE_USE}" ] && export PW_WINE_USE=`echo "${PW_WINE_USE}" | tr [[:lower:]] [[:upper:]]`
-    unset PW_WINE_VER
-    export WINEDIR="${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}"
-    export WINE="${WINEDIR}/bin/wine"
-    export WINELOADER="${WINEDIR}/bin/wine"
-    export WINESERVER="${WINEDIR}/bin/wineserver"
-
-    export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
-    if [[ -d "${PATH_TO_GAME}" ]] ; then
-        export WINEDLLPATH+=":${PATH_TO_GAME}"
-    fi
-
-    if [[ -d "${WINEDIR}/files" && ! -d "${WINEDIR}/dist" ]] ; then
-        for clear_dist_files in `ls "${WINEDIR}" | sed -e "s/^files$//g" | sed -e "s/^version$//g"` ; do 
-            rm -fr "${WINEDIR}/$clear_dist_files"
-        done
-        mv -f "${WINEDIR}/files"/* "${WINEDIR}/"
-        rm -fr "${WINEDIR}/files"
-    elif [[ ! -d "${WINEDIR}/files" && -d "${WINEDIR}/dist" ]] ; then
-        for clear_dist_files in `ls "${WINEDIR}" | sed -e "s/^dist$//g" | sed -e "s/^version$//g"` ; do 
-            rm -fr "${WINEDIR}/$clear_dist_files"
-        done
-        mv -f "${WINEDIR}/dist"/* "${WINEDIR}/"
-        rm -fr "${WINEDIR}/dist"
-    elif [ -f "${WINEDIR}/proton_dist.tar" ] ; then
-        unpack_tar "${WINEDIR}/proton_dist.tar" "${WINEDIR}/"
-        for clear_dist_files in `ls "${WINEDIR}" | sed -e "s/^bin$//g" | sed -e "s/^lib$//g" | sed -e "s/^lib64$//g" | sed -e "s/^share$//g" | sed -e "s/^version$//g"` ; do 
-            rm -fr "${WINEDIR}/$clear_dist_files"
-        done
-    fi
-    if [[ -d "${WINEDIR}" ]] ; then
-        [[ ! -f "${WINEDIR}/version" ]] && echo "${PW_WINE_USE}" > "${WINEDIR}/version"
-
-        if [[ ! -d "${WINEDIR}/lib64/" ]] && [[ -d "${WINEDIR}/lib/wine/x86_64-unix" ]] ; then
-            create_new_dir "${WINEDIR}/lib64/wine"
-            mv -f "${WINEDIR}/lib/wine/x86_64-unix" "${WINEDIR}/lib64/wine/"
-            mv -f "${WINEDIR}/lib/wine/x86_64-windows" "${WINEDIR}/lib64/wine/"
-        fi
-
-        for mono_gecko_chk in "mono" "gecko" ; do
-            if check_symlink "${WINEDIR}/share/wine/${mono_gecko_chk}" ; then
-                print_info "${WINEDIR}/share/wine/${mono_gecko_chk} is symlink. OK."
-            elif [[ -d "${WINEDIR}/share/wine/${mono_gecko_chk}" ]] ; then
-                pw_start_progress_bar_cover_block "${PW_GUI_ICON_PATH}/covers/loading_${update_loc}.gif" 
-                try_copy_dir "${WINEDIR}/share/wine/${mono_gecko_chk}" "${PORT_WINE_TMP_PATH}"
-                try_remove_dir "${WINEDIR}/share/wine/${mono_gecko_chk}"
-                try_force_link_dir "${PORT_WINE_TMP_PATH}/${mono_gecko_chk}" "${WINEDIR}"/share/wine/
-                print_info "Copy ${WINEDIR}/share/wine/${mono_gecko_chk} to tmp and create symlink to ${WINEDIR}/share/wine/. OK."
-                pw_stop_progress_bar_cover_block
-            else
-                try_remove_dir "${WINEDIR}/share/wine/${mono_gecko_chk}"
-                try_force_link_dir "${PORT_WINE_TMP_PATH}/${mono_gecko_chk}" "${WINEDIR}"/share/wine
-                print_warning "${WINEDIR}/share/wine/${mono_gecko_chk} is broken symlink. Repair... OK."
+        if [[ -z `ls "${PORT_WINE_PATH}/data/dist/" | grep "${PW_WINE_USE}"` ]] ; then
+            if [[ "$PW_WINE_USE" =~ PROTON_LG* ]]
+            then export PW_WINE_USE=PROTON_LG
+            else export PW_WINE_USE=WINE_LG
             fi
-        done
+        fi
+        if [[ "$PW_WINE_USE" == PROTON_LG ]] 
+        then export PW_WINE_USE="${PW_PROTON_LG_VER}"
+        elif [[ "$PW_WINE_USE" == WINE_LG ]]
+        then export PW_WINE_USE="${PW_WINE_LG_VER}"
+        fi
+        [ ! -z "${PW_WINE_VER}" ] && export PW_WINE_USE=`echo "${PW_WINE_VER}" | tr [[:lower:]] [[:upper:]]`
+        [ ! -z "${PW_WINE_USE}" ] && export PW_WINE_USE=`echo "${PW_WINE_USE}" | tr [[:lower:]] [[:upper:]]`
+        unset PW_WINE_VER
 
-        grep 'Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' "${WINEDIR}/share/wine/wine.inf" &> /dev/null
-        if [[ "$?" != "0" ]] ; then
-            echo 'HKLM,Software\NVIDIA Corporation\Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
-            echo 'HKLM,System\ControlSet001\Services\nvlddmkm,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
-            sed -i '/Steam.exe/d' "${WINEDIR}/share/wine/wine.inf"
-            sed -i '/\\Valve\\Steam/d' "${WINEDIR}/share/wine/wine.inf"
-            sed -i '/winemenubuilder/d' "${WINEDIR}/share/wine/wine.inf"
+        export WINEDIR="${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}"
+        export WINE="${WINEDIR}/bin/wine"
+        export WINELOADER="${WINEDIR}/bin/wine"
+        export WINESERVER="${WINEDIR}/bin/wineserver"
+        if [[ -d "${WINEDIR}/files" && ! -d "${WINEDIR}/dist" ]] ; then
+            for clear_dist_files in `ls "${WINEDIR}" | sed -e "s/^files$//g" | sed -e "s/^version$//g"` ; do 
+                rm -fr "${WINEDIR}/$clear_dist_files"
+            done
+            mv -f "${WINEDIR}/files"/* "${WINEDIR}/"
+            rm -fr "${WINEDIR}/files"
+        elif [[ ! -d "${WINEDIR}/files" && -d "${WINEDIR}/dist" ]] ; then
+            for clear_dist_files in `ls "${WINEDIR}" | sed -e "s/^dist$//g" | sed -e "s/^version$//g"` ; do 
+                rm -fr "${WINEDIR}/$clear_dist_files"
+            done
+            mv -f "${WINEDIR}/dist"/* "${WINEDIR}/"
+            rm -fr "${WINEDIR}/dist"
+        elif [ -f "${WINEDIR}/proton_dist.tar" ] ; then
+            unpack_tar "${WINEDIR}/proton_dist.tar" "${WINEDIR}/"
+            for clear_dist_files in `ls "${WINEDIR}" | sed -e "s/^bin$//g" | sed -e "s/^lib$//g" | sed -e "s/^lib64$//g" | sed -e "s/^share$//g" | sed -e "s/^version$//g"` ; do 
+                rm -fr "${WINEDIR}/$clear_dist_files"
+            done
+        fi
+        if [[ -d "${WINEDIR}" ]] ; then
+            [[ ! -f "${WINEDIR}/version" ]] && echo "${PW_WINE_USE}" > "${WINEDIR}/version"
+
+            if [[ ! -d "${WINEDIR}/lib64/" ]] && [[ -d "${WINEDIR}/lib/wine/x86_64-unix" ]] ; then
+                create_new_dir "${WINEDIR}/lib64/wine"
+                mv -f "${WINEDIR}/lib/wine/x86_64-unix" "${WINEDIR}/lib64/wine/"
+                mv -f "${WINEDIR}/lib/wine/x86_64-windows" "${WINEDIR}/lib64/wine/"
+            fi
+
+            for mono_gecko_chk in "mono" "gecko" ; do
+                if check_symlink "${WINEDIR}/share/wine/${mono_gecko_chk}" ; then
+                    print_info "${WINEDIR}/share/wine/${mono_gecko_chk} is symlink. OK."
+                elif [[ -d "${WINEDIR}/share/wine/${mono_gecko_chk}" ]] ; then
+                    pw_start_progress_bar_cover_block "${PW_GUI_ICON_PATH}/covers/loading_${update_loc}.gif" 
+                    try_copy_dir "${WINEDIR}/share/wine/${mono_gecko_chk}" "${PORT_WINE_TMP_PATH}"
+                    try_remove_dir "${WINEDIR}/share/wine/${mono_gecko_chk}"
+                    try_force_link_dir "${PORT_WINE_TMP_PATH}/${mono_gecko_chk}" "${WINEDIR}"/share/wine/
+                    print_info "Copy ${WINEDIR}/share/wine/${mono_gecko_chk} to tmp and create symlink to ${WINEDIR}/share/wine/. OK."
+                    pw_stop_progress_bar_cover_block
+                else
+                    try_remove_dir "${WINEDIR}/share/wine/${mono_gecko_chk}"
+                    try_force_link_dir "${PORT_WINE_TMP_PATH}/${mono_gecko_chk}" "${WINEDIR}"/share/wine
+                    print_warning "${WINEDIR}/share/wine/${mono_gecko_chk} is broken symlink. Repair... OK."
+                fi
+            done
+
+            grep 'Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' "${WINEDIR}/share/wine/wine.inf" &> /dev/null
+            if [[ "$?" != "0" ]] ; then
+                echo 'HKLM,Software\NVIDIA Corporation\Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
+                echo 'HKLM,System\ControlSet001\Services\nvlddmkm,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
+                sed -i '/Steam.exe/d' "${WINEDIR}/share/wine/wine.inf"
+                sed -i '/\\Valve\\Steam/d' "${WINEDIR}/share/wine/wine.inf"
+                sed -i '/winemenubuilder/d' "${WINEDIR}/share/wine/wine.inf"
+            fi
+        fi
+
+        rm -f "${WINEDIR}"/lib*/*steam* &>/dev/null
+        rm -f "${WINEDIR}"/lib*/wine/*/*steam* &>/dev/null
+        rm -f "${WINEDIR}"/lib*/wine/*-windows/winemenubuilder.exe &>/dev/null
+
+        export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
+        if [[ -d "${PATH_TO_GAME}" ]] ; then
+            export WINEDLLPATH+=":${PATH_TO_GAME}"
         fi
     fi
 
-    rm -f "${WINEDIR}"/lib*/*steam* &>/dev/null
-    rm -f "${WINEDIR}"/lib*/wine/*/*steam* &>/dev/null
-    rm -f "${WINEDIR}"/lib*/wine/*-windows/winemenubuilder.exe &>/dev/null
+
+    if [ "${PW_USE_GSTREAMER}" = 1 ] ; then 
+        if [ -d "${WINEDIR}/lib64/gstreamer-1.0" ] ; then
+            export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/gstreamer-1.0:${WINEDIR}/lib/gstreamer-1.0"
+        fi
+        create_new_dir "${PORT_WINE_TMP_PATH}"/gstreamer_tmp/
+        export WINE_GST_REGISTRY_DIR="${PORT_WINE_TMP_PATH}"/gstreamer_tmp/
+        export MEDIACONV_AUDIO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/gstreamer_tmp/audio.foz
+        export MEDIACONV_AUDIO_TRANSCODED_FILE="${PORT_WINE_TMP_PATH}"/gstreamer_tmp/transcoded_audio.foz
+        export MEDIACONV_VIDEO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/gstreamer_tmp/video.foz
+        export MEDIACONV_VIDEO_TRANSCODED_FILE="${PORT_WINE_TMP_PATH}"/gstreamer_tmp/transcoded_video.foz
+    else
+        var_winedlloverride_update "winegstreamer="
+    fi
 
     return 0
 }
 
 pw_init_runtime () {
+    if [[ "$PW_USE_RUNTIME" != 1 ]] ; then
+        export pw_runtime=""
+        return 0
+    fi
 
     if grep -i -E '(ROSA|RED OS)' "/etc/os-release" &>/dev/null ; then
         export LOCPATH="/run/host/usr/share/locale/"
@@ -516,7 +545,15 @@ pw_init_runtime () {
     fi
 
     PW_PV_OVERRIDES="/usr/lib/pressure-vessel/overrides/lib" 
-    export PW_LD_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib:${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32:${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:${PW_PV_OVERRIDES}/i386-linux-gnu/aliases"
+
+    export PW_LD_LIBRARY_PATH="\
+${WINEDIR}/lib64:${WINEDIR}/lib:\
+${PW_PLUGINS_PATH}/portable/lib/lib64:\
+${PW_PLUGINS_PATH}/portable/lib/lib32:\
+${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:\
+${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:\
+/overrides/lib/x86_64-linux-gnu:\
+/overrides/lib/i386-linux-gnu"
 
     if [ ! -z ${PATH_TMP} ]
     then export PATH="${PATH_TMP}"
@@ -525,20 +562,6 @@ pw_init_runtime () {
     if [ ! -z "${PATH}" ]
     then export PATH="${WINEDIR}/bin:${PATH}:${PW_PLUGINS_PATH}/portable/bin"
     else export PATH="${WINEDIR}/bin:${PW_PLUGINS_PATH}/portable/bin"
-    fi
-
-    if [ "${PW_USE_GSTREAMER}" = 1 ] ; then 
-        if [ -d "${WINEDIR}/lib64/gstreamer-1.0" ] ; then
-            export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/gstreamer-1.0:${WINEDIR}/lib/gstreamer-1.0"
-        fi
-        create_new_dir "${WINEDIR}"/gstreamer_tmp/
-        export WINE_GST_REGISTRY_DIR="${WINEDIR}"/gstreamer_tmp/
-        export MEDIACONV_AUDIO_DUMP_FILE="${WINEDIR}"/gstreamer_tmp/audio.foz
-        export MEDIACONV_AUDIO_TRANSCODED_FILE="${WINEDIR}"/gstreamer_tmp/transcoded_audio.foz
-        export MEDIACONV_VIDEO_DUMP_FILE="${WINEDIR}"/gstreamer_tmp/video.foz
-        export MEDIACONV_VIDEO_TRANSCODED_FILE="${WINEDIR}"/gstreamer_tmp/transcoded_video.foz
-    else
-        var_winedlloverride_update "winegstreamer="
     fi
 
     if [[ ! -z "${PW_SANDBOX_HOME_PATH}" && -d "${PW_SANDBOX_HOME_PATH}" ]] ; then
@@ -593,7 +616,9 @@ pw_init_runtime () {
 }
 
 pw_mangohud_check () {
-    if [[ "${PW_MANGOHUD}" == "1" ]] && ! check_gamescope_session ; then
+    if [[ "${PW_MANGOHUD}" == "1" ]] \
+    && ! check_gamescope_session
+    then
         export PW_MANGOHUD_SLR='MANGOHUD=1'
         MANGOHUD_LIB_NAME="libMangoHud.so"
         if [[ "${PW_VULKAN_USE}" = "0" ]] ; then 
@@ -614,11 +639,13 @@ pw_mangohud_check () {
 
 pw_vkbasalt_check () {
     if [[ "${ENABLE_VKBASALT}" == 1 ]] && [[ "${PW_VULKAN_USE}" != "0" ]] && [[ "${PW_VULKAN_USE}" != "3" ]] ; then
+        export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
+        if ! grep "/pressure-vessel/reshade" "${VKBASALT_CONFIG_FILE}" &>/dev/null
+        then sed -ri "s|= .*/reshade|= \"${PW_WINELIB}\"/pressure-vessel/reshade|g" "${VKBASALT_CONFIG_FILE}"
+        fi
         if [[ ! -z "${PW_VKBASALT_EFFECTS}" ]] && [[ ! -z "${PW_VKBASALT_FFX_CAS}" ]] ; then
-            export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
             sed -ri "s/effects = .*/effects = ${PW_VKBASALT_EFFECTS}/g" "${VKBASALT_CONFIG_FILE}"
             sed -ri "s/casSharpness .*/casSharpness = ${PW_VKBASALT_FFX_CAS}/g" "${VKBASALT_CONFIG_FILE}"
-            sed -ri "s|= .*/reshade|= \"${PW_WINELIB}\"/pressure-vessel/reshade|g" "${VKBASALT_CONFIG_FILE}"
         fi
         var_vk_istance_layers_config_update "VK_LAYER_VKBASALT_post_processing64:VK_LAYER_VKBASALT_post_processing32"
         print_info "vkBasalt is enabled"
@@ -655,6 +682,7 @@ wait_wineserver () {
     while [ ! -z "$(ls -l /proc/*/exe 2>/dev/null | grep -ie ${portname} | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}')" ] ; do
         sleep 1
     done
+    "$WINESERVER" -w
     return 0
 }
 export -f wait_wineserver
@@ -686,9 +714,10 @@ pw_kill_autostart () {
     else SWAIT="${2}"
     fi
     sleep 5
-    
     while true ; do
-        if  [[ -z "`ps aux | grep -m 1 -i "$1" | grep -v grep | awk '{print $2}'`" ]] && [[ ! -z "`ps aux | grep wrap | grep -v grep | grep -i ${portname} | head -n 1`" ]] ; then
+        if  [[ -z "`ps aux | grep -m 1 -i "$1" | grep -v grep | awk '{print $2}'`" ]] \
+        && [[ ! -z "`ps aux | grep wrap | grep -v grep | grep -i ${portname} | head -n 1`" ]]
+        then
             echo -e "PID "$1" not found"
             sleep "${SWAIT}"
         else
@@ -700,7 +729,7 @@ pw_kill_autostart () {
             break
         fi
     done
-
+    
     if [[ ! -z "`ls "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/ | grep -m 1 ".tmp"`" ]] ; then
         rm -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/*.tmp
     fi

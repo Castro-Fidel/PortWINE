@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Author: linux-gaming.ru
 
+export PW_START_PID="$$"
 export NO_AT_BRIDGE=1
 export pw_full_command_line=("$0" $*)
 export YAD_BORDERS=5
@@ -62,7 +63,7 @@ if [[ ! -z $(basename "${portwine_exe}" | grep .ppack) ]] ; then
     unset PW_SANDBOX_HOME_PATH
     pw_init_runtime
     export PW_PREFIX_NAME=$(basename "$1" | awk -F'.' '{print $1}')
-    ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" unsquashfs -f -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" "$1" &
+    ${pw_runtime} "${PW_PLUGINS_PATH}/portable/bin/xterm" -e env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" unsquashfs -f -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" "$1" &
     sleep 10
     while true ; do
         if [[ ! -z $(pgrep -a xterm | grep ".ppack" | head -n 1 | awk '{print $1}') ]] ; then
@@ -378,10 +379,8 @@ pw_prefix_manager () {
         try_remove_file  "${PORT_WINE_TMP_PATH}/to_winetricks"
 
         if [[ ! -z ${SET_FROM_PFX_MANAGER} ]] ; then
-            export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
-            pw_init_runtime
-            ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
-            "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${SET_FROM_PFX_MANAGER} &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
+            ${pw_runtime} "${PW_PLUGINS_PATH}/portable/bin/xterm" -e env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
+            "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${SET_FROM_PFX_MANAGER}
             gui_prefix_manager
         else
             print_info "Nothing to do. Restarting PortProton..."
@@ -423,7 +422,6 @@ pw_winetricks () {
 pw_start_cont_xterm () {
     cd "$HOME"
     unset PW_SANDBOX_HOME_PATH
-    # export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
     pw_init_runtime
     ${pw_runtime} \
     env PATH="${PATH}" \
@@ -467,13 +465,13 @@ pw_create_prefix_backup () {
     done
     if [[ -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" ]] ; then
         mv -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack"
-        yad_info "$PW_PFX_BACKUP_SUCCESS"
+        yad_info "$PW_PFX_BACKUP_SUCCESS $PW_PREFIX_NAME"
         if [[ ! -f "${PORT_WINE_TMP_PATH}/pfx_backup_info" ]] ; then
             yad_info "$PW_PFX_BACKUP_INFO"
             echo "1" > "${PORT_WINE_TMP_PATH}/pfx_backup_info"
         fi
     else 
-        yad_error "$PW_PFX_BACKUP_ERROR"
+        yad_error "$PW_PFX_BACKUP_ERROR $PW_PREFIX_NAME"
     fi
 
     return 0
@@ -483,17 +481,17 @@ pw_edit_db () {
     if [[ "${XDG_SESSION_TYPE}" == "wayland" ]] ; then
         pw_gui_for_edit_db \
         PW_MANGOHUD PW_MANGOHUD_USER_CONF ENABLE_VKBASALT PW_VKBASALT_USER_CONF PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING \
-        PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_USE_FAKE_DLSS_3 PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL \
-        PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY \
-        PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE \
-        PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_USE_GALLIUM_ZINK PW_USE_GAMESCOPE PW_DISABLE_COMPOSITING
+        PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_USE_FAKE_DLSS_3 PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP \
+        PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY \
+        PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS \
+        PW_USE_OBS_VKCAPTURE PW_USE_GALLIUM_ZINK PW_USE_GAMESCOPE PW_DISABLE_COMPOSITING PW_USE_RUNTIME
     else
         pw_gui_for_edit_db \
         PW_MANGOHUD PW_MANGOHUD_USER_CONF ENABLE_VKBASALT PW_VKBASALT_USER_CONF PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING \
-        PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_USE_FAKE_DLSS_3 PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL \
-        PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME  \
-        PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE \
-        PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_USE_GALLIUM_ZINK PW_USE_GAMESCOPE PW_DISABLE_COMPOSITING
+        PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_USE_FAKE_DLSS_3 PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP \
+        PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY\
+        PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE \
+        PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_USE_GALLIUM_ZINK PW_USE_GAMESCOPE PW_DISABLE_COMPOSITING PW_USE_RUNTIME
     fi
     if [[ "$?" == 0 ]] ; then
         print_info "Restarting PP after update ppdb file..."
@@ -535,7 +533,7 @@ case "${1}" in
     '--help' )
         files_from_autoinstall=$(ls "${PORT_SCRIPTS_PATH}/pw_autoinstall") 
         echo -e "
-usege: [--reinstall] [--autoinstall]
+use: [--reinstall] [--autoinstall]
 
 --reinstall                                         reinstall files of the portproton to default settings
 --autoinstall [script_frome_pw_autoinstall]         autoinstall from the list below:
@@ -573,7 +571,10 @@ IFS=$IFS_OLD
 export PW_ADD_PREFIXES_TO_GUI="${PW_PREFIX_NAME^^}${PW_ADD_PREFIXES_TO_GUI}"
 
 PW_ALL_DIST=$(ls "${PORT_WINE_PATH}/data/dist/" | sed -e s/"${PW_WINE_LG_VER}$//g" | sed -e s/"${PW_PROTON_LG_VER}$//g")
-unset DIST_ADD_TO_GUI
+if command -v wine &>/dev/null
+then DIST_ADD_TO_GUI="!USE_SYSTEM_WINE"
+else unset DIST_ADD_TO_GUI
+fi
 for DAIG in ${PW_ALL_DIST}
 do
     export DIST_ADD_TO_GUI="${DIST_ADD_TO_GUI}!${DAIG}"
