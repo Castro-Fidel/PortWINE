@@ -865,14 +865,15 @@ check_user_conf
 check_variables PW_LOG "0"
 
 if [[ -z "${INSTALLING_PORT}" ]] ; then
-    if [[ -f "$HOME/.config/.portproton.lock" ]] ; then
+    if [[ -f "/tmp/portproton.lock" ]] ; then
+        print_warning "Found lock file: /tmp/portproton.lock"
         yad_info "$loc_gui_portproton_lock"
         exit 0
     fi
-    touch "$HOME/.config/.portproton.lock"
+    touch "/tmp/portproton.lock"
     rm_lock_file () {
         echo "Removing the lock file..."
-        rm "$HOME/.config/.portproton.lock" && echo "OK"
+        rm -fv "/tmp/portproton.lock" && echo "OK"
     }
     trap "rm_lock_file" EXIT
 
