@@ -31,7 +31,9 @@ else
 	chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 fi
 
-if [[ ! -f /usr/bin/portproton ]] ; then
+if [[ ! -f /usr/bin/portproton ]] \
+&& ! grep -i "flatpak" /etc/os-release &>/dev/null
+then
 	cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" ${HOME}/.local/share/applications/
 fi
 

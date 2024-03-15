@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Author: cefeiko
+########################################################################
+export PW_PREFIX_NAME=DOTNET
+export PORTWINE_CREATE_SHORTCUT_NAME="Pulse Online"
+
+start_portwine
+
+mkdir -p "${WINEPREFIX}/drive_c/games/PulseOnline/"
+export PW_AUTOINSTALL_EXE="${WINEPREFIX}/drive_c/games/PulseOnline/PulseOnlineLauncher.exe"
+
+if try_download_no_mirror "https://pulseonline.ru/game_download/PulseOnlineLauncher.exe" "${PW_AUTOINSTALL_EXE}"
+then
+    export portwine_exe="$PW_AUTOINSTALL_EXE"
+    try_remove_file "${portwine_exe}.ppdb"
+    pw_stop_progress_bar
+    portwine_create_shortcut
+    kill_portwine
+fi
+
+stop_portwine

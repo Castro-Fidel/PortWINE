@@ -385,7 +385,8 @@ pw_prefix_manager () {
         else
             print_info "Nothing to do. Restarting PortProton..."
             stop_portwine &
-            /usr/bin/env bash -c ${pw_full_command_line[*]} 
+            /usr/bin/env bash -c ${pw_full_command_line[*]} &
+            exit 0
         fi
     }
     gui_prefix_manager
@@ -852,7 +853,8 @@ else
     --field="   Genshin Impact"!"$PW_GUI_ICON_PATH/genshinimpact.png"!"":"FBTN" '@bash -c "button_click PW_GENSHIN_IMPACT"' \
     --field="   EA App (TEST)"!"$PW_GUI_ICON_PATH/eaapp.png"!"":"FBTN" '@bash -c "button_click PW_EAAPP"' \
     --field="   Battle Of Space Raiders"!"$PW_GUI_ICON_PATH/bsr.png"!"":"FBTN" '@bash -c "button_click PW_BSR"' \
-    --field="   Black Desert Online (RU)"!"$PW_GUI_ICON_PATH/bdo.png"!"":"FBTN" '@bash -c "button_click PW_BDO"' 2>/dev/null &
+    --field="   Black Desert Online (RU)"!"$PW_GUI_ICON_PATH/bdo.png"!"":"FBTN" '@bash -c "button_click PW_BDO"' \
+    --field="   Pulse Online"!"$PW_GUI_ICON_PATH/pulseonline.png"!"":"FBTN" '@bash -c "button_click PW_PULSE_ONLINE"' 2>/dev/null &
 
     # --field="   Secret World Legends (ENG)"!"$PW_GUI_ICON_PATH/swl.png"!"":"FBTN" '@bash -c "button_click PW_SWL"'
     # --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"'
