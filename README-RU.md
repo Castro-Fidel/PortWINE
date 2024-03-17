@@ -176,6 +176,14 @@ sudo -E dnf install curl icoutils libcurl  bubblewrap zstd cabextract tar goverl
 sudo eopkg it curl file bubblewrap curl icoutils tar  zstd cabextract xdg-utils openssl vulkan vulkan-32bit mesalib-32bit samba
 ```
 
+* **Void**
+```sh
+sudo xbps-install -Suv void-repo-multilib
+
+sudo xbps-install -S bash wget icoutils yad bubblewrap zstd cabextract gzip tar xz openssl desktop-file-utils curl dbus freetype xdg-utils
+gdk-pixbuf noto-fonts-ttf nss xrandr lsof mesa-demos ImageMagick Vulkan-Tools libgcc alsa-plugins-32bit libX11-32bit freetype-32bit libglvnd-32bit libgpg-error-32bit nss-32bit openssl-32bit vulkan-loader vulkan-loader-32bit
+```
+
 ## Контакты
 
 <p>
