@@ -413,12 +413,21 @@ check_user_conf () {
 init_wine_ver () {
     if [[ "${PW_WINE_USE}" == "USE_SYSTEM_WINE" ]] \
     && command -v wine &>/dev/null ; then
-        export WINEDIR="$RT_PREFIX/usr"
-        export WINE="$RT_PREFIX/$(command -v wine)"
-        export WINELOADER="$WINE"
-        export WINESERVER="$RT_PREFIX/$(command -v wineserver)"
-        export PW_USE_RUNTIME=0
-        export PW_NO_FSYNC=1
+        if ! grep -i "flatpak" /etc/os-release &>/dev/null ; then
+            export WINEDIR="$RT_PREFIX/usr"
+            export WINE="$RT_PREFIX/$(command -v wine)"
+            export WINELOADER="$WINE"
+            export WINESERVER="$RT_PREFIX/$(command -v wineserver)"
+            export PW_USE_RUNTIME=0
+            export PW_NO_FSYNC=1
+        else
+            export WINEDIR="$RT_PREFIX/app"
+            export WINE="$RT_PREFIX/app/bin/wine"
+            export WINELOADER="$WINE"
+            export WINESERVER="$RT_PREFIX/app/bin/wineserver"
+            export PW_USE_RUNTIME=0
+            export PW_NO_FSYNC=1
+        fi
     else
         if [[ -d "${PORT_WINE_PATH}/data/dist" ]] ; then
         orig_IFS="$IFS"
