@@ -567,12 +567,24 @@ start_portwine () {
 
     for try_cp_dll_from_wine in "ntdll.dll" "vulkan-1.dll" "winevulkan.dll" "amd_ags_x64.dll" "ir50_32.dll" ; do
         try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/${try_cp_dll_from_wine}"
-        if try_copy_file "${WINEDIR}/lib/wine/i386-windows/${try_cp_dll_from_wine}" "${WINEPREFIX}/drive_c/windows/syswow64/${try_cp_dll_from_wine}" 
-        then print_info "Try copy $try_cp_dll_from_wine to syswow64... OK."
+        if [[ -d "${WINEDIR}/lib/wine/i386-windows/" ]] ; then
+            if try_copy_file "${WINEDIR}/lib/wine/i386-windows/${try_cp_dll_from_wine}" "${WINEPREFIX}/drive_c/windows/syswow64/${try_cp_dll_from_wine}"
+            then print_info "Try copy $try_cp_dll_from_wine to syswow64... OK."
+            fi
+        elif [[ -d "${WINEDIR}/lib32/wine/i386-windows/" ]] ; then
+            if try_copy_file "${WINEDIR}/lib32/wine/i386-windows/${try_cp_dll_from_wine}" "${WINEPREFIX}/drive_c/windows/syswow64/${try_cp_dll_from_wine}"
+            then print_info "Try copy $try_cp_dll_from_wine to syswow64... OK."
+            fi
         fi
         try_remove_file "${WINEPREFIX}/drive_c/windows/system32/${try_cp_dll_from_wine}"
-        if try_copy_file "${WINEDIR}/lib64/wine/x86_64-windows/${try_cp_dll_from_wine}" "${WINEPREFIX}/drive_c/windows/system32/${try_cp_dll_from_wine}"
-        then print_info "Try copy $try_cp_dll_from_wine to system32... OK."
+        if [[ -d "${WINEDIR}/lib64/wine/x86_64-windows/" ]] ; then
+            if try_copy_file "${WINEDIR}/lib64/wine/x86_64-windows/${try_cp_dll_from_wine}" "${WINEPREFIX}/drive_c/windows/system32/${try_cp_dll_from_wine}"
+            then print_info "Try copy $try_cp_dll_from_wine to system32... OK."
+            fi
+        elif [[ -d "${WINEDIR}/lib/wine/x86_64-windows/" ]] ; then
+            if try_copy_file "${WINEDIR}/lib/wine/x86_64-windows/${try_cp_dll_from_wine}" "${WINEPREFIX}/drive_c/windows/system32/${try_cp_dll_from_wine}"
+            then print_info "Try copy $try_cp_dll_from_wine to system32... OK."
+            fi
         fi
     done
 
