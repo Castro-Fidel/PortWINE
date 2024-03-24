@@ -191,8 +191,10 @@ portwine_start_debug () {
     [[ `command -v glxinfo` ]] && glxinfo -B >> "${PORT_WINE_PATH}/${portname}.log"
     echo "-----" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "inxi -G:" >> "${PORT_WINE_PATH}/${portname}.log"
-    "${PW_PLUGINS_PATH}/portable/bin/inxi" -Gc0 >> "${PORT_WINE_PATH}/${portname}.log"
-    if echo "$LSPCI_VGA" | grep -i nvidia &>/dev/null ; then 
+    if ! grep -i "flatpak" /etc/os-release &>/dev/null
+    then "${PW_PLUGINS_PATH}/portable/bin/inxi" -Gc0 >> "${PORT_WINE_PATH}/${portname}.log"
+    fi
+    if echo "$LSPCI_VGA" | grep -i nvidia &>/dev/null ; then
         if command -v ldconfig &>/dev/null ; then
             echo "------" >> "${PORT_WINE_PATH}/${portname}.log"
             echo "ldconfig -p | grep libGLX_nvidia" >> "${PORT_WINE_PATH}/${portname}.log"
@@ -677,8 +679,8 @@ else
             kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \--notebook" | awk '{print $1}') > /dev/null 2>&1
         fi
 
-        if grep -i "flatpak" /etc/os-release &>/dev/null ;
-        then PW_EXEC_FROM_DESKTOP="$(cat "${PORT_WINE_PATH}/${PW_YAD_SET//¬/" "}" | grep Exec | head -n 1 | sed 's|flatpak run com.castrofidel.portproton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
+        if grep -i "flatpak" /etc/os-release &>/dev/null
+        then PW_EXEC_FROM_DESKTOP="$(cat "${PORT_WINE_PATH}/${PW_YAD_SET//¬/" "}" | grep Exec | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
         else PW_EXEC_FROM_DESKTOP="$(cat "${PORT_WINE_PATH}/${PW_YAD_SET//¬/" "}" | grep Exec | head -n 1 | awk -F"=env " '{print $2}')"
         fi
 

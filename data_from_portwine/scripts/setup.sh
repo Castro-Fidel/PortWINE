@@ -7,7 +7,7 @@ if  grep -i "flatpak" /etc/os-release &>/dev/null ; then
 	echo "[Desktop Entry]"	 					  		 > "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Name=${name_desktop}" 				 		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Version=${install_ver}"						 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Exec=flatpak run com.castrofidel.portproton"	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Exec=flatpak run ru.linux_gaming.PortProton"	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Type=Application" 						 	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Terminal=False" 						 		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Categories=Game"	    				 		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
