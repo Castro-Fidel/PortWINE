@@ -85,15 +85,14 @@ start_portwine () {
     then
         pw_clear_pfx
         check_dirs_and_files_in_pfx
-
         if [[ "${PW_PREFIX_NAME}" == DEFAULT ]] ; then
             pw_update_pfx_cover_gui
-            unpack_tar_xz "${PW_WINELIB}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
+            unpack_tar_xz "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
             pw_wineboot -u
         elif [[ "${PW_CHECK_AUTOINSTAL}" == 1 ]] \
         && [[ "${DISABLE_CP_DEFPFX}" != 1 ]] ; then
             pw_update_pfx_cover_gui
-            unpack_tar_xz "${PW_WINELIB}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
+            unpack_tar_xz "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
             pw_wineboot -u
         elif [[ "${PW_CHECK_AUTOINSTAL}" == 1 ]] \
         && [[ "${DISABLE_CP_DEFPFX}" == 1 ]] ; then
@@ -101,7 +100,7 @@ start_portwine () {
             pw_wineboot -i
         elif yad_question "$loc_gui_dll_new_pfx ${PW_PREFIX_NAME}" ; then
             pw_update_pfx_cover_gui
-            unpack_tar_xz "${PW_WINELIB}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
+            unpack_tar_xz "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
             pw_wineboot -u
         else
             pw_update_pfx_cover_gui
@@ -395,7 +394,7 @@ start_portwine () {
             echo "d3dx9" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
         fi
         #try link d3d extras libs
-        PATH_TO_D3DEXTRAS="${PW_WINELIB}/d3d_extras"
+        PATH_TO_D3DEXTRAS="${PW_PLUGINS_PATH}/d3d_extras"
         for d3d_extras_from_plugins in $D3D_EXTRAS_LIBS ; do
             try_force_link_file "${PATH_TO_D3DEXTRAS}/x64/${d3d_extras_from_plugins}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
             try_force_link_file "${PATH_TO_D3DEXTRAS}/x32/${d3d_extras_from_plugins}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
@@ -505,11 +504,9 @@ start_portwine () {
             fi
         done
 
-        try_force_link_file "${WINEDIR}/lib/wine/nvapi/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/" || \
         try_force_link_file "${PATH_TO_DXVK_FILES}/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/" || \
         try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
 
-        try_force_link_file "${WINEDIR}/lib64/wine/nvapi/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/" || \
         try_force_link_file "${PATH_TO_DXVK_FILES}/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/" || \
         try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/" 
 
@@ -784,7 +781,7 @@ else
 fi
 unset MANGOHUD MANGOHUD_DLSYM PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_YAD_SET PW_ICON_FOR_YAD
 unset PW_CHECK_AUTOINSTAL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PORTWINE_DB_FILE PW_DISABLED_CREATE_DB RADV_PERFTEST
-unset CHK_SYMLINK_FILE MESA_GL_VERSION_OVERRIDE PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME PORTWINE_CREATE_SHORTCUT_NAME
+unset CHK_SYMLINK_FILE MESA_GL_VERSION_OVERRIDE PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME PORTWINE_CREATE_SHORTCUT_NAME FLATPAK_IN_USE
 unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD PW_WINE_CPU_TOPOLOGY
 unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_ALL_DF PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
 
@@ -865,6 +862,16 @@ check_user_conf
 check_variables PW_LOG "0"
 
 if [[ -z "${INSTALLING_PORT}" ]] ; then
+    . "${USER_CONF}"
+    if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] \
+    && [[ ! -f "/tmp/portproton.lock" ]]
+    then
+        pw_port_update
+    fi
+    unset SKIP_CHECK_UPDATES
+
+    pw_check_and_download_plugins
+
     if [[ -f "/tmp/portproton.lock" ]] ; then
         print_warning "Found lock file: /tmp/portproton.lock"
         yad_question "$loc_gui_portproton_lock" || exit 0
@@ -876,14 +883,8 @@ if [[ -z "${INSTALLING_PORT}" ]] ; then
     }
     trap "rm_lock_file" EXIT
 
-    . "${USER_CONF}"
-    if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
-        pw_port_update
-    fi
-    unset SKIP_CHECK_UPDATES
-    pw_check_and_download_plugins
-    pw_download_libs
-    export PW_VULKANINFO_PORTABLE="$PW_WINELIB/pressure-vessel/libexec/steam-runtime-tools-0/x86_64-linux-gnu-vulkaninfo"
+    check_flatpak || pw_download_libs
+    export PW_VULKANINFO_PORTABLE="$PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo"
     export VULKAN_API_DRIVER_VERSION="$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep "api" | head -n 1 | awk '{print $3}')"
     export VULKAN_DRIVER_NAME="$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep driverName | awk '{print$3}' | head -1)"
     pw_init_db

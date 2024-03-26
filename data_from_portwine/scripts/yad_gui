@@ -265,11 +265,18 @@ pw_gui_for_edit_db () {
     YAD_STATUS="$?"
     export SKIP_CHECK_UPDATES=1
     case "$YAD_STATUS" in
-          1) /usr/bin/env bash -c ${pw_full_command_line[*]} & exit 0 ;;
-          2) try_remove_file "$portwine_exe".ppdb             
-             /usr/bin/env bash -c ${pw_full_command_line[*]} & exit 0 ;;
-        150) xdg-open "${PORTWINE_DB_FILE}" & exit 0 ;;
-        252) exit 0 ;;
+          1) 
+                /usr/bin/env bash -c "${pw_full_command_line[*]}" &
+                exit 0
+                ;;
+          2) 
+                try_remove_file "$portwine_exe".ppdb             
+                /usr/bin/env bash -c "${pw_full_command_line[*]}" &
+                exit 0
+                ;;
+        252) 
+                exit 0
+                ;;
     esac
     output_yad_edit_db=(`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db"`)
     bool_from_yad=0
@@ -302,7 +309,18 @@ pw_gui_for_edit_db () {
     edit_db_from_gui $@ LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY GAMESCOPE_ARGS
     edit_user_conf_from_gui PW_GPU_USE
     # PW_AMD_VULKAN_USE
-    return 0
+
+    case "$YAD_STATUS" in
+          0) 
+                print_info "Restarting PP after update ppdb file..."
+                /usr/bin/env bash -c "${pw_full_command_line[*]}" &
+                exit 0
+                ;;
+        150) 
+                xdg-open "${PORTWINE_DB_FILE}" & 
+                exit 0
+                ;;
+    esac
 }
 
 
@@ -721,7 +739,7 @@ portwine_create_shortcut () {
 
         echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
         echo "Name=${name_desktop}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-        if  grep -i "flatpak" /etc/os-release &>/dev/null
+        if check_flatpak
         then echo "Exec=flatpak run ru.linux_gaming.PortProton \"${portwine_exe}\" " >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
         else echo "Exec=env "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" "" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
         fi
@@ -753,7 +771,7 @@ portwine_create_shortcut () {
             echo "#!/usr/bin/env bash" > "${STEAM_SCRIPTS}/${name_desktop}.sh"
             echo "export START_FROM_STEAM=1" >> "${STEAM_SCRIPTS}/${name_desktop}.sh"
             echo "export LD_PRELOAD=" >> "${STEAM_SCRIPTS}/${name_desktop}.sh"
-            if grep -i "flatpak" /etc/os-release &>/dev/null
+            if check_flatpak
             then echo "flatpak run ru.linux_gaming.PortProton \"${portwine_exe}\" " >> "${STEAM_SCRIPTS}/${name_desktop}.sh"
             else echo "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" " >> "${STEAM_SCRIPTS}/${name_desktop}.sh"
             fi
