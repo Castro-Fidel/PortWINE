@@ -3,11 +3,11 @@
 . "$(dirname $(readlink -f "$0"))/runlib"
 
 name_desktop="PortProton"
-if  grep -i "flatpak" /etc/os-release &>/dev/null ; then
+if check_flatpak ; then
 	echo "[Desktop Entry]"	 					  		 > "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Name=${name_desktop}" 				 		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Version=${install_ver}"						 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-	echo "Exec=flatpak run com.castrofidel.portproton"	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
+	echo "Exec=flatpak run ru.linux_gaming.PortProton"	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Type=Application" 						 	 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Terminal=False" 						 		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 	echo "Categories=Game"	    				 		 >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
@@ -31,8 +31,7 @@ else
 	chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 fi
 
-if [[ ! -f /usr/bin/portproton ]] \
-&& ! grep -i "flatpak" /etc/os-release &>/dev/null
+if [[ ! -f /usr/bin/portproton ]] && ! check_flatpak
 then
 	cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" ${HOME}/.local/share/applications/
 fi
@@ -43,7 +42,7 @@ fi
 
 update-desktop-database -q "${HOME}/.local/share/applications"
 
-if ! grep -i "flatpak" /etc/os-release &>/dev/null ; then
+if ! check_flatpak ; then
 	xdg-mime default PortProton.desktop "application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program"
 fi
 

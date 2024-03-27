@@ -191,14 +191,18 @@ portwine_start_debug () {
     [[ `command -v glxinfo` ]] && glxinfo -B >> "${PORT_WINE_PATH}/${portname}.log"
     echo "-----" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "inxi -G:" >> "${PORT_WINE_PATH}/${portname}.log"
-    "${PW_PLUGINS_PATH}/portable/bin/inxi" -Gc0 >> "${PORT_WINE_PATH}/${portname}.log"
-    if echo "$LSPCI_VGA" | grep -i nvidia &>/dev/null ; then 
+    if ! check_flatpak
+    then "${PW_PLUGINS_PATH}/portable/bin/inxi" -Gc0 >> "${PORT_WINE_PATH}/${portname}.log"
+    fi
+    if echo "$LSPCI_VGA" | grep -i nvidia &>/dev/null ; then
         if command -v ldconfig &>/dev/null ; then
             echo "------" >> "${PORT_WINE_PATH}/${portname}.log"
             echo "ldconfig -p | grep libGLX_nvidia" >> "${PORT_WINE_PATH}/${portname}.log"
             ldconfig -p | grep libGLX_nvidia >> "${PORT_WINE_PATH}/${portname}.log"
         fi
     fi
+    echo "PW_SCREEN_RESOLUTION=$PW_SCREEN_RESOLUTION" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "PW_SCREEN_PRIMARY=$PW_SCREEN_PRIMARY" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
     echo "Vulkan info device name:" >> "${PORT_WINE_PATH}/${portname}.log"
     "$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep -E '^GPU|deviceName|driverName' >> "${PORT_WINE_PATH}/${portname}.log"
@@ -415,7 +419,6 @@ pw_winetricks () {
     --auto-close --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y 2>/dev/null &
     ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
     "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${PW_DLL_NEED_INSTALL} &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
-    try_remove_file "${PORT_WINE_TMP_PATH}/update_pfx_log"
     kill -s SIGTERM "$(pgrep -a yad_v12_3 | grep "title=WINETRICKS" | awk '{print $1}')" > /dev/null 2>&1    
     stop_portwine
 }
@@ -493,12 +496,6 @@ pw_edit_db () {
         PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY\
         PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE \
         PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_USE_GALLIUM_ZINK PW_USE_GAMESCOPE PW_DISABLE_COMPOSITING PW_USE_RUNTIME
-    fi
-    if [[ "$?" == 0 ]] ; then
-        print_info "Restarting PP after update ppdb file..."
-        export SKIP_CHECK_UPDATES=1
-        /usr/bin/env bash -c ${pw_full_command_line[*]} &
-        exit 0
     fi
     # PW_FORCE_USE_VSYNC HEAP_DELAY_FREE
 }
@@ -581,10 +578,6 @@ do
     export DIST_ADD_TO_GUI="${DIST_ADD_TO_GUI}!${DAIG}"
 done
 
-# if [[ $VULKAN_API_DRIVER_VERSION == 1.[1-2].* ]]
-# then check_variables PW_VULKAN_USE "1"
-# else check_variables PW_VULKAN_USE "2"
-# fi
 check_nvidia_rtx && check_variables PW_VULKAN_USE "2"
 
 case "${PW_VULKAN_USE}" in
@@ -677,8 +670,8 @@ else
             kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \--notebook" | awk '{print $1}') > /dev/null 2>&1
         fi
 
-        if grep -i "flatpak" /etc/os-release &>/dev/null ;
-        then PW_EXEC_FROM_DESKTOP="$(cat "${PORT_WINE_PATH}/${PW_YAD_SET//¬/" "}" | grep Exec | head -n 1 | sed 's|flatpak run com.castrofidel.portproton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
+        if check_flatpak
+        then PW_EXEC_FROM_DESKTOP="$(cat "${PORT_WINE_PATH}/${PW_YAD_SET//¬/" "}" | grep Exec | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
         else PW_EXEC_FROM_DESKTOP="$(cat "${PORT_WINE_PATH}/${PW_YAD_SET//¬/" "}" | grep Exec | head -n 1 | awk -F"=env " '{print $2}')"
         fi
 
