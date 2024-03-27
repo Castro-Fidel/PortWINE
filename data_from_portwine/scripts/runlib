@@ -71,8 +71,16 @@ start_portwine () {
     fi
 
     pw_wineboot () {
+            LIST_RM_WIN_DLL="winevulkan amd_ags_x64 ir50_32 atl100 ntdll \
+libvkd3d-1 libvkd3d-shader-1 dxvk_config nvapi nvapi64 d3d12core d3d12 \
+d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1"
+        for rm_win_dll in $LIST_RM_WIN_DLL ; do
+            try_remove_file "${WINEPREFIX}/drive_c/windows/system32/${rm_win_dll}.dll"
+            try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/${rm_win_dll}.dll"
+        done
         print_info "Used wineboot $@ for prefix: ${PW_PREFIX_NAME}"
         ${pw_runtime} env GST_PLUGIN_SYSTEM_PATH_1_0="" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
+        WINEDEBUG="fixme-all,err+loaddll,err+dll,err+file,err+reg" \
         "${WINELOADER}" wineboot $@ &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
         wait_wineserver
         print_info "The prefix has been updated."
@@ -88,12 +96,12 @@ start_portwine () {
         if [[ "${PW_PREFIX_NAME}" == DEFAULT ]] ; then
             pw_update_pfx_cover_gui
             unpack_tar_xz "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
-            pw_wineboot -u
+            pw_wineboot -r
         elif [[ "${PW_CHECK_AUTOINSTAL}" == 1 ]] \
         && [[ "${DISABLE_CP_DEFPFX}" != 1 ]] ; then
             pw_update_pfx_cover_gui
             unpack_tar_xz "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
-            pw_wineboot -u
+            pw_wineboot -r
         elif [[ "${PW_CHECK_AUTOINSTAL}" == 1 ]] \
         && [[ "${DISABLE_CP_DEFPFX}" == 1 ]] ; then
             pw_update_pfx_cover_gui
@@ -101,7 +109,7 @@ start_portwine () {
         elif yad_question "$loc_gui_dll_new_pfx ${PW_PREFIX_NAME}" ; then
             pw_update_pfx_cover_gui
             unpack_tar_xz "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
-            pw_wineboot -u
+            pw_wineboot -r
         else
             pw_update_pfx_cover_gui
             pw_wineboot -i
@@ -116,7 +124,7 @@ start_portwine () {
             if echo "$portwine_exe" | grep -i vkplay &>/dev/null
             then pw_kill_autostart GameCe 5 please & :
             fi
-            pw_wineboot -u
+            pw_wineboot -r
         fi
     fi
     echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
@@ -409,15 +417,6 @@ start_portwine () {
             try_force_link_file "${WINEDIR}/lib64/wine/x86_64-windows/${d3d_extras_from_plugins}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
         done
     fi
-    print_info "Try link wine d3d files by default..."
-    for rm_vulkan_dll in libvkd3d-1 libvkd3d-shader-1 dxvk_config nvapi nvapi64 d3d12core d3d12 d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d ; do
-        try_remove_file "${WINEPREFIX}/drive_c/windows/system32/${rm_vulkan_dll}.dll"
-        try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/${rm_vulkan_dll}.dll"
-    done
-    for wine_build_dll in d3d12core d3d12 d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d ; do
-        try_force_link_file "${WINEDIR}/lib/wine/i386-windows/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-        try_force_link_file "${WINEDIR}/lib64/wine/x86_64-windows/${wine_build_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-    done
 
     create_new_dir "${PW_VULKAN_DIR}/opengl"
     PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/opengl"
@@ -482,13 +481,13 @@ start_portwine () {
         fi
         check_variables VKD3D_FEATURE_LEVEL "12_0"
         if [[ "${PW_VULKAN_USE}" == "1" ]] ; then
-            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
-            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
+            export PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
+            export PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
             print_info "DXVK v.${DXVK_STABLE_VER} in use"
             print_info "VKD3D-PROTON v.${VKD3D_STABLE_VER} in use"
         elif [[ "${PW_VULKAN_USE}" == "2" ]] ; then
-            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}"
-            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
+            export PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}"
+            export PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
             print_info "DXVK v.${DXVK_GIT_VER} in use"
             print_info "VKD3D-PROTON v.${VKD3D_GIT_VER} in use"
         fi
@@ -561,17 +560,6 @@ start_portwine () {
     if [[ "${PW_WINE_CPU_TOPOLOGY}" != "disabled" ]] ; then
         export WINE_CPU_TOPOLOGY="${PW_WINE_CPU_TOPOLOGY}"
     fi
-
-    for try_cp_dll_from_wine in "ntdll.dll" "vulkan-1.dll" "winevulkan.dll" "amd_ags_x64.dll" "ir50_32.dll" ; do
-        try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/${try_cp_dll_from_wine}"
-        if try_copy_file "${WINEDIR}/lib/wine/i386-windows/${try_cp_dll_from_wine}" "${WINEPREFIX}/drive_c/windows/syswow64/${try_cp_dll_from_wine}" 
-        then print_info "Try copy $try_cp_dll_from_wine to syswow64... OK."
-        fi
-        try_remove_file "${WINEPREFIX}/drive_c/windows/system32/${try_cp_dll_from_wine}"
-        if try_copy_file "${WINEDIR}/lib64/wine/x86_64-windows/${try_cp_dll_from_wine}" "${WINEPREFIX}/drive_c/windows/system32/${try_cp_dll_from_wine}"
-        then print_info "Try copy $try_cp_dll_from_wine to system32... OK."
-        fi
-    done
 
     #run_winetricks_from_db
     if [[ ! -z "${PW_MUST_HAVE_DLL}" ]]
@@ -687,6 +675,8 @@ pw_run () {
             fi
             echo "WINEDLLOVERRIDES=${WINEDLLOVERRIDES}" >> "${PW_LOG_TO_FILE}"
             echo "------------------------------------" >> "${PW_LOG_TO_FILE}"
+            [[ -f "${PORT_WINE_TMP_PATH}/update_pfx_log" ]] && cat "${PORT_WINE_TMP_PATH}/update_pfx_log" >> "${PW_LOG_TO_FILE}"
+            echo "-" >> "${PW_LOG_TO_FILE}"
             echo "Log WINE:" >> "${PW_LOG_TO_FILE}"
             echo ""
             print_info "Log from RUNTIME and WINE:"
@@ -709,7 +699,6 @@ pw_run () {
             fi
             echo ""
             echo "Log WINE:" > "${PW_LOG_TO_FILE}"
-            print_info "Log from RUNTIME and WINE:"
             ${PW_RUN_GAMESCOPE} \
             ${pw_runtime} \
             env PATH="${PATH}" \
@@ -720,7 +709,12 @@ pw_run () {
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
             "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
+            print_info "Update prefix log:"
+            [[ -f "${PORT_WINE_TMP_PATH}/update_pfx_log" ]] && cat "${PORT_WINE_TMP_PATH}/update_pfx_log"
+            echo
+            print_info "Log from RUNTIME and WINE:"
             cat "${PW_LOG_TO_FILE}"
+            echo
         fi
     else
         if [[ "${PW_LOG}" == 1 ]] ; then
@@ -733,6 +727,8 @@ pw_run () {
             fi
             echo "WINEDLLOVERRIDES=${WINEDLLOVERRIDES}" >> "${PW_LOG_TO_FILE}"
             echo "------------------------------------" >> "${PW_LOG_TO_FILE}"
+            [[ -f "${PORT_WINE_TMP_PATH}/update_pfx_log" ]] && cat "${PORT_WINE_TMP_PATH}/update_pfx_log" >> "${PW_LOG_TO_FILE}"
+            echo "-" >> "${PW_LOG_TO_FILE}"
             echo "Log WINE:" >> "${PW_LOG_TO_FILE}"
             echo ""
             print_info "Log WINE:"
@@ -742,6 +738,8 @@ pw_run () {
             "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
             wait_wineserver
         else
+            print_info "Update prefix log:"
+            [[ -f "${PORT_WINE_TMP_PATH}/update_pfx_log" ]] && cat "${PORT_WINE_TMP_PATH}/update_pfx_log"
             echo ""
             echo "Log WINE:" > "${PW_LOG_TO_FILE}"
             print_info "Log WINE:"
@@ -784,6 +782,7 @@ unset PW_CHECK_AUTOINSTAL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PO
 unset CHK_SYMLINK_FILE MESA_GL_VERSION_OVERRIDE PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME PORTWINE_CREATE_SHORTCUT_NAME FLATPAK_IN_USE
 unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD PW_WINE_CPU_TOPOLOGY
 unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_ALL_DF PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
+unset MANGOHUD_CONFIG
 
 export portname=PortProton
 
@@ -830,7 +829,6 @@ create_new_dir "${PORT_WINE_TMP_PATH}"/mono
 export PW_VULKAN_DIR="${PORT_WINE_TMP_PATH}/VULKAN"
 create_new_dir "${PW_VULKAN_DIR}"
 
-
 export LSPCI_VGA="$(lspci -k | grep -E 'VGA|3D' | tr -d '\n')"
 
 if command -v xrandr &>/dev/null ; then
@@ -860,6 +858,8 @@ export WINETRICKS_DOWNLOADER="curl"
 export USER_CONF="${PORT_WINE_PATH}/data/user.conf"
 check_user_conf 
 check_variables PW_LOG "0"
+
+try_remove_file "${PORT_WINE_TMP_PATH}/update_pfx_log"
 
 if [[ -z "${INSTALLING_PORT}" ]] ; then
     . "${USER_CONF}"
