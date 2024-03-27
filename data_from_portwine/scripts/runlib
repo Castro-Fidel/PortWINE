@@ -127,6 +127,11 @@ d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1"
             pw_wineboot -r
         fi
     fi
+    if grep 'xapofx1_' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" &>/dev/null ; then
+        sed -i '/xapofx1_/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
+        sed -i '/x3daudio/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
+        sed -i '/xaudio2/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
+    fi
     echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
 
     # if [[ -f "$portwine_exe" ]] && [[ "${WARN_CYRILLIC_IN_PATH}" == 1 ]] ; then
@@ -602,7 +607,9 @@ d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1"
         fi
     fi
 
-    if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" ]] && [[ -z `grep "Windows $PW_WINDOWS_VER" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"` ]] ; then
+    if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" ]] \
+    && [[ -z `grep "Windows $PW_WINDOWS_VER" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"` ]]
+    then
         if [[ ! -z "${PW_WINDOWS_VER}" && `echo "$PW_WINDOWS_VER" | sed 's/.*/\L&/'` == "xp" ]] ; then
             export PW_WINDOWS_VER="xp64"
         fi
