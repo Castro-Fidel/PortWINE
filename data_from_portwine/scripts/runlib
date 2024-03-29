@@ -676,8 +676,7 @@ pw_run () {
     print_var "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH"
     kill -s SIGUSR1 "$PW_YAD_PID_PFX_COVER_UI" &>/dev/null
     if [[ "$PW_USE_RUNTIME" == 1 ]] \
-    && [[ "$PW_WINE_USE" != "USE_SYSTEM_WINE" ]] \
-    && ! check_flatpak
+    && [[ "$PW_WINE_USE" != "USE_SYSTEM_WINE" ]]
     then
         if [[ "${PW_LOG}" == 1 ]] ; then
             if check_start_from_steam ; then
@@ -897,7 +896,7 @@ if [[ -z "${INSTALLING_PORT}" ]] ; then
     }
     trap "rm_lock_file" EXIT
 
-    check_flatpak || pw_download_libs
+    pw_download_libs
     export PW_VULKANINFO_PORTABLE="$PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo"
     export VULKAN_API_DRIVER_VERSION="$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep "api" | head -n 1 | awk '{print $3}')"
     export VULKAN_DRIVER_NAME="$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep driverName | awk '{print$3}' | head -1)"
