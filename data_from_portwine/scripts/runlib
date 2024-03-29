@@ -675,7 +675,10 @@ pw_run () {
     print_var "VULKAN_API_DRIVER_VERSION" "VKD3D_CONFIG" "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2"
     print_var "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH"
     kill -s SIGUSR1 "$PW_YAD_PID_PFX_COVER_UI" &>/dev/null
-    if [[ "$PW_USE_RUNTIME" == 1 ]] ; then
+    if [[ "$PW_USE_RUNTIME" == 1 ]] \
+    && [[ "$PW_WINE_USE" != "USE_SYSTEM_WINE" ]] \
+    && ! check_flatpak
+    then
         if [[ "${PW_LOG}" == 1 ]] ; then
             if check_start_from_steam ; then
                 for VAR_LOGGER in PW_WINE_USE WINEDIR WINEDLLPATH WINEPREFIX PATH_TO_GAME PW_VULKAN_USE PW_LD_LIBRARY_PATH LD_LIBRARY_PATH PATH \
@@ -743,7 +746,7 @@ pw_run () {
             echo "Log WINE:" >> "${PW_LOG_TO_FILE}"
             echo ""
             print_info "Log WINE:"
-            env \
+            env FAKE_VAR= \
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
             "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
@@ -754,7 +757,7 @@ pw_run () {
             echo ""
             echo "Log WINE:" > "${PW_LOG_TO_FILE}"
             print_info "Log WINE:"
-            env \
+            env FAKE_VAR= \
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
             "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]}
@@ -793,7 +796,7 @@ unset PW_CHECK_AUTOINSTAL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PO
 unset CHK_SYMLINK_FILE MESA_GL_VERSION_OVERRIDE PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME PORTWINE_CREATE_SHORTCUT_NAME FLATPAK_IN_USE
 unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD PW_WINE_CPU_TOPOLOGY
 unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_ALL_DF PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
-unset MANGOHUD_CONFIG
+unset MANGOHUD_CONFIG PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME
 
 export portname=PortProton
 

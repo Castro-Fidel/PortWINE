@@ -425,23 +425,29 @@ check_user_conf () {
 }
 
 init_wine_ver () {
+    if [[ "${PW_WINE_VER}" == "USE_SYSTEM_WINE" ]]
+    then export PW_WINE_USE="USE_SYSTEM_WINE"
+    elif [[ ! -z "${PW_WINE_VER}" ]]
+    then export PW_WINE_USE="$PW_WINE_VER"
+    fi
+    unset PW_WINE_VER
+
     if [[ "${PW_WINE_USE}" == "USE_SYSTEM_WINE" ]] \
     && command -v wine &>/dev/null ; then
         if ! check_flatpak ; then
             export WINEDIR="$RT_PREFIX/usr"
-            export WINE="$RT_PREFIX/$(command -v wine)"
+            export WINE="$RT_PREFIX$(command -v wine)"
             export WINELOADER="$WINE"
-            export WINESERVER="$RT_PREFIX/$(command -v wineserver)"
-            export PW_USE_RUNTIME=0
+            export WINESERVER="$RT_PREFIX$(command -v wineserver)"
             export PW_NO_FSYNC=1
         else
             export WINEDIR="$RT_PREFIX/app"
             export WINE="$RT_PREFIX/app/bin/wine"
             export WINELOADER="$WINE"
             export WINESERVER="$RT_PREFIX/app/bin/wineserver"
-            export PW_USE_RUNTIME=0
             export PW_NO_FSYNC=1
         fi
+        unset WINEDLLPATH
     else
         if [[ -d "${PORT_WINE_PATH}/data/dist" ]] ; then
         orig_IFS="$IFS"
@@ -465,9 +471,6 @@ init_wine_ver () {
         elif [[ "$PW_WINE_USE" == WINE_LG ]]
         then export PW_WINE_USE="${PW_WINE_LG_VER}"
         fi
-        [ ! -z "${PW_WINE_VER}" ] && export PW_WINE_USE=`echo "${PW_WINE_VER}" | tr [[:lower:]] [[:upper:]]`
-        [ ! -z "${PW_WINE_USE}" ] && export PW_WINE_USE=`echo "${PW_WINE_USE}" | tr [[:lower:]] [[:upper:]]`
-        unset PW_WINE_VER
 
         export WINEDIR="${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}"
         export WINE="${WINEDIR}/bin/wine"
@@ -556,7 +559,10 @@ init_wine_ver () {
 }
 
 pw_init_runtime () {
-    if [[ "$PW_USE_RUNTIME" != 1 ]] || check_flatpak ; then
+    if [[ "$PW_USE_RUNTIME" != 1 ]] \
+    || [[ "$PW_WINE_USE" == "USE_SYSTEM_WINE" ]] \
+    || check_flatpak
+    then
         export pw_runtime=""
         return 0
     fi
@@ -1140,7 +1146,6 @@ pw_init_db () {
         fi
         if [[ -f "${PORTWINE_DB_FILE}" ]] ; then
             . "${PORTWINE_DB_FILE}"
-
             init_wine_ver && 
             print_info "Use ${PORTWINE_DB_FILE} db file."
         fi

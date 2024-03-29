@@ -569,7 +569,8 @@ IFS=$IFS_OLD
 export PW_ADD_PREFIXES_TO_GUI="${PW_PREFIX_NAME^^}${PW_ADD_PREFIXES_TO_GUI}"
 
 PW_ALL_DIST=$(ls "${PORT_WINE_PATH}/data/dist/" | sed -e s/"${PW_WINE_LG_VER}$//g" | sed -e s/"${PW_PROTON_LG_VER}$//g")
-if command -v wine &>/dev/null
+if command -v wine &>/dev/null \
+&& ! check_flatpak
 then DIST_ADD_TO_GUI="!USE_SYSTEM_WINE"
 else unset DIST_ADD_TO_GUI
 fi
@@ -917,7 +918,9 @@ esac
 init_wine_ver
 
 if [[ "${PW_DISABLED_CREATE_DB}" != 1 ]] ; then
-    if [[ ! -z "${PORTWINE_DB}" ]] && [[ -z "${PORTWINE_DB_FILE}" ]] ; then
+    if [[ ! -z "${PORTWINE_DB}" ]] \
+    && [[ -z "${PORTWINE_DB_FILE}" ]]
+    then
         PORTWINE_DB_FILE=$(grep -il "\#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/*)
         if [[ -z "${PORTWINE_DB_FILE}" ]] ; then
             echo "#!/usr/bin/env bash"  > "${portwine_exe}".ppdb
