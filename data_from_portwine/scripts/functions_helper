@@ -281,7 +281,7 @@ check_gamescope_session () {
     fi
     if echo "${DESKTOP_SESSION}" | grep -i "gamescope" &>/dev/null ; then
         if command -v konsole &>/dev/null
-        then export PW_TERM="konsole --hide-menubar --fullscreen -e" 
+        then export PW_TERM="konsole --hide-menubar --fullscreen -e"
         else export PW_TERM="xdg-terminal"
         fi
         export GAMESCOPE_IN_USE=1
@@ -396,7 +396,7 @@ pw_reinstall_pp () {
             echo ""
             exit 1
         fi
-    elif ! yad_question "${port_reinstall}" 
+    elif ! yad_question "${port_reinstall}"
     then exit 1
     fi
     pw_clear_pfx
@@ -468,7 +468,7 @@ init_wine_ver () {
             else export PW_WINE_USE=WINE_LG
             fi
         fi
-        if [[ "$PW_WINE_USE" == PROTON_LG ]] 
+        if [[ "$PW_WINE_USE" == PROTON_LG ]]
         then export PW_WINE_USE="${PW_PROTON_LG_VER}"
         elif [[ "$PW_WINE_USE" == WINE_LG ]]
         then export PW_WINE_USE="${PW_WINE_LG_VER}"
@@ -574,7 +574,7 @@ pw_init_runtime () {
         export LIBGL_DRIVERS_PATH="/usr/lib/X11/modules/dri:/usr/lib64/X11/modules/dri"
     fi
 
-    PW_PV_OVERRIDES="/usr/lib/pressure-vessel/overrides/lib" 
+    PW_PV_OVERRIDES="/usr/lib/pressure-vessel/overrides/lib"
 
     export PW_LD_LIBRARY_PATH="\
 ${WINEDIR}/lib64:${WINEDIR}/lib:\
@@ -653,7 +653,7 @@ pw_mangohud_check () {
     then
         export PW_MANGOHUD_SLR='MANGOHUD=1'
         MANGOHUD_LIB_NAME="libMangoHud.so"
-        if [[ "${PW_VULKAN_USE}" = "0" ]] ; then 
+        if [[ "${PW_VULKAN_USE}" = "0" ]] ; then
 	        MANGOHUD_LIB_NAME="libMangoHud_dlsym.so:${MANGOHUD_LIB_NAME}"
         fi
         if [[ ! -z "${PW_LD_PRELOAD}" ]]
@@ -720,19 +720,25 @@ wait_wineserver () {
 export -f wait_wineserver
 
 kill_portwine () {
-    wine_pids="`ls -l /proc/*/exe 2>/dev/null | grep -ie ${portname} | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}'`"
-    if  [ ! -z "${wine_pids}" ] ; then
+    if [[ "${PW_WINE_USE}" != "USE_SYSTEM_WINE" ]] ; then
+        wine_pids="`ls -l /proc/*/exe 2>/dev/null | grep -ie ${portname} | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}'`"
         for pw_kill_pids in ${wine_pids} ; do
-            if [ "`ps cax | grep ${pw_kill_pids}`" ] ; then
-                kill -n 9 ${pw_kill_pids} > /dev/null 2>&1  
+            if ps cax | grep ${pw_kill_pids} ; then
+                kill -n 9 ${pw_kill_pids} &>/dev/null
             fi
         done
-    fi
-    bwrap_pids="`pgrep -a wrap | grep ${portname} | head -n 1 | awk '{print $1}'`"
-    if  [ ! -z "${bwrap_pids}" ] ; then
+
+        bwrap_pids="`pgrep -a wrap | grep ${portname} | head -n 1 | awk '{print $1}'`"
         for pw_kill_pids in ${bwrap_pids} ; do
-            if [ "`ps cax | grep ${pw_kill_pids}`" ] ; then
-                kill -n 9 ${pw_kill_pids} > /dev/null 2>&1
+            if ps cax | grep ${pw_kill_pids} ; then
+                kill -n 9 ${pw_kill_pids} &>/dev/null
+            fi
+        done
+    else
+        wine_pids="`ls -l /proc/*/exe 2>/dev/null | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}'`"
+        for pw_kill_pids in ${wine_pids} ; do
+            if ps cax | grep ${pw_kill_pids} ; then
+                kill -n 9 ${pw_kill_pids} &>/dev/null
             fi
         done
     fi
@@ -761,7 +767,7 @@ pw_kill_autostart () {
             break
         fi
     done
-    
+
     if [[ ! -z "`ls "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/ | grep -m 1 ".tmp"`" ]] ; then
         rm -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/*.tmp
     fi
@@ -770,9 +776,9 @@ pw_kill_autostart () {
 }
 export -f pw_kill_autostart
 
-stop_portwine () { 
+stop_portwine () {
     [[ "$int_xneur" == "1"  ]] && xneur &
-    
+
     if [[ "$PW_USE_US_LAYOUT" == "1" ]] \
     && [[ "${XDG_SESSION_TYPE}" != "wayland" ]] \
     && command -v setxkbmap &>/dev/null
@@ -787,7 +793,7 @@ stop_portwine () {
     fi
 
     if [[ "${PW_DISABLE_COMPOSITING}" == "1" ]] \
-    && ! check_gamescope_session 
+    && ! check_gamescope_session
     then
         if [[ "${DESKTOP_SESSION}" =~ "plasma" ]] ; then
             qdbus org.kde.KWin /Compositor resume
@@ -858,7 +864,7 @@ pw_check_and_download_wine () {
     if [[ "${PW_WINE_USE}" == "GET-OTHER-WINE" ]] ; then
         gui_proton_downloader
     fi
-    if [[ "$PW_WINE_USE" == PROTON_LG ]] 
+    if [[ "$PW_WINE_USE" == PROTON_LG ]]
     then export PW_WINE_USE="${PW_PROTON_LG_VER}"
     elif [[ "$PW_WINE_USE" == WINE_*_LG ]] || [[ "$PW_WINE_USE" == WINE_LG ]]
     then export PW_WINE_USE="${PW_WINE_LG_VER}"
@@ -974,8 +980,8 @@ pw_check_and_download_plugins () {
         if command -v yad &>/dev/null ; then
             if try_download "github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" ; then
                 if unpack_tar_xz "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}" ; then
-                    try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" 
-                    # TODO: drop clear prefix, and add update prefix from new plugins 
+                    try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz"
+                    # TODO: drop clear prefix, and add update prefix from new plugins
                     pw_clear_pfx
                     if [ ! -z "`ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`" ] ; then
                         for RM_PLUGINS in `ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`
@@ -989,7 +995,7 @@ pw_check_and_download_plugins () {
                     then pw_check_and_download_plugins
                     else
                         export PW_PLUGINS_VER="$(echo _v$(($(echo $PW_PLUGINS_VER | sed 's/_v//') - 1)))"
-                        export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"  
+                        export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
                     fi
                 fi
             else
@@ -997,17 +1003,17 @@ pw_check_and_download_plugins () {
                 then pw_check_and_download_plugins
                 else
                     export PW_PLUGINS_VER="$(echo _v$(($(echo $PW_PLUGINS_VER | sed 's/_v//') - 1)))"
-                    export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"  
+                    export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
                 fi
             fi
         else
             PW_NOTIFY_TEXT="Please wait for update PortProton"
-            pw_notify_send -u normal 
+            pw_notify_send -u normal
             if try_download_silent "github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" \
                                    "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" ; then
                 if unpack_tar_xz "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}" ; then
                     try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz"
-                    # TODO: drop clear prefix, and add update prefix from new plugins 
+                    # TODO: drop clear prefix, and add update prefix from new plugins
                     pw_clear_pfx
                     if [ ! -z "`ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`" ] ; then
                         for RM_PLUGINS in `ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`
@@ -1016,7 +1022,7 @@ pw_check_and_download_plugins () {
                     fi
                 else
                     PW_NOTIFY_TEXT="Failed updating PortProton!"
-                    pw_notify_send -u critical 
+                    pw_notify_send -u critical
                     print_error "Failed updating PortProton!"
                 fi
             fi
@@ -1039,7 +1045,7 @@ check_dirs_and_files_in_pfx () {
         [ ! -d "${WINEPREFIX}/dosdevices/c:" ] && try_force_link_dir "${WINEPREFIX}/drive_c/" "${WINEPREFIX}/dosdevices/c:"
         [ ! -d "${WINEPREFIX}/dosdevices/z:" ] && try_force_link_dir "/" "${WINEPREFIX}/dosdevices/z:"
         [ ! -d "${WINEPREFIX}/dosdevices/h:" ] && try_force_link_dir "$HOME" "${WINEPREFIX}/dosdevices/h:"
-        
+
         create_new_dir "${WINEPREFIX}/drive_c/windows/Fonts/"
         LN_FONTS="arialbd.ttf courbd.ttf georgia.ttf micross.ttf msyh.ttf simsun.ttc arial.ttf cour.ttf malgun.ttf msgothic.ttc nirmala.ttf times.ttf"
         for link_font in $LN_FONTS ; do
@@ -1143,17 +1149,17 @@ pw_init_db () {
             fi
             if [[ ! -z `echo "${portwine_exe}" | grep "/data/prefixes/"` ]] && \
                 [[ -z `echo "${portwine_exe}" | grep "/data/prefixes/DEFAULT/"` ]]
-            then 
+            then
                 export PW_PREFIX_NAME=`echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}'`
             fi
         fi
         if [[ -f "${PORTWINE_DB_FILE}" ]] ; then
             . "${PORTWINE_DB_FILE}"
-            init_wine_ver && 
+            init_wine_ver &&
             print_info "Use ${PORTWINE_DB_FILE} db file."
         fi
         if [[ -z "${PATH_TO_GAME}" ]] || [[ ! -d "${PATH_TO_GAME}" ]]; then
-            export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"        
+            export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
         fi
 
         if [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] && [[ ! -z "${WINE_CPU_TOPOLOGY}" ]] ; then
@@ -1349,7 +1355,7 @@ pw_create_gui_png () {
             -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" -t14 "$(readlink -f "${portwine_exe}")"
         fi
         cp "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".ico" | head -n 1)" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
-        
+
         if command -v icotool &>/dev/null ; then
             icotool -x --width=${PW_RESIZE_TO} --height=${PW_RESIZE_TO} --output="${PORT_WINE_TMP_PATH}/tmp_img/" \
             "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
@@ -1358,7 +1364,7 @@ pw_create_gui_png () {
             -x --width=${PW_RESIZE_TO} --height=${PW_RESIZE_TO} --output="${PORT_WINE_TMP_PATH}/tmp_img/" \
             "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
         fi
-        if [[ ! -f "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".png" | grep "${PW_RESIZE_TO}x${PW_RESIZE_TO}")" ]] ; then 
+        if [[ ! -f "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".png" | grep "${PW_RESIZE_TO}x${PW_RESIZE_TO}")" ]] ; then
             if command -v icotool &>/dev/null ; then
                 icotool -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
             else
@@ -1376,11 +1382,11 @@ pw_create_gui_png () {
     && command -v convert &>/dev/null \
     && [[ -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]]
     then
-        convert "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" -resize ${PW_RESIZE_TO}x${PW_RESIZE_TO} "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" 
+        convert "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" -resize ${PW_RESIZE_TO}x${PW_RESIZE_TO} "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
     fi
     if [[ -z "${PW_ICON_FOR_YAD}" ]] ; then
         if [[ ! -z "`file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}"`" ]] ; then
-            export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" 
+            export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
         else
             export PW_ICON_FOR_YAD="${PW_GUI_ICON_PATH}/port_proton.png"
         fi
@@ -1443,7 +1449,7 @@ pw_create_unique_exe () {
         elif [[ ! -z "$PORTWINE_CREATE_SHORTCUT_NAME" ]] ; then
             ln -sf "$BASENAME_GAME_EXE" "$PORTWINE_CREATE_SHORTCUT_NAME.exe"
             export portwine_exe="$BASEDIR_GAME/$PORTWINE_CREATE_SHORTCUT_NAME.exe"
-        else 
+        else
             print_warning "There are no arguments for creating a symbolic link! Skip it..."
         fi
         popd

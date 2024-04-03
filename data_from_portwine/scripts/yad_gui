@@ -4,7 +4,7 @@
 yad_info () {
     print_info "$@"
     if [[ ! -f "${pw_yad_v12_3}" ]] ; then
-        local pw_yad_v12_3="yad" 
+        local pw_yad_v12_3="yad"
         command -v "${pw_yad_v12_3}" &>/dev/null || fatal "yad not found"
     fi
     "${pw_yad_v12_3}" --no-wrap --text "$@" --width=400 --height=50 --borders=15 --title "INFO" \
@@ -16,7 +16,7 @@ export -f yad_info
 yad_error () {
     print_error "$@"
     if [[ ! -f "${pw_yad_v12_3}" ]] ; then
-        local pw_yad_v12_3="yad" 
+        local pw_yad_v12_3="yad"
         command -v "${pw_yad_v12_3}" &>/dev/null || fatal "yad not found"
     fi
     "${pw_yad_v12_3}" --no-wrap --text "$@" --width=400 --borders=15 --title "ERROR" \
@@ -27,7 +27,7 @@ export -f yad_error
 
 yad_error_download () {
     if [[ ! -f "${pw_yad_v12_3}" ]] ; then
-        local pw_yad_v12_3="yad" 
+        local pw_yad_v12_3="yad"
         command -v "${pw_yad_v12_3}" &>/dev/null || fatal "yad not found"
     fi
     "${pw_yad_v12_3}" --text "$loc_gui_error_download" --width=400 --borders=15 --title "$loc_gui_error" \
@@ -38,7 +38,7 @@ yad_error_download () {
 
 yad_question () {
     if [[ ! -f "${pw_yad_v12_3}" ]] ; then
-        local pw_yad_v12_3="yad" 
+        local pw_yad_v12_3="yad"
         command -v "${pw_yad_v12_3}" &>/dev/null || fatal "yad not found"
     fi
     "${pw_yad_v12_3}" --text "${1}" --width=400 --borders=15 --title "${inst_set}." \
@@ -73,9 +73,21 @@ pw_start_progress_bar_cover_block () {
 }
 
 pw_update_pfx_cover_gui () {
+    if [[ "$1" == "winetricks" ]] ; then
+        TAB_PLACE='--tab=TERMINAL --tab=LOGO'
+        TAB_N1=2
+        TAB_N2=1
+        YAD_UNDECORATED=""
+    else
+        TAB_PLACE='--tab=LOGO --tab=TERMINAL'
+        TAB_N1=1
+        TAB_N2=2
+        YAD_UNDECORATED="--undecorated --center"
+
+    fi
     if ! check_start_from_steam && ! pgrep -a yad | grep "yad_v12_3 --notebook --key=$PW_KEY_PROGRESS_BAR_UP" &>/dev/null ; then
         PW_KEY_PROGRESS_BAR_UP=$RANDOM
-        PW_GIF_FILE="${PW_GUI_ICON_PATH}/covers/update_prefix_${update_loc}.gif" 
+        PW_GIF_FILE="${PW_GUI_ICON_PATH}/covers/update_prefix_${update_loc}.gif"
         PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 40}'`
         PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 80}'`
         echo "UPDATE PREFIX..." > "${PORT_WINE_TMP_PATH}/update_pfx_log"
@@ -92,11 +104,12 @@ pw_update_pfx_cover_gui () {
                     sleep 3
                     PW_TIMER=1
                 fi
-        done < "${PORT_WINE_TMP_PATH}/update_pfx_log" | "${pw_yad_v12_3}" --plug=$PW_KEY_PROGRESS_BAR_UP --tabnum="2" --text-info --tail  2>/dev/null &
-        "${pw_yad_v12_3}" --plug=$PW_KEY_PROGRESS_BAR_UP --tabnum="1" --picture --filename="${PW_GIF_FILE}" --image-on-top 2>/dev/null &
+        done < "${PORT_WINE_TMP_PATH}/update_pfx_log" | "${pw_yad_v12_3}" --plug=$PW_KEY_PROGRESS_BAR_UP --tabnum=$TAB_N2 --text-info --tail  2>/dev/null &
+        "${pw_yad_v12_3}" --plug=$PW_KEY_PROGRESS_BAR_UP --tabnum=$TAB_N1 --picture --filename="${PW_GIF_FILE}" --image-on-top 2>/dev/null &
 
-        "${pw_yad_v12_3}" --notebook --key="$PW_KEY_PROGRESS_BAR_UP" --tab=LOGO --tab=TERMINAL --no-buttons --undecorated \
-        --center --auto-close --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y --tab-pos=bottom 2>/dev/null &
+        "${pw_yad_v12_3}" --notebook --key="$PW_KEY_PROGRESS_BAR_UP" $TAB_PLACE --no-buttons \
+        --auto-close --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y $YAD_UNDECORATED \
+        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "PortProton" --tab-pos=bottom 2>/dev/null &
         export PW_YAD_PID_PFX_COVER_UI="$!"
         return 0
     fi
@@ -105,7 +118,8 @@ pw_update_pfx_cover_gui () {
 pw_start_progress_bar_cs () {
     if ! check_start_from_steam ; then
         "${pw_yad}" --progress --progress-text="$@" --pulsate --close-on-unfocus \
-        --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 &>/dev/null &
+        --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 \
+        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" &>/dev/null &
         export PW_YAD_PID_PROGRESS_BAR_CS="$!"
         return 0
     fi
@@ -114,7 +128,8 @@ pw_start_progress_bar_cs () {
 pw_start_progress_bar_block () {
     if ! check_start_from_steam ; then
         "${pw_yad}" --progress --progress-text="$@" --pulsate \
-        --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 &>/dev/null &
+        --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 \
+        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" &>/dev/null &
         export PW_YAD_PID_PROGRESS_BAR_BLOCK="$!"
         return 0
     fi
@@ -145,6 +160,7 @@ export -f pw_stop_progress_bar_cover_block
 open_changelog () {
     "${pw_yad}" --title="$loc_gui_changelog" --borders=${YAD_BORDERS} --no-buttons --text-align=center \
     --text-info --show-uri --wrap --width=1200 --height=700 --uri-color=red \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --filename="${PORT_WINE_PATH}/data/${PW_CHANGELOG_FILE}" &>/dev/null
 }
 export -f open_changelog
@@ -254,7 +270,7 @@ pw_gui_for_edit_db () {
     --field="${loc_gui_cpu_limit}!${loc_gui_cpu_limit_help} :CB" "${CPU_LIMIT_VAR}!disabled!${GET_LOGICAL_CORE}" \
     --field="${loc_gui_gpu_select}!${loc_gui_gpu_select_help} :CB" "${GPU_VAR}!disabled!${GET_GPU_NAMES}" \
     --field="${loc_gui_arg_gamescope}!${loc_gui_arg_gamescope_help} :CBE" "\\${GAMESCOPE_ARGS}!-r 60 -F fsr!" 2>/dev/null 1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
-    
+
     "${pw_yad_v12_3}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="800" \
     --text "${loc_gui_edit_db} <b>${PORTWINE_DB}</b>\n ${loc_gui_edit_db_help}" --separator=" " --borders=${YAD_BORDERS} \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
@@ -265,16 +281,16 @@ pw_gui_for_edit_db () {
     YAD_STATUS="$?"
     export SKIP_CHECK_UPDATES=1
     case "$YAD_STATUS" in
-          1) 
+          1)
                 /usr/bin/env bash -c ${pw_full_command_line[*]} &
                 exit 0
                 ;;
-          2) 
-                try_remove_file "$portwine_exe".ppdb             
+          2)
+                try_remove_file "$portwine_exe".ppdb
                 /usr/bin/env bash -c ${pw_full_command_line[*]} &
                 exit 0
                 ;;
-        252) 
+        252)
                 exit 0
                 ;;
     esac
@@ -317,13 +333,13 @@ pw_gui_for_edit_db () {
     # PW_AMD_VULKAN_USE
 
     case "$YAD_STATUS" in
-          0) 
+          0)
                 print_info "Restarting PP after update ppdb file..."
                 /usr/bin/env bash -c ${pw_full_command_line[*]} &
                 exit 0
                 ;;
-        150) 
-                xdg-open "${PORTWINE_DB_FILE}" & 
+        150)
+                xdg-open "${PORTWINE_DB_FILE}" &
                 exit 0
                 ;;
     esac
@@ -331,7 +347,7 @@ pw_gui_for_edit_db () {
 
 
 gui_proton_downloader () {
-    if [[ "$PW_WINE_USE" == PROTON_LG ]] 
+    if [[ "$PW_WINE_USE" == PROTON_LG ]]
     then export PW_WINE_USE="${PW_PROTON_LG_VER}"
     elif [[ "$PW_WINE_USE" == WINE_*_LG ]] || [[ "$PW_WINE_USE" == WINE_LG ]]
     then export PW_WINE_USE="${PW_WINE_LG_VER}"
@@ -595,7 +611,7 @@ gui_MangoHud () {
         time version vkbasalt vram vulkan_driver wine
     )
     # fps_only
-    
+
     unset ADD_GUI_MH GUI_MH_RESULT
 
     GET_REFRESH_RATE="30!45!60!75!120!144!165!240"
@@ -689,7 +705,7 @@ gui_MangoHud () {
         export GUI_MH_RESULT="fps_only"
         print_info "In the MangoHud config fps_only is detected all settings are reseted"
     fi
-    
+
     export MANGOHUD_CONFIG="${GUI_MH_RESULT}"
 
     edit_db_from_gui MANGOHUD_CONFIG PW_MANGOHUD FPS_LIMIT
@@ -803,7 +819,7 @@ portwine_create_shortcut () {
             fi
             unset PW_SKIP_RESTART_STEAM
         fi
-        
+
         [[ "$1" != silent ]] && [[ "${PW_SKIP_RESTART_STEAM}" != 1 ]] && "${PORT_WINE_PATH}" 2>1 >/dev/null &
     fi
 }
