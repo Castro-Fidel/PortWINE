@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
-# Author: linux-gaming.ru
+# Author: Castro-Fidel (linux-gaming.ru)
+# Development assistants: Cefeiko; Dezert1r; Taz_mania; Anton_Famillianov; gavr; RidBowt; chal55rus; UserDiscord; Boria138; Vano; Akai
+########################################################################
+echo '
+            █░░ █ █▄░█ █░█ ▀▄▀ ▄▄ █▀▀ ▄▀█ █▀▄▀█ █ █▄░█ █▀▀ ░ █▀█ █░█
+            █▄▄ █ █░▀█ █▄█ █░█ ░░ █▄█ █▀█ █░▀░█ █ █░▀█ █▄█ ▄ █▀▄ █▄█
+
+██████╗░░█████╗░██████╗░████████╗██████╗░██████╗░░█████╗░████████╗░█████╗░███╗░░██╗
+██╔══██╗██╔══██╗██╔══██╗╚══██╔══╝██╔══██╗██╔══██╗██╔══██╗╚══██╔══╝██╔══██╗████╗░██║
+██████╔╝██║░░██║██████╔╝░░░██║░░░██████╔╝██████╔╝██║░░██║░░░██║░░░██║░░██║██╔██╗██║
+██╔═══╝░██║░░██║██╔══██╗░░░██║░░░██╔═══╝░██╔══██╗██║░░██║░░░██║░░░██║░░██║██║╚████║
+██║░░░░░╚█████╔╝██║░░██║░░░██║░░░██║░░░░░██║░░██║╚█████╔╝░░░██║░░░╚█████╔╝██║░╚███║
+╚═╝░░░░░░╚════╝░╚═╝░░╚═╝░░░╚═╝░░░╚═╝░░░░░╚═╝░░╚═╝░╚════╝░░░░╚═╝░░░░╚════╝░╚═╝░░╚══╝
+
+'
+if [[ $(id -u) = 0 ]] ; then
+    echo "Do not run this script as root!"
+    exit 1
+fi
 
 export PW_START_PID="$$"
 export NO_AT_BRIDGE=1
@@ -22,7 +40,140 @@ then
     MISSING_DESKTOP_FILE=0
 fi
 
-. "$(dirname $(readlink -f "$0"))/runlib"
+. "$(dirname $(readlink -f "$0"))/functions_helper"
+
+if [[ -z "${LANG}" ]] ; then
+    export LANG=C
+    export FORCE_ENG_LANG=1
+elif [[ "${START_FROM_STEAM}" == 1 ]] ; then
+    export FORCE_ENG_LANG=1
+else
+    unset FORCE_ENG_LANG
+fi
+
+create_new_dir "${HOME}/.local/share/applications"
+if [[ "${PW_SILENT_RESTART}" == 1 ]] || [[ "${START_FROM_STEAM}" == 1 ]] ; then
+    export PW_GUI_DISABLED_CS=1
+    unset PW_SILENT_RESTART
+else
+    unset PW_GUI_DISABLED_CS
+fi
+unset MANGOHUD MANGOHUD_DLSYM PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_YAD_SET PW_ICON_FOR_YAD
+unset PW_CHECK_AUTOINSTAL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PORTWINE_DB_FILE PW_DISABLED_CREATE_DB RADV_PERFTEST
+unset CHK_SYMLINK_FILE MESA_GL_VERSION_OVERRIDE PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME PORTWINE_CREATE_SHORTCUT_NAME FLATPAK_IN_USE
+unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD PW_WINE_CPU_TOPOLOGY
+unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_ALL_DF PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
+unset MANGOHUD_CONFIG PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME
+
+export portname=PortProton
+
+cd "$(dirname "`readlink -f "$0"`")" && export PORT_SCRIPTS_PATH="$(pwd)"
+cd "${PORT_SCRIPTS_PATH}/../../" && export PORT_WINE_PATH="$(pwd)"
+export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
+
+rm -f $PORT_WINE_TMP_PATH/*{exe,msi,tar}*
+
+echo "" > "${PORT_WINE_TMP_PATH}/tmp_yad_form"
+
+if [[ -d "${PORT_WINE_PATH}/data/dist" ]] ; then
+    try_remove_file "${PORT_WINE_PATH}/data/dist/VERSION"
+    orig_IFS="$IFS"
+    IFS=$'\n'
+    for dist_dir in $(ls -1 "${PORT_WINE_PATH}/data/dist/") ; do
+        dist_dir_new=`echo "${dist_dir}" | awk '$1=$1' | sed -e s/[[:blank:]]/_/g`
+        if [[ ! -d "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}" ]] ; then
+            mv -- "${PORT_WINE_PATH}/data/dist/$dist_dir" "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}"
+        fi
+    done
+    IFS="$orig_IFS"
+else
+    create_new_dir "${PORT_WINE_PATH}/data/dist"
+fi
+create_new_dir "${PORT_WINE_PATH}/data/prefixes/DEFAULT"
+create_new_dir "${PORT_WINE_PATH}/data/prefixes/DOTNET"
+create_new_dir "${PORT_WINE_PATH}/data/prefixes/PROGRAMS"
+try_force_link_dir "${PORT_WINE_PATH}/data/prefixes" "${PORT_WINE_PATH}"
+
+orig_IFS="$IFS"
+IFS=$'\n'
+for pfx_dir in $(ls -1 "${PORT_WINE_PATH}/data/prefixes/") ; do
+    pfx_dir_new=`echo "${pfx_dir}" | awk '$1=$1' | sed -e s/[[:blank:]]/_/g`
+    if [[ ! -d "${PORT_WINE_PATH}/data/prefixes/${pfx_dir_new^^}" ]] ; then
+        mv -- "${PORT_WINE_PATH}/data/prefixes/$pfx_dir" "${PORT_WINE_PATH}/data/prefixes/${pfx_dir_new^^}"
+    fi
+done
+IFS="$orig_IFS"
+
+create_new_dir "${PORT_WINE_TMP_PATH}"/gecko
+create_new_dir "${PORT_WINE_TMP_PATH}"/mono
+
+export PW_VULKAN_DIR="${PORT_WINE_TMP_PATH}/VULKAN"
+create_new_dir "${PW_VULKAN_DIR}"
+
+export LSPCI_VGA="$(lspci -k | grep -E 'VGA|3D' | tr -d '\n')"
+
+if command -v xrandr &>/dev/null ; then
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_screen_configuration"
+    export PW_SCREEN_RESOLUTION="$(xrandr | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
+    export PW_SCREEN_PRIMARY="$(xrandr | grep "primary" | awk '{print $1}')"
+    print_var PW_SCREEN_RESOLUTION PW_SCREEN_PRIMARY
+else
+    print_error "xrandr - not found!"
+fi
+
+cd "${PORT_SCRIPTS_PATH}"
+. "${PORT_SCRIPTS_PATH}/var"
+
+export STEAM_SCRIPTS="${PORT_WINE_PATH}/steam_scripts"
+export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
+export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
+
+. "${PORT_SCRIPTS_PATH}"/lang
+. "${PORT_SCRIPTS_PATH}"/yad_gui
+
+export urlg="https://linux-gaming.ru/portproton/"
+export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
+try_remove_dir "${PW_WINELIB}/var"
+export install_ver=`cat "${PORT_WINE_TMP_PATH}/${portname}_ver" | head -n 1`
+export WINETRICKS_DOWNLOADER="curl"
+export USER_CONF="${PORT_WINE_PATH}/data/user.conf"
+check_user_conf
+check_variables PW_LOG "0"
+
+try_remove_file "${PORT_WINE_TMP_PATH}/update_pfx_log"
+
+[[ "${PW_SILENT_INSTALL}" == 1 ]] && return 0
+
+. "${USER_CONF}"
+if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] \
+&& [[ ! -f "/tmp/portproton.lock" ]]
+then
+    pw_port_update
+fi
+unset SKIP_CHECK_UPDATES
+
+pw_check_and_download_plugins
+
+if [[ -f "/tmp/portproton.lock" ]] ; then
+    print_warning "Found lock file: /tmp/portproton.lock"
+    yad_question "$loc_gui_portproton_lock" || exit 0
+fi
+touch "/tmp/portproton.lock"
+rm_lock_file () {
+    echo "Removing the lock file..."
+    rm -fv "/tmp/portproton.lock" && echo "OK"
+}
+trap "rm_lock_file" EXIT
+
+pw_download_libs
+export PW_VULKANINFO_PORTABLE="$PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo"
+export VULKAN_API_DRIVER_VERSION="$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep "api" | head -n 1 | awk '{print $3}')"
+export VULKAN_DRIVER_NAME="$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep driverName | awk '{print$3}' | head -1)"
+pw_init_db
+. "${PORT_SCRIPTS_PATH}"/lang
+pw_check_and_download_dxvk_and_vkd3d
+. "${USER_CONF}"
+
 kill_portwine
 killall -15 yad_v12_3 2>/dev/null
 kill -TERM `pgrep -a yad | grep ${portname} | head -n 1 | awk '{print $1}'` 2>/dev/null
@@ -576,9 +727,9 @@ if [[ ! -z "${PORTWINE_DB_FILE}" ]] ; then
         export PW_DEFAULT_WINE_USE="${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
     else
         if [[ "${PW_WINE_USE}" == "${PW_PROTON_LG_VER}" ]] ; then
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE" 
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
         elif [[ "${PW_WINE_USE}" == "${PW_WINE_LG_VER}" ]] ; then
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE" 
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
         else
             export DIST_ADD_TO_GUI=$(echo "${DIST_ADD_TO_GUI}" | sed -e s/"\!${PW_WINE_USE}$//g")
             export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
@@ -591,9 +742,9 @@ else
         export PW_DEFAULT_WINE_USE="${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
     else
         if [[ "${PW_WINE_USE}" == "${PW_PROTON_LG_VER}" ]] ; then
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE" 
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
         elif [[ "${PW_WINE_USE}" == "${PW_WINE_LG_VER}" ]] ; then
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE" 
+            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
         else
             export DIST_ADD_TO_GUI=$(echo "${DIST_ADD_TO_GUI}" | sed -e s/"\!${PW_WINE_USE}$//g")
             export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"

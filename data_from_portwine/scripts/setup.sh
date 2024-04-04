@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Author: linux-gaming.ru
-. "$(dirname $(readlink -f "$0"))/runlib"
+. "$(dirname $(readlink -f "$0"))/start.sh"
 
 name_desktop="PortProton"
 if check_flatpak ; then
@@ -31,8 +31,7 @@ else
 	chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 fi
 
-if [[ ! -f /usr/bin/portproton ]] && ! check_flatpak
-then
+if [[ ! -f /usr/bin/portproton ]] && ! check_flatpak ; then
 	cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" ${HOME}/.local/share/applications/
 fi
 
@@ -55,17 +54,16 @@ echo "Icon="${PORT_WINE_PATH}/data/img/readme.png""		>> "${PORT_WINE_PATH}/${nam
 echo "URL=${urlg}" 										>> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 
-if [ "${PW_SILENT_INSTALL}" = "1" ] ; then
-	if [ "${PW_AUTOPLAY}" = "1" ] ; then
-		unset INSTALLING_PORT
+unset INSTALLING_PORT
+if [[ "${PW_SILENT_INSTALL}" == 1 ]] ; then
+	if [[ "${PW_AUTOPLAY}" == 1 ]] ; then
 		if [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]] && [[ -f /usr/bin/portproton ]] ; then
 			try_remove_file "${HOME}/.local/share/applications/PortProton.desktop"
 		fi
 		echo "Restarting PP after installing..."
-		/usr/bin/env bash -c "${PORT_WINE_PATH}/data/scripts/start.sh" $@ & 
+		/usr/bin/env bash -c "${PORT_WINE_PATH}/data/scripts/start.sh" $@ &
 		exit 0
 	else
 		echo "Installation completed successfully."
 	fi
 fi
-unset INSTALLING_PORT
