@@ -142,7 +142,9 @@ check_variables PW_LOG "0"
 
 try_remove_file "${PORT_WINE_TMP_PATH}/update_pfx_log"
 
-[[ "${PW_SILENT_INSTALL}" == 1 ]] && return 0
+if [[ "${PW_SILENT_INSTALL}" == 1 ]] ; then
+    return 0
+fi
 
 . "${USER_CONF}"
 if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] \
