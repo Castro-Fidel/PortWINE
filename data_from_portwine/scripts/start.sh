@@ -22,7 +22,8 @@ fi
 export PW_START_PID="$$"
 export NO_AT_BRIDGE=1
 export pw_full_command_line=("$0" $*)
-export YAD_BORDERS=5
+export YAD_OPTIONS="--borders=3 --tab-borders=0 --keep-icon-size"
+
 MISSING_DESKTOP_FILE=0
 
 if [[ -f "$1" ]] ; then
@@ -127,6 +128,9 @@ cd "${PORT_SCRIPTS_PATH}"
 export STEAM_SCRIPTS="${PORT_WINE_PATH}/steam_scripts"
 export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
+
+export PW_GUI_THEMES_PATH="${PORT_WINE_PATH}/data/themes"
+export YAD_OPTIONS+=" --css=$PW_GUI_THEMES_PATH/default.css"
 
 . "${PORT_SCRIPTS_PATH}"/lang
 
@@ -339,8 +343,9 @@ if [[ -f "${portwine_exe}" ]] ; then
         else
             PW_SHORTCUT="${loc_gui_delete_shortcut}!$PW_GUI_ICON_PATH/separator.png!${loc_delete_shortcut}:98"
         fi
-        OUTPUT_START=$("${pw_yad}" --text-align=center --text "$PW_COMMENT_DB" --borders=${YAD_BORDERS} --form \
-        --title "${portname}-${install_ver} (${scripts_install_ver})" --image "${PW_ICON_FOR_YAD}" --separator=";" --keep-icon-size \
+        OUTPUT_START=$("${pw_yad}" --text-align=center --text "$PW_COMMENT_DB" --form \
+        --title "${portname}-${install_ver} (${scripts_install_ver})" \
+        --image "${PW_ICON_FOR_YAD}" --separator=";" \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
         --field="3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
         --field="  WINE  : :CB" "${PW_DEFAULT_WINE_USE}" \
@@ -386,10 +391,10 @@ else
 
     IFS="$orig_IFS"
     old_IFS=$IFS && IFS="%"
-    "${pw_yad_v13_0}" --plug=$KEY --tabnum=${PW_GUI_SORT_TABS[4]} --form --columns=3 --align-buttons --keep-icon-size --scroll --separator=" " ${PW_GENERATE_BUTTONS} 2>/dev/null &
+    "${pw_yad_v13_0}" --plug=$KEY --tabnum=${PW_GUI_SORT_TABS[4]} --form --columns=3 --align-buttons --scroll --separator=" " ${PW_GENERATE_BUTTONS} 2>/dev/null &
     IFS="$orig_IFS"
 
-    "${pw_yad_v13_0}" --plug=${KEY} --tabnum=${PW_GUI_SORT_TABS[3]} --form --columns=3 --align-buttons --keep-icon-size --separator=";" \
+    "${pw_yad_v13_0}" --plug=${KEY} --tabnum=${PW_GUI_SORT_TABS[3]} --form --columns=3 --align-buttons --separator=";" \
     --field="   $loc_gui_pw_reinstall_pp"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_pw_reinstall_pp"' \
     --field="   $loc_gui_rm_pp"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_rm_portproton"' \
     --field="   $loc_gui_upd_pp"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_pw_update"' \
@@ -400,7 +405,7 @@ else
     --field="   Xterm"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click pw_start_cont_xterm"' \
     --field="   $loc_gui_credits"!"$PW_GUI_ICON_PATH/separator.png"!"":"FBTN" '@bash -c "button_click gui_credits"'  2>/dev/null &
 
-    "${pw_yad_v13_0}" --plug=${KEY} --tabnum=${PW_GUI_SORT_TABS[2]} --form --columns=3 --align-buttons --keep-icon-size --separator=";" \
+    "${pw_yad_v13_0}" --plug=${KEY} --tabnum=${PW_GUI_SORT_TABS[2]} --form --columns=3 --align-buttons --separator=";" \
     --field="  3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
     --field="  PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
     --field="  WINE    : :CB" "${PW_DEFAULT_WINE_USE}" \
@@ -414,7 +419,7 @@ else
     --field="   $loc_gui_wine_cmd"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_winecmd}":"FBTN" '@bash -c "button_click WINECMD"' \
     --field="   $loc_gui_wine_reg"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_winereg}":"FBTN" '@bash -c "button_click WINEREG"' 2>/dev/null 1> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" &
 
-    "${pw_yad_v13_0}" --plug=$KEY --tabnum=${PW_GUI_SORT_TABS[1]} --form --columns=3 --align-buttons --keep-icon-size --scroll  \
+    "${pw_yad_v13_0}" --plug=$KEY --tabnum=${PW_GUI_SORT_TABS[1]} --form --columns=3 --align-buttons --scroll  \
     --field="   Dolphin 5.0"!"$PW_GUI_ICON_PATH/dolphin.png"!"${loc_dolphin}":"FBTN" '@bash -c "button_click PW_DOLPHIN"' \
     --field="   MAME"!"$PW_GUI_ICON_PATH/mame.png"!"${loc_mame}":"FBTN" '@bash -c "button_click PW_MAME"' \
     --field="   RetroArch"!"$PW_GUI_ICON_PATH/retroarch.png"!"${loc_retroarch}":"FBTN" '@bash -c "button_click PW_RETROARCH"' \
@@ -430,7 +435,7 @@ else
     --field="   xemu"!"$PW_GUI_ICON_PATH/xemu.png"!"${loc_xemu}":"FBTN" '@bash -c "button_click PW_XEMU"' \
     --field="   Demul"!"$PW_GUI_ICON_PATH/demul.png"!"${loc_demul}":"FBTN" '@bash -c "button_click PW_DEMUL"' 2>/dev/null &
 
-    "${pw_yad_v13_0}" --plug=$KEY --tabnum=${PW_GUI_SORT_TABS[0]} --form --columns=3 --align-buttons --keep-icon-size --scroll \
+    "${pw_yad_v13_0}" --plug=$KEY --tabnum=${PW_GUI_SORT_TABS[0]} --form --columns=3 --align-buttons --scroll \
     --field="   Lesta Game Center"!"$PW_GUI_ICON_PATH/lgc.png"!"":"FBTN" '@bash -c "button_click PW_LGC"' \
     --field="   vkPlay Games Center"!"$PW_GUI_ICON_PATH/mygames.png"!"":"FBTN" '@bash -c "button_click PW_VKPLAY"' \
     --field="   Battle.net Launcher"!"$PW_GUI_ICON_PATH/battle_net.png"!"":"FBTN" '@bash -c "button_click PW_BATTLE_NET"' \
@@ -464,7 +469,8 @@ else
     --field="   EA App (TEST)"!"$PW_GUI_ICON_PATH/eaapp.png"!"":"FBTN" '@bash -c "button_click PW_EAAPP"' \
     --field="   Battle Of Space Raiders"!"$PW_GUI_ICON_PATH/bsr.png"!"":"FBTN" '@bash -c "button_click PW_BSR"' \
     --field="   Black Desert Online (RU)"!"$PW_GUI_ICON_PATH/bdo.png"!"":"FBTN" '@bash -c "button_click PW_BDO"' \
-    --field="   Pulse Online"!"$PW_GUI_ICON_PATH/pulseonline.png"!"":"FBTN" '@bash -c "button_click PW_PULSE_ONLINE"' 2>/dev/null &
+    --field="   Pulse Online"!"$PW_GUI_ICON_PATH/pulseonline.png"!"":"FBTN" '@bash -c "button_click PW_PULSE_ONLINE"' \
+    --field="   CatsLauncher (Front Edge)"!"$PW_GUI_ICON_PATH/catslauncher.png"!"":"FBTN" '@bash -c "button_click PW_CATSLAUNCHER"' 2>/dev/null &
 
     # --field="   Secret World Legends (ENG)"!"$PW_GUI_ICON_PATH/swl.png"!"":"FBTN" '@bash -c "button_click PW_SWL"'
     # --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"'
@@ -484,9 +490,11 @@ else
     export START_FROM_PP_GUI=1
 
     if [[ -z "${PW_ALL_DF}" ]] ; then
-        "${pw_yad_v13_0}" --key=$KEY --notebook --borders=${YAD_BORDERS} --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons --auto-close \
-        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "${portname}-${install_ver} (${scripts_install_ver})" \
-        --tab-pos=bottom --keep-icon-size \
+        "${pw_yad_v13_0}" --key=$KEY --notebook --expand \
+        --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
+        --auto-close --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+        --title "${portname}-${install_ver} (${scripts_install_ver})" \
+        --tab-pos=bottom \
         --tab="$loc_mg_autoinstall"!"$PW_GUI_ICON_PATH/separator.png"!"" \
         --tab="$loc_mg_emulators"!"$PW_GUI_ICON_PATH/separator.png"!"" \
         --tab="$loc_mg_wine_settings"!"$PW_GUI_ICON_PATH/separator.png"!"" \
@@ -494,9 +502,11 @@ else
         --tab="$loc_mg_installed"!"$PW_GUI_ICON_PATH/separator.png"!"" 2>/dev/null
         YAD_STATUS="$?"
     else
-        "${pw_yad_v13_0}" --key=$KEY --notebook --borders=${YAD_BORDERS} --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons --auto-close \
-        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "${portname}-${install_ver} (${scripts_install_ver})" \
-        --tab-pos=bottom --keep-icon-size \
+        "${pw_yad_v13_0}" --key=$KEY --notebook --expand \
+        --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
+        --auto-close --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+        --title "${portname}-${install_ver} (${scripts_install_ver})" \
+        --tab-pos=bottom \
         --tab="$loc_mg_installed"!"$PW_GUI_ICON_PATH/separator.png"!"" \
         --tab="$loc_mg_autoinstall"!"$PW_GUI_ICON_PATH/separator.png"!"" \
         --tab="$loc_mg_emulators"!"$PW_GUI_ICON_PATH/separator.png"!"" \

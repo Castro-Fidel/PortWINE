@@ -552,7 +552,8 @@ init_wine_ver () {
         export MEDIACONV_VIDEO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/gstreamer_tmp/video.foz
         export MEDIACONV_VIDEO_TRANSCODED_FILE="${PORT_WINE_TMP_PATH}"/gstreamer_tmp/transcoded_video.foz
     else
-        var_winedlloverride_update "winegstreamer="
+        # var_winedlloverride_update "winegstreamer="
+        echo
     fi
 
     return 0
@@ -1095,6 +1096,12 @@ check_dirs_and_files_in_pfx () {
                 done
             fi
         done
+
+        LIST_COPY_WIN_DLL="ntdll shell32"
+        for copy_win_dll in $LIST_COPY_WIN_DLL ; do
+            try_copy_file "${WINEDIR}/lib64/wine/x86_64-windows/${copy_win_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${copy_win_dll}.dll"
+            try_copy_file "${WINEDIR}/lib/wine/i386-windows/${copy_win_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${copy_win_dll}.dll"
+        done
     }
 
 check_nvidia_rtx () {
@@ -1234,7 +1241,7 @@ pw_port_update () {
                 curl -s --list-only "${URL_FOR_CHANGELOG}/${PW_CHANGELOG_FILE}" | tee "${PORT_WINE_TMP_PATH}/curent_var_ver"
                 CHANGLOG_NEWS=`cat "${PORT_WINE_TMP_PATH}/curent_var_ver" | sed "/Scripts version ${scripts_install_ver}/,$ d" | sed '1,/---/ d' `
                 xcsd=`"${pw_yad_v13_0}" --title "${scripts_upd2} v.${scripts_current_ver}" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-                --borders=${YAD_BORDERS} --form --separator='%%%' --width=1200 --height=600 \
+                --form --separator='%%%' --width=1200 --height=600 \
                 --field=":TXT" "${CHANGLOG_NEWS}" \
                 --field="   ${scripts_upd3} :CB" "${scripts_upd4}!${scripts_upd5}!${scripts_upd6}" 2>/dev/null`
                 YAD_STATUS="$?"
@@ -1476,7 +1483,9 @@ start_portwine () {
     if [[ "${PW_PREFIX_NAME}" == "DOTNET" ]] && [[ ! -f "${WINEPREFIX}"/.dotnet${DOTPFX_VER} ]] ; then
         print_info "Download and install DOTNET pfx..."
         if try_download "${DOTPFX_URL}" "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz" ; then
-            unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/"
+            if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/"
+            then touch "${WINEPREFIX}"/.dotnet${DOTPFX_VER}
+            fi
             try_remove_file "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz"
         else
             try_remove_file "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz"
@@ -1509,11 +1518,12 @@ start_portwine () {
     pw_wineboot () {
             LIST_RM_WIN_DLL="winevulkan amd_ags_x64 ir50_32 atl100 ntdll \
 libvkd3d-1 libvkd3d-shader-1 dxvk_config nvapi nvapi64 d3d12core d3d12 \
-d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1"
+d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
         for rm_win_dll in $LIST_RM_WIN_DLL ; do
             try_remove_file "${WINEPREFIX}/drive_c/windows/system32/${rm_win_dll}.dll"
             try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/${rm_win_dll}.dll"
         done
+
         print_info "Used wineboot $@ for prefix: ${PW_PREFIX_NAME}"
         ${pw_runtime} env GST_PLUGIN_SYSTEM_PATH_1_0="" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
         WINEDEBUG="fixme-all,err+loaddll,err+dll,err+file,err+reg" \
@@ -2321,8 +2331,8 @@ yad_question () {
 pw_start_progress_bar_cover () {
     if ! check_start_from_steam ; then
         PW_GIF_FILE="$1"
-        PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 20}'`
-        PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 20}'`
+        PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 7}'`
+        PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 7}'`
         "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated --center \
         --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y --window-icon="$PW_GUI_ICON_PATH/portproton.svg" > /dev/null 2>&1 &
         export PW_YAD_PID_PROGRESS_BAR_COVER="$!"
@@ -2334,8 +2344,8 @@ pw_start_progress_bar_cover_block () {
     if ! check_start_from_steam ; then
         [[ ! -f "${pw_yad}" ]] && local pw_yad="yad"
         PW_GIF_FILE="$1"
-        PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 20}'`
-        PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 20}'`
+        PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 7}'`
+        PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 7}'`
         "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated --center \
         --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y --window-icon="$PW_GUI_ICON_PATH/portproton.svg" > /dev/null 2>&1 &
         export PW_YAD_PID_PROGRESS_BAR_COVER_BLOCK="$!"
@@ -2345,12 +2355,12 @@ pw_start_progress_bar_cover_block () {
 
 pw_update_pfx_cover_gui () {
     if [[ "$1" == "winetricks" ]] ; then
-        TAB_PLACE='--tab=TERMINAL --tab=LOGO'
+        TAB_PLACE="--tab=$loc_gui_terminal --tab=$loc_gui_logo"
         TAB_N1=2
         TAB_N2=1
         YAD_UNDECORATED=""
     else
-        TAB_PLACE='--tab=LOGO --tab=TERMINAL'
+        TAB_PLACE="--tab=$loc_gui_logo --tab=$loc_gui_terminal"
         TAB_N1=1
         TAB_N2=2
         YAD_UNDECORATED="--undecorated --center"
@@ -2359,8 +2369,8 @@ pw_update_pfx_cover_gui () {
     if ! check_start_from_steam && ! pgrep -a yad | grep "yad_v13_0 --notebook --key=$PW_KEY_PROGRESS_BAR_UP" &>/dev/null ; then
         PW_KEY_PROGRESS_BAR_UP=$RANDOM
         PW_GIF_FILE="${PW_GUI_ICON_PATH}/covers/update_prefix_${update_loc}.gif"
-        PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 40}'`
-        PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 80}'`
+        PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 20}'`
+        PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 60}'`
         echo "UPDATE PREFIX..." > "${PORT_WINE_TMP_PATH}/update_pfx_log"
         export PW_TIMER=0
         while read -r line || [[ ! -z `pgrep -a yad | grep "yad_v13_0 --notebook --key=$PW_KEY_PROGRESS_BAR_UP" | awk '{print $1}'` ]] ; do
@@ -2378,9 +2388,9 @@ pw_update_pfx_cover_gui () {
         done < "${PORT_WINE_TMP_PATH}/update_pfx_log" | "${pw_yad_v13_0}" --plug=$PW_KEY_PROGRESS_BAR_UP --tabnum=$TAB_N2 --text-info --tail  2>/dev/null &
         "${pw_yad_v13_0}" --plug=$PW_KEY_PROGRESS_BAR_UP --tabnum=$TAB_N1 --picture --filename="${PW_GIF_FILE}" --image-on-top 2>/dev/null &
 
-        "${pw_yad_v13_0}" --notebook --key="$PW_KEY_PROGRESS_BAR_UP" $TAB_PLACE --no-buttons \
+        "${pw_yad_v13_0}" --notebook --key="$PW_KEY_PROGRESS_BAR_UP" $TAB_PLACE --no-buttons --expand \
         --auto-close --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y $YAD_UNDECORATED \
-        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "PortProton" --tab-pos=bottom 2>/dev/null &
+        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "PortProton" --tab-pos=bottom --expand 2>/dev/null &
         export PW_YAD_PID_PFX_COVER_UI="$!"
         return 0
     fi
@@ -2388,7 +2398,8 @@ pw_update_pfx_cover_gui () {
 
 pw_start_progress_bar_cs () {
     if ! check_start_from_steam ; then
-        "${pw_yad}" --progress --progress-text="$@" --pulsate --close-on-unfocus \
+        "${pw_yad}" --progress --progress-text="$@
+        " --pulsate --close-on-unfocus --borders=20 \
         --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" &>/dev/null &
         export PW_YAD_PID_PROGRESS_BAR_CS="$!"
@@ -2398,7 +2409,8 @@ pw_start_progress_bar_cs () {
 
 pw_start_progress_bar_block () {
     if ! check_start_from_steam ; then
-        "${pw_yad}" --progress --progress-text="$@" --pulsate \
+        "${pw_yad}" --progress --progress-text="$@
+        " --pulsate --borders=20 \
         --no-buttons --undecorated --center --skip-taskbar --width=500 --wrap-width=500 \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" &>/dev/null &
         export PW_YAD_PID_PROGRESS_BAR_BLOCK="$!"
@@ -2429,7 +2441,7 @@ pw_stop_progress_bar_cover_block () {
 export -f pw_stop_progress_bar_cover_block
 
 open_changelog () {
-    "${pw_yad}" --title="$loc_gui_changelog" --borders=${YAD_BORDERS} --no-buttons --text-align=center \
+    "${pw_yad}" --title="$loc_gui_changelog" --no-buttons --text-align=center \
     --text-info --show-uri --wrap --width=1200 --height=700 --uri-color=red \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --filename="${PORT_WINE_PATH}/data/${PW_CHANGELOG_FILE}" &>/dev/null
@@ -2467,7 +2479,7 @@ pw_tray_icon () {
     --image="$PW_GUI_ICON_PATH/portproton_tray.png" \
     --command="bash -c tray_icon_click" \
     --tooltip="PortProton" \
-    --menu="| \
+    --icon-size=32 --menu="| \
   ${loc_tray_winefile}!bash -c pw_tray_winefile!"$PW_GUI_ICON_PATH/port_winefile.png"|| \
   ${loc_tray_tascmng}!bash -c pw_tray_taskmgr!"$PW_GUI_ICON_PATH/port_winefile.png"|| \
   ${loc_tray_cangelog}!bash -c open_changelog!"$PW_GUI_ICON_PATH/port_changelog.png"|| \
@@ -2512,14 +2524,14 @@ pw_gui_for_edit_db () {
             else export ${int_to_boole}="FALSE"
             fi
             TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
-            int_to_boole_non_pw="`echo ${int_to_boole} | sed 's/^PW_//' `"
-            ADD_CHK_BOX_EDIT_DB+="--field=  ${int_to_boole_non_pw}    !${!TMP_HELP_FOR_GUI}:CHK%${!int_to_boole}%"
+            int_to_boole_non_pw="`echo ${int_to_boole} | sed 's/^PW_//' | sed 's/_/ /g' `"
+            ADD_CHK_BOX_EDIT_DB+="--field=       ${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:SW%${!int_to_boole}%"
         done
     }
     edit_db_field_add $@
     old_IFS=$IFS
     IFS="%"
-    "${pw_yad_v13_0}" --plug=$KEY_EDIT_DB_GUI --tabnum="1" --form --separator=" " --columns=4 ${ADD_CHK_BOX_EDIT_DB} \
+    "${pw_yad_v13_0}" --plug=$KEY_EDIT_DB_GUI --tabnum="1" --form --separator=" " --columns=3 ${ADD_CHK_BOX_EDIT_DB} \
     1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db" 2>/dev/null &
     IFS=$old_IFS
 
@@ -2542,13 +2554,13 @@ pw_gui_for_edit_db () {
     --field="${loc_gui_gpu_select}!${loc_gui_gpu_select_help} :CB" "${GPU_VAR}!disabled!${GET_GPU_NAMES}" \
     --field="${loc_gui_arg_gamescope}!${loc_gui_arg_gamescope_help} :CBE" "\\${GAMESCOPE_ARGS}!-r 60 -F fsr!" 2>/dev/null 1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
 
-    "${pw_yad_v13_0}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="650" \
-    --text "${loc_gui_edit_db} <b>${PORTWINE_DB}</b>\n ${loc_gui_edit_db_help}" --separator=" " --borders=${YAD_BORDERS} \
+    "${pw_yad_v13_0}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="675" \
+    --text "${loc_gui_edit_db} <b>${PORTWINE_DB}</b>\n ${loc_gui_edit_db_help}" --separator=" " \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-    --button="${loc_gui_cancel}"!!"${loc_gui_cancel_help}":1 \
-    --button="${loc_gui_reset_db}"!!"${loc_gui_reset_db_help}":2 \
-    --button="${loc_gui_open_db}"!!"${loc_gui_open_db_help}":150 \
-    --button="${loc_gui_save_changes}"!!"${loc_gui_save_changes_help}":0 2>/dev/null
+    --button="${loc_gui_cancel}"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_gui_cancel_help}":1 \
+    --button="${loc_gui_reset_db}"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_gui_reset_db_help}":2 \
+    --button="${loc_gui_open_db}"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_gui_open_db_help}":150 \
+    --button="${loc_gui_save_changes}"!"$PW_GUI_ICON_PATH/separator.png"!"${loc_gui_save_changes_help}":0 2>/dev/null
     YAD_STATUS="$?"
     export SKIP_CHECK_UPDATES=1
     case "$YAD_STATUS" in
@@ -2669,7 +2681,7 @@ gui_proton_downloader () {
         sed -i '/plugins/d' "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
     fi
     pw_stop_progress_bar
-    if [[ -z "${PROTON_GE_GIT}" ]] || [[ -z "${PROTON_PW_GIT}" ]] ; then
+    if [[ -z "${PROTON_PW_GIT}" ]] ; then
         yad_error "$loc_gui_check_new_wine_error"
         export SKIP_CHECK_UPDATES=1
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
@@ -2692,19 +2704,21 @@ gui_proton_downloader () {
         try_remove_file "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set"
         try_remove_file "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set"
 
-        `"${pw_yad}" --plug=$KEY_WINE --tabnum=1 --list --separator="" --listen \
+        `"${pw_yad_v13_0}" --plug=$KEY_WINE --tabnum=1 --list --separator="" --listen \
         --column "$loc_gui_set_new_wine" < "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git" 1> "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set" 2>/dev/null` &
-        `"${pw_yad}" --plug=$KEY_WINE --tabnum=2 --list --separator="" --listen \
+        `"${pw_yad_v13_0}" --plug=$KEY_WINE --tabnum=2 --list --separator="" --listen \
         --column "$loc_gui_set_new_wine" < "${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git" 1> "${PORT_WINE_TMP_PATH}/tmp_kron4ek_set" 2>/dev/null` &
-        `"${pw_yad}" --plug=$KEY_WINE --tabnum=3 --list --separator="" --listen \
+        `"${pw_yad_v13_0}" --plug=$KEY_WINE --tabnum=3 --list --separator="" --listen \
         --column "$loc_gui_set_new_wine" < "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git" 1> "${PORT_WINE_TMP_PATH}/tmp_proton_set" 2>/dev/null` &
-        `"${pw_yad}" --plug=$KEY_WINE --tabnum=4 --list --separator="" --listen \
+        `"${pw_yad_v13_0}" --plug=$KEY_WINE --tabnum=4 --list --separator="" --listen \
         --column "$loc_gui_set_new_wine" < "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git" 1> "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set" 2>/dev/null` &
-        `"${pw_yad}" --plug=$KEY_WINE --tabnum=5 --list --separator="" --listen \
+        `"${pw_yad_v13_0}" --plug=$KEY_WINE --tabnum=5 --list --separator="" --listen \
         --column "$loc_gui_del_wine" < "${PORT_WINE_TMP_PATH}/tmp_installed_wine" 1> "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set" 2>/dev/null` &
-        `"${pw_yad}" --key=$KEY_WINE --notebook --width=500 --height=600 --text-align=center \
-        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "WINE MANAGER" --separator="" \
-        --tab-pos=top --tab="PROTON-LG" --tab="WINE-KRON4EK"  --tab="PROTON-GE" --tab="WINE-GE-CUSTOM" --tab="$loc_gui_installed_wine" 2>/dev/null`
+        `"${pw_yad_v13_0}" --key=$KEY_WINE --notebook --width=500 --height=600 --text-align=center --no-button \
+        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "WINE MANAGER" --separator="" --expand \
+        --tab-pos=top --tab="PROTON-LG" --tab="WINE-KRON4EK"  --tab="PROTON-GE" --tab="WINE-GE-CUSTOM" --tab="$loc_gui_installed_wine" \
+        --button="$loc_cancel"!"$PW_GUI_ICON_PATH/separator.png"!"":1 \
+        --button="OK"!"$PW_GUI_ICON_PATH/separator.png"!"":0 2>/dev/null`
         YAD_WINE_STATUS="$?"
         if [[ "$YAD_WINE_STATUS" == "1" || "$YAD_WINE_STATUS" == "252" ]] ; then
             export SKIP_CHECK_UPDATES=1
@@ -2796,9 +2810,9 @@ gui_vkBasalt () {
     for add_list_fx in ${LIST_FX[@]} ; do
         PW_VKBASALT_GUI_HELP="PW_${add_list_fx}_INFO"
         if [[ ! -z `echo " ${GET_FX_IN_FILE[@]} " | grep " ${add_list_fx} "` ]] ; then
-            ADD_GUI_FX+="--field=$add_list_fx!${!PW_VKBASALT_GUI_HELP}:CHK%TRUE%"
+            ADD_GUI_FX+="--field=          $add_list_fx!${!PW_VKBASALT_GUI_HELP}:SW%TRUE%"
         else
-            ADD_GUI_FX+="--field=$add_list_fx!${!PW_VKBASALT_GUI_HELP}:CHK%FALSE%"
+            ADD_GUI_FX+="--field=          $add_list_fx!${!PW_VKBASALT_GUI_HELP}:SW%FALSE%"
         fi
     done
     if [[ ! -z "${PW_VKBASALT_FFX_CAS}" ]] ; then
@@ -2815,7 +2829,7 @@ gui_vkBasalt () {
     fi
     export old_IFS=$IFS
     export IFS="%"
-    "${pw_yad_v13_0}" --plug=$KEY_FX_GUI --tabnum="1" --form --columns=5 --separator=" " \
+    "${pw_yad_v13_0}" --plug=$KEY_FX_GUI --tabnum="1" --form --columns=4 --separator=" " \
     --text-align=center --text="$loc_gui_vkbasalt_top" \
     ${ADD_GUI_FX} 1> "${PORT_WINE_TMP_PATH}/tmp_yad_basalt_set" 2>/dev/null &
     export IFS="${old_IFS}"
@@ -2824,7 +2838,7 @@ gui_vkBasalt () {
     --field="AMD FidelityFX - Contrast Adaptive Sharpening"!"$loc_gui_ffx_cas":SCL "${VKBASALT_FFX_CAS_GUI}" \
     1> "${PORT_WINE_TMP_PATH}/tmp_yad_cas_set" 2>/dev/null &
 
-    "${pw_yad_v13_0}" --paned --key="$KEY_FX_GUI" --height="650" --title="vkBasalt" --center --borders=${YAD_BORDERS} \
+    "${pw_yad_v13_0}" --paned --key="$KEY_FX_GUI" --height="600" --title="vkBasalt" --center \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --button="$loc_gui_cancel"!!"$loc_gui_cancel_help":1 \
     --button="$loc_gui_disabled_vkbas"!!"$loc_gui_disabled_vkbas_help":180 \
@@ -2898,18 +2912,20 @@ gui_MangoHud () {
         PW_MANGOHUD_CONFIG=($(echo "$DEFAULT_MANGOHUD_CONFIG" | tr ',' '\n' | grep -v '='))
     fi
 
+            # !!!
+
     for add_list_mh in "${LIST_MH[@]}"; do
         PW_MH_GUI_HELP="PW_MH_${add_list_mh}_INFO"
-        if [[ -n "$(grep -wo "$add_list_mh" <<<"${PW_MANGOHUD_CONFIG[@]}")" ]]; then
-            ADD_GUI_MH+="--field=  $add_list_mh  !${!PW_MH_GUI_HELP}:CHK%TRUE%"
+        if [[ -n "$(grep -wo "$add_list_mh" <<<"${PW_MANGOHUD_CONFIG[@]}")" ]] ; then
+            ADD_GUI_MH+="--field=          $(echo $add_list_mh | sed 's/_/ /g' | tr [[:lower:]] [[:upper:]])!${!PW_MH_GUI_HELP}:SW%TRUE%"
         else
-            ADD_GUI_MH+="--field=  $add_list_mh  !${!PW_MH_GUI_HELP}:CHK%FALSE%"
+            ADD_GUI_MH+="--field=          $(echo $add_list_mh | sed 's/_/ /g' | tr [[:lower:]] [[:upper:]])!${!PW_MH_GUI_HELP}:SW%FALSE%"
         fi
     done
 
     export old_IFS=$IFS
     export IFS="%"
-    "${pw_yad_v13_0}" --plug=$KEY_MH_GUI --tabnum="1" --form --columns=5 --separator=" " \
+    "${pw_yad_v13_0}" --plug=$KEY_MH_GUI --tabnum="1" --form --columns=4 --separator=" " \
         --text-align=center --text="$loc_gui_mh_top" \
         ${ADD_GUI_MH} 1> "${PORT_WINE_TMP_PATH}/tmp_yad_mh_set" 2>/dev/null &
     export IFS="${old_IFS}"
@@ -2918,7 +2934,7 @@ gui_MangoHud () {
         --field="${loc_gui_mango_fps}!${loc_gui_mango_fps_help} :CB" "${FPS_LIMIT_VAR}!disabled!${GET_REFRESH_RATE}" \
         1> "${PORT_WINE_TMP_PATH}/tmp_yad_mh_fps_limit" 2>/dev/null &
 
-    "${pw_yad_v13_0}" --paned --key="$KEY_MH_GUI" --height="650" --title="MangoHud" --center --borders=${YAD_BORDERS} \
+    "${pw_yad_v13_0}" --paned --key="$KEY_MH_GUI" --height="550" --title="MangoHud" --center \
         --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
         --button="$loc_gui_cancel"!!"$loc_gui_cancel_help":1 \
         --button="$loc_gui_disabled_mh"!!"$loc_gui_disabled_mh_help":182 \
@@ -2954,7 +2970,7 @@ gui_MangoHud () {
     export INT_COUNT_MH=0
     for read_list_mh in ${YAD_MH_SET} ; do
         if [[ "$read_list_mh" == "TRUE" ]]
-        then export GUI_MH_RESULT+="${LIST_MH[$INT_COUNT_MH]},"
+        then export GUI_MH_RESULT+="$(echo "${LIST_MH[$INT_COUNT_MH]}," | sed 's/ /_/g' | tr [[:upper:]] [[:lower:]] )"
         fi
         ((INT_COUNT_MH++))
     done
@@ -2990,7 +3006,7 @@ portwine_create_shortcut () {
 
     if [[ "$1" == "block_name" ]] ; then
         export name_desktop="${PORTPROTON_NAME}"
-        OUTPUT=$("${pw_yad}" --title="${inst_set}." --form --borders=${YAD_BORDERS} \
+        OUTPUT=$("${pw_yad}" --title="${inst_set}." --form \
         --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
         --image "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" \
         --field="${sc_info}":LBL "" \
@@ -3002,7 +3018,7 @@ portwine_create_shortcut () {
         PW_YAD_OUT=$?
     else
         export name_desktop="${PORTPROTON_NAME}"
-        OUTPUT=$("${pw_yad}" --title="${inst_set}." --form --borders=${YAD_BORDERS} \
+        OUTPUT=$("${pw_yad}" --title="${inst_set}." --form \
         --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
         --image "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" \
         --field="${sc_info}":LBL "" \
@@ -3108,7 +3124,7 @@ portwine_delete_shortcut () {
 }
 
 portwine_missing_shortcut () {
-    "${pw_yad}" --title="${loc_gui_error}." --form --borders=${YAD_BORDERS} \
+    "${pw_yad}" --title="${loc_gui_error}." --form \
     --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
     --image "$PW_GUI_ICON_PATH/error_file.png" \
     --text "$loc_gui_missing_shortcut" \
@@ -3127,14 +3143,12 @@ pw_prefix_manager () {
         touch "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
     fi
 
-    pw_start_progress_bar_block "Starting prefix manager..."
+    pw_start_progress_bar_block "$loc_start_pfx_manager $PW_PREFIX_NAME"
     "${PORT_WINE_TMP_PATH}/winetricks" dlls list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/dll_list"
     "${PORT_WINE_TMP_PATH}/winetricks" fonts list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/fonts_list"
     "${PORT_WINE_TMP_PATH}/winetricks" settings list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/settings_list"
-    pw_stop_progress_bar
 
     gui_prefix_manager () {
-        pw_start_progress_bar_block "Starting prefix manager..."
         unset SET_FROM_PFX_MANAGER_TMP SET_FROM_PFX_MANAGER
         old_IFS=$IFS
         IFS=$'\n'
@@ -3183,11 +3197,17 @@ pw_prefix_manager () {
         --text="${loc_prefix_manager_conf} <b>\"${PW_PREFIX_NAME}\"</b>" \
         --column=set --column=dll --column=info < "${PORT_WINE_TMP_PATH}/settings_list_tmp" 1>> "${PORT_WINE_TMP_PATH}/to_winetricks" 2>/dev/null &
 
-        "${pw_yad_v13_0}" --key=$KEY_EDIT_MANAGER_GUI --notebook --borders=${YAD_BORDERS} --width=900 --height=800 \
-        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "$loc_pm" --tab-pos=bottom --tab="$loc_pm_dlls" --tab="$loc_pm_fonts" --tab="$loc_pm_settings" 2>/dev/null
+        "${pw_yad_v13_0}" --key=$KEY_EDIT_MANAGER_GUI --notebook \
+        --width=900 --height=800 --expand \
+        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "$loc_pm" \
+        --button="$loc_cancel"!"$PW_GUI_ICON_PATH/separator.png"!"":1 \
+        --button="OK"!"$PW_GUI_ICON_PATH/separator.png"!"":0 \
+        --tab-pos=bottom --tab="$loc_pm_dlls" --tab="$loc_pm_fonts" --tab="$loc_pm_settings" 2>/dev/null
         YAD_STATUS="$?"
         if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
-            stop_portwine
+            print_info "Nothing to do. Restarting PortProton..."
+            stop_portwine &
+            /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
         fi
         try_remove_file  "${PORT_WINE_TMP_PATH}/dll_list_tmp"
@@ -3388,7 +3408,7 @@ portwine_start_debug () {
     sed -i '/UDEV monitor/d' "${PORT_WINE_PATH}/${portname}.log"
     deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++')
     echo "$deb_text" > "${PORT_WINE_PATH}/${portname}.log"
-    "$pw_yad" --title="${portname}.log" --borders=${YAD_BORDERS} --no-buttons --text-align=center \
+    "$pw_yad" --title="${portname}.log" --no-buttons --text-align=center \
     --text-info --show-uri --wrap --width=1200 --height=550  --uri-color=red \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --filename="${PORT_WINE_PATH}/${portname}.log"
@@ -3397,7 +3417,7 @@ portwine_start_debug () {
 
 pw_create_prefix_backup () {
     cd "$HOME"
-    PW_PREFIX_TO_BACKUP=$("${pw_yad_v13_0}" --file --directory --borders=${YAD_BORDERS} --width=650 --height=500 --auto-close \
+    PW_PREFIX_TO_BACKUP=$("${pw_yad_v13_0}" --file --directory --width=650 --height=500 --auto-close \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "$loc_create_pfx_backup_path" 2>/dev/null )
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
@@ -3560,7 +3580,7 @@ export -f gui_open_user_conf
 
 gui_open_scripts_from_backup () {
     cd "${PORT_WINE_TMP_PATH}/scripts_backup/"
-    PW_SCRIPT_FROM_BACKUP=$("${pw_yad_v13_0}" --file --borders=${YAD_BORDERS} --width=650 --height=500 --auto-close \
+    PW_SCRIPT_FROM_BACKUP=$("${pw_yad_v13_0}" --file --width=650 --height=500 --auto-close \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "SCRIPTS FROM BACKUP" --file-filter="backup_scripts|scripts_v*.tar.gz" 2>/dev/null )
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
