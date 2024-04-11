@@ -1910,21 +1910,33 @@ d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
         var_winedlloverride_update "d3d9=n;wined3d=b;dxvk_config,vulkan-1,winevulkan="
         unset FIND_D3D_MODULE D3D_MODULE_PATH
         FIND_D3D_MODULE=`dirname $(find /usr/ -maxdepth 4 -type f -name "d3dadapter9.so.*") 2>/dev/null`
-        if [[ ! -z "$FIND_D3D_MODULE" ]] ; then
-            old_IFS=$IFS
-            IFS=$'\n'
-            for D3D_MP in $FIND_D3D_MODULE ; do
+        FLATPAK_D3D_MODULES_PATH="/app/lib/i386-linux-gnu/GL/default/lib/d3d
+                                  /usr/lib/x86_64-linux-gnu/GL/default/lib/d3d"
+        if ! check_flatpak ; then
+            if [[ ! -z "$FIND_D3D_MODULE" ]] ; then
+                old_IFS=$IFS
+                IFS=$'\n'
+                for D3D_MP in $FIND_D3D_MODULE ; do
+                    if [[ ! -z "$D3D_MODULE_PATH" ]]
+                    then export D3D_MODULE_PATH="$D3D_MODULE_PATH:/run/host${D3D_MP}"
+                    else export D3D_MODULE_PATH="/run/host${D3D_MP}"
+                    fi
+                done
+                IFS=$old_IFS
+                print_info "D3D_MODULE_PATH=${D3D_MODULE_PATH}"
+            else
+                pw_stop_progress_bar
+                yad_error "d3dadapter9.so.1.0.0 - ${loc_find_d3dadapter9_error}"
+                stop_portwine
+            fi
+        else
+            for D3D_MP in $FLATPAK_D3D_MODULES_PATH ; do
                 if [[ ! -z "$D3D_MODULE_PATH" ]]
-                then export D3D_MODULE_PATH="$D3D_MODULE_PATH:/run/host${D3D_MP}"
-                else export D3D_MODULE_PATH="/run/host${D3D_MP}"
+                then export D3D_MODULE_PATH="$D3D_MODULE_PATH:/run/parent${D3D_MP}"
+                else export D3D_MODULE_PATH="/run/parent${D3D_MP}"
                 fi
             done
-            IFS=$old_IFS
             print_info "D3D_MODULE_PATH=${D3D_MODULE_PATH}"
-        else
-            pw_stop_progress_bar
-            yad_error "d3dadapter9.so.1.0.0 - ${loc_find_d3dadapter9_error}"
-            stop_portwine
         fi
         export mesa_glthread=true
         export ENABLE_VKBASALT=0
