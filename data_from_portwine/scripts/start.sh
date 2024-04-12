@@ -135,6 +135,10 @@ export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
 export PW_GUI_THEMES_PATH="${PORT_WINE_PATH}/data/themes"
 
+if [[ $(gsettings get org.gnome.desktop.interface color-scheme) == "'prefer-dark'" ]]
+then export PW_DESKTOP_THEME="dark"
+fi
+
 . "${PORT_SCRIPTS_PATH}"/lang
 
 export urlg="https://linux-gaming.ru/portproton/"
