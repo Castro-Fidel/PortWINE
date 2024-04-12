@@ -114,8 +114,14 @@ export LSPCI_VGA="$(lspci -k | grep -E 'VGA|3D' | tr -d '\n')"
 
 if command -v xrandr &>/dev/null ; then
     try_remove_file "${PORT_WINE_TMP_PATH}/tmp_screen_configuration"
-    export PW_SCREEN_RESOLUTION="$(xrandr | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
-    export PW_SCREEN_PRIMARY="$(xrandr | grep "primary" | awk '{print $1}')"
+    if [[ $(xrandr | grep "primary" | awk '{print $1}') ]] ; then
+        export PW_SCREEN_RESOLUTION="$(xrandr | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
+        export PW_SCREEN_PRIMARY="$(xrandr | grep "primary" | awk '{print $1}')"
+    elif [[ $(xrandr | grep -w "connected" | awk '{print $1}') ]] ; then
+        # xrand not print primary on XFCE
+		export PW_SCREEN_RESOLUTION="$(xrandr | sed -rn 's/^.* connected.* ([0-9]+x[0-9]+).*$/\1/p')"
+		export PW_SCREEN_PRIMARY="$(xrandr | grep -w "connected" | awk '{print $1}')"
+    fi
     print_var PW_SCREEN_RESOLUTION PW_SCREEN_PRIMARY
 else
     print_error "xrandr - not found!"
