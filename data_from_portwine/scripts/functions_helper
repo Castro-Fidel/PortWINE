@@ -2626,7 +2626,12 @@ pw_gui_for_edit_db () {
     if [[ -z "$MANGOHUD_CONFIG" ]] ; then
         MONITOR_HEIGHT="$(echo $PW_SCREEN_RESOLUTION | awk -F'x' '{print $2}')"
         MH_FONT_SIZE="font_size=$(( MONITOR_HEIGHT / 45 ))"
-        MANGOHUD_CONFIG="$DEFAULT_MANGOHUD_CONFIG,$MH_FONT_SIZE"
+
+        if [[ ! -z "$MH_FONT_SIZE" ]]
+        then MANGOHUD_CONFIG="$DEFAULT_MANGOHUD_CONFIG,$MH_FONT_SIZE"
+        else MANGOHUD_CONFIG="$DEFAULT_MANGOHUD_CONFIG"
+        fi
+
         edit_db_from_gui MANGOHUD_CONFIG
     fi
     edit_user_conf_from_gui PW_GPU_USE
@@ -2916,7 +2921,6 @@ gui_MangoHud () {
         show_fps_limit swap temp_fahrenheit throttling_status throttling_status_graph
         time version vkbasalt vram vulkan_driver wine
     )
-    # fps_only
 
     unset ADD_GUI_MH GUI_MH_RESULT
 
@@ -2997,7 +3001,7 @@ gui_MangoHud () {
         ((INT_COUNT_MH++))
     done
 
-    if [[ -n "$MH_FONT_SIZE" ]]
+    if [[ ! -z "$MH_FONT_SIZE" ]]
     then GUI_MH_RESULT="${GUI_MH_RESULT}${MH_FONT_SIZE}"
     else GUI_MH_RESULT="${GUI_MH_RESULT%,}"
     fi
