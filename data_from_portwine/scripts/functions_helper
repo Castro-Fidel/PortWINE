@@ -39,14 +39,11 @@ export -f print_var
 check_variables () { [[ -z ${!1} ]] && export $1="$2" ;}
 
 try_copy_file () {
-    if [ ! -f "$1" ] ; then	print_info "file $1 not found for copy" && return 1
-    elif [ -z "$2" ] ; then	print_error "no way to copy file $1" && return 1
+    if [[ ! -f "$1" ]] ; then print_info "file $1 not found for copy" && return 1
+    elif [[ -z "$2" ]] ; then print_error "no way to copy file $1" && return 1
     else
-        cp -f "$1" "$2"
-        if [ "$?" != 0 ]
-        then print_error "failed to copy file $1 to $2" && return 1
-        else return 0
-        fi
+        [[ -e "$2/$(basename "$1")" ]] && rm -f "$2/$(basename "$1")"
+        cp -f "$1" "$2" && return 0 || return 1
     fi
 }
 export -f try_copy_file
@@ -309,7 +306,7 @@ check_flatpak () {
 unpack_tar_zst () {
     set -o pipefail
     unset PW_ZSTD_PORT
-    pw_start_progress_bar_cover_block "${PW_GUI_ICON_PATH}/covers/unpacking_${update_loc}.gif"
+    pw_start_progress_bar_cover_block "${COVERS_PATH}/unpacking_${update_loc}.gif"
     if command -v zstd &>/dev/null ; then
         tar -I zstd -xhvf "$1" -C "$2"
         pw_stop_progress_bar_cover_block
@@ -326,7 +323,7 @@ unpack_tar_xz () {
         tar -Jxhvf "$1" -C "$2" && return 0 || return 1
     else
         set -o pipefail
-        pw_start_progress_bar_cover_block "${PW_GUI_ICON_PATH}/covers/unpacking_${update_loc}.gif"
+        pw_start_progress_bar_cover_block "${COVERS_PATH}/unpacking_${update_loc}.gif"
         tar -Jxhvf "$1" -C "$2"
         pw_stop_progress_bar_cover_block
         [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
@@ -335,7 +332,7 @@ unpack_tar_xz () {
 
 unpack_tar_gz () {
     set -o pipefail
-    pw_start_progress_bar_cover_block "${PW_GUI_ICON_PATH}/covers/unpacking_${update_loc}.gif"
+    pw_start_progress_bar_cover_block "${COVERS_PATH}/unpacking_${update_loc}.gif"
     tar -xhzvf "$1" -C "$2"
     pw_stop_progress_bar_cover_block
     [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
@@ -343,7 +340,7 @@ unpack_tar_gz () {
 
 unpack_tar () {
     set -o pipefail
-    pw_start_progress_bar_cover_block "${PW_GUI_ICON_PATH}/covers/unpacking_${update_loc}.gif"
+    pw_start_progress_bar_cover_block "${COVERS_PATH}/unpacking_${update_loc}.gif"
     tar -xhvf "$1" -C "$2"
     pw_stop_progress_bar_cover_block
     [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
@@ -507,7 +504,7 @@ init_wine_ver () {
                 if check_symlink "${WINEDIR}/share/wine/${mono_gecko_chk}" ; then
                     print_info "${WINEDIR}/share/wine/${mono_gecko_chk} is symlink. OK."
                 elif [[ -d "${WINEDIR}/share/wine/${mono_gecko_chk}" ]] ; then
-                    pw_start_progress_bar_cover_block "${PW_GUI_ICON_PATH}/covers/loading_${update_loc}.gif"
+                    pw_start_progress_bar_cover_block "${COVERS_PATH}/loading_${update_loc}.gif"
                     try_copy_dir "${WINEDIR}/share/wine/${mono_gecko_chk}" "${PORT_WINE_TMP_PATH}"
                     try_remove_dir "${WINEDIR}/share/wine/${mono_gecko_chk}"
                     try_force_link_dir "${PORT_WINE_TMP_PATH}/${mono_gecko_chk}" "${WINEDIR}"/share/wine/
@@ -1095,12 +1092,6 @@ check_dirs_and_files_in_pfx () {
                     fi
                 done
             fi
-        done
-
-        LIST_COPY_WIN_DLL="ntdll shell32"
-        for copy_win_dll in $LIST_COPY_WIN_DLL ; do
-            try_copy_file "${WINEDIR}/lib64/wine/x86_64-windows/${copy_win_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${copy_win_dll}.dll"
-            try_copy_file "${WINEDIR}/lib/wine/i386-windows/${copy_win_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${copy_win_dll}.dll"
         done
     }
 
@@ -1691,15 +1682,15 @@ d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
 
     export DXVK_ENABLE_NVAPI=1
     if [[ "${PW_USE_FAKE_DLSS_3}" == 1 ]] ; then
-        try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss_3/${PW_FAKE_DLSS_3_VER}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-        try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_3_VER}/dlssg_to_fsr3_amd_is_better.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-        try_force_link_file "${PW_PLUGINS_PATH}/nvngx/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+        try_copy_file "${PW_PLUGINS_PATH}/fake_dlss_3/${PW_FAKE_DLSS_3_VER}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+        try_copy_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_3_VER}/dlssg_to_fsr3_amd_is_better.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+        try_copy_file "${PW_PLUGINS_PATH}/nvngx/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
         var_winedlloverride_update "nvapi,nvapi64,nvngx,_nvngx,dlssg_to_fsr3_amd_is_better=n;nvcuda=b"
         enabled_fake_nvidia_videocard new
         export WINEHAGS=1
     elif [[ "${PW_USE_FAKE_DLSS}" == 1 ]] && [[ -d "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/" ]] ; then
-        try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-        try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.ini" "${WINEPREFIX}/drive_c/windows/system32/"
+        try_copy_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+        try_copy_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.ini" "${WINEPREFIX}/drive_c/windows/system32/"
         enabled_fake_nvidia_videocard old
         var_winedlloverride_update "nvapi,nvapi64,nvngx=n;_nvngx=;nvcuda=b"
     elif [[ "${PW_USE_NVAPI_AND_DLSS}" == 1 ]] ; then
@@ -1708,8 +1699,8 @@ d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
             try_copy_file "${FIND_NVNGX}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
             try_copy_file "${FIND_NVNGX}/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
         else
-            try_force_link_file "${PW_PLUGINS_PATH}/nvngx/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-            try_force_link_file "${PW_PLUGINS_PATH}/nvngx/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_copy_file "${PW_PLUGINS_PATH}/nvngx/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_copy_file "${PW_PLUGINS_PATH}/nvngx/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
         fi
         enabled_fake_nvidia_videocard 0
         var_winedlloverride_update "nvngx,_nvngx,nvapi,nvapi64=n;nvcuda=b"
@@ -1937,11 +1928,12 @@ d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
         print_info "Use VKD3D-PROTON, DXVK and D8VK (DirectX 8-12 to vulkan)"
         if [[ "${PW_USE_WINE_DXGI}" == 1 ]] ; then
             export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxvk_config" # openvr_api_dxvk
-            var_winedlloverride_update dxgi=b
+            export CP_WINE_FILES="d3d10_1 d3d10 dxgi"
         elif [[ "${USE_ALL_DXVK_DLLS}" == 1 ]] ; then
             export CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi dxvk_config" # openvr_api_dxvk
         else
             export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi dxvk_config" # openvr_api_dxvk
+            export CP_WINE_FILES="d3d10_1 d3d10"
         fi
         check_variables VKD3D_FEATURE_LEVEL "12_0"
         if [[ "${PW_VULKAN_USE}" == "1" ]] ; then
@@ -1958,26 +1950,32 @@ d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
         PATH_TO_D8VK_FILES="${PW_VULKAN_DIR}/d8vk-${D8VK_VER}"
         print_info "D8VK v.${D8VK_VER} in use"
 
-        print_info "Try link native DXVK files..."
+        print_info "Try copy WINE files..."
+        for copy_wine_dll in $CP_WINE_FILES "vulkan-1" ; do
+            try_copy_file "${WINEDIR}/lib64/wine/x86_64-windows/${copy_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${copy_wine_dll}.dll"
+            try_copy_file "${WINEDIR}/lib/wine/i386-windows/${copy_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${copy_wine_dll}.dll"
+        done
+
+        print_info "Try copy native DXVK files..."
         for wine_dxvk_dll in ${CP_DXVK_FILES} ; do
             if [[ -f "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll"  ]] ; then
-                try_force_link_file "${PATH_TO_DXVK_FILES}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-                try_force_link_file "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+                try_copy_file "${PATH_TO_DXVK_FILES}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+                try_copy_file "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
                 var_winedlloverride_update "${wine_dxvk_dll}=n"
             fi
         done
 
-        try_force_link_file "${PATH_TO_DXVK_FILES}/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/" || \
-        try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+        print_info "Try copy NVAPI files..."
+        try_copy_file "${PATH_TO_DXVK_FILES}/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/" || \
+        try_copy_file "${PW_PLUGINS_PATH}/nvapi/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+        try_copy_file "${PATH_TO_DXVK_FILES}/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/" || \
+        try_copy_file "${PW_PLUGINS_PATH}/nvapi/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/"
 
-        try_force_link_file "${PATH_TO_DXVK_FILES}/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/" || \
-        try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-
-        print_info "Try link native VKD3D files..."
-        for wine_vkd3d_dll in d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1; do
+        print_info "Try copy native VKD3D files..."
+        for wine_vkd3d_dll in d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1 ; do
             if [[ -f "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" ]] ; then
-                try_force_link_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-                try_force_link_file "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+                try_copy_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+                try_copy_file "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
                 var_winedlloverride_update "${wine_vkd3d_dll}=n"
             fi
         done
@@ -2007,9 +2005,8 @@ d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
         export VKD3D_SHADER_CACHE_PATH="${PATH_TO_VKD3D_FILES}/vkd3d_cache"
     else
         export __GL_SHADER_DISK_CACHE=0
-        export DXVK_STATE_CACHE=0
+        export DXVK_STATE_CACHE=disable
         export VKD3D_SHADER_CACHE_PATH=0
-        export RADV_DEBUG=nocache
     fi
 
     if [[ "${PW_WINE_FULLSCREEN_FSR}" == 1 ]] || [[ "${WINE_FULLSCREEN_FSR}" == 1 ]] ; then
@@ -2088,7 +2085,7 @@ d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
         pw_tray_icon
         sleep 0.5
         if [[ "${PW_CHECK_AUTOINSTAL}" != "1" ]] ; then
-            pw_start_progress_bar_cover "${PW_GUI_ICON_PATH}/covers/loading_${update_loc}.gif"
+            pw_start_progress_bar_cover "${COVERS_PATH}/loading_${update_loc}.gif"
         fi
     fi
     add_in_start_portwine
@@ -2315,7 +2312,7 @@ yad_error_download () {
     fi
     "${pw_yad_v13_0}" --text "$loc_gui_error_download" --width=400 --borders=15 --title "$loc_gui_error" \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/download.png" \
-    --no-wrap --center --text-align=center\
+    --no-wrap --center --text-align=center \
     --button="SKIP"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
     --button="REPEAT"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null
     [[ "$?" != 0 ]] && return 1 || return 0
@@ -2337,9 +2334,9 @@ yad_question () {
 pw_start_progress_bar_cover () {
     if ! check_start_from_steam ; then
         PW_GIF_FILE="$1"
-        PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 7}'`
-        PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 7}'`
-        "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated --center \
+        PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 8}'`
+        PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 15}'`
+        "${pw_yad_v13_0}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated --center \
         --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y --window-icon="$PW_GUI_ICON_PATH/portproton.svg" > /dev/null 2>&1 &
         export PW_YAD_PID_PROGRESS_BAR_COVER="$!"
         return 0
@@ -2348,11 +2345,11 @@ pw_start_progress_bar_cover () {
 
 pw_start_progress_bar_cover_block () {
     if ! check_start_from_steam ; then
-        [[ ! -f "${pw_yad}" ]] && local pw_yad="yad"
+        [[ ! -f "${pw_yad_v13_0}" ]] && local pw_yad_v13_0="yad"
         PW_GIF_FILE="$1"
-        PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 7}'`
-        PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 7}'`
-        "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated --center \
+        PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 8}'`
+        PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 15}'`
+        "${pw_yad_v13_0}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated --center \
         --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y --window-icon="$PW_GUI_ICON_PATH/portproton.svg" > /dev/null 2>&1 &
         export PW_YAD_PID_PROGRESS_BAR_COVER_BLOCK="$!"
         return 0
@@ -2374,7 +2371,7 @@ pw_update_pfx_cover_gui () {
 
     if ! check_start_from_steam && ! pgrep -a yad | grep "yad_v13_0 --notebook --key=$PW_KEY_PROGRESS_BAR_UP" &>/dev/null ; then
         PW_KEY_PROGRESS_BAR_UP=$RANDOM
-        PW_GIF_FILE="${PW_GUI_ICON_PATH}/covers/update_prefix_${update_loc}.gif"
+        PW_GIF_FILE="${COVERS_PATH}/update_prefix_${update_loc}.gif"
         PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 20}'`
         PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 60}'`
         echo "UPDATE PREFIX..." > "${PORT_WINE_TMP_PATH}/update_pfx_log"
@@ -2451,7 +2448,7 @@ pw_stop_progress_bar_cover_block () {
 export -f pw_stop_progress_bar_cover_block
 
 open_changelog () {
-    "${pw_yad}" --title="$loc_gui_changelog" --no-buttons --text-align=center \
+    "${pw_yad_v13_0}" --title="$loc_gui_changelog" --no-buttons --text-align=center \
     --text-info --show-uri --wrap --width=1200 --height=700 --uri-color=red \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --filename="${PORT_WINE_PATH}/data/${PW_CHANGELOG_FILE}" &>/dev/null
@@ -2551,9 +2548,7 @@ pw_gui_for_edit_db () {
            *) ADD_WINVER_EDIT_DB="10!7!XP" ;;
     esac
 
-    # --field="${loc_gui_amd_vulkan_select}!${loc_gui_amd_vulkan_select_help} :CB" "${AMD_VULKAN_VAR}!disabled!amdvlk!amdgpupro!radv!radv_gpl!radv_aco"
-
-    "${pw_yad_v13_0}" --plug=$KEY_EDIT_DB_GUI --tabnum="2" --form --separator="%" --columns=1 \
+    "${pw_yad_v13_0}" --plug=$KEY_EDIT_DB_GUI --tabnum="2" --form --separator="%" --columns=1 --scroll \
     --field="${loc_gui_ver_windows}!${loc_gui_ver_windows_help} :CB" "${ADD_WINVER_EDIT_DB}" \
     --field="${loc_gui_aut_winetricks}!${loc_gui_aut_winetricks_help} :CBE" "${PW_DLL_INSTALL}!vcrun2019 corefonts lucida" \
     --field="${loc_gui_winedllover}!${loc_gui_winedllover_help} :CBE" "${WINEDLLOVERRIDES}!libglesv2=!d3dx9_36,d3dx9_42=n,b;mfc120=b,n" \

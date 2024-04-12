@@ -42,14 +42,14 @@ fi
 
 . "$(dirname $(readlink -f "$0"))/functions_helper"
 
-if [[ -z "${LANG}" ]] ; then
-    export LANG=C
-    export FORCE_ENG_LANG=1
-elif [[ "${START_FROM_STEAM}" == 1 ]] ; then
-    export FORCE_ENG_LANG=1
-else
-    unset FORCE_ENG_LANG
-fi
+# if [[ -z "${LANG}" ]] ; then
+#     export LANG=C
+#     export FORCE_ENG_LANG=1
+# elif [[ "${START_FROM_STEAM}" == 1 ]] ; then
+#     export FORCE_ENG_LANG=1
+# else
+#     unset FORCE_ENG_LANG
+# fi
 
 create_new_dir "${HOME}/.local/share/applications"
 if [[ "${PW_SILENT_RESTART}" == 1 ]] || [[ "${START_FROM_STEAM}" == 1 ]] ; then
@@ -145,6 +145,7 @@ try_remove_file "${PORT_WINE_TMP_PATH}/update_pfx_log"
 # TODO: remove this later...
 try_remove_file "${PORT_SCRIPTS_PATH}/runlib"
 try_remove_file "${PORT_SCRIPTS_PATH}/yad_gui"
+try_remove_file "${PORT_SCRIPTS_PATH}/zen_yad_gui"
 try_remove_file "${PW_GUI_THEMES_PATH}/default.css"
 
 if [[ "${INSTALLING_PORT}" == 1 ]] ; then
@@ -476,7 +477,6 @@ else
 
     # --field="   Secret World Legends (ENG)"!"$PW_GUI_ICON_PATH/swl.png"!"":"FBTN" '@bash -c "button_click PW_SWL"'
     # --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"'
-    # --field="   ROBLOX"!"$PW_GUI_ICON_PATH/roblox.png"!"":"FBTN" '@bash -c "button_click PW_ROBLOX"'
 
     export START_FROM_PP_GUI=1
 
