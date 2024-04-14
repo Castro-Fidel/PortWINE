@@ -21,6 +21,7 @@ fi
 
 export PW_START_PID="$$"
 export NO_AT_BRIDGE=1
+export GDK_BACKEND="x11"
 export pw_full_command_line=("$0" $*)
 
 MISSING_DESKTOP_FILE=0
@@ -80,7 +81,7 @@ if [[ -d "${PORT_WINE_PATH}/data/dist" ]] ; then
     orig_IFS="$IFS"
     IFS=$'\n'
     for dist_dir in $(ls -1 "${PORT_WINE_PATH}/data/dist/") ; do
-        dist_dir_new=`echo "${dist_dir}" | awk '$1=$1' | sed -e s/[[:blank:]]/_/g`
+        dist_dir_new=$(echo "${dist_dir}" | awk '$1=$1' | sed -e s/[[:blank:]]/_/g)
         if [[ ! -d "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}" ]] ; then
             mv -- "${PORT_WINE_PATH}/data/dist/$dist_dir" "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}"
         fi
@@ -97,7 +98,7 @@ try_force_link_dir "${PORT_WINE_PATH}/data/prefixes" "${PORT_WINE_PATH}"
 orig_IFS="$IFS"
 IFS=$'\n'
 for pfx_dir in $(ls -1 "${PORT_WINE_PATH}/data/prefixes/") ; do
-    pfx_dir_new=`echo "${pfx_dir}" | awk '$1=$1' | sed -e s/[[:blank:]]/_/g`
+    pfx_dir_new=$(echo "${pfx_dir}" | awk '$1=$1' | sed -e s/[[:blank:]]/_/g)
     if [[ ! -d "${PORT_WINE_PATH}/data/prefixes/${pfx_dir_new^^}" ]] ; then
         mv -- "${PORT_WINE_PATH}/data/prefixes/$pfx_dir" "${PORT_WINE_PATH}/data/prefixes/${pfx_dir_new^^}"
     fi
@@ -135,16 +136,13 @@ export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
 export PW_GUI_THEMES_PATH="${PORT_WINE_PATH}/data/themes"
 
-if [[ $(gsettings get org.gnome.desktop.interface color-scheme) == "'prefer-dark'" ]]
-then export PW_DESKTOP_THEME="dark"
-fi
-
 . "${PORT_SCRIPTS_PATH}"/lang
 
 export urlg="https://linux-gaming.ru/portproton/"
+export url_cdn="https://cdn.linux-gaming.ru"
 export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
 try_remove_dir "${PW_WINELIB}/var"
-export install_ver=`cat "${PORT_WINE_TMP_PATH}/${portname}_ver" | head -n 1`
+export install_ver=$(cat "${PORT_WINE_TMP_PATH}/${portname}_ver" | head -n 1)
 export WINETRICKS_DOWNLOADER="curl"
 export USER_CONF="${PORT_WINE_PATH}/data/user.conf"
 check_user_conf
@@ -172,6 +170,10 @@ then
 else
 . "$PW_GUI_THEMES_PATH/default.pptheme"
 echo 'export GUI_THEME="default"' >> "$USER_CONF"
+fi
+
+if [[ $(gsettings get org.gnome.desktop.interface color-scheme) == "'prefer-dark'" ]]
+then export PW_DESKTOP_THEME="dark"
 fi
 
 if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] \

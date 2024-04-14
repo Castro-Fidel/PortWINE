@@ -116,97 +116,60 @@ check_process () {
 }
 export -f check_process
 
-try_download_no_mirror () {
-    [[ -f "${PW_AUTOINSTALL_EXE}" ]] && try_remove_file "${PW_AUTOINSTALL_EXE}"
-    PW_DOWNLOAD_FILE_NAME="$(basename $2)"
-    if check_gamescope_session ; then
-        $PW_TERM curl -f -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" \
-        -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2"
-        [ "$?" != 0 ] && return 1 || return 0
-    fi
-    set -o pipefail
-    curl -f -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2" 2>&1 | \
-    tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
-    "${pw_yad_v13_0}" --progress --percentage=0 --text="${loc_downloading} ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
-    --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders=15
-    if [ "${PIPESTATUS[0]}" != 0 ] ; then
-        print_error "Failed to download $PW_DOWNLOAD_FILE_NAME"
-        return 1
-    else
-        print_ok "File downloaded successfully: $PW_DOWNLOAD_FILE_NAME from $1"
-        return 0
-    fi
-}
 
 try_download () {
-    PW_DOWNLOAD_FILE_NAME="$(basename $1)"
-    if check_gamescope_session ; then
-        $PW_TERM curl -f -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" \
-        -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2"
-        # $PW_TERM curl -f -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" \
-        # -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "ftp://171.22.215.18/archives/${PW_DOWNLOAD_FILE_NAME}" -o "$2"
-        return 0
-    fi
-    [[ ! -f "${pw_yad_v13_0}" ]] && local pw_yad_v13_0="yad"
-    set -o pipefail
-    curl -f -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2" 2>&1 | \
-    tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
-    "${pw_yad_v13_0}" --progress --percentage=0 --text="${loc_downloading} ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
-    --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders=15
-    if [ "${PIPESTATUS[0]}" != 0 ] ; then
-        print_error "Failed to download ${PW_DOWNLOAD_FILE_NAME} from GitHub."
-        print_info "Try download ${PW_DOWNLOAD_FILE_NAME} from FTP"
-        curl -f -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -L "ftp://171.22.215.18/archives/${PW_DOWNLOAD_FILE_NAME}" -o "$2" 2>&1 | \
-        tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
-        "${pw_yad_v13_0}" --progress --percentage=0 --text="${loc_downloading} ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
-        --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
-        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders=15
-        if [ "${PIPESTATUS[0]}" != 0 ] ; then
-            print_error "Failed to download ${PW_DOWNLOAD_FILE_NAME} from FTP."
-            return 1
-        fi
-    fi
-    try_remove_file "${PORT_WINE_TMP_PATH}/download_log"
-    print_ok "File downloaded successfully: $PW_DOWNLOAD_FILE_NAME from $1"
-    return 0
-}
+    local filename="$(basename "$1")"
+    local url="$url_cdn/$filename"
+    local dest="$2"
+    local silent="false"
+    local no_mirror="false"
+    case "$3" in
+           silent) 
+                silent=true ;;
+        no_mirror)
+                no_mirror=true
+                url="$1" ;;
+    esac
 
-try_download_to_path () {
-    PW_DOWNLOAD_FILE_NAME="$(basename $1)"
+    [[ ! -f "${pw_yad_v13_0}" ]] && local pw_yad_v13_0="yad"
+
+    # If gamescope session is active, use PW_TERM for downloading
     if check_gamescope_session ; then
-        $PW_TERM curl -f -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" \
-        -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2/$PW_DOWNLOAD_FILE_NAME"
+        $PW_TERM curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
+        -H 'Pragma: no-cache' -L "$url" -o "$dest"
         [ "$?" != 0 ] && return 1 || return 0
     fi
-    set -o pipefail
-    curl -f -# -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' \
-    -H 'Pragma: no-cache' -L "$1" -o "$2/$PW_DOWNLOAD_FILE_NAME" 2>&1 | \
-    tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
-    "${pw_yad_v13_0}" --progress --percentage=0 --text="${loc_downloading} ${PW_DOWNLOAD_FILE_NAME}" --auto-close --no-escape \
-    --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders=15
-    if [ "${PIPESTATUS[0]}" != 0 ] ; then
-        print_error "Failed to download $PW_DOWNLOAD_FILE_NAME"
-        return 1
-    else
-        print_ok "File downloaded successfully: $PW_DOWNLOAD_FILE_NAME from $1"
-        return 0
-    fi
-}
 
-try_download_silent () {
-    PW_DOWNLOAD_FILE_NAME="$(basename $1)"
-    curl -f -sS -A "Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)" -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$1" -o "$2"
-    if [ "$?" != 0 ] ; then
-        print_error "Failed to download $PW_DOWNLOAD_FILE_NAME. Skipping."
-        try_remove_file "$2"
-        return 1
+    # Normal download
+    set -o pipefail
+    if [ "$silent" == "true" ] ; then
+        curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
+        -H 'Pragma: no-cache' -L "$url" -o "$dest" 2>&1
     else
-        print_ok "File downloaded successfully: $PW_DOWNLOAD_FILE_NAME from $1"
-        return 0
+        curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
+        -H 'Pragma: no-cache' -L "$url" -o "$dest" 2>&1 | \
+        tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
+        "$pw_yad_v13_0" --progress --percentage=0 --text="${loc_downloading} $filename" --auto-close --no-escape \
+        --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
+        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders=15
     fi
+
+    if [ "${PIPESTATUS[0]}" != 0 ] ; then
+        if [[ "$no_mirror" != "true" ]] ; then
+            print_error "Failed to download $filename from $url, trying GITHUB mirror..."
+            url="$1"
+            curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
+            -H 'Pragma: no-cache' -L "$url" -o "$dest" 2>&1 | \
+            tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
+            "$pw_yad_v13_0" --progress --percentage=0 --text="${loc_downloading} $filename" --auto-close --no-escape \
+            --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
+            --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders=15
+        fi
+        [[ "${PIPESTATUS[0]}" != 0 ]] && print_error "Failed to download $filename from GITHUB. Skipping." && return 1
+    fi
+
+    print_ok "File downloaded successfully: $filename from $url"
+    return 0
 }
 
 create_new_dir () {
@@ -308,7 +271,7 @@ unpack_tar_zst () {
     unset PW_ZSTD_PORT
     pw_start_progress_bar_cover_block "${COVERS_PATH}/unpacking_${update_loc}.gif"
     if command -v zstd &>/dev/null ; then
-        tar -I zstd -xhvf "$1" -C "$2"
+        tar -I zstd -xhf "$1" -C "$2"
         pw_stop_progress_bar_cover_block
         [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
     else
@@ -320,11 +283,11 @@ unpack_tar_zst () {
 
 unpack_tar_xz () {
     if [[ "$3" == "silent" ]] ; then
-        tar -Jxhvf "$1" -C "$2" && return 0 || return 1
+        tar -Jxhf "$1" -C "$2" && return 0 || return 1
     else
         set -o pipefail
         pw_start_progress_bar_cover_block "${COVERS_PATH}/unpacking_${update_loc}.gif"
-        tar -Jxhvf "$1" -C "$2"
+        tar -Jxhf "$1" -C "$2"
         pw_stop_progress_bar_cover_block
         [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
     fi
@@ -333,7 +296,7 @@ unpack_tar_xz () {
 unpack_tar_gz () {
     set -o pipefail
     pw_start_progress_bar_cover_block "${COVERS_PATH}/unpacking_${update_loc}.gif"
-    tar -xhzvf "$1" -C "$2"
+    tar -xhzf "$1" -C "$2"
     pw_stop_progress_bar_cover_block
     [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
 }
@@ -341,7 +304,7 @@ unpack_tar_gz () {
 unpack_tar () {
     set -o pipefail
     pw_start_progress_bar_cover_block "${COVERS_PATH}/unpacking_${update_loc}.gif"
-    tar -xhvf "$1" -C "$2"
+    tar -xhf "$1" -C "$2"
     pw_stop_progress_bar_cover_block
     [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
 }
@@ -450,14 +413,14 @@ init_wine_ver () {
         orig_IFS="$IFS"
         IFS=$'\n'
         for dist_dir in $(ls -1 "${PORT_WINE_PATH}/data/dist/") ; do
-            dist_dir_new=`echo "${dist_dir}" | awk '$1=$1' | sed -e s/[[:blank:]]/_/g`
+            dist_dir_new=$(echo "${dist_dir}" | awk '$1=$1' | sed -e s/[[:blank:]]/_/g)
             if [[ ! -d "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}" ]] ; then
                 mv -- "${PORT_WINE_PATH}/data/dist/$dist_dir" "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}"
             fi
         done
         IFS="$orig_IFS"
         fi
-        if [[ -z `ls "${PORT_WINE_PATH}/data/dist/" | grep "${PW_WINE_USE}"` ]] ; then
+        if ls "${PORT_WINE_PATH}/data/dist/" | grep "${PW_WINE_USE}" ; then
             if [[ "$PW_WINE_USE" =~ PROTON_LG* ]]
             then export PW_WINE_USE=PROTON_LG
             else export PW_WINE_USE=WINE_LG
@@ -474,20 +437,20 @@ init_wine_ver () {
         export WINELOADER="${WINEDIR}/bin/wine"
         export WINESERVER="${WINEDIR}/bin/wineserver"
         if [[ -d "${WINEDIR}/files" && ! -d "${WINEDIR}/dist" ]] ; then
-            for clear_dist_files in `ls "${WINEDIR}" | sed -e "s/^files$//g" | sed -e "s/^version$//g"` ; do
+            for clear_dist_files in $(ls "${WINEDIR}" | sed -e "s/^files$//g" | sed -e "s/^version$//g") ; do
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
             mv -f "${WINEDIR}/files"/* "${WINEDIR}/"
             rm -fr "${WINEDIR}/files"
         elif [[ ! -d "${WINEDIR}/files" && -d "${WINEDIR}/dist" ]] ; then
-            for clear_dist_files in `ls "${WINEDIR}" | sed -e "s/^dist$//g" | sed -e "s/^version$//g"` ; do
+            for clear_dist_files in $(ls "${WINEDIR}" | sed -e "s/^dist$//g" | sed -e "s/^version$//g") ; do
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
             mv -f "${WINEDIR}/dist"/* "${WINEDIR}/"
             rm -fr "${WINEDIR}/dist"
         elif [ -f "${WINEDIR}/proton_dist.tar" ] ; then
             unpack_tar "${WINEDIR}/proton_dist.tar" "${WINEDIR}/"
-            for clear_dist_files in `ls "${WINEDIR}" | sed -e "s/^bin$//g" | sed -e "s/^lib$//g" | sed -e "s/^lib64$//g" | sed -e "s/^share$//g" | sed -e "s/^version$//g"` ; do 
+            for clear_dist_files in $(ls "${WINEDIR}" | sed -e "s/^bin$//g" | sed -e "s/^lib$//g" | sed -e "s/^lib64$//g" | sed -e "s/^share$//g" | sed -e "s/^version$//g") ; do 
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
         fi
@@ -638,8 +601,6 @@ ${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:\
         fi
     done
 
-    # drop portable: libssl 32-bit
-    try_remove_file "${PW_PLUGINS_PATH}/portable/lib/lib32/libssl.so.1.1"
     print_info "RUNTIME is enabled"
 }
 
@@ -904,8 +865,8 @@ pw_check_and_download_dxvk_and_vkd3d () {
 
                     yad_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
                 fi
-            elif try_download_no_mirror "https://github.com/doitsujin/dxvk/releases/download/v${DXVK_VAR_VER}/dxvk-${DXVK_VAR_VER}.tar.gz" \
-                                       "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz" ; then
+            elif try_download "https://github.com/doitsujin/dxvk/releases/download/v${DXVK_VAR_VER}/dxvk-${DXVK_VAR_VER}.tar.gz" \
+                                       "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz"  no_mirror ; then
                 if unpack_tar_gz "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz" "${PW_VULKAN_DIR}" ; then
                     try_remove_file "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz"
                 else
@@ -934,8 +895,8 @@ pw_check_and_download_dxvk_and_vkd3d () {
 
                     yad_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
                 fi
-            elif try_download_no_mirror "https://github.com/HansKristian-Work/vkd3d-proton/releases/download/v${VKD3D_VAR_VER}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" \
-                                        "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" ; then
+            elif try_download "https://github.com/HansKristian-Work/vkd3d-proton/releases/download/v${VKD3D_VAR_VER}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" \
+                                        "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" no_mirror ; then
                 if unpack_tar_zst "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" "${PW_VULKAN_DIR}" ; then
                     try_remove_file "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst"
                 else
@@ -1007,7 +968,7 @@ pw_check_and_download_plugins () {
         else
             PW_NOTIFY_TEXT="Please wait for update PortProton"
             pw_notify_send -u normal
-            if try_download_silent "github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" \
+            if try_download "github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" silent \
                                    "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" ; then
                 if unpack_tar_xz "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}" ; then
                     try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz"
@@ -1197,18 +1158,18 @@ pw_port_update () {
     if [ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ] ; then
         echo "2022" > "${PORT_WINE_TMP_PATH}/scripts_ver"
     fi
-    export scripts_install_ver=`cat "${PORT_WINE_TMP_PATH}/scripts_ver" | head -n 1`
+    export scripts_install_ver=$(cat "${PORT_WINE_TMP_PATH}/scripts_ver" | head -n 1)
     print_info "Check update..."
-    if curl -f -s --list-only --connect-timeout 3 "https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine/scripts/var" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+    if curl -f -s --list-only --connect-timeout 3 "https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/raw/master/data_from_portwine/scripts/var" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
     then
-        URL_FOR_CHANGELOG="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine"
-        URL_TO_PW_MASTER="https://github.com/Castro-Fidel/PortWINE/archive/refs/heads/master.tar.gz"
+        URL_FOR_CHANGELOG="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/raw/master/data_from_portwine"
+        URL_TO_PW_MASTER="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/-/archive/master/PortWINE-master.tar.gz"
         print_info "OK."
     else
-        if curl -f -s --list-only --connect-timeout 3 "https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/raw/master/data_from_portwine/scripts/var" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+        if curl -f -s --list-only --connect-timeout 3 "https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine/scripts/var" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
         then
-            URL_FOR_CHANGELOG="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/raw/master/data_from_portwine"
-            URL_TO_PW_MASTER="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/-/archive/master/PortWINE-master.tar.gz"
+            URL_FOR_CHANGELOG="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine"
+            URL_TO_PW_MASTER="https://github.com/Castro-Fidel/PortWINE/archive/refs/heads/master.tar.gz"
             print_info "OK."
         else
             print_error "Unable to determine the version on the server. Skip it..."
@@ -1246,7 +1207,7 @@ pw_port_update () {
                     echo "######################################################"
                     print_info "Update scripts..."
                     try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
-                    if try_download_no_mirror "${URL_TO_PW_MASTER}" "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" ; then
+                    if try_download "${URL_TO_PW_MASTER}" "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" no_mirror ; then
                         if unpack_tar_gz "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" "${PORT_WINE_TMP_PATH}"
                         then
                             create_new_dir "${PORT_WINE_TMP_PATH}/scripts_backup"
@@ -1287,7 +1248,7 @@ update_winetricks () {
     || [[ "$W_TRX_INT_VER" != "$W_TRX_EXT_VER" && ! -z "$W_TRX_EXT_VER" ]]
     then
         try_remove_file "${PORT_WINE_TMP_PATH}/winetricks"
-        if try_download_no_mirror "${W_TRX_URL}" "${PORT_WINE_TMP_PATH}/winetricks" ; then
+        if try_download "${W_TRX_URL}" "${PORT_WINE_TMP_PATH}/winetricks" no_mirror ; then
             W_TRX_INT_VER="$(cat "${PORT_WINE_TMP_PATH}/winetricks" | grep -i 'WINETRICKS_VERSION=' | sed 's/WINETRICKS_VERSION=//')" && print_info "Winetricks version in port has been updated (${W_TRX_INT_VER})" 
             chmod u+x "${PORT_WINE_TMP_PATH}/winetricks"
         fi
@@ -2231,8 +2192,6 @@ pw_run () {
             ${PW_MANGOHUD_SLR} \
             "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]}
             wait_wineserver
-
-            # ${PW_RUN_GAMESCOPE} \ !!!
         fi
     fi
 }
@@ -2499,29 +2458,21 @@ pw_tray_icon () {
     }
     export -f tray_icon_click_exit
 
-    if [[ "$PW_DESKTOP_THEME" == "dark" ]] ; then
-        # --window-icon="$PW_GUI_ICON_PATH/portproton_tray.png" \
-        "${pw_yad_v13_0}" --notification --no-middle \
-        --image="$PW_GUI_ICON_PATH/portproton_tray_light.png" \
-        --command="bash -c tray_icon_click" \
-        --tooltip="PortProton" \
-        --icon-size=32 --menu="| \
-    ${loc_tray_winefile}!bash -c pw_tray_winefile!"$PW_GUI_ICON_PATH/wine_file.png"|| \
-    ${loc_tray_tascmng}!bash -c pw_tray_taskmgr!"$PW_GUI_ICON_PATH/wine_system.png"|| \
-    ${loc_tray_cangelog}!bash -c open_changelog!"$PW_GUI_ICON_PATH/history.png"|| \
-    ${loc_tray_force_exit}    !bash -c tray_icon_click_exit!"$PW_GUI_ICON_PATH/close.png"||" 2>/dev/null &
-    else
-        # --window-icon="$PW_GUI_ICON_PATH/portproton_tray.png" \
-        "${pw_yad_v13_0}" --notification --no-middle \
-        --image="$PW_GUI_ICON_PATH/portproton_tray_dark.png" \
-        --command="bash -c tray_icon_click" \
-        --tooltip="PortProton" \
-        --icon-size=32 --menu="| \
-    ${loc_tray_winefile}!bash -c pw_tray_winefile!"$PW_GUI_ICON_PATH/wine_file.png"|| \
-    ${loc_tray_tascmng}!bash -c pw_tray_taskmgr!"$PW_GUI_ICON_PATH/wine_system.png"|| \
-    ${loc_tray_cangelog}!bash -c open_changelog!"$PW_GUI_ICON_PATH/history.png"|| \
-    ${loc_tray_force_exit}    !bash -c tray_icon_click_exit!"$PW_GUI_ICON_PATH/close.png"||" 2>/dev/null &
+    if check_flatpak
+    then TRAY_ICON="$PW_GUI_ICON_PATH/portproton_tray_flatpak.svg"
+    elif [[ "$PW_DESKTOP_THEME" == "dark" ]]
+    then TRAY_ICON="$PW_GUI_ICON_PATH/portproton_tray_dark.svg"
+    else TRAY_ICON="$PW_GUI_ICON_PATH/portproton_tray_light.svg"
     fi
+    "${pw_yad_v13_0}" --notification --no-middle \
+    --image="$TRAY_ICON" \
+    --command="bash -c tray_icon_click" \
+    --tooltip="PortProton" \
+    --icon-size=32 --menu="| \
+    ${loc_tray_winefile}!bash -c pw_tray_winefile!"$PW_GUI_ICON_PATH/wine_file.png"|| \
+    ${loc_tray_tascmng}!bash -c pw_tray_taskmgr!"$PW_GUI_ICON_PATH/wine_system.png"|| \
+    ${loc_tray_cangelog}!bash -c open_changelog!"$PW_GUI_ICON_PATH/history.png"|| \
+    ${loc_tray_force_exit}    !bash -c tray_icon_click_exit!"$PW_GUI_ICON_PATH/close.png"||" 2>/dev/null &
 
     return 0
 }
@@ -2626,13 +2577,13 @@ pw_gui_for_edit_db () {
         done
     }
     edit_db_field_read $@
-    PW_WINDOWS_VER="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $1}'`"
-    PW_DLL_INSTALL=`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $2}'`
-    WINEDLLOVERRIDES=`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $3}'`
-    LAUNCH_PARAMETERS=`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $5}'`
-    CPU_LIMIT="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $7}'`"
-    PW_GPU_USE="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $8}'`"
-    GAMESCOPE_ARGS="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $9}'`"
+    PW_WINDOWS_VER="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $1}')"
+    PW_DLL_INSTALL="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $2}')"
+    WINEDLLOVERRIDES="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $3}')"
+    LAUNCH_PARAMETERS="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $5}')"
+    CPU_LIMIT="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $7}')"
+    PW_GPU_USE="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $8}')"
+    GAMESCOPE_ARGS="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $9}')"
     # PW_AMD_VULKAN_USE="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $10}'`"
 
     if [[ "${CPU_LIMIT}" != "disabled" ]] ; then
@@ -2712,7 +2663,7 @@ gui_proton_downloader () {
     fi
 
     # PROTON_LG
-    export PROTON_PW_GIT=($(curl -s "https://api.github.com/repos/Castro-Fidel/wine_builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4))
+    export PROTON_PW_GIT=($(curl -s "$url_cdn/metainfo"))
     try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
     if [[ ! -z "${PROTON_PW_GIT}" ]] ; then
         for PPWGIT in ${PROTON_PW_GIT[@]} ; do
@@ -2728,7 +2679,7 @@ gui_proton_downloader () {
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     fi
-    for INSTALLING_VERSION_IN_DIST in `ls "${PORT_WINE_PATH}/data/dist/"` ; do
+    for INSTALLING_VERSION_IN_DIST in $(ls "${PORT_WINE_PATH}/data/dist/") ; do
         sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
         sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
         sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git"
@@ -2816,7 +2767,8 @@ gui_proton_downloader () {
 
     print_info "Download and install ${VERSION_WINE_GIT}..."
     PW_WINE_ARCHIVE="$(echo ${URL_VERSION_PROTON_GIT} | awk -F'/' '{print $NF}' | awk -F'.tar' '{print $1}')"
-    if try_download_to_path "${URL_VERSION_PROTON_GIT}" "${PORT_WINE_PATH}/data/tmp/" ; then
+    FILENAME="$(basename "${URL_VERSION_PROTON_GIT}")"
+    if try_download "${URL_VERSION_PROTON_GIT}" "${PORT_WINE_PATH}/data/tmp/$FILENAME" ; then
         for archive_type in "gz" "xz" ; do
             if [ -f "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}" ] ; then
                 if unpack_tar_${archive_type} "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}" "${PORT_WINE_PATH}/data/dist/" ; then
