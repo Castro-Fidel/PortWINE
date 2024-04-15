@@ -1470,12 +1470,10 @@ start_portwine () {
     fi
 
     pw_wineboot () {
-            LIST_RM_WIN_DLL="winevulkan amd_ags_x64 ir50_32 atl100 ntdll \
-libvkd3d-1 libvkd3d-shader-1 dxvk_config nvapi nvapi64 d3d12core d3d12 \
-d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
-        for rm_win_dll in $LIST_RM_WIN_DLL ; do
-            try_remove_file "${WINEPREFIX}/drive_c/windows/system32/${rm_win_dll}.dll"
-            try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/${rm_win_dll}.dll"
+        LIST_NATIVE_WINE_DLL="winevulkan ir50_32 atl100 ntdll wined3d vulkan-1 shell32 dxgi d3d8 d3d9 d3d10core d3d11 d3d12 d3d12core"
+        for change_wine_dll in $LIST_NATIVE_WINE_DLL ; do
+            try_copy_file "${WINEDIR}/lib64/wine/x86_64-windows/${change_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_copy_file "${WINEDIR}/lib/wine/i386-windows/${change_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
         done
 
         print_info "Used wineboot $@ for prefix: ${PW_PREFIX_NAME}"
@@ -1493,7 +1491,7 @@ d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
     then
         pw_clear_pfx
         check_dirs_and_files_in_pfx
-        if [[ "${PW_PREFIX_NAME}" == DEFAULT ]] ; then
+        if [[ "${PW_PREFIX_NAME}" == "DEFAULT" ]] ; then
             pw_update_pfx_cover_gui
             unpack_tar_xz "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
             pw_wineboot -r
@@ -1517,6 +1515,7 @@ d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
     else
         check_dirs_and_files_in_pfx
         if [[ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver" ]] \
+        || [[ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/shell32.dll" ]] \
         || ! grep "${PW_WINE_USE}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver" &>/dev/null
         then
             pw_update_pfx_cover_gui
