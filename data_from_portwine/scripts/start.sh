@@ -41,16 +41,9 @@ then
     MISSING_DESKTOP_FILE=0
 fi
 
-. "$(dirname $(readlink -f "$0"))/functions_helper"
-
-# if [[ -z "${LANG}" ]] ; then
-#     export LANG=C
-#     export FORCE_ENG_LANG=1
-# elif [[ "${START_FROM_STEAM}" == 1 ]] ; then
-#     export FORCE_ENG_LANG=1
-# else
-#     unset FORCE_ENG_LANG
-# fi
+cd "$(dirname "$(readlink -f "$0")")" && export PORT_SCRIPTS_PATH="$(pwd)"
+cd "${PORT_SCRIPTS_PATH}/../../" && export PORT_WINE_PATH="$(pwd)"
+. "${PORT_SCRIPTS_PATH}/functions_helper"
 
 create_new_dir "${HOME}/.local/share/applications"
 if [[ "${PW_SILENT_RESTART}" == 1 ]] || [[ "${START_FROM_STEAM}" == 1 ]] ; then
@@ -66,12 +59,7 @@ unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME
 unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_ALL_DF PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
 unset MANGOHUD_CONFIG PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME
 
-export portname=PortProton
-
-cd "$(dirname "`readlink -f "$0"`")" && export PORT_SCRIPTS_PATH="$(pwd)"
-cd "${PORT_SCRIPTS_PATH}/../../" && export PORT_WINE_PATH="$(pwd)"
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
-
 rm -f $PORT_WINE_TMP_PATH/*{exe,msi,tar}*
 
 echo "" > "${PORT_WINE_TMP_PATH}/tmp_yad_form"
@@ -142,7 +130,7 @@ export urlg="https://linux-gaming.ru/portproton/"
 export url_cdn="https://cdn.linux-gaming.ru"
 export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
 try_remove_dir "${PW_WINELIB}/var"
-export install_ver=$(cat "${PORT_WINE_TMP_PATH}/${portname}_ver" | head -n 1)
+export install_ver=$(cat "${PORT_WINE_TMP_PATH}/PortProton_ver" | head -n 1)
 export WINETRICKS_DOWNLOADER="curl"
 export USER_CONF="${PORT_WINE_PATH}/data/user.conf"
 check_user_conf
@@ -184,6 +172,8 @@ fi
 unset SKIP_CHECK_UPDATES
 
 pw_check_and_download_plugins
+export PW_VULKANINFO_PORTABLE="$PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo"
+export VULKAN_DRIVER_NAME="$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep driverName | awk '{print$3}' | head -1)"
 
 if [[ -f "/tmp/portproton.lock" ]] ; then
     print_warning "Found lock file: /tmp/portproton.lock"
@@ -196,10 +186,11 @@ rm_lock_file () {
 }
 trap "rm_lock_file" EXIT
 
-pw_download_libs
-export PW_VULKANINFO_PORTABLE="$PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo"
-export VULKAN_API_DRIVER_VERSION="$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep "api" | head -n 1 | awk '{print $3}')"
-export VULKAN_DRIVER_NAME="$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep driverName | awk '{print$3}' | head -1)"
+if check_flatpak
+then try_remove_dir "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
+else pw_download_libs
+fi
+
 pw_init_db
 . "${PORT_SCRIPTS_PATH}"/lang
 pw_check_and_download_dxvk_and_vkd3d
@@ -207,7 +198,7 @@ pw_check_and_download_dxvk_and_vkd3d
 
 kill_portwine
 killall -15 yad_v13_0 2>/dev/null
-kill -TERM `pgrep -a yad | grep ${portname} | head -n 1 | awk '{print $1}'` 2>/dev/null
+kill -TERM $(pgrep -a yad | grep PortProton | head -n 1 | awk '{print $1}') 2>/dev/null
 
 if [[ -f "/usr/bin/portproton" ]] \
 && [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]]
@@ -296,8 +287,7 @@ IFS=$IFS_OLD
 export PW_ADD_PREFIXES_TO_GUI="${PW_PREFIX_NAME^^}${PW_ADD_PREFIXES_TO_GUI}"
 
 PW_ALL_DIST=$(ls "${PORT_WINE_PATH}/data/dist/" | sed -e s/"${PW_WINE_LG_VER}$//g" | sed -e s/"${PW_PROTON_LG_VER}$//g")
-if command -v wine &>/dev/null \
-&& ! check_flatpak
+if command -v wine &>/dev/null
 then DIST_ADD_TO_GUI="!USE_SYSTEM_WINE"
 else unset DIST_ADD_TO_GUI
 fi
@@ -358,7 +348,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             PW_SHORTCUT="${loc_gui_delete_shortcut}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${loc_delete_shortcut}:98"
         fi
         OUTPUT_START=$("${pw_yad}" --text-align=center --text "$PW_COMMENT_DB" --form \
-        --title "${portname}-${install_ver} (${scripts_install_ver})" \
+        --title "PortProton-${install_ver} (${scripts_install_ver})" \
         --image "${PW_ICON_FOR_YAD}" --separator=";" \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
         --field="3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
@@ -496,7 +486,7 @@ else
         "${pw_yad_v13_0}" --key=$KEY --notebook --expand \
         --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
         --auto-close --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-        --title "${portname}-${install_ver} (${scripts_install_ver})" \
+        --title "PortProton-${install_ver} (${scripts_install_ver})" \
         --tab-pos=bottom \
         --tab="$loc_mg_autoinstall"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
         --tab="$loc_mg_emulators"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
@@ -508,7 +498,7 @@ else
         "${pw_yad_v13_0}" --key=$KEY --notebook --expand \
         --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
         --auto-close --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-        --title "${portname}-${install_ver} (${scripts_install_ver})" \
+        --title "PortProton-${install_ver} (${scripts_install_ver})" \
         --tab-pos=bottom \
         --tab="$loc_mg_installed"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
         --tab="$loc_mg_autoinstall"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
