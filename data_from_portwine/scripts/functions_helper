@@ -266,7 +266,7 @@ check_flatpak () {
         return 1
     fi
 }
-
+export -f check_flatpak
 
 unpack_tar_zst () {
     set -o pipefail
@@ -525,10 +525,7 @@ pw_init_runtime () {
     else export PATH="${PW_PLUGINS_PATH}/portable/bin"
     fi
 
-    if check_flatpak ; then
-        [[ "${update_loc}" == "RUS" ]] && export LC_ALL=ru_RU.UTF-8
-        export PW_USE_RUNTIME="0"
-    fi
+    check_flatpak && export PW_USE_RUNTIME="0"
 
     if [[ "$PW_USE_RUNTIME" != "1" ]] \
     || [[ "$PW_WINE_USE" == "USE_SYSTEM_WINE" ]]
@@ -2997,8 +2994,9 @@ gui_MangoHud () {
 }
 
 portwine_create_shortcut () {
-    pw_create_gui_png
     pw_stop_progress_bar
+    [[ ! -e ${portwine_exe} ]] && return 1
+    pw_create_gui_png
 
     if [[ "$1" == "block_name" ]] ; then
         export name_desktop="${PORTPROTON_NAME}"
