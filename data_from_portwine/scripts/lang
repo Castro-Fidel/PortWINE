@@ -4,11 +4,13 @@
 
 unset update_loc
 if [[ -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]] ; then
-	read "update_loc" < "${PORT_WINE_TMP_PATH}/PortProton_loc"
-	export update_loc=${update_loc}
+	update_loc=$(cat "${PORT_WINE_TMP_PATH}/PortProton_loc")
+	export update_loc
 fi
 
-if [[ "${FORCE_ENG_LANG}" == "1" ]] ; then
+if ! check_flatpak \
+&& [[ -z "${LANG}" ]] ; then
+	export LANG=C
 	export update_loc="ENG"
 else
 	if [[ "${update_loc}" == "RUS" || "${update_loc}" == "ENG" ]] && [[ -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]] ; then
@@ -18,7 +20,7 @@ else
 		SET_LANG=$("${pw_yad_v13_0}" --title  "LAUNGUAGE" --text "Select the language:" --list --radiolist \
 		--column="Set:" --column "Choose language:" TRUE "RUS" FALSE "ENG" \
 		--window-icon "$PW_GUI_ICON_PATH/portproton.svg" --width=300 --height=150)
-		SET_LANG="$(echo $SET_LANG | awk -F'|' '{print $2}')"
+		SET_LANG="$(echo "${SET_LANG}" | awk -F'|' '{print $2}')"
 		echo "${SET_LANG}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
 		if [[ ! -z "${SET_LANG}" ]]
 		then export update_loc=${SET_LANG}
@@ -28,7 +30,7 @@ else
 fi
 
 if [[ "${update_loc}" == "RUS" ]] ; then
-	check_flatpak && export LC_LANG=ru_RU.UTF-8
+	check_flatpak && export LANG=ru_RU.UTF-8
 
 	export loc_gui_pw_reinstall_pp="Переустановить PortProton"
     export loc_gui_rm_pp="Удалить PortProton"
@@ -85,10 +87,10 @@ if [[ "${update_loc}" == "RUS" ]] ; then
 
 	export scripts_upd1="Обновление скриптов"
 	export scripts_upd2="Доступно обновление скриптов для PortProton"
-	export scripts_upd3="Действие :"
-	export scripts_upd4="Обновить сейчас"
-	export scripts_upd5="Напомнить позже"
-	export scripts_upd6="Больше не напоминать"
+	export scripts_upd3="ВЫХОД"
+	export scripts_upd4="ОБНОВИТЬ СЕЙЧАС"
+	export scripts_upd5="НАПОМНИТЬ ПОЗЖЕ"
+	export scripts_upd6="НЕ НАПОМИНАТЬ"
 
 	export port_clear_pfx="Вы действительно хотите очистить префикс PortProton?"
 
@@ -501,10 +503,10 @@ elif [[ "${update_loc}" == "ENG" ]] ; then
 
 	export scripts_upd1="New update for scripts"
 	export scripts_upd2="Scripts update avialable for PortProton"
-	export scripts_upd3="Action:"
-	export scripts_upd4="Updating now"
-	export scripts_upd5="Remind me later"
-	export scripts_upd6="Do not remind me"
+	export scripts_upd3="EXIT"
+	export scripts_upd4="UPDATING NOW"
+	export scripts_upd5="REMIND ME LATER"
+	export scripts_upd6="DO NOT REMIND ME"
 
 	export port_clear_pfx="Do you want to clear prefix in PortProton?"
 
@@ -859,6 +861,5 @@ A brief instruction:
 
 	export loc_gui_terminal="TERMINAL"
 	export loc_gui_logo="LOGO"
-
 
 fi

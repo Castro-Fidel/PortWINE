@@ -1156,7 +1156,7 @@ pw_init_db () {
 pw_port_update () {
     ###SCRIPTS UPDATE###
     if [ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ] ; then
-        echo "2022" > "${PORT_WINE_TMP_PATH}/scripts_ver"
+        echo "2024" > "${PORT_WINE_TMP_PATH}/scripts_ver"
     fi
     export scripts_install_ver=$(cat "${PORT_WINE_TMP_PATH}/scripts_ver" | head -n 1)
     print_info "Check update..."
@@ -1197,10 +1197,17 @@ pw_port_update () {
                 xcsd=$("${pw_yad_v13_0}" --title "${scripts_upd2} v.${scripts_current_ver}" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
                 --form --separator='%%%' --width=1200 --height=600 \
                 --field=":TXT" "${CHANGLOG_NEWS}" \
-                --field="   ${scripts_upd3} :CB" "${scripts_upd4}!${scripts_upd5}!${scripts_upd6}" 2>/dev/null)
+                --button="${scripts_upd3}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":252 \
+                --button="${scripts_upd6}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":16 \
+                --button="${scripts_upd5}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":18 \
+                --button="${scripts_upd4}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":20 2>/dev/null)
                 YAD_STATUS="$?"
-                if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
-                xcsd=`echo "${xcsd}" | awk -F'%%%' '{print $2}'`
+                case "${YAD_STATUS}" in
+                    1|252) exit 0 ;;
+                       16) xcsd="${scripts_upd6}" ;;
+                       18) xcsd="${scripts_upd5}" ;;
+                       20) xcsd="${scripts_upd4}" ;;
+                esac
             fi
             case $xcsd in
                 "${scripts_upd4}")
@@ -1894,6 +1901,7 @@ start_portwine () {
         export WINE_D3D_CONFIG='renderer=vulkan'
     else
         print_info "Use VKD3D-PROTON, DXVK and D8VK (DirectX 8-12 to vulkan)"
+        check_variables DXVK_HDR 0
         if [[ "${PW_USE_WINE_DXGI}" == 1 ]] ; then
             export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxvk_config" # openvr_api_dxvk
             export CP_WINE_FILES="d3d10_1 d3d10 dxgi"
@@ -1903,7 +1911,7 @@ start_portwine () {
             export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi dxvk_config" # openvr_api_dxvk
             export CP_WINE_FILES="d3d10_1 d3d10"
         fi
-        check_variables VKD3D_FEATURE_LEVEL "12_0"
+        check_variables VKD3D_FEATURE_LEVEL "12_1"
         if [[ "${PW_VULKAN_USE}" == "1" ]] ; then
             export PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
             export PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
@@ -2249,7 +2257,7 @@ yad_info () {
         command -v "${pw_yad_v13_0}" &>/dev/null || fatal "yad not found"
     fi
     "${pw_yad_v13_0}" --no-wrap --text "$@" --width=400 --height=50 --borders=15 --title "INFO" \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/info.png" \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/info.svg" \
     --center --text-align=center \
     --button="OK"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
 }
@@ -2262,7 +2270,7 @@ yad_error () {
         command -v "${pw_yad_v13_0}" &>/dev/null || fatal "yad not found"
     fi
     "${pw_yad_v13_0}" --no-wrap --text "$@" --width=400 --borders=15 --title "ERROR" \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/error.png" \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/error.svg" \
     --center --text-align=center \
     --button="EXIT"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
 }
@@ -2274,7 +2282,7 @@ yad_error_download () {
         command -v "${pw_yad_v13_0}" &>/dev/null || fatal "yad not found"
     fi
     "${pw_yad_v13_0}" --text "$loc_gui_error_download" --width=400 --borders=15 --title "$loc_gui_error" \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/download.png" \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/download.svg" \
     --no-wrap --center --text-align=center \
     --button="$loc_skip"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
     --button="$loc_repeat"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null
@@ -2287,7 +2295,7 @@ yad_question () {
         command -v "${pw_yad_v13_0}" &>/dev/null || fatal "yad not found"
     fi
     "${pw_yad_v13_0}" --text "${1}" --width=400 --borders=15 --title "${inst_set}." \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/question.png" \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/question.svg" \
     --no-wrap --center --text-align=center \
     --button="$loc_cancel"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
     --button="OK"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null
@@ -2455,10 +2463,10 @@ pw_tray_icon () {
     --command="bash -c tray_icon_click" \
     --tooltip="PortProton" \
     --icon-size=32 --menu="| \
-    ${loc_tray_winefile}!bash -c pw_tray_winefile!"$PW_GUI_ICON_PATH/wine_file.png"|| \
-    ${loc_tray_tascmng}!bash -c pw_tray_taskmgr!"$PW_GUI_ICON_PATH/wine_system.png"|| \
-    ${loc_tray_cangelog}!bash -c open_changelog!"$PW_GUI_ICON_PATH/history.png"|| \
-    ${loc_tray_force_exit}    !bash -c tray_icon_click_exit!"$PW_GUI_ICON_PATH/close.png"||" 2>/dev/null &
+    ${loc_tray_winefile}!bash -c pw_tray_winefile!"$PW_GUI_ICON_PATH/wine_file.svg"|| \
+    ${loc_tray_tascmng}!bash -c pw_tray_taskmgr!"$PW_GUI_ICON_PATH/wine_system.svg"|| \
+    ${loc_tray_cangelog}!bash -c open_changelog!"$PW_GUI_ICON_PATH/history.svg"|| \
+    ${loc_tray_force_exit}    !bash -c tray_icon_click_exit!"$PW_GUI_ICON_PATH/close.svg"||" 2>/dev/null &
 
     return 0
 }
@@ -2709,16 +2717,16 @@ gui_proton_downloader () {
             exit 0
         fi
 
-        if [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_proton_set" | awk '{print $1}'` ] ; then
-            export VERSION_WINE_GIT="`cat "${PORT_WINE_TMP_PATH}/tmp_proton_set"`"
-        elif [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set" | awk '{print $1}'` ] ; then
-            export VERSION_WINE_GIT="`cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set"`"
-        elif [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_kron4ek_set" | awk '{print $1}'` ] ; then
-            export VERSION_WINE_GIT="`cat "${PORT_WINE_TMP_PATH}/tmp_kron4ek_set"`"
-        elif [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set" | awk '{print $1}'` ] ; then
-            export VERSION_WINE_GIT="`cat "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set"`"
-        elif [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set" | awk '{print $1}'` ] ; then
-            export VERSION_INSTALLED_WINE="`cat "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set"`"
+        if [[ ! -z $(awk '{print $1}' "${PORT_WINE_TMP_PATH}/tmp_proton_set") ]] ; then
+            VERSION_WINE_GIT="$(cat "${PORT_WINE_TMP_PATH}/tmp_proton_set")"
+        elif [[ ! -z $(awk '{print $1}' "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set") ]] ; then
+            VERSION_WINE_GIT="$(cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set")"
+        elif [[ ! -z $(awk '{print $1}' "${PORT_WINE_TMP_PATH}/tmp_kron4ek_set") ]] ; then
+            VERSION_WINE_GIT="$(cat "${PORT_WINE_TMP_PATH}/tmp_kron4ek_set")"
+        elif [[ ! -z $(awk '{print $1}' "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set") ]] ; then
+            VERSION_WINE_GIT="$(cat "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set")"
+        elif [[ ! -z $(awk '{print $1}' "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set") ]] ; then
+            VERSION_INSTALLED_WINE="$(cat "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set")"
         else
             print_info "Nothing to do."
             export SKIP_CHECK_UPDATES=1
@@ -2737,7 +2745,7 @@ gui_proton_downloader () {
     fi
 
     for GIVE_WINE_URL in ${PROTON_GE_GIT[@]} ${PROTON_PW_GIT[@]} ${WINE_KRON4EK[@]} ${WINE_GE_CUSTOM[@]} ; do
-        if [ ! -z `echo ${GIVE_WINE_URL} | grep -i "${VERSION_WINE_GIT}"` ] ; then
+        if [ ! -z $(echo ${GIVE_WINE_URL} | grep -i "${VERSION_WINE_GIT}") ] ; then
             export URL_VERSION_PROTON_GIT="${GIVE_WINE_URL}"
             break
         fi
@@ -2752,7 +2760,7 @@ gui_proton_downloader () {
 	fi
 
     print_info "Download and install ${VERSION_WINE_GIT}..."
-    PW_WINE_ARCHIVE="$(echo ${URL_VERSION_PROTON_GIT} | awk -F'/' '{print $NF}' | awk -F'.tar' '{print $1}')"
+    PW_WINE_ARCHIVE="$(echo "${URL_VERSION_PROTON_GIT}" | awk -F'/' '{print $NF}' | awk -F'.tar' '{print $1}')"
     FILENAME="$(basename "${URL_VERSION_PROTON_GIT}")"
     if try_download "${URL_VERSION_PROTON_GIT}" "${PORT_WINE_PATH}/data/tmp/$FILENAME" ; then
         for archive_type in "gz" "xz" ; do
@@ -2760,7 +2768,7 @@ gui_proton_downloader () {
                 if unpack_tar_${archive_type} "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}" "${PORT_WINE_PATH}/data/dist/" ; then
                     try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}"
                     if [ ! -z "${portwine_exe}" ]; then
-                        PW_WINE_USE="$(echo ${VERSION_WINE_GIT} | tr [[:lower:]] [[:upper:]])"
+                        PW_WINE_USE="$(echo "${VERSION_WINE_GIT}" | tr [[:lower:]] [[:upper:]])"
                         edit_db_from_gui PW_WINE_USE
                     fi
                 else
@@ -3120,7 +3128,7 @@ portwine_delete_shortcut () {
 portwine_missing_shortcut () {
     "${pw_yad}" --title="${loc_gui_error}." --form \
     --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
-    --image "$PW_GUI_ICON_PATH/error.png" \
+    --image "$PW_GUI_ICON_PATH/error.svg" \
     --text "$loc_gui_missing_shortcut" \
     --button="$loc_gui_delete_shortcut"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 \
     --button="$loc_cancel"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1
@@ -3551,7 +3559,7 @@ export -f gui_rm_portproton
 gui_pw_update () {
     try_remove_file "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     print_info "Restarting PP for check update..."
-    export SKIP_CHECK_UPDATES=1
+    export SKIP_CHECK_UPDATES=0
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
