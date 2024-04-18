@@ -5,15 +5,14 @@
 unset update_loc
 if [[ -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]] ; then
 	update_loc=$(cat "${PORT_WINE_TMP_PATH}/PortProton_loc")
-	export update_loc
 fi
 
-if ! check_flatpak \
-&& [[ -z "${LANG}" ]] ; then
+if [[ -z "${LANG}" ]] ; then
 	export LANG=C
-	export update_loc="ENG"
+	update_loc="ENG"
 else
-	if [[ "${update_loc}" == "RUS" || "${update_loc}" == "ENG" ]] && [[ -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]] ; then
+	if [[ "${update_loc}" == "RUS" || "${update_loc}" == "ENG" ]] \
+	&& [[ -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]] ; then
 		echo ""
 	else
 		[[ ! -f "${pw_yad_v13_0}" ]] && pw_yad_v13_0="yad"
@@ -23,11 +22,12 @@ else
 		SET_LANG="$(echo "${SET_LANG}" | awk -F'|' '{print $2}')"
 		echo "${SET_LANG}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
 		if [[ ! -z "${SET_LANG}" ]]
-		then export update_loc=${SET_LANG}
+		then update_loc=${SET_LANG}
 		else exit 1
 		fi
 	fi
 fi
+export update_loc
 
 if [[ "${update_loc}" == "RUS" ]] ; then
 	# check_flatpak && export LANG=ru_RU.UTF-8
