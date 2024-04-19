@@ -216,34 +216,40 @@ fi
 [[ "$MISSING_DESKTOP_FILE" == 1 ]] && portwine_missing_shortcut
 
 if [[ ! -z $(basename "${portwine_exe}" | grep .ppack) ]] ; then
-    export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
     unset PW_SANDBOX_HOME_PATH
     pw_init_runtime
-    export PW_PREFIX_NAME=$(basename "$1" | awk -F'.' '{print $1}')
-    ${pw_runtime} "${PW_PLUGINS_PATH}/portable/bin/xterm" -e env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" unsquashfs -f -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" "$1" &
-    sleep 10
-    while true ; do
-        if [[ ! -z $(pgrep -a xterm | grep ".ppack" | head -n 1 | awk '{print $1}') ]] ; then
-            sleep 0.5
-        else
-            kill -TERM $(pgrep -a unsquashfs | grep ".ppack" | head -n 1 | awk '{print $1}')
-            sleep 0.3
-            if [[ -z "$(pgrep -a unsquashfs | grep ".ppack" | head -n 1 | awk '{print $1}')" ]]
-            then break
-            else sleep 0.3
-            fi
-        fi
-    done
-    if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut" ]] ; then
-        orig_IFS="$IFS"
-        IFS=$'\n'
-        for crfb in $(cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut") ; do
-            export portwine_exe="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/${crfb}"
-            portwine_create_shortcut "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/${crfb}"
-        done
-        IFS="$orig_IFS"
+    if check_flatpak
+    then TMP_ALL_PATH=""
+    else TMP_ALL_PATH="env PATH=\"${PATH}\" LD_LIBRARY_PATH=\"${PW_LD_LIBRARY_PATH}\""
     fi
-    exit 0
+    export PW_PREFIX_NAME=$(basename "$1" | awk -F'.' '{print $1}')
+cat << EOF > /tmp/pp_pfx_unpack.sh
+    #!/usr/bin/env bash
+    ${TMP_ALL_PATH} unsquashfs -f -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" "$1" \
+    || echo "ERROR" >/tmp/pp_pfx_unpack_error
+EOF
+    chmod u+x /tmp/pp_pfx_unpack.sh
+    ${pw_runtime} ${PW_TERM} /tmp/pp_pfx_unpack.sh
+    if grep "ERROR" /tmp/pp_pfx_unpack_error &>/dev/null ; then
+        try_remove_file /tmp/pp_pfx_unpack_error
+        try_remove_file /tmp/pp_pfx_unpack.sh
+        yad_error "Unpack has FAILED for prefix: <b>\"${PW_PREFIX_NAME}\"</b>."
+        exit 1
+    else
+        try_remove_file /tmp/pp_pfx_unpack.sh
+        if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut" ]] ; then
+            orig_IFS="$IFS"
+            IFS=$'\n'
+            for crfb in $(cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut") ; do
+                export portwine_exe="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/${crfb}"
+                portwine_create_shortcut "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/${crfb}"
+            done
+            IFS="$orig_IFS"
+        else
+            yad_info "Unpack is DONE for prefix: <b>\"${PW_PREFIX_NAME}\"</b>."
+        fi
+        exit 0
+    fi
 fi
 
 ### CLI ###

@@ -242,10 +242,6 @@ check_gamescope_session () {
     then [[ "$GAMESCOPE_IN_USE" == 1 ]] && return 0 || return 1
     fi
     if echo "${DESKTOP_SESSION}" | grep -i "gamescope" &>/dev/null ; then
-        if command -v konsole &>/dev/null
-        then export PW_TERM="konsole --hide-menubar --fullscreen -e"
-        else export PW_TERM="xdg-terminal"
-        fi
         export GAMESCOPE_IN_USE=1
         return 0
     else
@@ -530,9 +526,16 @@ pw_init_runtime () {
     if [[ "$PW_USE_RUNTIME" != "1" ]] \
     || [[ "$PW_WINE_USE" == "USE_SYSTEM_WINE" ]]
     then
-        var_ld_library_path_update "${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32"
-        export PW_LD_LIBRARY_PATH="${LD_LIBRARY_PATH}"
+        export PW_LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32"
         export PW_VK_LAYER_PATH="${PW_PLUGINS_PATH}/portable/share/vulkan/implicit_layer.d"
+        if check_flatpak \
+        && check_gamescope_session
+        then PW_TERM="xterm -fullscreen -bg black -fg white -e"
+        elif check_flatpak
+        then PW_TERM="xterm -bg black -fg white -e"
+        else PW_TERM="env LD_LIBRARY_PATH=\"${PW_LD_LIBRARY_PATH}\" ${PW_PLUGINS_PATH}/portable/bin/xterm -bg black -fg white -e"
+        fi
+        export PW_TERM
         export pw_runtime=""
         return 0
     fi
@@ -600,6 +603,8 @@ ${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:\
         else export PRESSURE_VESSEL_FILESYSTEMS_RW="${PWRTMRW}"
         fi
     done
+
+    export PW_TERM="env LD_LIBRARY_PATH=\"${PW_LD_LIBRARY_PATH}\" ${PW_PLUGINS_PATH}/portable/bin/xterm -bg black -fg white -e"
 
     print_info "RUNTIME is enabled"
 }
@@ -819,7 +824,7 @@ pw_download_libs () {
 }
 
 pw_check_and_download_wine () {
-    [ ! -d "${PORT_WINE_PATH}/data/dist/" ] && create_new_dir "${PORT_WINE_PATH}/data/dist"
+    [[ ! -d "${PORT_WINE_PATH}/data/dist/" ]] && create_new_dir "${PORT_WINE_PATH}/data/dist"
     if [[ "${PW_WINE_USE}" == "GET-OTHER-WINE" ]] ; then
         gui_proton_downloader
     fi
@@ -2225,7 +2230,7 @@ pw_winecmd () {
     export PW_USE_TERMINAL=1
     start_portwine
     cd "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c"
-    ${pw_runtime} env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" "${PW_PLUGINS_PATH}/portable/bin/xterm" -e "${WINELOADER}" cmd
+    ${pw_runtime} ${PW_TERM} "${WINELOADER}" cmd
     stop_portwine
 }
 
@@ -2241,13 +2246,12 @@ pw_start_cont_xterm () {
     pw_init_runtime
     ${pw_runtime} \
     env PATH="${PATH}" \
-    LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
     LD_PRELOAD="${PW_LD_PRELOAD}" \
     VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
     VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
     ${PW_GAMEMODERUN_SLR} \
     ${PW_MANGOHUD_SLR} \
-    "${PW_PLUGINS_PATH}/portable/bin/xterm"
+    ${PW_TERM} bash
 }
 
 yad_info () {
@@ -2674,13 +2678,20 @@ gui_proton_downloader () {
         exit 0
     fi
     for INSTALLING_VERSION_IN_DIST in $(ls "${PORT_WINE_PATH}/data/dist/") ; do
-        sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
         sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
+        sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
         sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git"
         sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git"
+        [[ -z "$(cat "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git")" ]] && echo "nothing" > "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git"
     done
+
+    [[ -z "$(cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git")" ]] && echo "nothing" >"${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
+    [[ -z "$(cat "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git")" ]] && echo "nothing" >"${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+    [[ -z "$(cat "${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git")" ]] && echo "nothing" >"${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git"
+    [[ -z "$(cat "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git")" ]] && echo "nothing" >"${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git"
+
 	# Installed wine
-	ls -l ${PORT_WINE_PATH}/data/dist | awk '{print $9}' | sed '/^$/d' > ${PORT_WINE_TMP_PATH}/tmp_installed_wine
+	ls -l ${PORT_WINE_PATH}/data/dist | awk '{print $9}' | sed '/^$/d' 1> ${PORT_WINE_TMP_PATH}/tmp_installed_wine
     if [[ "$1" != "silent" ]] ; then
         # GUI
         export KEY_WINE=$RANDOM
@@ -2728,6 +2739,13 @@ gui_proton_downloader () {
         elif [[ ! -z $(awk '{print $1}' "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set") ]] ; then
             VERSION_INSTALLED_WINE="$(cat "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set")"
         else
+            print_info "Nothing to do."
+            export SKIP_CHECK_UPDATES=1
+            /usr/bin/env bash -c ${pw_full_command_line[*]} &
+            exit 0
+        fi
+
+        if [[ "${VERSION_WINE_GIT}" == "nothing" ]] ; then
             print_info "Nothing to do."
             export SKIP_CHECK_UPDATES=1
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
@@ -3432,23 +3450,21 @@ pw_create_prefix_backup () {
         | awk -F\" '{print $1}' > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut"
     fi
     unset PW_SANDBOX_HOME_PATH
-    export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
     pw_init_runtime
+    if check_flatpak
+    then TMP_ALL_PATH=""
+    else TMP_ALL_PATH="env PATH=\"${PATH}\" LD_LIBRARY_PATH=\"${PW_LD_LIBRARY_PATH}\""
+    fi
     chmod -R u+w "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"
-    ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" mksquashfs "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" -comp zstd &
-    sleep 10
-    while true ; do
-        if [[ ! -z $(pgrep -a xterm | grep ".ppack.part" | head -n 1 | awk '{print $1}') ]] ; then
-            sleep 0.5
-        else
-            kill -TERM $(pgrep -a mksquashfs | grep ".ppack.part" | head -n 1 | awk '{print $1}')
-            sleep 0.3
-            if [[ -z "$(pgrep -a mksquashfs | grep ".ppack.part" | head -n 1 | awk '{print $1}')" ]]
-            then break
-            else sleep 0.3
-            fi
-        fi
-    done
+cat << EOF > /tmp/pp_pfx_backup.sh
+    #!/usr/bin/env bash
+    ${TMP_ALL_PATH} mksquashfs "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" \
+    "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" -comp zstd \
+    || rm -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part"
+EOF
+    chmod u+x /tmp/pp_pfx_backup.sh
+    ${pw_runtime} ${PW_TERM} /tmp/pp_pfx_backup.sh
+    try_remove_file /tmp/pp_pfx_backup.sh
     if [[ -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" ]] ; then
         mv -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack"
         yad_info "$PW_PFX_BACKUP_SUCCESS $PW_PREFIX_NAME"
@@ -3459,7 +3475,6 @@ pw_create_prefix_backup () {
     else
         yad_error "$PW_PFX_BACKUP_ERROR $PW_PREFIX_NAME"
     fi
-
     return 0
 }
 
