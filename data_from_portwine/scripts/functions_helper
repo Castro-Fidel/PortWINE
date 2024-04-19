@@ -2537,7 +2537,8 @@ pw_gui_for_edit_db () {
     --field=":LBL" "" \
     --field="${loc_gui_cpu_limit}!${loc_gui_cpu_limit_help} :CB" "${CPU_LIMIT_VAR}!disabled!${GET_LOGICAL_CORE}" \
     --field="${loc_gui_gpu_select}!${loc_gui_gpu_select_help} :CB" "${GPU_VAR}!disabled!${GET_GPU_NAMES}" \
-    --field="${loc_gui_arg_gamescope}!${loc_gui_arg_gamescope_help} :CBE" "\\${GAMESCOPE_ARGS}!-r 60 -F fsr!" 2>/dev/null 1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
+    --field="${loc_gui_arg_gamescope}!${loc_gui_arg_gamescope_help} :CBE" "\\${GAMESCOPE_ARGS}!-r 60 -F fsr!" \
+    --field="${loc_gui_opengl_version}!${loc_gui_opengl_version_help} :CBE" "${MESA_GL_VERSION_OVERRIDE}!4.6COMPAT!4.6!4.5COMPAT!4.5!3.3COMPAT!3.3" 2>/dev/null 1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
 
     "${pw_yad_v13_0}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="700" \
     --text "${loc_gui_edit_db} <b>${PORTWINE_DB}</b>\n ${loc_gui_edit_db_help}" --separator=" " \
@@ -2582,6 +2583,7 @@ pw_gui_for_edit_db () {
     CPU_LIMIT="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $7}')"
     PW_GPU_USE="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $8}')"
     GAMESCOPE_ARGS="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $9}')"
+    MESA_GL_VERSION_OVERRIDE="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $10}')"
     # PW_AMD_VULKAN_USE="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $10}'`"
 
     if [[ "${CPU_LIMIT}" != "disabled" ]] ; then
@@ -2590,7 +2592,7 @@ pw_gui_for_edit_db () {
         export PW_WINE_CPU_TOPOLOGY="disabled"
     fi
     echo "pw_gui_for_edit_db PORTWINE_DB_FILE=$PORTWINE_DB_FILE"
-    edit_db_from_gui $@ LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY GAMESCOPE_ARGS
+    edit_db_from_gui $@ LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY GAMESCOPE_ARGS MESA_GL_VERSION_OVERRIDE
     if [[ -z "$MANGOHUD_CONFIG" ]] ; then
         MONITOR_HEIGHT="$(echo $PW_SCREEN_RESOLUTION | awk -F'x' '{print $2}')"
         MH_FONT_SIZE="font_size=$(( MONITOR_HEIGHT / 45 ))"
