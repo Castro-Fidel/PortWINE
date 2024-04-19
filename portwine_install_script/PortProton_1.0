@@ -8,7 +8,7 @@ export port_ver=1.5
 ########################################################################
 cd "$(dirname "$(readlink -f "$0")")"
 script_path="$(pwd)"
-def_path="${HOME}/${portname}"
+def_path="${HOME}/PortProton"
 ########################################################################
 fatal () {
 	echo -e "\n${1}\n"
@@ -16,12 +16,12 @@ fatal () {
 }
 ########################################################################
 if [ "$(id -u)" == "0" ] ; then
-	$yad_gui --error --text "\nDo not run ${portname} from the superuser!" 2>/dev/null
+	$yad_gui --error --text "\nDo not run PortProton from the superuser!" 2>/dev/null
 	fatal "Do not run the script from the superuser!"
 fi
 ########################################################################
 [ -z "${XDG_DATA_HOME}" ] && export XDG_DATA_HOME="$HOME/.local/share"
-PP_CONFIG_FILE="${HOME}/.config/${portname}.conf"
+PP_CONFIG_FILE="${HOME}/.config/PortProton.conf"
 if [ -f "${XDG_DATA_HOME}/PortWINE/PortProton/data/scripts/start.sh" ] ; then
 	echo "${XDG_DATA_HOME}/PortWINE/PortProton" > "${PP_CONFIG_FILE}"
 elif [ -f "${HOME}/PortWINE/PortProton/data/scripts/start.sh" ] ; then
@@ -31,7 +31,7 @@ fi
 if [ "$script_path" == "/usr/bin" ] && [ -f "${PP_CONFIG_FILE}" ] ; then
 	export PORT_WINE_PATH="$(cat "${PP_CONFIG_FILE}" | head -n 1)"
 	if [ -f "${PORT_WINE_PATH}/data/scripts/start.sh" ] ; then
-		echo "${port_ver}" > "${PORT_WINE_PATH}/data/tmp/${portname}_ver"
+		echo "${port_ver}" > "${PORT_WINE_PATH}/data/tmp/PortProton_ver"
 		/usr/bin/env bash "${PORT_WINE_PATH}/data/scripts/start.sh" "$@"
 		exit 0
 	else
@@ -78,7 +78,7 @@ export INSTALLING_PORT=1
 if [[ "${PW_USE_NS}" != "1" ]] ; then
 	case $PW_SET_LANG in
 		"Russian")
-			inst1=$($yad_gui --title  "Install ${portname}" --text "Выберите путь для установки (обновления) ${portname},\nили оставьте его по умолчанию.\n\nВнимание:\nУстанавливать необходимо на файловую систему Linux (ext4, btrfs и прочие)." --list --radiolist --width=600 --height=200 \
+			inst1=$($yad_gui --title  "Install PortProton" --text "Выберите путь для установки (обновления) PortProton,\nили оставьте его по умолчанию.\n\nВнимание:\nУстанавливать необходимо на файловую систему Linux (ext4, btrfs и прочие)." --list --radiolist --width=600 --height=200 \
 			--column="Выбор" --column "Путь:" \
 			TRUE "${def_path}" \
 			FALSE "Другой путь...")
@@ -91,7 +91,7 @@ if [[ "${PW_USE_NS}" != "1" ]] ; then
 					D_PATH="$($yad_gui --file --directory --title="Выберите путь..." --width=800 --height=800)" ;;
 			esac ;;
 		"English")
-			inst1=$($yad_gui --title  "Install ${portname}" --text "Select the installation path (update) port,\nor leave it in default." --list --radiolist --width=600 --height=200 \
+			inst1=$($yad_gui --title  "Install PortProton" --text "Select the installation path (update) port,\nor leave it in default." --list --radiolist --width=600 --height=200 \
 			--column="Set..." --column "Path:" \
 			TRUE "${def_path}" \
 			FALSE "Other path...")
@@ -105,16 +105,16 @@ if [[ "${PW_USE_NS}" != "1" ]] ; then
 			esac ;;
 	esac
 	[[ -z "${D_PATH}" ]] && fatal
-	echo "${D_PATH}" | grep -i "${portname}" 2>/dev/null || D_PATH="${D_PATH}/${portname}"
+	echo "${D_PATH}" | grep -i "PortProton" 2>/dev/null || D_PATH="${D_PATH}/PortProton"
 
 	case $PW_SET_LANG in
 		"Russian")
 			progress_bar() {
-			$yad_gui --progress --title="Установка..." --text="Настройка ${portname}" --pulsate --auto-close --auto-kill --width=500
+			$yad_gui --progress --title="Установка..." --text="Настройка PortProton" --pulsate --auto-close --auto-kill --width=500
 			} ;;
 		"English")
 			progress_bar() {
-			$yad_gui --progress --title="Install..." --text="Install ${portname}" --pulsate --auto-close --auto-kill --width=500
+			$yad_gui --progress --title="Install..." --text="Install PortProton" --pulsate --auto-close --auto-kill --width=500
 			} ;;
 	esac
 else
@@ -133,10 +133,10 @@ else
 fi
 ########################################################################
 mkdir -p "${PORT_WINE_PATH}/data/tmp"
-echo "${port_ver}" > "${PORT_WINE_PATH}/data/tmp/${portname}_ver"
+echo "${port_ver}" > "${PORT_WINE_PATH}/data/tmp/PortProton_ver"
 case "${PW_SET_LANG}" in
-	"Russian") echo "RUS" > "${PORT_WINE_PATH}/data/tmp/${portname}_loc" ;;
-	"English") echo "ENG" > "${PORT_WINE_PATH}/data/tmp/${portname}_loc" ;;
+	"Russian") echo "RUS" > "${PORT_WINE_PATH}/data/tmp/PortProton_loc" ;;
+	"English") echo "ENG" > "${PORT_WINE_PATH}/data/tmp/PortProton_loc" ;;
 esac
 ########################################################################
 if [[ "${PW_USE_NS}" != "1" ]] ; then

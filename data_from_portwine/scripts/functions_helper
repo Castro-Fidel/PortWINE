@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Author: Castro-Fidel (linux-gaming.ru)
 ########################################################################
-pw_ping_test () {
-    ping -w3 -c1 github.com &> /dev/null
+ping_test () {
+    ping -w3 -c1 $@ &> /dev/null
     [ "$?" == "0" ] && return 0 || return 1
 }
 
@@ -87,10 +87,10 @@ try_force_link_file () {
 export -f try_force_link_file
 
 check_symlink () {
-    CHK_SYMLINK_FILE="`file "$1"`"
-    if [[ ! -z "`echo "$CHK_SYMLINK_FILE" | grep -v "broken" | grep "symbolic link to" | awk '{print $1}'`" ]] ; then
+    CHK_SYMLINK_FILE="$(file "$1")"
+    if [[ ! -z "$(echo "$CHK_SYMLINK_FILE" | grep -v "broken" | grep "symbolic link to" | awk '{print $1}')" ]] ; then
         return 0
-    elif [[ ! -z "`echo "$CHK_SYMLINK_FILE" | grep "broken symbolic link to" | awk '{print $1}'`" ]] ; then
+    elif [[ ! -z "$(echo "$CHK_SYMLINK_FILE" | grep "broken symbolic link to" | awk '{print $1}')" ]] ; then
         print_error "remove broken symlink: $CHK_SYMLINK_FILE"
         rm -fr "$CHK_SYMLINK_FILE"
         return 1
@@ -112,7 +112,7 @@ try_force_link_dir () {
 export -f try_force_link_dir
 
 check_process () {
-    [ ! -n "`ps cax | grep "$1" | awk '{print $1}'`" ] && return 0 || return 1
+    [ ! -n "$(ps cax | grep "$1" | awk '{print $1}')" ] && return 0 || return 1
 }
 export -f check_process
 
@@ -124,7 +124,7 @@ try_download () {
     local silent="false"
     local no_mirror="false"
     case "$3" in
-           silent) 
+           silent)
                 silent=true ;;
         no_mirror)
                 no_mirror=true
@@ -203,7 +203,7 @@ var_radv_perftest_config_update () {
     return 0
 }
 
-var_vk_istance_layers_config_update () {
+var_pw_vk_istance_layers_config_update () {
     if [ ! -z "$PW_VK_INSTANCE_LAYERS" ]
     then export PW_VK_INSTANCE_LAYERS="$1:$PW_VK_INSTANCE_LAYERS"
     else export PW_VK_INSTANCE_LAYERS="$1"
@@ -212,7 +212,9 @@ var_vk_istance_layers_config_update () {
 }
 
 var_ld_library_path_update () {
-    if [ ! -z "$LD_LIBRARY_PATH" ]
+    if echo "$LD_LIBRARY_PATH" | grep "$1"
+    then return 0
+    elif [[ ! -z "$LD_LIBRARY_PATH" ]]
     then export LD_LIBRARY_PATH="$1:$LD_LIBRARY_PATH"
     else export LD_LIBRARY_PATH="$1"
     fi
@@ -240,10 +242,6 @@ check_gamescope_session () {
     then [[ "$GAMESCOPE_IN_USE" == 1 ]] && return 0 || return 1
     fi
     if echo "${DESKTOP_SESSION}" | grep -i "gamescope" &>/dev/null ; then
-        if command -v konsole &>/dev/null
-        then export PW_TERM="konsole --hide-menubar --fullscreen -e"
-        else export PW_TERM="xdg-terminal"
-        fi
         export GAMESCOPE_IN_USE=1
         return 0
     else
@@ -264,6 +262,7 @@ check_flatpak () {
         return 1
     fi
 }
+export -f check_flatpak
 
 unpack () {
     case $1 in
@@ -380,19 +379,11 @@ init_wine_ver () {
 
     if [[ "${PW_WINE_USE}" == "USE_SYSTEM_WINE" ]] \
     && command -v wine &>/dev/null ; then
-        if ! check_flatpak ; then
-            export WINEDIR="$RT_PREFIX/usr"
-            export WINE="$RT_PREFIX$(command -v wine)"
-            export WINELOADER="$WINE"
-            export WINESERVER="$RT_PREFIX$(command -v wineserver)"
-            export PW_NO_FSYNC=1
-        else
-            export WINEDIR="$RT_PREFIX/app"
-            export WINE="$RT_PREFIX/app/bin/wine"
-            export WINELOADER="$WINE"
-            export WINESERVER="$RT_PREFIX/app/bin/wineserver"
-            export PW_NO_FSYNC=1
-        fi
+        export WINEDIR="$RT_PREFIX/usr"
+        export WINE="$RT_PREFIX$(command -v wine)"
+        export WINELOADER="$WINE"
+        export WINESERVER="$RT_PREFIX$(command -v wineserver)"
+        export PW_NO_FSYNC=1
         unset WINEDLLPATH
     else
         if [[ -d "${PORT_WINE_PATH}/data/dist" ]] ; then
@@ -406,7 +397,7 @@ init_wine_ver () {
         done
         IFS="$orig_IFS"
         fi
-        if ls "${PORT_WINE_PATH}/data/dist/" | grep "${PW_WINE_USE}" ; then
+        if [[ -z $(ls "${PORT_WINE_PATH}/data/dist/" | grep "${PW_WINE_USE}") ]] ; then
             if [[ "$PW_WINE_USE" =~ PROTON_LG* ]]
             then export PW_WINE_USE=PROTON_LG
             else export PW_WINE_USE=WINE_LG
@@ -486,9 +477,12 @@ init_wine_ver () {
         fi
     fi
 
+    export WINE_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib"
 
-    if [[ "${PW_USE_GSTREAMER}" == 1 ]] ; then
-        if [[ -d "${WINEDIR}/lib64/gstreamer-1.0" ]] ; then
+    if [[ "${PW_USE_GSTREAMER}" == "1" ]] ; then
+        if [[ -d "${WINEDIR}/lib64/gstreamer-1.0" ]] \
+        && ! check_flatpak
+        then
             export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/gstreamer-1.0:${WINEDIR}/lib/gstreamer-1.0"
         fi
         create_new_dir "${PORT_WINE_TMP_PATH}"/gstreamer_tmp/
@@ -498,17 +492,37 @@ init_wine_ver () {
         export MEDIACONV_VIDEO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/gstreamer_tmp/video.foz
         export MEDIACONV_VIDEO_TRANSCODED_FILE="${PORT_WINE_TMP_PATH}"/gstreamer_tmp/transcoded_video.foz
     else
-        # var_winedlloverride_update "winegstreamer="
-        echo
+        var_winedlloverride_update "winegstreamer="
     fi
 
     return 0
 }
 
 pw_init_runtime () {
-    if [[ "$PW_USE_RUNTIME" != 1 ]] \
+    if [ ! -z ${PATH_TMP} ]
+    then export PATH="${PATH_TMP}"
+    else export PATH_TMP="${PATH}"
+    fi
+    if [ ! -z "${PATH}" ]
+    then export PATH="${PATH}:${PW_PLUGINS_PATH}/portable/bin"
+    else export PATH="${PW_PLUGINS_PATH}/portable/bin"
+    fi
+
+    check_flatpak && export PW_USE_RUNTIME="0"
+
+    if [[ "$PW_USE_RUNTIME" != "1" ]] \
     || [[ "$PW_WINE_USE" == "USE_SYSTEM_WINE" ]]
     then
+        export PW_LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32"
+        export PW_VK_LAYER_PATH="${PW_PLUGINS_PATH}/portable/share/vulkan/implicit_layer.d"
+        if check_flatpak \
+        && check_gamescope_session
+        then PW_TERM="xterm -fullscreen -bg black -fg white -e"
+        elif check_flatpak
+        then PW_TERM="xterm -bg black -fg white -e"
+        else PW_TERM="env LD_LIBRARY_PATH=\"${PW_LD_LIBRARY_PATH}\" ${PW_PLUGINS_PATH}/portable/bin/xterm -bg black -fg white -e"
+        fi
+        export PW_TERM
         export pw_runtime=""
         return 0
     fi
@@ -522,22 +536,12 @@ pw_init_runtime () {
     PW_PV_OVERRIDES="/usr/lib/pressure-vessel/overrides/lib"
 
     export PW_LD_LIBRARY_PATH="\
-${WINEDIR}/lib64:${WINEDIR}/lib:\
 ${PW_PLUGINS_PATH}/portable/lib/lib64:\
 ${PW_PLUGINS_PATH}/portable/lib/lib32:\
 ${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:\
 ${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:\
 /overrides/lib/x86_64-linux-gnu:\
 /overrides/lib/i386-linux-gnu"
-
-    if [ ! -z ${PATH_TMP} ]
-    then export PATH="${PATH_TMP}"
-    else export PATH_TMP="${PATH}"
-    fi
-    if [ ! -z "${PATH}" ]
-    then export PATH="${WINEDIR}/bin:${PATH}:${PW_PLUGINS_PATH}/portable/bin"
-    else export PATH="${WINEDIR}/bin:${PW_PLUGINS_PATH}/portable/bin"
-    fi
 
     if [[ ! -z "${PW_SANDBOX_HOME_PATH}" && -d "${PW_SANDBOX_HOME_PATH}" ]] ; then
         export pw_runtime="${PW_WINELIB}/pressure-vessel/bin/pressure-vessel-unruntime \
@@ -587,6 +591,8 @@ ${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:\
         fi
     done
 
+    export PW_TERM="env LD_LIBRARY_PATH=\"${PW_LD_LIBRARY_PATH}\" ${PW_PLUGINS_PATH}/portable/bin/xterm -bg black -fg white -e"
+
     print_info "RUNTIME is enabled"
 }
 
@@ -603,7 +609,7 @@ pw_mangohud_check () {
         then export PW_LD_PRELOAD="${PW_LD_PRELOAD}:${MANGOHUD_LIB_NAME}"
         else export PW_LD_PRELOAD="${MANGOHUD_LIB_NAME}"
         fi
-        var_vk_istance_layers_config_update "VK_LAYER_MANGOHUD_overlay64:VK_LAYER_MANGOHUD_overlay32"
+        var_pw_vk_istance_layers_config_update "VK_LAYER_MANGOHUD_overlay64:VK_LAYER_MANGOHUD_overlay32"
         print_info "Portable MANGOHUD is enabled"
     else
         export PW_MANGOHUD_SLR=""
@@ -622,7 +628,7 @@ pw_vkbasalt_check () {
             sed -ri "s/effects = .*/effects = ${PW_VKBASALT_EFFECTS}/g" "${VKBASALT_CONFIG_FILE}"
             sed -ri "s/casSharpness .*/casSharpness = ${PW_VKBASALT_FFX_CAS}/g" "${VKBASALT_CONFIG_FILE}"
         fi
-        var_vk_istance_layers_config_update "VK_LAYER_VKBASALT_post_processing64:VK_LAYER_VKBASALT_post_processing32"
+        var_pw_vk_istance_layers_config_update "VK_LAYER_VKBASALT_post_processing64:VK_LAYER_VKBASALT_post_processing32"
         print_info "vkBasalt is enabled"
     else
         export DISABLE_VKBASALT=1
@@ -632,9 +638,9 @@ pw_vkbasalt_check () {
 }
 
 regdlloverrides () {
-    PW_DLL_EXE=`echo $@ | awk -F: '{print $1}'`
-    PW_DLL_LIB=`echo $@ | awk -F: '{print $2}' | awk -F= '{print $1}'`
-    PW_DLL_SET=`echo $@ | awk -F= '{print $NF}'`
+    PW_DLL_EXE=$(echo $@ | awk -F: '{print $1}')
+    PW_DLL_LIB=$(echo $@ | awk -F: '{print $2}' | awk -F= '{print $1}')
+    PW_DLL_SET=$(echo $@ | awk -F= '{print $NF}')
     case "${PW_DLL_SET}" in
         "n,b") PW_DLL_IN_REG="native,builtin" ;;
         "b,n") PW_DLL_IN_REG="builtin,native" ;;
@@ -654,7 +660,7 @@ regdlloverrides () {
 }
 
 wait_wineserver () {
-    while [ ! -z "$(ls -l /proc/*/exe 2>/dev/null | grep -ie ${portname} | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}')" ] ; do
+    while [ ! -z "$(ls -l /proc/*/exe 2>/dev/null | grep -ie PortProton | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}')" ] ; do
         sleep 1
     done
     "$WINESERVER" -w
@@ -664,21 +670,21 @@ export -f wait_wineserver
 
 kill_portwine () {
     if [[ "${PW_WINE_USE}" != "USE_SYSTEM_WINE" ]] ; then
-        wine_pids="`ls -l /proc/*/exe 2>/dev/null | grep -ie ${portname} | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}'`"
+        wine_pids="$(ls -l /proc/*/exe 2>/dev/null | grep -ie PortProton | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}')"
         for pw_kill_pids in ${wine_pids} ; do
             if ps cax | grep ${pw_kill_pids} ; then
                 kill -n 9 ${pw_kill_pids} &>/dev/null
             fi
         done
 
-        bwrap_pids="`pgrep -a wrap | grep ${portname} | head -n 1 | awk '{print $1}'`"
+        bwrap_pids="$(pgrep -a wrap | grep PortProton | head -n 1 | awk '{print $1}')"
         for pw_kill_pids in ${bwrap_pids} ; do
             if ps cax | grep ${pw_kill_pids} ; then
                 kill -n 9 ${pw_kill_pids} &>/dev/null
             fi
         done
     else
-        wine_pids="`ls -l /proc/*/exe 2>/dev/null | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}'`"
+        wine_pids="$(ls -l /proc/*/exe 2>/dev/null | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}')"
         for pw_kill_pids in ${wine_pids} ; do
             if ps cax | grep ${pw_kill_pids} ; then
                 kill -n 9 ${pw_kill_pids} &>/dev/null
@@ -696,22 +702,22 @@ pw_kill_autostart () {
     fi
     sleep 5
     while true ; do
-        if  [[ -z "`ps aux | grep -m 1 -i "$1" | grep -v grep | awk '{print $2}'`" ]] \
-        && [[ ! -z "`ps aux | grep wrap | grep -v grep | grep -i ${portname} | head -n 1`" ]]
+        if  [[ -z "$(ps aux | grep -m 1 -i "$1" | grep -v grep | awk '{print $2}')" ]] \
+        && [[ ! -z "$(ps aux | grep wrap | grep -v grep | grep -i "PortProton" | head -n 1)" ]]
         then
             echo -e "PID "$1" not found"
             sleep "${SWAIT}"
         else
             sleep "${SWAIT}"
             if [[ "$3" == please ]]
-            then kill -s SIGTERM `ps aux | grep -m 1 -i "$1" | grep -v grep | awk '{print $2}'`
+            then kill -s SIGTERM $(ps aux | grep -m 1 -i "$1" | grep -v grep | awk '{print $2}')
             else kill_portwine
             fi
             break
         fi
     done
 
-    if [[ ! -z "`ls "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/ | grep -m 1 ".tmp"`" ]] ; then
+    if [[ ! -z "$(ls "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/ | grep -m 1 ".tmp")" ]] ; then
         rm -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/*.tmp
     fi
 
@@ -758,10 +764,10 @@ stop_portwine () {
     try_remove_dir "${PW_WINELIB}/var"
     find "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/" -maxdepth 1 -type f -name "*.tmp" -delete
     if [[ ! -z "$(pgrep -a yad_v13_0 | grep "\--notification" | awk '{print $1}')" ]] ; then
-        kill -s SIGUSR1 "`pgrep -a yad_v13_0 | grep "\--notification" | awk '{print $1}'`" 2>/dev/null
+        kill -s SIGUSR1 "$(pgrep -a yad_v13_0 | grep "\--notification" | awk '{print $1}')" 2>/dev/null
     fi
     add_in_stop_portwine #&>/dev/null
-    kill -n 9 `pgrep -a start.sh | grep -i '/PortProton/' | awk '{print $1}'` > /dev/null 2>&1
+    kill -n 9 $(pgrep -a start.sh | grep -i '/PortProton/' | awk '{print $1}') &>/dev/null
     killall yad_v13_0 &>/dev/null
     exit 0
 }
@@ -776,8 +782,8 @@ pw_download_libs () {
                         "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" ; then
             if unpack "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/" ; then
                 try_remove_file "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz"
-                if [ ! -z "`ls ${PORT_WINE_TMP_PATH} | grep libs_v | grep -v libs${PW_LIBS_VER}`" ] ; then
-                    for RM_LIBS in `ls ${PORT_WINE_TMP_PATH} | grep libs_v | grep -v libs${PW_LIBS_VER}`
+                if [ ! -z "$(ls ${PORT_WINE_TMP_PATH} | grep libs_v | grep -v libs${PW_LIBS_VER})" ] ; then
+                    for RM_LIBS in $(ls ${PORT_WINE_TMP_PATH} | grep libs_v | grep -v libs${PW_LIBS_VER})
                     do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_LIBS}"
                     done
                 fi
@@ -805,7 +811,7 @@ pw_download_libs () {
 }
 
 pw_check_and_download_wine () {
-    [ ! -d "${PORT_WINE_PATH}/data/dist/" ] && create_new_dir "${PORT_WINE_PATH}/data/dist"
+    [[ ! -d "${PORT_WINE_PATH}/data/dist/" ]] && create_new_dir "${PORT_WINE_PATH}/data/dist"
     if [[ "${PW_WINE_USE}" == "GET-OTHER-WINE" ]] ; then
         gui_proton_downloader
     fi
@@ -928,8 +934,8 @@ pw_check_and_download_plugins () {
                     try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz"
                     # TODO: drop clear prefix, and add update prefix from new plugins
                     pw_clear_pfx
-                    if [ ! -z "`ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`" ] ; then
-                        for RM_PLUGINS in `ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`
+                    if [ ! -z "$(ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER})" ] ; then
+                        for RM_PLUGINS in $(ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER})
                         do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_PLUGINS}"
                         done
                     fi
@@ -954,14 +960,14 @@ pw_check_and_download_plugins () {
         else
             PW_NOTIFY_TEXT="Please wait for update PortProton"
             pw_notify_send -u normal
-            if try_download "github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" silent \
-                                   "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" ; then
+            if try_download "github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" \
+                                   "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" silent ; then
                 if unpack "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}" ; then
                     try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz"
                     # TODO: drop clear prefix, and add update prefix from new plugins
                     pw_clear_pfx
-                    if [ ! -z "`ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`" ] ; then
-                        for RM_PLUGINS in `ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER}`
+                    if [ ! -z "$(ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER})" ] ; then
+                        for RM_PLUGINS in $(ls ${PORT_WINE_TMP_PATH} | grep plugins_v | grep -v plugins${PW_PLUGINS_VER})
                         do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_PLUGINS}"
                         done
                     fi
@@ -1062,40 +1068,40 @@ pw_init_db () {
         if [[ -f "${portwine_exe}".ppdb ]] && [[ "${PORTWINE_DB}" != "RiotClientServices" ]] ; then
             export PORTWINE_DB_FILE="${portwine_exe}".ppdb
             . "${PORTWINE_DB_FILE}"
-            if [[ -z "`ls -p "${PORT_WINE_PATH}/prefixes/" | grep -e "^${PW_PREFIX_NAME}/"`" ]] ; then
-                export PW_PREFIX_NAME=`echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}'`
+            if [[ -z "$(ls -p "${PORT_WINE_PATH}/prefixes/" | grep -e "^${PW_PREFIX_NAME}/")" ]] ; then
+                export PW_PREFIX_NAME=$(echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
                 edit_db_from_gui PW_PREFIX_NAME
             fi
         else
             orig_IFS="$IFS"
             IFS=$'\n'
-            PW_FIND_DB_FILE=`grep -ilw "#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi`
-            if [[ `echo "$PW_FIND_DB_FILE" | wc -l` -gt 1 ]] ; then
+            PW_FIND_DB_FILE=$(grep -ilw "#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi)
+            if [[ $(echo "$PW_FIND_DB_FILE" | wc -l) -gt 1 ]] ; then
                 unset ADD_CB_DBFILE
                 for PW_CHECK_DB_FILE in $PW_FIND_DB_FILE ; do
                     if [[ -z "${ADD_CB_DBFILE}" ]] ; then
-                        export ADD_CB_DBFILE="`echo ${PW_CHECK_DB_FILE} | awk -F'/' '{print $NF}'`"
+                        export ADD_CB_DBFILE="$(echo ${PW_CHECK_DB_FILE} | awk -F'/' '{print $NF}')"
                     else
-                        export ADD_CB_DBFILE="`echo ${PW_CHECK_DB_FILE} | awk -F'/' '{print $NF}'`!${ADD_CB_DBFILE}"
+                        export ADD_CB_DBFILE="$(echo ${PW_CHECK_DB_FILE} | awk -F'/' '{print $NF}')!${ADD_CB_DBFILE}"
                     fi
                 done
-                PORTWINE_DB_FILE="${PORT_SCRIPTS_PATH}/portwine_db"/`"${pw_yad_v13_0}" --text-align=center \
+                PORTWINE_DB_FILE="${PORT_SCRIPTS_PATH}/portwine_db"/$("${pw_yad_v13_0}" --text-align=center \
                 --text "${PW_SELECTION_DB_LOC}" --borders="${YAD_BORDERS}" --form \
                 --title "Database file selection..." --window-icon="$PW_GUI_ICON_PATH/portproton.svg"  --form --separator="" \
-                --field="DB FILE: :CB" "${ADD_CB_DBFILE}" 2>/dev/null`
+                --field="DB FILE: :CB" "${ADD_CB_DBFILE}" 2>/dev/null)
                 if [[ "$?" == "1" || "$?" == "252" ]] ; then exit 0 ; fi
-            elif [[ `echo "$PW_FIND_DB_FILE" | wc -l` -eq 1 ]] ; then
+            elif [[ $(echo "$PW_FIND_DB_FILE" | wc -l) -eq 1 ]] ; then
                 PORTWINE_DB_FILE="${PW_FIND_DB_FILE}"
             fi
             IFS="$orig_IFS"
-            if [[ -f "${PW_FIND_DB_FILE}" ]] && [[ -z `grep "^export PW_DISABLED_CREATE_DB=1" "${PW_FIND_DB_FILE}"` ]] ; then
+            if [[ -f "${PW_FIND_DB_FILE}" ]] && [[ -z $(grep "^export PW_DISABLED_CREATE_DB=1" "${PW_FIND_DB_FILE}") ]] ; then
                 try_copy_file "${PW_FIND_DB_FILE}" "${portwine_exe}".ppdb
                 export PORTWINE_DB_FILE="${portwine_exe}".ppdb
             fi
-            if [[ ! -z `echo "${portwine_exe}" | grep "/data/prefixes/"` ]] && \
-                [[ -z `echo "${portwine_exe}" | grep "/data/prefixes/DEFAULT/"` ]]
+            if [[ ! -z $(echo "${portwine_exe}" | grep "/data/prefixes/") ]] && \
+                [[ -z $(echo "${portwine_exe}" | grep "/data/prefixes/DEFAULT/") ]]
             then
-                export PW_PREFIX_NAME=`echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}'`
+                export PW_PREFIX_NAME=$(echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
             fi
         fi
         if [[ -f "${PORTWINE_DB_FILE}" ]] ; then
@@ -1124,7 +1130,7 @@ pw_init_db () {
             check_variables PW_USE_RAY_TRACING "1"
         fi
 
-        if grep "RUS" "${PORT_WINE_TMP_PATH}/${portname}_loc" &>/dev/null ; then
+        if grep "RUS" "${PORT_WINE_TMP_PATH}/PortProton_loc" &>/dev/null ; then
             for chk_lang_and_uname in "steam_emu.ini" "steam_api.ini" "steam_api64.ini" ; do
                 if [[ -f "${PATH_TO_GAME}/${chk_lang_and_uname}" ]] ; then
                     sed -i "s/Language=english/Language=russian/" "${PATH_TO_GAME}/${chk_lang_and_uname}"
@@ -1142,7 +1148,7 @@ pw_init_db () {
 pw_port_update () {
     ###SCRIPTS UPDATE###
     if [ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ] ; then
-        echo "2022" > "${PORT_WINE_TMP_PATH}/scripts_ver"
+        echo "2024" > "${PORT_WINE_TMP_PATH}/scripts_ver"
     fi
     export scripts_install_ver=$(cat "${PORT_WINE_TMP_PATH}/scripts_ver" | head -n 1)
     print_info "Check update..."
@@ -1165,7 +1171,7 @@ pw_port_update () {
     [[ ! -f "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ]] && echo "1" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     read "scripts_update_not" < "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     if [[ "${scripts_update_not}" == "1" ]] ; then
-        export scripts_current_ver=`cat "${PORT_WINE_TMP_PATH}/curent_var_ver" | grep SCRIPTS_NEXT_VERSION | awk -F "=" '{print $2}'`
+        export scripts_current_ver=$(cat "${PORT_WINE_TMP_PATH}/curent_var_ver" | grep SCRIPTS_NEXT_VERSION | awk -F "=" '{print $2}')
         print_info "Scripts version in github = ${scripts_current_ver}"
         print_info "Scripts version local = ${scripts_install_ver}"
         if [[ ! -z "${scripts_current_ver}" ]] &&  [[ "${scripts_current_ver}" -gt "${scripts_install_ver}" ]] ; then
@@ -1179,14 +1185,21 @@ pw_port_update () {
                 xcsd="${scripts_upd4}"
             else
                 curl -s --list-only "${URL_FOR_CHANGELOG}/${PW_CHANGELOG_FILE}" | tee "${PORT_WINE_TMP_PATH}/curent_var_ver"
-                CHANGLOG_NEWS=`cat "${PORT_WINE_TMP_PATH}/curent_var_ver" | sed "/Scripts version ${scripts_install_ver}/,$ d" | sed '1,/---/ d' `
-                xcsd=`"${pw_yad_v13_0}" --title "${scripts_upd2} v.${scripts_current_ver}" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+                CHANGLOG_NEWS=$(cat "${PORT_WINE_TMP_PATH}/curent_var_ver" | sed "/Scripts version ${scripts_install_ver}/,$ d" | sed '1,/---/ d' )
+                xcsd=$("${pw_yad_v13_0}" --title "${scripts_upd2} v.${scripts_current_ver}" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
                 --form --separator='%%%' --width=1200 --height=600 \
                 --field=":TXT" "${CHANGLOG_NEWS}" \
-                --field="   ${scripts_upd3} :CB" "${scripts_upd4}!${scripts_upd5}!${scripts_upd6}" 2>/dev/null`
+                --button="${scripts_upd3}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":252 \
+                --button="${scripts_upd6}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":16 \
+                --button="${scripts_upd5}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":18 \
+                --button="${scripts_upd4}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":20 2>/dev/null)
                 YAD_STATUS="$?"
-                if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
-                xcsd=`echo "${xcsd}" | awk -F'%%%' '{print $2}'`
+                case "${YAD_STATUS}" in
+                    1|252) exit 0 ;;
+                       16) xcsd="${scripts_upd6}" ;;
+                       18) xcsd="${scripts_upd5}" ;;
+                       20) xcsd="${scripts_upd4}" ;;
+                esac
             fi
             case $xcsd in
                 "${scripts_upd4}")
@@ -1325,14 +1338,14 @@ pw_create_gui_png () {
         fi
         cp -f "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.png" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
     fi
-    if [[ -z "`file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}"`" ]] \
+    if [[ -z "$(file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}")" ]] \
     && command -v convert &>/dev/null \
     && [[ -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]]
     then
         convert "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" -resize ${PW_RESIZE_TO}x${PW_RESIZE_TO} "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
     fi
     if [[ -z "${PW_ICON_FOR_YAD}" ]] ; then
-        if [[ ! -z "`file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}"`" ]] ; then
+        if [[ ! -z "$(file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}")" ]] ; then
             export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
         else
             export PW_ICON_FOR_YAD="${PW_GUI_ICON_PATH}/port_proton.png"
@@ -1456,16 +1469,14 @@ start_portwine () {
     fi
 
     pw_wineboot () {
-            LIST_RM_WIN_DLL="winevulkan amd_ags_x64 ir50_32 atl100 ntdll \
-libvkd3d-1 libvkd3d-shader-1 dxvk_config nvapi nvapi64 d3d12core d3d12 \
-d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
-        for rm_win_dll in $LIST_RM_WIN_DLL ; do
-            try_remove_file "${WINEPREFIX}/drive_c/windows/system32/${rm_win_dll}.dll"
-            try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/${rm_win_dll}.dll"
+        LIST_NATIVE_WINE_DLL="winevulkan ir50_32 atl100 ntdll wined3d vulkan-1 shell32 dxgi d3d8 d3d9 d3d10core d3d11 d3d12 d3d12core"
+        for change_wine_dll in $LIST_NATIVE_WINE_DLL ; do
+            try_copy_file "${WINEDIR}/lib64/wine/x86_64-windows/${change_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_copy_file "${WINEDIR}/lib/wine/i386-windows/${change_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
         done
 
         print_info "Used wineboot $@ for prefix: ${PW_PREFIX_NAME}"
-        ${pw_runtime} env GST_PLUGIN_SYSTEM_PATH_1_0="" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
+        ${pw_runtime} env GST_PLUGIN_SYSTEM_PATH_1_0="" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" \
         WINEDEBUG="fixme-all,err+loaddll,err+dll,err+file,err+reg" \
         "${WINELOADER}" wineboot $@ &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
         wait_wineserver
@@ -1479,7 +1490,7 @@ d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
     then
         pw_clear_pfx
         check_dirs_and_files_in_pfx
-        if [[ "${PW_PREFIX_NAME}" == DEFAULT ]] ; then
+        if [[ "${PW_PREFIX_NAME}" == "DEFAULT" ]] ; then
             pw_update_pfx_cover_gui
             unpack "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
             pw_wineboot -r
@@ -1503,6 +1514,7 @@ d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
     else
         check_dirs_and_files_in_pfx
         if [[ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver" ]] \
+        || [[ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/windows/system32/shell32.dll" ]] \
         || ! grep "${PW_WINE_USE}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver" &>/dev/null
         then
             pw_update_pfx_cover_gui
@@ -1792,7 +1804,7 @@ d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
     d3dx9_31 d3dx9_32 d3dx9_33 d3dx9_34 d3dx9_35 d3dx9_36 d3dx9_37 d3dx9_38 d3dx9_39 d3dx9_40 d3dx9_41 d3dx9_42 d3dx9_43"
     if [[ "${PW_USE_D3D_EXTRAS}" == 1 ]] ; then
         if [[ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ]] \
-        || [[ -z "`grep d3dx9 "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"`" ]]
+        || [[ -z "$(grep d3dx9 "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log")" ]]
         then
             echo "d3dx9" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
         fi
@@ -1802,7 +1814,7 @@ d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
             try_force_link_file "${PATH_TO_D3DEXTRAS}/x64/${d3d_extras_from_plugins}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
             try_force_link_file "${PATH_TO_D3DEXTRAS}/x32/${d3d_extras_from_plugins}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
             var_winedlloverride_update "${d3d_extras_from_plugins}=n"
-            if [[ -z "`grep "${d3d_extras_from_plugins}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"`" ]] ; then
+            if [[ -z "$(grep "${d3d_extras_from_plugins}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log")" ]] ; then
                 echo "${d3d_extras_from_plugins}" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
             fi
         done
@@ -1849,10 +1861,9 @@ d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
         try_force_link_file "${PW_GALLIUM_NINE_PATH}/lib64/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/system32/d3d9.dll"
         var_winedlloverride_update "d3d9=n;wined3d=b;dxvk_config,vulkan-1,winevulkan="
         unset FIND_D3D_MODULE D3D_MODULE_PATH
-        FIND_D3D_MODULE=`dirname $(find /usr/ -maxdepth 4 -type f -name "d3dadapter9.so.*") 2>/dev/null`
-        FLATPAK_D3D_MODULES_PATH="/app/lib/i386-linux-gnu/GL/default/lib/d3d
-                                  /usr/lib/x86_64-linux-gnu/GL/default/lib/d3d"
+
         if ! check_flatpak ; then
+            FIND_D3D_MODULE=$(dirname $(find /usr/ -maxdepth 4 -type f -name "d3dadapter9.so.*") 2>/dev/null)
             if [[ ! -z "$FIND_D3D_MODULE" ]] ; then
                 old_IFS=$IFS
                 IFS=$'\n'
@@ -1870,12 +1881,7 @@ d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
                 stop_portwine
             fi
         else
-            for D3D_MP in $FLATPAK_D3D_MODULES_PATH ; do
-                if [[ ! -z "$D3D_MODULE_PATH" ]]
-                then export D3D_MODULE_PATH="$D3D_MODULE_PATH:/run/parent${D3D_MP}"
-                else export D3D_MODULE_PATH="/run/parent${D3D_MP}"
-                fi
-            done
+            export D3D_MODULE_PATH="/app/lib/i386-linux-gnu/GL/default/lib/d3d:/usr/lib/x86_64-linux-gnu/GL/default/lib/d3d"
             print_info "D3D_MODULE_PATH=${D3D_MODULE_PATH}"
         fi
         export mesa_glthread=true
@@ -1887,6 +1893,7 @@ d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
         export WINE_D3D_CONFIG='renderer=vulkan'
     else
         print_info "Use VKD3D-PROTON, DXVK and D8VK (DirectX 8-12 to vulkan)"
+        check_variables DXVK_HDR 0
         if [[ "${PW_USE_WINE_DXGI}" == 1 ]] ; then
             export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxvk_config" # openvr_api_dxvk
             export CP_WINE_FILES="d3d10_1 d3d10 dxgi"
@@ -1896,7 +1903,7 @@ d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
             export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi dxvk_config" # openvr_api_dxvk
             export CP_WINE_FILES="d3d10_1 d3d10"
         fi
-        check_variables VKD3D_FEATURE_LEVEL "12_0"
+        check_variables VKD3D_FEATURE_LEVEL "12_1"
         if [[ "${PW_VULKAN_USE}" == "1" ]] ; then
             export PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
             export PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
@@ -1983,9 +1990,13 @@ d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
         export WINE_CPU_TOPOLOGY="${PW_WINE_CPU_TOPOLOGY}"
     fi
 
+    if [[ "${PW_MESA_GL_VERSION_OVERRIDE}" != "disabled" ]] ; then
+        export MESA_GL_VERSION_OVERRIDE="${PW_MESA_GL_VERSION_OVERRIDE}"
+    fi
+
     #run_winetricks_from_db
     if [[ ! -z "${PW_MUST_HAVE_DLL}" ]]
-    then export PW_DLL_INSTALL="`echo "${PW_MUST_HAVE_DLL} ${PW_DLL_INSTALL}" | awk '{ for(i=1;i<=NF;i++){a[$i]++} }END{ for(i in a){printf("%s ",i)} }' `"
+    then export PW_DLL_INSTALL="$(echo "${PW_MUST_HAVE_DLL} ${PW_DLL_INSTALL}" | awk '{ for(i=1;i<=NF;i++){a[$i]++} }END{ for(i in a){printf("%s ",i)} }' )"
     fi
 
     if [[ ! -z "${PW_DLL_INSTALL}" ]] ; then
@@ -2025,13 +2036,13 @@ d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
     fi
 
     if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" ]] \
-    && [[ -z `grep "Windows $PW_WINDOWS_VER" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"` ]]
+    && [[ -z $(grep "Windows $PW_WINDOWS_VER" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg") ]]
     then
-        if [[ ! -z "${PW_WINDOWS_VER}" && `echo "$PW_WINDOWS_VER" | sed 's/.*/\L&/'` == "xp" ]] ; then
+        if [[ ! -z "${PW_WINDOWS_VER}" && $(echo "$PW_WINDOWS_VER" | sed 's/.*/\L&/') == "xp" ]] ; then
             export PW_WINDOWS_VER="xp64"
         fi
-        ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
-        "${WINELOADER}" winecfg -v `echo "win${PW_WINDOWS_VER}" | sed 's/.*/\L&/'`
+        ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
+        "${WINELOADER}" winecfg -v $(echo "win${PW_WINDOWS_VER}" | sed 's/.*/\L&/')
         wait_wineserver
         kill_portwine
         echo "Set to win${PW_WINDOWS_VER}"
@@ -2077,7 +2088,8 @@ d3d11 d3d10 d3d10core d3d10_1 d3d9 d3d8 dxgi wined3d vulkan-1 shell32"
 
 pw_run () {
     unset GDK_BACKEND
-    if [[ ! -z "${PATH_TO_GAME}" ]] && [[ -d "${PATH_TO_GAME}" ]] ; then
+    if [[ ! -z "${PATH_TO_GAME}" ]] \
+    && [[ -d "${PATH_TO_GAME}" ]] ; then
         cd "${PATH_TO_GAME}"
     elif [[ -f "$portwine_exe" ]] ; then
         export PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
@@ -2085,22 +2097,16 @@ pw_run () {
     else
         cd "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c"
     fi
-    PW_LOG_TO_FILE="${PORT_WINE_PATH}/${portname}.log"
+    PW_LOG_TO_FILE="${PORT_WINE_PATH}/PortProton.log"
+    PW_LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}"
     print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VULKAN_DRIVER_NAME"
-    print_var "VULKAN_API_DRIVER_VERSION" "VKD3D_CONFIG" "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2"
+    print_var "VKD3D_CONFIG" "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2"
     print_var "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH"
     kill -s SIGUSR1 "$PW_YAD_PID_PFX_COVER_UI" &>/dev/null
     if [[ "$PW_USE_RUNTIME" == 1 ]] \
     && [[ "$PW_WINE_USE" != "USE_SYSTEM_WINE" ]]
     then
         if [[ "${PW_LOG}" == 1 ]] ; then
-            if check_start_from_steam ; then
-                for VAR_LOGGER in PW_WINE_USE WINEDIR WINEDLLPATH WINEPREFIX PATH_TO_GAME PW_VULKAN_USE PW_LD_LIBRARY_PATH LD_LIBRARY_PATH PATH \
-                                VKD3D_CONFIG WINEESYNC WINEFSYNC WINEFSYNC_FUTEX2 WINE_CPU_TOPOLOGY DESKTOP_SESSION
-                do
-                    echo "${VAR_LOGGER}=${!VAR_LOGGER}" >> "${PW_LOG_TO_FILE}"
-                done
-            fi
             echo "WINEDLLOVERRIDES=${WINEDLLOVERRIDES}" >> "${PW_LOG_TO_FILE}"
             echo "------------------------------------" >> "${PW_LOG_TO_FILE}"
             [[ -f "${PORT_WINE_TMP_PATH}/update_pfx_log" ]] && cat "${PORT_WINE_TMP_PATH}/update_pfx_log" >> "${PW_LOG_TO_FILE}"
@@ -2146,13 +2152,6 @@ pw_run () {
         fi
     else
         if [[ "${PW_LOG}" == 1 ]] ; then
-            if check_start_from_steam ; then
-                for VAR_LOGGER in PW_WINE_USE WINEDIR WINEDLLPATH WINEPREFIX PATH_TO_GAME PW_VULKAN_USE PW_LD_LIBRARY_PATH LD_LIBRARY_PATH PATH \
-                                VKD3D_CONFIG WINEESYNC WINEFSYNC WINEFSYNC_FUTEX2 WINE_CPU_TOPOLOGY DESKTOP_SESSION
-                do
-                    echo "${VAR_LOGGER}=${!VAR_LOGGER}" >> "${PW_LOG_TO_FILE}"
-                done
-            fi
             echo "WINEDLLOVERRIDES=${WINEDLLOVERRIDES}" >> "${PW_LOG_TO_FILE}"
             echo "------------------------------------" >> "${PW_LOG_TO_FILE}"
             [[ -f "${PORT_WINE_TMP_PATH}/update_pfx_log" ]] && cat "${PORT_WINE_TMP_PATH}/update_pfx_log" >> "${PW_LOG_TO_FILE}"
@@ -2161,6 +2160,10 @@ pw_run () {
             echo ""
             print_info "Log WINE:"
             env FAKE_VAR= \
+            LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
+            LD_PRELOAD="${PW_LD_PRELOAD}" \
+            VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+            VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
             ${PW_RUN_GAMESCOPE} \
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
@@ -2173,6 +2176,10 @@ pw_run () {
             echo "Log WINE:" > "${PW_LOG_TO_FILE}"
             print_info "Log WINE:"
             env FAKE_VAR= \
+            LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
+            LD_PRELOAD="${PW_LD_PRELOAD}" \
+            VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+            VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
             ${PW_RUN_GAMESCOPE} \
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
@@ -2214,7 +2221,7 @@ pw_winecmd () {
     export PW_USE_TERMINAL=1
     start_portwine
     cd "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c"
-    ${pw_runtime} env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${PW_PLUGINS_PATH}/portable/bin/xterm" -e "${WINELOADER}" cmd
+    ${pw_runtime} ${PW_TERM} "${WINELOADER}" cmd
     stop_portwine
 }
 
@@ -2230,18 +2237,14 @@ pw_start_cont_xterm () {
     pw_init_runtime
     ${pw_runtime} \
     env PATH="${PATH}" \
-    LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
     LD_PRELOAD="${PW_LD_PRELOAD}" \
     VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
     VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
     ${PW_GAMEMODERUN_SLR} \
     ${PW_MANGOHUD_SLR} \
-    "${PW_PLUGINS_PATH}/portable/bin/xterm"
+    ${PW_TERM} bash
 }
 
-#!/usr/bin/env bash
-# Author: Castro-Fidel (linux-gaming.ru)
-########################################################################
 yad_info () {
     print_info "$@"
     if [[ ! -f "${pw_yad_v13_0}" ]] ; then
@@ -2249,7 +2252,7 @@ yad_info () {
         command -v "${pw_yad_v13_0}" &>/dev/null || fatal "yad not found"
     fi
     "${pw_yad_v13_0}" --no-wrap --text "$@" --width=400 --height=50 --borders=15 --title "INFO" \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/info.png" \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/info.svg" \
     --center --text-align=center \
     --button="OK"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
 }
@@ -2262,7 +2265,7 @@ yad_error () {
         command -v "${pw_yad_v13_0}" &>/dev/null || fatal "yad not found"
     fi
     "${pw_yad_v13_0}" --no-wrap --text "$@" --width=400 --borders=15 --title "ERROR" \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/error.png" \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/error.svg" \
     --center --text-align=center \
     --button="EXIT"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
 }
@@ -2274,10 +2277,10 @@ yad_error_download () {
         command -v "${pw_yad_v13_0}" &>/dev/null || fatal "yad not found"
     fi
     "${pw_yad_v13_0}" --text "$loc_gui_error_download" --width=400 --borders=15 --title "$loc_gui_error" \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/download.png" \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/download.svg" \
     --no-wrap --center --text-align=center \
-    --button="SKIP"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
-    --button="REPEAT"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null
+    --button="$loc_skip"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
+    --button="$loc_repeat"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null
     [[ "$?" != 0 ]] && return 1 || return 0
 }
 
@@ -2287,7 +2290,7 @@ yad_question () {
         command -v "${pw_yad_v13_0}" &>/dev/null || fatal "yad not found"
     fi
     "${pw_yad_v13_0}" --text "${1}" --width=400 --borders=15 --title "${inst_set}." \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/question.png" \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/question.svg" \
     --no-wrap --center --text-align=center \
     --button="$loc_cancel"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
     --button="OK"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null
@@ -2297,8 +2300,8 @@ yad_question () {
 pw_start_progress_bar_cover () {
     if ! check_start_from_steam ; then
         PW_GIF_FILE="$1"
-        PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 8}'`
-        PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 15}'`
+        PW_GIF_SIZE_X=$(file "${PW_GIF_FILE}" | awk '{print $7 + 8}')
+        PW_GIF_SIZE_Y=$(file "${PW_GIF_FILE}" | awk '{print $9 + 15}')
         "${pw_yad_v13_0}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated --center \
         --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y --window-icon="$PW_GUI_ICON_PATH/portproton.svg" > /dev/null 2>&1 &
         export PW_YAD_PID_PROGRESS_BAR_COVER="$!"
@@ -2310,8 +2313,8 @@ pw_start_progress_bar_cover_block () {
     if ! check_start_from_steam ; then
         [[ ! -f "${pw_yad_v13_0}" ]] && local pw_yad_v13_0="yad"
         PW_GIF_FILE="$1"
-        PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 8}'`
-        PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 15}'`
+        PW_GIF_SIZE_X=$(file "${PW_GIF_FILE}" | awk '{print $7 + 8}')
+        PW_GIF_SIZE_Y=$(file "${PW_GIF_FILE}" | awk '{print $9 + 15}')
         "${pw_yad_v13_0}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated --center \
         --skip-taskbar --width=$PW_GIF_SIZE_X --height=$PW_GIF_SIZE_Y --window-icon="$PW_GUI_ICON_PATH/portproton.svg" > /dev/null 2>&1 &
         export PW_YAD_PID_PROGRESS_BAR_COVER_BLOCK="$!"
@@ -2335,15 +2338,15 @@ pw_update_pfx_cover_gui () {
     if ! check_start_from_steam && ! pgrep -a yad | grep "yad_v13_0 --notebook --key=$PW_KEY_PROGRESS_BAR_UP" &>/dev/null ; then
         PW_KEY_PROGRESS_BAR_UP=$RANDOM
         PW_GIF_FILE="${COVERS_PATH}/update_prefix_${update_loc}.gif"
-        PW_GIF_SIZE_X=`file "${PW_GIF_FILE}" | awk '{print $7 + 20}'`
-        PW_GIF_SIZE_Y=`file "${PW_GIF_FILE}" | awk '{print $9 + 60}'`
+        PW_GIF_SIZE_X=$(file "${PW_GIF_FILE}" | awk '{print $7 + 20}')
+        PW_GIF_SIZE_Y=$(file "${PW_GIF_FILE}" | awk '{print $9 + 60}')
         echo "UPDATE PREFIX..." > "${PORT_WINE_TMP_PATH}/update_pfx_log"
         export PW_TIMER=0
-        while read -r line || [[ ! -z `pgrep -a yad | grep "yad_v13_0 --notebook --key=$PW_KEY_PROGRESS_BAR_UP" | awk '{print $1}'` ]] ; do
+        while read -r line || [[ ! -z $(pgrep -a yad | grep "yad_v13_0 --notebook --key=$PW_KEY_PROGRESS_BAR_UP" | awk '{print $1}') ]] ; do
                 sleep 0.005
-                if [[ ! -z "${line}" ]] && [[ -z "`echo "${line}" | grep -i "gstreamer"`" ]] \
-                                        && [[ -z "`echo "${line}" | grep -i "kerberos"`" ]] \
-                                        && [[ -z "`echo "${line}" | grep -i "ntlm"`" ]]
+                if [[ ! -z "${line}" ]] && [[ -z "$(echo "${line}" | grep -i "gstreamer")" ]] \
+                                        && [[ -z "$(echo "${line}" | grep -i "kerberos")" ]] \
+                                        && [[ -z "$(echo "${line}" | grep -i "ntlm")" ]]
                 then
                     echo "# ${line}"
                 fi
@@ -2419,8 +2422,8 @@ open_changelog () {
 export -f open_changelog
 
 pw_tray_icon () {
-    if [ ! -z "`pgrep -a yad_v13_0 | grep "\--notification" | awk '{print $1}'`" ] ; then
-        kill -s SIGUSR1 "`pgrep -a yad_v13_0 | grep "\--notification" | awk '{print $1}'`"
+    if [ ! -z "$(pgrep -a yad_v13_0 | grep "\--notification" | awk '{print $1}')" ] ; then
+        kill -s SIGUSR1 "$(pgrep -a yad_v13_0 | grep "\--notification" | awk '{print $1}')"
     fi
 
     tray_icon_click () {
@@ -2455,10 +2458,10 @@ pw_tray_icon () {
     --command="bash -c tray_icon_click" \
     --tooltip="PortProton" \
     --icon-size=32 --menu="| \
-    ${loc_tray_winefile}!bash -c pw_tray_winefile!"$PW_GUI_ICON_PATH/wine_file.png"|| \
-    ${loc_tray_tascmng}!bash -c pw_tray_taskmgr!"$PW_GUI_ICON_PATH/wine_system.png"|| \
-    ${loc_tray_cangelog}!bash -c open_changelog!"$PW_GUI_ICON_PATH/history.png"|| \
-    ${loc_tray_force_exit}    !bash -c tray_icon_click_exit!"$PW_GUI_ICON_PATH/close.png"||" 2>/dev/null &
+    ${loc_tray_winefile}!bash -c pw_tray_winefile!"$PW_GUI_ICON_PATH/wine_file.svg"|| \
+    ${loc_tray_tascmng}!bash -c pw_tray_taskmgr!"$PW_GUI_ICON_PATH/wine_system.svg"|| \
+    ${loc_tray_cangelog}!bash -c open_changelog!"$PW_GUI_ICON_PATH/history.svg"|| \
+    ${loc_tray_force_exit}    !bash -c tray_icon_click_exit!"$PW_GUI_ICON_PATH/close.svg"||" 2>/dev/null &
 
     return 0
 }
@@ -2466,7 +2469,7 @@ pw_tray_icon () {
 pw_gui_for_edit_db () {
     KEY_EDIT_DB_GUI=$RANDOM
     if [[ "${PW_WINE_CPU_TOPOLOGY}" == *[0-9]:* ]] && [[ "${PW_WINE_CPU_TOPOLOGY}" != "disabled" ]] ; then
-        CPU_LIMIT_VAR="`echo ${PW_WINE_CPU_TOPOLOGY%%:*}`"
+        CPU_LIMIT_VAR="$(echo ${PW_WINE_CPU_TOPOLOGY%%:*})"
     else
         CPU_LIMIT_VAR="disabled"
     fi
@@ -2499,7 +2502,7 @@ pw_gui_for_edit_db () {
             else export ${int_to_boole}="FALSE"
             fi
             TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
-            int_to_boole_non_pw="`echo ${int_to_boole} | sed 's/^PW_//' | sed 's/_/ /g' `"
+            int_to_boole_non_pw="$(echo ${int_to_boole} | sed 's/^PW_//' | sed 's/_/ /g' )"
             ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
         done
     }
@@ -2525,9 +2528,11 @@ pw_gui_for_edit_db () {
     --field=":LBL" "" \
     --field="${loc_gui_cpu_limit}!${loc_gui_cpu_limit_help} :CB" "${CPU_LIMIT_VAR}!disabled!${GET_LOGICAL_CORE}" \
     --field="${loc_gui_gpu_select}!${loc_gui_gpu_select_help} :CB" "${GPU_VAR}!disabled!${GET_GPU_NAMES}" \
-    --field="${loc_gui_arg_gamescope}!${loc_gui_arg_gamescope_help} :CBE" "\\${GAMESCOPE_ARGS}!-r 60 -F fsr!" 2>/dev/null 1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
+    --field="${loc_gui_arg_gamescope}!${loc_gui_arg_gamescope_help} :CBE" "\\${GAMESCOPE_ARGS}!-r 60 -F fsr!" \
+    --field="${loc_gui_opengl_version}!${loc_gui_opengl_version_help} :CB" "${PW_MESA_GL_VERSION_OVERRIDE}!disabled!4.6COMPAT!4.6!4.5COMPAT!4.5!3.3COMPAT!3.3" \
+    2>/dev/null 1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
 
-    "${pw_yad_v13_0}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="700" \
+    "${pw_yad_v13_0}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="750" \
     --text "${loc_gui_edit_db} <b>${PORTWINE_DB}</b>\n ${loc_gui_edit_db_help}" --separator=" " \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --button="${loc_gui_cancel}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${loc_gui_cancel_help}":1 \
@@ -2550,7 +2555,7 @@ pw_gui_for_edit_db () {
                 exit 0
                 ;;
     esac
-    output_yad_edit_db=(`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db"`)
+    output_yad_edit_db=($(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db"))
     bool_from_yad=0
     edit_db_field_read () {
         for boole_to_int in $@ ; do
@@ -2570,6 +2575,7 @@ pw_gui_for_edit_db () {
     CPU_LIMIT="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $7}')"
     PW_GPU_USE="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $8}')"
     GAMESCOPE_ARGS="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $9}')"
+    PW_MESA_GL_VERSION_OVERRIDE="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $10}')"
     # PW_AMD_VULKAN_USE="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $10}'`"
 
     if [[ "${CPU_LIMIT}" != "disabled" ]] ; then
@@ -2578,7 +2584,7 @@ pw_gui_for_edit_db () {
         export PW_WINE_CPU_TOPOLOGY="disabled"
     fi
     echo "pw_gui_for_edit_db PORTWINE_DB_FILE=$PORTWINE_DB_FILE"
-    edit_db_from_gui $@ LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY GAMESCOPE_ARGS
+    edit_db_from_gui $@ LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY GAMESCOPE_ARGS PW_MESA_GL_VERSION_OVERRIDE
     if [[ -z "$MANGOHUD_CONFIG" ]] ; then
         MONITOR_HEIGHT="$(echo $PW_SCREEN_RESOLUTION | awk -F'x' '{print $2}')"
         MH_FONT_SIZE="font_size=$(( MONITOR_HEIGHT / 45 ))"
@@ -2666,13 +2672,20 @@ gui_proton_downloader () {
         exit 0
     fi
     for INSTALLING_VERSION_IN_DIST in $(ls "${PORT_WINE_PATH}/data/dist/") ; do
-        sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
         sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
+        sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
         sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git"
         sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git"
+        [[ -z "$(cat "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git")" ]] && echo "nothing" > "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git"
     done
+
+    [[ -z "$(cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git")" ]] && echo "nothing" >"${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
+    [[ -z "$(cat "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git")" ]] && echo "nothing" >"${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+    [[ -z "$(cat "${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git")" ]] && echo "nothing" >"${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git"
+    [[ -z "$(cat "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git")" ]] && echo "nothing" >"${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git"
+
 	# Installed wine
-	ls -l ${PORT_WINE_PATH}/data/dist | awk '{print $9}' | sed '/^$/d' > ${PORT_WINE_TMP_PATH}/tmp_installed_wine
+	ls -l ${PORT_WINE_PATH}/data/dist | awk '{print $9}' | sed '/^$/d' 1> ${PORT_WINE_TMP_PATH}/tmp_installed_wine
     if [[ "$1" != "silent" ]] ; then
         # GUI
         export KEY_WINE=$RANDOM
@@ -2709,17 +2722,24 @@ gui_proton_downloader () {
             exit 0
         fi
 
-        if [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_proton_set" | awk '{print $1}'` ] ; then
-            export VERSION_WINE_GIT="`cat "${PORT_WINE_TMP_PATH}/tmp_proton_set"`"
-        elif [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set" | awk '{print $1}'` ] ; then
-            export VERSION_WINE_GIT="`cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set"`"
-        elif [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_kron4ek_set" | awk '{print $1}'` ] ; then
-            export VERSION_WINE_GIT="`cat "${PORT_WINE_TMP_PATH}/tmp_kron4ek_set"`"
-        elif [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set" | awk '{print $1}'` ] ; then
-            export VERSION_WINE_GIT="`cat "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set"`"
-        elif [ ! -z `cat "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set" | awk '{print $1}'` ] ; then
-            export VERSION_INSTALLED_WINE="`cat "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set"`"
+        if [[ ! -z $(awk '{print $1}' "${PORT_WINE_TMP_PATH}/tmp_proton_set") ]] ; then
+            VERSION_WINE_GIT="$(cat "${PORT_WINE_TMP_PATH}/tmp_proton_set")"
+        elif [[ ! -z $(awk '{print $1}' "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set") ]] ; then
+            VERSION_WINE_GIT="$(cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set")"
+        elif [[ ! -z $(awk '{print $1}' "${PORT_WINE_TMP_PATH}/tmp_kron4ek_set") ]] ; then
+            VERSION_WINE_GIT="$(cat "${PORT_WINE_TMP_PATH}/tmp_kron4ek_set")"
+        elif [[ ! -z $(awk '{print $1}' "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set") ]] ; then
+            VERSION_WINE_GIT="$(cat "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set")"
+        elif [[ ! -z $(awk '{print $1}' "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set") ]] ; then
+            VERSION_INSTALLED_WINE="$(cat "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set")"
         else
+            print_info "Nothing to do."
+            export SKIP_CHECK_UPDATES=1
+            /usr/bin/env bash -c ${pw_full_command_line[*]} &
+            exit 0
+        fi
+
+        if [[ "${VERSION_WINE_GIT}" == "nothing" ]] ; then
             print_info "Nothing to do."
             export SKIP_CHECK_UPDATES=1
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
@@ -2737,7 +2757,7 @@ gui_proton_downloader () {
     fi
 
     for GIVE_WINE_URL in ${PROTON_GE_GIT[@]} ${PROTON_PW_GIT[@]} ${WINE_KRON4EK[@]} ${WINE_GE_CUSTOM[@]} ; do
-        if [ ! -z `echo ${GIVE_WINE_URL} | grep -i "${VERSION_WINE_GIT}"` ] ; then
+        if [ ! -z $(echo ${GIVE_WINE_URL} | grep -i "${VERSION_WINE_GIT}") ] ; then
             export URL_VERSION_PROTON_GIT="${GIVE_WINE_URL}"
             break
         fi
@@ -2752,7 +2772,7 @@ gui_proton_downloader () {
 	fi
 
     print_info "Download and install ${VERSION_WINE_GIT}..."
-    PW_WINE_ARCHIVE="$(echo ${URL_VERSION_PROTON_GIT} | awk -F'/' '{print $NF}' | awk -F'.tar' '{print $1}')"
+    PW_WINE_ARCHIVE="$(echo "${URL_VERSION_PROTON_GIT}" | awk -F'/' '{print $NF}' | awk -F'.tar' '{print $1}')"
     FILENAME="$(basename "${URL_VERSION_PROTON_GIT}")"
     if try_download "${URL_VERSION_PROTON_GIT}" "${PORT_WINE_PATH}/data/tmp/$FILENAME" ; then
         for archive_type in "gz" "xz" ; do
@@ -2760,18 +2780,28 @@ gui_proton_downloader () {
                 if unpack "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}" "${PORT_WINE_PATH}/data/dist/" ; then
                     try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}"
                     if [ ! -z "${portwine_exe}" ]; then
-                        PW_WINE_USE="$(echo ${VERSION_WINE_GIT} | tr [[:lower:]] [[:upper:]])"
+                        PW_WINE_USE="$(echo "${VERSION_WINE_GIT}" | tr [[:lower:]] [[:upper:]])"
                         edit_db_from_gui PW_WINE_USE
                     fi
                 else
                     try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}"
                     try_remove_dir "${PORT_WINE_PATH}/data/dist/${PW_WINE_ARCHIVE}"
-                    yad_error_download && gui_proton_downloader || exit 1
+                    if yad_error_download
+                    then gui_proton_downloader $@
+                    else
+                        export PW_WINE_VER="$PW_WINE_USE"
+                        init_wine_ver
+                    fi
                 fi
             fi
         done
     else
-        yad_error_download && gui_proton_downloader || exit 1
+        if yad_error_download
+        then gui_proton_downloader $@
+        else
+            export PW_WINE_VER="$PW_WINE_USE"
+            init_wine_ver
+        fi
     fi
 
     if [[ "$1" != "silent" ]] ; then
@@ -2788,7 +2818,7 @@ export -f gui_proton_downloader
 gui_vkBasalt () {
     KEY_FX_GUI=$RANDOM
     FILE_VKBASALT_CONF="${PORT_WINE_PATH}/data/vkBasalt.conf"
-    LIST_FX=(`grep -E '.fx$|.fxh$' "${FILE_VKBASALT_CONF}" | awk '{print $1}'`)
+    LIST_FX=($(grep -E '.fx$|.fxh$' "${FILE_VKBASALT_CONF}" | awk '{print $1}'))
     GET_FX_IN_FILE=(`echo ${PW_VKBASALT_EFFECTS} | sed s/"cas:"// | sed s/":"/" "/g`)
     unset ADD_GUI_FX GUI_FX_RESULT
     for add_list_fx in ${LIST_FX[@]} ; do
@@ -2984,8 +3014,9 @@ gui_MangoHud () {
 }
 
 portwine_create_shortcut () {
-    pw_create_gui_png
     pw_stop_progress_bar
+    [[ ! -e ${portwine_exe} ]] && return 1
+    pw_create_gui_png
 
     if [[ "$1" == "block_name" ]] ; then
         export name_desktop="${PORTPROTON_NAME}"
@@ -3109,7 +3140,7 @@ portwine_delete_shortcut () {
 portwine_missing_shortcut () {
     "${pw_yad}" --title="${loc_gui_error}." --form \
     --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
-    --image "$PW_GUI_ICON_PATH/error_file.png" \
+    --image "$PW_GUI_ICON_PATH/error.svg" \
     --text "$loc_gui_missing_shortcut" \
     --button="$loc_gui_delete_shortcut"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 \
     --button="$loc_cancel"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1
@@ -3236,135 +3267,135 @@ portwine_start_debug () {
     if [[ -z "$VULKAN_DRIVER_NAME" ]] || [[ "$VULKAN_DRIVER_NAME" == "llvmpipe" ]] ; then
 	yad_info "Attention working version of vulkan not detected!\nIt is recommended to run games in OpenGL (low performance possible)!"
     fi
-    echo "${port_deb1}" > "${PORT_WINE_PATH}/${portname}.log"
-    echo "${port_deb2}" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "-------------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "PortWINE version:" >> "${PORT_WINE_PATH}/${portname}.log"
-    read install_ver < "${PORT_WINE_TMP_PATH}/${portname}_ver"
-    echo "${portname}-${install_ver}" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "------------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "Scripts version:" >> "${PORT_WINE_PATH}/${portname}.log"
-    cat "${PORT_WINE_TMP_PATH}/scripts_ver" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "-----------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "${port_deb1}" > "${PORT_WINE_PATH}/PortProton.log"
+    echo "${port_deb2}" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "-------------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "PortWINE version:" >> "${PORT_WINE_PATH}/PortProton.log"
+    read install_ver < "${PORT_WINE_TMP_PATH}/PortProton_ver"
+    echo "PortProton-${install_ver}" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "------------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "Scripts version:" >> "${PORT_WINE_PATH}/PortProton.log"
+    cat "${PORT_WINE_TMP_PATH}/scripts_ver" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "-----------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     if [ "${PW_USE_RUNTIME}" = 0 ] ; then
-        echo "RUNTIME is disabled" >> "${PORT_WINE_PATH}/${portname}.log"
+        echo "RUNTIME is disabled" >> "${PORT_WINE_PATH}/PortProton.log"
     else
-        echo "RUNTIME is enabled" >> "${PORT_WINE_PATH}/${portname}.log"
+        echo "RUNTIME is enabled" >> "${PORT_WINE_PATH}/PortProton.log"
     fi
-    echo "----------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "----------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     if [ ! -z "${portwine_exe}" ] ; then
-        echo "Debug for programm:" >> "${PORT_WINE_PATH}/${portname}.log"
-        echo "${portwine_exe}" >> "${PORT_WINE_PATH}/${portname}.log"
-        echo "---------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+        echo "Debug for programm:" >> "${PORT_WINE_PATH}/PortProton.log"
+        echo "${portwine_exe}" >> "${PORT_WINE_PATH}/PortProton.log"
+        echo "---------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     fi
-    echo "GLIBC version:" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo $(ldd --version | grep -m1 ldd | awk '{print $NF}') >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "--------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "GLIBC version:" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo $(ldd --version | grep -m1 ldd | awk '{print $NF}') >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "--------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     if [[ "${PW_VULKAN_USE}" = "0" ]] ; then
-        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DX9-11 to ${loc_gui_open_gl}" >> "${PORT_WINE_PATH}/${portname}.log"
+        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DX9-11 to ${loc_gui_open_gl}" >> "${PORT_WINE_PATH}/PortProton.log"
     elif [[ "${PW_VULKAN_USE}" = "1" ]] ; then
-        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_STABLE_VER} and VKD3D-PROTON v.${VKD3D_STABLE_VER}" >> "${PORT_WINE_PATH}/${portname}.log"
+        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_STABLE_VER} and VKD3D-PROTON v.${VKD3D_STABLE_VER}" >> "${PORT_WINE_PATH}/PortProton.log"
     elif [[ "${PW_VULKAN_USE}" = "2" ]] ; then
-        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_GIT_VER} and VKD3D-PROTON v.${VKD3D_GIT_VER}" >> "${PORT_WINE_PATH}/${portname}.log"
+        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_GIT_VER} and VKD3D-PROTON v.${VKD3D_GIT_VER}" >> "${PORT_WINE_PATH}/PortProton.log"
     elif [[ "${PW_VULKAN_USE}" = "3" ]] ; then
-        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - native DX9 on MESA drivers" >> "${PORT_WINE_PATH}/${portname}.log"
+        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - native DX9 on MESA drivers" >> "${PORT_WINE_PATH}/PortProton.log"
     elif [[ "${PW_VULKAN_USE}" = "4" ]] ; then
-        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DirectX to wined3d vulkan" >> "${PORT_WINE_PATH}/${portname}.log"
+        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DirectX to wined3d vulkan" >> "${PORT_WINE_PATH}/PortProton.log"
     else
-        echo "PW_VULKAN_USE=${PW_VULKAN_USE}" >> "${PORT_WINE_PATH}/${portname}.log"
+        echo "PW_VULKAN_USE=${PW_VULKAN_USE}" >> "${PORT_WINE_PATH}/PortProton.log"
     fi
-    echo "--------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "Version WINE in use:" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "$PW_WINE_USE" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "-------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "Program bit depth:" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "--------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "Version WINE in use:" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "$PW_WINE_USE" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "-------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "Program bit depth:" >> "${PORT_WINE_PATH}/PortProton.log"
     if [[ $(file "$portwine_exe") =~ x86-64 ]]; then
-        echo "64 bit" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "-----------------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+        echo "64 bit" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "-----------------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     else
-        echo "32 bit" >> "${PORT_WINE_PATH}/${portname}.log"
+        echo "32 bit" >> "${PORT_WINE_PATH}/PortProton.log"
     fi
-    echo "--------------------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "Date and time of start debug for ${portname}:" >> "${PORT_WINE_PATH}/${portname}.log"
-    date >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "-----------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "The installation path of the ${portname}:" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "$PORT_WINE_PATH" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "------------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "Operating system:" >> "${PORT_WINE_PATH}/${portname}.log"
-    cat /etc/os-release | grep -oP 'PRETTY_NAME="\K[^"]+' >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "--------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "Desktop environment:" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "Desktop session: ${DESKTOP_SESSION}" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "Current desktop: ${XDG_CURRENT_DESKTOP}" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "Session type: ${XDG_SESSION_TYPE}" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "---------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "Kernel:" >> "${PORT_WINE_PATH}/${portname}.log"
-    uname -r >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "-------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "CPU:" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "CPU physical cores:$(cat /proc/cpuinfo | grep 'cpu cores' | sort -u | cut -d':' -f2)" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "CPU logical cores: $(cat /proc/cpuinfo | grep 'processor' | wc -l)" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "CPU model name:$(cat /proc/cpuinfo | grep 'model name' | sort -u | cut -d':' -f2)" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "RAM:" >> "${PORT_WINE_PATH}/${portname}.log"
-    free -m >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "-----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "Graphic cards and drivers:" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo 'lspci -k | grep -EA3 VGA|3D|Display :' >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "$(lspci -k | grep -EA3 'VGA|3D|Display')" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "----" >> "${PORT_WINE_PATH}/${portname}.log"
-    [[ `command -v glxinfo` ]] && glxinfo -B >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "-----" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "inxi -G:" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "--------------------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "Date and time of start debug for PortProton:" >> "${PORT_WINE_PATH}/PortProton.log"
+    date >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "-----------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "The installation path of the PortProton:" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "$PORT_WINE_PATH" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "Operating system:" >> "${PORT_WINE_PATH}/PortProton.log"
+    cat /etc/os-release | grep -oP 'PRETTY_NAME="\K[^"]+' >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "--------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "Desktop environment:" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "Desktop session: ${DESKTOP_SESSION}" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "Current desktop: ${XDG_CURRENT_DESKTOP}" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "Session type: ${XDG_SESSION_TYPE}" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "---------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "Kernel:" >> "${PORT_WINE_PATH}/PortProton.log"
+    uname -r >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "-------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "CPU:" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "CPU physical cores:$(cat /proc/cpuinfo | grep 'cpu cores' | sort -u | cut -d':' -f2)" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "CPU logical cores: $(cat /proc/cpuinfo | grep 'processor' | wc -l)" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "CPU model name:$(cat /proc/cpuinfo | grep 'model name' | sort -u | cut -d':' -f2)" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "RAM:" >> "${PORT_WINE_PATH}/PortProton.log"
+    free -m >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "-----------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "Graphic cards and drivers:" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo 'lspci -k | grep -EA3 VGA|3D|Display :' >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "$(lspci -k | grep -EA3 'VGA|3D|Display')" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "----" >> "${PORT_WINE_PATH}/PortProton.log"
+    [[ `command -v glxinfo` ]] && glxinfo -B >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "-----" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "inxi -G:" >> "${PORT_WINE_PATH}/PortProton.log"
     if ! check_flatpak
-    then "${PW_PLUGINS_PATH}/portable/bin/inxi" -Gc0 >> "${PORT_WINE_PATH}/${portname}.log"
+    then "${PW_PLUGINS_PATH}/portable/bin/inxi" -Gc0 >> "${PORT_WINE_PATH}/PortProton.log"
     fi
     if echo "$LSPCI_VGA" | grep -i nvidia &>/dev/null ; then
         if command -v ldconfig &>/dev/null ; then
-            echo "------" >> "${PORT_WINE_PATH}/${portname}.log"
-            echo "ldconfig -p | grep libGLX_nvidia" >> "${PORT_WINE_PATH}/${portname}.log"
-            ldconfig -p | grep libGLX_nvidia >> "${PORT_WINE_PATH}/${portname}.log"
+            echo "------" >> "${PORT_WINE_PATH}/PortProton.log"
+            echo "ldconfig -p | grep libGLX_nvidia" >> "${PORT_WINE_PATH}/PortProton.log"
+            ldconfig -p | grep libGLX_nvidia >> "${PORT_WINE_PATH}/PortProton.log"
         fi
     fi
-    echo "PW_SCREEN_RESOLUTION=$PW_SCREEN_RESOLUTION" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "PW_SCREEN_PRIMARY=$PW_SCREEN_PRIMARY" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "----------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "Vulkan info device name:" >> "${PORT_WINE_PATH}/${portname}.log"
-    "$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep -E '^GPU|deviceName|driverName' >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "PW_SCREEN_RESOLUTION=$PW_SCREEN_RESOLUTION" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "PW_SCREEN_PRIMARY=$PW_SCREEN_PRIMARY" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "----------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "Vulkan info device name:" >> "${PORT_WINE_PATH}/PortProton.log"
+    "$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep -E '^GPU|deviceName|driverName' >> "${PORT_WINE_PATH}/PortProton.log"
     "${PW_PLUGINS_PATH}/portable/bin/vkcube" --c 50
     if [ $? -eq 0 ]; then
-        echo "Vulkan cube test passed successfully" >> "${PORT_WINE_PATH}/${portname}.log"
+        echo "Vulkan cube test passed successfully" >> "${PORT_WINE_PATH}/PortProton.log"
     else
-        echo "Vulkan cube test completed with error" >> "${PORT_WINE_PATH}/${portname}.log"
+        echo "Vulkan cube test completed with error" >> "${PORT_WINE_PATH}/PortProton.log"
     fi
-    echo "----------------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo 'locale:' >> "${PORT_WINE_PATH}/${portname}.log"
-    locale >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "---" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo 'locale -a | grep -i "$(locale | grep -e '^LANG=' | sed 's/LANG=//' | sed  's/\-8//')" :' >> "${PORT_WINE_PATH}/${portname}.log"
-    locale -a | grep -i "$(locale | grep -e '^LANG=' | sed 's/LANG=//' | sed  's/\-8//')" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "-------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "----------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo 'locale:' >> "${PORT_WINE_PATH}/PortProton.log"
+    locale >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "---" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo 'locale -a | grep -i "$(locale | grep -e '^LANG=' | sed 's/LANG=//' | sed  's/\-8//')" :' >> "${PORT_WINE_PATH}/PortProton.log"
+    locale -a | grep -i "$(locale | grep -e '^LANG=' | sed 's/LANG=//' | sed  's/\-8//')" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "-------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     if [[ "${PW_USE_D3D_EXTRAS}" != 1 ]]
-    then echo "D3D_EXTRAS - disabled" >> "${PORT_WINE_PATH}/${portname}.log"
-    else echo "D3D_EXTRAS - enabled" >> "${PORT_WINE_PATH}/${portname}.log"
+    then echo "D3D_EXTRAS - disabled" >> "${PORT_WINE_PATH}/PortProton.log"
+    else echo "D3D_EXTRAS - enabled" >> "${PORT_WINE_PATH}/PortProton.log"
     fi
-    echo "------------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "winetricks.log:" >> "${PORT_WINE_PATH}/${portname}.log"
-    cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" | sed -e /"^d3dcomp*"/d -e /"^d3dx*"/d >> "${PORT_WINE_PATH}/${portname}.log"
-    echo "-----------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "winetricks.log:" >> "${PORT_WINE_PATH}/PortProton.log"
+    cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" | sed -e /"^d3dcomp*"/d -e /"^d3dx*"/d >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "-----------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     if [ ! -z "${PORTWINE_DB_FILE}" ]; then
-        echo "Use ${PORTWINE_DB_FILE} db file:" >> "${PORT_WINE_PATH}/${portname}.log"
-        cat "${PORTWINE_DB_FILE}" | sed '/##/d' >> "${PORT_WINE_PATH}/${portname}.log"
+        echo "Use ${PORTWINE_DB_FILE} db file:" >> "${PORT_WINE_PATH}/PortProton.log"
+        cat "${PORTWINE_DB_FILE}" | sed '/##/d' >> "${PORT_WINE_PATH}/PortProton.log"
     else
-        echo "Use ${PORT_SCRIPTS_PATH}/portwine_db/default db file:" >> "${PORT_WINE_PATH}/${portname}.log"
-        cat "${PORT_SCRIPTS_PATH}/portwine_db/default" | sed '/##/d' >> "${PORT_WINE_PATH}/${portname}.log"
+        echo "Use ${PORT_SCRIPTS_PATH}/portwine_db/default db file:" >> "${PORT_WINE_PATH}/PortProton.log"
+        cat "${PORT_SCRIPTS_PATH}/portwine_db/default" | sed '/##/d' >> "${PORT_WINE_PATH}/PortProton.log"
     fi
-    echo "----------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "----------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     if [ -f "${USER_CONF}" ]; then
-        cat "${USER_CONF}" | sed '/bash/d' >> "${PORT_WINE_PATH}/${portname}.log"
+        cat "${USER_CONF}" | sed '/bash/d' >> "${PORT_WINE_PATH}/PortProton.log"
     fi
-    echo "---------------------------------------" >> "${PORT_WINE_PATH}/${portname}.log"
+    echo "---------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
 
     export DXVK_HUD="full"
 
@@ -3383,21 +3414,21 @@ portwine_start_debug () {
                 sleep 3
                 PW_TIMER=1
             fi
-    done < "${PORT_WINE_PATH}/${portname}.log" | "${pw_yad_v13_0}" --text-info --tail --button="STOP"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 --title="DEBUG" \
+    done < "${PORT_WINE_PATH}/PortProton.log" | "${pw_yad_v13_0}" --text-info --tail --button="STOP"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 --title="DEBUG" \
     --skip-taskbar --width=800 --height=400 --text "${port_debug}" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" 2>/dev/null &&
     kill_portwine
-    sed -i '/.fx$/d' "${PORT_WINE_PATH}/${portname}.log"
-    sed -i '/HACK_does_openvr_work/d' "${PORT_WINE_PATH}/${portname}.log"
-    sed -i '/Uploading is disabled/d' "${PORT_WINE_PATH}/${portname}.log"
-    sed -i '/wine: RLIMIT_NICE is <= 20/d' "${PORT_WINE_PATH}/${portname}.log"
-    sed -i '/ALT_2.24/d' "${PORT_WINE_PATH}/${portname}.log"
-    sed -i '/UDEV monitor/d' "${PORT_WINE_PATH}/${portname}.log"
-    deb_text=$(cat "${PORT_WINE_PATH}/${portname}.log"  | awk '! a[$0]++')
-    echo "$deb_text" > "${PORT_WINE_PATH}/${portname}.log"
-    "$pw_yad" --title="${portname}.log" --no-buttons --text-align=center \
+    sed -i '/.fx$/d' "${PORT_WINE_PATH}/PortProton.log"
+    sed -i '/HACK_does_openvr_work/d' "${PORT_WINE_PATH}/PortProton.log"
+    sed -i '/Uploading is disabled/d' "${PORT_WINE_PATH}/PortProton.log"
+    sed -i '/wine: RLIMIT_NICE is <= 20/d' "${PORT_WINE_PATH}/PortProton.log"
+    sed -i '/ALT_2.24/d' "${PORT_WINE_PATH}/PortProton.log"
+    sed -i '/UDEV monitor/d' "${PORT_WINE_PATH}/PortProton.log"
+    deb_text=$(cat "${PORT_WINE_PATH}/PortProton.log"  | awk '! a[$0]++')
+    echo "$deb_text" > "${PORT_WINE_PATH}/PortProton.log"
+    "$pw_yad" --title="PortProton.log" --no-buttons --text-align=center \
     --text-info --show-uri --wrap --width=1200 --height=550  --uri-color=red \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-    --filename="${PORT_WINE_PATH}/${portname}.log"
+    --filename="${PORT_WINE_PATH}/PortProton.log"
     stop_portwine
 }
 
@@ -3413,23 +3444,21 @@ pw_create_prefix_backup () {
         | awk -F\" '{print $1}' > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut"
     fi
     unset PW_SANDBOX_HOME_PATH
-    export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
     pw_init_runtime
+    if check_flatpak
+    then TMP_ALL_PATH=""
+    else TMP_ALL_PATH="env PATH=\"${PATH}\" LD_LIBRARY_PATH=\"${PW_LD_LIBRARY_PATH}\""
+    fi
     chmod -R u+w "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"
-    ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" mksquashfs "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" -comp zstd &
-    sleep 10
-    while true ; do
-        if [[ ! -z $(pgrep -a xterm | grep ".ppack.part" | head -n 1 | awk '{print $1}') ]] ; then
-            sleep 0.5
-        else
-            kill -TERM $(pgrep -a mksquashfs | grep ".ppack.part" | head -n 1 | awk '{print $1}')
-            sleep 0.3
-            if [[ -z "$(pgrep -a mksquashfs | grep ".ppack.part" | head -n 1 | awk '{print $1}')" ]]
-            then break
-            else sleep 0.3
-            fi
-        fi
-    done
+cat << EOF > "${PORT_WINE_TMP_PATH}"/pp_pfx_backup.sh
+    #!/usr/bin/env bash
+    ${TMP_ALL_PATH} mksquashfs "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" \
+    "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" -comp zstd \
+    || rm -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part"
+EOF
+    chmod u+x "${PORT_WINE_TMP_PATH}"/pp_pfx_backup.sh
+    ${pw_runtime} ${PW_TERM} "${PORT_WINE_TMP_PATH}"/pp_pfx_backup.sh
+    try_remove_file "${PORT_WINE_TMP_PATH}"/pp_pfx_backup.sh
     if [[ -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" ]] ; then
         mv -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack"
         yad_info "$PW_PFX_BACKUP_SUCCESS $PW_PREFIX_NAME"
@@ -3440,7 +3469,6 @@ pw_create_prefix_backup () {
     else
         yad_error "$PW_PFX_BACKUP_ERROR $PW_PREFIX_NAME"
     fi
-
     return 0
 }
 
@@ -3540,13 +3568,13 @@ export -f gui_rm_portproton
 gui_pw_update () {
     try_remove_file "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     print_info "Restarting PP for check update..."
-    export SKIP_CHECK_UPDATES=1
+    export SKIP_CHECK_UPDATES=0
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
 
 change_loc () {
-    try_remove_file "${PORT_WINE_TMP_PATH}/${portname}_loc"
+    try_remove_file "${PORT_WINE_TMP_PATH}/PortProton_loc"
     print_info "Restarting PP for change language..."
     export SKIP_CHECK_UPDATES=1
     /usr/bin/env bash -c ${pw_full_command_line[*]} &

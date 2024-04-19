@@ -3,33 +3,37 @@
 # Helped in translation: ConTI1NuEsZZZ and Boria138
 
 unset update_loc
-if [[ -f "${PORT_WINE_TMP_PATH}/${portname}_loc" ]] ; then
-	read "update_loc" < "${PORT_WINE_TMP_PATH}/${portname}_loc"
-	export update_loc=${update_loc}
+if [[ -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]] ; then
+	update_loc=$(cat "${PORT_WINE_TMP_PATH}/PortProton_loc")
 fi
 
-if [[ "${FORCE_ENG_LANG}" == "1" ]] ; then
-	export update_loc="ENG"
+if [[ -z "${LANG}" ]] ; then
+	export LANG=C
+	update_loc="ENG"
 else
-	if [[ "${update_loc}" == "RUS" || "${update_loc}" == "ENG" ]] && [[ -f "${PORT_WINE_TMP_PATH}/${portname}_loc" ]] ; then
+	if [[ "${update_loc}" == "RUS" || "${update_loc}" == "ENG" ]] \
+	&& [[ -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]] ; then
 		echo ""
 	else
 		[[ ! -f "${pw_yad_v13_0}" ]] && pw_yad_v13_0="yad"
 		SET_LANG=$("${pw_yad_v13_0}" --title  "LAUNGUAGE" --text "Select the language:" --list --radiolist \
 		--column="Set:" --column "Choose language:" TRUE "RUS" FALSE "ENG" \
 		--window-icon "$PW_GUI_ICON_PATH/portproton.svg" --width=300 --height=150)
-		SET_LANG="$(echo $SET_LANG | awk -F'|' '{print $2}')"
-		echo "${SET_LANG}" > "${PORT_WINE_TMP_PATH}/${portname}_loc"
+		SET_LANG="$(echo "${SET_LANG}" | awk -F'|' '{print $2}')"
+		echo "${SET_LANG}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
 		if [[ ! -z "${SET_LANG}" ]]
-		then export update_loc=${SET_LANG}
+		then update_loc=${SET_LANG}
 		else exit 1
 		fi
 	fi
 fi
+export update_loc
 
 if [[ "${update_loc}" == "RUS" ]] ; then
-	export loc_gui_pw_reinstall_pp="Переустановить ${portname}"
-    export loc_gui_rm_pp="Удалить ${portname}"
+	# check_flatpak && export LANG=ru_RU.UTF-8
+
+	export loc_gui_pw_reinstall_pp="Переустановить PortProton"
+    export loc_gui_rm_pp="Удалить PortProton"
     export loc_gui_upd_pp="Проверить обновления"
     export loc_gui_changelog="История изменений"
 	export loc_gui_change_loc="Сменить язык интерфейса"
@@ -52,7 +56,7 @@ if [[ "${update_loc}" == "RUS" ]] ; then
 	export loc_tray_winefile="Файловый менеджер WINE"
 	export loc_tray_tascmng="Диспетчер задач WINE"
 	export loc_tray_cangelog="История изменений"
-	export loc_tray_force_exit="Завершить работу ${portname}"
+	export loc_tray_force_exit="Завершить работу PortProton"
 
 	export loc_mg_autoinstall="АВТОУСТАНОВКА"
 	export loc_mg_emulators="ЭМУЛЯТОРЫ"
@@ -64,8 +68,8 @@ if [[ "${update_loc}" == "RUS" ]] ; then
 	export PW_SELECTION_DB_LOC="Найдено более одного DB файла для запускаемого приложения.\nВыберите необходимый, или перед следующим запуском удалите лишний DB файл.\n"
 
 	export inst_set="Выбор"
-	export inst_set_top="Установка ${portname}"
-	export sc_info="Ярлык будет создан в каталоге ${portname}."
+	export inst_set_top="Установка PortProton"
+	export sc_info="Ярлык будет создан в каталоге PortProton."
 	export sc_name="Название"
 	export sc_menu_desktop="Добавить ярлык в МЕНЮ -> Игры"
 	export sc_desktop_desktop="Добавить ярлык на Рабочий стол"
@@ -74,32 +78,32 @@ if [[ "${update_loc}" == "RUS" ]] ; then
 
 	export inst_succ="Установка завершена успешно!"
 
-	export port_upd1="Обновление ${portname}"
-	export port_upd2="На сайте linux-gaming.ru вышло обновление для ${portname}\n"
+	export port_upd1="Обновление PortProton"
+	export port_upd2="На сайте linux-gaming.ru вышло обновление для PortProton\n"
 	export port_upd3="Действие:"
 	export port_upd4="Перейти на сайт"
 	export port_upd5="Напомнить позже"
 	export port_upd6="Больше не напоминать"
 
 	export scripts_upd1="Обновление скриптов"
-	export scripts_upd2="Доступно обновление скриптов для ${portname}"
-	export scripts_upd3="Действие :"
-	export scripts_upd4="Обновить сейчас"
-	export scripts_upd5="Напомнить позже"
-	export scripts_upd6="Больше не напоминать"
+	export scripts_upd2="Доступно обновление скриптов для PortProton"
+	export scripts_upd3="ВЫХОД"
+	export scripts_upd4="ОБНОВИТЬ СЕЙЧАС"
+	export scripts_upd5="НАПОМНИТЬ ПОЗЖЕ"
+	export scripts_upd6="НЕ НАПОМИНАТЬ"
 
-	export port_clear_pfx="Вы действительно хотите очистить префикс ${portname}?"
+	export port_clear_pfx="Вы действительно хотите очистить префикс PortProton?"
 
-	export port_del1="Удаление $portname"
-	export port_del2="Вы действительно хотите полностью удалить ${portname}?"
+	export port_del1="Удаление PortProton"
+	export port_del2="Вы действительно хотите полностью удалить PortProton?"
 
-	export port_reinstall="Вы действительно хотите переустановить ${portname}?\nДля этого будет необходимо интернет соединение."
+	export port_reinstall="Вы действительно хотите переустановить PortProton?\nДля этого будет необходимо интернет соединение."
 
-	export port_deb1="PortWINE был запущен в режиме создания ${portname}.log и он успешно сохранен в корне каталога порта"
+	export port_deb1="PortWINE был запущен в режиме создания PortProton.log и он успешно сохранен в корне каталога порта"
 	export port_deb2="Для диагностики проблемы, скопируйте ВЕСЬ лог в соответствующий канал у нас на сервере дискорда: https://discord.gg/FTaheP99wE"
 
-	export port_start1="Запуск ${portname}"
-	export port_start2="В каком режиме вы хотите запустить ${portname}?"
+	export port_start1="Запуск PortProton"
+	export port_start2="В каком режиме вы хотите запустить PortProton?"
 	export port_start3="Режим:"
 	export port_start4="Обычный"
 	export port_start5="Отдельной X-сессии"
@@ -107,12 +111,12 @@ if [[ "${update_loc}" == "RUS" ]] ; then
 	export port_start7="Запустить winetricks"
 	export port_start8="DXVK"
 
-	export port_debug="Не торопитесь! После окончания работы ${portname}, нажмите STOP."
+	export port_debug="Не торопитесь! После окончания работы PortProton, нажмите STOP."
 
 	export loc_create_shortcut_from_gui="Создать ярлык..."
 	export loc_create_shortcut="Создать ярлык для запускаемого файла."
 	export loc_delete_shortcut="Удалить ярлык для запускаемого файла."
-	export loc_debug="Запуск c созданием .log файла в корне ${portname}"
+	export loc_debug="Запуск c созданием .log файла в корне PortProton"
 	export loc_launch="Запустить файл..."
 	export loc_winecfg="Запустить winecfg для редактирования настроек выбранного префикса"
 	export loc_winefile="Запустить файловый менеждер встроенный в wine"
@@ -291,7 +295,7 @@ if [[ "${update_loc}" == "RUS" ]] ; then
 	export loc_gui_error='Ошибка.'
 	export loc_gui_error_download="Проверьте интернет соединение и\nнажмите Repeat для повторной попытки скачивания"
 	export loc_gui_settings="Пожалуйста подождите."
-	export loc_gui_sett_info="Обновление конфигурации <b>${portname}</b>..."
+	export loc_gui_sett_info="Обновление конфигурации <b>PortProton</b>..."
 	export loc_gui_edit_db="Изменение файла настроек для:"
 	export loc_gui_edit_db_help="<b>ПРИМЕЧАНИЕ:</b> Для вывода справки по каждому пункту, просто наведите курсор мыши на текст."
 
@@ -303,6 +307,8 @@ if [[ "${update_loc}" == "RUS" ]] ; then
 	export loc_gui_reset_db_help="Востановить все настройки по умолчанию."
 
 	export loc_disabled="Отключено"
+	export loc_skip="ПРОПУСТИТЬ"
+	export loc_repeat="ПОВТОРИТЬ"
 
 	export loc_gui_open_db="ОТКРЫТЬ ФАЙЛ НАСТРОЕК"
 	export loc_gui_open_db_help="Открыть файл настроек <b>.ppdb</b> в системном текстовом редакторе для просмотра и изменений переменных вручную."
@@ -332,7 +338,7 @@ if [[ "${update_loc}" == "RUS" ]] ; then
 	export loc_gui_arg_exe_help="Добавление аргумента после <b>.exe</b> файла, так же как если бы вы добавили аргумент в ярлыке в системе  <b>WINDOWS </b>"
 
 	export loc_gui_mango_fps="Ограничить FPS"
-	export loc_gui_mango_fps_help="Включение ограничения количества кадров в секунду средстами MANGOHUD встроенного в ${portname}"
+	export loc_gui_mango_fps_help="Включение ограничения количества кадров в секунду средстами MANGOHUD встроенного в PortProton"
 
 	export loc_gui_arg_gamescope="Добавить аргументы для GAMESCOPE:"
 	export loc_gui_arg_gamescope_help="Аргументы:
@@ -346,6 +352,9 @@ if [[ "${update_loc}" == "RUS" ]] ; then
 <b>-S stretch:</b>  используйте масштабирование по ширине, игра заполнит окно. (например, с 4:3 до 16:9).
 <b>-b:</b>  создайте окно без полей.
 <b>-f:</b>  создайте полноэкранное окно."
+
+	export loc_gui_opengl_version="Принудительно выбрать версию OpenGL для игры"
+	export loc_gui_opengl_version_help="Можно выбрать необходимую версию OpenGL, некоторым играм необходим принудительный Compatibility Profile (COMPAT). (Примеры есть в выпадающем списке)"
 
 	export PW_USE_GAMESCOPE_INFO="Включение использования gamescope для запуска приложения.
 Горячие клавиши:
@@ -367,7 +376,7 @@ if [[ "${update_loc}" == "RUS" ]] ; then
 	export loc_gui_amd_vulkan_select_help="Выбор какая реализация vulkan будет использоваться для запуска игры"
 
 	export loc_gui_gpu_select="Выбрать видеокарту для запуска игры (в user.conf)"
-	export loc_gui_gpu_select_help="Выбор какая видеокарта будет использоваться для запуска игры (используется для всех запускаемых игр и программ в ${portname}.)"
+	export loc_gui_gpu_select_help="Выбор какая видеокарта будет использоваться для запуска игры (используется для всех запускаемых игр и программ в PortProton.)"
 
 	export loc_gui_check_new_wine="Проверяем новые версии WINE"
 	export loc_gui_check_new_wine_error="Не удается проверить новые версии WINE."
@@ -396,7 +405,7 @@ if [[ "${update_loc}" == "RUS" ]] ; then
 	export loc_gui_vkbasalt_start="VKBASALT"
 	export loc_gui_mh_start="MANGOHUD"
 
-	export loc_gui_db_comments="Найден файл настроек ${portname} для"
+	export loc_gui_db_comments="Найден файл настроек PortProton для"
 
 	export loc_gui_vulkan_stable="Стабильные DXVK ${DXVK_STABLE_VER} и VKD3D ${VKD3D_STABLE_VER}"
 	export loc_gui_vulkan_git="Новейшие DXVK ${DXVK_GIT_VER} и VKD3D ${VKD3D_GIT_VER}"
@@ -442,9 +451,9 @@ if [[ "${update_loc}" == "RUS" ]] ; then
 
 elif [[ "${update_loc}" == "ENG" ]] ; then
 
-	export loc_gui_pw_reinstall_pp="REINSTALL ${portname}"
-    export loc_gui_rm_pp="REMOVE ${portname}"
-    export loc_gui_upd_pp="UPDATE ${portname}"
+	export loc_gui_pw_reinstall_pp="REINSTALL PortProton"
+    export loc_gui_rm_pp="REMOVE PortProton"
+    export loc_gui_upd_pp="UPDATE PortProton"
     export loc_gui_changelog="CHANGELOG"
 	export loc_gui_change_loc="CHANGE LANGUAGE"
     export loc_gui_edit_usc="EDIT USER.CONF"
@@ -478,8 +487,8 @@ elif [[ "${update_loc}" == "ENG" ]] ; then
 	export PW_SELECTION_DB_LOC="More than one DB file found for the application being launched.\nSelect the required one, or delete the extra DB file before the next run.\n"
 
 	export inst_set="Choices"
-	export inst_set_top="Instaling ${portname}"
-	export sc_info="The shortcut will be created in the ${portname} directory."
+	export inst_set_top="Instaling PortProton"
+	export sc_info="The shortcut will be created in the PortProton directory."
 	export sc_name="Name"
 	export sc_menu_desktop="Add shortcut to MENU -> GAMES"
 	export sc_desktop_desktop="Add shortcut to Desktop"
@@ -488,32 +497,32 @@ elif [[ "${update_loc}" == "ENG" ]] ; then
 
 	export inst_succ="The installation was successful."
 
-	export port_upd1="New update for ${portname}"
-	export port_upd2="On linux-gaming.ru site published an update for ${portname}\n"
+	export port_upd1="New update for PortProton"
+	export port_upd2="On linux-gaming.ru site published an update for PortProton\n"
 	export port_upd3="Action:"
 	export port_upd4="Go to the website"
 	export port_upd5="Remind me later"
 	export port_upd6="Do not remind me"
 
 	export scripts_upd1="New update for scripts"
-	export scripts_upd2="Scripts update avialable for ${portname}"
-	export scripts_upd3="Action:"
-	export scripts_upd4="Updating now"
-	export scripts_upd5="Remind me later"
-	export scripts_upd6="Do not remind me"
+	export scripts_upd2="Scripts update avialable for PortProton"
+	export scripts_upd3="EXIT"
+	export scripts_upd4="UPDATING NOW"
+	export scripts_upd5="REMIND ME LATER"
+	export scripts_upd6="DO NOT REMIND ME"
 
-	export port_clear_pfx="Do you want to clear prefix in ${portname}?"
+	export port_clear_pfx="Do you want to clear prefix in PortProton?"
 
-	export port_del1="Remove $portname"
-	export port_del2="Do you really want to remove $portname?"
+	export port_del1="Remove PortProton"
+	export port_del2="Do you really want to remove PortProton?"
 
-	export port_reinstall="Do you really want to reinstall ${portname}?\nFor this, an internet connection will be required."
+	export port_reinstall="Do you really want to reinstall PortProton?\nFor this, an internet connection will be required."
 
-	export port_deb1="${portname} was launched in creation mode ${portname}.log and it is successfully stored in the root directory of the port"
+	export port_deb1="PortProton was launched in creation mode PortProton.log and it is successfully stored in the root directory of the port"
 	export port_deb2="To diagnose the problem, copy ALL of the log to discord server: https://discord.gg/FTaheP99wE"
 
-	export port_start1="Starting the ${portname}"
-	export port_start2="In what mode you want to start the ${portname}?"
+	export port_start1="Starting the PortProton"
+	export port_start2="In what mode you want to start the PortProton?"
 	export port_start3="Mode:"
 	export port_start4="Normal"
 	export port_start5="Individual X-Session"
@@ -521,12 +530,12 @@ elif [[ "${update_loc}" == "ENG" ]] ; then
 	export port_start7="Run winetricks"
 	export port_start8="DXVK"
 
-	export port_debug="Please wait! After finishing the ${portname}, click STOP."
+	export port_debug="Please wait! After finishing the PortProton, click STOP."
 
 	export loc_create_shortcut_from_gui="Create shortcut..."
 	export loc_create_shortcut="Create shortcut for select file..."
 	export loc_delete_shortcut="Delete shortcut for select file..."
-	export loc_debug="Launch with the creation of a .log file at the root ${portname}"
+	export loc_debug="Launch with the creation of a .log file at the root PortProton"
     export loc_launch="Run file ..."
 	export loc_winecfg="Run winecfg to edit the settings of the selected prefix"
     export loc_winefile="Run wine file manager"
@@ -705,7 +714,7 @@ elif [[ "${update_loc}" == "ENG" ]] ; then
 	export loc_gui_error='Error.'
 	export loc_gui_error_download="You will need to check internet connection,and\npress Repeat for repeat download"
 	export loc_gui_settings="Please wait."
-	export loc_gui_sett_info="Updating configuration for <b>${portname}</b>..."
+	export loc_gui_sett_info="Updating configuration for <b>PortProton</b>..."
 	export loc_gui_edit_db="Change settings in database file for"
 	export loc_gui_edit_db_help="<b>NOTE:</b> To display help for each item, simply hover your mouse over the text"
 
@@ -718,6 +727,8 @@ elif [[ "${update_loc}" == "ENG" ]] ; then
 	export loc_gui_reset_db_help="Restore default settings."
 
 	export loc_disabled="Disabled"
+	export loc_skip="SKIP"
+	export loc_repeat="REPEAT"
 
 	export loc_gui_open_db="OPEN THE SETTINGS FILE"
 	export loc_gui_open_db_help="Open the <b>.ppdb</b> settings file in a system text editor to view and change variables manually."
@@ -748,7 +759,7 @@ A brief instruction:
 	export loc_gui_arg_exe_help="Adding an argument after the <b>.exe</b> file, just like you would add an argument in a shortcut on a <b>WINDOWS </b> system"
 
     export loc_gui_mango_fps="MANGOHUD FPS LIMIT"
-	export loc_gui_mango_fps_help="Enabling FPS limits using MANGOHUD built into ${portname}"
+	export loc_gui_mango_fps_help="Enabling FPS limits using MANGOHUD built into PortProton"
 
 	export loc_gui_arg_gamescope="Add arguments for GAMESCOPE:"
 	export loc_gui_arg_gamescope_help="
@@ -762,6 +773,9 @@ A brief instruction:
 <b>-S stretch:</b> use stretch scaling, the game will fill the window. (e.g. 4:3 to 16:9).
 <b>-b:</b> create a border-less window.
 <b>-f:</b> create a full-screen window."
+
+    export loc_gui_opengl_version="Forcibly select the OpenGL version for the game"
+    export loc_gui_opengl_version_help="You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)"
 
 	export PW_USE_GAMESCOPE_INFO="
 <b>Super + F :</b> Toggle fullscreen
@@ -781,7 +795,7 @@ A brief instruction:
 	export loc_gui_amd_vulkan_select_help="Choosing which implementation of vulkan will be used to run the game"
 
 	export loc_gui_gpu_select="Choose a graphics card to run the game (in user.conf)"
-	export loc_gui_gpu_select_help="Select which video card will be used to run the game (used for all running games and programs in ${portname})"
+	export loc_gui_gpu_select_help="Select which video card will be used to run the game (used for all running games and programs in PortProton)"
 
 	export loc_gui_check_new_wine="Check new version WINE"
 	export loc_gui_check_new_wine_error="Error: check wine."
@@ -811,7 +825,7 @@ A brief instruction:
 
     export loc_gui_vkbasalt_top="vkBasalt settings for adding effects to games running under Vulkan. (The <b>HOME</b> key disables vkbasalt)\n<b>NOTE:</b> To display help for each item, simply hover over the text\n"
 
-	export loc_gui_db_comments="${portname} database file was found for"
+	export loc_gui_db_comments="PortProton database file was found for"
 
 	export loc_gui_vulkan_stable="Stable DXVK ${DXVK_STABLE_VER} и VKD3D ${VKD3D_STABLE_VER}"
 	export loc_gui_vulkan_git="Newest DXVK ${DXVK_GIT_VER} и VKD3D ${VKD3D_GIT_VER}"
@@ -853,6 +867,5 @@ A brief instruction:
 
 	export loc_gui_terminal="TERMINAL"
 	export loc_gui_logo="LOGO"
-
 
 fi
