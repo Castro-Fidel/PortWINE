@@ -145,10 +145,6 @@ try_remove_file "${PORT_SCRIPTS_PATH}/yad_gui"
 try_remove_file "${PORT_SCRIPTS_PATH}/zen_yad_gui"
 try_remove_file "${PW_GUI_THEMES_PATH}/default.css"
 
-if [[ "${INSTALLING_PORT}" == 1 ]] ; then
-    return 0
-fi
-
 . "${USER_CONF}"
 
 # подключаем тему:
@@ -163,6 +159,10 @@ fi
 
 if [[ $(gsettings get org.gnome.desktop.interface color-scheme) == "'prefer-dark'" ]]
 then export PW_DESKTOP_THEME="dark"
+fi
+
+if [[ "${INSTALLING_PORT}" == 1 ]] ; then
+    return 0
 fi
 
 if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] \
