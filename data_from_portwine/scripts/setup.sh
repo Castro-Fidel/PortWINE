@@ -45,7 +45,7 @@ if check_flatpak \
 && [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]] ; then
 	PORT_WINE_OLD_PATH="$(cat "${HOME}/.local/share/applications/PortProton.desktop" | grep "Exec=" | awk -F'env ' '{print $2}' | awk -F'/data/scripts/' '{print $1}')"
 	if [[ -d "$PORT_WINE_OLD_PATH" ]] \
-	&& yad_question "$FOUND_OLD_PP"
+	&& yad_question "$(eval_gettext "PortProton installed by script has been detected. Do you want to transfer all the data from it to the new flatpak version of PortProton?")"
 	then
 		pw_start_progress_bar_block "$loc_gui_settings"
 
@@ -92,7 +92,7 @@ if check_flatpak \
 			done
 		fi
 		pw_stop_progress_bar
-		yad_info "${MOVED_OLD_PP} ${PORT_WINE_OLD_PATH}"
+		yad_info "$(eval_gettext "PortProton has been moved to flatpak. You can now remove the old directory:") ${PORT_WINE_OLD_PATH}"
 	fi
 fi
 
