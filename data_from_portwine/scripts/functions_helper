@@ -74,23 +74,26 @@ change_locale () {
 export -f change_locale
 
 generate_pot () {
-    LANGUAGES_LIST=(ru)
-    for lang in "${LANGUAGES_LIST[@]}"
+    for lang in $LANGUAGES_LIST
     do
-    echo "${lang}"
-    mkdir -p "${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/"
-    LANG_PO="${PORT_WINE_PATH}/data/locales/"${lang}"/LC_MESSAGES/PortProton.po"
-    LANG_MO="${PORT_WINE_PATH}/data/locales/"${lang}"/LC_MESSAGES/PortProton.mo"
-    TEMPLATE_POT="${PORT_WINE_PATH}/locales/PortProton.pot"
-    xgettext --from-code=UTF-8 --language shell -i "${PORT_WINE_PATH}/data/scripts/start.sh" "${PORT_WINE_PATH}/data/scripts/setup.sh" "${PORT_WINE_PATH}/data/scripts/functions_helper"  -o $TEMPLATE_POT
-    if [ -f "$LANG_PO" ]; then
-        echo "update $LANG_PO file"
-        msgmerge --update $LANG_PO $TEMPLATE_POT
-    else
-        echo "create $LANG_PO file"
-        msginit --input=$TEMPLATE_POT --locale="${lang}" --output=$LANG_PO
-    fi
-    msgfmt --output-file=$LANG_MO $LANG_PO
+        echo "${lang}"
+        mkdir -p "${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/"
+        LANG_PO="${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/PortProton.po"
+        LANG_MO="${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/PortProton.mo"
+        TEMPLATE_POT="${PORT_WINE_PATH}/data/locales/PortProton.pot"
+        xgettext --from-code=UTF-8 --language shell -i \
+        "${PORT_WINE_PATH}/data/scripts/start.sh" \
+        "${PORT_WINE_PATH}/data/scripts/setup.sh" \
+        "${PORT_WINE_PATH}/data/scripts/functions_helper" \
+        -o "$TEMPLATE_POT"
+        if [[ -f "$LANG_PO" ]] ; then
+            echo "update $LANG_PO file"
+            msgmerge --update "$LANG_PO" "$TEMPLATE_POT"
+        else
+            echo "create $LANG_PO file"
+            msginit --input="$TEMPLATE_POT" --locale="${lang}" --output="$LANG_PO"
+        fi
+        msgfmt --output-file="$LANG_MO" "$LANG_PO"
     done
 }
 export -f generate_pot
@@ -2658,7 +2661,16 @@ pw_gui_for_edit_db () {
     "${pw_yad_v13_0}" --plug=$KEY_EDIT_DB_GUI --tabnum="2" --form --separator="%" --columns=1 --scroll \
     --field="$(eval_gettext "Change the version of <b>WINDOWS</b> emulation")!$(eval_gettext "Changing the <b>WINDOWS</b> emulation version may be required to run older games. <b>WINDOWS</b> versions below 10 do not support new games with DirectX 12") :CB" "${ADD_WINVER_EDIT_DB}" \
     --field="$(eval_gettext "AUTOINSTALL WITH <b>WINETRICKS</b>")!$(eval_gettext "Automatically install with <b>WINETRICKS</b> additional libraries required to run the game/program. List of libraries separated by spaces") :CBE" "${PW_DLL_INSTALL}!vcrun2019 corefonts lucida" \
-    --field="$(eval_gettext "Forced to use/disable libraries")!$(eval_gettext "Forced to use/disable the library only for the given application. (There are examples in the drop-down list)") :CBE" "${WINEDLLOVERRIDES}!libglesv2=!d3dx9_36,d3dx9_42=n,b;mfc120=b,n" \
+    --field="$(eval_gettext "Forced to use/disable libraries")!$(eval_gettext "Forced to use/disable the library only for the given application. (There are examples in the drop-down list)
+
+A brief instruction:
+	* libraries are written <b>WITHOUT</b> the .dll file extension
+	* libraries are separated by semicolons - <b>;</b>
+	* library=n - use the <b>WINDOWS</b> (third-party) library
+	* library=b - use <b>WINE</b> (built-in) library
+	* library=n,b - use <b>WINDOWS</b> library and then <b>WINE</b>
+	* library=b,n - use <b>WINE</b> library and then <b>WINDOWS</b>
+	* library= - disable the use of this library") :CBE" "${WINEDLLOVERRIDES}!libglesv2=!d3dx9_36,d3dx9_42=n,b;mfc120=b,n" \
     --field=":LBL" "" \
     --field="$(eval_gettext "ADD ARGUMENTS FOR .EXE FILE")!$(eval_gettext "Adding an argument after the <b>.exe</b> file, just like you would add an argument in a shortcut on a <b>WINDOWS </b> system") :CBE" "\\${LAUNCH_PARAMETERS[@]}!-dx11 -skipintro 1" \
     --field=":LBL" "" \
@@ -2975,7 +2987,7 @@ gui_vkBasalt () {
     local PW_ChromaticAberration_INFO=$(eval_gettext 'Adds chromatic aberration to an image')
     local PW_Clarity_INFO=$(eval_gettext 'Sharpening textures with slight modifications of image contrast (similar in effect to CAS)')
     local PW_ColorMatrix_INFO=$(eval_gettext 'Adding cool colors')
-    local PW_Colourfulness_INFO=$(eval_gettext 'Increasing color saturation. Increasing color saturation')
+    local PW_Colourfulness_INFO=$(eval_gettext 'Increasing color saturation')
     local PW_FakeHDR_INFO=$(eval_gettext 'Add fake HDR')
     local PW_FilmGrain2_INFO=$(eval_gettext 'Adding the film grain effect')
     local PW_Curves_INFO=$(eval_gettext 'Increases the contrast of the image without affecting the bright and dark areas, so that the detail in shadows and sky is not lost')
@@ -3721,7 +3733,7 @@ EOF
         mv -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack"
         yad_info "$(eval_gettext "Backup has been successfully created for prefix:") $PW_PREFIX_NAME"
         if [[ ! -f "${PORT_WINE_TMP_PATH}/pfx_backup_info" ]] ; then
-            yad_info "$(eval_gettext "Attention! Do not pass the resev copy to third parties, there is a risk of losing accounts")"
+            yad_info "$(eval_gettext "Attention! Do not pass the resev copy to third parties, there is a risk of losing accounts!")"
             echo "1" > "${PORT_WINE_TMP_PATH}/pfx_backup_info"
         fi
     else

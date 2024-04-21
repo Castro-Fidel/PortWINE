@@ -280,22 +280,26 @@ use: [--reinstall] [--autoinstall]
         export PW_YAD_SET="$2"
         pw_autoinstall_from_db
         exit 0 ;;
+
+    '--generate-pot' )
+        generate_pot
+        exit 0 ;;
 esac
 
 ### GUI ###
 
-export PW_PREFIX_NAME="$(echo "${PW_PREFIX_NAME}" | sed -e s/[[:blank:]]/_/g)"
-export PW_ALL_PREFIXES=$(ls "${PORT_WINE_PATH}/data/prefixes/" | sed -e s/"${PW_PREFIX_NAME}$"//g)
+PW_PREFIX_NAME="$(echo "${PW_PREFIX_NAME}" | sed -e s/[[:blank:]]/_/g)"
+PW_ALL_PREFIXES=$(ls "${PORT_WINE_PATH}/data/prefixes/" | sed -e s/"${PW_PREFIX_NAME}$"//g)
 
 unset PW_ADD_PREFIXES_TO_GUI
 IFS_OLD=$IFS
 IFS=$'\n'
 for PAIG in ${PW_ALL_PREFIXES[*]} ; do
     [[ "${PAIG}" != $(echo "${PORTWINE_DB^^}" | sed -e s/[[:blank:]]/_/g) ]] && \
-    export PW_ADD_PREFIXES_TO_GUI="${PW_ADD_PREFIXES_TO_GUI}!${PAIG}"
+    PW_ADD_PREFIXES_TO_GUI="${PW_ADD_PREFIXES_TO_GUI}!${PAIG}"
 done
 IFS=$IFS_OLD
-export PW_ADD_PREFIXES_TO_GUI="${PW_PREFIX_NAME^^}${PW_ADD_PREFIXES_TO_GUI}"
+PW_ADD_PREFIXES_TO_GUI="${PW_PREFIX_NAME^^}${PW_ADD_PREFIXES_TO_GUI}"
 
 PW_ALL_DIST=$(ls "${PORT_WINE_PATH}/data/dist/" | sed -e s/"${PW_WINE_LG_VER}$//g" | sed -e s/"${PW_PROTON_LG_VER}$//g")
 if command -v wine &>/dev/null
@@ -304,47 +308,52 @@ else unset DIST_ADD_TO_GUI
 fi
 for DAIG in ${PW_ALL_DIST}
 do
-    export DIST_ADD_TO_GUI="${DIST_ADD_TO_GUI}!${DAIG}"
+    DIST_ADD_TO_GUI="${DIST_ADD_TO_GUI}!${DAIG}"
 done
 
 check_nvidia_rtx && check_variables PW_VULKAN_USE "2"
 
+SORT_OPENGL="$(eval_gettext "OPENGL (For video cards without VULKAN)")"
+SORT_STABLE="$(eval_gettext "Stable") DXVK ${DXVK_STABLE_VER}, VKD3D ${VKD3D_STABLE_VER}"
+SORT_NEWEST="$(eval_gettext "Newest") DXVK ${DXVK_GIT_VER}, VKD3D ${VKD3D_GIT_VER}"
+SORT_GALLIUM="$(eval_gettext "GALLIUM_NINE (DX9 for MESA)")"
+
 case "${PW_VULKAN_USE}" in
-    0) export PW_DEFAULT_VULKAN_USE="$(eval_gettext "OPENGL (For video cards without VULKAN)")!$(eval_gettext "Stable DXVK ${DXVK_STABLE_VER}, VKD3D ${VKD3D_STABLE_VER}")!$(eval_gettext "Newest DXVK ${DXVK_GIT_VER}, VKD3D ${VKD3D_GIT_VER}")!$(eval_gettext "GALLIUM_NINE (DX9 for MESA)")" ;;
-    1) export PW_DEFAULT_VULKAN_USE="$(eval_gettext "Stable DXVK ${DXVK_STABLE_VER}, VKD3D ${VKD3D_STABLE_VER}")!$(eval_gettext "Newest DXVK ${DXVK_GIT_VER}, VKD3D ${VKD3D_GIT_VER}")!$(eval_gettext "OPENGL (For video cards without VULKAN)")!$(eval_gettext "GALLIUM_NINE (DX9 for MESA)")" ;;
-    3) export PW_DEFAULT_VULKAN_USE="$(eval_gettext "GALLIUM_NINE (DX9 for MESA)")!$(eval_gettext "Stable DXVK ${DXVK_STABLE_VER}, VKD3D ${VKD3D_STABLE_VER}")!$(eval_gettext "Newest DXVK ${DXVK_GIT_VER}, VKD3D ${VKD3D_GIT_VER}")!$(eval_gettext "OPENGL (For video cards without VULKAN)")" ;;
-    *) export PW_DEFAULT_VULKAN_USE="$(eval_gettext "Newest DXVK ${DXVK_GIT_VER}, VKD3D ${VKD3D_GIT_VER}")!$(eval_gettext "Stable DXVK ${DXVK_STABLE_VER}, VKD3D ${VKD3D_STABLE_VER}")!$(eval_gettext "OPENGL (For video cards without VULKAN)")!$(eval_gettext "GALLIUM_NINE (DX9 for MESA)")" ;;
+    0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_STABLE!$SORT_NEWEST!$SORT_GALLIUM" ;;
+    1) PW_DEFAULT_VULKAN_USE="$SORT_STABLE!$SORT_NEWEST!$SORT_OPENGL!$SORT_GALLIUM" ;;
+    3) PW_DEFAULT_VULKAN_USE="$SORT_GALLIUM!$SORT_STABLE!$SORT_NEWEST!$SORT_OPENGL" ;;
+    *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_OPENGL!$SORT_GALLIUM" ;;
 esac
 
 if [[ ! -z "${PORTWINE_DB_FILE}" ]] ; then
     [[ -z "${PW_COMMENT_DB}" ]] && PW_COMMENT_DB="$(eval_gettext "PortProton database file was found for") <b>${PORTWINE_DB}</b>."
     if [[ ! -z $(echo "${PW_WINE_USE}" | grep "^PROTON_LG$") ]] ; then
-        export PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
+        PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
     elif [[ ! -z $(echo "${PW_WINE_USE}" | grep "^PROTON_GE$") ]] ; then
-        export PW_DEFAULT_WINE_USE="${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
+        PW_DEFAULT_WINE_USE="${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
     else
         if [[ "${PW_WINE_USE}" == "${PW_PROTON_LG_VER}" ]] ; then
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
+            PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
         elif [[ "${PW_WINE_USE}" == "${PW_WINE_LG_VER}" ]] ; then
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
+            PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
         else
-            export DIST_ADD_TO_GUI=$(echo "${DIST_ADD_TO_GUI}" | sed -e s/"\!${PW_WINE_USE}$//g")
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
+            DIST_ADD_TO_GUI=$(echo "${DIST_ADD_TO_GUI}" | sed -e s/"\!${PW_WINE_USE}$//g")
+            PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
         fi
     fi
 else
     if [[ $PW_WINE_USE == PROTON_LG ]] ; then
-        export PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
+        PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
     elif [[ $PW_WINE_USE == WINE_*_LG ]] ; then
-        export PW_DEFAULT_WINE_USE="${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
+        PW_DEFAULT_WINE_USE="${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
     else
         if [[ "${PW_WINE_USE}" == "${PW_PROTON_LG_VER}" ]] ; then
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
+            PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
         elif [[ "${PW_WINE_USE}" == "${PW_WINE_LG_VER}" ]] ; then
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
+            PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
         else
-            export DIST_ADD_TO_GUI=$(echo "${DIST_ADD_TO_GUI}" | sed -e s/"\!${PW_WINE_USE}$//g")
-            export PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
+            DIST_ADD_TO_GUI=$(echo "${DIST_ADD_TO_GUI}" | sed -e s/"\!${PW_WINE_USE}$//g")
+            PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
         fi
     fi
     unset PW_GUI_DISABLED_CS
@@ -398,7 +407,10 @@ else
     for PW_DESKTOP_FILES in ${PW_ALL_DF} ; do
         PW_NAME_D_ICON="$(cat "${PORT_WINE_PATH}/${PW_DESKTOP_FILES}" | grep Icon | awk -F= '{print $2}')"
         PW_NAME_D_ICON_48="${PW_NAME_D_ICON//".png"/"_48.png"}"
-        if [[ ! -f "${PW_NAME_D_ICON_48}" ]]  && [[ -f "${PW_NAME_D_ICON}" ]] && [[ -x "`command -v "convert" 2>/dev/null`" ]] ; then
+        if [[ ! -f "${PW_NAME_D_ICON_48}" ]]  \
+        && [[ -f "${PW_NAME_D_ICON}" ]] \
+        && command -v "convert" 2>/dev/null
+        then
             convert "${PW_NAME_D_ICON}" -resize 48x48 "${PW_NAME_D_ICON_48}"
         fi
         PW_GENERATE_BUTTONS+="--field=   ${PW_DESKTOP_FILES//".desktop"/""}!${PW_NAME_D_ICON_48}!:FBTN%@bash -c \"run_desktop_b_click "${PW_DESKTOP_FILES//" "/¬}"\"%"
@@ -411,29 +423,29 @@ else
     IFS="$orig_IFS"
 
     "${pw_yad_v13_0}" --plug=${KEY} --tabnum=${PW_GUI_SORT_TABS[3]} --form --columns=3 --align-buttons --separator=";" \
-    --field="   $(eval_gettext "REINSTALL PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_pw_reinstall_pp"' \
-    --field="   $(eval_gettext "REMOVE PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_rm_portproton"' \
-    --field="   $(eval_gettext "UPDATE PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_pw_update"' \
-    --field="   $(eval_gettext "CHANGELOG")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click open_changelog"' \
-    --field="   $(eval_gettext "CHANGE LANGUAGE")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click change_loc"' \
-    --field="   $(eval_gettext "EDIT USER.CONF")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_open_user_conf"' \
-    --field="   $(eval_gettext "SCRIPTS FROM BACKUP")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_open_scripts_from_backup"' \
+    --field="   $(eval_gettext "Reinstall PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_pw_reinstall_pp"' \
+    --field="   $(eval_gettext "Remove PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_rm_portproton"' \
+    --field="   $(eval_gettext "Update PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_pw_update"' \
+    --field="   $(eval_gettext "Changelog")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click open_changelog"' \
+    --field="   $(eval_gettext "Change language")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click change_loc"' \
+    --field="   $(eval_gettext "Edit user.conf")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_open_user_conf"' \
+    --field="   $(eval_gettext "Scripts from backup")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_open_scripts_from_backup"' \
     --field="   Xterm"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click pw_start_cont_xterm"' \
-    --field="   $(eval_gettext "CREDITS")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_credits"'  2>/dev/null &
+    --field="   $(eval_gettext "Credits")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_credits"'  2>/dev/null &
 
     "${pw_yad_v13_0}" --plug=${KEY} --tabnum=${PW_GUI_SORT_TABS[2]} --form --columns=3 --align-buttons --separator=";" \
     --field="  3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
     --field="  PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
     --field="  WINE    : :CB" "${PW_DEFAULT_WINE_USE}" \
     --field="              $(eval_gettext "Create prefix backup")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click pw_create_prefix_backup"' \
-    --field="   WINETRICKS"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Run winetricks to install additional libraries to the selected prefix")":"FBTN" '@bash -c "button_click WINETRICKS"' \
+    --field="   Winetricks"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Run winetricks to install additional libraries to the selected prefix")":"FBTN" '@bash -c "button_click WINETRICKS"' \
     --field="   $(eval_gettext "Clear prefix")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Clear the prefix to fix problems")":"FBTN" '@bash -c "button_click gui_clear_pfx"' \
     --field="   $(eval_gettext "Get other Wine")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Open the menu to download other versions of WINE or PROTON")":"FBTN" '@bash -c "button_click gui_proton_downloader"' \
     --field="   $(eval_gettext "Uninstaller")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Run the program uninstaller built into wine")":"FBTN" '@bash -c "button_click gui_wine_uninstaller"' \
     --field="   $(eval_gettext "Prefix Manager")     "!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Run winecfg to edit the settings of the selected prefix")":"FBTN" '@bash -c "button_click WINECFG"' \
     --field="   $(eval_gettext "File Manager")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Run wine file manager")":"FBTN" '@bash -c "button_click WINEFILE"' \
-    --field="   $(eval_gettext "CMD")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Run wine cmd")":"FBTN" '@bash -c "button_click WINECMD"' \
-    --field="   $(eval_gettext "REGEDIT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Run wine regedit")":"FBTN" '@bash -c "button_click WINEREG"' 2>/dev/null 1> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" &
+    --field="   $(eval_gettext "Command line")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Run wine cmd")":"FBTN" '@bash -c "button_click WINECMD"' \
+    --field="   $(eval_gettext "Regedit")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Run wine regedit")":"FBTN" '@bash -c "button_click WINEREG"' 2>/dev/null 1> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" &
 
     "${pw_yad_v13_0}" --plug=$KEY --tabnum=${PW_GUI_SORT_TABS[1]} --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll \
     --field="   Dolphin 5.0"!"$PW_GUI_ICON_PATH/dolphin.png"!"$(eval_gettext "Emulator for Nintendo game consoles with high compatibility")":"FBTN" '@bash -c "button_click PW_DOLPHIN"' \
@@ -499,11 +511,11 @@ else
         --auto-close --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
         --title "PortProton-${install_ver} (${scripts_install_ver})" \
         --tab-pos=bottom \
-        --tab="$(eval_gettext "Autoinstalls")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="$(eval_gettext "Emulators")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="$(eval_gettext "Wine Settings")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="$(eval_gettext "PortProton Settings")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="$(eval_gettext "Installed")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" 2>/dev/null
+        --tab="$(eval_gettext "AUTOINSTALLS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+        --tab="$(eval_gettext "EMULATORS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+        --tab="$(eval_gettext "WINE SETTINGS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+        --tab="$(eval_gettext "PORTPROTON SETTINGS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+        --tab="$(eval_gettext "INSTALLED")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" 2>/dev/null
         YAD_STATUS="$?"
     else
         "${pw_yad_v13_0}" --key=$KEY --notebook --expand \
@@ -511,11 +523,11 @@ else
         --auto-close --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
         --title "PortProton-${install_ver} (${scripts_install_ver})" \
         --tab-pos=bottom \
-        --tab="$(eval_gettext "Installed")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="$(eval_gettext "Autoinstalls")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="$(eval_gettext "Emulators")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="$(eval_gettext "Wine Settings")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="$(eval_gettext "PortProton Settings")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" 2>/dev/null
+        --tab="$(eval_gettext "INSTALLED")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+        --tab="$(eval_gettext "AUTOINSTALLS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+        --tab="$(eval_gettext "EMULATORS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+        --tab="$(eval_gettext "WINE SETTINGS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+        --tab="$(eval_gettext "PORTPROTON SETTINGS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" 2>/dev/null
         YAD_STATUS="$?"
     fi
 
@@ -539,10 +551,10 @@ else
 fi
 
 case "${VULKAN_MOD}" in
-    "$(eval_gettext "OPENGL (For video cards without VULKAN)")" )                       export PW_VULKAN_USE="0" ;;
-    "$(eval_gettext "Stable DXVK ${DXVK_STABLE_VER} и VKD3D ${VKD3D_STABLE_VER}")" )    export PW_VULKAN_USE="1" ;;
-    "$(eval_gettext "Newest DXVK ${DXVK_GIT_VER} и VKD3D ${VKD3D_GIT_VER}")" )          export PW_VULKAN_USE="2" ;;
-    "$(eval_gettext "GALLIUM_NINE (DX9 for MESA)")" )                                   export PW_VULKAN_USE="3" ;;
+    "$SORT_OPENGL" )     export PW_VULKAN_USE="0" ;;
+    "$SORT_STABLE" )     export PW_VULKAN_USE="1" ;;
+    "$SORT_NEWEST" )     export PW_VULKAN_USE="2" ;;
+    "$SORT_GALLIUM" )    export PW_VULKAN_USE="3" ;;
 esac
 
 init_wine_ver
