@@ -47,7 +47,7 @@ if check_flatpak \
 	if [[ -d "$PORT_WINE_OLD_PATH" ]] \
 	&& yad_question "$(eval_gettext "PortProton installed by script has been detected. Do you want to transfer all the data from it to the new flatpak version of PortProton?")"
 	then
-		pw_start_progress_bar_block "$loc_gui_settings"
+		pw_start_progress_bar_block "$(eval_gettext "Please wait...")"
 
 		try_remove_file "${HOME}/.local/share/applications/PortProton.desktop"
 		try_remove_file "${PORT_WINE_OLD_PATH}"/PortProton.desktop

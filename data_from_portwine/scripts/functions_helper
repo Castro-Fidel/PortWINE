@@ -41,11 +41,19 @@ change_locale () {
         LANGUAGE=$(cat "${PORT_WINE_TMP_PATH}/PortProton_loc")
     fi
 
+    if [[ "$LANGUAGE" == "RUS" ]] ; then
+        LANGUAGE=ru
+        echo "ru" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
+    elif [[ "$LANGUAGE" == "ENG" ]] ; then
+        LANGUAGE=en
+        echo "en" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
+    fi
+
     if [[ -z "${LANG}" ]] ; then
         export LANG=C
         LANGUAGE="en"
     else
-        if [[ "${LANGUAGE}" == "ru" || "${LANGUAGE}" == "en" ]] \
+        if [[ ! -z "${LANGUAGE}" ]] \
         && [[ -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]] ; then
             echo ""
         else
@@ -61,11 +69,31 @@ change_locale () {
             fi
         fi
     fi
-    export $LANGUAGE
+    export LANGUAGE
 }
-
 export -f change_locale
 
+generate_pot () {
+    LANGUAGES_LIST=(ru)
+    for lang in "${LANGUAGES_LIST[@]}"
+    do
+    echo "${lang}"
+    mkdir -p "${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/"
+    LANG_PO="${PORT_WINE_PATH}/data/locales/"${lang}"/LC_MESSAGES/PortProton.po"
+    LANG_MO="${PORT_WINE_PATH}/data/locales/"${lang}"/LC_MESSAGES/PortProton.mo"
+    TEMPLATE_POT="${PORT_WINE_PATH}/locales/PortProton.pot"
+    xgettext --from-code=UTF-8 --language shell -i "${PORT_WINE_PATH}/data/scripts/start.sh" "${PORT_WINE_PATH}/data/scripts/setup.sh" "${PORT_WINE_PATH}/data/scripts/functions_helper"  -o $TEMPLATE_POT
+    if [ -f "$LANG_PO" ]; then
+        echo "update $LANG_PO file"
+        msgmerge --update $LANG_PO $TEMPLATE_POT
+    else
+        echo "create $LANG_PO file"
+        msginit --input=$TEMPLATE_POT --locale="${lang}" --output=$LANG_PO
+    fi
+    msgfmt --output-file=$LANG_MO $LANG_PO
+    done
+}
+export -f generate_pot
 
 check_variables () { [[ -z ${!1} ]] && export $1="$2" ;}
 
@@ -180,7 +208,7 @@ try_download () {
         curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
         -H 'Pragma: no-cache' -L "$url" -o "$dest" 2>&1 | \
         tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
-        "$pw_yad_v13_0" --progress --percentage=0 --text="${loc_downloading} $filename" --auto-close --no-escape \
+        "$pw_yad_v13_0" --progress --percentage=0 --text="$(eval_gettext "Downloading") $filename" --auto-close --no-escape \
         --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders=15
     fi
@@ -192,7 +220,7 @@ try_download () {
             curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
             -H 'Pragma: no-cache' -L "$url" -o "$dest" 2>&1 | \
             tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
-            "$pw_yad_v13_0" --progress --percentage=0 --text="${loc_downloading} $filename" --auto-close --no-escape \
+            "$pw_yad_v13_0" --progress --percentage=0 --text="$(eval_gettext "Downloading") $filename" --auto-close --no-escape \
             --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders=15
         fi
@@ -399,29 +427,6 @@ pw_reinstall_pp () {
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
-
-generate_pot () {
-    LANGUAGES_LIST=(ru)
-    for lang in "${LANGUAGES_LIST[@]}"
-    do
-    echo "${lang}"
-    mkdir -p "${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/"
-    LANG_PO="${PORT_WINE_PATH}/data/locales/"${lang}"/LC_MESSAGES/PortProton.po"
-    LANG_MO="${PORT_WINE_PATH}/data/locales/"${lang}"/LC_MESSAGES/PortProton.mo"
-    TEMPLATE_POT="${PORT_WINE_PATH}/locales/PortProton.pot"
-    xgettext --from-code=UTF-8 --language shell -i "${PORT_WINE_PATH}/data/scripts/start.sh" "${PORT_WINE_PATH}/data/scripts/setup.sh" "${PORT_WINE_PATH}/data/scripts/functions_helper"  -o $TEMPLATE_POT
-    if [ -f "$LANG_PO" ]; then
-        echo "update $LANG_PO file"
-        msgmerge --update $LANG_PO $TEMPLATE_POT
-    else
-        echo "create $LANG_PO file"
-        msginit --input=$TEMPLATE_POT --locale="${lang}" --output=$LANG_PO
-    fi
-    msgfmt --output-file=$LANG_MO $LANG_PO
-    done
-}
-
-export -f generate_pot
 
 check_user_conf () {
     if [ ! -f "${USER_CONF}" ]; then
@@ -1430,7 +1435,7 @@ pw_find_exe () {
     PW_EXCLUDE_EXE_FIND='(windows|explorer|anticheat|programdata|redist|setup|.ppdb|unin|error|crash|handler|install|/jre/|steam|uploader|eac|netframe)'
     PW_PATH_FOR_FIND="${PORT_WINE_PATH}/data/prefixes/"
 
-    pw_start_progress_bar_block "Searching for .exe files... Please wait."
+    pw_start_progress_bar_block "$(eval_gettext "Searching for .exe files... Please wait.")"
     find -P "${PW_PATH_FOR_FIND}" -type f -name "*.exe" ${PW_FIND_TIME} | grep -viE ${PW_EXCLUDE_EXE_FIND} | \
     awk -F"/prefixes/" '{print $2}' > "${PORT_WINE_TMP_PATH}/tmp_yad_find_exe"
     pw_stop_progress_bar
@@ -1571,7 +1576,7 @@ start_portwine () {
         && [[ "${DISABLE_CP_DEFPFX}" == 1 ]] ; then
             pw_update_pfx_cover_gui
             pw_wineboot -i
-        elif yad_question "$loc_gui_dll_new_pfx ${PW_PREFIX_NAME}" ; then
+        elif yad_question "$(eval_gettext "Do you want to installing recommended libraries in the new prefix:") ${PW_PREFIX_NAME}" ; then
             pw_update_pfx_cover_gui
             unpack_tar_xz "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
             pw_wineboot -r
@@ -2449,6 +2454,19 @@ pw_start_progress_bar_cs () {
 pw_start_progress_bar_block () {
     if ! check_start_from_steam ; then
         "${pw_yad}" --progress --progress-text="$@
+        " --pulsate --borders="$PROGRESS_BAR_BORDERS_SIZE" \
+        --no-buttons --undecorated --center --skip-taskbar \
+        --width="$PROGRESS_BAR_WIDTH_SIZE" \
+        --wrap-width="$PROGRESS_BAR_WIDTH_SIZE" \
+        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" &>/dev/null &
+        export PW_YAD_PID_PROGRESS_BAR_BLOCK="$!"
+        return 0
+    fi
+}
+
+pw_start_progress_bar_install_game () {
+    if ! check_start_from_steam ; then
+        "${pw_yad}" --progress --progress-text="$(eval_gettext "Please wait. Installing the") $@
         " --pulsate --borders="$PROGRESS_BAR_BORDERS_SIZE" \
         --no-buttons --undecorated --center --skip-taskbar \
         --width="$PROGRESS_BAR_WIDTH_SIZE" \
@@ -3346,7 +3364,7 @@ portwine_create_shortcut () {
             done
             if [[ "${PW_SKIP_RESTART_STEAM}" != 1 ]] && pgrep -i steam &>/dev/null ; then
                 if yad_question "$(eval_gettext "For adding shortcut to STEAM, needed restart.\n\nRestart STEAM now?")" ; then
-                    pw_start_progress_bar_block "Restarting STEAM... Please wait."
+                    pw_start_progress_bar_block "$(eval_gettext "Restarting STEAM... Please wait.")"
                     kill -s SIGTERM $(pgrep -a steam) &>/dev/null
                     while pgrep -i steam &>/dev/null ; do
                         sleep 0.5
@@ -3701,13 +3719,13 @@ EOF
     try_remove_file "${PORT_WINE_TMP_PATH}"/pp_pfx_backup.sh
     if [[ -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" ]] ; then
         mv -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack"
-        yad_info "$PW_PFX_BACKUP_SUCCESS $PW_PREFIX_NAME"
+        yad_info "$(eval_gettext "Backup has been successfully created for prefix:") $PW_PREFIX_NAME"
         if [[ ! -f "${PORT_WINE_TMP_PATH}/pfx_backup_info" ]] ; then
-            yad_info "$PW_PFX_BACKUP_INFO"
+            yad_info "$(eval_gettext "Attention! Do not pass the resev copy to third parties, there is a risk of losing accounts")"
             echo "1" > "${PORT_WINE_TMP_PATH}/pfx_backup_info"
         fi
     else
-        yad_error "$PW_PFX_BACKUP_ERROR $PW_PREFIX_NAME"
+        yad_error "$(eval_gettext "An error occurred while backing up the prefix:") $PW_PREFIX_NAME"
     fi
     return 0
 }
