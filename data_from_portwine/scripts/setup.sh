@@ -1,27 +1,33 @@
 #!/usr/bin/env bash
 # Author: linux-gaming.ru
+# shellcheck disable=SC2317
 export INSTALLING_PORT=1
-. "$(dirname $(readlink -f "$0"))/start.sh"
+# shellcheck source=./start.sh
+source "$(dirname "$(readlink -f "$0")")/start.sh"
 
 if check_flatpak
 then PW_EXEC="flatpak run ru.linux_gaming.PortProton"
 else PW_EXEC="env ${PORT_SCRIPTS_PATH}/start.sh %F"
 fi
 
-echo "[Desktop Entry]"	 					  		 > "${PORT_WINE_PATH}/PortProton.desktop"
-echo "Name=PortProton" 				 				 >> "${PORT_WINE_PATH}/PortProton.desktop"
-echo "Version=${install_ver}"						 >> "${PORT_WINE_PATH}/PortProton.desktop"
-echo "Exec=$PW_EXEC"	 							 >> "${PORT_WINE_PATH}/PortProton.desktop"
-echo "Type=Application" 						 	 >> "${PORT_WINE_PATH}/PortProton.desktop"
-echo "Terminal=False" 						 		 >> "${PORT_WINE_PATH}/PortProton.desktop"
-echo "Categories=Game"	    				 		 >> "${PORT_WINE_PATH}/PortProton.desktop"
-echo "StartupNotify=true" 	    			 		 >> "${PORT_WINE_PATH}/PortProton.desktop"
-echo "MimeType=application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program" >> "${PORT_WINE_PATH}/PortProton.desktop"
-echo "Path="${PORT_SCRIPTS_PATH}/""			 		 >> "${PORT_WINE_PATH}/PortProton.desktop"
-echo "Icon="${PORT_WINE_PATH}/data/img/w.png""   	 >> "${PORT_WINE_PATH}/PortProton.desktop"
+cat << EOF > "${PORT_WINE_PATH}/PortProton.desktop"
+[Desktop Entry]
+Name=PortProton
+Version=${install_ver}
+Exec=$PW_EXEC
+Type=Application
+Terminal=False
+Categories=Game
+StartupNotify=true
+MimeType=application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program
+Path="${PORT_SCRIPTS_PATH}"
+Icon="${PORT_WINE_PATH}/data/img/w.png"
+EOF
 chmod u+x "${PORT_WINE_PATH}/PortProton.desktop"
 
-if [[ ! -f /usr/bin/portproton ]] && ! check_flatpak ; then
+if [[ ! -f /usr/bin/portproton ]] \
+&& ! check_flatpak
+then
 	cp -f "${PORT_WINE_PATH}/PortProton.desktop" ${HOME}/.local/share/applications/
 fi
 
@@ -36,14 +42,16 @@ if ! check_flatpak ; then
 	xdg-mime default PortProton.desktop "application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program"
 fi
 
-if [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]] && [[ -f /usr/bin/portproton ]] ; then
+if [[ -f /usr/bin/portproton ]] \
+&& [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]]
+then
 	try_remove_file "${HOME}/.local/share/applications/PortProton.desktop"
 fi
 
 if check_flatpak \
 && [[ ! -f /usr/bin/portproton ]] \
 && [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]] ; then
-	PORT_WINE_OLD_PATH="$(cat "${HOME}/.local/share/applications/PortProton.desktop" | grep "Exec=" | awk -F'env ' '{print $2}' | awk -F'/data/scripts/' '{print $1}')"
+	PORT_WINE_OLD_PATH="$(grep "Exec=" "${HOME}/.local/share/applications/PortProton.desktop" | awk -F'env ' '{print $2}' | awk -F'/data/scripts/' '{print $1}')"
 	if [[ -d "$PORT_WINE_OLD_PATH" ]] \
 	&& yad_question "$(eval_gettext "PortProton installed by script has been detected. Do you want to transfer all the data from it to the new flatpak version of PortProton?")"
 	then
