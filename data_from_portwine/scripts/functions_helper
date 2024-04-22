@@ -1452,7 +1452,7 @@ pw_find_exe () {
     PW_PATH_FOR_FIND="${PORT_WINE_PATH}/data/prefixes/"
 
     pw_start_progress_bar_block "$(eval_gettext "Searching for .exe files... Please wait.")"
-    find -P "${PW_PATH_FOR_FIND}" -type f -name "*.exe" "${PW_FIND_TIME}" | grep -viE ${PW_EXCLUDE_EXE_FIND} | \
+    find "${PW_PATH_FOR_FIND}" -type f -name '*.exe' ${PW_FIND_TIME} | grep -viE ${PW_EXCLUDE_EXE_FIND} | \
     awk -F"/prefixes/" '{print $2}' > "${PORT_WINE_TMP_PATH}/tmp_yad_find_exe"
     pw_stop_progress_bar
 
@@ -1463,9 +1463,9 @@ pw_find_exe () {
 
     OrigIFS="$IFS" && IFS=%
     PW_SET_FIND_EXE="$("${pw_yad_v13_0}" --height="300" --width="1000" --list --text-align=center \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "Create shortcut for..." \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "$(eval_gettext "Create shortcut for...")" \
     --text="\n$(eval_gettext "Choose the .exe file for which you need to create a shortcut and click OK.\n")" \
-    --column="path to .exe file:" ${FIND_TO_GUI} 2>/dev/null)"
+    --column="$(eval_gettext "Choose path to .exe file:")" ${FIND_TO_GUI} 2>/dev/null)"
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
         if [[ -z "${PW_SET_FIND_EXE}" ]] ; then
@@ -2786,7 +2786,7 @@ gui_proton_downloader () {
     if [[ "$1" == "silent" ]] && [[ -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ]] ; then
         return 0
     fi
-    pw_start_progress_bar_block "$(eval_gettext "Check new version WINE")"
+    pw_start_progress_bar_block "$(eval_gettext "Check new version WINE...")"
     # PROTON_GE
     export PROTON_GE_GIT=($(curl -s "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases" | grep "browser_download_url.*\.tar\.gz" | cut -d \" -f 4))
     try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
@@ -2871,7 +2871,7 @@ gui_proton_downloader () {
         "${pw_yad_v13_0}" --plug=$KEY_WINE --tabnum=5 --list --separator="" --listen \
         --column "$(eval_gettext "Select installed WINE for delete:")" < "${PORT_WINE_TMP_PATH}/tmp_installed_wine" 1> "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set" 2>/dev/null &
         "${pw_yad_v13_0}" --key=$KEY_WINE --notebook --width=500 --height=600 --text-align=center --no-button \
-        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "WINE MANAGER" --separator="" --expand \
+        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "$(eval_gettext "WINE MANAGER")" --separator="" --expand \
         --tab-pos=top \
         --tab="PROTON-LG"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
         --tab="WINE-KRON4EK"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
@@ -3066,7 +3066,7 @@ gui_vkBasalt () {
     export old_IFS=$IFS
     export IFS="%"
     "${pw_yad_v13_0}" --plug=$KEY_FX_GUI --tabnum="1" --form --columns=4 --separator=" " \
-    --text-align=center --text="$(eval_gettext "vkBasalt settings for adding effects to games running under Vulkan. (The <b>HOME</b> key disables vkbasalt)\n<b>NOTE:</b> To display help for each item, simply hover over the text\n")" \
+    --text-align=center --text="$(eval_gettext "VkBasalt settings for adding effects to games running under Vulkan. (The <b>HOME</b> key disables vkbasalt)\n<b>NOTE:</b> To display help for each item, simply hover over the text\n")" \
     ${ADD_GUI_FX} 1> "${PORT_WINE_TMP_PATH}/tmp_yad_basalt_set" 2>/dev/null &
     export IFS="${old_IFS}"
 
@@ -3418,7 +3418,7 @@ portwine_missing_shortcut () {
     "${pw_yad}" --title="$(eval_gettext "Error")" --form \
     --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
     --image "$PW_GUI_ICON_PATH/error.svg" \
-    --text "$(eval_gettext "\nCould not find the file:\n${portwine_exe}\n\nATTENTION:\nIf you forgot to mount the disk with the running application, click CANCEL!")" \
+    --text "\n$(eval_gettext "Could not find the file:")\n${portwine_exe}\n\n$(eval_gettext "ATTENTION:\nIf you forgot to mount the disk with the running application, click CANCEL!")" \
     --button="$(eval_gettext "DELETE SHORTCUT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 \
     --button="$(eval_gettext "CANCEL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1
     if [ $? -eq "0" ] ; then
