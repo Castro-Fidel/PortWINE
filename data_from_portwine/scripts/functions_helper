@@ -1462,10 +1462,12 @@ pw_find_exe () {
     done < "${PORT_WINE_TMP_PATH}/tmp_yad_find_exe"
 
     OrigIFS="$IFS" && IFS=%
-    PW_SET_FIND_EXE="$("${pw_yad_v13_0}" --height="300" --width="1000" --list --text-align=center \
+    PW_SET_FIND_EXE="$("${pw_yad_v13_0}" --height="500" --width="800" --list --text-align=center \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "$(eval_gettext "Create shortcut for...")" \
     --text="\n$(eval_gettext "Choose the .exe file for which you need to create a shortcut and click OK.\n")" \
-    --column="$(eval_gettext "Choose path to .exe file:")" ${FIND_TO_GUI} 2>/dev/null)"
+    --column="$(eval_gettext "Choose path to .exe file:")" ${FIND_TO_GUI} \
+    --button="$(eval_gettext "CANCEL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
+    --button="$(eval_gettext "OK")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)"
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
         if [[ -z "${PW_SET_FIND_EXE}" ]] ; then
@@ -1808,7 +1810,9 @@ start_portwine () {
     esac
 
     export int_xneur=0
-    if pgrep xneur ; then
+    if command -v xneur &>/dev/null \
+    && pgrep xneur
+    then
         killall xneur
         export int_xneur=1
     fi
@@ -2337,7 +2341,7 @@ yad_info () {
     "${pw_yad_v13_0}" --no-wrap --text "$@" --width=400 --height=50 --borders=15 --title "INFO" \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/info.svg" \
     --center --text-align=center \
-    --button="OK"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
+    --button="$(eval_gettext "OK")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
 }
 export -f yad_info
 
@@ -2350,7 +2354,7 @@ yad_error () {
     "${pw_yad_v13_0}" --no-wrap --text "$@" --width=400 --borders=15 --title "ERROR" \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/error.svg" \
     --center --text-align=center \
-    --button="EXIT"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
+    --button="$(eval_gettext "EXIT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
 }
 export -f yad_error
 
@@ -3711,8 +3715,10 @@ portwine_start_debug () {
 
 pw_create_prefix_backup () {
     cd "$HOME"
-    PW_PREFIX_TO_BACKUP=$("${pw_yad_v13_0}" --file --directory --width=650 --height=500 --auto-close \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "$(eval_gettext "BACKUP PREFIX TO...")" 2>/dev/null )
+    PW_PREFIX_TO_BACKUP=$("${pw_yad_v13_0}" --file --directory --width=800 --height=500 --auto-close \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "$(eval_gettext "BACKUP PREFIX TO...")" \
+    --button="$(eval_gettext "CANCEL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
+    --button="$(eval_gettext "OK")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
     if [[ ! -z "$(grep "/${PW_PREFIX_NAME}/" "${PORT_WINE_PATH}"/*.desktop )" ]] ; then
