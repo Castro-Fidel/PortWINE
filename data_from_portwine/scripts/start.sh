@@ -68,7 +68,7 @@ unset PW_CHECK_AUTOINSTAL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PO
 unset CHK_SYMLINK_FILE PW_MESA_GL_VERSION_OVERRIDE MESA_GL_VERSION_OVERRIDE PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME FLATPAK_IN_USE
 unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD PW_WINE_CPU_TOPOLOGY
 unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_ALL_DF PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
-unset MANGOHUD_CONFIG PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME PORTWINE_CREATE_SHORTCUT_NAME
+unset MANGOHUD_CONFIG PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME PORTWINE_CREATE_SHORTCUT_NAME MIRROR
 
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 rm -f "$PORT_WINE_TMP_PATH"/*{exe,msi,tar}*
@@ -154,6 +154,7 @@ try_remove_file "${PORT_WINE_TMP_PATH}/update_pfx_log"
 # shellcheck source=/dev/null
 source "${USER_CONF}"
 
+# check PortProton theme
 if [[ ! -z "$GUI_THEME" ]] \
 && [[ -f "$PW_GUI_THEMES_PATH/$GUI_THEME.pptheme" ]]
 then
@@ -165,9 +166,28 @@ else
 echo 'export GUI_THEME="default"' >> "$USER_CONF"
 fi
 
-if [[ $(gsettings get org.gnome.desktop.interface color-scheme) == "'prefer-dark'" ]]
-then export PW_DESKTOP_THEME="dark"
+# check tray icon theme
+if gsettings get org.gnome.desktop.interface color-scheme &>/dev/null ; then
+    COLOR_SCHEME="$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null)"
+    if [[ "$COLOR_SCHEME" == "'prefer-dark'" ]]
+    then PW_DESKTOP_THEME="dark"
+    fi
+else
+    PW_DESKTOP_THEME="universal"
 fi
+export PW_DESKTOP_THEME
+
+# choose mirror
+if [[ -z "$MIRROR" ]] \
+&& [[ "$LANGUAGE" == "ru" ]]
+then
+    echo 'export MIRROR="CDN"' >> "$USER_CONF"
+    export MIRROR="CDN"
+elif [[ -z "$MIRROR" ]] ; then
+    echo 'export MIRROR="GITHUB"' >> "$USER_CONF"
+    export MIRROR="GITHUB"
+fi
+print_info "The first mirror in used: $MIRROR\n"
 
 if [[ "${INSTALLING_PORT}" == 1 ]] ; then
     return 0
@@ -177,6 +197,9 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] \
 && [[ ! -f "/tmp/portproton.lock" ]]
 then
     pw_port_update
+else
+    scripts_install_ver=$(head -n 1 "${PORT_WINE_TMP_PATH}/scripts_ver")
+    export scripts_install_ver
 fi
 unset SKIP_CHECK_UPDATES
 
@@ -441,7 +464,9 @@ else
     --field="   $(eval_gettext "Edit user.conf")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_open_user_conf"' \
     --field="   $(eval_gettext "Scripts from backup")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_open_scripts_from_backup"' \
     --field="   Xterm"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click pw_start_cont_xterm"' \
-    --field="   $(eval_gettext "Credits")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_credits"'  2>/dev/null &
+    --field="   $(eval_gettext "Credits")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_credits"' \
+    --field="   $(eval_gettext "Change mirror")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click change_mirror"' \
+    2>/dev/null &
 
     "${pw_yad_v13_0}" --plug=${KEY} --tabnum="${PW_GUI_SORT_TABS[2]}" --form --columns=3 --align-buttons --separator=";" \
     --field="  3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
@@ -615,6 +640,7 @@ fi
     gui_open_scripts_from_backup) gui_open_scripts_from_backup ;;
     open_changelog) open_changelog ;;
     change_loc) change_loc ;;
+    change_mirror) change_mirror ;;
     120) gui_vkBasalt ;;
     122) gui_MangoHud ;;
     pw_create_prefix_backup) pw_create_prefix_backup ;;

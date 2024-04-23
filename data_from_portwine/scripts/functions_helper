@@ -183,56 +183,70 @@ export -f check_process
 
 try_download () {
     local filename="$(basename "$1")"
-    local url="$url_cdn/$filename"
     local dest="$2"
     local silent="false"
     local no_mirror="false"
+
     case "$3" in
            silent)
                 silent=true ;;
         no_mirror)
                 no_mirror=true
-                url="$1" ;;
     esac
+
+    if [[ "${MIRROR}" == CDN ]] \
+    && [[ "$no_mirror" != "true" ]]
+    then
+        FIRST_URL="$url_cdn/$filename"
+        SECOND_URL="$1"
+    else
+        FIRST_URL="$1"
+        SECOND_URL="$url_cdn/$filename"
+    fi
 
     [[ ! -f "${pw_yad_v13_0}" ]] && local pw_yad_v13_0="yad"
 
     # If gamescope session is active, use PW_TERM for downloading
     if check_gamescope_session ; then
         $PW_TERM curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
-        -H 'Pragma: no-cache' -L "$url" -o "$dest"
+        -H 'Pragma: no-cache' -L "$FIRST_URL" -o "$dest"
         [ "$?" != 0 ] && return 1 || return 0
     fi
 
     # Normal download
+    print_info "Download $filename from $FIRST_URL..."
     set -o pipefail
-    if [ "$silent" == "true" ] ; then
+    if [[ "$silent" == "true" ]] ; then
         curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
-        -H 'Pragma: no-cache' -L "$url" -o "$dest" 2>&1
+        -H 'Pragma: no-cache' -L "$FIRST_URL" -o "$dest" 2>&1
     else
         curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
-        -H 'Pragma: no-cache' -L "$url" -o "$dest" 2>&1 | \
+        -H 'Pragma: no-cache' -L "$FIRST_URL" -o "$dest" 2>&1 | \
         tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
         "$pw_yad_v13_0" --progress --percentage=0 --text="$(eval_gettext "Downloading") $filename" --auto-close --no-escape \
         --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders=15
     fi
 
-    if [ "${PIPESTATUS[0]}" != 0 ] ; then
+    if [[ "${PIPESTATUS[0]}" != 0 ]] ; then
         if [[ "$no_mirror" != "true" ]] ; then
-            print_error "Failed to download $filename from $url, trying GITHUB mirror..."
-            url="$1"
+            print_warning "Failed download $filename from $FIRST_URL, trying mirror..."
             curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
-            -H 'Pragma: no-cache' -L "$url" -o "$dest" 2>&1 | \
+            -H 'Pragma: no-cache' -L "$SECOND_URL" -o "$dest" 2>&1 | \
             tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
             "$pw_yad_v13_0" --progress --percentage=0 --text="$(eval_gettext "Downloading") $filename" --auto-close --no-escape \
             --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders=15
         fi
-        [[ "${PIPESTATUS[0]}" != 0 ]] && print_error "Failed to download $filename from GITHUB. Skipping." && return 1
+        if [[ "${PIPESTATUS[0]}" != 0 ]] ; then
+            print_error "Failed to download $filename from mirror. Skipping..."
+            return 1
+        else
+            print_ok "File downloaded successfully: $filename from $SECOND_URL"
+            return 0
+        fi
     fi
-
-    print_ok "File downloaded successfully: $filename from $url"
+    print_ok "File downloaded successfully: $filename from $FIRST_URL"
     return 0
 }
 
@@ -334,7 +348,7 @@ unpack_tar_zst () {
     pw_start_progress_bar_cover_block "${COVERS_PATH}/unpacking_${LANGUAGE}.gif"
     if command -v zstd &>/dev/null ; then
         tar -I zstd -xhf "$1" -C "$2"
-        pw_stop_progress_bar_cover_block
+        pw_stop_progress_bar_cover_block 
         [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
     else
         env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib" tar -I "${PW_PLUGINS_PATH}/portable/bin/zstd" -xhvf "$1" -C "$2"
@@ -436,10 +450,10 @@ pw_reinstall_pp () {
 check_user_conf () {
     if [[ ! -f "${USER_CONF}" ]] ; then
         cat << EOF > "${USER_CONF}"
-            echo "#!/usr/bin/env bash"
-            echo "# User overides db and var settings..."
-            echo "# export DXVK_HUD=full"
-            echo "# export GALLIUM_HUD=fps"
+#!/usr/bin/env bash"
+# User overides db and var settings..."
+# export DXVK_HUD=full"
+# export GALLIUM_HUD=fps"
 EOF
     elif grep "optirun_on" "${USER_CONF}" &>/dev/null ; then
         sed -i '/optirun_on/d' "${USER_CONF}"
@@ -1241,13 +1255,11 @@ pw_port_update () {
     then
         URL_FOR_CHANGELOG="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/raw/master/data_from_portwine"
         URL_TO_PW_MASTER="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/-/archive/master/PortWINE-master.tar.gz"
-        print_info "OK."
     else
         if curl -f -s --list-only --connect-timeout 3 "https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine/scripts/var" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
         then
             URL_FOR_CHANGELOG="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine"
             URL_TO_PW_MASTER="https://github.com/Castro-Fidel/PortWINE/archive/refs/heads/master.tar.gz"
-            print_info "OK."
         else
             print_error "Unable to determine the version on the server. Skip it..."
             return 1
@@ -1258,7 +1270,7 @@ pw_port_update () {
     read "scripts_update_not" < "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     if [[ "${scripts_update_not}" == "1" ]] ; then
         scripts_current_ver=$(grep "SCRIPTS_NEXT_VERSION" "${PORT_WINE_TMP_PATH}/curent_var_ver" | awk -F "=" '{print $2}')
-        print_info "Scripts version in github = ${scripts_current_ver}"
+        print_info "Scripts version in git = ${scripts_current_ver}"
         print_info "Scripts version local = ${scripts_install_ver}"
         if [[ ! -z "${scripts_current_ver}" ]] &&  [[ "${scripts_current_ver}" -gt "${scripts_install_ver}" ]] ; then
             if [[ -f "${PW_PLUGINS_PATH}/portable/bin/yad_v13_0" ]]
@@ -2398,7 +2410,7 @@ pw_start_progress_bar_cover_block () {
         PW_GIF_SIZE_X=$(file "${PW_GIF_FILE}" | awk '{print $7 + 8}')
         PW_GIF_SIZE_Y=$(file "${PW_GIF_FILE}" | awk '{print $9 + 15}')
         "${pw_yad_v13_0}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated --center \
-        --skip-taskbar "$PW_GIF_SIZE_X" --height="$PW_GIF_SIZE_Y" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" > /dev/null 2>&1 &
+        --skip-taskbar --width="$PW_GIF_SIZE_X" --height="$PW_GIF_SIZE_Y" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" > /dev/null 2>&1 &
         export PW_YAD_PID_PROGRESS_BAR_COVER_BLOCK="$!"
         return 0
     fi
@@ -2543,7 +2555,7 @@ pw_tray_icon () {
     }
     export -f tray_icon_click_exit
 
-    if check_flatpak
+    if check_flatpak || [[ "$PW_DESKTOP_THEME" == "universal" ]]
     then TRAY_ICON="$PW_GUI_ICON_PATH/portproton_tray_flatpak.svg"
     elif [[ "$PW_DESKTOP_THEME" == "dark" ]]
     then TRAY_ICON="$PW_GUI_ICON_PATH/portproton_tray_dark.svg"
@@ -2777,11 +2789,13 @@ A brief instruction:
 
 gui_proton_downloader () {
     if [[ "$PW_WINE_USE" == PROTON_LG ]]
-    then export PW_WINE_USE="${PW_PROTON_LG_VER}"
+    then PW_WINE_USE="${PW_PROTON_LG_VER}"
     elif [[ "$PW_WINE_USE" == WINE_*_LG ]] || [[ "$PW_WINE_USE" == WINE_LG ]]
-    then export PW_WINE_USE="${PW_WINE_LG_VER}"
+    then PW_WINE_USE="${PW_WINE_LG_VER}"
     fi
-    if [[ "$1" == "silent" ]] && [[ -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ]] ; then
+    export PW_WINE_USE
+    if [[ "$1" == "silent" ]] \
+    && [[ -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ]] ; then
         return 0
     fi
     pw_start_progress_bar_block "$(eval_gettext "Check new version WINE...")"
@@ -2818,7 +2832,7 @@ gui_proton_downloader () {
     fi
 
     # PROTON_LG
-    export PROTON_PW_GIT=($(curl -s "$url_cdn/metainfo"))
+    export PROTON_PW_GIT=($(curl -s "https://api.github.com/repos/Castro-Fidel/wine_builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4))
     try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
     if [[ ! -z "${PROTON_PW_GIT}" ]] ; then
         for PPWGIT in ${PROTON_PW_GIT[@]} ; do
@@ -3851,6 +3865,7 @@ gui_pw_update () {
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
+export -f gui_pw_update
 
 change_loc () {
     try_remove_file "${PORT_WINE_TMP_PATH}/PortProton_loc"
@@ -3859,6 +3874,22 @@ change_loc () {
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
+export -f change_loc
+
+change_mirror () {
+    if [[ "$MIRROR" == "CDN" ]] ; then
+        sed -i 's/="CDN"/="GITHUB"/g' "$USER_CONF"
+        yad_info "$(eval_gettext "Mirror changed to:") GITHUB"
+    else
+        sed -i 's/="GITHUB"/="CDN"/g' "$USER_CONF"
+        yad_info "$(eval_gettext "Mirror changed to:") CDN"
+    fi
+    print_info "Restarting PP for change mirror..."
+    export SKIP_CHECK_UPDATES=1
+    /usr/bin/env bash -c ${pw_full_command_line[*]} &
+    exit 0
+}
+export -f change_mirror
 
 gui_wine_uninstaller () {
     start_portwine
