@@ -1752,10 +1752,6 @@ start_portwine () {
         var_winedlloverride_update "nvngx,_nvngx="
     fi
 
-    if [[ "${PW_USE_GALLIUM_ZINK}" == 1 ]]
-    then export PW_VULKAN_USE=5
-    fi
-
     if [[ "${PW_HEAP_DELAY_FREE}" == 1 ]]
     then export WINE_HEAP_DELAY_FREE="1"
     else export WINE_HEAP_DELAY_FREE="0"
@@ -1926,17 +1922,6 @@ start_portwine () {
         export GL_YIELD="NOTHING"
         export mesa_glthread=true
         export WINE_D3D_CONFIG='renderer=gl'
-    elif [[ "${PW_VULKAN_USE}" == "5" ]] ; then
-        print_info "Use OpenGL Zink"
-        export GL_YIELD="NOTHING"
-        export mesa_glthread=true
-        export WINE_D3D_CONFIG='renderer=gl'
-        export  __GLX_VENDOR_LIBRARY_NAME=mesa
-        export MESA_LOADER_DRIVER_OVERRIDE=zink
-        export GALLIUM_DRIVER=zink
-        if [[ "${XDG_SESSION_TYPE}" != "wayland" ]] || [[ "${PW_USE_GAMESCOPE}" != 1 ]] ; then
-            export LIBGL_KOPPER_DRI2=1
-        fi
     elif [[ "${PW_VULKAN_USE}" == "3" ]] ; then
         print_info "Use GALLIUM-NINE (Native DX9 on MESA drivers)"
         export PW_GALLIUM_NINE_PATH="${PW_PLUGINS_PATH}/gallium_nine_v.${PW_GALLIUM_NINE_VER}"
@@ -1972,6 +1957,16 @@ start_portwine () {
         export PW_MANGOHUD=0
         export WINE_FULLSCREEN_FSR=0
     elif [[ "${PW_VULKAN_USE}" == "4" ]] ; then
+        print_info "Use GALLIUM-ZINK (OpenGL on MESA vulkan drivers)"
+        export GL_YIELD="NOTHING"
+        export mesa_glthread=true
+        export WINE_D3D_CONFIG='renderer=gl'
+        export  __GLX_VENDOR_LIBRARY_NAME=mesa
+        export MESA_LOADER_DRIVER_OVERRIDE=zink
+        if [[ "${XDG_SESSION_TYPE}" != "wayland" ]] || [[ "${PW_USE_GAMESCOPE}" != 1 ]] ; then
+            export LIBGL_KOPPER_DRI2=1
+        fi
+    elif [[ "${PW_VULKAN_USE}" == "5" ]] ; then
         print_info "Use DAMAVAND (DirectX to wined3d vulkan)"
         export WINE_D3D_CONFIG='renderer=vulkan'
     else
@@ -2632,7 +2627,6 @@ pw_gui_for_edit_db () {
     PW_RESTORE_RESOLUTION_INFO=$(eval_gettext 'Remember the screen resolution when starting the game and return it when closing (useful for games that change the screen resolution when closing)')
     PW_USE_SYSTEM_VK_LAYERS_INFO=$(eval_gettext 'Use system mangohud, vkBasalt, obs-vkcapture and other applications using vulkan layers')
     PW_USE_OBS_VKCAPTURE_INFO=$(eval_gettext 'Enable the ability to write to OBS Studio using obs-vkcapture (ATTENTION: the forced use of system mangohud, vkBasalt, obs-vkcapture and other applications using vulkan layers will be enabled)')
-    PW_USE_GALLIUM_ZINK_INFO=$(eval_gettext 'Use the zink driver (OpenGL on top of Vulkan), allows you to use vkBasalt in OpenGL games (ATTENTION: vulkan support is required, wined3d (opengl) is used instead of dxvk, suitable for games on OpenGL and older versions of DirectX, artifacts are possible on newer versions of DirectX)')
     PW_DISABLE_COMPOSITING_INFO=$(eval_gettext 'Disable desktop compositing (effects). It often improves performance.')
     PW_USE_GAMESCOPE_INFO=$(eval_gettext "
 <b>Super + F :</b> Toggle fullscreen
@@ -3581,6 +3575,8 @@ portwine_start_debug () {
     elif [[ "${PW_VULKAN_USE}" = "3" ]] ; then
         echo "PW_VULKAN_USE=${PW_VULKAN_USE} - native DX9 on MESA drivers" >> "${PORT_WINE_PATH}/PortProton.log"
     elif [[ "${PW_VULKAN_USE}" = "4" ]] ; then
+        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - OpenGL on MESA vulkan drivers" >> "${PORT_WINE_PATH}/PortProton.log"
+    elif [[ "${PW_VULKAN_USE}" = "5" ]] ; then
         echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DirectX to wined3d vulkan" >> "${PORT_WINE_PATH}/PortProton.log"
     else
         echo "PW_VULKAN_USE=${PW_VULKAN_USE}" >> "${PORT_WINE_PATH}/PortProton.log"
@@ -3762,14 +3758,14 @@ pw_edit_db () {
         PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_USE_FAKE_DLSS_3 PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP \
         PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY \
         PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS \
-        PW_USE_OBS_VKCAPTURE PW_USE_GALLIUM_ZINK PW_USE_GAMESCOPE PW_DISABLE_COMPOSITING PW_USE_RUNTIME
+        PW_USE_OBS_VKCAPTURE PW_USE_GAMESCOPE PW_DISABLE_COMPOSITING PW_USE_RUNTIME
     else
         pw_gui_for_edit_db \
         PW_MANGOHUD PW_MANGOHUD_USER_CONF ENABLE_VKBASALT PW_VKBASALT_USER_CONF PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING \
         PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_USE_FAKE_DLSS_3 PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP \
         PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY\
         PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE \
-        PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_USE_GALLIUM_ZINK PW_USE_GAMESCOPE PW_DISABLE_COMPOSITING PW_USE_RUNTIME
+        PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_USE_GAMESCOPE PW_DISABLE_COMPOSITING PW_USE_RUNTIME
     fi
     # PW_FORCE_USE_VSYNC HEAP_DELAY_FREE
 }
