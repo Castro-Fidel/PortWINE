@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Author: Castro-Fidel (linux-gaming.ru)
 ########################################################################
-[ "${update_loc}" = "RUS" ] && export BN_LOC=ruRU || export BN_LOC=enUS
+[[ "$LANGUAGE" == "ru" ]] && export BN_LOC=ruRU || export BN_LOC=enUS
 export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/Battle.net-Setup-${BN_LOC}.exe"
 export PW_WINE_USE="WINE_LG"
 
@@ -11,8 +11,8 @@ then
     try_remove_dir "$WINEPREFIX/drive_c/ProgramData/Battle.net"
     pw_kill_autostart Battle.net.exe &
     pw_run "${PW_AUTOINSTALL_EXE}"
-    pw_start_progress_bar_block "${loc_gui_installing_the} Battle Net. ${loc_gui_please_wait} "
-    portwine_exe=`find "$WINEPREFIX/drive_c/" -type f -name "Battle.net.exe" | grep "Battle.net/Battle.net.exe"`
+    pw_start_progress_bar_install_game "Battle Net."
+    portwine_exe="$(find "$WINEPREFIX/drive_c/" -type f -name "Battle.net.exe" | grep "Battle.net/Battle.net.exe")"
     pw_stop_progress_bar
     portwine_create_shortcut
     try_remove_file "${PW_AUTOINSTALL_EXE}"
