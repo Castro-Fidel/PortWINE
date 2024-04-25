@@ -910,7 +910,7 @@ pw_check_and_download_wine () {
 
 pw_check_and_download_dxvk_and_vkd3d () {
     #Download stable and git version DXVK
-    for DXVK_VAR_VER in "${DXVK_STABLE_VER}" "${DXVK_GIT_VER}" ; do
+    for DXVK_VAR_VER in "${DXVK_STABLE_VER}" "${DXVK_GIT_VER}" "${DXVK_LEGACY_VER}" ; do
         if [ ! -d "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}" ] ; then
             print_info "Download and install DXVK v.${DXVK_VAR_VER}"
             if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/dxvk-${DXVK_VAR_VER}/dxvk-${DXVK_VAR_VER}.tar.xz" \
@@ -1919,6 +1919,7 @@ start_portwine () {
     try_force_link_file "${PHYSX_PATH}/cudart32_65.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
     try_force_link_file "${PHYSX_PATH}/cudart64_65.dll" "${WINEPREFIX}/drive_c/windows/system32/"
 
+    unset DONT_USE_VKD3D
     create_new_dir "${PW_VULKAN_DIR}/opengl"
     PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/opengl"
     PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/opengl"
@@ -1943,8 +1944,8 @@ start_portwine () {
                 IFS=$'\n'
                 for D3D_MP in $FIND_D3D_MODULE ; do
                     if [[ ! -z "$D3D_MODULE_PATH" ]]
-                    then export D3D_MODULE_PATH="$D3D_MODULE_PATH:/run/host${D3D_MP}"
-                    else export D3D_MODULE_PATH="/run/host${D3D_MP}"
+                    then D3D_MODULE_PATH="$D3D_MODULE_PATH:/run/host${D3D_MP}"
+                    else D3D_MODULE_PATH="/run/host${D3D_MP}"
                     fi
                 done
                 IFS=$old_IFS
@@ -1976,35 +1977,26 @@ start_portwine () {
         print_info "Use DAMAVAND (DirectX to wined3d vulkan)"
         export WINE_D3D_CONFIG='renderer=vulkan'
     else
-        print_info "Use VKD3D-PROTON, DXVK and D8VK (DirectX 8-12 to vulkan)"
-        if [[ "${PW_USE_WINE_DXGI}" == 1 ]] ; then
-            export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxvk_config" # openvr_api_dxvk
-            export CP_WINE_FILES="d3d10_1 d3d10 dxgi"
-        elif [[ "${USE_ALL_DXVK_DLLS}" == 1 ]] ; then
-            export CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi dxvk_config" # openvr_api_dxvk
-        else
-            export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi dxvk_config" # openvr_api_dxvk
-            export CP_WINE_FILES="d3d10_1 d3d10"
-        fi
-
         check_variables VKD3D_FEATURE_LEVEL "12_1"
         check_variables DXVK_HDR
 
         print_info "D8VK v.${D8VK_VER} in use"
 
         if [[ "${PW_VULKAN_USE}" == "1" ]] ; then
-            export PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
-            export PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
+            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
+            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
             print_info "DXVK v.${DXVK_STABLE_VER} in use"
             print_info "VKD3D-PROTON v.${VKD3D_STABLE_VER} in use"
         elif [[ "${PW_VULKAN_USE}" == "2" ]] ; then
-            export PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}"
-            export PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
+            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}"
+            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
             print_info "DXVK v.${DXVK_GIT_VER} in use"
             print_info "VKD3D-PROTON v.${VKD3D_GIT_VER} in use"
         elif [[ "${PW_VULKAN_USE}" == "5" ]] ; then
-            export PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
-            export PATH_TO_DGV2_FILES="${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}"
+            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_LEGACY_VER}"
+            PATH_TO_DGV2_FILES="${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}"
+            USE_ALL_DXVK_DLLS=1
+            DONT_USE_VKD3D=1
             print_info "DXVK v.${DXVK_STABLE_VER} in use"
             print_info "DGVOODOO2 ${DGV2_VER} in use"
             for DGV2_DLL in d3dimm ddraw glide glide2x glide3x ; do
@@ -2021,6 +2013,20 @@ OutputAPI                            = d3d11_fl11_0
 dgVoodooWatermark                   = false" > "${PATH_TO_GAME}/dgVoodoo.conf"
             fi
             var_winedlloverride_update ddraw=n
+        elif [[ "${PW_VULKAN_USE}" == "7" ]] ; then
+            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_LEGACY_VER}"
+            DONT_USE_VKD3D=1
+        fi
+
+        print_info "Use VKD3D-PROTON, DXVK and D8VK (DirectX 8-12 to vulkan)"
+        if [[ "${PW_USE_WINE_DXGI}" == 1 ]] ; then
+            CP_DXVK_FILES="d3d11 d3d10core d3d9 dxvk_config" # openvr_api_dxvk
+            CP_WINE_FILES="d3d10_1 d3d10 dxgi"
+        elif [[ "${USE_ALL_DXVK_DLLS}" == 1 ]] ; then
+            CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi dxvk_config" # openvr_api_dxvk
+        else
+            CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi dxvk_config" # openvr_api_dxvk
+            CP_WINE_FILES="d3d10_1 d3d10"
         fi
 
         print_info "Try copy WINE files..."
@@ -2038,20 +2044,22 @@ dgVoodooWatermark                   = false" > "${PATH_TO_GAME}/dgVoodoo.conf"
             fi
         done
 
-        print_info "Try copy NVAPI files..."
-        try_copy_file "${PATH_TO_DXVK_FILES}/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/" || \
-        try_copy_file "${PW_PLUGINS_PATH}/nvapi/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-        try_copy_file "${PATH_TO_DXVK_FILES}/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/" || \
-        try_copy_file "${PW_PLUGINS_PATH}/nvapi/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+        if [[ "$DONT_USE_VKD3D" != 1 ]] ; then
+            print_info "Try copy NVAPI files..."
+            try_copy_file "${PATH_TO_DXVK_FILES}/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/" || \
+            try_copy_file "${PW_PLUGINS_PATH}/nvapi/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+            try_copy_file "${PATH_TO_DXVK_FILES}/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/" || \
+            try_copy_file "${PW_PLUGINS_PATH}/nvapi/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/"
 
-        print_info "Try copy native VKD3D files..."
-        for wine_vkd3d_dll in d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1 ; do
-            if [[ -f "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" ]] ; then
-                try_copy_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-                try_copy_file "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-                var_winedlloverride_update "${wine_vkd3d_dll}=n"
-            fi
-        done
+            print_info "Try copy native VKD3D files..."
+            for wine_vkd3d_dll in d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1 ; do
+                if [[ -f "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" ]] ; then
+                    try_copy_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+                    try_copy_file "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+                    var_winedlloverride_update "${wine_vkd3d_dll}=n"
+                fi
+            done
+        fi
 
         PATH_TO_D8VK_FILES="${PW_VULKAN_DIR}/d8vk-${D8VK_VER}"
         print_info "Try link native D8VK file..."
