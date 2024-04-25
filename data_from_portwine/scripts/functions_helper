@@ -51,24 +51,19 @@ change_locale () {
         echo "en" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
     fi
 
-    if [[ -z "${LANG}" ]] ; then
-        export LANG=C
-        LANGUAGE="en"
+    if [[ ! -z "${LANGUAGE}" ]] \
+    && [[ -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]] ; then
+        echo ""
     else
-        if [[ ! -z "${LANGUAGE}" ]] \
-        && [[ -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]] ; then
-            echo ""
-        else
-            [[ ! -f "${pw_yad_v13_0}" ]] && pw_yad_v13_0="yad"
-            SET_LANG=$("${pw_yad_v13_0}" --title  "LANGUAGE" --text "Select the language:" --list --radiolist \
-            --column="Set:" --column "Choose language:" TRUE "ru" FALSE "en" \
-            --window-icon "$PW_GUI_ICON_PATH/portproton.svg" --width=300 --height=150)
-            SET_LANG="$(echo "${SET_LANG}" | awk -F'|' '{print $2}')"
-            echo "${SET_LANG}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
-            if [[ ! -z "${SET_LANG}" ]]
-            then LANGUAGE=${SET_LANG}
-            else exit 1
-            fi
+        [[ ! -f "${pw_yad_v13_0}" ]] && pw_yad_v13_0="yad"
+        SET_LANG=$("${pw_yad_v13_0}" --title  "LANGUAGE" --text "Select the language:" --list --radiolist \
+        --column="Set:" --column "Choose language:" TRUE "ru" FALSE "en" \
+        --window-icon "$PW_GUI_ICON_PATH/portproton.svg" --width=300 --height=150)
+        SET_LANG="$(echo "${SET_LANG}" | awk -F'|' '{print $2}')"
+        echo "${SET_LANG}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
+        if [[ ! -z "${SET_LANG}" ]]
+        then LANGUAGE=${SET_LANG}
+        else exit 1
         fi
     fi
     export LANGUAGE
