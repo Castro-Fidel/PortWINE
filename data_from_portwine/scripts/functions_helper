@@ -1764,6 +1764,29 @@ start_portwine () {
         var_winedlloverride_update "nvngx,_nvngx="
     fi
 
+        if [[ "${PW_USE_DGVOODOO2}" == 1 ]] ; then
+        export DGVOODOO2_VER="v2.8.2"
+        if [ ! -d "${PW_VULKAN_DIR}/dgvoodoo2-${DGVOODOO2_VER}" ] ; then
+        print_info "Download and install DGVOODOO2 v.${DGVOODOO2_VER}"
+        try_download "https://github.com/lutris/dgvoodoo2/releases/download/${DGVOODOO2_VER}/dgvoodoo2-${DGVOODOO2_VER}.tar.xz" "${PW_VULKAN_DIR}/dgvoodoo2-${DGVOODOO2_VER}.tar.xz" no_mirror
+        unpack_tar_xz "${PW_VULKAN_DIR}/dgvoodoo2-${DGVOODOO2_VER}.tar.xz" "${PW_VULKAN_DIR}/"
+        try_remove_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGVOODOO2_VER}.tar.xz"
+        fi
+        try_copy_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGVOODOO2_VER}/x32/d3dimm.dll" "${PATH_TO_GAME}"
+        try_copy_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGVOODOO2_VER}/x32/ddraw.dll" "${PATH_TO_GAME}"
+        try_copy_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGVOODOO2_VER}/x32/glide.dll" "${PATH_TO_GAME}"
+        try_copy_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGVOODOO2_VER}/x32/glide2x.dll" "${PATH_TO_GAME}"
+        try_copy_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGVOODOO2_VER}/x32/glide3x.dll" "${PATH_TO_GAME}"
+        echo "[General]
+OutputAPI                            = d3d11_fl11_0
+[Glide]
+3DfxWatermark                       = false
+3DfxSplashScreen                    = false
+[DirectX]
+dgVoodooWatermark                   = false" > "${PATH_TO_GAME}/dgVoodoo.conf"
+        var_winedlloverride_update "ddraw=n"
+        fi
+
     if [[ "${PW_HEAP_DELAY_FREE}" == 1 ]]
     then export WINE_HEAP_DELAY_FREE="1"
     else export WINE_HEAP_DELAY_FREE="0"
@@ -2639,9 +2662,7 @@ pw_gui_for_edit_db () {
     PW_RESTORE_RESOLUTION_INFO=$(eval_gettext 'Remember the screen resolution when starting the game and return it when closing (useful for games that change the screen resolution when closing)')
     PW_USE_SYSTEM_VK_LAYERS_INFO=$(eval_gettext 'Use system mangohud, vkBasalt, obs-vkcapture and other applications using vulkan layers')
     PW_USE_OBS_VKCAPTURE_INFO=$(eval_gettext 'Enable the ability to write to OBS Studio using obs-vkcapture (ATTENTION: the forced use of system mangohud, vkBasalt, obs-vkcapture and other applications using vulkan layers will be enabled)')
-    PW_DISABLE_COMPOSITING_INFO=$(eval_gettext 'Disable desktop compositing (effects). It often improves performance.')
-    PW_USE_GAMESCOPE_INFO=$(eval_gettext "
-<b>Super + F :</b> Toggle fullscreen
+    PW_USE_GAMESCOPE_INFO=$(eval_gettext "<b>Super + F :</b> Toggle fullscreen
 <b>Super + N :</b> Toggle nearest neighbour filtering
 <b>Super + U :</b> Toggle FSR upscaling
 <b>Super + Y :</b> Toggle NIS upscaling
@@ -2650,6 +2671,8 @@ pw_gui_for_edit_db () {
 <b>Super + S :</b> Take screenshot (currently goes to /tmp/gamescope_DATE.png)
 <b>Super + G :</b> Toggle keyboard grab
 <b>Super + C :</b> Update clipboard")
+    PW_DISABLE_COMPOSITING_INFO=$(eval_gettext 'Disable desktop compositing (effects). It often improves performance.')
+    PW_USE_DGVOODOO2_INFO=$(eval_gettext 'Use dgvoodoo2 for old games with DirectX 1-7 and 3dfx (glide api) (ATTENTION: the first use requires an Internet connection, additional libraries glide.dll, glide2x.dll, glide3x.dll, d3dimm.dll, ddraw.dll will be added to the game directory)')
 
     edit_db_field_add () {
         for int_to_boole in $@ ; do
@@ -3772,14 +3795,14 @@ pw_edit_db () {
         PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_USE_FAKE_DLSS_3 PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP \
         PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY \
         PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS \
-        PW_USE_OBS_VKCAPTURE PW_USE_GAMESCOPE PW_DISABLE_COMPOSITING PW_USE_RUNTIME
+        PW_USE_OBS_VKCAPTURE PW_USE_GAMESCOPE PW_DISABLE_COMPOSITING PW_USE_DGVOODOO2 PW_USE_RUNTIME
     else
         pw_gui_for_edit_db \
         PW_MANGOHUD PW_MANGOHUD_USER_CONF ENABLE_VKBASALT PW_VKBASALT_USER_CONF PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING \
         PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_USE_FAKE_DLSS_3 PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP \
         PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY\
         PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE \
-        PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_USE_GAMESCOPE PW_DISABLE_COMPOSITING PW_USE_RUNTIME
+        PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_USE_GAMESCOPE PW_DISABLE_COMPOSITING PW_USE_DGVOODOO2 PW_USE_RUNTIME
     fi
     # PW_FORCE_USE_VSYNC HEAP_DELAY_FREE
 }
