@@ -344,9 +344,9 @@ popd 1>/dev/null || fatal
 check_nvidia_rtx && check_variables PW_VULKAN_USE "2"
 
 SORT_OPENGL="$(eval_gettext "OPENGL (For video cards without VULKAN)")"
-SORT_LEGACY="$(eval_gettext "Legacy") DXVK ${DXVK_LEGACY_VER}"
-SORT_STABLE="$(eval_gettext "Stable") DXVK ${DXVK_STABLE_VER}, VKD3D ${VKD3D_STABLE_VER}"
-SORT_NEWEST="$(eval_gettext "Newest") DXVK ${DXVK_GIT_VER}, VKD3D ${VKD3D_GIT_VER}"
+SORT_LEGACY="$(eval_gettext "Legacy") DXVK ${DXVK_LEGACY_VER} (Vulkan v1.1)"
+SORT_STABLE="$(eval_gettext "Stable") DXVK ${DXVK_STABLE_VER}, VKD3D ${VKD3D_STABLE_VER} (Vulkan v1.2)"
+SORT_NEWEST="$(eval_gettext "Newest") DXVK ${DXVK_GIT_VER}, VKD3D ${VKD3D_GIT_VER} (Vulkan v1.3)"
 SORT_G_NINE="$(eval_gettext "GALLIUM_NINE (DX9 for MESA)")"
 SORT_G_ZINK="$(eval_gettext "GALLIUM_ZINK (OpenGL for VULKAN)")"
 SORT_DGV2="$(eval_gettext "DGVOODOO2 (DirectX 1-7, Glide 3dfx wrapper)")"
