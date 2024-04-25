@@ -349,7 +349,7 @@ SORT_STABLE="$(eval_gettext "Stable") DXVK ${DXVK_STABLE_VER}, VKD3D ${VKD3D_STA
 SORT_NEWEST="$(eval_gettext "Newest") DXVK ${DXVK_GIT_VER}, VKD3D ${VKD3D_GIT_VER} (Vulkan v1.3)"
 SORT_G_NINE="$(eval_gettext "GALLIUM_NINE (DX9 for MESA)")"
 SORT_G_ZINK="$(eval_gettext "GALLIUM_ZINK (OpenGL for VULKAN)")"
-SORT_DGV2="$(eval_gettext "DGVOODOO2 (DirectX 1-7, Glide 3dfx wrapper)")"
+SORT_DGV2="$(eval_gettext "DGVOODOO2 (Glide 3dfx, DirectX 1-7 wrapper)")"
 
 case "${PW_VULKAN_USE}" in
     0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_LEGACY!$SORT_STABLE!$SORT_NEWEST!$SORT_G_NINE!$SORT_G_ZINK!$SORT_DGV2" ;;
