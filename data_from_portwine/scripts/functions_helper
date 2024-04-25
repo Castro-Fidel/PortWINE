@@ -1994,10 +1994,10 @@ start_portwine () {
             print_info "VKD3D-PROTON v.${VKD3D_GIT_VER} in use"
         elif [[ "${PW_VULKAN_USE}" == "5" ]] ; then
             PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_LEGACY_VER}"
-            PATH_TO_DGV2_FILES="${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}"
+            PATH_TO_DGV2_FILES="${PW_VULKAN_DIR}/dgvoodoo2-v${DGV2_VER}"
             USE_ALL_DXVK_DLLS=1
             DONT_USE_VKD3D=1
-            print_info "DXVK v.${DXVK_STABLE_VER} in use"
+            print_info "DXVK v.${DXVK_LEGACY_VER} in use"
             print_info "DGVOODOO2 ${DGV2_VER} in use"
             for DGV2_DLL in d3dimm ddraw glide glide2x glide3x ; do
                 try_copy_file "$PATH_TO_DGV2_FILES/x32/${DGV2_DLL}.dll" "${PATH_TO_GAME}"
@@ -2015,6 +2015,7 @@ dgVoodooWatermark                   = false" > "${PATH_TO_GAME}/dgVoodoo.conf"
             var_winedlloverride_update ddraw=n
         elif [[ "${PW_VULKAN_USE}" == "7" ]] ; then
             PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_LEGACY_VER}"
+            print_info "DXVK v.${DXVK_LEGACY_VER} in use"
             DONT_USE_VKD3D=1
         fi
 
@@ -3615,9 +3616,11 @@ portwine_start_debug () {
     elif [[ "${PW_VULKAN_USE}" = "4" ]] ; then
         echo "PW_VULKAN_USE=${PW_VULKAN_USE} - OpenGL on MESA vulkan drivers" >> "${PORT_WINE_PATH}/PortProton.log"
     elif [[ "${PW_VULKAN_USE}" = "5" ]] ; then
-        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DGVOODOO2 (DirectX 1-7, Glide 3dfx wrapper)" >> "${PORT_WINE_PATH}/PortProton.log"
+        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DGVOODOO2 (Glide 3dfx, DirectX 1-7 wrapper)" >> "${PORT_WINE_PATH}/PortProton.log"
     elif [[ "${PW_VULKAN_USE}" = "6" ]] ; then
         echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DirectX to wined3d vulkan" >> "${PORT_WINE_PATH}/PortProton.log"
+    elif [[ "${PW_VULKAN_USE}" = "7" ]] ; then
+        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_LEGACY_VER}" >> "${PORT_WINE_PATH}/PortProton.log"
     else
         echo "PW_VULKAN_USE=${PW_VULKAN_USE}" >> "${PORT_WINE_PATH}/PortProton.log"
     fi
