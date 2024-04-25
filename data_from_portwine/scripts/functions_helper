@@ -342,47 +342,34 @@ check_flatpak () {
 }
 export -f check_flatpak
 
-unpack_tar_zst () {
-    set -o pipefail
-    unset PW_ZSTD_PORT
-    pw_start_progress_bar_cover_block "${COVERS_PATH}/unpacking_${LANGUAGE}.gif"
-    if command -v zstd &>/dev/null ; then
-        tar -I zstd -xhf "$1" -C "$2"
-        pw_stop_progress_bar_cover_block 
-        [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
-    else
-        env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib" tar -I "${PW_PLUGINS_PATH}/portable/bin/zstd" -xhvf "$1" -C "$2"
-        pw_stop_progress_bar_cover_block
-        [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
-    fi
-}
+unpack () {
+    case $1 in
+        *.tar.xz)
+            command="tar -Jxhf";;
+        *.tar.gz)
+            command="tar -xhzf" ;;
+        *.tar.zst)
+            if command -v zstd &>/dev/null
+            then command="tar -I zstd -xhf"
+            else command="env LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib tar -I ${PW_PLUGINS_PATH}/portable/bin/zstd -xhf"
+            fi ;;
+        *.tar)
+            command="tar -xhf" ;;
+    esac
 
-unpack_tar_xz () {
-    if [[ "$3" == "silent" ]] ; then
-        tar -Jxhf "$1" -C "$2" && return 0 || return 1
-    else
+    case $3 in
+        silent) silent=true ;;
+    esac
+
+    if [[ "$silent" != "true" ]] ; then
         set -o pipefail
         pw_start_progress_bar_cover_block "${COVERS_PATH}/unpacking_${LANGUAGE}.gif"
-        tar -Jxhf "$1" -C "$2"
+        $command "$1" -C "$2"
         pw_stop_progress_bar_cover_block
         [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
+    else
+        $command "$1" -C "$2" && return 0 || return 1
     fi
-}
-
-unpack_tar_gz () {
-    set -o pipefail
-    pw_start_progress_bar_cover_block "${COVERS_PATH}/unpacking_${LANGUAGE}.gif"
-    tar -xhzf "$1" -C "$2"
-    pw_stop_progress_bar_cover_block
-    [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
-}
-
-unpack_tar () {
-    set -o pipefail
-    pw_start_progress_bar_cover_block "${COVERS_PATH}/unpacking_${LANGUAGE}.gif"
-    tar -xhf "$1" -C "$2"
-    pw_stop_progress_bar_cover_block
-    [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
 }
 
 pw_clear_pfx () {
@@ -519,7 +506,7 @@ init_wine_ver () {
             mv -f "${WINEDIR}/dist"/* "${WINEDIR}/"
             rm -fr "${WINEDIR}/dist"
         elif [ -f "${WINEDIR}/proton_dist.tar" ] ; then
-            unpack_tar "${WINEDIR}/proton_dist.tar" "${WINEDIR}/"
+            unpack "${WINEDIR}/proton_dist.tar" "${WINEDIR}/"
             for clear_dist_files in $(ls "${WINEDIR}" | sed -e "s/^bin$//g" | sed -e "s/^lib$//g" | sed -e "s/^lib64$//g" | sed -e "s/^share$//g" | sed -e "s/^version$//g") ; do 
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
@@ -872,7 +859,7 @@ pw_download_libs () {
         print_info "Download and install libraries..."
         if try_download "github.com/Castro-Fidel/PortWINE/releases/download/libs${PW_LIBS_VER}/libs${PW_LIBS_VER}.tar.xz" \
                         "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" ; then
-            if unpack_tar_xz "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/" ; then
+            if unpack "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/" ; then
                 try_remove_file "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz"
                 if ls "${PORT_WINE_TMP_PATH}" | grep libs_v | grep -v libs"${PW_LIBS_VER}" ; then
                     for RM_LIBS in $(ls "${PORT_WINE_TMP_PATH}" | grep libs_v | grep -v libs"${PW_LIBS_VER}")
@@ -915,7 +902,7 @@ pw_check_and_download_wine () {
         print_info "Download and install ${PW_WINE_USE}..."
         if try_download "github.com/Castro-Fidel/wine_builds/releases/download/${PW_WINE_USE}/${PW_WINE_USE}.tar.xz" \
                         "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" ; then
-            if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
+            if unpack "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
                 echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}/version"
                 try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz"
                 try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}"
@@ -940,7 +927,7 @@ pw_check_and_download_dxvk_and_vkd3d () {
             print_info "Download and install DXVK v.${DXVK_VAR_VER}"
             if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/dxvk-${DXVK_VAR_VER}/dxvk-${DXVK_VAR_VER}.tar.xz" \
                                       "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.xz" ; then
-                if unpack_tar_xz "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.xz" "${PW_VULKAN_DIR}" ; then
+                if unpack "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.xz" "${PW_VULKAN_DIR}" ; then
                     try_remove_file "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.xz"
                 else
                     try_remove_file "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.xz"
@@ -950,7 +937,7 @@ pw_check_and_download_dxvk_and_vkd3d () {
                 fi
             elif try_download "https://github.com/doitsujin/dxvk/releases/download/v${DXVK_VAR_VER}/dxvk-${DXVK_VAR_VER}.tar.gz" \
                                        "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz"  no_mirror ; then
-                if unpack_tar_gz "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz" "${PW_VULKAN_DIR}" ; then
+                if unpack "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz" "${PW_VULKAN_DIR}" ; then
                     try_remove_file "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz"
                 else
                     try_remove_file "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.gz"
@@ -970,7 +957,7 @@ pw_check_and_download_dxvk_and_vkd3d () {
             print_info "Download and install VKD3D-PROTON v.${VKD3D_VAR_VER}"
             if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/vkd3d-proton-${VKD3D_VAR_VER}/vkd3d-proton-${VKD3D_VAR_VER}.tar.xz" \
                                       "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.xz" ; then
-                if unpack_tar_xz "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.xz" "${PW_VULKAN_DIR}" ; then
+                if unpack "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.xz" "${PW_VULKAN_DIR}" ; then
                     try_remove_file "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.xz"
                 else
                     try_remove_file "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.xz"
@@ -980,7 +967,7 @@ pw_check_and_download_dxvk_and_vkd3d () {
                 fi
             elif try_download "https://github.com/HansKristian-Work/vkd3d-proton/releases/download/v${VKD3D_VAR_VER}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" \
                                         "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" no_mirror ; then
-                if unpack_tar_zst "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" "${PW_VULKAN_DIR}" ; then
+                if unpack "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst" "${PW_VULKAN_DIR}" ; then
                     try_remove_file "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst"
                 else
                     try_remove_file "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.zst"
@@ -1000,7 +987,7 @@ pw_check_and_download_dxvk_and_vkd3d () {
         if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/d8vk-${D8VK_VER}/d8vk-${D8VK_VER}.tar.xz" \
         "${PW_VULKAN_DIR}/d8vk-${D8VK_VER}.tar.xz"
         then
-            if unpack_tar_xz "${PW_VULKAN_DIR}/d8vk-${D8VK_VER}.tar.xz" "${PW_VULKAN_DIR}" ; then
+            if unpack "${PW_VULKAN_DIR}/d8vk-${D8VK_VER}.tar.xz" "${PW_VULKAN_DIR}" ; then
                 try_remove_file "${PW_VULKAN_DIR}/d8vk-${D8VK_VER}.tar.xz"
             else
                 try_remove_file "${PW_VULKAN_DIR}/d8vk-${D8VK_VER}.tar.xz"
@@ -1042,7 +1029,7 @@ pw_check_and_download_plugins () {
         print_info "Download and install plugins${PW_PLUGINS_VER}..."
         if command -v yad &>/dev/null ; then
             if try_download "github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" ; then
-                if unpack_tar_xz "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}" ; then
+                if unpack "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}" ; then
                     try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz"
                     # TODO: drop clear prefix, and add update prefix from new plugins
                     pw_clear_pfx
@@ -1075,7 +1062,7 @@ pw_check_and_download_plugins () {
             pw_notify_send -u normal
             if try_download "github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" \
                                    "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" silent ; then
-                if unpack_tar_xz "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}" ; then
+                if unpack "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}" ; then
                     try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz"
                     # TODO: drop clear prefix, and add update prefix from new plugins
                     pw_clear_pfx
@@ -1324,7 +1311,7 @@ pw_port_update () {
                     print_info "Update scripts..."
                     try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
                     if try_download "${URL_TO_PW_MASTER}" "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" no_mirror ; then
-                        if unpack_tar_gz "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" "${PORT_WINE_TMP_PATH}"
+                        if unpack "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz" "${PORT_WINE_TMP_PATH}"
                         then
                             create_new_dir "${PORT_WINE_TMP_PATH}/scripts_backup"
                             cd "${PORT_WINE_PATH}/data/" || fatal
@@ -1547,7 +1534,7 @@ start_portwine () {
     if [[ "${PW_PREFIX_NAME}" == "PROGRAMS" && ! -f "${WINEPREFIX}"/.progpfx ]] ; then
         print_info "Download and install PROGRAMS pfx..."
         if try_download "${PROGPFX_URL}" "${PORT_WINE_PATH}/data/tmp/progpfx.tar.xz" ; then
-            unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/progpfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/"
+            unpack "${PORT_WINE_PATH}/data/tmp/progpfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/"
             try_remove_file "${PORT_WINE_PATH}/data/tmp/progpfx.tar.xz"
         else
             try_remove_file "${PORT_WINE_PATH}/data/tmp/progpfx.tar.xz"
@@ -1559,7 +1546,7 @@ start_portwine () {
     if [[ "${PW_PREFIX_NAME}" == "DOTNET" ]] && [[ ! -f "${WINEPREFIX}"/.dotnet${DOTPFX_VER} ]] ; then
         print_info "Download and install DOTNET pfx..."
         if try_download "${DOTPFX_URL}" "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz" ; then
-            if unpack_tar_xz "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/"
+            if unpack "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/"
             then touch "${WINEPREFIX}/.dotnet${DOTPFX_VER}"
             fi
             try_remove_file "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz"
@@ -1615,12 +1602,12 @@ start_portwine () {
         check_dirs_and_files_in_pfx
         if [[ "${PW_PREFIX_NAME}" == "DEFAULT" ]] ; then
             pw_update_pfx_cover_gui
-            unpack_tar_xz "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
+            unpack "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
             pw_wineboot -r
         elif [[ "${PW_CHECK_AUTOINSTAL}" == 1 ]] \
         && [[ "${DISABLE_CP_DEFPFX}" != 1 ]] ; then
             pw_update_pfx_cover_gui
-            unpack_tar_xz "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
+            unpack "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
             pw_wineboot -r
         elif [[ "${PW_CHECK_AUTOINSTAL}" == 1 ]] \
         && [[ "${DISABLE_CP_DEFPFX}" == 1 ]] ; then
@@ -1628,7 +1615,7 @@ start_portwine () {
             pw_wineboot -i
         elif yad_question "$(eval_gettext "Do you want to installing recommended libraries in the new prefix:") ${PW_PREFIX_NAME}" ; then
             pw_update_pfx_cover_gui
-            unpack_tar_xz "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
+            unpack "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
             pw_wineboot -r
         else
             pw_update_pfx_cover_gui
@@ -2991,7 +2978,7 @@ gui_proton_downloader () {
     if try_download "${URL_VERSION_PROTON_GIT}" "${PORT_WINE_PATH}/data/tmp/$FILENAME" ; then
         for archive_type in "gz" "xz" ; do
             if [ -f "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}" ] ; then
-                if unpack_tar_${archive_type} "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}" "${PORT_WINE_PATH}/data/dist/" ; then
+                if unpack "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}" "${PORT_WINE_PATH}/data/dist/" ; then
                     try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}"
                     if [ ! -z "${portwine_exe}" ]; then
                         PW_WINE_USE="$(echo "${VERSION_WINE_GIT}" | tr [[:lower:]] [[:upper:]])"
@@ -3947,7 +3934,7 @@ gui_open_scripts_from_backup () {
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "SCRIPTS FROM BACKUP" --file-filter="backup_scripts|scripts_v*.tar.gz" 2>/dev/null )
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
-    unpack_tar_gz "$PW_SCRIPT_FROM_BACKUP" "${PORT_WINE_PATH}/data/"
+    unpack "$PW_SCRIPT_FROM_BACKUP" "${PORT_WINE_PATH}/data/"
     echo "0" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     print_info "Restarting PP after backup..."
     export SKIP_CHECK_UPDATES=1
