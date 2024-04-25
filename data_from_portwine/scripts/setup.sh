@@ -7,7 +7,7 @@ source "$(dirname "$(readlink -f "$0")")/start.sh"
 
 if check_flatpak
 then PW_EXEC="flatpak run ru.linux_gaming.PortProton"
-else PW_EXEC="env ${PORT_SCRIPTS_PATH}/start.sh %F"
+else PW_EXEC="env \"${PORT_SCRIPTS_PATH}/start.sh\" %F"
 fi
 
 cat << EOF > "${PORT_WINE_PATH}/PortProton.desktop"
@@ -28,7 +28,7 @@ chmod u+x "${PORT_WINE_PATH}/PortProton.desktop"
 if [[ ! -f /usr/bin/portproton ]] \
 && ! check_flatpak
 then
-	cp -f "${PORT_WINE_PATH}/PortProton.desktop" ${HOME}/.local/share/applications/
+	cp -f "${PORT_WINE_PATH}/PortProton.desktop" "${HOME}/.local/share/applications/"
 fi
 
 if grep "SteamOS" "/etc/os-release" &>/dev/null \

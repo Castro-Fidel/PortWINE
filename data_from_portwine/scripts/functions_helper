@@ -344,21 +344,14 @@ export -f check_flatpak
 
 unpack () {
     case $1 in
-        *.tar.xz)
-            command="tar -Jxhf";;
-        *.tar.gz)
-            command="tar -xhzf" ;;
-        *.tar.zst)
-            if command -v zstd &>/dev/null
-            then command="tar -I zstd -xhf"
-            else command="env LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib tar -I ${PW_PLUGINS_PATH}/portable/bin/zstd -xhf"
-            fi ;;
-        *.tar)
-            command="tar -xhf" ;;
+         *.tar.xz) local command="tar -Jxhf";;
+         *.tar.gz) local command="tar -xhzf" ;;
+        *.tar.zst) local command="tar -I zstd -xhf" ;;
+            *.tar) local command="tar -xhf" ;;
     esac
 
     case $3 in
-        silent) silent=true ;;
+        silent) local silent=true ;;
     esac
 
     if [[ "$silent" != "true" ]] ; then
@@ -1001,16 +994,16 @@ pw_check_and_download_dxvk_and_vkd3d () {
     fi
 
     #Download DGVOODOO2
-    if [ ! -d "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}" ] ; then
+    if [ ! -d "${PW_VULKAN_DIR}/dgvoodoo2-v${DGV2_VER}" ] ; then
         print_info "Download and install DGVOODOO2 v.${DGV2_VER}"
-        if try_download "https://github.com/lutris/dgvoodoo2/releases/download/${DGV2_VER}/dgvoodoo2-${DGV2_VER}.tar.xz" "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz" \
-        "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz"
+        if try_download "https://github.com/lutris/dgvoodoo2/releases/download/v${DGV2_VER}/dgvoodoo2-v${DGV2_VER}.tar.xz" \
+        "${PW_VULKAN_DIR}/dgvoodoo2-v${DGV2_VER}.tar.xz"
         then
-            if unpack_tar_xz "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz" "${PW_VULKAN_DIR}" ; then
-                try_remove_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz"
+            if unpack "${PW_VULKAN_DIR}/dgvoodoo2-v${DGV2_VER}.tar.xz" "${PW_VULKAN_DIR}" ; then
+                try_remove_file "${PW_VULKAN_DIR}/dgvoodoo2-v${DGV2_VER}.tar.xz"
             else
-                try_remove_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz"
-                try_remove_dir "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}"
+                try_remove_file "${PW_VULKAN_DIR}/dgvoodoo2-v${DGV2_VER}.tar.xz"
+                try_remove_dir "${PW_VULKAN_DIR}/dgvoodoo2-v${DGV2_VER}"
 
                 yad_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
             fi
@@ -1989,7 +1982,6 @@ start_portwine () {
         export WINE_D3D_CONFIG='renderer=vulkan'
     else
         print_info "Use VKD3D-PROTON, DXVK and D8VK (DirectX 8-12 to vulkan)"
-        check_variables DXVK_HDR 0
         if [[ "${PW_USE_WINE_DXGI}" == 1 ]] ; then
             export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxvk_config" # openvr_api_dxvk
             export CP_WINE_FILES="d3d10_1 d3d10 dxgi"
@@ -1999,7 +1991,12 @@ start_portwine () {
             export CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi dxvk_config" # openvr_api_dxvk
             export CP_WINE_FILES="d3d10_1 d3d10"
         fi
+
         check_variables VKD3D_FEATURE_LEVEL "12_1"
+        check_variables DXVK_HDR
+
+        print_info "D8VK v.${D8VK_VER} in use"
+
         if [[ "${PW_VULKAN_USE}" == "1" ]] ; then
             export PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
             export PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
@@ -2015,11 +2012,11 @@ start_portwine () {
             export PATH_TO_DGV2_FILES="${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}"
             print_info "DXVK v.${DXVK_STABLE_VER} in use"
             print_info "DGVOODOO2 ${DGV2_VER} in use"
-            try_copy_file "$PATH_TO_DGV2_FILES/x32/d3dimm.dll" "${PATH_TO_GAME}"
-            try_copy_file "$PATH_TO_DGV2_FILES/x32/ddraw.dll" "${PATH_TO_GAME}"
-            try_copy_file "$PATH_TO_DGV2_FILES/x32/glide.dll" "${PATH_TO_GAME}"
-            try_copy_file "$PATH_TO_DGV2_FILES/x32/glide2x.dll" "${PATH_TO_GAME}"
-            try_copy_file "$PATH_TO_DGV2_FILES/x32/glide3x.dll" "${PATH_TO_GAME}"
+            for DGV2_DLL in d3dimm ddraw glide glide2x glide3x ; do
+                try_copy_file "$PATH_TO_DGV2_FILES/x32/${DGV2_DLL}.dll" "${PATH_TO_GAME}"
+            done
+
+            if [[ ! -f "${PATH_TO_GAME}/dgVoodoo.conf" ]] ; then
             echo "[General]
 OutputAPI                            = d3d11_fl11_0
 [Glide]
@@ -2027,13 +2024,12 @@ OutputAPI                            = d3d11_fl11_0
 3DfxSplashScreen                    = false
 [DirectX]
 dgVoodooWatermark                   = false" > "${PATH_TO_GAME}/dgVoodoo.conf"
+            fi
             var_winedlloverride_update ddraw=n
         fi
-        PATH_TO_D8VK_FILES="${PW_VULKAN_DIR}/d8vk-${D8VK_VER}"
-        print_info "D8VK v.${D8VK_VER} in use"
 
         print_info "Try copy WINE files..."
-        for copy_wine_dll in $CP_WINE_FILES "vulkan-1" ; do
+        for copy_wine_dll in $CP_WINE_FILES vulkan-1 ; do
             try_copy_file "${WINEDIR}/lib64/wine/x86_64-windows/${copy_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${copy_wine_dll}.dll"
             try_copy_file "${WINEDIR}/lib/wine/i386-windows/${copy_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${copy_wine_dll}.dll"
         done
@@ -2062,6 +2058,7 @@ dgVoodooWatermark                   = false" > "${PATH_TO_GAME}/dgVoodoo.conf"
             fi
         done
 
+        PATH_TO_D8VK_FILES="${PW_VULKAN_DIR}/d8vk-${D8VK_VER}"
         print_info "Try link native D8VK file..."
         try_force_link_file "${PATH_TO_D8VK_FILES}/x32/d3d8.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
         try_force_link_file "${PATH_TO_D8VK_FILES}/x64/d3d8.dll" "${WINEPREFIX}/drive_c/windows/system32/"
