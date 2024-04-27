@@ -602,7 +602,7 @@ case "${VULKAN_MOD}" in
     "$SORT_NEWEST" )     export PW_VULKAN_USE="2" ;;
     "$SORT_G_NINE" )     export PW_VULKAN_USE="3" ;;
     "$SORT_G_ZINK" )     export PW_VULKAN_USE="4" ;;
-    "$SORT_DGV2" )       export PW_VULKAN_USE="5" ;;
+      "$SORT_DGV2" )     export PW_VULKAN_USE="5" ;;
 esac
 
 init_wine_ver
