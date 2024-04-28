@@ -46,11 +46,15 @@ fi
 cd "$(dirname "$(readlink -f "$0")")" && PORT_SCRIPTS_PATH="$(pwd)" || fatal
 cd "${PORT_SCRIPTS_PATH}/../../" && PORT_WINE_PATH="$(pwd)" || fatal
 export PORT_SCRIPTS_PATH PORT_WINE_PATH
-
-# shellcheck source=/dev/null
-source gettext.sh
 export TEXTDOMAIN="PortProton"
 export TEXTDOMAINDIR="${PORT_WINE_PATH}/data/locales"
+
+if [[ -d "$TEXTDOMAINDIR" ]] && command -v gettext.sh &>/dev/null ; then
+    # shellcheck source=/dev/null
+    source gettext.sh
+else
+    eval_gettext() { echo "$1"; }
+fi
 
 # shellcheck source=./functions_helper
 source "${PORT_SCRIPTS_PATH}/functions_helper"
@@ -602,7 +606,7 @@ case "${VULKAN_MOD}" in
     "$SORT_NEWEST" )     export PW_VULKAN_USE="2" ;;
     "$SORT_G_NINE" )     export PW_VULKAN_USE="3" ;;
     "$SORT_G_ZINK" )     export PW_VULKAN_USE="4" ;;
-    "$SORT_DGV2" )       export PW_VULKAN_USE="5" ;;
+      "$SORT_DGV2" )     export PW_VULKAN_USE="5" ;;
 esac
 
 init_wine_ver
