@@ -171,7 +171,6 @@ check_process () {
 }
 export -f check_process
 
-
 try_download () {
     local filename="$(basename "$1")"
     local dest="$2"
@@ -1522,7 +1521,6 @@ pw_create_unique_exe () {
     fi
 }
 
-
 start_portwine () {
     WINEPREFIX="$(readlink -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}")"
     export WINEPREFIX
@@ -1930,22 +1928,12 @@ start_portwine () {
 
     unset CP_VKD3D_FILES CP_DXVK_FILES CP_D8VK_FILES CP_WINE_FILES PATH_TO_VKD3D_FILES PATH_TO_DXVK_FILES
     case "${PW_VULKAN_USE}" in
-        0)  # OPENGL
-            print_info "Use OpenGL"
+        0)  # WINED3D OPENGL
+            print_info "Use WINED3D OpenGL"
             export GL_YIELD="NOTHING"
             export mesa_glthread=true
             export WINE_D3D_CONFIG='renderer=gl'
-            CP_WINE_FILES="d3d8 d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi d3d12 d3d12core"
-            ;;
-        6)  # WINED3D VULKAN (DAMAVAND)
-            print_info "Use DAMAVAND (DirectX to wined3d vulkan)"
-            CP_WINE_FILES="d3d8 d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi d3d12 d3d12core"
-            export WINE_D3D_CONFIG='renderer=vulkan'
-            ;;
-        7)  # LEGACY DXVK
-            print_info "DXVK v.${DXVK_LEGACY_VER} in use"
-            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_LEGACY_VER}"
-            CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
+            CP_WINE_FILES="ddraw d3d8 d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi d3d12 d3d12core"
             ;;
         1)  # STABLE DXVK AND VKD3D
             print_info "DXVK v.${DXVK_STABLE_VER} in use"
@@ -1955,10 +1943,9 @@ start_portwine () {
             CP_VKD3D_FILES="d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1"
             CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi openvr_api_dxvk"
             CP_D8VK_FILES="d3d8"
-            CP_WINE_FILES="d3d10_1 d3d10"
+            CP_WINE_FILES="ddraw d3d10_1 d3d10"
             ;;
-        2)
-            # NEWEST DXVK AND VKD3D
+        2)  # NEWEST DXVK AND VKD3D
             print_info "DXVK v.${DXVK_GIT_VER} in use"
             print_info "VKD3D-PROTON v.${VKD3D_GIT_VER} in use"
             PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}"
@@ -1966,11 +1953,11 @@ start_portwine () {
             CP_VKD3D_FILES="d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1"
             CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi openvr_api_dxvk"
             CP_D8VK_FILES="d3d8"
-            CP_WINE_FILES="d3d10_1 d3d10"
+            CP_WINE_FILES="ddraw d3d10_1 d3d10"
             ;;
         3)  # GALLIUM NINE
             print_info "Use GALLIUM-NINE (Native DX9 on MESA drivers)"
-            CP_WINE_FILES="d3d8 d3d11 d3d10core d3d10_1 d3d10 dxgi d3d12 d3d12core"
+            CP_WINE_FILES="ddraw d3d8 d3d11 d3d10core d3d10_1 d3d10 dxgi d3d12 d3d12core"
             PW_GALLIUM_NINE_PATH="${PW_PLUGINS_PATH}/gallium_nine_v.${PW_GALLIUM_NINE_VER}"
             try_force_link_file "${PW_GALLIUM_NINE_PATH}/lib32/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/syswow64/d3d9.dll"
             try_force_link_file "${PW_GALLIUM_NINE_PATH}/lib64/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/system32/d3d9.dll"
@@ -2006,7 +1993,7 @@ start_portwine () {
             ;;
         4)  # GALLIUM ZINK
             print_info "Use GALLIUM-ZINK (OpenGL on MESA vulkan drivers)"
-            CP_WINE_FILES="d3d8 d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi d3d12 d3d12core"
+            CP_WINE_FILES="ddraw d3d8 d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi d3d12 d3d12core"
             export GL_YIELD="NOTHING"
             export mesa_glthread=true
             export WINE_D3D_CONFIG='renderer=gl'
@@ -2018,27 +2005,24 @@ start_portwine () {
                 export LIBGL_KOPPER_DRI2="1"
             fi
             ;;
-        5)  # DGVOODOO2 + LEGACY DXVK
+        5)  # LEGACY DXVK AND DGVOODOO2
             print_info "DXVK v.${DXVK_LEGACY_VER} in use"
-            print_info "DGVOODOO2 ${DGV2_VER} in use"
-            CP_WINE_FILES="d3d8 d3d12 d3d12core"
-            CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
+            print_info "DGVOODOO2 v.${DGV2_VER} in use"
             PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_LEGACY_VER}"
             PATH_TO_DGV2_FILES="${PW_VULKAN_DIR}/dgvoodoo2-v${DGV2_VER}"
-            for DGV2_DLL in d3dimm ddraw glide glide2x glide3x ; do
-                try_copy_file "$PATH_TO_DGV2_FILES/x32/${DGV2_DLL}.dll" "${PATH_TO_GAME}"
-            done
-
-            if [[ ! -f "${PATH_TO_GAME}/dgVoodoo.conf" ]] ; then
-            echo "[General]
-OutputAPI                            = d3d11_fl11_0
-[Glide]
-3DfxWatermark                       = false
-3DfxSplashScreen                    = false
-[DirectX]
-dgVoodooWatermark                   = false" > "${PATH_TO_GAME}/dgVoodoo.conf"
-            fi
-            var_winedlloverride_update ddraw=n
+            CP_DGV2_FILES="ddraw d3dimm glide glide2x glide3x"
+            CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
+            CP_WINE_FILES="d3d8 d3d12 d3d12core"
+            ;;
+        6)  # WINED3D VULKAN (DAMAVAND)
+            print_info "Use DAMAVAND (DirectX to wined3d vulkan)"
+            CP_WINE_FILES="ddraw d3d8 d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi d3d12 d3d12core"
+            export WINE_D3D_CONFIG='renderer=vulkan'
+            ;;
+        7)  # LEGACY DXVK
+            print_info "DXVK v.${DXVK_LEGACY_VER} in use"
+            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_LEGACY_VER}"
+            CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
             ;;
     esac
 
@@ -2101,6 +2085,25 @@ dgVoodooWatermark                   = false" > "${PATH_TO_GAME}/dgVoodoo.conf"
         done
     fi
 
+    if [[ ! -z "$CP_DGV2_FILES" ]] ; then
+        print_info "Try copy native DGVOODOO2 file..."
+        PATH_TO_DGV2_FILES="${PW_VULKAN_DIR}/dgvoodoo2-v${DGV2_VER}"
+        for wine_dgv2_dll in $CP_DGV2_FILES ; do
+            try_copy_file "${PATH_TO_DGV2_FILES}/x32/${wine_dgv2_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+        done
+
+        if [[ ! -f "${WINEPREFIX}/drive_c/windows/syswow64/dgVoodoo.conf" ]] ; then
+            echo "[General]
+OutputAPI                            = d3d11_fl11_0
+[Glide]
+3DfxWatermark                       = false
+3DfxSplashScreen                    = false
+[DirectX]
+dgVoodooWatermark                   = false" > "${WINEPREFIX}/drive_c/windows/syswow64/dgVoodoo.conf"
+        fi
+        var_winedlloverride_update "ddraw=n"
+    fi
+
     if [[ ! -d "${WINEPREFIX}/drive_c/vrclient/bin" ]] ; then
         create_new_dir "${WINEPREFIX}/drive_c/vrclient/bin"
         try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/vrclient.dll "${WINEPREFIX}/drive_c/vrclient/bin/"
@@ -2108,7 +2111,7 @@ dgVoodooWatermark                   = false" > "${PATH_TO_GAME}/dgVoodoo.conf"
     fi
 
     if [[ "${PW_USE_SHADER_CACHE}" == "1" ]] ; then
-        create_new_dir "${PW_VULKAN_DIR}}/gl_shader_cache"
+        create_new_dir "${PW_VULKAN_DIR}/gl_shader_cache"
         export __GL_SHADER_DISK_CACHE="1"
         export __GL_SHADER_DISK_CACHE_PATH="${PW_VULKAN_DIR}/gl_shader_cache"
         export __GL_SHADER_DISK_CACHE_SIZE="50000000000"
@@ -3635,17 +3638,17 @@ portwine_start_debug () {
     echo $(ldd --version | grep -m1 ldd | awk '{print $NF}') >> "${PORT_WINE_PATH}/PortProton.log"
     echo "--------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     if [[ "${PW_VULKAN_USE}" = "0" ]] ; then
-        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DX9-11 to OPENGL" >> "${PORT_WINE_PATH}/PortProton.log"
+        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DirectX to wined3d opengl" >> "${PORT_WINE_PATH}/PortProton.log"
     elif [[ "${PW_VULKAN_USE}" = "1" ]] ; then
         echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_STABLE_VER} and VKD3D-PROTON v.${VKD3D_STABLE_VER}" >> "${PORT_WINE_PATH}/PortProton.log"
     elif [[ "${PW_VULKAN_USE}" = "2" ]] ; then
         echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_GIT_VER} and VKD3D-PROTON v.${VKD3D_GIT_VER}" >> "${PORT_WINE_PATH}/PortProton.log"
     elif [[ "${PW_VULKAN_USE}" = "3" ]] ; then
-        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - native DX9 on MESA drivers" >> "${PORT_WINE_PATH}/PortProton.log"
+        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - Native DX9 on MESA drivers" >> "${PORT_WINE_PATH}/PortProton.log"
     elif [[ "${PW_VULKAN_USE}" = "4" ]] ; then
         echo "PW_VULKAN_USE=${PW_VULKAN_USE} - OpenGL on MESA vulkan drivers" >> "${PORT_WINE_PATH}/PortProton.log"
     elif [[ "${PW_VULKAN_USE}" = "5" ]] ; then
-        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DGVOODOO2 (Glide 3dfx, DirectX 1-7 wrapper)" >> "${PORT_WINE_PATH}/PortProton.log"
+        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_LEGACY_VER} and DGVOODOO2 v.${DGV2_VER}" >> "${PORT_WINE_PATH}/PortProton.log"
     elif [[ "${PW_VULKAN_USE}" = "6" ]] ; then
         echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DirectX to wined3d vulkan" >> "${PORT_WINE_PATH}/PortProton.log"
     elif [[ "${PW_VULKAN_USE}" = "7" ]] ; then
