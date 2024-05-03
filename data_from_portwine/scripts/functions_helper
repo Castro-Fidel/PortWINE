@@ -2521,7 +2521,7 @@ pw_update_pfx_cover_gui () {
         PW_KEY_PROGRESS_BAR_UP=$RANDOM
         PW_GIF_FILE="${COVERS_PATH}/update_prefix_${LANGUAGE}.gif"
         PW_GIF_SIZE_X=$(file "${PW_GIF_FILE}" | awk '{print $7 + 20}')
-        PW_GIF_SIZE_Y=$(file "${PW_GIF_FILE}" | awk '{print $9 + 60}')
+        PW_GIF_SIZE_Y=$(file "${PW_GIF_FILE}" | awk '{print $9 + 65}')
         echo "UPDATE PREFIX..." > "${PORT_WINE_TMP_PATH}/update_pfx_log"
         export PW_TIMER=0
         while read -r line || [[ ! -z $(pgrep -a yad | grep "yad_v13_0 --notebook --key=$PW_KEY_PROGRESS_BAR_UP" | awk '{print $1}') ]] ; do
@@ -2804,16 +2804,13 @@ A brief instruction:
     YAD_STATUS="$?"
     export SKIP_CHECK_UPDATES=1
     case "$YAD_STATUS" in
-          1)
+      1|252)
                 /usr/bin/env bash -c ${pw_full_command_line[*]} &
                 exit 0
                 ;;
           2)
                 try_remove_file "$portwine_exe".ppdb
                 /usr/bin/env bash -c ${pw_full_command_line[*]} &
-                exit 0
-                ;;
-        252)
                 exit 0
                 ;;
     esac
@@ -3321,17 +3318,17 @@ gui_MangoHud () {
         --field="$(eval_gettext "MANGOHUD FPS LIMIT")!$(eval_gettext "Enabling FPS limits using MANGOHUD built into PortProton") :CB" "${FPS_LIMIT_VAR}!disabled!${GET_REFRESH_RATE}" \
         1> "${PORT_WINE_TMP_PATH}/tmp_yad_mh_fps_limit" 2>/dev/null &
 
-    "${pw_yad_v13_0}" --paned --key="$KEY_MH_GUI" --height="575" --title="MangoHud" --center \
+    "${pw_yad_v13_0}" --paned --key="$KEY_MH_GUI" --height="600" --title="MangoHud" --center \
         --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
         --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
         --button="$(eval_gettext "DISABLE MANGOHUD")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Disable MangoHud and go to the previous menu")":182 \
         --button="$(eval_gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Save the current changes, and go to the previous menu")":184 2>/dev/null
     YAD_MANGOHUD_STATUS="$?"
-
+    print_error $YAD_MANGOHUD_STATUS
     case "${YAD_MANGOHUD_STATUS}" in
-        1 | 252)
+        1|252)
             export SKIP_CHECK_UPDATES=1
-            /usr/bin/env bash -c "${pw_full_command_line[*]}" &
+            /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
             ;;
         182)
@@ -3339,7 +3336,7 @@ gui_MangoHud () {
             export FPS_LIMIT="disabled"
             edit_db_from_gui PW_MANGOHUD FPS_LIMIT
             export SKIP_CHECK_UPDATES=1
-            /usr/bin/env bash -c "${pw_full_command_line[*]}" &
+            /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
             ;;
         184)
