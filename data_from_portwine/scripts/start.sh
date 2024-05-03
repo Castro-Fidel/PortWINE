@@ -347,13 +347,13 @@ popd 1>/dev/null || fatal
 
 check_nvidia_rtx && check_variables PW_VULKAN_USE "2"
 
-SORT_OPENGL="$(eval_gettext "WINED3D OPENGL (For video cards without VULKAN)")"
-SORT_VULKAN="$(eval_gettext "WINED3D VULKAN (DAMAVAND)")"
-SORT_LEGACY="$(eval_gettext "Legacy") DXVK ${DXVK_LEGACY_VER} (Vulkan v1.1)"
-SORT_STABLE="$(eval_gettext "Stable") DXVK ${DXVK_STABLE_VER}, VKD3D ${VKD3D_STABLE_VER} (Vulkan v1.2)"
-SORT_NEWEST="$(eval_gettext "Newest") DXVK ${DXVK_GIT_VER}, VKD3D ${VKD3D_GIT_VER} (Vulkan v1.3)"
-SORT_G_NINE="$(eval_gettext "GALLIUM_NINE (DX9 for MESA)")"
-SORT_G_ZINK="$(eval_gettext "GALLIUM_ZINK (OpenGL for VULKAN)")"
+SORT_OPENGL="$(eval_gettext "WineD3D OpenGL (For video cards without Vulkan)")"
+SORT_VULKAN="$(eval_gettext "WineD3D Vulkan (Damavand experemental)")"
+SORT_LEGACY="$(eval_gettext "Legacy DXVK and dgVoodoo2 (Vulkan v1.1)")"
+SORT_STABLE="$(eval_gettext "Stable DXVK, VKD3D and dgVoodoo2 (Vulkan v1.2)")"
+SORT_NEWEST="$(eval_gettext "Newest DXVK, VKD3D, D8VK and dgVoodoo2 (Vulkan v1.3+)")"
+SORT_G_NINE="$(eval_gettext "Gallium_Nine (DirectX 9 for MESA)")"
+SORT_G_ZINK="$(eval_gettext "Gallium_Zink (OpenGL to Vulkan)")"
 
 case "${PW_VULKAN_USE}" in
     0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY!$SORT_G_ZINK!$SORT_G_NINE!$SORT_VULKAN" ;;
@@ -438,6 +438,11 @@ if [[ -f "${portwine_exe}" ]] ; then
 else
     export KEY="$RANDOM"
 
+    if [[ "$MIRROR" == "CDN" ]]
+    then NEW_MIRROR="GITHUB"
+    else NEW_MIRROR="CDN"
+    fi
+
     orig_IFS="$IFS" && IFS=$'\n'
     PW_ALL_DF="$(ls "${PORT_WINE_PATH}"/ | grep .desktop | grep -vE '(PortProton|readme)')"
     if [[ -z "${PW_ALL_DF}" ]]
@@ -473,7 +478,7 @@ else
     --field="   $(eval_gettext "Scripts from backup")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_open_scripts_from_backup"' \
     --field="   Xterm"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click pw_start_cont_xterm"' \
     --field="   $(eval_gettext "Credits")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_credits"' \
-    --field="   $(eval_gettext "Change mirror")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click change_mirror"' \
+    --field="   $(eval_gettext "Change mirror to") $NEW_MIRROR"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click change_mirror"' \
     2>/dev/null &
 
     "${pw_yad_v13_0}" --plug=${KEY} --tabnum="${PW_GUI_SORT_TABS[2]}" --form --columns=3 --align-buttons --separator=";" \
@@ -515,7 +520,6 @@ else
     --field="   Ubisoft Game Launcher"!"$PW_GUI_ICON_PATH/ubc.png"!"":"FBTN" '@bash -c "button_click PW_UBC"' \
     --field="   EVE Online Launcher"!"$PW_GUI_ICON_PATH/eve.png"!"":"FBTN" '@bash -c "button_click PW_EVE"' \
     --field="   Rockstar Games Launcher"!"$PW_GUI_ICON_PATH/Rockstar.png"!"":"FBTN" '@bash -c "button_click PW_ROCKSTAR"' \
-    --field="   League of Legends"!"$PW_GUI_ICON_PATH/lol.png"!"":"FBTN" '@bash -c "button_click PW_LOL"' \
     --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png"!"":"FBTN" '@bash -c "button_click  PW_GAMEFORGE"' \
     --field="   World of Sea Battle (x64)"!"$PW_GUI_ICON_PATH/wosb.png"!"":"FBTN" '@bash -c "button_click PW_WOSB"' \
     --field="   CALIBER"!"$PW_GUI_ICON_PATH/caliber.png"!"":"FBTN" '@bash -c "button_click PW_CALIBER"' \
@@ -547,6 +551,7 @@ else
 
     # --field="   Secret World Legends (ENG)"!"$PW_GUI_ICON_PATH/swl.png"!"":"FBTN" '@bash -c "button_click PW_SWL"'
     # --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"'
+    # --field="   League of Legends"!"$PW_GUI_ICON_PATH/lol.png"!"":"FBTN" '@bash -c "button_click PW_LOL"'
 
     export START_FROM_PP_GUI=1
 

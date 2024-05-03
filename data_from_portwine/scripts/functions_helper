@@ -1009,12 +1009,14 @@ pw_check_and_download_dxvk_and_vkd3d () {
         if try_download "https://github.com/dege-diosg/dgVoodoo2/releases/download/v${DGV2_VER}/dgVoodoo${DGV2_DOWNLOAD}.zip" \
         "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.zip"
         then
-            if "$pw_7z" x -y "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.zip" -o"${PW_VULKAN_DIR}/dgvoodoo2-tmp" ; then
+            if "$pw_7z" x -y "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.zip" -o"${PW_VULKAN_DIR}/dgvoodoo2-tmp" 1>/dev/null ; then
                 try_remove_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.zip"
                 mkdir -p "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}/x32"
-                for DGV2_DLL in Glide Glide2x Glide3x D3D8 D3D9 D3DImm DDraw ; do
-                mv -f "${PW_VULKAN_DIR}/dgvoodoo2-tmp/3Dfx/x86/${DGV2_DLL}.dll" "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}/x32/${DGV2_DLL,,}.dll"
-                mv -f "${PW_VULKAN_DIR}/dgvoodoo2-tmp/MS/x86/${DGV2_DLL}.dll" "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}/x32/${DGV2_DLL,,}.dll"
+                for DGV2_DLL_GLIDE in Glide Glide2x Glide3x ; do
+                    mv -f "${PW_VULKAN_DIR}/dgvoodoo2-tmp/3Dfx/x86/${DGV2_DLL_GLIDE}.dll" "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}/x32/${DGV2_DLL_GLIDE,,}.dll"
+                done
+                for DGV2_DLL_DDRAW in D3D8 D3D9 D3DImm DDraw ; do
+                    mv -f "${PW_VULKAN_DIR}/dgvoodoo2-tmp/MS/x86/${DGV2_DLL_DDRAW}.dll" "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}/x32/${DGV2_DLL_DDRAW,,}.dll"
                 done
                 try_remove_dir "${PW_VULKAN_DIR}/dgvoodoo2-tmp"
             else
@@ -1092,8 +1094,10 @@ pw_check_and_download_plugins () {
     fi
     export pw_yad="${PW_PLUGINS_PATH}/portable/bin/yad"
     export pw_yad_v13_0="${PW_PLUGINS_PATH}/portable/bin/yad_v13_0"
-    export pw_zstd="${PW_PLUGINS_PATH}/portable/bin/zstd"
-    export pw_7z="${PW_PLUGINS_PATH}/portable/lib/p7zip/7z"
+    if command -v 7z &>/dev/null
+    then export pw_7z="7z"
+    else export pw_7z="${PW_PLUGINS_PATH}/portable/lib/p7zip/7z"
+    fi
     return 0
 }
 
