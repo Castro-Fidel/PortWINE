@@ -2657,6 +2657,15 @@ pw_gui_for_edit_db () {
     fi
 
     GET_GPU_NAMES=$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | awk -F '=' '/deviceName/{print $2}' | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
+    GET_LOCALE_LIST="ru_RU.utf8 en_US.utf8 zh_CN.utf8 ja_JP.utf8 ko_KR.utf8"
+
+	for LOCALE in $(echo $GET_LOCALE_LIST) ; do
+		if locale -a | grep -qw "$LOCALE"
+		then LOCALE_LIST+=("${LOCALE}")
+		fi
+	done
+
+	LOCALE_LIST=$(echo "${LOCALE_LIST[@]}" | sed 's/ /!/g')
 
     logical_cores=$(grep -c "^processor" /proc/cpuinfo)
     if [[ "${logical_cores}" -le "4" ]] ; then
@@ -2664,6 +2673,15 @@ pw_gui_for_edit_db () {
     else
         GET_LOGICAL_CORE="1!2!$(seq -s! 4 4 $((${logical_cores} - 1)))"
     fi
+
+	if [[ "${PW_LOCALE_SELECT}" != "disabled" ]] && [[ ! -z "${PW_LOCALE_SELECT}" ]] ; then
+		export LC_ALL="${PW_LOCALE_SELECT}"
+		if [[ "${PW_USE_RUNTIME}" == "1" ]] && [[ "${HOST_LC_ALL}" != "${LC_ALL}" ]] ; then
+			export HOST_LC_ALL="${LC_ALL}"
+		fi
+	else
+		export PW_LOCALE_SELECT="disabled"
+	fi
 
     unset ADD_CHK_BOX_EDIT_DB
 
@@ -2768,7 +2786,9 @@ A brief instruction:
 <b>-b:</b> create a border-less window.
 <b>-f:</b> create a full-screen window.") :CBE" "\\${GAMESCOPE_ARGS}!-r 60 -F fsr!" \
     --field="$(eval_gettext "Forcibly select the OpenGL version for the game")!$(eval_gettext "You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)") :CB" "${PW_MESA_GL_VERSION_OVERRIDE}!disabled!4.6COMPAT!4.6!4.5COMPAT!4.5!3.3COMPAT!3.3" \
+	--field="$(eval_gettext "Force certain locale for an app")!$(eval_gettext "Fixes encoding issues in legacy software") :CB" "${PW_LOCALE_SELECT}!disabled!$LOCALE_LIST" \
     2>/dev/null 1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
+
 
     "${pw_yad_v13_0}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="750" \
     --text "$(eval_gettext "Change settings in database file for") <b>${PORTWINE_DB}</b>\n $(eval_gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" --separator=" " \
@@ -2814,6 +2834,7 @@ A brief instruction:
     PW_GPU_USE="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $8}')"
     GAMESCOPE_ARGS="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $9}')"
     PW_MESA_GL_VERSION_OVERRIDE="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $10}')"
+    PW_LOCALE_SELECT="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $11}')"
     # PW_AMD_VULKAN_USE="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $10}'`"
 
     if [[ "${CPU_LIMIT}" != "disabled" ]] ; then
@@ -2822,7 +2843,7 @@ A brief instruction:
         export PW_WINE_CPU_TOPOLOGY="disabled"
     fi
     echo "pw_gui_for_edit_db PORTWINE_DB_FILE=$PORTWINE_DB_FILE"
-    edit_db_from_gui $@ LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY GAMESCOPE_ARGS PW_MESA_GL_VERSION_OVERRIDE
+    edit_db_from_gui $@ LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY GAMESCOPE_ARGS PW_MESA_GL_VERSION_OVERRIDE PW_LOCALE_SELECT
     if [[ -z "$MANGOHUD_CONFIG" ]] ; then
         MONITOR_HEIGHT="$(echo "$PW_SCREEN_RESOLUTION" | awk -F'x' '{print $2}')"
         MH_FONT_SIZE="font_size=$(( MONITOR_HEIGHT / 45 ))"
