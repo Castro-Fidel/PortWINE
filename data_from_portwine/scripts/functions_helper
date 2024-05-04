@@ -1540,6 +1540,15 @@ pw_create_unique_exe () {
 }
 
 start_portwine () {
+    if [[ "${PW_LOCALE_SELECT}" != "disabled" ]] && [[ ! -z "${PW_LOCALE_SELECT}" ]] ; then
+		export LC_ALL="${PW_LOCALE_SELECT}"
+		if [[ "${PW_USE_RUNTIME}" == "1" ]] && [[ "${HOST_LC_ALL}" != "${LC_ALL}" ]] ; then
+			export HOST_LC_ALL="${LC_ALL}"
+		fi
+	else
+		export PW_LOCALE_SELECT="disabled"
+	fi
+
     WINEPREFIX="$(readlink -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}")"
     export WINEPREFIX
 
@@ -2247,6 +2256,10 @@ dgVoodooWatermark                   = false" > "${WINEPREFIX}/drive_c/windows/sy
         export DXVK_CONFIG_FILE="${PATH_TO_GAME}/dxvk.conf"
     fi
 
+    if [[ "${PW_WINE_XINPUT}" == "1" ]] ; then
+        var_winedlloverride_update "xinput1_1,xinput1_2,xinput1_3,xinput9_1_0=b;dinput="
+    fi
+
     if [[ "${PW_DISABLE_COMPOSITING}" == "1" ]] \
     && ! check_gamescope_session
     then
@@ -2682,15 +2695,6 @@ pw_gui_for_edit_db () {
     fi
 
     GET_GPU_NAMES=$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | awk -F '=' '/deviceName/{print $2}' | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
-    GET_LOCALE_LIST="ru_RU.utf8 en_US.utf8 zh_CN.utf8 ja_JP.utf8 ko_KR.utf8"
-
-	for LOCALE in $(echo $GET_LOCALE_LIST) ; do
-		if locale -a | grep -qw "$LOCALE"
-		then LOCALE_LIST+=("${LOCALE}")
-		fi
-	done
-
-	LOCALE_LIST=$(echo "${LOCALE_LIST[@]}" | sed 's/ /!/g')
 
     logical_cores=$(grep -c "^processor" /proc/cpuinfo)
     if [[ "${logical_cores}" -le "4" ]] ; then
@@ -2699,17 +2703,20 @@ pw_gui_for_edit_db () {
         GET_LOGICAL_CORE="1!2!$(seq -s! 4 4 $((${logical_cores} - 1)))"
     fi
 
-	if [[ "${PW_LOCALE_SELECT}" != "disabled" ]] && [[ ! -z "${PW_LOCALE_SELECT}" ]] ; then
-		export LC_ALL="${PW_LOCALE_SELECT}"
-		if [[ "${PW_USE_RUNTIME}" == "1" ]] && [[ "${HOST_LC_ALL}" != "${LC_ALL}" ]] ; then
-			export HOST_LC_ALL="${LC_ALL}"
+    GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
+    unset LOCALE_LIST
+	for LOCALE in $GET_LOCALE_LIST ; do
+		if locale -a | grep -i "$LOCALE" &>/dev/null ; then
+            if [[ ! -z "$LOCALE_LIST" ]]
+            then LOCALE_LIST+="!$(locale -a | grep -i "$LOCALE")"
+            else LOCALE_LIST="$(locale -a | grep -i "$LOCALE")"
+            fi
 		fi
-	else
-		export PW_LOCALE_SELECT="disabled"
-	fi
+	done
 
     unset ADD_CHK_BOX_EDIT_DB
 
+    PW_WINE_XINPUT_INFO=$(eval_gettext 'Force use wine xinput libraries')
     ENABLE_VKBASALT_INFO=$(eval_gettext 'Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)')
     PW_NO_ESYNC_INFO=$(eval_gettext 'Do not use in-process synchronization primitives based on eventfd. (It is recommended not to change the value.)')
     PW_NO_FSYNC_INFO=$(eval_gettext 'Do not use futex-based in-process synchronization primitives. (Automatically disabled on systems without FUTEX_WAIT_MULTIPLE support) (It is recommended not to change the value)')
@@ -2770,7 +2777,7 @@ pw_gui_for_edit_db () {
     edit_db_field_add $@
     old_IFS=$IFS
     IFS="%"
-    "${pw_yad_v13_0}" --plug=$KEY_EDIT_DB_GUI --tabnum="1" --form --separator=" " --columns=3 ${ADD_CHK_BOX_EDIT_DB} \
+    "${pw_yad_v13_0}" --plug=$KEY_EDIT_DB_GUI --tabnum="1" --form --separator=" " --columns=4 ${ADD_CHK_BOX_EDIT_DB} \
     1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db" 2>/dev/null &
     IFS=$old_IFS
 
@@ -2814,7 +2821,7 @@ A brief instruction:
     2>/dev/null 1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
 
 
-    "${pw_yad_v13_0}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="750" \
+    "${pw_yad_v13_0}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="700" \
     --text "$(eval_gettext "Change settings in database file for") <b>${PORTWINE_DB}</b>\n $(eval_gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" --separator=" " \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
@@ -3881,7 +3888,7 @@ pw_edit_db () {
     PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME
     PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE
     PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_USE_GAMESCOPE PW_DISABLE_COMPOSITING
-    PW_USE_RUNTIME
+    PW_USE_RUNTIME PW_WINE_XINPUT
     "
     if check_wayland_session ; then
         rm_from_var PW_EDIT_DB_LIST "PW_USE_US_LAYOUT"

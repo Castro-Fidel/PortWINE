@@ -73,7 +73,7 @@ unset CHK_SYMLINK_FILE PW_MESA_GL_VERSION_OVERRIDE MESA_GL_VERSION_OVERRIDE PATH
 unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD PW_WINE_CPU_TOPOLOGY
 unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_ALL_DF PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
 unset MANGOHUD_CONFIG PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME PORTWINE_CREATE_SHORTCUT_NAME MIRROR
-unset PW_LOCALE_SELECT LC_ALL HOST_LC_ALL
+unset PW_LOCALE_SELECT
 
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 rm -f "$PORT_WINE_TMP_PATH"/*{exe,msi,tar}*
@@ -349,12 +349,12 @@ popd 1>/dev/null || fatal
 check_nvidia_rtx && check_variables PW_VULKAN_USE "2"
 
 SORT_OPENGL="$(eval_gettext "WineD3D OpenGL (For video cards without Vulkan)")"
-SORT_VULKAN="$(eval_gettext "WineD3D Vulkan (Damavand experemental)")"
+SORT_VULKAN="$(eval_gettext "WineD3D Vulkan (Damavand experimental)")"
 SORT_LEGACY="$(eval_gettext "Legacy DXVK and dgVoodoo2 (Vulkan v1.1)")"
 SORT_STABLE="$(eval_gettext "Stable DXVK, VKD3D and dgVoodoo2 (Vulkan v1.2)")"
 SORT_NEWEST="$(eval_gettext "Newest DXVK, VKD3D, D8VK and dgVoodoo2 (Vulkan v1.3+)")"
-SORT_G_NINE="$(eval_gettext "Gallium_Nine (DirectX 9 for MESA)")"
-SORT_G_ZINK="$(eval_gettext "Gallium_Zink (OpenGL to Vulkan)")"
+SORT_G_NINE="$(eval_gettext "Gallium Nine (DirectX 9 for MESA)")"
+SORT_G_ZINK="$(eval_gettext "Gallium Zink (OpenGL to Vulkan)")"
 
 case "${PW_VULKAN_USE}" in
     0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY!$SORT_G_ZINK!$SORT_G_NINE!$SORT_VULKAN" ;;
