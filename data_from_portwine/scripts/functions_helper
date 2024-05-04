@@ -1955,7 +1955,8 @@ start_portwine () {
     unset CP_VKD3D_FILES CP_DXVK_FILES CP_D8VK_FILES CP_DGV2_FILES CP_WINE_FILES
     unset PATH_TO_DXVK_FILES PATH_TO_VKD3D_FILES PATH_TO_GALLIUM_NINE_FILES
     case "${PW_VULKAN_USE}" in
-        0)  # WINED3D OPENGL
+        0)
+            # WINED3D OPENGL
             print_info "Use WINED3D OpenGL"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
             CP_DGV2_FILES="glide glide2x glide3x"
@@ -1966,19 +1967,19 @@ start_portwine () {
             export WINE_D3D_CONFIG="renderer=gl"
             export ENABLE_VKBASALT="0"
             ;;
-        1)  # STABLE DXVK AND VKD3D
-            print_info "DGVOODOO2 v.${DGV2_VER} in use"
+        1)
+            # STABLE DXVK AND VKD3D
             print_info "DXVK v.${DXVK_STABLE_VER} in use"
             print_info "VKD3D-PROTON v.${VKD3D_STABLE_VER} in use"
             PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
             CP_DGV2_FILES="ddraw d3dimm d3d8 glide glide2x glide3x"
-            CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi openvr_api_dxvk"
+            CP_DXVK_FILES="d3d11 d3d10_1 d3d10 d3d10core d3d9 dxgi" # openvr_api_dxvk
             CP_VKD3D_FILES="d3d12 libvkd3d-shader-1"
-            CP_WINE_FILES="d3d10_1 d3d10"
+            CP_WINE_FILES="d3d12core"
             ;;
-        2)  # NEWEST DXVK AND VKD3D
-            print_info "DGVOODOO2 v.${DGV2_VER} in use"
+        2)
+            # NEWEST DXVK AND VKD3D
             print_info "D8VK v.${D8VK_VER} in use"
             print_info "DXVK v.${DXVK_GIT_VER} in use"
             print_info "VKD3D-PROTON v.${VKD3D_GIT_VER} in use"
@@ -1986,11 +1987,12 @@ start_portwine () {
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
             CP_DGV2_FILES="ddraw d3dimm glide glide2x glide3x"
             CP_D8VK_FILES="d3d8"
-            CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi openvr_api_dxvk"
+            CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi" # openvr_api_dxvk
             CP_VKD3D_FILES="d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1"
             CP_WINE_FILES="d3d10_1 d3d10"
             ;;
-        3)  # GALLIUM NINE
+        3)
+            # GALLIUM NINE
             print_info "Use GALLIUM-NINE (Native DX9 on MESA drivers)"
             PATH_TO_GALLIUM_NINE_FILES="${PW_PLUGINS_PATH}/gallium_nine_v.${PW_GALLIUM_NINE_VER}"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
@@ -2030,7 +2032,8 @@ start_portwine () {
             fi
             var_winedlloverride_update "d3d9=n"
             ;;
-        4)  # GALLIUM ZINK
+        4)
+            # GALLIUM ZINK
             print_info "Use GALLIUM-ZINK (OpenGL on MESA vulkan drivers)"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
             CP_DGV2_FILES="glide glide2x glide3x"
@@ -2045,8 +2048,8 @@ start_portwine () {
                 export LIBGL_KOPPER_DRI2="1"
             fi
             ;;
-        5)  # LEGACY DXVK
-            print_info "DGVOODOO2 v.${DGV2_VER} in use"
+        5)
+            # LEGACY DXVK
             print_info "DXVK v.${DXVK_LEGACY_VER} in use"
             PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_LEGACY_VER}"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
@@ -2055,8 +2058,8 @@ start_portwine () {
             CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
             CP_WINE_FILES="d3d12 d3d12core"
             ;;
-        6)  # WINED3D VULKAN (DAMAVAND)
-            print_info "DGVOODOO2 v.${DGV2_VER} in use"
+        6)
+            # WINED3D VULKAN (DAMAVAND)
             print_info "Use DAMAVAND (DirectX to wined3d vulkan)"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
             CP_DGV2_FILES="ddraw d3dimm d3d8 d3d9 glide glide2x glide3x"
@@ -2126,6 +2129,7 @@ start_portwine () {
     fi
 
     if [[ ! -z "$CP_DGV2_FILES" ]] ; then
+        print_info "DGVOODOO2 v.${DGV2_VER} in use"
         print_info "Try copy native DGVOODOO2 files..."
         PATH_TO_DGV2_FILES="${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}"
         for wine_dgv2_dll in $CP_DGV2_FILES ; do
