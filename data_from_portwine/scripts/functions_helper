@@ -3323,15 +3323,13 @@ gui_MangoHud () {
         PW_MANGOHUD_CONFIG=($(echo "$DEFAULT_MANGOHUD_CONFIG" | tr ',' '\n' | grep -v '='))
     fi
 
-    if [ ! -z "$PW_FPS_LIMIT" ]; then
-        PW_FPS_LIMIT_VAR=($(echo "$PW_FPS_LIMIT" | tr '' '\n' | grep -v '='))
-    elif [ ! -z "$FPS_LIMIT" ] ; then
+    if [ ! -z "$FPS_LIMIT" ] ; then
         PW_FPS_LIMIT_VAR=($(echo "$FPS_LIMIT" | tr '' '\n' | grep -v '='))
     fi
 
     for add_list_mh in "${LIST_MH[@]}"; do
         PW_MH_GUI_HELP="PW_MH_${add_list_mh}_INFO"
-        if [[ -n "$(grep -wo "$add_list_mh" <<<"${PW_MANGOHUD_CONFIG[@]}")" ]] ; then
+        if grep -wo "$add_list_mh" <<<"${PW_MANGOHUD_CONFIG[@]}" &>/dev/null ; then
             ADD_GUI_MH+="--field=${CHKBOX_SPACE}$(echo ${add_list_mh} | sed 's/_/ /g' | tr [[:lower:]] [[:upper:]])!${!PW_MH_GUI_HELP}:${THEME_CHKBOX}%TRUE%"
         else
             ADD_GUI_MH+="--field=${CHKBOX_SPACE}$(echo ${add_list_mh} | sed 's/_/ /g' | tr [[:lower:]] [[:upper:]])!${!PW_MH_GUI_HELP}:${THEME_CHKBOX}%FALSE%"
@@ -3339,34 +3337,31 @@ gui_MangoHud () {
     done
 
     for add_list_mh_fps in "${GET_REFRESH_RATE[@]}"; do
-        if [[ -n "$(grep -wo "$add_list_mh_fps" <<<"${PW_FPS_LIMIT_VAR[@]}")" ]]; then
+        if grep -wo "$add_list_mh_fps" <<<"${PW_FPS_LIMIT_VAR[@]}" &>/dev/null ; then
             ADD_GUI_MH_FPS+="--field=${CHKBOX_SPACE}$add_list_mh_fps:${THEME_CHKBOX}%TRUE%"
         else
             ADD_GUI_MH_FPS+="--field=${CHKBOX_SPACE}$add_list_mh_fps:${THEME_CHKBOX}%FALSE%"
         fi
     done
 
-    export old_IFS=$IFS
-    export IFS="%"
-    "${pw_yad_v13_0}" --plug=$KEY_MH_GUI --tabnum="1" --form --columns=4 --separator=" " \
-        --text-align=center --text="$(eval_gettext "MangoHud settings (Keys <b>R_SHIFT + F12</b> disable MangoHud)\n<b>note:</b> To display help for each item, just hover the mouse cursor over the text.\n")" \
+    old_IFS=$IFS && IFS="%"
+    "${pw_yad_v13_0}" --plug=$KEY_MH_GUI --tabnum="1" --form --columns=4 --separator=" " --text-align=center \
+        --text="$(eval_gettext "MangoHud settings (Keys <b>R_SHIFT + F12</b> disable MangoHud)\n<b>note:</b> To display help for each item, just hover the mouse cursor over the text.\n")" \
         ${ADD_GUI_MH} 1> "${PORT_WINE_TMP_PATH}/tmp_yad_mh_set" 2>/dev/null &
-    export IFS="${old_IFS}"
+    IFS=$old_IFS
 
-    export old_IFS=$IFS
-    export IFS="%"
-    "${pw_yad_v13_0}" --plug=$KEY_MH_GUI --tabnum="2" --form --columns=10 --separator=" " \
-        --text-align=center --text="$(eval_gettext "Enabling fps limitation with MANGOHUD tools built into PortProton (Keys <b>L_SHIFT + F1</b> Toggles fps limitation)\n")" \
+    old_IFS=$IFS && IFS="%"
+    "${pw_yad_v13_0}" --plug=$KEY_MH_GUI --tabnum="2" --form --columns=10 --separator=" " --text-align=center \
+        --text="$(eval_gettext "Enabling fps limitation with MANGOHUD tools built into PortProton (Keys <b>L_SHIFT + F1</b> Toggles fps limitation)\n")" \
         ${ADD_GUI_MH_FPS} 1> "${PORT_WINE_TMP_PATH}/tmp_yad_mh_fps_limit" 2>/dev/null &
-    export IFS="${old_IFS}"
+    IFS=$old_IFS
 
-    "${pw_yad_v13_0}" --paned --key="$KEY_MH_GUI" --height="700" --title="MangoHud" --center \
+    "${pw_yad_v13_0}" --paned --key="$KEY_MH_GUI" --height="650" --title="MangoHud" --center \
         --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
         --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
         --button="$(eval_gettext "DISABLE MANGOHUD")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Disable MangoHud and go to the previous menu")":182 \
         --button="$(eval_gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Save the current changes, and go to the previous menu")":184 2>/dev/null
     YAD_MANGOHUD_STATUS="$?"
-    print_error $YAD_MANGOHUD_STATUS
     case "${YAD_MANGOHUD_STATUS}" in
         1|252)
             export SKIP_CHECK_UPDATES=1
@@ -3375,7 +3370,7 @@ gui_MangoHud () {
             ;;
         182)
             export PW_MANGOHUD=0
-            edit_db_from_gui PW_MANGOHUD PW_FPS_LIMIT
+            edit_db_from_gui PW_MANGOHUD FPS_LIMIT
             export SKIP_CHECK_UPDATES=1
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
@@ -3391,30 +3386,30 @@ gui_MangoHud () {
     MONITOR_HEIGHT="$(echo $PW_SCREEN_RESOLUTION | awk -F'x' '{print $2}')"
     MH_FONT_SIZE="font_size=$(( MONITOR_HEIGHT / 45 ))"
 
-    export INT_COUNT_MH=0
+    local INT_COUNT_MH=0
     for read_list_mh in ${YAD_MH_SET} ; do
         if [[ "$read_list_mh" == "TRUE" ]]
-        then export GUI_MH_RESULT+="$(echo "${LIST_MH[$INT_COUNT_MH]}," | sed 's/ /_/g' | tr [[:upper:]] [[:lower:]] )"
+        then local GUI_MH_RESULT+="$(echo "${LIST_MH[$INT_COUNT_MH]}," | sed 's/ /_/g' | tr [[:upper:]] [[:lower:]] )"
         fi
         ((INT_COUNT_MH++))
     done
 
-    export INT_COUNT_MH_FPS=0
+    local INT_COUNT_MH_FPS=0
     for read_list_mh_fps in ${YAD_MH_FPS_LIMIT} ; do
         if [[ "$read_list_mh_fps" == "TRUE" ]]
-        then export GUI_MH_FPS_RESULT+="${GET_REFRESH_RATE[$INT_COUNT_MH_FPS]}+"
+        then local GUI_MH_FPS_RESULT+="${GET_REFRESH_RATE[$INT_COUNT_MH_FPS]}+"
         fi
         ((INT_COUNT_MH_FPS++))
     done
 
     GUI_MH_FPS_RESULT="${GUI_MH_FPS_RESULT}"
     if [ "$(echo "${GUI_MH_FPS_RESULT}" | awk -F'+' '{print $2}')" ] ; then
-        export PW_FPS_LIMIT="${GUI_MH_FPS_RESULT%+}"
+        export FPS_LIMIT="${GUI_MH_FPS_RESULT%+}"
         if [[ ! "${GUI_MH_RESULT}" =~ "show_fps_limit" ]] ; then
             GUI_MH_RESULT="${GUI_MH_RESULT}show_fps_limit,"
         fi
     else
-        export PW_FPS_LIMIT="${GUI_MH_FPS_RESULT%+}"
+        export FPS_LIMIT="${GUI_MH_FPS_RESULT%+}"
     fi
 
     if [[ ! -z "$MH_FONT_SIZE" ]]
@@ -3422,20 +3417,20 @@ gui_MangoHud () {
     else GUI_MH_RESULT="${GUI_MH_RESULT%,}"
     fi
 
-    if [[ ! -z "$PW_FPS_LIMIT" ]]; then
-        GUI_MH_RESULT="${GUI_MH_RESULT},fps_limit=$PW_FPS_LIMIT"
+    if [[ ! -z "$FPS_LIMIT" ]]; then
+        GUI_MH_RESULT="${GUI_MH_RESULT},fps_limit=$FPS_LIMIT"
     elif [[ "$FPS_LIMIT" == "disabled" ]] ; then
         GUI_MH_RESULT="${GUI_MH_RESULT},fps_limit=0"
     fi
 
     if [[ "${GUI_MH_RESULT}" =~ "fps_only" ]]; then
-        export GUI_MH_RESULT="fps_only"
+        local GUI_MH_RESULT="fps_only"
         print_info "In the MangoHud config fps_only is detected all settings are reseted"
     fi
 
     export MANGOHUD_CONFIG="${GUI_MH_RESULT}"
 
-    edit_db_from_gui MANGOHUD_CONFIG PW_MANGOHUD PW_FPS_LIMIT
+    edit_db_from_gui MANGOHUD_CONFIG PW_MANGOHUD FPS_LIMIT
     export SKIP_CHECK_UPDATES=1
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
