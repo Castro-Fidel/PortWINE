@@ -2263,6 +2263,18 @@ dgVoodooWatermark                   = false" > "${WINEPREFIX}/drive_c/windows/sy
         var_winedlloverride_update "xinput1_1,xinput1_2,xinput1_3,xinput9_1_0=b;dinput="
     fi
 
+    if [[ "${PW_DISABLE_SDL}" == "1" ]] ; then
+        ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
+        "${WINELOADER}" reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\winebus" /v "DisableHidraw" /t REG_DWORD /d 0 /f
+        ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
+        "${WINELOADER}" reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\winebus" /v "Enable SDL" /t REG_DWORD /d 0 /f
+    else
+        ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
+        "${WINELOADER}" reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\winebus" /v "DisableHidraw" /t REG_DWORD /d 1 /f
+        ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
+        "${WINELOADER}" reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\winebus" /v "Enable SDL" /t REG_DWORD /d 1 /f
+    fi
+
     if [[ "${PW_DISABLE_COMPOSITING}" == "1" ]] \
     && ! check_gamescope_session
     then
@@ -2719,6 +2731,7 @@ pw_gui_for_edit_db () {
 
     unset ADD_CHK_BOX_EDIT_DB
 
+    PW_DISABLE_SDL_INFO=$(eval_gettext 'Force to disable SDL library for better compatibility with Dinput gamepads like Sony Dualshock/DualSense (game must to be support Dinput protocol)')
     PW_WINE_XINPUT_INFO=$(eval_gettext 'Force use wine xinput libraries')
     ENABLE_VKBASALT_INFO=$(eval_gettext 'Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)')
     PW_NO_ESYNC_INFO=$(eval_gettext 'Do not use in-process synchronization primitives based on eventfd. (It is recommended not to change the value.)')
@@ -2887,6 +2900,7 @@ A brief instruction:
         edit_db_from_gui MANGOHUD_CONFIG
     fi
     edit_user_conf_from_gui PW_GPU_USE
+    edit_user_conf_from_gui PW_DISABLE_SDL
     # PW_AMD_VULKAN_USE
 
     case "$YAD_STATUS" in
@@ -3891,7 +3905,7 @@ pw_edit_db () {
     PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME
     PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE
     PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_USE_GAMESCOPE PW_DISABLE_COMPOSITING
-    PW_USE_RUNTIME PW_WINE_XINPUT
+    PW_USE_RUNTIME PW_WINE_XINPUT PW_DISABLE_SDL
     "
     if check_wayland_session ; then
         rm_from_var PW_EDIT_DB_LIST "PW_USE_US_LAYOUT"
