@@ -617,7 +617,9 @@ case "${VULKAN_MOD}" in
 esac
 
 init_wine_ver
-if [[ -f "${PORTWINE_DB_FILE}" ]] ; then
+if [[ -f "${PORTWINE_DB_FILE}" ]] \
+&& [[ "${PW_DISABLED_CREATE_DB}" != 1 ]]
+then
     edit_db_from_gui PW_VULKAN_USE PW_WINE_USE PW_PREFIX_NAME
 fi
 
