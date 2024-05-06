@@ -28,11 +28,12 @@ export pw_full_command_line=("$0" $*)
 MISSING_DESKTOP_FILE=0
 
 if [[ -f "$1" ]] ; then
-    export portwine_exe="$1"
+    portwine_exe="$(realpath "$1")"
 elif [[ "$1" == *.exe ]] ; then
-    export portwine_exe="$1"
+    portwine_exe="$1"
     MISSING_DESKTOP_FILE=1
 fi
+export portwine_exe
 
 # HOTFIX - ModernWarships
 if echo "$portwine_exe" | grep ModernWarships &>/dev/null \
@@ -616,24 +617,6 @@ case "${VULKAN_MOD}" in
 esac
 
 init_wine_ver
-
-if [[ "${PW_DISABLED_CREATE_DB}" != 1 ]] ; then
-    if [[ ! -z "${PORTWINE_DB}" ]] \
-    && [[ -z "${PORTWINE_DB_FILE}" ]]
-    then
-        PORTWINE_DB_FILE=$(grep -il "\#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/*)
-        if [[ -z "${PORTWINE_DB_FILE}" ]] ; then
-            {
-                echo "#!/usr/bin/env bash"
-                echo "#Author: ${USER}"
-                echo "#${PORTWINE_DB}.exe"
-                echo "#Rating=1-5"
-            } > "${portwine_exe}".ppdb
-            export PORTWINE_DB_FILE="${portwine_exe}".ppdb
-        fi
-    fi
-    edit_db_from_gui PW_VULKAN_USE PW_WINE_USE PW_PREFIX_NAME
-fi
 
 [[ ! -z "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
     98) portwine_delete_shortcut ;;

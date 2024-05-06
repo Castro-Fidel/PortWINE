@@ -1240,7 +1240,32 @@ pw_init_db () {
                 fi
             done
         fi
+        if [[ "${PW_DISABLED_CREATE_DB}" != 1 ]] ; then
+            if [[ ! -z "${PORTWINE_DB}" ]] \
+            && [[ -z "${PORTWINE_DB_FILE}" ]]
+            then
+                PORTWINE_DB_FILE=$(grep -il "\#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/*)
+                if [[ -z "${PORTWINE_DB_FILE}" ]] ; then
+                    {
+                        echo "#!/usr/bin/env bash"
+                        echo "#Author: ${USER}"
+                        echo "#${PORTWINE_DB}.exe"
+                        echo "#Rating=1-5"
+                    } > "${portwine_exe}".ppdb
+                    export PORTWINE_DB_FILE="${portwine_exe}".ppdb
+                fi
+                if [[ ! -z $(echo "${portwine_exe}" | grep "/data/prefixes/") ]] && \
+                    [[ -z $(echo "${portwine_exe}" | grep "/data/prefixes/DEFAULT/") ]]
+                then
+                    PW_PREFIX_NAME=$(echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
+                fi
+                # shellcheck source=/dev/null
+                source "${PORTWINE_DB_FILE}"
+            fi
+            edit_db_from_gui PW_VULKAN_USE PW_WINE_USE PW_PREFIX_NAME
+        fi
     fi
+
     [[ "${START_FROM_STEAM}" == 1 ]] && export PW_GUI_DISABLED_CS=1
     [[ "${START_FROM_PP_GUI}" == 1 ]] && export PW_GUI_DISABLED_CS=0 && unset START_FROM_PP_GUI
 
