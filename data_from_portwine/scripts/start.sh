@@ -617,6 +617,9 @@ case "${VULKAN_MOD}" in
 esac
 
 init_wine_ver
+if [[ -f "${PORTWINE_DB_FILE}" ]] ; then
+    edit_db_from_gui PW_VULKAN_USE PW_WINE_USE PW_PREFIX_NAME
+fi
 
 [[ ! -z "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
     98) portwine_delete_shortcut ;;
