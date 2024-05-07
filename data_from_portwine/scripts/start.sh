@@ -325,7 +325,8 @@ unset PW_ADD_PREFIXES_TO_GUI
 PW_PREFIX_NAME="${PW_PREFIX_NAME//[[:blank:]]/_}"
 for PAIG in ./* ; do
     if [[ "${PAIG//'./'/}" != "${PORTWINE_DB^^//[[:blank:]]/_}" ]] \
-    && [[ "${PAIG//'./'/}" != "${PW_PREFIX_NAME}" ]]
+    && [[ "${PAIG//'./'/}" != "${PW_PREFIX_NAME}" ]] \
+    && [[ -d "${PAIG}" ]]
     then
         PW_ADD_PREFIXES_TO_GUI="${PW_ADD_PREFIXES_TO_GUI}!${PAIG//'./'/}"
     fi

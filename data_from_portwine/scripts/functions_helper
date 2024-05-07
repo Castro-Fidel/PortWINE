@@ -1154,11 +1154,11 @@ pw_init_db () {
     if [[ -f "${portwine_exe}" ]] ; then
         PORTWINE_DB="$(basename "${portwine_exe}" .exe)"
         export PORTWINE_DB
-        if [[ -f "${portwine_exe}".ppdb ]] && [[ "${PORTWINE_DB}" != "RiotClientServices" ]] ; then
+        if [[ -f "${portwine_exe}".ppdb ]] ; then
             PORTWINE_DB_FILE="${portwine_exe}".ppdb
             # shellcheck source=/dev/null
             source "${PORTWINE_DB_FILE}"
-            if [[ -z "$(ls -p "${PORT_WINE_PATH}/prefixes/" | grep -e "^${PW_PREFIX_NAME}/")" ]] ; then
+            if [[ -z "$(ls "${PORT_WINE_PATH}/prefixes/" | grep -e "^${PW_PREFIX_NAME}$")" ]] ; then
                 PW_PREFIX_NAME=$(echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
                 edit_db_from_gui PW_PREFIX_NAME
             fi
@@ -2274,8 +2274,10 @@ start_portwine () {
                 sed -i "s/${SDL_VAR}/${SDL_VAR%?}0/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
             fi
         else
+            print_info "Added DisableHidraw = 0 to reg file"
             ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
             "${WINELOADER}" reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\winebus" /v "DisableHidraw" /t REG_DWORD /d 0 /f
+            print_info "Added Enable SDL = 0 to reg file"
             ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
             "${WINELOADER}" reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\winebus" /v "Enable SDL" /t REG_DWORD /d 0 /f
         fi
@@ -2293,8 +2295,10 @@ start_portwine () {
                 sed -i "s/${SDL_VAR}/${SDL_VAR%?}1/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
             fi
         else
+            print_info "Added DisableHidraw = 1 to reg file"
             ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
             "${WINELOADER}" reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\winebus" /v "DisableHidraw" /t REG_DWORD /d 1 /f
+            print_info "Added Enable SDL = 1 to reg file"
             ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
             "${WINELOADER}" reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\winebus" /v "Enable SDL" /t REG_DWORD /d 1 /f
         fi
@@ -3669,7 +3673,7 @@ pw_prefix_manager () {
         IFS=$'\n'
         try_remove_file  "${PORT_WINE_TMP_PATH}/dll_list_tmp"
         while read PW_BOOL_IN_DLL_LIST ; do
-            if [[ -z $(echo "${PW_BOOL_IN_DLL_LIST}" | grep -E 'd3d|directx9|dont_use|dxvk|vkd3d|galliumnine|faudio1') ]] ; then
+            if [[ -z $(echo "${PW_BOOL_IN_DLL_LIST}" | grep -E 'd3d|directx9|dont_use|dxvk|vkd3d|galliumnine|faudio1|Foundation') ]] ; then
                 if grep "^$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{print $1}')$" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
                     echo -e "true\n$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{print $1}')\n$(echo ${PW_BOOL_IN_DLL_LIST} | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PORT_WINE_TMP_PATH}/dll_list_tmp"
                 else
