@@ -988,24 +988,14 @@ pw_check_and_download_dxvk_and_vkd3d () {
     #Download DGVOODOO2
     if [ ! -d "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}" ] ; then
         print_info "Download and install DGVOODOO2 v.${DGV2_VER}"
-        DGV2_DOWNLOAD=$(echo ${DGV2_VER} | tr '.' '_')
-        if try_download "https://github.com/dege-diosg/dgVoodoo2/releases/download/v${DGV2_VER}/dgVoodoo${DGV2_DOWNLOAD}.zip" \
-        "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.zip"
+        if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/dgvoodoo2-${DGV2_VER}/dgvoodoo2-${DGV2_VER}.tar.xz" \
+        "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz"
         then
-            if "$pw_7z" x -y "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.zip" -o"${PW_VULKAN_DIR}/dgvoodoo2-tmp" 1>/dev/null ; then
-                try_remove_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.zip"
-                mkdir -p "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}/x32"
-                for DGV2_DLL_GLIDE in Glide Glide2x Glide3x ; do
-                    mv -f "${PW_VULKAN_DIR}/dgvoodoo2-tmp/3Dfx/x86/${DGV2_DLL_GLIDE}.dll" "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}/x32/${DGV2_DLL_GLIDE,,}.dll"
-                done
-                for DGV2_DLL_DDRAW in D3D8 D3D9 D3DImm DDraw ; do
-                    mv -f "${PW_VULKAN_DIR}/dgvoodoo2-tmp/MS/x86/${DGV2_DLL_DDRAW}.dll" "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}/x32/${DGV2_DLL_DDRAW,,}.dll"
-                done
-                try_remove_dir "${PW_VULKAN_DIR}/dgvoodoo2-tmp"
+            if unpack "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz" "${PW_VULKAN_DIR}" ; then
+                try_remove_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz"
             else
-                try_remove_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.zip"
+                try_remove_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz"
                 try_remove_dir "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}"
-                try_remove_dir "${PW_VULKAN_DIR}/dgvoodoo2-tmp"
 
                 yad_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
             fi
@@ -1858,7 +1848,7 @@ start_portwine () {
 
     case "$PW_FORCE_USE_VSYNC" in  # 0-FORCE_OFF, 1-FORCE_ON, 2-BY_DEFAULT
         0)
-            export  vblank_mode=0
+            export vblank_mode=0
             export __GL_SYNC_TO_VBLANK=0
             ;;
         1)
@@ -2068,9 +2058,9 @@ start_portwine () {
             export __GL_YIELD="NOTHING"
             export mesa_glthread="true"
             export WINE_D3D_CONFIG="renderer=gl"
-            export  __GLX_VENDOR_LIBRARY_NAME=mesa
-            export MESA_LOADER_DRIVER_OVERRIDE=zink
-            if ! check_wayland_session && [[ "${PW_USE_GAMESCOPE}" != "1" ]] ; then
+            export  __GLX_VENDOR_LIBRARY_NAME="mesa"
+            export MESA_LOADER_DRIVER_OVERRIDE="zink"
+            if ! check_wayland_session && ! check_gamescope_session && [[ "${PW_USE_GAMESCOPE}" != "1" ]] ; then
                 export LIBGL_KOPPER_DRI2="1"
             fi
             ;;
@@ -2162,14 +2152,10 @@ start_portwine () {
             try_copy_file "${PATH_TO_DGV2_FILES}/x32/${wine_dgv2_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
             var_winedlloverride_update "${wine_dgv2_dll}=n"
         done
-        if [[ ! -f "${WINEPREFIX}/drive_c/windows/syswow64/dgVoodoo.conf" ]] ; then
-            echo "[General]
-OutputAPI                            = d3d11_fl11_0
-[Glide]
-3DfxWatermark                       = false
-3DfxSplashScreen                    = false
-[DirectX]
-dgVoodooWatermark                   = false" > "${WINEPREFIX}/drive_c/windows/syswow64/dgVoodoo.conf"
+            try_copy_file "${PATH_TO_DGV2_FILES}/dgVoodoo.conf" "${WINEPREFIX}/drive_c/windows/syswow64/"
+        if [[ "${PW_VULKAN_USE}" == "6" ]] ; then
+            try_copy_file "${PATH_TO_DGV2_FILES}/x64/d3d9.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_copy_file "${PATH_TO_DGV2_FILES}/dgVoodoo.conf" "${WINEPREFIX}/drive_c/windows/system32/"
         fi
     fi
 
@@ -2303,6 +2289,24 @@ dgVoodooWatermark                   = false" > "${WINEPREFIX}/drive_c/windows/sy
         elif [[ "${DESKTOP_SESSION}" =~ "deepin" ]] ; then
             dbus-send --session --dest=com.deepin.WMSwitcher --type=method_call /com/deepin/WMSwitcher com.deepin.WMSwitcher.RequestSwitchWM
         fi
+    fi
+
+    # DGVOODOO2 settings
+    if [[ "${PW_DGV2_DX12}" == "1" ]] ; then
+        dgv2conf32="${WINEPREFIX}/drive_c/windows/syswow64/dgVoodoo.conf"
+        if [[ "${PW_VULKAN_USE}" == "6" ]] ; then
+            dgv2conf64="${WINEPREFIX}/drive_c/windows/system32/dgVoodoo.conf"
+        fi
+        sed -i "s/OutputAPI = d3d11_fl11_0/OutputAPI = d3d12_fl12_0/" $dgv2conf32 $dgv2conf64
+    fi
+
+    if [[ "${PW_DGV2_FASTMEMORY}" == "1" ]] ; then
+        dgv2conf32="${WINEPREFIX}/drive_c/windows/syswow64/dgVoodoo.conf"
+        if [[ "${PW_VULKAN_USE}" == "6" ]] ; then
+            dgv2conf64="${WINEPREFIX}/drive_c/windows/system32/dgVoodoo.conf"
+        fi
+        sed -i "s/FastVideoMemoryAccess = false/FastVideoMemoryAccess = true/" $dgv2conf32 $dgv2conf64
+        sed -i "s/VRAM = 256/VRAM = 1024/" $dgv2conf32 $dgv2conf64
     fi
 
     pw_mangohud_check
@@ -2744,6 +2748,10 @@ pw_gui_for_edit_db () {
 	done
 
     unset ADD_CHK_BOX_EDIT_DB
+
+    #DGVOODOO2 INFO
+    PW_DGV2_DX12_INFO=$(eval_gettext 'Use DirectX12 for dgVoodoo2. (Working only on newest and stable dxvk and vkd3d, D3D8 working on stable, some games may work better, some may work worse)')
+    PW_DGV2_FASTMEMORY_INFO=$(eval_gettext 'Increase the amount of vram for dgVoodoo2 and enable fast memory access. (Enable if games have poor performance, using Unreal 2 as an example)')
 
     PW_WINE_XINPUT_INFO=$(eval_gettext 'Force use wine xinput libraries')
     ENABLE_VKBASALT_INFO=$(eval_gettext 'Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)')
@@ -3938,13 +3946,14 @@ pw_edit_db () {
     PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME
     PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE
     PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_USE_GAMESCOPE PW_DISABLE_COMPOSITING
-    PW_USE_RUNTIME PW_WINE_XINPUT
+    PW_USE_RUNTIME PW_WINE_XINPUT PW_DGV2_DX12 PW_DGV2_FASTMEMORY
     "
     if check_wayland_session ; then
         rm_from_var PW_EDIT_DB_LIST "PW_USE_US_LAYOUT"
     fi
     if check_flatpak ; then
         rm_from_var PW_EDIT_DB_LIST "PW_USE_RUNTIME"
+        rm_from_var PW_EDIT_DB_LIST "PW_USE_SYSTEM_VK_LAYERS"
     fi
     pw_gui_for_edit_db $PW_EDIT_DB_LIST
 
