@@ -509,7 +509,7 @@ init_wine_ver () {
             rm -fr "${WINEDIR}/dist"
         elif [ -f "${WINEDIR}/proton_dist.tar" ] ; then
             unpack "${WINEDIR}/proton_dist.tar" "${WINEDIR}/"
-            for clear_dist_files in $(ls "${WINEDIR}" | sed -e "s/^bin$//g" | sed -e "s/^lib$//g" | sed -e "s/^lib64$//g" | sed -e "s/^share$//g" | sed -e "s/^version$//g") ; do 
+            for clear_dist_files in $(ls "${WINEDIR}" | sed -e "s/^bin$//g" | sed -e "s/^lib$//g" | sed -e "s/^lib64$//g" | sed -e "s/^share$//g" | sed -e "s/^version$//g") ; do
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
         fi
@@ -2260,6 +2260,46 @@ start_portwine () {
         [[ -z "${LAUNCH_PARAMETERS}" ]] && export LAUNCH_PARAMETERS+=" -eac-nop-loaded "
     fi
 
+    HIDRAW_VAR="$(grep "DisableHidraw" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg")"
+    SDL_VAR="$(grep "Enable SDL" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg")"
+    if [[ "${PW_DINPUT_PROTOCOL}" == "1" ]] ; then
+        if [[ "$HIDRAW_VAR" ]] \
+        && [[ "$SDL_VAR" ]]
+        then
+            if [[ "${HIDRAW_VAR: -1}" != "0" ]] ; then
+                sed -i "s/${HIDRAW_VAR}/${HIDRAW_VAR%?}0/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
+            fi
+
+            if [[ "${SDL_VAR: -1}" != "0" ]] ; then
+                sed -i "s/${SDL_VAR}/${SDL_VAR%?}0/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
+            fi
+        else
+            ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
+            "${WINELOADER}" reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\winebus" /v "DisableHidraw" /t REG_DWORD /d 0 /f
+            ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
+            "${WINELOADER}" reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\winebus" /v "Enable SDL" /t REG_DWORD /d 0 /f
+        fi
+    else
+        var_winedlloverride_update "xinput1_1,xinput1_2,xinput1_3,xinput9_1_0=b;dinput="
+
+        if [[ "$HIDRAW_VAR" ]] \
+        && [[ "$SDL_VAR" ]]
+        then
+            if [[ "${HIDRAW_VAR: -1}" != "1" ]] ; then
+                sed -i "s/${HIDRAW_VAR}/${HIDRAW_VAR%?}1/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
+            fi
+
+            if [[ "${SDL_VAR: -1}" != "1" ]] ; then
+                sed -i "s/${SDL_VAR}/${SDL_VAR%?}1/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
+            fi
+        else
+            ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
+            "${WINELOADER}" reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\winebus" /v "DisableHidraw" /t REG_DWORD /d 1 /f
+            ${pw_runtime} env PATH="${PATH}" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
+            "${WINELOADER}" reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\winebus" /v "Enable SDL" /t REG_DWORD /d 1 /f
+        fi
+    fi
+
     pw_stop_progress_bar &&
     if ! check_start_from_steam ; then
         pw_tray_icon
@@ -2272,10 +2312,6 @@ start_portwine () {
 
     if [[ -f "${PATH_TO_GAME}/dxvk.conf" ]] ; then
         export DXVK_CONFIG_FILE="${PATH_TO_GAME}/dxvk.conf"
-    fi
-
-    if [[ "${PW_WINE_XINPUT}" == "1" ]] ; then
-        var_winedlloverride_update "xinput1_1,xinput1_2,xinput1_3,xinput9_1_0=b;dinput="
     fi
 
     if [[ "${PW_DISABLE_COMPOSITING}" == "1" ]] \
@@ -2756,7 +2792,7 @@ pw_gui_for_edit_db () {
     PW_DGV2_DX12_INFO=$(eval_gettext 'Use DirectX12 for dgVoodoo2. (Working only on newest and stable dxvk and vkd3d, D3D8 working on stable, some games may work better, some may work worse)')
     PW_DGV2_FASTMEMORY_INFO=$(eval_gettext 'Increase the amount of vram for dgVoodoo2 and enable fast memory access. (Enable if games have poor performance, using Unreal 2 as an example)')
 
-    PW_WINE_XINPUT_INFO=$(eval_gettext 'Force use wine xinput libraries')
+    PW_DINPUT_PROTOCOL_INFO=$(eval_gettext 'Force use DirectInput protocol instead of XInput')
     ENABLE_VKBASALT_INFO=$(eval_gettext 'Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)')
     PW_NO_ESYNC_INFO=$(eval_gettext 'Do not use in-process synchronization primitives based on eventfd. (It is recommended not to change the value.)')
     PW_NO_FSYNC_INFO=$(eval_gettext 'Do not use futex-based in-process synchronization primitives. (Automatically disabled on systems without FUTEX_WAIT_MULTIPLE support) (It is recommended not to change the value)')
@@ -3949,8 +3985,8 @@ pw_edit_db () {
     PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME
     PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE
     PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_USE_GAMESCOPE PW_DISABLE_COMPOSITING
-    PW_USE_RUNTIME PW_WINE_XINPUT PW_DGV2_DX12 PW_DGV2_FASTMEMORY
-    "
+    PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_DGV2_DX12 PW_DGV2_FASTMEMORY"
+
     if check_wayland_session ; then
         rm_from_var PW_EDIT_DB_LIST "PW_USE_US_LAYOUT"
     fi
