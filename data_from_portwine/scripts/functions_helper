@@ -986,7 +986,7 @@ pw_check_and_download_dxvk_and_vkd3d () {
     fi
 
     #Download DGVOODOO2
-    if [ ! -d "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}" ] ; then
+    if [ ! -f "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}/dgVoodoo.conf" ] ; then
         print_info "Download and install DGVOODOO2 v.${DGV2_VER}"
         if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/dgvoodoo2-${DGV2_VER}/dgvoodoo2-${DGV2_VER}.tar.xz" \
         "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz"
@@ -2060,7 +2060,10 @@ start_portwine () {
             export WINE_D3D_CONFIG="renderer=gl"
             export  __GLX_VENDOR_LIBRARY_NAME="mesa"
             export MESA_LOADER_DRIVER_OVERRIDE="zink"
-            if ! check_wayland_session && ! check_gamescope_session && [[ "${PW_USE_GAMESCOPE}" != "1" ]] ; then
+            if ! check_wayland_session \
+            && ! check_gamescope_session \
+            && [[ "${PW_USE_GAMESCOPE}" != "1" ]]
+            then
                 export LIBGL_KOPPER_DRI2="1"
             fi
             ;;
