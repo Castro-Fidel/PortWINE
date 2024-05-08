@@ -3041,13 +3041,15 @@ gui_proton_downloader () {
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     fi
-    for INSTALLING_VERSION_IN_DIST in $(ls "${PORT_WINE_PATH}/data/dist/") ; do
+
+    pushd "${PORT_WINE_PATH}/data/dist/" || fatal
+    for INSTALLING_VERSION_IN_DIST in * ; do
         sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
         sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
         sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git"
         sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git"
-        [[ -z "$(cat "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git")" ]] && echo "nothing" > "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git"
     done
+    popd 1>/dev/null || fatal
 
     [[ -z "$(cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git")" ]] && echo "nothing" >"${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
     [[ -z "$(cat "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git")" ]] && echo "nothing" >"${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
@@ -3250,7 +3252,7 @@ gui_vkBasalt () {
     unset ADD_GUI_FX GUI_FX_RESULT
     for add_list_fx in ${LIST_FX[@]} ; do
         PW_VKBASALT_GUI_HELP="PW_${add_list_fx}_INFO"
-        if [[ ! -z $(echo " ${GET_FX_IN_FILE[@]} " | grep " ${add_list_fx} ") ]] ; then
+        if echo " ${GET_FX_IN_FILE[@]} " | grep " ${add_list_fx} " &>/dev/null ; then
             ADD_GUI_FX+="--field=${CHKBOX_SPACE}${add_list_fx}!${!PW_VKBASALT_GUI_HELP}:${THEME_CHKBOX}%TRUE%"
         else
             ADD_GUI_FX+="--field=${CHKBOX_SPACE}${add_list_fx}!${!PW_VKBASALT_GUI_HELP}:${THEME_CHKBOX}%FALSE%"
