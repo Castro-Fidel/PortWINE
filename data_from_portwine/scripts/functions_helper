@@ -78,7 +78,7 @@ generate_pot () {
     for lang in $LANGUAGES_LIST
     do
         echo "${lang}"
-        mkdir -p "${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/"
+        create_new_dir "${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/"
         LANG_PO="${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/PortProton.po"
         LANG_MO="${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/PortProton.mo"
         TEMPLATE_POT="${PORT_WINE_PATH}/data/locales/PortProton.pot"
@@ -135,6 +135,13 @@ try_remove_dir () {
     fi
 }
 export -f try_remove_dir
+
+create_new_dir () {
+    if [ ! -d "$1" ] ; then
+        mkdir -p "$1"
+    fi
+    return 0
+}
 
 try_force_link_file () {
     if [ ! -f "$1" ] ; then :
@@ -243,13 +250,6 @@ try_download () {
         fi
     fi
     print_ok "File downloaded successfully: $filename from $FIRST_URL"
-    return 0
-}
-
-create_new_dir () {
-    if [ ! -d "$1" ] ; then
-        mkdir -p "$1"
-    fi
     return 0
 }
 
@@ -1906,7 +1906,7 @@ start_portwine () {
     fi
     pw_other_fixes
 
-    #enabled BattleEye_Runtime and EasyAntiCheat_Runtime
+    # enabled BattleEye_Runtime and EasyAntiCheat_Runtime
     if [[ "${PW_USE_EAC_AND_BE}" == 1 ]] ; then
         export PROTON_BATTLEYE_RUNTIME="${PW_PLUGINS_PATH}/BattlEye_Runtime"
         export PROTON_EAC_RUNTIME="${PW_PLUGINS_PATH}/EasyAntiCheat_Runtime"
@@ -2980,6 +2980,7 @@ A brief instruction:
 }
 
 gui_proton_downloader () {
+    unset VERSION_WINE_GIT VERSION_INSTALLED_WINE URL_VERSION_PROTON_GIT GIVE_WINE_URL
     if [[ "$PW_WINE_USE" == PROTON_LG ]]
     then PW_WINE_USE="${PW_PROTON_LG_VER}"
     elif [[ "$PW_WINE_USE" == WINE_*_LG ]] || [[ "$PW_WINE_USE" == WINE_LG ]]
@@ -3782,7 +3783,9 @@ portwine_start_debug () {
     echo "Scripts version:" >> "${PORT_WINE_PATH}/PortProton.log"
     cat "${PORT_WINE_TMP_PATH}/scripts_ver" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "-----------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    if [ "${PW_USE_RUNTIME}" = 0 ] ; then
+    if check_flatpak ; then
+        echo "FLATPAK in used" >> "${PORT_WINE_PATH}/PortProton.log"
+    elif [ "${PW_USE_RUNTIME}" = 0 ] ; then
         echo "RUNTIME is disabled" >> "${PORT_WINE_PATH}/PortProton.log"
     else
         echo "RUNTIME is enabled" >> "${PORT_WINE_PATH}/PortProton.log"
@@ -3843,22 +3846,22 @@ portwine_start_debug () {
     uname -r >> "${PORT_WINE_PATH}/PortProton.log"
     echo "-------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "CPU:" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "CPU physical cores:$(cat /proc/cpuinfo | grep 'cpu cores' | sort -u | cut -d':' -f2)" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "CPU logical cores: $(cat /proc/cpuinfo | grep 'processor' | wc -l)" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "CPU model name:$(cat /proc/cpuinfo | grep 'model name' | sort -u | cut -d':' -f2)" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "CPU physical cores:$(grep 'cpu cores' /proc/cpuinfo | sort -u | cut -d':' -f2)" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "CPU logical cores: $(grep 'processor' /proc/cpuinfo | wc -l)" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "CPU model name:$(grep 'model name' /proc/cpuinfo | sort -u | cut -d':' -f2)" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "RAM:" >> "${PORT_WINE_PATH}/PortProton.log"
     free -m >> "${PORT_WINE_PATH}/PortProton.log"
     echo "-----------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "Graphic cards and drivers:" >> "${PORT_WINE_PATH}/PortProton.log"
     echo 'lspci -k | grep -EA3 VGA|3D|Display :' >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "$(lspci -k | grep -EA3 'VGA|3D|Display')" >> "${PORT_WINE_PATH}/PortProton.log"
+    lspci -k | grep -EA3 'VGA|3D|Display' >> "${PORT_WINE_PATH}/PortProton.log"
     echo "----" >> "${PORT_WINE_PATH}/PortProton.log"
-    [[ `command -v glxinfo` ]] && glxinfo -B >> "${PORT_WINE_PATH}/PortProton.log"
+    command -v glxinfo &>/dev/null && glxinfo -B >> "${PORT_WINE_PATH}/PortProton.log"
     echo "-----" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "inxi -G:" >> "${PORT_WINE_PATH}/PortProton.log"
-    if ! check_flatpak
-    then "${PW_PLUGINS_PATH}/portable/bin/inxi" -Gc0 >> "${PORT_WINE_PATH}/PortProton.log"
+    if ! check_flatpak ; then
+        "${PW_PLUGINS_PATH}/portable/bin/inxi" -Gc0 >> "${PORT_WINE_PATH}/PortProton.log"
     fi
     if echo "$LSPCI_VGA" | grep -i nvidia &>/dev/null ; then
         if command -v ldconfig &>/dev/null ; then
@@ -3932,7 +3935,7 @@ portwine_start_debug () {
     sed -i '/wine: RLIMIT_NICE is <= 20/d' "${PORT_WINE_PATH}/PortProton.log"
     sed -i '/ALT_2.24/d' "${PORT_WINE_PATH}/PortProton.log"
     sed -i '/UDEV monitor/d' "${PORT_WINE_PATH}/PortProton.log"
-    deb_text=$(cat "${PORT_WINE_PATH}/PortProton.log"  | awk '! a[$0]++')
+    deb_text=$(awk '! a[$0]++' "${PORT_WINE_PATH}/PortProton.log")
     echo "$deb_text" > "${PORT_WINE_PATH}/PortProton.log"
     "$pw_yad" --title="PortProton.log" --no-buttons --text-align=center \
     --text-info --show-uri --wrap --width=1200 --height=550  --uri-color=red \
