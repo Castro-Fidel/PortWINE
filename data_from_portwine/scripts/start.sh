@@ -195,6 +195,7 @@ if [[ "${INSTALLING_PORT}" == 1 ]] ; then
     return 0
 fi
 
+# check slip update
 if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] \
 && [[ ! -f "/tmp/portproton.lock" ]]
 then
@@ -210,6 +211,7 @@ export PW_VULKANINFO_PORTABLE="$PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vu
 VULKAN_DRIVER_NAME="$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep driverName | awk '{print$3}' | head -1)"
 export VULKAN_DRIVER_NAME
 
+# create lock file
 if [[ -f "/tmp/portproton.lock" ]] ; then
     print_warning "Found lock file: /tmp/portproton.lock"
     yad_question "$(eval_gettext 'A running PortProton session was detected.\nDo you want to end the previous session?')" || exit 0
