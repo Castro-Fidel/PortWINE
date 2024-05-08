@@ -195,7 +195,7 @@ if [[ "${INSTALLING_PORT}" == 1 ]] ; then
     return 0
 fi
 
-# check slip update
+# check skip update
 if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] \
 && [[ ! -f "/tmp/portproton.lock" ]]
 then
@@ -229,7 +229,7 @@ else pw_download_libs
 fi
 
 pw_init_db
-# change_locale
+
 pw_check_and_download_dxvk_and_vkd3d
 # shellcheck source=/dev/null
 source "${USER_CONF}"
