@@ -3351,13 +3351,15 @@ gui_MangoHud () {
     IFS=$old_IFS
 
     old_IFS=$IFS && IFS="%"
-    "${pw_yad_v13_0}" --plug=$KEY_MH_GUI --tabnum="2" --form --columns=10 --separator=" " --text-align=center \
+    "${pw_yad_v13_0}" --plug=$KEY_MH_GUI --tabnum="2" --form --separator=" " --text-align=center \
         --text="$(eval_gettext "Enabling fps limitation with MANGOHUD tools built into PortProton (Keys <b>L_SHIFT + F1</b> Toggles fps limitation)\n")" \
-        ${ADD_GUI_MH_FPS} 1> "${PORT_WINE_TMP_PATH}/tmp_yad_mh_fps_limit" 2>/dev/null &
+        ${ADD_GUI_MH_FPS} \
+        --field=" :LBL" "" \
+        --field="FPS LIMIT METHOD :CB" "late!early" 1> "${PORT_WINE_TMP_PATH}/tmp_yad_mh_fps_limit" 2>/dev/null &
     IFS=$old_IFS
 
-    "${pw_yad_v13_0}" --paned --key="$KEY_MH_GUI" --height="650" --title="MangoHud" --center \
-        --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+    "${pw_yad_v13_0}" --notebook --key="$KEY_MH_GUI" --height="650" --title="MangoHud" --center \
+        --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --tab="indicator Settings" --tab="FPS Limit Settings" --active-tab=${1:-1} \
         --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
         --button="$(eval_gettext "DISABLE MANGOHUD")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Disable MangoHud and go to the previous menu")":182 \
         --button="$(eval_gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Save the current changes, and go to the previous menu")":184 2>/dev/null
