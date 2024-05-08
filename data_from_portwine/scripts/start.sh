@@ -121,10 +121,6 @@ if command -v xrandr &>/dev/null ; then
     if [[ $(xrandr | grep "primary" | awk '{print $1}') ]] ; then
         PW_SCREEN_RESOLUTION="$(xrandr | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
         PW_SCREEN_PRIMARY="$(xrandr | grep "primary" | awk '{print $1}')"
-    elif [[ $(xrandr | grep -w "connected" | awk '{print $1}') ]] ; then
-        # xrand не выводит primary в XFCE
-		PW_SCREEN_RESOLUTION="$(xrandr | sed -rn 's/^.* connected.* ([0-9]+x[0-9]+).*$/\1/p')"
-		PW_SCREEN_PRIMARY="$(xrandr | grep -w "connected" | awk '{print $1}')"
     fi
     export PW_SCREEN_PRIMARY PW_SCREEN_RESOLUTION
     print_var PW_SCREEN_RESOLUTION PW_SCREEN_PRIMARY
