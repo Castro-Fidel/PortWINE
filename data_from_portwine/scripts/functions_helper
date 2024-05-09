@@ -3508,9 +3508,15 @@ gui_MangoHud () {
     export PW_MANGOHUD FPS_LIMIT
     edit_db_from_gui MANGOHUD_CONFIG PW_MANGOHUD FPS_LIMIT
 
-    if [[  "${YAD_MANGOHUD_STATUS}" == "184" ]]
-    then
-        env MANGOHUD=1 MANGOHUD_CONFIG="${GUI_MH_RESULT}" "${PW_PLUGINS_PATH}/portable/bin/vkcube"
+    if [[  "${YAD_MANGOHUD_STATUS}" == "184" ]] ; then
+        pw_init_runtime
+        pw_mangohud_check
+        ${pw_runtime} \
+        env PATH="${PATH}" \
+        LD_PRELOAD="${PW_LD_PRELOAD}" \
+        VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+        VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
+        "${PW_PLUGINS_PATH}/portable/bin/vkcube"
         gui_MangoHud
     fi
 
