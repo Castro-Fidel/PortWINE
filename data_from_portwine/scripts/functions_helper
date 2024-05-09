@@ -3455,7 +3455,8 @@ gui_MangoHud () {
         --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
         --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
         --button="$(eval_gettext "DISABLE MANGOHUD")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Disable MangoHud and go to the previous menu")":182 \
-        --button="$(eval_gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Save the current changes, and go to the previous menu")":184 2>/dev/null
+        --button="$(eval_gettext "PREVIEW CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Start vkcube for preview changes")":184 \
+        --button="$(eval_gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Save the current changes, and go to the previous menu")":186  2>/dev/null
     YAD_MANGOHUD_STATUS="$?"
     case "${YAD_MANGOHUD_STATUS}" in
         1|252)
@@ -3470,7 +3471,7 @@ gui_MangoHud () {
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
             ;;
-        184)
+        186)
             export PW_MANGOHUD=1
             ;;
     esac
@@ -3524,6 +3525,10 @@ gui_MangoHud () {
     fi
 
     export MANGOHUD_CONFIG="${GUI_MH_RESULT}"
+
+    if [[  "${YAD_MANGOHUD_STATUS}" == "184" ]]
+    then env MANGOHUD=1 MANGOHUD_CONFIG="${GUI_MH_RESULT}" "${PW_PLUGINS_PATH}/portable/bin/vkcube"
+    fi
 
     edit_db_from_gui MANGOHUD_CONFIG PW_MANGOHUD FPS_LIMIT
     export SKIP_CHECK_UPDATES=1
