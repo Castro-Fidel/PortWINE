@@ -3438,7 +3438,9 @@ gui_MangoHud () {
     PW_MH_frametime_INFO=$(eval_gettext 'Display frametime next to FPS text')
     PW_MH_wine_INFO=$(eval_gettext 'Show current Wine or Proton version in use')
 
-    unset ADD_GUI_MH GUI_MH_RESULT ADD_GUI_MH_FPS GUI_MH_FPS_RESULT
+    unset ADD_GUI_MH GUI_MH_RESULT ADD_GUI_MH_FPS GUI_MH_FPS_RESULT PW_FPS_LIMIT_VAR PW_MANGOHUD_CONFIG
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_yad_mh_set"
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_yad_mh_fps_limit"
 
     GET_REFRESH_RATE=(30 40 45 48 60 75 90 120 144 165 175 240)
 
@@ -3543,7 +3545,7 @@ gui_MangoHud () {
     else GUI_MH_RESULT="${GUI_MH_RESULT%,}"
     fi
 
-    if [[ ! -z "$FPS_LIMIT" ]]; then
+    if [[ ! -z "$FPS_LIMIT" ]] ; then
         GUI_MH_RESULT="${GUI_MH_RESULT},fps_limit=$FPS_LIMIT"
     elif [[ "$FPS_LIMIT" == "disabled" ]] ; then
         GUI_MH_RESULT="${GUI_MH_RESULT},fps_limit=0"
@@ -3555,12 +3557,15 @@ gui_MangoHud () {
     fi
 
     export MANGOHUD_CONFIG="${GUI_MH_RESULT}"
+    export PW_MANGOHUD FPS_LIMIT
+    edit_db_from_gui MANGOHUD_CONFIG PW_MANGOHUD FPS_LIMIT
 
     if [[  "${YAD_MANGOHUD_STATUS}" == "184" ]]
-    then env MANGOHUD=1 MANGOHUD_CONFIG="${GUI_MH_RESULT}" "${PW_PLUGINS_PATH}/portable/bin/vkcube"
+    then
+        env MANGOHUD=1 MANGOHUD_CONFIG="${GUI_MH_RESULT}" "${PW_PLUGINS_PATH}/portable/bin/vkcube"
+        gui_MangoHud
     fi
 
-    edit_db_from_gui MANGOHUD_CONFIG PW_MANGOHUD FPS_LIMIT
     export SKIP_CHECK_UPDATES=1
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
