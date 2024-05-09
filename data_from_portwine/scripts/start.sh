@@ -348,13 +348,14 @@ popd 1>/dev/null || fatal
 
 check_nvidia_rtx && check_variables PW_VULKAN_USE "2"
 
-SORT_OPENGL="$(eval_gettext "WineD3D OpenGL (For video cards without Vulkan)")"
-SORT_VULKAN="$(eval_gettext "WineD3D Vulkan (Damavand experimental)")"
-SORT_LEGACY="$(eval_gettext "Legacy DXVK and dgVoodoo2 (Vulkan v1.1)")"
-SORT_STABLE="$(eval_gettext "Stable DXVK, VKD3D and dgVoodoo2 (Vulkan v1.2)")"
-SORT_NEWEST="$(eval_gettext "Newest DXVK, VKD3D, D8VK and dgVoodoo2 (Vulkan v1.3+)")"
-SORT_G_NINE="$(eval_gettext "Gallium Nine (DirectX 9 for MESA)")"
-SORT_G_ZINK="$(eval_gettext "Gallium Zink (OpenGL to Vulkan)")"
+[[ "${PW_USE_DGVOODOO2}" == "1" ]] && DGV_TXT="$(eval_gettext 'and dgVoodoo2 ')" || unset DGV_TXT
+SORT_OPENGL="$(eval_gettext 'WineD3D OpenGL ${DGV_TXT}(For video cards without Vulkan)')"
+SORT_VULKAN="$(eval_gettext 'WineD3D Vulkan ${DGV_TXT}(Damavand experimental)')"
+SORT_LEGACY="$(eval_gettext 'Legacy DXVK ${DGV_TXT}(Vulkan v1.1)')"
+SORT_STABLE="$(eval_gettext 'Stable DXVK, VKD3D ${DGV_TXT}(Vulkan v1.2)')"
+SORT_NEWEST="$(eval_gettext 'Newest DXVK, VKD3D, D8VK ${DGV_TXT}(Vulkan v1.3+)')"
+SORT_G_NINE="$(eval_gettext 'Gallium Nine (DirectX 9 for MESA)')"
+SORT_G_ZINK="$(eval_gettext 'Gallium Zink (OpenGL to Vulkan)')"
 
 case "${PW_VULKAN_USE}" in
     0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY!$SORT_G_ZINK!$SORT_G_NINE!$SORT_VULKAN" ;;
