@@ -689,13 +689,15 @@ pw_mangohud_check () {
 }
 
 pw_vkbasalt_check () {
-    if [[ "${ENABLE_VKBASALT}" == "1" ]] ; then
+    sed -i 's/ENABLE_VKBASALT/PW_VKBASALT/' "${PATH_TO_GAME}"/*.ppdb
+    if [[ "${PW_VKBASALT}" == "1" ]] ; then
         if [[ "$PW_USE_SYSTEM_VK_LAYERS" != "1" ]] ; then
             sed -i 's/: "VK_LAYER/: "PW_VK_LAYER/' "${PW_PLUGINS_PATH}/portable/share/vulkan/implicit_layer.d"/vkBasalt*.json
             var_pw_vk_istance_layers_config_update "PW_VK_LAYER_VKBASALT_post_processing64:PW_VK_LAYER_VKBASALT_post_processing32"
             print_info "Portable vkBasalt is enabled"
         else
             print_info "System vkBasalt is enabled"
+            export ENABLE_VKBASALT="1"
         fi
         export VKBASALT_CONFIG_FILE="${PORT_WINE_PATH}/data/vkBasalt.conf"
         if ! grep "${PW_PLUGINS_PATH}/reshade" "${VKBASALT_CONFIG_FILE}" &>/dev/null
@@ -706,7 +708,7 @@ pw_vkbasalt_check () {
             sed -ri "s/casSharpness .*/casSharpness = ${PW_VKBASALT_FFX_CAS}/g" "${VKBASALT_CONFIG_FILE}"
         fi
     else
-        export DISABLE_VKBASALT=1
+        export DISABLE_VKBASALT="1"
         print_info "vkBasalt is disabled"
     fi
     return 0
@@ -1596,12 +1598,8 @@ start_portwine () {
 
     if [[ "$PW_USE_OBS_VKCAPTURE" == "1" ]] ; then
         export OBS_VKCAPTURE="1"
-        if ! check_flatpak ; then
-            export PW_USE_SYSTEM_VK_LAYERS="1"
-            print_warning "System mangohud, vkBasalt, obs-vk capture and other applications using vulkan layers are forcibly used."
-        else
-            export PW_USE_SYSTEM_VK_LAYERS="0"
-        fi
+        export PW_USE_SYSTEM_VK_LAYERS="1"
+        print_warning "System mangohud, vkBasalt, obs-vk capture and other applications using vulkan layers are forcibly used."
     fi
 
     pw_init_runtime
@@ -1996,7 +1994,7 @@ start_portwine () {
             export __GL_YIELD="NOTHING"
             export mesa_glthread="true"
             export WINE_D3D_CONFIG="renderer=gl"
-            export ENABLE_VKBASALT="0"
+            export PW_VKBASALT="0"
             ;;
         1)
             # STABLE DXVK AND VKD3D
@@ -2035,7 +2033,7 @@ start_portwine () {
             export __GL_YIELD="NOTHING"
             export mesa_glthread="true"
             export WINE_D3D_CONFIG="renderer=gl"
-            export ENABLE_VKBASALT="0"
+            export PW_VKBASALT="0"
             export PW_MANGOHUD="0"
             export PW_WINE_FULLSCREEN_FSR="0"
             unset FIND_D3D_MODULE D3D_MODULE_PATH
@@ -2812,7 +2810,7 @@ pw_gui_for_edit_db () {
     PW_DGV2_FASTMEMORY_INFO=$(eval_gettext 'Increase the amount of vram for dgVoodoo2 and enable fast memory access. (Enable if games have poor performance, using Unreal 2 as an example)')
 
     PW_DINPUT_PROTOCOL_INFO=$(eval_gettext 'Force use DirectInput protocol instead of XInput')
-    ENABLE_VKBASALT_INFO=$(eval_gettext 'Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)')
+    PW_VKBASALT_INFO=$(eval_gettext 'Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)')
     PW_NO_ESYNC_INFO=$(eval_gettext 'Do not use in-process synchronization primitives based on eventfd. (It is recommended not to change the value.)')
     PW_NO_FSYNC_INFO=$(eval_gettext 'Do not use futex-based in-process synchronization primitives. (Automatically disabled on systems without FUTEX_WAIT_MULTIPLE support) (It is recommended not to change the value)')
     PW_USE_RAY_TRACING_INFO=$(eval_gettext 'Enable vkd3d support - Ray Tracing')
@@ -3308,9 +3306,9 @@ gui_vkBasalt () {
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0 ;;
         180)
-            export ENABLE_VKBASALT=0 ;;
+            export PW_VKBASALT=0 ;;
         182)
-            export ENABLE_VKBASALT=1 ;;
+            export PW_VKBASALT=1 ;;
     esac
     YAD_BASALT_SET=$(cat "${PORT_WINE_TMP_PATH}/tmp_yad_basalt_set")
     YAD_CAS_SET=$(cat "${PORT_WINE_TMP_PATH}/tmp_yad_cas_set" | sed s/" "//g)
@@ -3333,7 +3331,7 @@ gui_vkBasalt () {
     then export PW_VKBASALT_FFX_CAS="0.0$YAD_CAS_SET"
     else export PW_VKBASALT_FFX_CAS="0.$YAD_CAS_SET"
     fi
-    edit_db_from_gui PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS ENABLE_VKBASALT
+    edit_db_from_gui PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PW_VKBASALT
     export SKIP_CHECK_UPDATES=1
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
@@ -4004,7 +4002,7 @@ EOF
 }
 
 pw_edit_db () {
-    PW_EDIT_DB_LIST="PW_MANGOHUD PW_MANGOHUD_USER_CONF ENABLE_VKBASALT PW_VKBASALT_USER_CONF PW_NO_ESYNC PW_NO_FSYNC
+    PW_EDIT_DB_LIST="PW_MANGOHUD PW_MANGOHUD_USER_CONF PW_VKBASALT PW_VKBASALT_USER_CONF PW_NO_ESYNC PW_NO_FSYNC
     PW_USE_RAY_TRACING PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_USE_FAKE_DLSS_3 PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU
     PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME
     PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE
@@ -4016,7 +4014,6 @@ pw_edit_db () {
     fi
     if check_flatpak ; then
         rm_from_var PW_EDIT_DB_LIST "PW_USE_RUNTIME"
-        rm_from_var PW_EDIT_DB_LIST "PW_USE_SYSTEM_VK_LAYERS"
     fi
     pw_gui_for_edit_db $PW_EDIT_DB_LIST
 
@@ -4037,7 +4034,7 @@ pw_autoinstall_from_db () {
     unset PORTWINE_CREATE_SHORTCUT_NAME
     export PW_DISABLED_CREATE_DB=1
     export PW_MANGOHUD=0
-    export ENABLE_VKBASALT=0
+    export PW_VKBASALT=0
     export PW_USE_D3D_EXTRAS=1
     . "${PORT_SCRIPTS_PATH}/pw_autoinstall/${PW_YAD_SET}"
 }
