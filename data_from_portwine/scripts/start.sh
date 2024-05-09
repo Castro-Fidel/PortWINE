@@ -168,17 +168,6 @@ else
 echo 'export GUI_THEME="default"' >> "$USER_CONF"
 fi
 
-# check tray icon theme
-if gsettings get org.gnome.desktop.interface color-scheme &>/dev/null ; then
-    COLOR_SCHEME="$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null)"
-    if [[ "$COLOR_SCHEME" == "'prefer-dark'" ]]
-    then PW_DESKTOP_THEME="dark"
-    fi
-else
-    PW_DESKTOP_THEME="universal"
-fi
-export PW_DESKTOP_THEME
-
 # choose mirror
 if [[ -z "$MIRROR" ]] \
 && [[ "$LANGUAGE" == "ru" ]]
