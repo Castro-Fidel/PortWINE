@@ -538,6 +538,7 @@ else
     --field="   Pulse Online"!"$PW_GUI_ICON_PATH/pulseonline.png"!"":"FBTN" '@bash -c "button_click PW_PULSE_ONLINE"' \
     --field="   CatsLauncher (Front Edge)"!"$PW_GUI_ICON_PATH/catslauncher.png"!"":"FBTN" '@bash -c "button_click PW_CATSLAUNCHER"' \
     --field="   Russian Fishing 4"!"$PW_GUI_ICON_PATH/rf4launcher.png"!"":"FBTN" '@bash -c "button_click PW_RUSSIAN_FISHING"' \
+    --field="   W3D Hub Launcher"!"$PW_GUI_ICON_PATH/w3dhub.png"!"":"FBTN" '@bash -c "button_click PW_W3D_HUB"' \
     2>/dev/null &
 
     # --field="   Secret World Legends (ENG)"!"$PW_GUI_ICON_PATH/swl.png"!"":"FBTN" '@bash -c "button_click PW_SWL"'
