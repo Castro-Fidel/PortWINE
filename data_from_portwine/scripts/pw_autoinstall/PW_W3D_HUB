@@ -1,0 +1,20 @@
+#!/bin/bash
+# Author: chal55rus and Boria138
+########################################################################
+export PW_PREFIX_NAME="DOTNET"
+export LAUNCH_PARAMETERS=("/S")
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/w3dhub_launcher_install.exe"
+export PORTWINE_CREATE_SHORTCUT_NAME="W3D Hub Launcher"
+
+start_portwine
+if try_download 'https://w3dhub.com/forum/files/file/10-w3d-hub-launcher/?do=download' "${PW_AUTOINSTALL_EXE}" no_mirror
+then
+    pw_start_progress_bar_install_game "W3DHUB Launcher"
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$(find "$WINEPREFIX/" -type f -name "W3D Hub Launcher.exe" | grep "W3D Hub/W3D Hub Launcher.exe")"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    kill_portwine
+    pw_stop_progress_bar
+    portwine_create_shortcut
+fi
+stop_portwine
