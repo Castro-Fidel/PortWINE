@@ -20,8 +20,8 @@ Terminal=False
 Categories=Game
 StartupNotify=true
 MimeType=application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program
-Path="${PORT_SCRIPTS_PATH}"
-Icon="${PORT_WINE_PATH}/data/img/w.png"
+Path=${PORT_SCRIPTS_PATH}
+Icon=${PORT_WINE_PATH}/data/img/w.png
 EOF
 chmod u+x "${PORT_WINE_PATH}/PortProton.desktop"
 
