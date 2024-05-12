@@ -668,9 +668,9 @@ pw_mangohud_check () {
         if [[ "$PW_USE_SYSTEM_VK_LAYERS" != "1" ]] ; then
             sed -i 's/: "VK_LAYER/: "PW_VK_LAYER/' "${PW_PLUGINS_PATH}/portable/share/vulkan/implicit_layer.d"/MangoHud*.json
             var_pw_vk_istance_layers_config_update "PW_VK_LAYER_MANGOHUD_overlay64:PW_VK_LAYER_MANGOHUD_overlay32"
-            print_info "Portable MANGOHUD is enabled"
+            print_info "Portable MangoHud is enabled"
         else
-            print_info "System MANGOHUD is enabled"
+            print_info "System MangoHud is enabled"
             export PW_MANGOHUD_SLR='MANGOHUD=1'
         fi
         MANGOHUD_LIB_NAME="libMangoHud.so"
@@ -683,7 +683,7 @@ pw_mangohud_check () {
         fi
     else
         export PW_MANGOHUD_SLR=''
-        print_info "MANGOHUD is disabled"
+        print_info "MangoHud is disabled"
     fi
     return 0
 }
@@ -917,7 +917,7 @@ pw_check_and_download_wine () {
 }
 
 pw_check_and_download_dxvk_and_vkd3d () {
-    #Download stable and git version DXVK
+    # Download stable and git version DXVK
     for DXVK_VAR_VER in "${DXVK_STABLE_VER}" "${DXVK_GIT_VER}" "${DXVK_LEGACY_VER}" ; do
         if [ ! -d "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}" ] ; then
             print_info "Download and install DXVK v.${DXVK_VAR_VER}"
@@ -947,7 +947,7 @@ pw_check_and_download_dxvk_and_vkd3d () {
         fi
     done
 
-    #Download stable and git version VKD3D
+    # Download stable and git version VKD3D
     for VKD3D_VAR_VER in "${VKD3D_STABLE_VER}" "${VKD3D_GIT_VER}" ; do
         if [ ! -d "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}" ] ; then
             print_info "Download and install VKD3D-PROTON v.${VKD3D_VAR_VER}"
@@ -977,7 +977,7 @@ pw_check_and_download_dxvk_and_vkd3d () {
         fi
     done
 
-    #Download D8VK
+    # Download D8VK
     if [ ! -d "${PW_VULKAN_DIR}/d8vk-${D8VK_VER}" ] ; then
         print_info "Download and install D8VK v.${D8VK_VER}"
         if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/d8vk-${D8VK_VER}/d8vk-${D8VK_VER}.tar.xz" \
@@ -996,7 +996,7 @@ pw_check_and_download_dxvk_and_vkd3d () {
         fi
     fi
 
-    #Download DGVOODOO2
+    # Download DGVOODOO2
     if [ ! -f "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}/dgVoodoo.conf" ] ; then
         print_info "Download and install DGVOODOO2 v.${DGV2_VER}"
         if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/dgvoodoo2-${DGV2_VER}/dgvoodoo2-${DGV2_VER}.tar.xz" \
@@ -1985,14 +1985,14 @@ start_portwine () {
     try_force_link_file "${PHYSX_PATH}/cudart64_65.dll" "${WINEPREFIX}/drive_c/windows/system32/"
 
     unset CP_VKD3D_FILES CP_DXVK_FILES CP_D8VK_FILES CP_DGV2_FILES CP_WINE_FILES
-    unset PATH_TO_DXVK_FILES PATH_TO_VKD3D_FILES PATH_TO_GALLIUM_NINE_FILES
+    unset CP_GALLIUM_NINE_FILES PATH_TO_DXVK_FILES PATH_TO_VKD3D_FILES
     case "${PW_VULKAN_USE}" in
         0)
             # WINED3D OPENGL
             print_info "Use WINED3D OpenGL"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
             CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
-            CP_WINE_FILES="ddraw d3d8 d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi d3d12 d3d12core"
+            CP_WINE_FILES="ddraw d3d8 d3d9 d3d10core d3d10_1 d3d10 d3d11 dxgi d3d12 d3d12core"
             export __GL_YIELD="NOTHING"
             export mesa_glthread="true"
             export WINE_D3D_CONFIG="renderer=gl"
@@ -2010,7 +2010,6 @@ start_portwine () {
             ;;
         2)
             # NEWEST DXVK AND VKD3D
-            print_info "D8VK v.${D8VK_VER} in use"
             print_info "DXVK v.${DXVK_GIT_VER} in use"
             print_info "VKD3D-PROTON v.${VKD3D_GIT_VER} in use"
             PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}"
@@ -2023,10 +2022,8 @@ start_portwine () {
         3)
             # GALLIUM NINE
             print_info "Use GALLIUM-NINE (Native DX9 on MESA drivers)"
-            PATH_TO_GALLIUM_NINE_FILES="${PW_PLUGINS_PATH}/gallium_nine_v.${PW_GALLIUM_NINE_VER}"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
-            try_copy_file "${PATH_TO_GALLIUM_NINE_FILES}/lib32/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/syswow64/d3d9.dll"
-            try_copy_file "${PATH_TO_GALLIUM_NINE_FILES}/lib64/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/system32/d3d9.dll"
+            CP_GALLIUM_NINE_FILES="d3d9"
             CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
             CP_WINE_FILES="ddraw d3d8 d3d11 d3d10core d3d10_1 d3d10 dxgi d3d12 d3d12core"
             export __GL_YIELD="NOTHING"
@@ -2035,37 +2032,18 @@ start_portwine () {
             export PW_VKBASALT="0"
             export PW_MANGOHUD="0"
             export PW_WINE_FULLSCREEN_FSR="0"
-            unset FIND_D3D_MODULE D3D_MODULE_PATH
-            if ! check_flatpak ; then
-                FIND_D3D_MODULE=$(dirname $(find /usr/ -maxdepth 4 -type f -name "d3dadapter9.so.*") 2>/dev/null)
-                if [[ ! -z "$FIND_D3D_MODULE" ]] ; then
-                    old_IFS=$IFS
-                    IFS=$'\n'
-                    for D3D_MP in $FIND_D3D_MODULE ; do
-                        if [[ ! -z "$D3D_MODULE_PATH" ]]
-                        then export D3D_MODULE_PATH="$D3D_MODULE_PATH:/run/host${D3D_MP}"
-                        else export D3D_MODULE_PATH="/run/host${D3D_MP}"
-                        fi
-                    done
-                    IFS=$old_IFS
-                    print_info "D3D_MODULE_PATH=${D3D_MODULE_PATH}"
-                else
-                    pw_stop_progress_bar
-                    yad_error "$(eval_gettext "d3dadapter9.so.1.0.0 - Not found in the system.\nInstall the missing package: <b>d3dadapter9</b>")"
-                    stop_portwine
-                fi
-            else
-                export D3D_MODULE_PATH="/app/lib/i386-linux-gnu/GL/default/lib/d3d:/usr/lib/x86_64-linux-gnu/GL/default/lib/d3d"
-                print_info "D3D_MODULE_PATH=${D3D_MODULE_PATH}"
+            if [[ $(echo "$LSPCI_VGA" | grep -i "AMD") ]] \
+            && ! check_wayland_session ; then
+                check_gamescope_session && export AMD_DEBUG="nodcc"
+                || [[ "${PW_USE_GAMESCOPE}" = "1" ]] && export AMD_DEBUG="nodcc"
             fi
-            var_winedlloverride_update "d3d9=n"
             ;;
         4)
             # GALLIUM ZINK
             print_info "Use GALLIUM-ZINK (OpenGL on MESA vulkan drivers)"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
             CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
-            CP_WINE_FILES="ddraw d3d8 d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi d3d12 d3d12core"
+            CP_WINE_FILES="ddraw d3d8 d3d9 d3d10core d3d10_1 d3d10 d3d11 dxgi d3d12 d3d12core"
             export __GL_YIELD="NOTHING"
             export mesa_glthread="true"
             export WINE_D3D_CONFIG="renderer=gl"
@@ -2092,10 +2070,58 @@ start_portwine () {
             print_info "Use DAMAVAND (DirectX to wined3d vulkan)"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
             CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
-            CP_WINE_FILES="ddraw d3d8 d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi d3d12 d3d12core"
+            CP_WINE_FILES="ddraw d3d8 d3d9 d3d10core d3d10_1 d3d10 d3d11 dxgi d3d12 d3d12core"
             export WINE_D3D_CONFIG="renderer=vulkan"
             ;;
     esac
+
+    # DGVOODOO2 enable
+    if [[ "${PW_USE_DGVOODOO2}" == "1" ]] ; then
+        print_info "Try copy native DGVOODOO2 files..."
+        PATH_TO_DGV2_FILES="${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}"
+        CP_DGV2_FILES="ddraw d3dimm d3d8 d3d9 glide glide2x glide3x"
+        try_copy_file "${PATH_TO_DGV2_FILES}/dgVoodoo.conf" "${WINEPREFIX}/drive_c/windows/syswow64/"
+        DGV2CONF="${WINEPREFIX}/drive_c/windows/syswow64/dgVoodoo.conf"
+        if [[ "${PW_DGV2_DISABLE_D3D}" == "1" ]] ; then
+            rm_from_var CP_DGV2_FILES "d3d8 d3d9"
+            rm_from_var CP_WINE_FILES "ddraw"
+        else
+            try_copy_file "${PATH_TO_DGV2_FILES}/x64/d3d9.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_remove_file "${WINEPREFIX}/drive_c/windows/system32/dgVoodoo.conf"
+            try_force_link_file "${DGV2CONF}" "${WINEPREFIX}/drive_c/windows/system32/"
+            if [[ "${PW_VULKAN_USE}" == "0" ]] ; then
+                rm_from_var CP_WINE_FILES "ddraw d3d8 d3d9"
+            elif [[ "${PW_VULKAN_USE}" == "1" ]] ; then
+                rm_from_var CP_WINE_FILES "ddraw d3d8" && rm_from_var CP_DXVK_FILES "d3d9"
+            elif [[ "${PW_VULKAN_USE}" == "2" ]] ; then
+                rm_from_var CP_WINE_FILES "ddraw" && rm_from_var CP_D8VK_FILES "d3d8" && rm_from_var CP_DXVK_FILES "d3d9"
+            elif [[ "${PW_VULKAN_USE}" == "3" ]] ; then
+                rm_from_var CP_WINE_FILES "ddraw d3d8" && rm_from_var CP_GALLIUM_NINE_FILES "d3d9"
+            elif [[ "${PW_VULKAN_USE}" == "4" ]] ; then
+                rm_from_var CP_WINE_FILES "ddraw d3d8 d3d9"
+            elif [[ "${PW_VULKAN_USE}" == "5" ]] ; then
+                rm_from_var CP_WINE_FILES "ddraw d3d8" && rm_from_var CP_DXVK_FILES "d3d9"
+            elif [[ "${PW_VULKAN_USE}" == "6" ]] ; then
+                rm_from_var CP_WINE_FILES "ddraw d3d8 d3d9"
+            fi
+        fi
+        for wine_dgv2_dll in $CP_DGV2_FILES ; do
+            try_copy_file "${PATH_TO_DGV2_FILES}/x32/${wine_dgv2_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+            var_winedlloverride_update "${wine_dgv2_dll}=n"
+        done
+        # DGVOODOO2 settings:
+        [[ "${PW_DGV2_16BIT_MODE}" == "1" ]] && sed -i "s/DesktopBitDepth =/DesktopBitDepth = 16/" "$DGV2CONF"
+        [[ "${PW_DGV2_USE_DX12}" == "1" ]] && [[ "${PW_VULKAN_USE}" == "1" ]] && sed -i "s/OutputAPI = d3d11_fl11_0/OutputAPI = d3d12_fl12_0/" "$DGV2CONF"
+        [[ "${PW_DGV2_FULLSCREEN}" == "1" ]] && sed -i "s/Resolution = unforced/Resolution = desktop/g" "$DGV2CONF"
+        [[ "${PW_DGV2_FASTMEMORY}" == "1" ]] && sed -i "s/FastVideoMemoryAccess = false/FastVideoMemoryAccess = true/" "$DGV2CONF"
+        [[ "${PW_DGV2_VRAM_INCREASE}" == "1" ]] && sed -i "s/VRAM = 256/VRAM = 1024/" "$DGV2CONF"
+        [[ "${PW_DGV2_FILTERING}" == "1" ]] && sed -i "79s/Filtering = appdriven/Filtering = 16/" "$DGV2CONF"
+        [[ "${PW_DGV2_ANTIALIASING}" == "1" ]] && sed -i "83s/Antialiasing = appdriven/Antialiasing = 8x/" "$DGV2CONF"
+    else
+        for rm_dgv2_dll in d3dimm glide glide2x glide3x ; do
+            try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/${rm_dgv2_dll}.dll"
+        done
+    fi
 
     # force use dxgi.dll from wine
     if [[ "${PW_USE_WINE_DXGI}" == "1" ]] ; then
@@ -2156,33 +2182,35 @@ start_portwine () {
         done
     fi
 
-    # force use all DGVOODOO2 libs and 64bit
-    if [[ "${PW_USE_DGVOODOO2}" == "1" ]] ; then
-        print_info "DGVOODOO2 v.${DGV2_VER} in use"
-        print_info "Try copy native DGVOODOO2 files..."
-        CP_DGV2_FILES="ddraw d3dimm d3d8 d3d9 glide glide2x glide3x"
-        PATH_TO_DGV2_FILES="${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}"
-        for wine_dgv2_dll in $CP_DGV2_FILES ; do
-            try_copy_file "${PATH_TO_DGV2_FILES}/x32/${wine_dgv2_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-            var_winedlloverride_update "${wine_dgv2_dll}=n"
-        done
-        DGV2CONF="${WINEPREFIX}/drive_c/windows/system32/dgVoodoo.conf"
-        try_copy_file "${PATH_TO_DGV2_FILES}/x64/d3d9.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-        try_copy_file "${PATH_TO_DGV2_FILES}/dgVoodoo.conf" "${WINEPREFIX}/drive_c/windows/system32/"
-        try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/dgVoodoo.conf"
-        try_force_link_file "${DGV2CONF}" "${WINEPREFIX}/drive_c/windows/syswow64/"
-
-        # DGVOODOO2 settings:
-        [[ "${PW_DGV2_DX12}" == "1" ]] && sed -i "s/OutputAPI = d3d11_fl11_0/OutputAPI = d3d12_fl12_0/" "$DGV2CONF"
-        [[ "${PW_DGV2_FULLSCREEN}" == "1" ]] && sed -i "s/Resolution = unforced/Resolution = desktop/" "$DGV2CONF"
-        if [[ "${PW_DGV2_FASTMEMORY}" == "1" ]] ; then
-            sed -i "s/FastVideoMemoryAccess = false/FastVideoMemoryAccess = true/" "$DGV2CONF"
-            sed -i "s/VRAM = 256/VRAM = 1024/" "$DGV2CONF"
+    if [[ "$CP_GALLIUM_NINE_FILES" == "d3d9" ]] ; then
+        print_info "Try copy native GALLIUM_NINE files..."
+        PATH_TO_GALLIUM_NINE_FILES="${PW_PLUGINS_PATH}/gallium_nine_v.${PW_GALLIUM_NINE_VER}"
+        try_copy_file "${PATH_TO_GALLIUM_NINE_FILES}/lib32/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/syswow64/d3d9.dll"
+        try_copy_file "${PATH_TO_GALLIUM_NINE_FILES}/lib64/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/system32/d3d9.dll"
+        unset FIND_D3D_MODULE D3D_MODULE_PATH
+        if ! check_flatpak ; then
+            FIND_D3D_MODULE=$(dirname $(find /usr/ -maxdepth 4 -type f -name "d3dadapter9.so.*") 2>/dev/null)
+            if [[ ! -z "$FIND_D3D_MODULE" ]] ; then
+                old_IFS=$IFS
+                IFS=$'\n'
+                for D3D_MP in $FIND_D3D_MODULE ; do
+                    if [[ ! -z "$D3D_MODULE_PATH" ]]
+                    then export D3D_MODULE_PATH="$D3D_MODULE_PATH:/run/host${D3D_MP}"
+                    else export D3D_MODULE_PATH="/run/host${D3D_MP}"
+                    fi
+                done
+                IFS=$old_IFS
+                print_info "D3D_MODULE_PATH=${D3D_MODULE_PATH}"
+            else
+                pw_stop_progress_bar
+                yad_error "$(eval_gettext "d3dadapter9.so.1.0.0 - Not found in the system.\nInstall the missing package: <b>d3dadapter9</b>")"
+                stop_portwine
+            fi
+        else
+            export D3D_MODULE_PATH="/app/lib/i386-linux-gnu/GL/default/lib/d3d:/usr/lib/x86_64-linux-gnu/GL/default/lib/d3d"
+            print_info "D3D_MODULE_PATH=${D3D_MODULE_PATH}"
         fi
-    else
-        for rm_dgv2_dll in d3dimm glide glide2x glide3x ; do
-            try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/${rm_dgv2_dll}.dll"
-        done
+        var_winedlloverride_update "d3d9=n"
     fi
 
     if [[ ! -d "${WINEPREFIX}/drive_c/vrclient/bin" ]] ; then
@@ -2787,10 +2815,16 @@ pw_gui_for_edit_db () {
     unset ADD_CHK_BOX_EDIT_DB
 
     # DGVOODOO2 INFO:
-    PW_USE_DGVOODOO2_INFO=$(eval_gettext 'Forced use all dgVoodoo2 libs (Glide 2.11-3.1, DirectDraw 1-7, Direct3D 2-9) on all 3D API. For WineD3D OpenGL and Gallium Zink need use WineLG')
-    PW_DGV2_DX12_INFO=$(eval_gettext 'Use DirectX12 for dgVoodoo2. (Working only on newest and stable dxvk and vkd3d, D3D8 working on stable, some games may work better, some may work worse)')
-    PW_DGV2_FASTMEMORY_INFO=$(eval_gettext 'Increase the amount of vram for dgVoodoo2 and enable fast memory access. (Enable if games have poor performance, using Unreal 2 as an example)')
+    PW_USE_DGVOODOO2_INFO=$(eval_gettext 'Enable dgVoodoo2. Forced use all dgVoodoo2 libs (Glide 2.11-3.1, DirectDraw 1-7, Direct3D 2-9) on all 3D API. For WineD3D OpenGL need use WineLG (For Gallium Nine and Zink use too)')
+    PW_DGV2_DISABLE_D3D_INFO=$(eval_gettext 'Do not use d3d8 and d3d9 dgVoodoo2 libraries. For some old games, using the example of Space Rangers, a bug with a black screen is corrected.')
+    PW_DGV2_16BIT_MODE_INFO=$(eval_gettext 'Forced use of 16bit screen mode. Solves the problem of launching old games, such as Moto Racer.')
+    PW_DGV2_USE_DX12_INFO=$(eval_gettext 'DirectXD 11 is used by default (and recommended). Use DirectX12 for dgVoodoo2. Doesnt always work better. (Working only on stable dxvk and vkd3d)')
+    PW_DGV2_FASTMEMORY_INFO=$(eval_gettext 'Enable fast memory access. (Enable if games have poor performance, using Unreal 2 as an example)')
+    PW_DGV2_VRAM_INCREASE_INFO=$(eval_gettext 'Increase the amount of vram for dgVoodoo2 (Increases from 256 to 1024)')
     PW_DGV2_FULLSCREEN_INFO=$(eval_gettext 'Render image based on monitor resolution. Can use if the game has a small interface size. Widescreen effect for 16:9')
+    PW_DGV2_FILTERING_INFO=$(eval_gettext 'Forced anisotropic filtering 16x in Direct3D games')
+    PW_DGV2_ANTIALIASING_INFO=$(eval_gettext 'Forced antialiasing 8x in Direct3D games')
+
     PW_DINPUT_PROTOCOL_INFO=$(eval_gettext 'Force use DirectInput protocol instead of XInput')
     PW_VKBASALT_INFO=$(eval_gettext 'Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)')
     PW_NO_ESYNC_INFO=$(eval_gettext 'Do not use in-process synchronization primitives based on eventfd. (It is recommended not to change the value.)')
@@ -3501,7 +3535,7 @@ gui_MangoHud () {
         GUI_MH_RESULT="${GUI_MH_RESULT},fps_limit=0"
     fi
 
-    if [[ "${GUI_MH_RESULT}" =~ "fps_only" ]]; then
+    if [[ "${GUI_MH_RESULT}" =~ "fps_only" ]] ; then
         local GUI_MH_RESULT="fps_only"
         print_info "In the MangoHud config fps_only is detected all settings are reseted"
     fi
@@ -4005,7 +4039,8 @@ pw_edit_db () {
     PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME
     PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE
     PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_USE_GAMESCOPE PW_DISABLE_COMPOSITING
-    PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_DGVOODOO2 PW_DGV2_DX12 PW_DGV2_FASTMEMORY PW_DGV2_FULLSCREEN
+    PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_DGVOODOO2 PW_DGV2_DISABLE_D3D PW_DGV2_16BIT_MODE PW_DGV2_USE_DX12 PW_DGV2_FASTMEMORY
+    PW_DGV2_VRAM_INCREASE PW_DGV2_FULLSCREEN PW_DGV2_FILTERING PW_DGV2_ANTIALIASING
 
     "
 
@@ -4017,7 +4052,7 @@ pw_edit_db () {
     fi
     pw_gui_for_edit_db $PW_EDIT_DB_LIST
 
-    # PW_FORCE_USE_VSYNC HEAP_DELAY_FREE
+    # PW_FORCE_USE_VSYNC PW_HEAP_DELAY_FREE
 }
 
 pw_autoinstall_from_db () {
