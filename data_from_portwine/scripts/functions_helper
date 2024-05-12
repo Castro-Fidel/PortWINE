@@ -2032,10 +2032,14 @@ start_portwine () {
             export PW_VKBASALT="0"
             export PW_MANGOHUD="0"
             export PW_WINE_FULLSCREEN_FSR="0"
-            if [[ $(echo "$LSPCI_VGA" | grep -i "AMD") ]] \
-            && ! check_wayland_session ; then
-                check_gamescope_session && export AMD_DEBUG="nodcc"
-                || [[ "${PW_USE_GAMESCOPE}" = "1" ]] && export AMD_DEBUG="nodcc"
+            if echo "$LSPCI_VGA" | grep -i "AMD" &>/dev/null \
+            && ! check_wayland_session
+            then
+                if check_gamescope_session \
+                || [[ "${PW_USE_GAMESCOPE}" = "1" ]]
+                then
+                    export AMD_DEBUG="nodcc"
+                fi
             fi
             ;;
         4)
@@ -2089,21 +2093,34 @@ start_portwine () {
             try_copy_file "${PATH_TO_DGV2_FILES}/x64/d3d9.dll" "${WINEPREFIX}/drive_c/windows/system32/"
             try_remove_file "${WINEPREFIX}/drive_c/windows/system32/dgVoodoo.conf"
             try_force_link_file "${DGV2CONF}" "${WINEPREFIX}/drive_c/windows/system32/"
-            if [[ "${PW_VULKAN_USE}" == "0" ]] ; then
-                rm_from_var CP_WINE_FILES "ddraw d3d8 d3d9"
-            elif [[ "${PW_VULKAN_USE}" == "1" ]] ; then
-                rm_from_var CP_WINE_FILES "ddraw d3d8" && rm_from_var CP_DXVK_FILES "d3d9"
-            elif [[ "${PW_VULKAN_USE}" == "2" ]] ; then
-                rm_from_var CP_WINE_FILES "ddraw" && rm_from_var CP_D8VK_FILES "d3d8" && rm_from_var CP_DXVK_FILES "d3d9"
-            elif [[ "${PW_VULKAN_USE}" == "3" ]] ; then
-                rm_from_var CP_WINE_FILES "ddraw d3d8" && rm_from_var CP_GALLIUM_NINE_FILES "d3d9"
-            elif [[ "${PW_VULKAN_USE}" == "4" ]] ; then
-                rm_from_var CP_WINE_FILES "ddraw d3d8 d3d9"
-            elif [[ "${PW_VULKAN_USE}" == "5" ]] ; then
-                rm_from_var CP_WINE_FILES "ddraw d3d8" && rm_from_var CP_DXVK_FILES "d3d9"
-            elif [[ "${PW_VULKAN_USE}" == "6" ]] ; then
-                rm_from_var CP_WINE_FILES "ddraw d3d8 d3d9"
-            fi
+            case "${PW_VULKAN_USE}" in
+                0)
+                    rm_from_var CP_WINE_FILES "ddraw d3d8 d3d9"
+                    ;;
+                1)
+                    rm_from_var CP_WINE_FILES "ddraw d3d8"
+                    rm_from_var CP_DXVK_FILES "d3d9"
+                    ;;
+                2)
+                    rm_from_var CP_WINE_FILES "ddraw"
+                    rm_from_var CP_D8VK_FILES "d3d8"
+                    rm_from_var CP_DXVK_FILES "d3d9"
+                    ;;
+                3)
+                    rm_from_var CP_WINE_FILES "ddraw d3d8"
+                    rm_from_var CP_GALLIUM_NINE_FILES "d3d9"
+                    ;;
+                4)
+                    rm_from_var CP_WINE_FILES "ddraw d3d8 d3d9"
+                    ;;
+                5)
+                    rm_from_var CP_WINE_FILES "ddraw d3d8"
+                    rm_from_var CP_DXVK_FILES "d3d9"
+                    ;;
+                6)
+                    rm_from_var CP_WINE_FILES "ddraw d3d8 d3d9"
+                    ;;
+            esac
         fi
         for wine_dgv2_dll in $CP_DGV2_FILES ; do
             try_copy_file "${PATH_TO_DGV2_FILES}/x32/${wine_dgv2_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
