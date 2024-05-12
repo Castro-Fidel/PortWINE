@@ -55,8 +55,8 @@ change_locale () {
     else
         [[ ! -f "${pw_yad_v13_0}" ]] && pw_yad_v13_0="yad"
         SET_LANG=$("${pw_yad_v13_0}" --title  "LANGUAGE" --text "Select the language:" --list --radiolist \
-        --column="Set:" --column "Choose language:" TRUE "ru" FALSE "en" \
-        --window-icon "$PW_GUI_ICON_PATH/portproton.svg" --width=300 --height=150)
+        --column="Set:" --column "Choose language:" TRUE "ru" FALSE "en" FALSE "es" \
+        --window-icon "$PW_GUI_ICON_PATH/portproton.svg" --width=300 --height=195)
         SET_LANG="$(echo "${SET_LANG}" | awk -F'|' '{print $2}')"
         echo "${SET_LANG}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
         if [[ ! -z "${SET_LANG}" ]]
@@ -66,10 +66,10 @@ change_locale () {
     fi
     export LANGUAGE
 
-    if [[ "$LANGUAGE" == "ru" ]] \
-    && check_start_from_steam
-    then
+    if [[ "$LANGUAGE" == "ru" ]] && check_start_from_steam ; then
         export LC_ALL=ru_RU.UTF-8
+    elif [[ "$LANGUAGE" == "es" ]] && check_start_from_steam ; then
+        export LC_ALL=es_ES.UTF-8
     fi
 }
 export -f change_locale
@@ -82,7 +82,7 @@ generate_pot () {
         LANG_PO="${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/PortProton.po"
         LANG_MO="${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/PortProton.mo"
         TEMPLATE_POT="${PORT_WINE_PATH}/data/locales/PortProton.pot"
-        xgettext --from-code=UTF-8 --language shell -i \
+        xgettext --from-code=UTF-8 --language Shell -i \
         "${PORT_WINE_PATH}/data/scripts/start.sh" \
         "${PORT_WINE_PATH}/data/scripts/setup.sh" \
         "${PORT_WINE_PATH}/data/scripts/functions_helper" \
