@@ -948,7 +948,7 @@ pw_check_and_download_dxvk_and_vkd3d () {
     done
 
     # Download stable and git version VKD3D
-    for VKD3D_VAR_VER in "${VKD3D_STABLE_VER}" "${VKD3D_GIT_VER}" ; do
+    for VKD3D_VAR_VER in "${VKD3D_STABLE_VER}" "${VKD3D_DGV2_VER}" "${VKD3D_GIT_VER}" ; do
         if [ ! -d "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}" ] ; then
             print_info "Download and install VKD3D-PROTON v.${VKD3D_VAR_VER}"
             if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/vkd3d-proton-${VKD3D_VAR_VER}/vkd3d-proton-${VKD3D_VAR_VER}.tar.xz" \
@@ -2079,7 +2079,7 @@ start_portwine () {
             ;;
     esac
 
-    # DGVOODOO2 enable
+    # DGVOODOO2 enable:
     if [[ "${PW_USE_DGVOODOO2}" == "1" ]] ; then
         print_info "Try copy native DGVOODOO2 files..."
         PATH_TO_DGV2_FILES="${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}"
@@ -2127,8 +2127,14 @@ start_portwine () {
             var_winedlloverride_update "${wine_dgv2_dll}=n"
         done
         # DGVOODOO2 settings:
+        if [[ "${PW_DGV2_USE_DX12}" == "1" ]] ; then
+            if [[ "${PW_VULKAN_USE}" == "1" ]] || [[ "${PW_VULKAN_USE}" == "2" ]] \
+            then
+                sed -i "s/OutputAPI = d3d11_fl11_0/OutputAPI = d3d12_fl12_0/" "$DGV2CONF"
+            fi
+            [[ "${PW_VULKAN_USE}" == "2" ]] && PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_DGV2_VER}"
+        fi
         [[ "${PW_DGV2_16BIT_MODE}" == "1" ]] && sed -i "s/DesktopBitDepth =/DesktopBitDepth = 16/" "$DGV2CONF"
-        [[ "${PW_DGV2_USE_DX12}" == "1" ]] && [[ "${PW_VULKAN_USE}" == "1" ]] && sed -i "s/OutputAPI = d3d11_fl11_0/OutputAPI = d3d12_fl12_0/" "$DGV2CONF"
         [[ "${PW_DGV2_FULLSCREEN}" == "1" ]] && sed -i "s/Resolution = unforced/Resolution = desktop/g" "$DGV2CONF"
         [[ "${PW_DGV2_FASTMEMORY}" == "1" ]] && sed -i "s/FastVideoMemoryAccess = false/FastVideoMemoryAccess = true/" "$DGV2CONF"
         [[ "${PW_DGV2_VRAM_INCREASE}" == "1" ]] && sed -i "s/VRAM = 256/VRAM = 1024/" "$DGV2CONF"
@@ -2831,11 +2837,11 @@ pw_gui_for_edit_db () {
 
     unset ADD_CHK_BOX_EDIT_DB
 
-    # DGVOODOO2 INFO:
+    # DGVOODOO2 info:
     PW_USE_DGVOODOO2_INFO=$(eval_gettext 'Enable dgVoodoo2. Forced use all dgVoodoo2 libs (Glide 2.11-3.1, DirectDraw 1-7, Direct3D 2-9) on all 3D API. For WineD3D OpenGL need use WineLG (For Gallium Nine and Zink use too)')
     PW_DGV2_DISABLE_D3D_INFO=$(eval_gettext 'Do not use d3d8 and d3d9 dgVoodoo2 libraries. For some old games, using the example of Space Rangers, a bug with a black screen is corrected.')
     PW_DGV2_16BIT_MODE_INFO=$(eval_gettext 'Forced use of 16bit screen mode. Solves the problem of launching old games, such as Moto Racer.')
-    PW_DGV2_USE_DX12_INFO=$(eval_gettext 'DirectXD 11 is used by default (and recommended). Use DirectX12 for dgVoodoo2. Doesnt always work better. (Working only on stable dxvk and vkd3d)')
+    PW_DGV2_USE_DX12_INFO=$(eval_gettext 'Use DirectX12 for dgVoodoo2. Doesnt always work better. (Working only on stable and newest 3D api)')
     PW_DGV2_FASTMEMORY_INFO=$(eval_gettext 'Enable fast memory access. (Enable if games have poor performance, using Unreal 2 as an example)')
     PW_DGV2_VRAM_INCREASE_INFO=$(eval_gettext 'Increase the amount of vram for dgVoodoo2 (Increases from 256 to 1024)')
     PW_DGV2_FULLSCREEN_INFO=$(eval_gettext 'Render image based on monitor resolution. Can use if the game has a small interface size. Widescreen effect for 16:9')
