@@ -172,7 +172,7 @@ then
 else
     # shellcheck source=/dev/null
     source "$PW_GUI_THEMES_PATH/default.pptheme"
-echo 'export GUI_THEME="default"' >> "$USER_CONF"
+    echo 'export GUI_THEME="default"' >> "$USER_CONF"
 fi
 
 # choose branch

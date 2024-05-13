@@ -998,6 +998,41 @@ stop_portwine () {
     if [[ ! -z "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')" ]] ; then
         kill -s SIGUSR1 "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')" 2>/dev/null
     fi
+
+    for prefix_dir in "${PORT_WINE_PATH}"/prefixes/*; do
+        DESKTOP_DIRS+=(
+            "${prefix_dir}/drive_c/users/steamuser/Desktop"
+            "${prefix_dir}/drive_c/users/Public/Desktop"
+        )
+    done
+
+    for dir in "${DESKTOP_DIRS[@]}" ; do
+        while IFS= read -r -d '' link_file; do
+            LINKS+=("$link_file")
+        done < <(find "$dir" -type f -iname "*.lnk" -print0 2>/dev/null | sort -u)
+    done
+
+    for link_file in "${LINKS[@]}"; do
+        if command -v exiftool &>/dev/null
+            link_drive=$(exiftool -LocalBasePath "$link_file" | sed -n 's/^Local Base Path\s*:\s*//p' | cut -d: -f1 | awk '{print tolower($0)}')
+            link_path=$(exiftool -LocalBasePath "$link_file" | sed -n 's/^Local Base Path\s*:\s*//p' | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/$PW_PREFIX_NAME/dosdevices/$link_drive|g" | sed 's/\\/\//g')
+            link_name=$(exiftool -FileName "$link_file" | sed -n 's/^File Name\s*:\s*//p' | sed 's|\.lnk||')
+            link_cmd=$(exiftool -CommandLineArguments "$link_file" | sed -n 's/^Command Line Arguments\s*:\s*//p')
+        else
+            link_drive=$(env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" -LocalBasePath "$link_file" | sed -n 's/^Local Base Path\s*:\s*//p' | cut -d: -f1 | awk '{print tolower($0)}')
+            link_path=$(env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" -LocalBasePath "$link_file" | sed -n 's/^Local Base Path\s*:\s*//p' | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/$PW_PREFIX_NAME/dosdevices/$link_drive|g" | sed 's/\\/\//g')
+            link_name=$(env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" -FileName "$link_file" | sed -n 's/^File Name\s*:\s*//p' | sed 's|\.lnk||')
+            link_cmd=$(env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" -CommandLineArguments "$link_file" | sed -n 's/^Command Line Arguments\s*:\s*//p')
+        fi
+        exe_path="$(realpath "$link_path")"
+        if ! [[ "$(grep -il "${exe_path}" "${PORT_WINE_PATH}"/*.desktop)" ]] || \
+           ! [[ "$(grep -il "${exe_path}" "${HOME}/.local/share/applications"/*.desktop)" ]] || \
+           ! [[ "$(grep -il "${exe_path}" "$(xdg-user-dir DESKTOP)"/*.desktop)" ]] ; then
+            create_shortcut_from_link
+            print_info "Created link for $link_name"
+        fi
+    done
+
     add_in_stop_portwine
     unset SKIP_CHECK_UPDATES
     exit 0
@@ -1292,6 +1327,62 @@ check_nvidia_rtx () {
         [[ "$LSPCI_VGA" == *AD[0-9]* ]] || [[ "$LSPCI_VGA" == *2[6-8][0-9]* ]] && return 0
     fi
     return 1
+}
+
+create_shortcut_from_link(){
+    PORTPROTON_NAME="$link_name"
+    PW_RESIZE_TO=128
+
+    try_remove_file "${PORT_WINE_PATH}/data/img/setup.png"
+    try_remove_file "${PORT_WINE_PATH}/data/img/Setup.png"
+    try_remove_file "${PORT_WINE_PATH}/data/img/launcher.png"
+    try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
+
+     if [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
+        if command -v exe-thumbnailer &>/dev/null ; then
+            exe-thumbnailer -s 128 "$(readlink -f "${portwine_exe}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
+        else
+            env PYTHONPATH="${PW_PLUGINS_PATH}/portable/lib/python3.9/site-packages/" \
+            LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" \
+            "${PW_WINELIB}/runtime/files/bin/python3.9"  \
+            "${PW_PLUGINS_PATH}/portable/bin/exe-thumbnailer" -s 128 "$(readlink -f "${portwine_exe}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
+        fi
+    fi
+
+    echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
+    echo "Name=${PORTPROTON_NAME}" >> "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
+    if [[ ! -z "$link_cmd" ]] ; then
+        if check_flatpak
+        then echo "Exec=flatpak run ru.linux_gaming.PortProton \"${exe_path}\" \"${link_cmd}\"" >> "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
+        else echo "Exec=env \"${PORT_SCRIPTS_PATH}/start.sh\" \"${exe_path}\" \"${link_cmd}\"" >> "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
+        fi
+    else
+        if check_flatpak
+        then echo "Exec=flatpak run ru.linux_gaming.PortProton \"${exe_path}\"" >> "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
+        else echo "Exec=env \"${PORT_SCRIPTS_PATH}/start.sh\" \"${exe_path}\"" >> "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
+        fi
+    fi
+    {
+        echo "Type=Application"
+        echo "Categories=Game"
+        echo "StartupNotify=true"
+        echo "Path=${PORT_SCRIPTS_PATH}/"
+        echo "Icon=${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
+    } >> "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
+    chmod u+x "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
+
+    if [[ "$DESKTOP_SESSION" =~ "gnome" ]] ; then
+        try_remove_file "${HOME}/.local/share/applications/${PORTPROTON_NAME}.desktop"
+        cp -f "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop" "${HOME}/.local/share/applications/"
+    else
+        if [[ -d "${HOME}/Desktop" ]] ; then
+            cp -f "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop" "${HOME}/Desktop/"
+        elif [[ -d "${HOME}/Рабочий стол" ]] ; then
+            cp -f "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop" "${HOME}/Рабочий стол/"
+        elif [[ $(xdg-user-dir DESKTOP) ]] ; then
+            cp -f "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop" "$(xdg-user-dir DESKTOP)"
+        fi
+    fi
 }
 
 pw_init_db () {
@@ -4622,6 +4713,8 @@ portwine_delete_shortcut () {
     elif [[ $(xdg-user-dir DESKTOP) ]] ; then
         rm -f "$(grep -il "${portwine_exe}" "$(xdg-user-dir DESKTOP)"/*.desktop)" &>/dev/null
     fi
+    rm -f "$(grep -il "${portwine_exe}" " ${PORT_WINE_PATH}/data/prefixes/$PW_PREFIX_NAME/drive_c/users/steamuser/Desktop"/*.lnk)" &>/dev/null
+    rm -f "$(grep -il "${portwine_exe}" " ${PORT_WINE_PATH}/data/prefixes/$PW_PREFIX_NAME/drive_c/users/Public/Desktop"/*.lnk)" &>/dev/null
 }
 
 portwine_missing_shortcut () {
