@@ -2004,7 +2004,7 @@ start_portwine () {
             print_info "VKD3D-PROTON v.${VKD3D_STABLE_VER} in use"
             PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
-            CP_DXVK_FILES="d3d11 d3d10_1 d3d10 d3d10core d3d9 dxgi" # openvr_api_dxvk
+            CP_DXVK_FILES="d3d9 d3d10core d3d10_1 d3d10 d3d11 dxgi" # openvr_api_dxvk
             CP_VKD3D_FILES="d3d12 libvkd3d-shader-1"
             CP_WINE_FILES="ddraw d3d8 d3d12core"
             ;;
@@ -2015,7 +2015,7 @@ start_portwine () {
             PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
             CP_D8VK_FILES="d3d8"
-            CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi" # openvr_api_dxvk
+            CP_DXVK_FILES="d3d9 d3d10core d3d11 dxgi" # openvr_api_dxvk
             CP_VKD3D_FILES="d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1"
             CP_WINE_FILES="ddraw d3d10_1 d3d10"
             ;;
@@ -2025,7 +2025,7 @@ start_portwine () {
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
             CP_GALLIUM_NINE_FILES="d3d9"
             CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
-            CP_WINE_FILES="ddraw d3d8 d3d11 d3d10core d3d10_1 d3d10 dxgi d3d12 d3d12core"
+            CP_WINE_FILES="ddraw d3d8 d3d10core d3d10_1 d3d10 d3d11 dxgi d3d12 d3d12core"
             export __GL_YIELD="NOTHING"
             export mesa_glthread="true"
             export WINE_D3D_CONFIG="renderer=gl"
@@ -2065,7 +2065,7 @@ start_portwine () {
             print_info "DXVK v.${DXVK_LEGACY_VER} in use"
             PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_LEGACY_VER}"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
-            CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
+            CP_DXVK_FILES="d3d9 d3d10core d3d10_1 d3d10 d3d11 dxgi"
             CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
             CP_WINE_FILES="ddraw d3d8 d3d12 d3d12core"
             ;;
@@ -2132,8 +2132,8 @@ start_portwine () {
         [[ "${PW_DGV2_FULLSCREEN}" == "1" ]] && sed -i "s/Resolution = unforced/Resolution = desktop/g" "$DGV2CONF"
         [[ "${PW_DGV2_FASTMEMORY}" == "1" ]] && sed -i "s/FastVideoMemoryAccess = false/FastVideoMemoryAccess = true/" "$DGV2CONF"
         [[ "${PW_DGV2_VRAM_INCREASE}" == "1" ]] && sed -i "s/VRAM = 256/VRAM = 1024/" "$DGV2CONF"
-        [[ "${PW_DGV2_FILTERING}" == "1" ]] && sed -i "79s/Filtering = appdriven/Filtering = 16/" "$DGV2CONF"
-        [[ "${PW_DGV2_ANTIALIASING}" == "1" ]] && sed -i "83s/Antialiasing = appdriven/Antialiasing = 8x/" "$DGV2CONF"
+        [[ "${PW_DGV2_FILTERING}" == "1" ]] && sed -i "s/Filtering = appdriven/Filtering = 16/" "$DGV2CONF"
+        [[ "${PW_DGV2_ANTIALIASING}" == "1" ]] && sed -i "s/Antialiasing = appdriven/Antialiasing = 8x/g" "$DGV2CONF"
     else
         for rm_dgv2_dll in d3dimm glide glide2x glide3x ; do
             try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/${rm_dgv2_dll}.dll"
@@ -2350,8 +2350,6 @@ start_portwine () {
             "${WINELOADER}" reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\winebus" /v "Enable SDL" /t REG_DWORD /d 0 /f
         fi
     else
-        # var_winedlloverride_update "xinput1_1,xinput1_2,xinput1_3,xinput9_1_0=b"
-
         if [[ "$HIDRAW_VAR" ]] \
         && [[ "$SDL_VAR" ]]
         then
@@ -2400,6 +2398,10 @@ start_portwine () {
         elif [[ "${DESKTOP_SESSION}" =~ "deepin" ]] ; then
             dbus-send --session --dest=com.deepin.WMSwitcher --type=method_call /com/deepin/WMSwitcher com.deepin.WMSwitcher.RequestSwitchWM
         fi
+    fi
+
+    if [[ "${PW_FORCE_XINPUT}" == "1" ]] ; then
+        var_winedlloverride_update "xinput1_1,xinput1_2,xinput1_3,xinput9_1_0=b;dinput="
     fi
 
     pw_mangohud_check
@@ -2840,7 +2842,7 @@ pw_gui_for_edit_db () {
     PW_DGV2_VRAM_INCREASE_INFO=$(eval_gettext 'Increase the amount of vram for dgVoodoo2 (Increases from 256 to 1024)')
     PW_DGV2_FULLSCREEN_INFO=$(eval_gettext 'Render image based on monitor resolution. Can use if the game has a small interface size. Widescreen effect for 16:9')
     PW_DGV2_FILTERING_INFO=$(eval_gettext 'Forced anisotropic filtering 16x in Direct3D games')
-    PW_DGV2_ANTIALIASING_INFO=$(eval_gettext 'Forced antialiasing 8x in Direct3D games')
+    PW_DGV2_ANTIALIASING_INFO=$(eval_gettext 'Forced antialiasing 8x in Direct3D and Glide games')
 
     PW_DINPUT_PROTOCOL_INFO=$(eval_gettext 'Force use DirectInput protocol instead of XInput')
     PW_VKBASALT_INFO=$(eval_gettext 'Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)')
