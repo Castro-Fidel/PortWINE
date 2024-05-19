@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Author: chal55rus
+########################################################################
+export LAUNCH_PARAMETERS=("/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-")
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/az_webinst.exe"
+export PORTWINE_CREATE_SHORTCUT_NAME="Anomale Zone"
+
+start_portwine
+if try_download "https://anomaly-zone.ru/file/az_webinst.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
+then
+    pw_start_progress_bar_install_game "Anomale Zone."
+    pw_kill_autostart Launcher.exe &
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/Cybertime Games/Anomaly-Zone/Launcher.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    kill_portwine
+    pw_stop_progress_bar
+    portwine_create_shortcut
+fi
+stop_portwine
