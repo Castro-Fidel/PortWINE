@@ -2900,10 +2900,10 @@ pw_gui_for_edit_db () {
             ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
         done
     }
-    edit_db_field_add $@
+    edit_db_field_add $PW_EDIT_DB_LIST
     old_IFS=$IFS
     IFS="%"
-    "${pw_yad_v13_0}" --plug=$KEY_EDIT_DB_GUI --tabnum="1" --form --separator=" " --columns=4 ${ADD_CHK_BOX_EDIT_DB} \
+    "${pw_yad_v13_0}" --plug=$KEY_EDIT_DB_GUI --tabnum="1" --form --separator=" " --columns=3 ${ADD_CHK_BOX_EDIT_DB} \
     1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db" 2>/dev/null &
     IFS=$old_IFS
 
@@ -2946,10 +2946,17 @@ A brief instruction:
 	--field="$(eval_gettext "Force certain locale for an app")!$(eval_gettext "Fixes encoding issues in legacy software") :CB" "${PW_LOCALE_SELECT}!disabled!$LOCALE_LIST" \
     2>/dev/null 1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
 
+    unset ADD_CHK_BOX_EDIT_DB
+    edit_db_field_add $PW_EDIT_DB_LIST_DGV2
+    old_IFS=$IFS
+    IFS="%"
+    "${pw_yad_v13_0}" --plug=$KEY_EDIT_DB_GUI --tabnum="3" --form --separator=" " --columns=3 ${ADD_CHK_BOX_EDIT_DB} \
+    1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db_dgv2" 2>/dev/null &
+    IFS=$old_IFS
 
-    "${pw_yad_v13_0}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="700" \
+    "${pw_yad_v13_0}" --notebook --key="$KEY_EDIT_DB_GUI" --title "$(eval_gettext 'EDIT_DB')" --text-align=center --height="700" --expand \
     --text "$(eval_gettext "Change settings in database file for") <b>${PORTWINE_DB}</b>\n $(eval_gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" --separator=" " \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --tab="$(eval_gettext 'General')" --tab="$(eval_gettext 'Advanced')" --tab="dgVoodoo2" \
     --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
     --button="$(eval_gettext "RESET SETTINGS")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Restore default settings")":2 \
     --button="$(eval_gettext "OPEN THE SETTINGS FILE")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Open the <b>.ppdb</b> settings file in a system text editor to view and change variables manually")":150 \
@@ -2967,7 +2974,8 @@ A brief instruction:
                 exit 0
                 ;;
     esac
-    output_yad_edit_db=($(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db"))
+    output_yad_edit_db=($(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db" \
+    "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db_dgv2"))
     bool_from_yad=0
     edit_db_field_read () {
         for boole_to_int in $@ ; do
@@ -4056,9 +4064,10 @@ pw_edit_db () {
     PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME
     PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE
     PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_USE_GAMESCOPE PW_DISABLE_COMPOSITING
-    PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_DGVOODOO2 PW_DGV2_DISABLE_D3D PW_DGV2_16BIT_MODE PW_DGV2_USE_DX12 PW_DGV2_FASTMEMORY
+    PW_USE_RUNTIME PW_DINPUT_PROTOCOL
+    "
+    PW_EDIT_DB_LIST_DGV2="PW_USE_DGVOODOO2 PW_DGV2_DISABLE_D3D PW_DGV2_16BIT_MODE PW_DGV2_USE_DX12 PW_DGV2_FASTMEMORY
     PW_DGV2_VRAM_INCREASE PW_DGV2_FULLSCREEN PW_DGV2_FILTERING PW_DGV2_ANTIALIASING
-
     "
 
     if check_wayland_session ; then
@@ -4067,8 +4076,8 @@ pw_edit_db () {
     if check_flatpak ; then
         rm_from_var PW_EDIT_DB_LIST "PW_USE_RUNTIME"
     fi
-    pw_gui_for_edit_db $PW_EDIT_DB_LIST
 
+    pw_gui_for_edit_db $PW_EDIT_DB_LIST $PW_EDIT_DB_LIST_DGV2
     # PW_FORCE_USE_VSYNC PW_HEAP_DELAY_FREE
 }
 
