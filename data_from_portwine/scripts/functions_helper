@@ -1845,7 +1845,6 @@ start_portwine () {
     || [[ "${PW_USE_DXR10}" == 1 ]] \
     || [[ "${PW_USE_RAY_TRACING}" == 1 ]]
     then
-        export VKD3D_FEATURE_LEVEL="12_1"
         var_vkd3d_config_update dxr
         var_radv_perftest_config_update rt
     else
@@ -2177,7 +2176,6 @@ start_portwine () {
 
     if [[ ! -z "$CP_VKD3D_FILES" ]] ; then
         print_info "Try copy native VKD3D files..."
-        check_variables VKD3D_FEATURE_LEVEL "12_1"
         for wine_vkd3d_dll in $CP_VKD3D_FILES ; do
             if [[ -f "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" ]] ; then
                 try_copy_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
@@ -2265,6 +2263,10 @@ start_portwine () {
 
     if [[ "${PW_MESA_GL_VERSION_OVERRIDE}" != "disabled" ]] ; then
         export MESA_GL_VERSION_OVERRIDE="${PW_MESA_GL_VERSION_OVERRIDE}"
+    fi
+
+    if [[ "${PW_VKD3D_FEATURE_LEVEL}" != "disabled" ]] ; then
+        export VKD3D_FEATURE_LEVEL="${PW_VKD3D_FEATURE_LEVEL}"
     fi
 
     #run_winetricks_from_db
@@ -2943,6 +2945,7 @@ A brief instruction:
 <b>-b:</b> create a border-less window.
 <b>-f:</b> create a full-screen window.") :CBE" "\\${GAMESCOPE_ARGS}!-r 60 -F fsr!" \
     --field="$(eval_gettext "Forcibly select the OpenGL version for the game")!$(eval_gettext "You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)") :CB" "${PW_MESA_GL_VERSION_OVERRIDE}!disabled!4.6COMPAT!4.6!4.5COMPAT!4.5!3.3COMPAT!3.3" \
+    --field="$(eval_gettext "Forcibly select the VKD3D feature level")!$(eval_gettext "You can set a forced feature level VKD3D for games on DirectX12") :CB" "${PW_VKD3D_FEATURE_LEVEL}!disabled!12_2!12_1!12_0!11_1!11_0" \
 	--field="$(eval_gettext "Force certain locale for an app")!$(eval_gettext "Fixes encoding issues in legacy software") :CB" "${PW_LOCALE_SELECT}!disabled!$LOCALE_LIST" \
     2>/dev/null 1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
 
@@ -2988,7 +2991,8 @@ A brief instruction:
     PW_GPU_USE="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $8}')"
     GAMESCOPE_ARGS="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $9}')"
     PW_MESA_GL_VERSION_OVERRIDE="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $10}')"
-    PW_LOCALE_SELECT="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $11}')"
+    PW_VKD3D_FEATURE_LEVEL="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $11}')"
+    PW_LOCALE_SELECT="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $12}')"
     # PW_AMD_VULKAN_USE="`cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $10}'`"
 
     if [[ "${CPU_LIMIT}" != "disabled" ]] ; then
@@ -2997,7 +3001,8 @@ A brief instruction:
         export PW_WINE_CPU_TOPOLOGY="disabled"
     fi
     echo "pw_gui_for_edit_db PORTWINE_DB_FILE=$PORTWINE_DB_FILE"
-    edit_db_from_gui $@ LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY GAMESCOPE_ARGS PW_MESA_GL_VERSION_OVERRIDE PW_LOCALE_SELECT
+    edit_db_from_gui $@ LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY GAMESCOPE_ARGS \
+    PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PW_LOCALE_SELECT
     if [[ -z "$MANGOHUD_CONFIG" ]] ; then
         MONITOR_HEIGHT="$(echo "$PW_SCREEN_RESOLUTION" | awk -F'x' '{print $2}')"
         MH_FONT_SIZE="font_size=$(( MONITOR_HEIGHT / 45 ))"
