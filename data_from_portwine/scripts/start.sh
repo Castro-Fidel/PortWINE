@@ -113,7 +113,7 @@ create_new_dir "${PORT_WINE_TMP_PATH}"/mono
 export PW_VULKAN_DIR="${PORT_WINE_TMP_PATH}/VULKAN"
 create_new_dir "${PW_VULKAN_DIR}"
 
-LSPCI_VGA="$(lspci -k | grep -E 'VGA|3D' | tr -d '\n')"
+LSPCI_VGA="$(lspci -k 2>/dev/null | grep -E 'VGA|3D' | tr -d '\n')"
 export LSPCI_VGA
 
 if command -v xrandr &>/dev/null ; then
