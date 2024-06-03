@@ -2,18 +2,15 @@
 # Author: Castro-Fidel (linux-gaming.ru)
 ########################################################################
 export LAUNCH_PARAMETERS=("/VERYSILENT")
-GOG_VER="$(curl "https://remote-config.gog.com/components/webinstaller?component_version=2.0.0" \
-| awk -F'galaxy_client_' '{print $2}' \
-| awk -F'.pkg' '{print $1}')"
-[[ "${GOG_VER}" != 2.* ]] && yad_error "ERROR: Get the GOG version." && exit 1
-export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/setup_galaxy_${GOG_VER}.exe"
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/setup_galaxy.exe"
 export PW_PREFIX_NAME="GOG"
-export DISABLE_CP_DEFPFX=1
-export PW_WINE_USE=PROTON_STEAM_8.0-4
+export DISABLE_CP_DEFPFX="1"
+export PW_WINE_USE="WINE_LG"
+export PORTWINE_CREATE_SHORTCUT_NAME="GOG GALAXY"
 
 start_portwine
 
-if try_download "https://content-system.gog.com/open_link/download?path=/open/galaxy/client/${GOG_VER}/setup_galaxy_${GOG_VER}.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
+if try_download "https://webinstallers.gog-statics.com/download/GOG_Galaxy_2.0.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
 then
     pw_start_progress_bar_install_game "GOG Galaxy."
     pw_run "${PW_AUTOINSTALL_EXE}"
