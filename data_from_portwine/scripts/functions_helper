@@ -1427,20 +1427,23 @@ edit_user_conf_from_gui () {
 }
 
 pw_create_gui_png () {
-    if [ ! -z "${PORTWINE_CREATE_SHORTCUT_NAME}" ] ; then
-        export PORTPROTON_NAME="${PORTWINE_CREATE_SHORTCUT_NAME}"
+    if [[ ! -z "${PORTWINE_CREATE_SHORTCUT_NAME}" ]] ; then
+        PORTPROTON_NAME="${PORTWINE_CREATE_SHORTCUT_NAME}"
     else
         PW_PRODUCTNAME=$(env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" -ProductName "${portwine_exe}" 2>/dev/null | sed -n 's/^Product Name\s*:\s*//p')
-        if [[ "$PW_PRODUCTNAME" =~ "Launcher" ]] || [[ "$PW_PRODUCTNAME" =~ "RU" ]] ; then
-            PW_PRODUCTNAME=$(echo "$PW_PRODUCTNAME" | sed 's/Launcher\|RU//g')
+        if [[ "$PW_PRODUCTNAME" =~ "Launcher" ]] \
+        || [[ "$PW_PRODUCTNAME" =~ "RU" ]]
+        then
+            PW_PRODUCTNAME="$(echo "$PW_PRODUCTNAME" | sed 's/Launcher\|RU//g')"
         fi
 
         if [[ ! -z "$PW_PRODUCTNAME" ]] ; then
-            export PORTPROTON_NAME="$PW_PRODUCTNAME"
+            PORTPROTON_NAME="$PW_PRODUCTNAME"
         else
-            export PORTPROTON_NAME="$(basename "$(dirname "${portwine_exe}")")"
+            PORTPROTON_NAME="$(basename "${portwine_exe}" .exe)"
         fi
     fi
+    export PORTPROTON_NAME
     PW_RESIZE_TO=128
     try_remove_file "${PORT_WINE_PATH}/data/img/setup.png"
     try_remove_file "${PORT_WINE_PATH}/data/img/Setup.png"
