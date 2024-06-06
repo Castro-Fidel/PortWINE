@@ -110,8 +110,8 @@ try_copy_file () {
 export -f try_copy_file
 
 try_copy_dir () {
-    if [ ! -d "$1" ] ; then	print_info "directory $1 not found for copy"
-    elif [ -z "$2" ] ; then	print_error "no way to copy directory $1"
+    if [ ! -d "$1" ] ; then    print_info "directory $1 not found for copy"
+    elif [ -z "$2" ] ; then    print_error "no way to copy directory $1"
     else
         cp -fr "$1" "$2"
         [ "$?" != 0 ] && print_error "failed to copy directory $1 to $2" || return 0
@@ -145,7 +145,7 @@ create_new_dir () {
 
 try_force_link_file () {
     if [ ! -f "$1" ] ; then :
-    elif [ -z "$2" ] ; then	print_error "no way to link file $1"
+    elif [ -z "$2" ] ; then    print_error "no way to link file $1"
     else
         ln -s -f -r "$1" "$2"
         [ "$?" != 0 ] && print_error "failed to link file $1 to $2" || return 0
@@ -169,8 +169,8 @@ check_symlink () {
 export -f check_symlink
 
 try_force_link_dir () {
-    if [ ! -d "$1" ] ; then	print_info "directory $1 not found for link"
-    elif [ -z "$2" ] ; then	print_error "no way to link directory $1"
+    if [ ! -d "$1" ] ; then    print_info "directory $1 not found for link"
+    elif [ -z "$2" ] ; then    print_error "no way to link directory $1"
     else
         ln -s -f -r "$1" "$2"
         [ "$?" != 0 ] && print_error "failed to link directory $1 to $2" || return 0
@@ -1393,6 +1393,29 @@ update_winetricks () {
     return 0
 }
 
+edit_db_field_add () {
+    for int_to_boole in $@ ; do
+        if [ "${!int_to_boole}" == "1" ]
+        then export ${int_to_boole}="TRUE"
+        else export ${int_to_boole}="FALSE"
+        fi
+        TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
+        int_to_boole_non_pw="$(echo ${int_to_boole} | sed 's/^PW_//' | sed 's/_/ /g' )"
+        ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
+    done
+}
+
+edit_db_field_read () {
+    for boole_to_int in $@ ; do
+        export ${boole_to_int}=${output_yad_edit_db[$bool_from_yad]}
+        if [ "${!boole_to_int}" == "TRUE" ]
+        then export ${boole_to_int}="1"
+        else export ${boole_to_int}="0"
+        fi
+        export bool_from_yad=$(( ${bool_from_yad} + 1 ))
+    done
+}
+
 edit_db_from_gui () {
     print_info "edit_db_from_gui PORTWINE_DB_FILE=$PORTWINE_DB_FILE"
     for mod_db in $@ ; do
@@ -1568,13 +1591,13 @@ pw_create_unique_exe () {
 
 start_portwine () {
     if [[ "${PW_LOCALE_SELECT}" != "disabled" ]] && [[ ! -z "${PW_LOCALE_SELECT}" ]] ; then
-		export LC_ALL="${PW_LOCALE_SELECT}"
-		if [[ "${PW_USE_RUNTIME}" == "1" ]] && [[ "${HOST_LC_ALL}" != "${LC_ALL}" ]] ; then
-			export HOST_LC_ALL="${LC_ALL}"
-		fi
-	else
-		export PW_LOCALE_SELECT="disabled"
-	fi
+        export LC_ALL="${PW_LOCALE_SELECT}"
+        if [[ "${PW_USE_RUNTIME}" == "1" ]] && [[ "${HOST_LC_ALL}" != "${LC_ALL}" ]] ; then
+            export HOST_LC_ALL="${LC_ALL}"
+        fi
+    else
+        export PW_LOCALE_SELECT="disabled"
+    fi
 
     WINEPREFIX="$(readlink -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}")"
     export WINEPREFIX
@@ -2092,7 +2115,7 @@ start_portwine () {
     esac
 
     # DGVOODOO2 enable:
-    if [[ "${PW_USE_DGVOODOO2}" == "1" ]] ; then
+    if [[ "${PW_DGVOODOO2}" == "1" ]] ; then
         print_info "Try copy native DGVOODOO2 files..."
         PATH_TO_DGV2_FILES="${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}"
         CP_DGV2_FILES="ddraw d3dimm d3d8 d3d9 glide glide2x glide3x"
@@ -2150,8 +2173,14 @@ start_portwine () {
         [[ "${PW_DGV2_FULLSCREEN}" == "1" ]] && sed -i "s/Resolution = unforced/Resolution = desktop/g" "$DGV2CONF"
         [[ "${PW_DGV2_FASTMEMORY}" == "1" ]] && sed -i "s/FastVideoMemoryAccess = false/FastVideoMemoryAccess = true/" "$DGV2CONF"
         [[ "${PW_DGV2_VRAM_INCREASE}" == "1" ]] && sed -i "s/VRAM = 256/VRAM = 1024/" "$DGV2CONF"
-        [[ "${PW_DGV2_FILTERING}" == "1" ]] && sed -i "79s/Filtering = appdriven/Filtering = 16/" "$DGV2CONF"
-        [[ "${PW_DGV2_ANTIALIASING}" == "1" ]] && sed -i "83s/Antialiasing = appdriven/Antialiasing = 8x/" "$DGV2CONF"
+        if [[ "${PW_DGV2_FILTERING}" != "disabled" ]] ; then
+            export PW_DGV2_FILTERING="${PW_DGV2_FILTERING}"
+            sed -i "s/Filtering = appdriven/Filtering = ${PW_DGV2_FILTERING}/" "$DGV2CONF"
+        fi
+        if [[ "${PW_DGV2_ANTIALIASING}" != "disabled" ]] ; then
+            export PW_DGV2_ANTIALIASING="${PW_DGV2_ANTIALIASING}"
+            sed -i "s/Antialiasing = appdriven/Antialiasing = ${PW_DGV2_ANTIALIASING}x/g" "$DGV2CONF"
+        fi
     else
         for rm_dgv2_dll in d3dimm glide glide2x glide3x ; do
             try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/${rm_dgv2_dll}.dll"
@@ -2533,6 +2562,30 @@ pw_run () {
 }
 export -f pw_run
 
+pw_yad_set_form () {
+    if [[ -f "${PORT_WINE_TMP_PATH}/tmp_yad_form" ]]; then
+        PW_YAD_SET=$(head -n 1 "${PORT_WINE_TMP_PATH}/tmp_yad_form" | awk '{print $1}')
+        export PW_YAD_SET
+    fi
+}
+
+pw_yad_form_vulkan () {
+    if [[ -f "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" ]] ; then
+        VULKAN_MOD="$(grep \;\; "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" | awk -F";" '{print $1}')"
+        PW_WINE_VER="$(grep \;\; "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" | awk -F";" '{print $2}')"
+        PW_PREFIX_NAME="$(grep \;\; "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" | awk -F";" '{print $3}' | sed -e "s/[[:blank:]]/_/g" )"
+        if [[ -z "${PW_PREFIX_NAME}" ]] \
+        || echo "${PW_PREFIX_NAME}" | grep -E '^_.*'
+        then
+            PW_PREFIX_NAME="DEFAULT"
+        else
+            PW_PREFIX_NAME="${PW_PREFIX_NAME^^}"
+        fi
+        export PW_PREFIX_NAME PW_WINE_VER VULKAN_MOD
+        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan"
+    fi
+}
+
 portwine_launch () {
     start_portwine
     PORTWINE_MSI=$(basename "${portwine_exe}" | grep .msi)
@@ -2709,7 +2762,7 @@ pw_update_pfx_cover_gui () {
 
 pw_start_progress_bar_cs () {
     if ! check_start_from_steam ; then
-        "${pw_yad}" --progress --progress-text="$@
+        "${pw_yad_v13_0}" --progress --text="$@
         " --pulsate --close-on-unfocus --borders="$PROGRESS_BAR_BORDERS_SIZE" \
         --no-buttons --undecorated --center --skip-taskbar \
         --width="$PROGRESS_BAR_WIDTH_SIZE" \
@@ -2722,7 +2775,7 @@ pw_start_progress_bar_cs () {
 
 pw_start_progress_bar_block () {
     if ! check_start_from_steam ; then
-        "${pw_yad}" --progress --progress-text="$@
+        "${pw_yad_v13_0}" --progress --text="$@
         " --pulsate --borders="$PROGRESS_BAR_BORDERS_SIZE" \
         --no-buttons --undecorated --center --skip-taskbar \
         --width="$PROGRESS_BAR_WIDTH_SIZE" \
@@ -2735,7 +2788,7 @@ pw_start_progress_bar_block () {
 
 pw_start_progress_bar_install_game () {
     if ! check_start_from_steam ; then
-        "${pw_yad}" --progress --progress-text="$(eval_gettext "Please wait. Installing the") $@
+        "${pw_yad_v13_0}" --progress --text="$(eval_gettext "Please wait. Installing the") $@
         " --pulsate --borders="$PROGRESS_BAR_BORDERS_SIZE" \
         --no-buttons --undecorated --center --skip-taskbar \
         --width="$PROGRESS_BAR_WIDTH_SIZE" \
@@ -2841,28 +2894,18 @@ pw_gui_for_edit_db () {
 
     GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
     unset LOCALE_LIST
-	for LOCALE in $GET_LOCALE_LIST ; do
-		if locale -a | grep -i "$LOCALE" &>/dev/null ; then
+    for LOCALE in $GET_LOCALE_LIST ; do
+        if locale -a | grep -i "$LOCALE" &>/dev/null ; then
             if [[ ! -z "$LOCALE_LIST" ]]
             then LOCALE_LIST+="!$(locale -a | grep -i "$LOCALE")"
             else LOCALE_LIST="$(locale -a | grep -i "$LOCALE")"
             fi
-		fi
-	done
+        fi
+    done
 
     unset ADD_CHK_BOX_EDIT_DB
 
-    # DGVOODOO2 info:
-    PW_USE_DGVOODOO2_INFO=$(eval_gettext 'Enable dgVoodoo2. Forced use all dgVoodoo2 libs (Glide 2.11-3.1, DirectDraw 1-7, Direct3D 2-9) on all 3D API. For WineD3D OpenGL need use WineLG (For Gallium Nine and Zink use too)')
-    PW_DGV2_DISABLE_D3D_INFO=$(eval_gettext 'Do not use d3d8 and d3d9 dgVoodoo2 libraries. For some old games, using the example of Space Rangers, a bug with a black screen is corrected.')
-    PW_DGV2_16BIT_MODE_INFO=$(eval_gettext 'Forced use of 16bit screen mode. Solves the problem of launching old games, such as Moto Racer.')
-    PW_DGV2_USE_DX12_INFO=$(eval_gettext 'Use DirectX12 for dgVoodoo2. Doesnt always work better. (Working only on stable and newest 3D api)')
-    PW_DGV2_FASTMEMORY_INFO=$(eval_gettext 'Enable fast memory access. (Enable if games have poor performance, using Unreal 2 as an example)')
-    PW_DGV2_VRAM_INCREASE_INFO=$(eval_gettext 'Increase the amount of vram for dgVoodoo2 (Increases from 256 to 1024)')
-    PW_DGV2_FULLSCREEN_INFO=$(eval_gettext 'Render image based on monitor resolution. Can use if the game has a small interface size. Widescreen effect for 16:9')
-    PW_DGV2_FILTERING_INFO=$(eval_gettext 'Forced anisotropic filtering 16x in Direct3D games')
-    PW_DGV2_ANTIALIASING_INFO=$(eval_gettext 'Forced antialiasing 8x in Direct3D games')
-
+    PW_DGVOODOO2_INFO=$(eval_gettext 'Enable dgVoodoo2. Forced use all dgVoodoo2 libs (Glide 2.11-3.1, DirectDraw 1-7, Direct3D 2-9) on all 3D API. For WineD3D OpenGL need use WineLG (For Gallium Nine and Zink use too)')
     PW_DINPUT_PROTOCOL_INFO=$(eval_gettext 'Force use DirectInput protocol instead of XInput')
     PW_VKBASALT_INFO=$(eval_gettext 'Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)')
     PW_NO_ESYNC_INFO=$(eval_gettext 'Do not use in-process synchronization primitives based on eventfd. (It is recommended not to change the value.)')
@@ -2910,21 +2953,10 @@ pw_gui_for_edit_db () {
 <b>Super + G :</b> Toggle keyboard grab
 <b>Super + C :</b> Update clipboard')
 
-    edit_db_field_add () {
-        for int_to_boole in $@ ; do
-            if [ "${!int_to_boole}" == "1" ]
-            then export ${int_to_boole}="TRUE"
-            else export ${int_to_boole}="FALSE"
-            fi
-            TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
-            int_to_boole_non_pw="$(echo ${int_to_boole} | sed 's/^PW_//' | sed 's/_/ /g' )"
-            ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
-        done
-    }
     edit_db_field_add $@
     old_IFS=$IFS
     IFS="%"
-    "${pw_yad_v13_0}" --plug=$KEY_EDIT_DB_GUI --tabnum="1" --form --separator=" " --columns=4 ${ADD_CHK_BOX_EDIT_DB} \
+    "${pw_yad_v13_0}" --plug=$KEY_EDIT_DB_GUI --tabnum="1" --form --separator=" " --columns=3 ${ADD_CHK_BOX_EDIT_DB} \
     1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db" 2>/dev/null &
     IFS=$old_IFS
 
@@ -2940,13 +2972,13 @@ pw_gui_for_edit_db () {
     --field="$(eval_gettext "Forced to use/disable libraries")!$(eval_gettext "Forced to use/disable the library only for the given application. (There are examples in the drop-down list)
 
 A brief instruction:
-	* libraries are written <b>WITHOUT</b> the .dll file extension
-	* libraries are separated by semicolons - <b>;</b>
-	* library=n - use the <b>WINDOWS</b> (third-party) library
-	* library=b - use <b>WINE</b> (built-in) library
-	* library=n,b - use <b>WINDOWS</b> library and then <b>WINE</b>
-	* library=b,n - use <b>WINE</b> library and then <b>WINDOWS</b>
-	* library= - disable the use of this library") :CBE" "${WINEDLLOVERRIDES}!libglesv2=!d3dx9_36,d3dx9_42=n,b;mfc120=b,n" \
+    * libraries are written <b>WITHOUT</b> the .dll file extension
+    * libraries are separated by semicolons - <b>;</b>
+    * library=n - use the <b>WINDOWS</b> (third-party) library
+    * library=b - use <b>WINE</b> (built-in) library
+    * library=n,b - use <b>WINDOWS</b> library and then <b>WINE</b>
+    * library=b,n - use <b>WINE</b> library and then <b>WINDOWS</b>
+    * library= - disable the use of this library") :CBE" "${WINEDLLOVERRIDES}!libglesv2=!d3dx9_36,d3dx9_42=n,b;mfc120=b,n" \
     --field=":LBL" "" \
     --field="$(eval_gettext "ADD ARGUMENTS FOR .EXE FILE")!$(eval_gettext "Adding an argument after the <b>.exe</b> file, just like you would add an argument in a shortcut on a <b>WINDOWS </b> system") :CBE" "\\${LAUNCH_PARAMETERS[@]}!-dx11 -skipintro 1" \
     --field=":LBL" "" \
@@ -2965,13 +2997,14 @@ A brief instruction:
 <b>-f:</b> create a full-screen window.") :CBE" "\\${GAMESCOPE_ARGS}!-r 60 -F fsr!" \
     --field="$(eval_gettext "Forcibly select the OpenGL version for the game")!$(eval_gettext "You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)") :CB" "${PW_MESA_GL_VERSION_OVERRIDE}!disabled!4.6COMPAT!4.6!4.5COMPAT!4.5!3.3COMPAT!3.3" \
     --field="$(eval_gettext "Forcibly select the VKD3D feature level")!$(eval_gettext "You can set a forced feature level VKD3D for games on DirectX12") :CB" "${PW_VKD3D_FEATURE_LEVEL}!disabled!12_2!12_1!12_0!11_1!11_0" \
-	--field="$(eval_gettext "Force certain locale for an app")!$(eval_gettext "Fixes encoding issues in legacy software") :CB" "${PW_LOCALE_SELECT}!disabled!$LOCALE_LIST" \
-    2>/dev/null 1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
+    --field="$(eval_gettext "Force certain locale for an app")!$(eval_gettext "Fixes encoding issues in legacy software") :CB" "${PW_LOCALE_SELECT}!disabled!$LOCALE_LIST" \
+    1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
 
-
-    "${pw_yad_v13_0}" --paned --key="$KEY_EDIT_DB_GUI" --title "EDIT_DB" --text-align=center --height="700" \
-    --text "$(eval_gettext "Change settings in database file for") <b>${PORTWINE_DB}</b>\n $(eval_gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" --separator=" " \
+    "${pw_yad_v13_0}" --notebook --key="$KEY_EDIT_DB_GUI" --title "$(eval_gettext "EDIT DB")" --text-align=center --height="700" \
+    --text "$(eval_gettext "Change settings in database file for") <b>${PORTWINE_DB}</b>\n $(eval_gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" --separator=" " --expand --center \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+    --tab="$(eval_gettext "Main")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+    --tab="$(eval_gettext "Advanced")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
     --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
     --button="$(eval_gettext "RESET SETTINGS")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Restore default settings")":2 \
     --button="$(eval_gettext "OPEN THE SETTINGS FILE")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Open the <b>.ppdb</b> settings file in a system text editor to view and change variables manually")":150 \
@@ -2991,16 +3024,7 @@ A brief instruction:
     esac
     output_yad_edit_db=($(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db"))
     bool_from_yad=0
-    edit_db_field_read () {
-        for boole_to_int in $@ ; do
-            export ${boole_to_int}=${output_yad_edit_db[$bool_from_yad]}
-            if [ "${!boole_to_int}" == "TRUE" ]
-            then export ${boole_to_int}="1"
-            else export ${boole_to_int}="0"
-            fi
-            export bool_from_yad=$(( ${bool_from_yad} + 1 ))
-        done
-    }
+
     edit_db_field_read $@
     PW_WINDOWS_VER="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $1}')"
     PW_DLL_INSTALL="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $2}')"
@@ -3126,8 +3150,8 @@ gui_proton_downloader () {
     [[ -z "$(cat "${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git")" ]] && echo "nothing" >"${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git"
     [[ -z "$(cat "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git")" ]] && echo "nothing" >"${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git"
 
-	# Installed wine
-	ls -l ${PORT_WINE_PATH}/data/dist | awk '{print $9}' | sed '/^$/d' 1> ${PORT_WINE_TMP_PATH}/tmp_installed_wine
+    # Installed wine
+    ls -l ${PORT_WINE_PATH}/data/dist | awk '{print $9}' | sed '/^$/d' 1> ${PORT_WINE_TMP_PATH}/tmp_installed_wine
     if [[ "$1" != "silent" ]] ; then
         # GUI
         export KEY_WINE=$RANDOM
@@ -3147,7 +3171,7 @@ gui_proton_downloader () {
         --column "$(eval_gettext "Select WINE for download:")" < "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git" 1> "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set" 2>/dev/null &
         "${pw_yad_v13_0}" --plug=$KEY_WINE --tabnum=5 --list --separator="" --listen \
         --column "$(eval_gettext "Select installed WINE for delete:")" < "${PORT_WINE_TMP_PATH}/tmp_installed_wine" 1> "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set" 2>/dev/null &
-        "${pw_yad_v13_0}" --key=$KEY_WINE --notebook --width=500 --height=600 --text-align=center --no-button \
+        "${pw_yad_v13_0}" --key=$KEY_WINE --notebook --width=500 --height=600 --text-align=center \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "$(eval_gettext "WINE MANAGER")" --separator="" --expand \
         --tab-pos=top \
         --tab="PROTON-LG"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
@@ -3205,13 +3229,13 @@ gui_proton_downloader () {
         fi
     done
 
-	if [[ ! -z "${VERSION_INSTALLED_WINE}" ]]; then
-		try_remove_dir "${PORT_WINE_PATH}/data/dist/${VERSION_INSTALLED_WINE}"
-		unset VERSION_INSTALLED_WINE
+    if [[ ! -z "${VERSION_INSTALLED_WINE}" ]]; then
+        try_remove_dir "${PORT_WINE_PATH}/data/dist/${VERSION_INSTALLED_WINE}"
+        unset VERSION_INSTALLED_WINE
         export SKIP_CHECK_UPDATES=1
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
-	fi
+    fi
 
     print_info "Download and install ${VERSION_WINE_GIT}..."
     PW_WINE_ARCHIVE="$(echo "${URL_VERSION_PROTON_GIT}" | awk -F'/' '{print $NF}' | awk -F'.tar' '{print $1}')"
@@ -3351,7 +3375,7 @@ gui_vkBasalt () {
     --field="AMD FidelityFX - Contrast Adaptive Sharpening"!"$(eval_gettext "AMD FidelityFX - CAS is designed to dramatically improve texture sharpness without additional modification settings for games, with minimal loss of performance. (For older games it is recommended to set value = 100)")":SCL "${VKBASALT_FFX_CAS_GUI}" \
     1> "${PORT_WINE_TMP_PATH}/tmp_yad_cas_set" 2>/dev/null &
 
-    "${pw_yad_v13_0}" --paned --key="$KEY_FX_GUI" --height="625" --title="vkBasalt" --center \
+    "${pw_yad_v13_0}" --paned --key="$KEY_FX_GUI" --height="650" --title="vkBasalt" --center \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
     --button="$(eval_gettext "DISABLE VKBASALT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Disable vkBasalt and go to the previous menu")":180 \
@@ -3602,6 +3626,74 @@ gui_MangoHud () {
     exit 0
 }
 
+gui_dgVoodoo2 () {
+    KEY_DGV2_GUI=$RANDOM
+    PW_LIST_DGV2="PW_DGV2_DISABLE_D3D PW_DGV2_16BIT_MODE PW_DGV2_USE_DX12 PW_DGV2_FASTMEMORY PW_DGV2_VRAM_INCREASE
+    PW_DGV2_FULLSCREEN
+    "
+    # DGVOODOO2 info:
+    PW_DGV2_DISABLE_D3D_INFO=$(eval_gettext 'Do not use d3d8 and d3d9 dgVoodoo2 libraries. For some old games, using the example of Space Rangers, a bug with a black screen is corrected.')
+    PW_DGV2_16BIT_MODE_INFO=$(eval_gettext 'Forced use of 16bit screen mode. Solves the problem of launching old games, such as Moto Racer.')
+    PW_DGV2_USE_DX12_INFO=$(eval_gettext 'DirectXD 11 is used by default (and recommended). Use DirectX12 for dgVoodoo2. Doesnt always work better. (Working only on stable dxvk and vkd3d)')
+    PW_DGV2_FASTMEMORY_INFO=$(eval_gettext 'Enable fast memory access. (Enable if games have poor performance, using Unreal 2 as an example)')
+    PW_DGV2_VRAM_INCREASE_INFO=$(eval_gettext 'Increase the amount of vram for dgVoodoo2 (Increases from 256 to 1024)')
+    PW_DGV2_FULLSCREEN_INFO=$(eval_gettext 'Render image based on monitor resolution. Can use if the game has a small interface size. Widescreen effect for 16:9')
+
+    unset ADD_CHK_BOX_EDIT_DB output_yad_edit_db
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set"
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set_cb"
+
+    edit_db_field_add $PW_LIST_DGV2
+
+    old_IFS=$IFS
+    IFS="%"
+    "${pw_yad_v13_0}" --plug=$KEY_DGV2_GUI --tabnum="1" --form --columns=3 ${ADD_CHK_BOX_EDIT_DB} \
+    --text="$(eval_gettext "dgVoodoo2 settings\n<b>NOTE:</b> To display help for each item, simply hover over the text\n")" \
+    --text-align=center --separator=" " \
+    1> "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set" 2>/dev/null &
+    IFS=$old_IFS
+    "${pw_yad_v13_0}" --plug=$KEY_DGV2_GUI --tabnum="2" --form --columns=2 --separator="%" \
+    --field="${CHKBOX_SPACE}$(eval_gettext "DGV2 FILTERING")!$(eval_gettext "Forced anisotropic filtering in Direct3D games") :CB" "${PW_DGV2_FILTERING}!disabled!2!4!8!16" \
+    --field="${CHKBOX_SPACE}$(eval_gettext "DGV2 ANTIALIASING")!$(eval_gettext "Forced antialiasing in Direct3D and Glide games") :CB" "${PW_DGV2_ANTIALIASING}!disabled!2!4!8" \
+    1> "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set_cb" 2>/dev/null &
+    "${pw_yad_v13_0}" --paned --key=$KEY_DGV2_GUI --height="650" --title="dgVoodoo2" --center \
+    --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+    --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
+    --button="$(eval_gettext "DISABLE DGVOODOO2")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Disable dgVoodoo2 and go to the previous menu")":162 \
+    --button="$(eval_gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Save the current changes, and go to the previous menu")":166 \
+    2>/dev/null
+    YAD_DGV2_STATUS="$?"
+    case "${YAD_DGV2_STATUS}" in
+        1|252)
+            export SKIP_CHECK_UPDATES=1
+            /usr/bin/env bash -c ${pw_full_command_line[*]} &
+            exit 0
+            ;;
+        162)
+            export PW_DGVOODOO2=0
+            edit_db_from_gui PW_DGVOODOO2
+            export SKIP_CHECK_UPDATES=1
+            /usr/bin/env bash -c ${pw_full_command_line[*]} &
+            exit 0
+            ;;
+        166)
+            export PW_DGVOODOO2=1
+            ;;
+    esac
+
+    output_yad_edit_db=($(cat "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set"))
+    bool_from_yad=0
+
+    edit_db_field_read $PW_LIST_DGV2 $@
+    PW_DGV2_FILTERING="$(cat "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set_cb" | awk -F"%" '{print $1}')"
+    PW_DGV2_ANTIALIASING="$(cat "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set_cb" | awk -F"%" '{print $2}')"
+    edit_db_from_gui $PW_LIST_DGV2 PW_DGVOODOO2 PW_DGV2_FILTERING PW_DGV2_ANTIALIASING
+
+    export SKIP_CHECK_UPDATES=1
+    /usr/bin/env bash -c ${pw_full_command_line[*]} &
+    exit 0
+}
+
 portwine_create_shortcut () {
     pw_stop_progress_bar
     [[ ! -e ${portwine_exe} ]] && return 1
@@ -3609,7 +3701,7 @@ portwine_create_shortcut () {
 
     if [[ "$1" == "block_name" ]] ; then
         export name_desktop="${PORTPROTON_NAME}"
-        OUTPUT=$("${pw_yad}" --title="$(eval_gettext "Choices")" --form \
+        OUTPUT=$("${pw_yad_v13_0}" --title="$(eval_gettext "Choices")" --form \
         --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
         --image "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" \
         --field="$(eval_gettext "The shortcut will be created in the PortProton directory.")":LBL "" \
@@ -3621,7 +3713,7 @@ portwine_create_shortcut () {
         PW_YAD_OUT=$?
     else
         export name_desktop="${PORTPROTON_NAME}"
-        OUTPUT=$("${pw_yad}" --title="$(eval_gettext "Choices")" --form \
+        OUTPUT=$("${pw_yad_v13_0}" --title="$(eval_gettext "Choices")" --form \
         --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
         --image "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" \
         --field="$(eval_gettext "The shortcut will be created in the PortProton directory.")":LBL "" \
@@ -3732,7 +3824,7 @@ portwine_delete_shortcut () {
 }
 
 portwine_missing_shortcut () {
-    "${pw_yad}" --title="$(eval_gettext "Error")" --form \
+    "${pw_yad_v13_0}" --title="$(eval_gettext "Error")" --form \
     --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
     --image "$PW_GUI_ICON_PATH/error.svg" \
     --text "\n$(eval_gettext "Could not find the file:")\n${portwine_exe}\n\n$(eval_gettext "ATTENTION:\nIf you forgot to mount the disk with the running application, click CANCEL!")" \
@@ -3859,7 +3951,7 @@ portwine_start_debug () {
     kill_portwine
     export PW_LOG=1
     if [[ -z "$VULKAN_DRIVER_NAME" ]] || [[ "$VULKAN_DRIVER_NAME" == "llvmpipe" ]] ; then
-	yad_info "$(eval_gettext "Attention working version of vulkan not detected!\nIt is recommended to run games in OpenGL (low performance possible)!")"
+    yad_info "$(eval_gettext "Attention working version of vulkan not detected!\nIt is recommended to run games in OpenGL (low performance possible)!")"
     fi
     echo "$(eval_gettext "PortProton was launched in creation mode PortProton.log and it is successfully stored in the root directory of the port")" > "${PORT_WINE_PATH}/PortProton.log"
     echo "$(eval_gettext "To diagnose the problem, copy ALL of the log to discord server: https://discord.gg/FTaheP99wE")" >> "${PORT_WINE_PATH}/PortProton.log"
@@ -4075,13 +4167,12 @@ EOF
 }
 
 pw_edit_db () {
-    PW_EDIT_DB_LIST="PW_MANGOHUD PW_MANGOHUD_USER_CONF PW_VKBASALT PW_VKBASALT_USER_CONF PW_NO_ESYNC PW_NO_FSYNC
+    PW_EDIT_DB_LIST="PW_MANGOHUD PW_MANGOHUD_USER_CONF PW_VKBASALT PW_VKBASALT_USER_CONF PW_DGVOODOO2 PW_NO_ESYNC PW_NO_FSYNC
     PW_USE_RAY_TRACING PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_USE_FAKE_DLSS_3 PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU
     PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME
     PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE
     PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_USE_GAMESCOPE PW_DISABLE_COMPOSITING
-    PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_DGVOODOO2 PW_DGV2_DISABLE_D3D PW_DGV2_16BIT_MODE PW_DGV2_USE_DX12 PW_DGV2_FASTMEMORY
-    PW_DGV2_VRAM_INCREASE PW_DGV2_FULLSCREEN PW_DGV2_FILTERING PW_DGV2_ANTIALIASING
+    PW_USE_RUNTIME PW_DINPUT_PROTOCOL
 
     "
 
@@ -4127,6 +4218,15 @@ button_click () {
     fi
 }
 export -f button_click
+
+button_click_start () {
+    [[ ! -z "$1" ]] && echo "$1" > "${PORT_WINE_TMP_PATH}/tmp_yad_form"
+    if [[ ! -z $(pidof -s yad) ]] || [[ ! -z $(pidof -s yad_v13_0) ]] ; then
+        kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_START} \--notebook" | awk '{print $1}') > /dev/null 2>&1 \
+        || kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_START} \--paned" | awk '{print $1}') > /dev/null 2>&1
+    fi
+}
+export -f button_click_start
 
 run_desktop_b_click () {
     [[ ! -z "$1" ]] && echo "$1" > "${PORT_WINE_TMP_PATH}/tmp_yad_form"
@@ -4202,6 +4302,21 @@ change_mirror () {
     exit 0
 }
 export -f change_mirror
+
+change_gui_start () {
+    if [[ "$PW_GUI_START" == "NOTEBOOK" ]] ; then
+        sed -i 's/="NOTEBOOK"/="PANED"/g' "$USER_CONF"
+        yad_info "$(eval_gettext "Gui start changed to:") PANED"
+    else
+        sed -i 's/="PANED"/="NOTEBOOK"/g' "$USER_CONF"
+        yad_info "$(eval_gettext "Gui start changed to:") NOTEBOOK"
+    fi
+    print_info "Restarting PP for change gui start..."
+    export SKIP_CHECK_UPDATES=1
+    /usr/bin/env bash -c ${pw_full_command_line[*]} &
+    exit 0
+}
+export -f change_gui_start
 
 gui_wine_uninstaller () {
     start_portwine
