@@ -2,6 +2,7 @@
 # Author: Castro-Fidel (linux-gaming.ru)
 # Development assistants: Cefeiko; Dezert1r; Taz_mania; Anton_Famillianov; gavr; RidBowt; chal55rus; UserDiscord; Boria138; Vano; Akai
 # shellcheck disable=SC2140,SC2119,SC2206
+export START=$(date +%s.%N)
 ########################################################################
 echo '
             █░░ █ █▄░█ █░█ ▀▄▀ ▄▄ █▀▀ ▄▀█ █▀▄▀█ █ █▄░█ █▀▀ ░ █▀█ █░█
@@ -61,7 +62,9 @@ fi
 source "${PORT_SCRIPTS_PATH}/functions_helper"
 
 create_new_dir "${HOME}/.local/share/applications"
-if [[ "${PW_SILENT_RESTART}" == 1 ]] || [[ "${START_FROM_STEAM}" == 1 ]] ; then
+if [[ "${PW_SILENT_RESTART}" == 1 ]] \
+|| [[ "${START_FROM_STEAM}" == 1 ]]
+then
     export PW_GUI_DISABLED_CS=1
     unset PW_SILENT_RESTART
 else
@@ -70,7 +73,7 @@ fi
 
 unset MANGOHUD MANGOHUD_DLSYM PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_YAD_SET PW_ICON_FOR_YAD
 unset PW_CHECK_AUTOINSTAL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PORTWINE_DB_FILE PW_DISABLED_CREATE_DB RADV_PERFTEST
-unset CHK_SYMLINK_FILE PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME FLATPAK_IN_USE
+unset CHK_SYMLINK_FILE PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME
 unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD PW_WINE_CPU_TOPOLOGY
 unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_ALL_DF PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
 unset MANGOHUD_CONFIG FPS_LIMIT PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME PORTWINE_CREATE_SHORTCUT_NAME MIRROR
@@ -112,21 +115,6 @@ create_new_dir "${PORT_WINE_TMP_PATH}"/mono
 
 export PW_VULKAN_DIR="${PORT_WINE_TMP_PATH}/VULKAN"
 create_new_dir "${PW_VULKAN_DIR}"
-
-LSPCI_VGA="$(lspci -k 2>/dev/null | grep -E 'VGA|3D' | tr -d '\n')"
-export LSPCI_VGA
-
-if command -v xrandr &>/dev/null ; then
-    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_screen_configuration"
-    if [[ $(xrandr | grep "primary" | awk '{print $1}') ]] ; then
-        PW_SCREEN_RESOLUTION="$(xrandr | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
-        PW_SCREEN_PRIMARY="$(xrandr | grep "primary" | awk '{print $1}')"
-    fi
-    export PW_SCREEN_PRIMARY PW_SCREEN_RESOLUTION
-    print_var PW_SCREEN_RESOLUTION PW_SCREEN_PRIMARY
-else
-    print_error "xrandr - not found!"
-fi
 
 cd "${PORT_SCRIPTS_PATH}" || fatal
 
@@ -200,16 +188,29 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] \
 && [[ ! -f "/tmp/portproton.lock" ]]
 then
     pw_port_update
+    pw_check_and_download_plugins
+    export PW_VULKANINFO_PORTABLE="$PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo"
+    VULKAN_DRIVER_NAME="$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep driverName | awk '{print$3}' | head -1)"
+    LSPCI_VGA="$(lspci -k 2>/dev/null | grep -E 'VGA|3D' | tr -d '\n')"
+    export LSPCI_VGA VULKAN_DRIVER_NAME
+
+    if command -v xrandr &>/dev/null ; then
+        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_screen_configuration"
+        if [[ $(xrandr | grep "primary" | awk '{print $1}') ]] ; then
+            PW_SCREEN_RESOLUTION="$(xrandr | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
+            PW_SCREEN_PRIMARY="$(xrandr | grep "primary" | awk '{print $1}')"
+        fi
+        export PW_SCREEN_PRIMARY PW_SCREEN_RESOLUTION
+        echo ""
+        print_var PW_SCREEN_RESOLUTION PW_SCREEN_PRIMARY
+    else
+        print_error "xrandr - not found!"
+    fi
+    echo ""
 else
     scripts_install_ver=$(head -n 1 "${PORT_WINE_TMP_PATH}/scripts_ver")
     export scripts_install_ver
 fi
-unset SKIP_CHECK_UPDATES
-
-pw_check_and_download_plugins
-export PW_VULKANINFO_PORTABLE="$PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo"
-VULKAN_DRIVER_NAME="$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep driverName | awk '{print$3}' | head -1)"
-export VULKAN_DRIVER_NAME
 
 # create lock file
 if [[ -f "/tmp/portproton.lock" ]] ; then
@@ -234,21 +235,23 @@ pw_check_and_download_dxvk_and_vkd3d
 # shellcheck source=/dev/null
 source "${USER_CONF}"
 
-kill_portwine
-killall -15 $PW_YAD_BIN 2>/dev/null
-kill -TERM "$(pgrep -a yad | grep PortProton | head -n 1 | awk '{print $1}')" 2>/dev/null
+if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
+    kill_portwine
+    killall -15 $PW_YAD_BIN 2>/dev/null
+    kill -TERM "$(pgrep -a yad | grep PortProton | head -n 1 | awk '{print $1}')" 2>/dev/null
 
-if [[ -f "/usr/bin/portproton" ]] \
-&& [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]]
-then
-    rm -f "${HOME}/.local/share/applications/PortProton.desktop"
-fi
+    if [[ -f "/usr/bin/portproton" ]] \
+    && [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]]
+    then
+        rm -f "${HOME}/.local/share/applications/PortProton.desktop"
+    fi
 
-if grep "SteamOS" "/etc/os-release" &>/dev/null \
-&& [[ ! -f  "${HOME}/.local/share/applications/PortProton.desktop" ]]
-then
-    cp -f "${PORT_WINE_PATH}/PortProton.desktop" "${HOME}/.local/share/applications/"
-    update-desktop-database -q "${HOME}/.local/share/applications"
+    if grep "SteamOS" "/etc/os-release" &>/dev/null \
+    && [[ ! -f  "${HOME}/.local/share/applications/PortProton.desktop" ]]
+    then
+        cp -f "${PORT_WINE_PATH}/PortProton.desktop" "${HOME}/.local/share/applications/"
+        update-desktop-database -q "${HOME}/.local/share/applications"
+    fi
 fi
 
 [[ "$MISSING_DESKTOP_FILE" == 1 ]] && portwine_missing_shortcut
@@ -349,8 +352,6 @@ for DAIG in ./* ; do
 done
 popd 1>/dev/null || fatal
 
-check_nvidia_rtx && check_variables PW_VULKAN_USE "2"
-
 [[ "${PW_DGVOODOO2}" == "1" ]] && DGV2_TXT='<b>dgVoodoo2 </b>' || unset DGV2_TXT
 [[ "${PW_VKBASALT}" == "1" ]] && VKBASALT_TXT='<b>vkBasalt </b>' || unset VKBASALT_TXT
 [[ "${PW_MANGOHUD}" == "1" ]] && MANGOHUD_TXT='<b>MangoHud </b>' || unset MANGOHUD_TXT
@@ -442,6 +443,8 @@ if [[ -f "${portwine_exe}" ]] ; then
             else
                 export TAB_START=1
             fi
+
+print_error "START 449: $(echo "$(date +%s.%N) - $START" | bc)"
 
             "${pw_yad}" --key=$KEY_START --notebook --center --active-tab=$TAB_START --width="800" --tab-pos=right \
             --title "PortProton-${install_ver} (${scripts_install_ver})" --expand --buttons-layout=expand \

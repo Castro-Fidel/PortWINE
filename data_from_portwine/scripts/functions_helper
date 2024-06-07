@@ -110,8 +110,8 @@ try_copy_file () {
 export -f try_copy_file
 
 try_copy_dir () {
-    if [ ! -d "$1" ] ; then    print_info "directory $1 not found for copy"
-    elif [ -z "$2" ] ; then    print_error "no way to copy directory $1"
+    if [ ! -d "$1" ] ; then print_info "directory $1 not found for copy"
+    elif [ -z "$2" ] ; then print_error "no way to copy directory $1"
     else
         cp -fr "$1" "$2"
         [ "$?" != 0 ] && print_error "failed to copy directory $1 to $2" || return 0
@@ -145,7 +145,7 @@ create_new_dir () {
 
 try_force_link_file () {
     if [ ! -f "$1" ] ; then :
-    elif [ -z "$2" ] ; then    print_error "no way to link file $1"
+    elif [ -z "$2" ] ; then print_error "no way to link file $1"
     else
         ln -s -f -r "$1" "$2"
         [ "$?" != 0 ] && print_error "failed to link file $1 to $2" || return 0
@@ -169,8 +169,8 @@ check_symlink () {
 export -f check_symlink
 
 try_force_link_dir () {
-    if [ ! -d "$1" ] ; then    print_info "directory $1 not found for link"
-    elif [ -z "$2" ] ; then    print_error "no way to link directory $1"
+    if [ ! -d "$1" ] ; then print_info "directory $1 not found for link"
+    elif [ -z "$2" ] ; then print_error "no way to link directory $1"
     else
         ln -s -f -r "$1" "$2"
         [ "$?" != 0 ] && print_error "failed to link directory $1 to $2" || return 0
@@ -444,8 +444,6 @@ check_user_conf () {
 # export DXVK_HUD=full"
 # export GALLIUM_HUD=fps"
 EOF
-    elif grep "optirun_on" "${USER_CONF}" &>/dev/null ; then
-        sed -i '/optirun_on/d' "${USER_CONF}"
     fi
 }
 
@@ -539,19 +537,17 @@ init_wine_ver () {
                 fi
             done
 
-            grep 'Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' "${WINEDIR}/share/wine/wine.inf" &> /dev/null
-            if [[ "$?" != "0" ]] ; then
+            if ! grep 'Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' "${WINEDIR}/share/wine/wine.inf" &> /dev/null ; then
                 echo 'HKLM,Software\NVIDIA Corporation\Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
                 echo 'HKLM,System\ControlSet001\Services\nvlddmkm,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
                 sed -i '/Steam.exe/d' "${WINEDIR}/share/wine/wine.inf"
                 sed -i '/\\Valve\\Steam/d' "${WINEDIR}/share/wine/wine.inf"
                 sed -i '/winemenubuilder/d' "${WINEDIR}/share/wine/wine.inf"
+                rm -f "${WINEDIR}"/lib*/*steam* &>/dev/null
+                rm -f "${WINEDIR}"/lib*/wine/*/*steam* &>/dev/null
+                rm -f "${WINEDIR}"/lib*/wine/*-windows/winemenubuilder.exe &>/dev/null
             fi
         fi
-
-        rm -f "${WINEDIR}"/lib*/*steam* &>/dev/null
-        rm -f "${WINEDIR}"/lib*/wine/*/*steam* &>/dev/null
-        rm -f "${WINEDIR}"/lib*/wine/*-windows/winemenubuilder.exe &>/dev/null
 
         export WINEDLLPATH="${WINEDIR}/lib64/wine:${WINEDIR}/lib/wine"
         if [[ -d "${PATH_TO_GAME}" ]] ; then
@@ -844,6 +840,7 @@ stop_portwine () {
         kill -s SIGUSR1 "$(pgrep -a $PW_YAD_BIN | grep "\--notification" | awk '{print $1}')" 2>/dev/null
     fi
     add_in_stop_portwine
+    unset SKIP_CHECK_UPDATES
     exit 0
 }
 export -f stop_portwine
@@ -1263,8 +1260,6 @@ pw_init_db () {
                 fi
             done
         fi
-        # rename var ENABLE_VKBASALT to PW_VKBASALT
-        sed -i 's/ENABLE_VKBASALT/PW_VKBASALT/g' "${PORTWINE_DB_FILE}"
     fi
 
     [[ "${START_FROM_STEAM}" == 1 ]] && export PW_GUI_DISABLED_CS=1
@@ -1447,26 +1442,29 @@ edit_user_conf_from_gui () {
 }
 
 pw_create_gui_png () {
-    if [[ ! -z "${PORTWINE_CREATE_SHORTCUT_NAME}" ]] ; then
-        PORTPROTON_NAME="${PORTWINE_CREATE_SHORTCUT_NAME}"
-    else
-        PW_PRODUCTNAME=$(env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" -ProductName "${portwine_exe}" 2>/dev/null | sed -n 's/^Product Name\s*:\s*//p')
-        if [[ "$PW_PRODUCTNAME" =~ "Launcher" ]] \
-        || [[ "$PW_PRODUCTNAME" =~ "RU" ]]
-        then
-            PW_PRODUCTNAME="$(echo "$PW_PRODUCTNAME" | sed 's/Launcher\|RU//g')"
-        fi
-
-        if [[ ! -z "$PW_PRODUCTNAME" ]] \
-        && [[ "$PW_PRODUCTNAME" != Bootstrap* ]] \
-        && ! echo "${portwine_exe}" | grep -i "setup" &>/dev/null
-        then
-            PORTPROTON_NAME="$PW_PRODUCTNAME"
+    if [[ -z "$PORTPROTON_NAME" ]] ; then
+        if [[ ! -z "${PORTWINE_CREATE_SHORTCUT_NAME}" ]] ; then
+            PORTPROTON_NAME="${PORTWINE_CREATE_SHORTCUT_NAME}"
         else
-            PORTPROTON_NAME="$(basename "${portwine_exe}" .exe)"
+            PW_PRODUCTNAME=$(env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" -ProductName "${portwine_exe}" 2>/dev/null | sed -n 's/^Product Name\s*:\s*//p')
+            if [[ "$PW_PRODUCTNAME" =~ "Launcher" ]] \
+            || [[ "$PW_PRODUCTNAME" =~ "RU" ]]
+            then
+                PW_PRODUCTNAME="$(echo "$PW_PRODUCTNAME" | sed 's/Launcher\|RU//g')"
+            fi
+
+            if [[ ! -z "$PW_PRODUCTNAME" ]] \
+            && [[ "$PW_PRODUCTNAME" != Bootstrap* ]] \
+            && ! echo "${portwine_exe}" | grep -i "setup" &>/dev/null
+            then
+                PORTPROTON_NAME="$PW_PRODUCTNAME"
+            else
+                PORTPROTON_NAME="$(basename "${portwine_exe}" .exe)"
+            fi
         fi
+        export PORTPROTON_NAME
+        edit_db_from_gui PORTPROTON_NAME
     fi
-    export PORTPROTON_NAME
     PW_RESIZE_TO="128"
     try_remove_file "${PORT_WINE_PATH}/data/img/setup.png"
     try_remove_file "${PORT_WINE_PATH}/data/img/Setup.png"
