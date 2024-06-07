@@ -226,9 +226,9 @@ try_download () {
         curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
         -H 'Pragma: no-cache' -L "$FIRST_URL" -o "$dest" 2>&1 | \
         tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
-        "$pw_yad" --progress --percentage=0 --text="$(eval_gettext "Downloading") $filename" --auto-close --no-escape \
+        "$pw_yad" --progress --text="$(eval_gettext "Downloading") $filename" --auto-close --no-escape \
         --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
-        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders=15
+        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders="$PROGRESS_BAR_BORDERS_SIZE"
     fi
 
     if [[ "${PIPESTATUS[0]}" != 0 ]] ; then
@@ -237,9 +237,9 @@ try_download () {
             curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
             -H 'Pragma: no-cache' -L "$SECOND_URL" -o "$dest" 2>&1 | \
             tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
-            "$pw_yad" --progress --percentage=0 --text="$(eval_gettext "Downloading") $filename" --auto-close --no-escape \
+            "$pw_yad" --progress --text="$(eval_gettext "Downloading") $filename" --auto-close --no-escape \
             --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
-            --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders=15
+            --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders="$PROGRESS_BAR_BORDERS_SIZE"
         fi
         if [[ "${PIPESTATUS[0]}" != 0 ]] ; then
             print_error "Failed to download $filename from mirror. Skipping..."
@@ -1467,19 +1467,20 @@ pw_create_gui_png () {
         fi
     fi
     export PORTPROTON_NAME
-    PW_RESIZE_TO=128
+    PW_RESIZE_TO="128"
     try_remove_file "${PORT_WINE_PATH}/data/img/setup.png"
     try_remove_file "${PORT_WINE_PATH}/data/img/Setup.png"
     try_remove_file "${PORT_WINE_PATH}/data/img/launcher.png"
     try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
     if [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
         if command -v exe-thumbnailer &>/dev/null ; then
-            exe-thumbnailer -s 128 "$(readlink -f "${portwine_exe}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
+            exe-thumbnailer -s "${PW_RESIZE_TO}" "$(readlink -f "${portwine_exe}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
         else
             env PYTHONPATH="${PW_PLUGINS_PATH}/portable/lib/python3.9/site-packages/" \
             LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" \
             "${PW_WINELIB}/runtime/files/bin/python3.9"  \
-            "${PW_PLUGINS_PATH}/portable/bin/exe-thumbnailer" -s 128 "$(readlink -f "${portwine_exe}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
+            "${PW_PLUGINS_PATH}/portable/bin/exe-thumbnailer" -s "${PW_RESIZE_TO}" \
+            "$(readlink -f "${portwine_exe}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
         fi
     fi
     if [[ -z "${PW_ICON_FOR_YAD}" ]] ; then
@@ -2741,6 +2742,7 @@ pw_start_progress_bar_block () {
         "${pw_yad}" --progress --text="$@
         " --pulsate --borders="$PROGRESS_BAR_BORDERS_SIZE" \
         --no-buttons --undecorated --center --skip-taskbar \
+        --no-escape --text-align="center" --height=90 --fixed \
         --width="$PROGRESS_BAR_WIDTH_SIZE" \
         --wrap-width="$PROGRESS_BAR_WIDTH_SIZE" \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" &>/dev/null &
@@ -2754,6 +2756,7 @@ pw_start_progress_bar_install_game () {
         "${pw_yad}" --progress --text="$(eval_gettext "Please wait. Installing the") $@
         " --pulsate --borders="$PROGRESS_BAR_BORDERS_SIZE" \
         --no-buttons --undecorated --center --skip-taskbar \
+        --no-escape --text-align="center" --height=90 --fixed \
         --width="$PROGRESS_BAR_WIDTH_SIZE" \
         --wrap-width="$PROGRESS_BAR_WIDTH_SIZE" \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" &>/dev/null &
@@ -3035,6 +3038,7 @@ A brief instruction:
     esac
 }
 
+# GET OTHER WINE
 gui_proton_downloader () {
     unset VERSION_WINE_GIT VERSION_INSTALLED_WINE URL_VERSION_PROTON_GIT GIVE_WINE_URL
     if [[ "$PW_WINE_USE" == PROTON_LG ]]
@@ -3204,7 +3208,7 @@ gui_proton_downloader () {
     FILENAME="$(basename "${URL_VERSION_PROTON_GIT}")"
     if try_download "${URL_VERSION_PROTON_GIT}" "${PORT_WINE_PATH}/data/tmp/$FILENAME" ; then
         for archive_type in "gz" "xz" ; do
-            if [ -f "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}" ] ; then
+            if [[ -f "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}" ]] ; then
                 if unpack "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}" "${PORT_WINE_PATH}/data/dist/" ; then
                     try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}"
                     if [ ! -z "${portwine_exe}" ]; then
