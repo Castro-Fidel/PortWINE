@@ -185,15 +185,15 @@ if [[ "${INSTALLING_PORT}" == 1 ]] ; then
 fi
 
 # choose gui start
-if [[ -z "$PW_GUI_START" ]]
-then
-    echo 'export PW_GUI_START="NOTEBOOK"' >> "$USER_CONF"
-    export PW_GUI_START="NOTEBOOK"
-elif [[ -z "$PW_GUI_START" ]] ; then
-    echo 'export PW_GUI_START="PANED"' >> "$USER_CONF"
-    export PW_GUI_START="PANED"
-fi
-print_info "The first gui start in used: $PW_GUI_START\n"
+case "$PW_GUI_START" in
+       PANED) : ;;
+    NOTEBOOK) : ;;
+           *)
+              sed -i '/export PW_GUI_START=/d' "$USER_CONF"
+              echo 'export PW_GUI_START="NOTEBOOK"' >> "$USER_CONF"
+              export PW_GUI_START="NOTEBOOK"
+              ;;
+esac
 
 # check skip update
 if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] \
@@ -299,7 +299,10 @@ use: [--reinstall] [--autoinstall]
 --autoinstall [script_frome_pw_autoinstall]         autoinstall from the list below:
 "
         echo ${files_from_autoinstall}
-        echo ""
+
+        echo "
+--generate-pot                                      generated pot file
+"
         exit 0 ;;
 
     '--reinstall' )
@@ -426,12 +429,14 @@ if [[ -f "${portwine_exe}" ]] ; then
 
             "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns=2 --scroll --align-buttons \
             --field="$(eval_gettext "Base settings")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Edit database file for") ${PORTWINE_DB}":"FBTN" '@bash -c "button_click_start 118"' \
-            --field="$(eval_gettext "MangoHud")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)")":"FBTN" '@bash -c "button_click_start 122"' \
-            --field="$(eval_gettext "vkBasalt")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click_start 120"' \
-            --field="$(eval_gettext "dgVoodoo2")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)")":"FBTN" '@bash -c "button_click_start 124"' \
+            --field="MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)")":"FBTN" '@bash -c "button_click_start 122"' \
+            --field="vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click_start 120"' \
+            --field="dgVoodoo2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)")":"FBTN" '@bash -c "button_click_start 124"' \
             2>/dev/null &
 
-            if [[ -f "${PORT_WINE_TMP_PATH}/tmp_yad_form_tab" ]] ; then
+            if [[ -f "${PORT_WINE_TMP_PATH}/tmp_yad_form_tab" ]] \
+            && [[ ! -z "$TAB_START" ]]
+            then
                 export TAB_START=2
                 try_remove_file "${PORT_WINE_TMP_PATH}/tmp_yad_form_tab"
             else
@@ -441,8 +446,8 @@ if [[ -f "${portwine_exe}" ]] ; then
             "${pw_yad}" --key=$KEY_START --notebook --center --active-tab=$TAB_START --width="800" --tab-pos=right \
             --title "PortProton-${install_ver} (${scripts_install_ver})" --expand --buttons-layout=expand \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-            --tab="     $(eval_gettext "MAIN")     " \
-            --tab="     $(eval_gettext "SETTINGS")     " \
+            --tab="$(eval_gettext "GENERAL")" \
+            --tab="$(eval_gettext "SETTINGS")" \
             --button="${PW_SHORTCUT}" \
             --button="$(eval_gettext "DEBUG")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Launch with the creation of a .log file at the root PortProton")":102 \
             --button="$(eval_gettext "LAUNCH")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Run file ...")":106 2>/dev/null
@@ -465,9 +470,9 @@ if [[ -f "${portwine_exe}" ]] ; then
 
             "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns=2 --scroll --align-buttons \
             --field="$(eval_gettext "Base settings")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Edit database file for") ${PORTWINE_DB}":"FBTN" '@bash -c "button_click_start 118"' \
-            --field="$(eval_gettext "MangoHud")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)")":"FBTN" '@bash -c "button_click_start 122"' \
-            --field="$(eval_gettext "vkBasalt")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click_start 120"' \
-            --field="$(eval_gettext "dgVoodoo2")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)")":"FBTN" '@bash -c "button_click_start 124"' \
+            --field="MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)")":"FBTN" '@bash -c "button_click_start 122"' \
+            --field="vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click_start 120"' \
+            --field="dgVoodoo2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)")":"FBTN" '@bash -c "button_click_start 124"' \
             2>/dev/null &
 
             "${pw_yad}" --key=$KEY_START --paned --center --height="350" --width="800" \
@@ -535,7 +540,7 @@ else
     --field="   Xterm"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click pw_start_cont_xterm"' \
     --field="   $(eval_gettext "Credits")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_credits"' \
     --field="   $(eval_gettext "Change mirror to") $NEW_MIRROR"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click change_mirror"' \
-    --field="   $(eval_gettext "Change start gui to") $NEW_PW_GUI_START"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click change_gui_start"' \
+    --field="   $(eval_gettext "Change start gui")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click change_gui_start"' \
     2>/dev/null &
 
     "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[2]}" --form --columns=3 --align-buttons --separator=";" \
