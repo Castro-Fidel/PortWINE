@@ -1473,45 +1473,14 @@ pw_create_gui_png () {
     try_remove_file "${PORT_WINE_PATH}/data/img/launcher.png"
     try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
     if [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
-        try_remove_dir "${PORT_WINE_TMP_PATH}/tmp_img"
-        create_new_dir "${PORT_WINE_TMP_PATH}/tmp_img"
-        if command -v icoextract &>/dev/null ; then
-            icoextract "$(readlink -f "${portwine_exe}")" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
-        elif command -v wrestool &>/dev/null ; then
-            wrestool -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" -t14 "$(readlink -f "${portwine_exe}")"
+        if command -v exe-thumbnailer &>/dev/null ; then
+            exe-thumbnailer -s 128 "$(readlink -f "${portwine_exe}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
         else
-            env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" "${PW_PLUGINS_PATH}/portable/bin/wrestool" \
-            -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" -t14 "$(readlink -f "${portwine_exe}")"
+            env PYTHONPATH="${PW_PLUGINS_PATH}/portable/lib/python3.9/site-packages/" \
+            LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" \
+            "${PW_WINELIB}/runtime/files/bin/python3.9"  \
+            "${PW_PLUGINS_PATH}/portable/bin/exe-thumbnailer" -s 128 "$(readlink -f "${portwine_exe}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
         fi
-        cp "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".ico" | head -n 1)" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
-
-        if command -v icotool &>/dev/null ; then
-            icotool -x --width=${PW_RESIZE_TO} --height=${PW_RESIZE_TO} --output="${PORT_WINE_TMP_PATH}/tmp_img/" \
-            "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
-        else
-            env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" "${PW_PLUGINS_PATH}/portable/bin/icotool" \
-            -x --width=${PW_RESIZE_TO} --height=${PW_RESIZE_TO} --output="${PORT_WINE_TMP_PATH}/tmp_img/" \
-            "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
-        fi
-        if [[ ! -f "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".png" | grep "${PW_RESIZE_TO}x${PW_RESIZE_TO}")" ]] ; then
-            if command -v icotool &>/dev/null ; then
-                icotool -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
-            else
-                env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" "${PW_PLUGINS_PATH}/portable/bin/icotool" \
-                -x --output="${PORT_WINE_TMP_PATH}/tmp_img/" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.ico"
-            fi
-            cp "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".png" | head -n 1)" "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.png"
-        else
-            cp "$(ls -S -1 "${PORT_WINE_TMP_PATH}/tmp_img/"*".png" | grep "${PW_RESIZE_TO}x${PW_RESIZE_TO}" | head -n 1)" \
-            "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.png"
-        fi
-        cp -f "${PORT_WINE_TMP_PATH}/tmp_img/${PORTPROTON_NAME}.png" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
-    fi
-    if [[ -z "$(file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}")" ]] \
-    && command -v convert &>/dev/null \
-    && [[ -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]]
-    then
-        convert "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" -resize ${PW_RESIZE_TO}x${PW_RESIZE_TO} "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
     fi
     if [[ -z "${PW_ICON_FOR_YAD}" ]] ; then
         if [[ ! -z "$(file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}")" ]] ; then
