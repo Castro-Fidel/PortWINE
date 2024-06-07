@@ -2,7 +2,6 @@
 # Author: Castro-Fidel (linux-gaming.ru)
 # Development assistants: Cefeiko; Dezert1r; Taz_mania; Anton_Famillianov; gavr; RidBowt; chal55rus; UserDiscord; Boria138; Vano; Akai
 # shellcheck disable=SC2140,SC2119,SC2206
-export START=$(date +%s.%N)
 ########################################################################
 echo '
             █░░ █ █▄░█ █░█ ▀▄▀ ▄▄ █▀▀ ▄▀█ █▀▄▀█ █ █▄░█ █▀▀ ░ █▀█ █░█
@@ -444,13 +443,11 @@ if [[ -f "${portwine_exe}" ]] ; then
                 export TAB_START=1
             fi
 
-print_error "START 449: $(echo "$(date +%s.%N) - $START" | bc)"
-
-            "${pw_yad}" --key=$KEY_START --notebook --center --active-tab=$TAB_START --width="800" --tab-pos=right \
+            "${pw_yad}" --key=$KEY_START --notebook --center --active-tab=$TAB_START --width="800" --tab-pos=top \
             --title "PortProton-${install_ver} (${scripts_install_ver})" --expand --buttons-layout=expand \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-            --tab="$(eval_gettext "GENERAL")" \
-            --tab="$(eval_gettext "SETTINGS")" \
+            --tab="$(eval_gettext "GENERAL")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+            --tab="$(eval_gettext "SETTINGS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
             --button="${PW_SHORTCUT}" \
             --button="$(eval_gettext "DEBUG")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Launch with the creation of a .log file at the root PortProton")":102 \
             --button="$(eval_gettext "LAUNCH")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Run file ...")":106 2>/dev/null
