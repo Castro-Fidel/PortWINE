@@ -3038,7 +3038,7 @@ A brief instruction:
     esac
 }
 
-# GET OTHER WINE
+# GUI GET OTHER WINE
 gui_proton_downloader () {
     unset VERSION_WINE_GIT VERSION_INSTALLED_WINE URL_VERSION_PROTON_GIT GIVE_WINE_URL
     if [[ "$PW_WINE_USE" == PROTON_LG ]]
@@ -3612,7 +3612,19 @@ gui_dgVoodoo2 () {
     try_remove_file "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set"
     try_remove_file "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set_cb"
 
-    edit_db_field_add $PW_LIST_DGV2
+    edit_db_field_add_dgv2 () {
+        for int_to_boole in $@ ; do
+            if [ "${!int_to_boole}" == "1" ]
+            then export ${int_to_boole}="TRUE"
+            else export ${int_to_boole}="FALSE"
+            fi
+            TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
+            int_to_boole_non_pw="$(echo ${int_to_boole} | sed 's/^PW_DGV2//' | sed 's/_/ /g' )"
+            ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
+        done
+    }
+
+    edit_db_field_add_dgv2 $PW_LIST_DGV2
 
     old_IFS=$IFS
     IFS="%"
@@ -3622,8 +3634,8 @@ gui_dgVoodoo2 () {
     1> "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set" 2>/dev/null &
     IFS=$old_IFS
     "${pw_yad}" --plug=$KEY_DGV2_GUI --tabnum="2" --form --columns=2 --separator="%" \
-    --field="${CHKBOX_SPACE}DGV2 FILTERING!$(eval_gettext "Forced anisotropic filtering in Direct3D games") :CB" "${PW_DGV2_FILTERING}!disabled!2!4!8!16" \
-    --field="${CHKBOX_SPACE}DGV2 ANTIALIASING!$(eval_gettext "Forced antialiasing in Direct3D and Glide games") :CB" "${PW_DGV2_ANTIALIASING}!disabled!2!4!8" \
+    --field="${CHKBOX_SPACE}FILTERING!$(eval_gettext "Forced anisotropic filtering in Direct3D games") :CB" "${PW_DGV2_FILTERING}!disabled!2!4!8!16" \
+    --field="${CHKBOX_SPACE}ANTIALIASING!$(eval_gettext "Forced antialiasing in Direct3D and Glide games") :CB" "${PW_DGV2_ANTIALIASING}!disabled!2!4!8" \
     1> "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set_cb" 2>/dev/null &
     "${pw_yad}" --paned --key=$KEY_DGV2_GUI --height="350" --title="dgVoodoo2" --center \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
