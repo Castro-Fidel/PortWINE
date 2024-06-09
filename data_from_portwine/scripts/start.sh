@@ -434,11 +434,11 @@ if [[ -f "${portwine_exe}" ]] ; then
             --field="PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
             1> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
-            "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns=2 --scroll --align-buttons \
-            --field="$(eval_gettext "Base settings")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Edit database file for") ${PORTWINE_DB}":"FBTN" '@bash -c "button_click_start 118"' \
-            --field="MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)")":"FBTN" '@bash -c "button_click_start 122"' \
-            --field="vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click_start 120"' \
-            --field="dgVoodoo2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)")":"FBTN" '@bash -c "button_click_start 124"' \
+            "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns=2 --align-buttons --homogeneous-column \
+            --field="   $(eval_gettext "Base settings")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Edit database file for") ${PORTWINE_DB}":"FBTN" '@bash -c "button_click_start 118"' \
+            --field="   vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click_start 120"' \
+            --field="   MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)")":"FBTN" '@bash -c "button_click_start 122"' \
+            --field="   dgVoodoo2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)")":"FBTN" '@bash -c "button_click_start 124"' \
             2>/dev/null &
 
             if [[ -f "${PORT_WINE_TMP_PATH}/tmp_yad_form_tab" ]] \
@@ -450,7 +450,8 @@ if [[ -f "${portwine_exe}" ]] ; then
                 export TAB_START=1
             fi
 
-            "${pw_yad}" --key=$KEY_START --notebook --center --active-tab=$TAB_START --width="800" --tab-pos=top \
+            "${pw_yad}" --key=$KEY_START --notebook --center --active-tab=$TAB_START \
+            --width="${PW_MAIN_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" \
             --title "PortProton-${install_ver} (${scripts_install_ver})" --expand --buttons-layout=expand \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
             --tab="$(eval_gettext "GENERAL")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
@@ -470,19 +471,20 @@ if [[ -f "${portwine_exe}" ]] ; then
         elif [[ "${PW_GUI_START}" = PANED ]] ; then
             "${pw_yad}" --plug=$KEY_START --tabnum=1 --form --separator=";" \
             --image="${PW_ICON_FOR_YAD}" --text-align="center" --text "$PW_COMMENT_DB" \
-            --field="3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
-            --field="  WINE  : :CB" "${PW_DEFAULT_WINE_USE}" \
-            --field="PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
+            --field="   3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
+            --field="     WINE  : :CB" "${PW_DEFAULT_WINE_USE}" \
+            --field="   PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
             1> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
-            "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns=2 --scroll --align-buttons \
-            --field="$(eval_gettext "Base settings")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Edit database file for") ${PORTWINE_DB}":"FBTN" '@bash -c "button_click_start 118"' \
-            --field="MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)")":"FBTN" '@bash -c "button_click_start 122"' \
-            --field="vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click_start 120"' \
-            --field="dgVoodoo2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)")":"FBTN" '@bash -c "button_click_start 124"' \
+            "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns=2 --align-buttons --homogeneous-row --homogeneous-column \
+            --field="   $(eval_gettext "Base settings")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Edit database file for") ${PORTWINE_DB}":"FBTN" '@bash -c "button_click_start 118"' \
+            --field="   vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click_start 120"' \
+            --field="   MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)")":"FBTN" '@bash -c "button_click_start 122"' \
+            --field="   dgVoodoo2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)")":"FBTN" '@bash -c "button_click_start 124"' \
             2>/dev/null &
 
-            "${pw_yad}" --key=$KEY_START --paned --center --height="350" --width="800" \
+            "${pw_yad}" --key=$KEY_START --paned --center \
+            --width="${PW_MAIN_START_SIZE_W}" --height="${PW_MAIN_START_SIZE_H}" --tab-pos="${PW_TAB_POSITON}" \
             --title "PortProton-${install_ver} (${scripts_install_ver})" --buttons-layout=expand \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
             --button="${PW_SHORTCUT}" \
@@ -532,11 +534,11 @@ else
 
     IFS="$orig_IFS"
     old_IFS=$IFS && IFS="%"
-    "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[4]}" --form --columns="$MAIN_GUI_COLUMNS" \
+    "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[4]}" --form --columns="$MAIN_GUI_COLUMNS" --homogeneous-column \
     --align-buttons --scroll --separator=" " ${PW_GENERATE_BUTTONS} 2>/dev/null &
     IFS="$orig_IFS"
 
-    "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[3]}" --form --columns=3 --align-buttons --separator=";" \
+    "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[3]}" --form --columns=3 --align-buttons --separator=";" --homogeneous-column \
     --field="   $(eval_gettext "Reinstall PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_pw_reinstall_pp"' \
     --field="   $(eval_gettext "Remove PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_rm_portproton"' \
     --field="   $(eval_gettext "Update PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_pw_update"' \
@@ -551,10 +553,10 @@ else
     2>/dev/null &
 
     "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[2]}" --form --columns=3 --align-buttons --separator=";" \
-    --field="  3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
-    --field="  PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
-    --field="  WINE    : :CB" "${PW_DEFAULT_WINE_USE}" \
-    --field="              $(eval_gettext "Create prefix backup")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click pw_create_prefix_backup"' \
+    --field="   3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
+    --field="   PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
+    --field="     WINE  : :CB" "${PW_DEFAULT_WINE_USE}" \
+    --field="$(eval_gettext "Create prefix backup")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"CFBTN" '@bash -c "button_click pw_create_prefix_backup"' \
     --field="   Winetricks"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Run winetricks to install additional libraries to the selected prefix")":"FBTN" '@bash -c "button_click WINETRICKS"' \
     --field="   $(eval_gettext "Clear prefix")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Clear the prefix to fix problems")":"FBTN" '@bash -c "button_click gui_clear_pfx"' \
     --field="   $(eval_gettext "Get other Wine")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Open the menu to download other versions of WINE or PROTON")":"FBTN" '@bash -c "button_click gui_proton_downloader"' \
@@ -564,7 +566,7 @@ else
     --field="   $(eval_gettext "Command line")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Run wine cmd")":"FBTN" '@bash -c "button_click WINECMD"' \
     --field="   $(eval_gettext "Regedit")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Run wine regedit")":"FBTN" '@bash -c "button_click WINEREG"' 1> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
-    "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[1]}" --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll \
+    "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[1]}" --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll --homogeneous-column \
     --field="   Dolphin 5.0"!"$PW_GUI_ICON_PATH/dolphin.png"!"$(eval_gettext "Emulator for Nintendo game consoles with high compatibility")":"FBTN" '@bash -c "button_click PW_DOLPHIN"' \
     --field="   MAME"!"$PW_GUI_ICON_PATH/mame.png"!"$(eval_gettext "Multi-arcade emulator that allows you to play old arcade games")":"FBTN" '@bash -c "button_click PW_MAME"' \
     --field="   RetroArch"!"$PW_GUI_ICON_PATH/retroarch.png"!"$(eval_gettext "Multi-platform frontend for emulators with extensive settings")":"FBTN" '@bash -c "button_click PW_RETROARCH"' \
@@ -580,7 +582,7 @@ else
     --field="   xemu"!"$PW_GUI_ICON_PATH/xemu.png"!"$(eval_gettext "Emulator for the Xbox game console")":"FBTN" '@bash -c "button_click PW_XEMU"' \
     --field="   Demul"!"$PW_GUI_ICON_PATH/demul.png"!"$(eval_gettext "Emulator for the Sega Dreamcast game console")":"FBTN" '@bash -c "button_click PW_DEMUL"' 2>/dev/null &
 
-    "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[0]}" --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll \
+    "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[0]}" --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll --homogeneous-column \
     --field="   Lesta Game Center"!"$PW_GUI_ICON_PATH/lgc.png"!"":"FBTN" '@bash -c "button_click PW_LGC"' \
     --field="   vkPlay Games Center"!"$PW_GUI_ICON_PATH/mygames.png"!"":"FBTN" '@bash -c "button_click PW_VKPLAY"' \
     --field="   Battle.net Launcher"!"$PW_GUI_ICON_PATH/battle_net.png"!"":"FBTN" '@bash -c "button_click PW_BATTLE_NET"' \
