@@ -3087,60 +3087,72 @@ gui_gamescope () {
 # GUI GET OTHER WINE
 gui_proton_downloader () {
     unset VERSION_WINE_GIT VERSION_INSTALLED_WINE URL_VERSION_PROTON_GIT GIVE_WINE_URL
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git"
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git"
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_installed_wine"
+    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_set_wine"
+
     if [[ "$PW_WINE_USE" == PROTON_LG ]]
     then PW_WINE_USE="${PW_PROTON_LG_VER}"
     elif [[ "$PW_WINE_USE" == WINE_*_LG ]] || [[ "$PW_WINE_USE" == WINE_LG ]]
     then PW_WINE_USE="${PW_WINE_LG_VER}"
     fi
+
     export PW_WINE_USE
+
     if [[ "$1" == "silent" ]] \
     && [[ -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ]] ; then
         return 0
     fi
+
     pw_start_progress_bar_block "$(eval_gettext "Check new version WINE...")"
+
     # PROTON_GE
     export PROTON_GE_GIT=($(curl -s "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases" | grep "browser_download_url.*\.tar\.gz" | cut -d \" -f 4))
-    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
     if [[ ! -z "${PROTON_GE_GIT}" ]] ; then
         for PGEGIT in ${PROTON_GE_GIT[@]} ; do
             echo ${PGEGIT} | awk -F/ '{print $NF}' | sed 's/.tar.gz//' >> "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
         done
         sed -i '/Proton-6.5-GE-2/,$d' "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
         sed -i '/github-action/d' "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
+        sed -i '/^$/d' "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
     fi
 
     # WINE_KRON4EK
     export WINE_KRON4EK=($(curl -s "https://api.github.com/repos/Kron4ek/Wine-Builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4))
-    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git"
     if [[ ! -z "${WINE_KRON4EK}" ]] ; then
         for PGEGIT in ${WINE_KRON4EK[@]} ; do
             echo ${PGEGIT} | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git"
         done
         sed -i '/6.3/,$d' "${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git"
         sed -i '/-x86/d' "${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git"
+        sed -i '/^$/d' "${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git"
     fi
 
     # WINE_GE_CUSTOM
     export WINE_GE_CUSTOM=($(curl -s "https://api.github.com/repos/GloriousEggroll/wine-ge-custom/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4))
-    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git"
     if [[ ! -z "${WINE_GE_CUSTOM}" ]] ; then
         for PGEGIT in ${WINE_GE_CUSTOM[@]} ; do
             echo ${PGEGIT} | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git"
         done
         sed -i '/6.23/,$d' "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git"
+        sed -i '/^$/d' "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git"
     fi
 
     # PROTON_LG
     export PROTON_PW_GIT=($(curl -s "https://api.github.com/repos/Castro-Fidel/wine_builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4 | sort -r))
-    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
     if [[ ! -z "${PROTON_PW_GIT}" ]] ; then
         for PPWGIT in ${PROTON_PW_GIT[@]} ; do
             echo ${PPWGIT} | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
         done
         sed -i /${PW_WINE_LG_VER}/d "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
         sed -i '/plugins/d' "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
+        sed -i '/^$/d' "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
     fi
     pw_stop_progress_bar
+
     if [[ -z "${PROTON_PW_GIT}" ]] ; then
         yad_error "$(eval_gettext "Error: check wine.")"
         export SKIP_CHECK_UPDATES=1
@@ -3157,33 +3169,54 @@ gui_proton_downloader () {
     done
     popd 1>/dev/null || fatal
 
-    [[ -z "$(cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git")" ]] && echo "nothing" >"${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
-    [[ -z "$(cat "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git")" ]] && echo "nothing" >"${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
-    [[ -z "$(cat "${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git")" ]] && echo "nothing" >"${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git"
-    [[ -z "$(cat "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git")" ]] && echo "nothing" >"${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git"
+    TMP_PROTON_PW_GIT="$(sed 's/^/FALSE /' "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git" | tr '\n' ' ')"
+    TMP_PROTON_GE_GIT="$(sed 's/^/FALSE /' "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git" | tr '\n' ' ')"
+    TMP_PROTON_KR_GIT="$(sed 's/^/FALSE /' "${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git" | tr '\n' ' ')"
+    TMP_PROTON_CU_GIT="$(sed 's/^/FALSE /' "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git" | tr '\n' ' ')"
 
-    # Installed wine
-    ls -l ${PORT_WINE_PATH}/data/dist | awk '{print $9}' | sed '/^$/d' 1> ${PORT_WINE_TMP_PATH}/tmp_installed_wine
+    ls -l ${PORT_WINE_PATH}/data/dist | awk '{print $9}' | sed "/$PW_PROTON_LG_VER/d" | sed "/$PW_WINE_LG_VER/d" | sed '/^$/d' 1>${PORT_WINE_TMP_PATH}/tmp_installed_wine
+    TMP_INSTALLED_WINE="$(sed 's/^/FALSE /' "${PORT_WINE_TMP_PATH}/tmp_installed_wine" | tr '\n' ' ')"
+
     if [[ "$1" != "silent" ]] ; then
         # GUI
         export KEY_WINE=$RANDOM
-        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set"
-        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_kron4ek_set"
-        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_set"
-        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set"
-        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set"
 
-        "${pw_yad}" --plug=$KEY_WINE --tabnum=1 --list --separator="" --listen \
-        --column "$(eval_gettext "Select WINE for download:")" < "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git" 1> "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set" 2>/dev/null &
-        "${pw_yad}" --plug=$KEY_WINE --tabnum=2 --list --separator="" --listen \
-        --column "$(eval_gettext "Select WINE for download:")" < "${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git" 1> "${PORT_WINE_TMP_PATH}/tmp_kron4ek_set" 2>/dev/null &
-        "${pw_yad}" --plug=$KEY_WINE --tabnum=3 --list --separator="" --listen \
-        --column "$(eval_gettext "Select WINE for download:")" < "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git" 1> "${PORT_WINE_TMP_PATH}/tmp_proton_set" 2>/dev/null &
-        "${pw_yad}" --plug=$KEY_WINE --tabnum=4 --list --separator="" --listen \
-        --column "$(eval_gettext "Select WINE for download:")" < "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git" 1> "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set" 2>/dev/null &
-        "${pw_yad}" --plug=$KEY_WINE --tabnum=5 --list --separator="" --listen \
-        --column "$(eval_gettext "Select installed WINE for delete:")" < "${PORT_WINE_TMP_PATH}/tmp_installed_wine" 1> "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set" 2>/dev/null &
-        "${pw_yad}" --key=$KEY_WINE --notebook --width=500 --height=600 --text-align=center \
+        "${pw_yad}" --plug=$KEY_WINE --tabnum=1 --list --checklist --separator="" \
+        --column "$(eval_gettext "Set")" \
+        --column "$(eval_gettext "Select WINE for download:")" \
+        $TMP_PROTON_PW_GIT \
+        1>> "${PORT_WINE_TMP_PATH}/tmp_set_wine" \
+        2>/dev/null &
+
+        "${pw_yad}" --plug=$KEY_WINE --tabnum=2 --list --checklist --separator="" \
+        --column "$(eval_gettext "Set")" \
+        --column "$(eval_gettext "Select WINE for download:")" \
+        $TMP_PROTON_KR_GIT \
+        1>> "${PORT_WINE_TMP_PATH}/tmp_set_wine" \
+        2>/dev/null &
+
+        "${pw_yad}" --plug=$KEY_WINE --tabnum=3 --list --checklist --separator="" \
+        --column "$(eval_gettext "Set")" \
+        --column "$(eval_gettext "Select WINE for download:")" \
+        $TMP_PROTON_GE_GIT \
+        1>> "${PORT_WINE_TMP_PATH}/tmp_set_wine" \
+        2>/dev/null &
+
+        "${pw_yad}" --plug=$KEY_WINE --tabnum=4 --list --checklist --separator="" \
+        --column "$(eval_gettext "Set")" \
+        --column "$(eval_gettext "Select WINE for download:")" \
+        $TMP_PROTON_CU_GIT \
+        1>> "${PORT_WINE_TMP_PATH}/tmp_set_wine" \
+        2>/dev/null &
+
+        "${pw_yad}" --plug=$KEY_WINE --tabnum=5 --list --checklist --separator="" \
+        --column "$(eval_gettext "Set")" \
+        --column "$(eval_gettext "Select installed WINE for delete:")" \
+        $TMP_INSTALLED_WINE \
+        1> "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set" \
+        2>/dev/null &
+
+        "${pw_yad}" --key=$KEY_WINE --notebook --width=500 --height=600 --text-align=center  \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "$(eval_gettext "WINE MANAGER")" --separator="" --expand \
         --tab-pos=top \
         --tab="PROTON-LG"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
@@ -3200,95 +3233,89 @@ gui_proton_downloader () {
             exit 0
         fi
 
-        if [[ ! -z $(awk '{print $1}' "${PORT_WINE_TMP_PATH}/tmp_proton_set") ]] ; then
-            VERSION_WINE_GIT="$(cat "${PORT_WINE_TMP_PATH}/tmp_proton_set")"
-        elif [[ ! -z $(awk '{print $1}' "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set") ]] ; then
-            VERSION_WINE_GIT="$(cat "${PORT_WINE_TMP_PATH}/tmp_proton_pw_set")"
-        elif [[ ! -z $(awk '{print $1}' "${PORT_WINE_TMP_PATH}/tmp_kron4ek_set") ]] ; then
-            VERSION_WINE_GIT="$(cat "${PORT_WINE_TMP_PATH}/tmp_kron4ek_set")"
-        elif [[ ! -z $(awk '{print $1}' "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set") ]] ; then
-            VERSION_WINE_GIT="$(cat "${PORT_WINE_TMP_PATH}/tmp_ge_custom_set")"
-        elif [[ ! -z $(awk '{print $1}' "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set") ]] ; then
-            VERSION_INSTALLED_WINE="$(cat "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set")"
-        else
+        if [[ ! -z $(cat "${PORT_WINE_TMP_PATH}/tmp_set_wine") ]] ; then
+            VERSION_WINE_GIT="$(sed 's/TRUE//' "${PORT_WINE_TMP_PATH}/tmp_set_wine")"
+        fi
+
+        if [[ ! -z $(cat "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set") ]] ; then
+            VERSION_INSTALLED_WINE="$(sed 's/TRUE//' "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set")"
+        fi
+
+        if [[ -z "$VERSION_WINE_GIT" ]] \
+        && [[ -z "$VERSION_INSTALLED_WINE" ]]
+        then
             print_info "Nothing to do."
             export SKIP_CHECK_UPDATES=1
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
         fi
-
-        if [[ "${VERSION_WINE_GIT}" == "nothing" ]] ; then
-            print_info "Nothing to do."
-            export SKIP_CHECK_UPDATES=1
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0
-        fi
-
-        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_pw_git"
-        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_wine_kron4ek_git"
-        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_proton_ge_git"
-        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_wine_ge_custom_git"
-        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_installed_wine"
 
     elif [[ "$1" == "silent" ]] && [[ ! -z "$2" ]] ; then
         VERSION_WINE_GIT="$2"
     fi
 
-    for GIVE_WINE_URL in ${PROTON_GE_GIT[@]} ${PROTON_PW_GIT[@]} ${WINE_KRON4EK[@]} ${WINE_GE_CUSTOM[@]} ; do
-        if [ ! -z $(echo ${GIVE_WINE_URL} | grep -i "${VERSION_WINE_GIT}") ] ; then
-            export URL_VERSION_PROTON_GIT="${GIVE_WINE_URL}"
-            break
-        fi
-    done
-
-    if [[ ! -z "${VERSION_INSTALLED_WINE}" ]]; then
-        try_remove_dir "${PORT_WINE_PATH}/data/dist/${VERSION_INSTALLED_WINE}"
-        unset VERSION_INSTALLED_WINE
-        export SKIP_CHECK_UPDATES=1
-        /usr/bin/env bash -c ${pw_full_command_line[*]} &
-        exit 0
-    fi
-
-    print_info "Download and install ${VERSION_WINE_GIT}..."
-    PW_WINE_ARCHIVE="$(echo "${URL_VERSION_PROTON_GIT}" | awk -F'/' '{print $NF}' | awk -F'.tar' '{print $1}')"
-    FILENAME="$(basename "${URL_VERSION_PROTON_GIT}")"
-    if try_download "${URL_VERSION_PROTON_GIT}" "${PORT_WINE_PATH}/data/tmp/$FILENAME" ; then
-        for archive_type in "gz" "xz" ; do
-            if [[ -f "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}" ]] ; then
-                if unpack "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}" "${PORT_WINE_PATH}/data/dist/" ; then
-                    try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}"
-                    if [ ! -z "${portwine_exe}" ]; then
-                        PW_WINE_USE="$(echo "${VERSION_WINE_GIT}" | tr [[:lower:]] [[:upper:]])"
-                        edit_db_from_gui PW_WINE_USE
-                    fi
+    pw_download_get_wine () {
+        print_info "Download and install ${VERSION_WINE_GIT}..."
+        FILENAME="$(basename "${URL_VERSION_PROTON_GIT}")"
+        if try_download "${URL_VERSION_PROTON_GIT}" "${PORT_WINE_PATH}/data/tmp/$FILENAME" ; then
+            if unpack "${PORT_WINE_PATH}/data/tmp/${FILENAME}" "${PORT_WINE_PATH}/data/dist/" ; then
+                try_remove_file "${PORT_WINE_PATH}/data/tmp/${FILENAME}"
+                if [ ! -z "${portwine_exe}" ]; then
+                    PW_WINE_USE="$(echo "${VERSION_WINE_GIT}" | tr [[:lower:]] [[:upper:]])"
+                    edit_db_from_gui PW_WINE_USE
+                fi
+            else
+                try_remove_file "${PORT_WINE_PATH}/data/tmp/${FILENAME}"
+                try_remove_dir "${PORT_WINE_PATH}/data/dist/${FILENAME}"
+                if yad_error_download
+                then gui_proton_downloader $@
                 else
-                    try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_ARCHIVE}.tar.${archive_type}"
-                    try_remove_dir "${PORT_WINE_PATH}/data/dist/${PW_WINE_ARCHIVE}"
-                    if yad_error_download
-                    then gui_proton_downloader $@
-                    else
-                        export PW_WINE_VER="$PW_WINE_USE"
-                        init_wine_ver
-                    fi
+                    export PW_WINE_VER="$PW_WINE_USE"
+                    init_wine_ver
                 fi
             fi
-        done
-    else
-        if yad_error_download
-        then gui_proton_downloader $@
         else
-            export PW_WINE_VER="$PW_WINE_USE"
-            init_wine_ver
+            if yad_error_download
+            then gui_proton_downloader $@
+            else
+                export PW_WINE_VER="$PW_WINE_USE"
+                init_wine_ver
+            fi
+        fi
+    }
+
+    if [[ ! -z "${VERSION_INSTALLED_WINE}" ]] ; then
+        for REMOVE_WINE in ${VERSION_INSTALLED_WINE} ; do
+            try_remove_dir "${PORT_WINE_PATH}/data/dist/${REMOVE_WINE}"
+        done
+        if [[ -z "$VERSION_WINE_GIT" ]] ; then
+            export SKIP_CHECK_UPDATES=1
+            /usr/bin/env bash -c ${pw_full_command_line[*]} &
+            exit 0
         fi
     fi
 
     if [[ "$1" != "silent" ]] ; then
+        for GIVE_ALL_WINE in $VERSION_WINE_GIT ; do
+            for GIVE_WINE_URL in ${PROTON_GE_GIT[@]} ${PROTON_PW_GIT[@]} ${WINE_KRON4EK[@]} ${WINE_GE_CUSTOM[@]} ; do
+                if [ ! -z $(echo ${GIVE_WINE_URL} | grep -i "${GIVE_ALL_WINE}") ] ; then
+                    export URL_VERSION_PROTON_GIT="${GIVE_WINE_URL}"
+                fi
+            done
+            pw_download_get_wine
+        done
         export SKIP_CHECK_UPDATES=1
         edit_db_from_gui
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     else
         init_wine_ver
+        for GIVE_WINE_URL in ${PROTON_GE_GIT[@]} ${PROTON_PW_GIT[@]} ${WINE_KRON4EK[@]} ${WINE_GE_CUSTOM[@]} ; do
+            if [ ! -z $(echo ${GIVE_WINE_URL} | grep -i "${PW_WINE_USE}") ] ; then
+                export URL_VERSION_PROTON_GIT="${GIVE_WINE_URL}"
+            fi
+        done
+        pw_download_get_wine
     fi
 }
 export -f gui_proton_downloader
