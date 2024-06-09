@@ -469,6 +469,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             fi
             sed -i 's/$/\;/' "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan"
             pw_yad_form_vulkan
+
         elif [[ "${PW_GUI_START}" = PANED ]] ; then
             "${pw_yad}" --plug=$KEY_START --tabnum=1 --form --separator=";" \
             --image="${PW_ICON_FOR_YAD}" --text-align="center" --text "$PW_COMMENT_DB" \
@@ -482,6 +483,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             --field="   vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click_start 120"' \
             --field="   MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)")":"FBTN" '@bash -c "button_click_start 122"' \
             --field="   dgVoodoo2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)")":"FBTN" '@bash -c "button_click_start 124"' \
+            --field="   GameScope"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable GameScope by default (Wayland micro compositor)")":"FBTN" '@bash -c "button_click_start 126"' \
             2>/dev/null &
 
             "${pw_yad}" --key=$KEY_START --paned \
@@ -498,6 +500,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             sed -i 's/$/\;/' "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan"
             pw_yad_form_vulkan
         fi
+
     elif [[ -f "${PORTWINE_DB_FILE}" ]] ; then
         portwine_launch
     fi
