@@ -434,7 +434,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             --field="PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
             1> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
-            "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns=2 --align-buttons --homogeneous-column \
+            "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns=2 --align-buttons --homogeneous-row --homogeneous-column \
             --field="   $(eval_gettext "Base settings")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Edit database file for") ${PORTWINE_DB}":"FBTN" '@bash -c "button_click_start 118"' \
             --field="   vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click_start 120"' \
             --field="   MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)")":"FBTN" '@bash -c "button_click_start 122"' \
