@@ -119,6 +119,7 @@ cd "${PORT_SCRIPTS_PATH}" || fatal
 
 # shellcheck source=./var
 source "${PORT_SCRIPTS_PATH}/var"
+export pw_yad="${PORT_WINE_PATH}/data/scripts/yad_portable/$PW_YAD_BIN"
 
 export STEAM_SCRIPTS="${PORT_WINE_PATH}/steam_scripts"
 export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
