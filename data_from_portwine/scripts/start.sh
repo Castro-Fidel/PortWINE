@@ -231,6 +231,12 @@ fi
 
 pw_init_db
 
+if [[ ! -d "${HOME}/PortProton" ]] \
+&& check_flatpak 
+then
+    ln -s "${PORT_WINE_PATH}" "${HOME}/PortProton"
+fi
+
 pw_check_and_download_dxvk_and_vkd3d
 # shellcheck source=/dev/null
 source "${USER_CONF}"
