@@ -358,9 +358,9 @@ for DAIG in ./* ; do
 done
 popd 1>/dev/null || fatal
 
-[[ "${PW_DGVOODOO2}" == "1" ]] && DGV2_TXT='<b>dgVoodoo2 </b>' || unset DGV2_TXT
-[[ "${PW_VKBASALT}" == "1" ]] && VKBASALT_TXT='<b>vkBasalt </b>' || unset VKBASALT_TXT
-[[ "${PW_MANGOHUD}" == "1" ]] && MANGOHUD_TXT='<b>MangoHud </b>' || unset MANGOHUD_TXT
+# [[ "${PW_DGVOODOO2}" == "1" ]] && DGV2_TXT='<b>dgVoodoo2 </b>' || unset DGV2_TXT
+# [[ "${PW_VKBASALT}" == "1" ]] && VKBASALT_TXT='<b>vkBasalt </b>' || unset VKBASALT_TXT
+# [[ "${PW_MANGOHUD}" == "1" ]] && MANGOHUD_TXT='<b>MangoHud </b>' || unset MANGOHUD_TXT
 
 SORT_OPENGL="$(eval_gettext 'WineD3D OpenGL (For video cards without Vulkan)')"
 SORT_VULKAN="$(eval_gettext 'WineD3D Vulkan (Damavand experimental)')"
@@ -439,6 +439,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             --field="   vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click_start 120"' \
             --field="   MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)")":"FBTN" '@bash -c "button_click_start 122"' \
             --field="   dgVoodoo2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)")":"FBTN" '@bash -c "button_click_start 124"' \
+            --field="   GameScope"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable GameScope by default (Wayland micro compositor)")":"FBTN" '@bash -c "button_click_start 126"' \
             2>/dev/null &
 
             if [[ -f "${PORT_WINE_TMP_PATH}/tmp_yad_form_tab" ]] \
@@ -450,7 +451,7 @@ if [[ -f "${portwine_exe}" ]] ; then
                 export TAB_START=1
             fi
 
-            "${pw_yad}" --key=$KEY_START --notebook --center --active-tab=$TAB_START \
+            "${pw_yad}" --key=$KEY_START --notebook --active-tab=$TAB_START \
             --width="${PW_MAIN_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" \
             --title "PortProton-${install_ver} (${scripts_install_ver})" --expand --buttons-layout=expand \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
@@ -483,7 +484,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             --field="   dgVoodoo2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)")":"FBTN" '@bash -c "button_click_start 124"' \
             2>/dev/null &
 
-            "${pw_yad}" --key=$KEY_START --paned --center \
+            "${pw_yad}" --key=$KEY_START --paned \
             --width="${PW_MAIN_START_SIZE_W}" --height="${PW_MAIN_START_SIZE_H}" --tab-pos="${PW_TAB_POSITON}" \
             --title "PortProton-${install_ver} (${scripts_install_ver})" --buttons-layout=expand \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
@@ -716,6 +717,7 @@ fi
     120) gui_vkBasalt ;;
     122) gui_MangoHud ;;
     124) gui_dgVoodoo2 ;;
+    126) gui_gamescope ;;
     pw_create_prefix_backup) pw_create_prefix_backup ;;
     gui_credits) gui_credits ;;
     pw_start_cont_xterm) pw_start_cont_xterm ;;
