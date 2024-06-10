@@ -592,6 +592,10 @@ pw_init_runtime () {
         export LOCPATH="/run/host/usr/share/locale/"
     elif grep -i "altlinux" "/etc/os-release" &>/dev/null ; then
         export LIBGL_DRIVERS_PATH="/usr/lib/X11/modules/dri:/usr/lib64/X11/modules/dri"
+        if [[ -f "/usr/share/vulkan/icd.d/nvidia_icd.json" ]] ; then
+            VK_ADD_DRIVER_FILES="$(realpath /usr/share/vulkan/icd.d/nvidia_icd.json)"
+            export VK_ADD_DRIVER_FILES
+        fi
     fi
 
     PW_PV_OVERRIDES="/usr/lib/pressure-vessel/overrides/lib"
@@ -1852,11 +1856,6 @@ start_portwine () {
     if [[ "${PW_GPU_USE}" != "disabled" ]] ; then
         export DXVK_FILTER_DEVICE_NAME="${PW_GPU_USE}"
         export VKD3D_FILTER_DEVICE_NAME="${PW_GPU_USE}"
-        if echo "${PW_GPU_USE}" | grep -i nvidia &>/dev/null ; then
-            if [[ -f "/usr/share/vulkan/icd.d/nvidia_icd.json" ]] ; then
-                export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/nvidia_icd.json"
-            fi
-        fi
     fi
 
     case "$PW_FORCE_USE_VSYNC" in  # 0-FORCE_OFF, 1-FORCE_ON, 2-BY_DEFAULT
