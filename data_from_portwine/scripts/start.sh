@@ -452,7 +452,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             fi
 
             "${pw_yad}" --key=$KEY_START --notebook --active-tab=$TAB_START \
-            --width="${PW_MAIN_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" --center \
+            --width="${PW_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" --center \
             --title "PortProton-${install_ver} (${scripts_install_ver})" --expand --buttons-layout=expand \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
             --tab="$(eval_gettext "GENERAL")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
@@ -487,7 +487,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             2>/dev/null &
 
             "${pw_yad}" --key=$KEY_START --paned --center \
-            --width="${PW_MAIN_START_SIZE_W}" --height="${PW_MAIN_START_SIZE_H}" --tab-pos="${PW_TAB_POSITON}" \
+            --width="${PW_START_SIZE_W}" --height="${PW_START_SIZE_H}" --tab-pos="${PW_TAB_POSITON}" \
             --title "PortProton-${install_ver} (${scripts_install_ver})" --buttons-layout=expand \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
             --button="${PW_SHORTCUT}" \
