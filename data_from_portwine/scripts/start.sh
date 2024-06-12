@@ -72,7 +72,7 @@ fi
 
 unset MANGOHUD MANGOHUD_DLSYM PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_YAD_SET PW_ICON_FOR_YAD
 unset PW_CHECK_AUTOINSTAL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PORTWINE_DB_FILE PW_DISABLED_CREATE_DB RADV_PERFTEST
-unset CHK_SYMLINK_FILE PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME
+unset CHK_SYMLINK_FILE PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME PW_PATH
 unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD PW_WINE_CPU_TOPOLOGY
 unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_ALL_DF PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
 unset MANGOHUD_CONFIG FPS_LIMIT PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME PORTWINE_CREATE_SHORTCUT_NAME MIRROR
@@ -119,12 +119,12 @@ cd "${PORT_SCRIPTS_PATH}" || fatal
 
 # shellcheck source=./var
 source "${PORT_SCRIPTS_PATH}/var"
-export pw_yad="${PORT_WINE_PATH}/data/scripts/yad_portable/$PW_YAD_BIN"
 
 export STEAM_SCRIPTS="${PORT_WINE_PATH}/steam_scripts"
 export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
 export PW_GUI_THEMES_PATH="${PORT_WINE_PATH}/data/themes"
+export pw_yad="$PW_GUI_THEMES_PATH/gui/yad_gui_pp"
 
 change_locale
 
@@ -183,16 +183,18 @@ case "$PW_GUI_START" in
               ;;
 esac
 
+export PW_VULKANINFO_PORTABLE="$PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo"
+
 # check skip update
 if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] \
 && [[ ! -f "/tmp/portproton.lock" ]]
 then
     pw_port_update
     pw_check_and_download_plugins
-    export PW_VULKANINFO_PORTABLE="$PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo"
     VULKAN_DRIVER_NAME="$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep driverName | awk '{print$3}' | head -1)"
+    GET_GPU_NAMES=$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | awk -F '=' '/deviceName/{print $2}' | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
     LSPCI_VGA="$(lspci -k 2>/dev/null | grep -E 'VGA|3D' | tr -d '\n')"
-    export LSPCI_VGA VULKAN_DRIVER_NAME
+    export LSPCI_VGA VULKAN_DRIVER_NAME GET_GPU_NAMES
 
     if command -v xrandr &>/dev/null ; then
         try_remove_file "${PORT_WINE_TMP_PATH}/tmp_screen_configuration"
@@ -243,7 +245,7 @@ source "${USER_CONF}"
 
 if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     kill_portwine
-    killall -15 $PW_YAD_BIN 2>/dev/null
+    killall -15 yad_gui_pp 2>/dev/null
     kill -TERM "$(pgrep -a yad | grep PortProton | head -n 1 | awk '{print $1}')" 2>/dev/null
 
     if [[ -f "/usr/bin/portproton" ]] \
@@ -267,7 +269,7 @@ if [[ ! -z $(basename "${portwine_exe}" | grep .ppack) ]] ; then
     pw_init_runtime
     if check_flatpak
     then TMP_ALL_PATH=""
-    else TMP_ALL_PATH="env PATH=\"${PATH}\" LD_LIBRARY_PATH=\"${PW_LD_LIBRARY_PATH}\""
+    else TMP_ALL_PATH="LD_LIBRARY_PATH=\"${PW_LD_LIBRARY_PATH}\""
     fi
     PW_PREFIX_NAME=$(basename "$1" | awk -F'.' '{print $1}')
 cat << EOF > "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack.sh
@@ -427,14 +429,14 @@ if [[ -f "${portwine_exe}" ]] ; then
 
         export KEY_START="$RANDOM"
         if [[ "${PW_GUI_START}" = NOTEBOOK ]] ; then
-            "${pw_yad}" --plug=$KEY_START --tabnum=1 --form --separator=";" \
+            "${pw_yad}" --plug=$KEY_START --tabnum=1 --form --separator=";" --gui-type=start-old \
             --image="${PW_ICON_FOR_YAD}" --text-align="center" --text "$PW_COMMENT_DB" \
             --field="3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
             --field="  WINE  : :CB" "${PW_DEFAULT_WINE_USE}" \
             --field="PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
             1> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
-            "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns=2 --align-buttons --homogeneous-row --homogeneous-column \
+            "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns=3 --align-buttons --homogeneous-row --homogeneous-column \
             --field="   $(eval_gettext "Base settings")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Edit database file for") ${PORTWINE_DB}":"FBTN" '@bash -c "button_click_start 118"' \
             --field="   vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click_start 120"' \
             --field="   MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)")":"FBTN" '@bash -c "button_click_start 122"' \
@@ -471,14 +473,15 @@ if [[ -f "${portwine_exe}" ]] ; then
             pw_yad_form_vulkan
 
         elif [[ "${PW_GUI_START}" = PANED ]] ; then
-            "${pw_yad}" --plug=$KEY_START --tabnum=1 --form --separator=";" \
+            "${pw_yad}" --plug=$KEY_START --tabnum=1 --form --separator=";" --gui-type=start-old \
             --image="${PW_ICON_FOR_YAD}" --text-align="center" --text "$PW_COMMENT_DB" \
             --field="   3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
             --field="     WINE  : :CB" "${PW_DEFAULT_WINE_USE}" \
             --field="   PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
             1> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
-            "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns=2 --align-buttons --homogeneous-row --homogeneous-column \
+            "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns=3 \
+            --align-buttons --homogeneous-row --homogeneous-column \
             --field="   $(eval_gettext "Base settings")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Edit database file for") ${PORTWINE_DB}":"FBTN" '@bash -c "button_click_start 118"' \
             --field="   vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click_start 120"' \
             --field="   MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)")":"FBTN" '@bash -c "button_click_start 122"' \
@@ -486,8 +489,8 @@ if [[ -f "${portwine_exe}" ]] ; then
             --field="   GameScope"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable GameScope by default (Wayland micro compositor)")":"FBTN" '@bash -c "button_click_start 126"' \
             2>/dev/null &
 
-            "${pw_yad}" --key=$KEY_START --paned --center \
-            --width="${PW_START_SIZE_W}" --height="${PW_START_SIZE_H}" --tab-pos="${PW_TAB_POSITON}" \
+            "${pw_yad}" --key=$KEY_START --paned --center --fixed \
+            --width="${PW_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" \
             --title "PortProton-${install_ver} (${scripts_install_ver})" --buttons-layout=expand \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
             --button="${PW_SHORTCUT}" \
