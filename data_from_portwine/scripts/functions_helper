@@ -2605,26 +2605,28 @@ pw_start_cont_xterm () {
     ${PW_TERM} bash
 }
 
+# GUI INFO
 yad_info () {
     print_info "$@"
     if [[ ! -f "${pw_yad}" ]] ; then
         local pw_yad="yad"
         command -v "${pw_yad}" &>/dev/null || fatal "yad not found"
     fi
-    "${pw_yad}" --no-wrap --text "$@" --width=400 --height=50 --borders=15 --title "INFO" \
+    "${pw_yad}" --no-wrap --text "$@" --width=400 --height=150 --borders=15 --title "INFO" \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/info.svg" \
     --center --text-align=center --fixed \
     --button="$(eval_gettext "OK")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
 }
 export -f yad_info
 
+# GUI ERROR
 yad_error () {
     print_error "$@"
     if [[ ! -f "${pw_yad}" ]] ; then
         local pw_yad="yad"
         command -v "${pw_yad}" &>/dev/null || fatal "yad not found"
     fi
-    "${pw_yad}" --no-wrap --text "$@" --width=400 --borders=15 --title "ERROR" \
+    "${pw_yad}" --no-wrap --text "$@" --width=400 --height=150 --borders=15 --title "ERROR" \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/error.svg" \
     --center --text-align=center --fixed \
     --button="$(eval_gettext "EXIT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
@@ -2645,12 +2647,13 @@ yad_error_download () {
     [[ "$?" != 0 ]] && return 1 || return 0
 }
 
+# GUI QUESTIONS
 yad_question () {
     if [[ ! -f "${pw_yad}" ]] ; then
         local pw_yad="yad"
         command -v "${pw_yad}" &>/dev/null || fatal "yad not found"
     fi
-    "${pw_yad}" --text "${1}" --width=400 --borders=15 --title "$(eval_gettext "Choices")" \
+    "${pw_yad}" --text "${1}" --width=400 --height=150 --borders=15 --title "$(eval_gettext "Choices")" \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/question.svg" \
     --no-wrap --center --text-align=center --fixed \
     --button="$(eval_gettext "CANCEL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
@@ -2925,7 +2928,7 @@ pw_gui_for_edit_db () {
            *) ADD_WINVER_EDIT_DB="10!7!XP" ;;
     esac
 
-    "${pw_yad}" --plug=$KEY_EDIT_DB_GUI --tabnum="2" --form --separator="%" --columns=1 --scroll \
+    "${pw_yad}" --plug=$KEY_EDIT_DB_GUI --tabnum="2" --form --separator="%" --columns=1 \
     --field="$(eval_gettext "Change the version of <b>WINDOWS</b> emulation")!$(eval_gettext "Changing the <b>WINDOWS</b> emulation version may be required to run older games. <b>WINDOWS</b> versions below 10 do not support new games with DirectX 12") :CB" "${ADD_WINVER_EDIT_DB}" \
     --field="$(eval_gettext "AUTOINSTALL WITH <b>WINETRICKS</b>")!$(eval_gettext "Automatically install with <b>WINETRICKS</b> additional libraries required to run the game/program. List of libraries separated by spaces") :CBE" "${PW_DLL_INSTALL}!vcrun2019 corefonts lucida" \
     --field="$(eval_gettext "Forced to use/disable libraries")!$(eval_gettext "Forced to use/disable the library only for the given application. (There are examples in the drop-down list)
@@ -2948,9 +2951,9 @@ A brief instruction:
     --field="$(eval_gettext "Force certain locale for an app:")!$(eval_gettext "Fixes encoding issues in legacy software") :CB" "${PW_LOCALE_SELECT}!disabled!$LOCALE_LIST" \
     1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
 
-    "${pw_yad}" --notebook --key="$KEY_EDIT_DB_GUI" --title "$(eval_gettext "EDIT DB")" --text-align=center --height="600" \
+    "${pw_yad}" --notebook --key="$KEY_EDIT_DB_GUI" --title "$(eval_gettext "EDIT DB")" --text-align=center \
     --text "$(eval_gettext "Change settings in database file for") <b>${PORTWINE_DB}</b>\n $(eval_gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand --fixed --center \
     --tab="$(eval_gettext "MAIN")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
     --tab="$(eval_gettext "ADVANCED")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
     --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
@@ -3039,9 +3042,9 @@ gui_gamescope () {
     1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db" 2>/dev/null &
     IFS=$old_IFS
 
-    output_yad_gamescope="$("${pw_yad}" --title "GAMESCOPE" --text-align=center --height="300" \
+    output_yad_gamescope="$("${pw_yad}" --title "GAMESCOPE" --text-align=center --height="350" \
     --text "$(eval_gettext "Change settings gamescope for") <b>${PORTWINE_DB}</b>\n $(eval_gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand --form \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand --form --center --fixed \
     --field="$(eval_gettext "Add arguments for GAMESCOPE:")!$(eval_gettext "
 <b>-W, -H:</b> set the resolution used by gamescope. Resizing the gamescope window will update these settings. Ignored in embedded mode. If -H is specified but -W isn't, a 16:9 aspect ratio is assumed. Defaults to 1280×720.
 <b>-w, -h:</b> set the resolution used by the game. If -h is specified but -w isn't, a 16:9 aspect ratio is assumed. Defaults to the values specified in -W and -H.
@@ -3418,7 +3421,7 @@ gui_vkBasalt () {
     --field="AMD FidelityFX - Contrast Adaptive Sharpening"!"$(eval_gettext "AMD FidelityFX - CAS is designed to dramatically improve texture sharpness without additional modification settings for games, with minimal loss of performance. (For older games it is recommended to set value = 100)")":SCL "${VKBASALT_FFX_CAS_GUI}" \
     1> "${PORT_WINE_TMP_PATH}/tmp_yad_cas_set" 2>/dev/null &
 
-    "${pw_yad}" --paned --key="$KEY_FX_GUI" --height="600" --title="vkBasalt" \
+    "${pw_yad}" --paned --key="$KEY_FX_GUI" --center --fixed --title="vkBasalt" \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
     --button="$(eval_gettext "DISABLE") VKBASALT"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Disable vkBasalt and go to the previous menu")":180 \
@@ -3576,8 +3579,8 @@ gui_MangoHud () {
         ${ADD_GUI_MH_FPS} 1> "${PORT_WINE_TMP_PATH}/tmp_yad_mh_fps_limit" 2>/dev/null &
     IFS=$old_IFS
 
-    "${pw_yad}" --paned --key="$KEY_MH_GUI" --height="650" --title="MangoHud" \
-        --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+    "${pw_yad}" --paned --key="$KEY_MH_GUI" --title="MangoHud" \
+        --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --center --fixed \
         --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
         --button="$(eval_gettext "DISABLE") MANGOHUD"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Disable MangoHud and go to the previous menu")":182 \
         --button="$(eval_gettext "PREVIEW CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Start vkcube for preview changes")":184 \
@@ -3713,7 +3716,7 @@ gui_dgVoodoo2 () {
     --field="${CHKBOX_SPACE}ANTIALIASING!$(eval_gettext "Forced antialiasing in Direct3D and Glide games") :CB" "${PW_DGV2_ANTIALIASING}!disabled!2!4!8" \
     1> "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set_cb" 2>/dev/null &
     "${pw_yad}" --paned --key=$KEY_DGV2_GUI --height="350" --title="dgVoodoo2" \
-    --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+    --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --center --fixed \
     --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
     --button="$(eval_gettext "DISABLE") DGVOODOO2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Disable dgVoodoo2 and go to the previous menu")":162 \
     --button="$(eval_gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Save the current changes, and go to the previous menu")":166 \
@@ -3885,7 +3888,7 @@ portwine_delete_shortcut () {
 
 portwine_missing_shortcut () {
     "${pw_yad}" --title="$(eval_gettext "Error")" --form \
-    --window-icon "$PW_GUI_ICON_PATH/portproton.svg" --fixed  \
+    --window-icon "$PW_GUI_ICON_PATH/portproton.svg" --fixed --center \
     --image "$PW_GUI_ICON_PATH/error.svg" \
     --text "\n$(eval_gettext "Could not find the file:")\n${portwine_exe}\n\n$(eval_gettext "ATTENTION:\nIf you forgot to mount the disk with the running application, click CANCEL!")\n" \
     --button="$(eval_gettext "DELETE SHORTCUT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 \
