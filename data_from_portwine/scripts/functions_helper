@@ -1298,8 +1298,8 @@ pw_port_update () {
         print_info "Scripts version in git = ${scripts_current_ver}"
         print_info "Scripts version local = ${scripts_install_ver}"
         if [[ ! -z "${scripts_current_ver}" ]] &&  [[ "${scripts_current_ver}" -gt "${scripts_install_ver}" ]] ; then
-            if [[ -f "$PW_GUI_THEMES_PATH/gui/yad_gui_pp" ]]
-            then export pw_yad="$PW_GUI_THEMES_PATH/gui/yad_gui_pp"
+            if [[ -f "${PW_GUI_THEMES_PATH}/gui/yad_gui_pp" ]]
+            then export pw_yad="${PW_GUI_THEMES_PATH}/gui/yad_gui_pp"
             elif command -v yad &>/dev/null
             then local pw_yad="yad"
             else local pw_yad="not_found"
@@ -1384,29 +1384,6 @@ update_winetricks () {
         sed -i 's/w_set_winver win2k3/w_set_winver win7/' "${PORT_WINE_TMP_PATH}/winetricks"
     fi
     return 0
-}
-
-edit_db_field_add () {
-    for int_to_boole in $@ ; do
-        if [ "${!int_to_boole}" == "1" ]
-        then export ${int_to_boole}="TRUE"
-        else export ${int_to_boole}="FALSE"
-        fi
-        TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
-        int_to_boole_non_pw="$(echo ${int_to_boole} | sed 's/^PW_//' | sed 's/_/ /g' )"
-        ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
-    done
-}
-
-edit_db_field_read () {
-    for boole_to_int in $@ ; do
-        export ${boole_to_int}=${output_yad_edit_db[$bool_from_yad]}
-        if [ "${!boole_to_int}" == "TRUE" ]
-        then export ${boole_to_int}="1"
-        else export ${boole_to_int}="0"
-        fi
-        export bool_from_yad=$(( ${bool_from_yad} + 1 ))
-    done
 }
 
 edit_db_from_gui () {
@@ -2842,254 +2819,6 @@ pw_tray_icon () {
     return 0
 }
 
-# GUI EDIT_DB
-pw_gui_for_edit_db () {
-    KEY_EDIT_DB_GUI=$RANDOM
-    if [[ "${PW_WINE_CPU_TOPOLOGY}" == *[0-9]:* ]] && [[ "${PW_WINE_CPU_TOPOLOGY}" != "disabled" ]] ; then
-        CPU_LIMIT_VAR="$(echo ${PW_WINE_CPU_TOPOLOGY%%:*})"
-    else
-        CPU_LIMIT_VAR="disabled"
-    fi
-
-    if [[ ! -z "${PW_GPU_USE}" ]] && [[ "${PW_GPU_USE}" != "disabled" ]] ; then
-        GPU_VAR="${PW_GPU_USE}"
-    else
-        GPU_VAR="disabled"
-    fi
-
-    logical_cores=$(grep -c "^processor" /proc/cpuinfo)
-    if [[ "${logical_cores}" -le "4" ]] ; then
-        GET_LOGICAL_CORE="1!$(seq -s! 1 $((${logical_cores} - 1)))"
-    else
-        GET_LOGICAL_CORE="1!2!$(seq -s! 4 4 $((${logical_cores} - 1)))"
-    fi
-
-    GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
-    unset LOCALE_LIST
-    for LOCALE in $GET_LOCALE_LIST ; do
-        if locale -a | grep -i "$LOCALE" &>/dev/null ; then
-            if [[ ! -z "$LOCALE_LIST" ]]
-            then LOCALE_LIST+="!$(locale -a | grep -i "$LOCALE")"
-            else LOCALE_LIST="$(locale -a | grep -i "$LOCALE")"
-            fi
-        fi
-    done
-
-    unset ADD_CHK_BOX_EDIT_DB
-
-    PW_DGVOODOO2_INFO=$(eval_gettext 'Enable dgVoodoo2. Forced use all dgVoodoo2 libs (Glide 2.11-3.1, DirectDraw 1-7, Direct3D 2-9) on all 3D API. For WineD3D OpenGL need use WineLG (For Gallium Nine and Zink use too)')
-    PW_DINPUT_PROTOCOL_INFO=$(eval_gettext 'Force use DirectInput protocol instead of XInput')
-    PW_VKBASALT_INFO=$(eval_gettext 'Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)')
-    PW_NO_ESYNC_INFO=$(eval_gettext 'Do not use in-process synchronization primitives based on eventfd. (It is recommended not to change the value.)')
-    PW_NO_FSYNC_INFO=$(eval_gettext 'Do not use futex-based in-process synchronization primitives. (Automatically disabled on systems without FUTEX_WAIT_MULTIPLE support) (It is recommended not to change the value)')
-    PW_USE_RAY_TRACING_INFO=$(eval_gettext 'Enable vkd3d support - Ray Tracing')
-    PW_FIX_VIDEO_IN_GAME_INFO=$(eval_gettext 'Required for video playback in some games so that it is not distorted (usually colored pink)')
-    PW_VULKAN_NO_ASYNC_INFO=$(eval_gettext 'Disable asynchronous calls for VULKAN and DXVK modes')
-    PW_USE_NVAPI_AND_DLSS_INFO=$(eval_gettext 'Enable DLSS on supported NVIDIA graphics cards')
-    PW_OLD_GL_STRING_INFO=$(eval_gettext 'Forced use of older versions of OpenGL')
-    PW_HIDE_NVIDIA_GPU_INFO=$(eval_gettext 'Disguise all features used for NVIDIA graphics cards')
-    PW_FORCE_USE_VSYNC_INFO=$(eval_gettext 'Forced activation of vertical sync')
-    PW_VIRTUAL_DESKTOP_INFO=$(eval_gettext 'Enable the application to run in the WINE virtual desktop')
-    PW_USE_TERMINAL_INFO=$(eval_gettext 'Run the application in the terminal')
-    PW_HEAP_DELAY_FREE_INFO=$(eval_gettext 'Include a delay in releasing some memory to bypass errors associated with using the application after the memory is released')
-    PW_NO_WRITE_WATCH_INFO=$(eval_gettext 'A very dangerous way to hack the memory write timer in ntdll. This improves the performance of some very specific games. (It is recommended not to change the value.)')
-    PW_GUI_DISABLED_CS_INFO=$(eval_gettext 'Disable the window for selecting startup modes and WINE versions')
-    PW_USE_GSTREAMER_INFO=$(eval_gettext 'Use Gstreamer to output clips in games (WMF support)')
-    PW_FORCE_LARGE_ADDRESS_AWARE_INFO=$(eval_gettext 'Increases RAM usage limits for 32-bit applications from two to four gigabytes')
-    PW_USE_RUNTIME_INFO=$(eval_gettext 'Use container launch mode (It is recommended not to change the value)')
-    PW_MANGOHUD_INFO=$(eval_gettext 'Using FPS and system load monitoring (Turns on and off by the key combination - right Shift + F12)')
-    PW_USE_GAMEMODE_INFO=$(eval_gettext 'Using automatic system optimization to improve performance in games (provided the gamemode package is installed on the system)')
-    PW_USE_WINE_DXGI_INFO=$(eval_gettext 'Forced use of built-in DXGI library (in rare cases it solves problems with DX12 games)')
-    PW_MANGOHUD_USER_CONF_INFO=$(eval_gettext 'Forced use of MANGOHUD system settings (GOverlay, etc.)')
-    PW_VKBASALT_USER_CONF_INFO=$(eval_gettext 'Forced use of VKBASALT system settings (GOverlay, etc.)')
-    PW_USE_D3D_EXTRAS_INFO=$(eval_gettext 'Enable forced use of third-party DirectX libraries')
-    PW_USE_WINDOWS_7_INFO=$(eval_gettext 'Change the version of WINDOWS 10 to WINDOWS 7 in the prefix')
-    PW_USE_SHADER_CACHE_INFO=$(eval_gettext 'Use WINE shader caching (disable only if there are microfreezes in the game)')
-    PW_WINE_FULLSCREEN_FSR_INFO=$(eval_gettext 'Works while using any version of ProtonGE in full screen mode at a resolution below the standard screen')
-    PW_USE_FAKE_DLSS_INFO=$(eval_gettext 'Enable DLSS translator in FSR 2 in DirectX 12 games (CyberFSR2)')
-    PW_USE_EAC_AND_BE_INFO=$(eval_gettext 'Enable Easy Anti-Cheat and BattlEye Anti-Cheat runtimes (required if game used this anti-cheats)')
-    PW_REDUCE_PULSE_LATENCY_INFO=$(eval_gettext 'Reduce pulseaudio latency to fix intermittent sound')
-    PW_USE_US_LAYOUT_INFO=$(eval_gettext 'Forced use of the us layout (useful for games in which the control works correctly only on the us layout)')
-    PW_RESTORE_RESOLUTION_INFO=$(eval_gettext 'Remember the screen resolution when starting the game and return it when closing (useful for games that change the screen resolution when closing)')
-    PW_USE_SYSTEM_VK_LAYERS_INFO=$(eval_gettext 'Use system mangohud, vkBasalt, obs-vkcapture and other applications using vulkan layers')
-    PW_USE_OBS_VKCAPTURE_INFO=$(eval_gettext 'Enable the ability to write to OBS Studio using obs-vkcapture (ATTENTION: the forced use of system mangohud, vkBasalt, obs-vkcapture and other applications using vulkan layers will be enabled)')
-    PW_DISABLE_COMPOSITING_INFO=$(eval_gettext 'Disable desktop compositing (effects). It often improves performance.')
-
-    edit_db_field_add $@
-    old_IFS=$IFS
-    IFS="%"
-    "${pw_yad}" --plug=$KEY_EDIT_DB_GUI --tabnum="1" --form --separator=" " --columns=3 ${ADD_CHK_BOX_EDIT_DB} \
-    1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db" 2>/dev/null &
-    IFS=$old_IFS
-
-    case ${PW_WINDOWS_VER} in
-         "7") ADD_WINVER_EDIT_DB="7!10!XP" ;;
-        "XP") ADD_WINVER_EDIT_DB="XP!7!10" ;;
-           *) ADD_WINVER_EDIT_DB="10!7!XP" ;;
-    esac
-
-    "${pw_yad}" --plug=$KEY_EDIT_DB_GUI --tabnum="2" --form --separator="%" --columns=1 \
-    --field="$(eval_gettext "Change the version of <b>WINDOWS</b> emulation")!$(eval_gettext "Changing the <b>WINDOWS</b> emulation version may be required to run older games. <b>WINDOWS</b> versions below 10 do not support new games with DirectX 12") :CB" "${ADD_WINVER_EDIT_DB}" \
-    --field="$(eval_gettext "AUTOINSTALL WITH <b>WINETRICKS</b>")!$(eval_gettext "Automatically install with <b>WINETRICKS</b> additional libraries required to run the game/program. List of libraries separated by spaces") :CBE" "${PW_DLL_INSTALL}!vcrun2019 corefonts lucida" \
-    --field="$(eval_gettext "Forced to use/disable libraries")!$(eval_gettext "Forced to use/disable the library only for the given application. (There are examples in the drop-down list)
-
-A brief instruction:
-    * libraries are written <b>WITHOUT</b> the .dll file extension
-    * libraries are separated by semicolons - <b>;</b>
-    * library=n - use the <b>WINDOWS</b> (third-party) library
-    * library=b - use <b>WINE</b> (built-in) library
-    * library=n,b - use <b>WINDOWS</b> library and then <b>WINE</b>
-    * library=b,n - use <b>WINE</b> library and then <b>WINDOWS</b>
-    * library= - disable the use of this library") :CBE" "${WINEDLLOVERRIDES}!libglesv2=!d3dx9_36,d3dx9_42=n,b;mfc120=b,n" \
-    --field=":LBL" "" \
-    --field="$(eval_gettext "ADD ARGUMENTS FOR .EXE FILE")!$(eval_gettext "Adding an argument after the <b>.exe</b> file, just like you would add an argument in a shortcut on a <b>WINDOWS </b> system") :CBE" "\\${LAUNCH_PARAMETERS[@]}!-dx11 -skipintro 1" \
-    --field=":LBL" "" \
-    --field="$(eval_gettext "Limit the use of processor cores")!$(eval_gettext "Limiting the number of CPU cores is useful for Unity games (It is recommended to set the value equal to 8)") :CB" "${CPU_LIMIT_VAR}!disabled!${GET_LOGICAL_CORE}" \
-    --field="$(eval_gettext "Choose a graphics card to run the game (in user.conf)")!$(eval_gettext "Select which video card will be used to run the game (used for all running games and programs in PortProton)") :CB" "${GPU_VAR}!disabled!${GET_GPU_NAMES}" \
-    --field="$(eval_gettext "Forcibly select the OpenGL version for the game")!$(eval_gettext "You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)") :CB" "${PW_MESA_GL_VERSION_OVERRIDE}!disabled!4.6COMPAT!4.6!4.5COMPAT!4.5!3.3COMPAT!3.3" \
-    --field="$(eval_gettext "Forcibly select the VKD3D feature level")!$(eval_gettext "You can set a forced feature level VKD3D for games on DirectX12") :CB" "${PW_VKD3D_FEATURE_LEVEL}!disabled!12_2!12_1!12_0!11_1!11_0" \
-    --field="$(eval_gettext "Force certain locale for an app:")!$(eval_gettext "Fixes encoding issues in legacy software") :CB" "${PW_LOCALE_SELECT}!disabled!$LOCALE_LIST" \
-    1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
-
-    "${pw_yad}" --notebook --key="$KEY_EDIT_DB_GUI" --title "$(eval_gettext "EDIT DB")" --text-align=center \
-    --text "$(eval_gettext "Change settings in database file for") <b>${PORTWINE_DB}</b>\n $(eval_gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand --fixed --center \
-    --tab="$(eval_gettext "MAIN")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-    --tab="$(eval_gettext "ADVANCED")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-    --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
-    --button="$(eval_gettext "RESET SETTINGS")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Restore default settings")":2 \
-    --button="$(eval_gettext "OPEN THE SETTINGS FILE")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Open the <b>.ppdb</b> settings file in a system text editor to view and change variables manually")":150 \
-    --button="$(eval_gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Save the current changes, and go to the previous menu")":0 2>/dev/null
-    YAD_STATUS="$?"
-    export SKIP_CHECK_UPDATES=1
-    case "$YAD_STATUS" in
-      1|252)
-                /usr/bin/env bash -c ${pw_full_command_line[*]} &
-                exit 0
-                ;;
-          2)
-                try_remove_file "$portwine_exe".ppdb
-                /usr/bin/env bash -c ${pw_full_command_line[*]} &
-                exit 0
-                ;;
-    esac
-    output_yad_edit_db=($(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db"))
-    bool_from_yad=0
-
-    edit_db_field_read $@
-    PW_WINDOWS_VER="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $1}')"
-    PW_DLL_INSTALL="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $2}')"
-    WINEDLLOVERRIDES="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $3}')"
-    LAUNCH_PARAMETERS="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $5}')"
-    CPU_LIMIT="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $7}')"
-    PW_GPU_USE="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $8}')"
-    PW_MESA_GL_VERSION_OVERRIDE="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $9}')"
-    PW_VKD3D_FEATURE_LEVEL="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $10}')"
-    PW_LOCALE_SELECT="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $11}')"
-
-    if [[ "${CPU_LIMIT}" != "disabled" ]] ; then
-        export PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $((${CPU_LIMIT} - 1)))"
-    else
-        export PW_WINE_CPU_TOPOLOGY="disabled"
-    fi
-    echo "pw_gui_for_edit_db PORTWINE_DB_FILE=$PORTWINE_DB_FILE"
-    edit_db_from_gui $@ LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY GAMESCOPE_ARGS \
-    PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PW_LOCALE_SELECT
-    if [[ -z "$MANGOHUD_CONFIG" ]] ; then
-        MONITOR_HEIGHT="$(echo "$PW_SCREEN_RESOLUTION" | awk -F'x' '{print $2}')"
-        MH_FONT_SIZE="font_size=$(( MONITOR_HEIGHT / 45 ))"
-
-        if [[ ! -z "$MH_FONT_SIZE" ]]
-        then MANGOHUD_CONFIG="$DEFAULT_MANGOHUD_CONFIG,$MH_FONT_SIZE"
-        else MANGOHUD_CONFIG="$DEFAULT_MANGOHUD_CONFIG"
-        fi
-
-        edit_db_from_gui MANGOHUD_CONFIG
-    fi
-    edit_user_conf_from_gui PW_GPU_USE
-    # PW_AMD_VULKAN_USE
-
-    case "$YAD_STATUS" in
-          0)
-                print_info "Restarting PP after update ppdb file..."
-                /usr/bin/env bash -c ${pw_full_command_line[*]} &
-                exit 0
-                ;;
-        150)
-                xdg-open "${PORTWINE_DB_FILE}" &
-                exit 0
-                ;;
-    esac
-}
-
-# GUI GAMESCOPE
-gui_gamescope () {
-    unset ADD_CHK_BOX_GAMESCOPE
-
-    PW_USE_GAMESCOPE_INFO=$(eval_gettext '<b>Super + F :</b> Toggle fullscreen
-<b>Super + N :</b> Toggle nearest neighbour filtering
-<b>Super + U :</b> Toggle FSR upscaling
-<b>Super + Y :</b> Toggle NIS upscaling
-<b>Super + I :</b> Increase FSR sharpness by 1
-<b>Super + O :</b> Decrease FSR sharpness by 1
-<b>Super + S :</b> Take screenshot (currently goes to /tmp/gamescope_DATE.png)
-<b>Super + G :</b> Toggle keyboard grab
-<b>Super + C :</b> Update clipboard')
-
-    old_IFS=$IFS
-    IFS="%"
-    "${pw_yad}" --plug=$KEY_GAMESCOP_GUI --form --separator=" " --columns=3 ${ADD_CHK_BOX_GAMESCOPE} \
-    1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db" 2>/dev/null &
-    IFS=$old_IFS
-
-    output_yad_gamescope="$("${pw_yad}" --title "GAMESCOPE" --text-align=center --height="350" \
-    --text "$(eval_gettext "Change settings gamescope for") <b>${PORTWINE_DB}</b>\n $(eval_gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand --form --center --fixed \
-    --field="$(eval_gettext "Add arguments for GAMESCOPE:")!$(eval_gettext "
-<b>-W, -H:</b> set the resolution used by gamescope. Resizing the gamescope window will update these settings. Ignored in embedded mode. If -H is specified but -W isn't, a 16:9 aspect ratio is assumed. Defaults to 1280×720.
-<b>-w, -h:</b> set the resolution used by the game. If -h is specified but -w isn't, a 16:9 aspect ratio is assumed. Defaults to the values specified in -W and -H.
-<b>-r:</b> set a frame-rate limit for the game. Specified in frames per second. Defaults to unlimited.
-<b>-o:</b> set a frame-rate limit for the game when unfocused. Specified in frames per second. Defaults to unlimited.
-<b>-F fsr:</b> use AMD FidelityFX™ Super Resolution 1.0 for upscaling.
-<b>-F nis:</b> use NVIDIA Image Scaling v1.0.3 for upscaling.
-<b>-S integer:</b> use integer scaling.
-<b>-S stretch:</b> use stretch scaling, the game will fill the window. (e.g. 4:3 to 16:9).
-<b>-b:</b> create a border-less window.
-<b>-f:</b> create a full-screen window.") :CBE" "\\${GAMESCOPE_ARGS}!-r 60 -F fsr!" \
-    --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
-    --button="$(eval_gettext "DISABLE") GAMESCOPE"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Disable GameScope and go to the previous menu")":162 \
-    --button="$(eval_gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Save the current changes, and go to the previous menu")":166 2>/dev/null)"
-    YAD_STATUS="$?"
-    export SKIP_CHECK_UPDATES=1
-
-    GAMESCOPE_ARGS="$(echo "$output_yad_gamescope" | awk -F"%" '{print $1}')"
-    edit_db_from_gui 
-
-    case "${YAD_STATUS}" in
-        1|252)
-            export SKIP_CHECK_UPDATES=1
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0
-            ;;
-        162)
-            export PW_USE_GAMESCOPE=0
-            edit_db_from_gui PW_USE_GAMESCOPE
-            export SKIP_CHECK_UPDATES=1
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0
-            ;;
-        166)
-            export PW_USE_GAMESCOPE=1
-            ;;
-    esac
-
-    edit_db_from_gui PW_USE_GAMESCOPE GAMESCOPE_ARGS
-
-    export SKIP_CHECK_UPDATES=1
-    /usr/bin/env bash -c ${pw_full_command_line[*]} &
-    exit 0
-}
-
 # GUI GET OTHER WINE
 gui_proton_downloader () {
     unset VERSION_WINE_GIT VERSION_INSTALLED_WINE URL_VERSION_PROTON_GIT GIVE_WINE_URL
@@ -3326,68 +3055,312 @@ gui_proton_downloader () {
 }
 export -f gui_proton_downloader
 
+# GUI EDIT_DB
+gui_edit_db () {
+    KEY_EDIT_DB_GUI=$RANDOM
+    PW_EDIT_DB_LIST="PW_MANGOHUD PW_MANGOHUD_USER_CONF PW_VKBASALT PW_VKBASALT_USER_CONF PW_DGVOODOO2 PW_USE_GAMESCOPE
+    PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU
+    PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME
+    PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE
+    PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_DISABLE_COMPOSITING
+    PW_USE_RUNTIME PW_DINPUT_PROTOCOL
+    "
+
+    if check_wayland_session ; then
+        rm_from_var PW_EDIT_DB_LIST "PW_USE_US_LAYOUT"
+    fi
+    if check_flatpak ; then
+        rm_from_var PW_EDIT_DB_LIST "PW_USE_RUNTIME"
+    fi
+
+    # PW_FORCE_USE_VSYNC PW_HEAP_DELAY_FREE
+
+if [[ "${SKIP_EDIT_DB_TEXT_INFO}" != 1 ]] ; then
+    export PW_DGVOODOO2_INFO=$(eval_gettext 'Enable dgVoodoo2. Forced use all dgVoodoo2 libs (Glide 2.11-3.1, DirectDraw 1-7, Direct3D 2-9) on all 3D API. For WineD3D OpenGL need use WineLG (For Gallium Nine and Zink use too)')
+    export PW_DINPUT_PROTOCOL_INFO=$(eval_gettext 'Force use DirectInput protocol instead of XInput')
+    export PW_VKBASALT_INFO=$(eval_gettext 'Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)')
+    export PW_NO_ESYNC_INFO=$(eval_gettext 'Do not use in-process synchronization primitives based on eventfd. (It is recommended not to change the value.)')
+    export PW_NO_FSYNC_INFO=$(eval_gettext 'Do not use futex-based in-process synchronization primitives. (Automatically disabled on systems without FUTEX_WAIT_MULTIPLE support) (It is recommended not to change the value)')
+    export PW_USE_RAY_TRACING_INFO=$(eval_gettext 'Enable vkd3d support - Ray Tracing')
+    export PW_FIX_VIDEO_IN_GAME_INFO=$(eval_gettext 'Required for video playback in some games so that it is not distorted (usually colored pink)')
+    export PW_VULKAN_NO_ASYNC_INFO=$(eval_gettext 'Disable asynchronous calls for VULKAN and DXVK modes')
+    export PW_USE_NVAPI_AND_DLSS_INFO=$(eval_gettext 'Enable DLSS on supported NVIDIA graphics cards')
+    export PW_OLD_GL_STRING_INFO=$(eval_gettext 'Forced use of older versions of OpenGL')
+    export PW_HIDE_NVIDIA_GPU_INFO=$(eval_gettext 'Disguise all features used for NVIDIA graphics cards')
+    export PW_FORCE_USE_VSYNC_INFO=$(eval_gettext 'Forced activation of vertical sync')
+    export PW_VIRTUAL_DESKTOP_INFO=$(eval_gettext 'Enable the application to run in the WINE virtual desktop')
+    export PW_USE_TERMINAL_INFO=$(eval_gettext 'Run the application in the terminal')
+    export PW_HEAP_DELAY_FREE_INFO=$(eval_gettext 'Include a delay in releasing some memory to bypass errors associated with using the application after the memory is released')
+    export PW_NO_WRITE_WATCH_INFO=$(eval_gettext 'A very dangerous way to hack the memory write timer in ntdll. This improves the performance of some very specific games. (It is recommended not to change the value.)')
+    export PW_GUI_DISABLED_CS_INFO=$(eval_gettext 'Disable the window for selecting startup modes and WINE versions')
+    export PW_USE_GSTREAMER_INFO=$(eval_gettext 'Use Gstreamer to output clips in games (WMF support)')
+    export PW_FORCE_LARGE_ADDRESS_AWARE_INFO=$(eval_gettext 'Increases RAM usage limits for 32-bit applications from two to four gigabytes')
+    export PW_USE_RUNTIME_INFO=$(eval_gettext 'Use container launch mode (It is recommended not to change the value)')
+    export PW_MANGOHUD_INFO=$(eval_gettext 'Using FPS and system load monitoring (Turns on and off by the key combination - right Shift + F12)')
+    export PW_USE_GAMEMODE_INFO=$(eval_gettext 'Using automatic system optimization to improve performance in games (provided the gamemode package is installed on the system)')
+    export PW_USE_WINE_DXGI_INFO=$(eval_gettext 'Forced use of built-in DXGI library (in rare cases it solves problems with DX12 games)')
+    export PW_MANGOHUD_USER_CONF_INFO=$(eval_gettext 'Forced use of MANGOHUD system settings (GOverlay, etc.)')
+    export PW_VKBASALT_USER_CONF_INFO=$(eval_gettext 'Forced use of VKBASALT system settings (GOverlay, etc.)')
+    export PW_USE_D3D_EXTRAS_INFO=$(eval_gettext 'Enable forced use of third-party DirectX libraries')
+    export PW_USE_WINDOWS_7_INFO=$(eval_gettext 'Change the version of WINDOWS 10 to WINDOWS 7 in the prefix')
+    export PW_USE_SHADER_CACHE_INFO=$(eval_gettext 'Use WINE shader caching (disable only if there are microfreezes in the game)')
+    export PW_WINE_FULLSCREEN_FSR_INFO=$(eval_gettext 'Works while using any version of ProtonGE in full screen mode at a resolution below the standard screen')
+    export PW_USE_FAKE_DLSS_INFO=$(eval_gettext 'Enable DLSS translator in FSR 2 in DirectX 12 games (CyberFSR2)')
+    export PW_USE_EAC_AND_BE_INFO=$(eval_gettext 'Enable Easy Anti-Cheat and BattlEye Anti-Cheat runtimes (required if game used this anti-cheats)')
+    export PW_REDUCE_PULSE_LATENCY_INFO=$(eval_gettext 'Reduce pulseaudio latency to fix intermittent sound')
+    export PW_USE_US_LAYOUT_INFO=$(eval_gettext 'Forced use of the us layout (useful for games in which the control works correctly only on the us layout)')
+    export PW_RESTORE_RESOLUTION_INFO=$(eval_gettext 'Remember the screen resolution when starting the game and return it when closing (useful for games that change the screen resolution when closing)')
+    export PW_USE_SYSTEM_VK_LAYERS_INFO=$(eval_gettext 'Use system mangohud, vkBasalt, obs-vkcapture and other applications using vulkan layers')
+    export PW_USE_OBS_VKCAPTURE_INFO=$(eval_gettext 'Enable the ability to write to OBS Studio using obs-vkcapture (ATTENTION: the forced use of system mangohud, vkBasalt, obs-vkcapture and other applications using vulkan layers will be enabled)')
+    export PW_DISABLE_COMPOSITING_INFO=$(eval_gettext 'Disable desktop compositing (effects). It often improves performance.')
+    export PW_USE_GAMESCOPE_INFO=$(eval_gettext '<b>Super + F :</b> Toggle fullscreen
+<b>Super + N :</b> Toggle nearest neighbour filtering
+<b>Super + U :</b> Toggle FSR upscaling
+<b>Super + Y :</b> Toggle NIS upscaling
+<b>Super + I :</b> Increase FSR sharpness by 1
+<b>Super + O :</b> Decrease FSR sharpness by 1
+<b>Super + S :</b> Take screenshot (currently goes to /tmp/gamescope_DATE.png)
+<b>Super + G :</b> Toggle keyboard grab
+<b>Super + C :</b> Update clipboard')
+
+    export SKIP_EDIT_DB_TEXT_INFO=1
+fi
+
+    edit_db_field_add () {
+        unset ADD_CHK_BOX_EDIT_DB
+        for int_to_boole in $PW_EDIT_DB_LIST ; do
+            if [ "${!int_to_boole}" == "1" ]
+            then export ${int_to_boole}="TRUE"
+            else export ${int_to_boole}="FALSE"
+            fi
+            TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
+            int_to_boole_non_pw="$(echo ${int_to_boole} | sed 's/^PW_//' | sed 's/_/ /g' )"
+            ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
+        done
+    }
+
+    edit_db_field_add
+
+    old_IFS=$IFS
+    IFS="%"
+    "${pw_yad}" --plug=$KEY_EDIT_DB_GUI --tabnum="1" --form --separator=" " --columns=3 ${ADD_CHK_BOX_EDIT_DB} \
+    1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db" 2>/dev/null &
+    IFS=$old_IFS
+
+    case ${PW_WINDOWS_VER} in
+         "7") ADD_WINVER_EDIT_DB="7!10!XP" ;;
+        "XP") ADD_WINVER_EDIT_DB="XP!7!10" ;;
+           *) ADD_WINVER_EDIT_DB="10!7!XP" ;;
+    esac
+
+    if [[ ! -z "${PW_GPU_USE}" ]] && [[ "${PW_GPU_USE}" != "disabled" ]] ; then
+        GPU_VAR="${PW_GPU_USE}"
+    else
+        GPU_VAR="disabled"
+    fi
+
+    if [[ "${PW_WINE_CPU_TOPOLOGY}" == *[0-9]:* ]] && [[ "${PW_WINE_CPU_TOPOLOGY}" != "disabled" ]] ; then
+        CPU_LIMIT_VAR="$(echo ${PW_WINE_CPU_TOPOLOGY%%:*})"
+    else
+        CPU_LIMIT_VAR="disabled"
+    fi
+
+    logical_cores=$(grep -c "^processor" /proc/cpuinfo)
+    if [[ "${logical_cores}" -le "4" ]] ; then
+        GET_LOGICAL_CORE="1!$(seq -s! 1 $((${logical_cores} - 1)))"
+    else
+        GET_LOGICAL_CORE="1!2!$(seq -s! 4 4 $((${logical_cores} - 1)))"
+    fi
+
+    GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
+    unset LOCALE_LIST
+    for LOCALE in $GET_LOCALE_LIST ; do
+        if locale -a | grep -i "$LOCALE" &>/dev/null ; then
+            if [[ ! -z "$LOCALE_LIST" ]]
+            then LOCALE_LIST+="!$(locale -a | grep -i "$LOCALE")"
+            else LOCALE_LIST="$(locale -a | grep -i "$LOCALE")"
+            fi
+        fi
+    done
+
+    "${pw_yad}" --plug=$KEY_EDIT_DB_GUI --tabnum="2" --form --separator="%" --columns=1 \
+    --field="$(eval_gettext "Change the version of <b>WINDOWS</b> emulation")!$(eval_gettext "Changing the <b>WINDOWS</b> emulation version may be required to run older games. <b>WINDOWS</b> versions below 10 do not support new games with DirectX 12") :CB" "${ADD_WINVER_EDIT_DB}" \
+    --field="$(eval_gettext "AUTOINSTALL WITH <b>WINETRICKS</b>")!$(eval_gettext "Automatically install with <b>WINETRICKS</b> additional libraries required to run the game/program. List of libraries separated by spaces") :CBE" "${PW_DLL_INSTALL}!vcrun2019 corefonts lucida" \
+    --field="$(eval_gettext "Forced to use/disable libraries")!$(eval_gettext "Forced to use/disable the library only for the given application. (There are examples in the drop-down list)
+
+A brief instruction:
+    * libraries are written <b>WITHOUT</b> the .dll file extension
+    * libraries are separated by semicolons - <b>;</b>
+    * library=n - use the <b>WINDOWS</b> (third-party) library
+    * library=b - use <b>WINE</b> (built-in) library
+    * library=n,b - use <b>WINDOWS</b> library and then <b>WINE</b>
+    * library=b,n - use <b>WINE</b> library and then <b>WINDOWS</b>
+    * library= - disable the use of this library") :CBE" "${WINEDLLOVERRIDES}!libglesv2=!d3dx9_36,d3dx9_42=n,b;mfc120=b,n" \
+    --field=":LBL" "" \
+    --field="$(eval_gettext "ADD ARGUMENTS FOR .EXE FILE")!$(eval_gettext "Adding an argument after the <b>.exe</b> file, just like you would add an argument in a shortcut on a <b>WINDOWS </b> system") :CBE" "\\${LAUNCH_PARAMETERS[@]}!-dx11 -skipintro 1" \
+    --field=":LBL" "" \
+    --field="$(eval_gettext "Limit the use of processor cores")!$(eval_gettext "Limiting the number of CPU cores is useful for Unity games (It is recommended to set the value equal to 8)") :CB" "${CPU_LIMIT_VAR}!disabled!${GET_LOGICAL_CORE}" \
+    --field="$(eval_gettext "Choose a graphics card to run the game (in user.conf)")!$(eval_gettext "Select which video card will be used to run the game (used for all running games and programs in PortProton)") :CB" "${GPU_VAR}!disabled!${GET_GPU_NAMES}" \
+    --field="$(eval_gettext "Forcibly select the OpenGL version for the game")!$(eval_gettext "You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)") :CB" "${PW_MESA_GL_VERSION_OVERRIDE}!disabled!4.6COMPAT!4.6!4.5COMPAT!4.5!3.3COMPAT!3.3" \
+    --field="$(eval_gettext "Forcibly select the VKD3D feature level")!$(eval_gettext "You can set a forced feature level VKD3D for games on DirectX12") :CB" "${PW_VKD3D_FEATURE_LEVEL}!disabled!12_2!12_1!12_0!11_1!11_0" \
+    --field="$(eval_gettext "Force certain locale for an app:")!$(eval_gettext "Fixes encoding issues in legacy software") :CB" "${PW_LOCALE_SELECT}!disabled!$LOCALE_LIST" \
+    1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
+
+    "${pw_yad}" --notebook --key="$KEY_EDIT_DB_GUI" --title "$(eval_gettext "EDIT DB")" --text-align=center \
+    --text "$(eval_gettext "Change settings in database file for") <b>${PORTWINE_DB}</b>\n $(eval_gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand --fixed --center --gui-type=settings --gui-type-height=5 --gui-type-width=5 \
+    --tab="$(eval_gettext "MAIN")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+    --tab="$(eval_gettext "ADVANCED")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+    --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
+    --button="$(eval_gettext "RESET SETTINGS")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Restore default settings")":2 \
+    --button="$(eval_gettext "OPEN THE SETTINGS FILE")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Open the <b>.ppdb</b> settings file in a system text editor to view and change variables manually")":150 \
+    --button="$(eval_gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Save the current changes, and go to the previous menu")":0 2>/dev/null
+    YAD_STATUS="$?"
+    export SKIP_CHECK_UPDATES=1
+
+    case "$YAD_STATUS" in
+      1|252)
+                /usr/bin/env bash -c ${pw_full_command_line[*]} &
+                exit 0
+                ;;
+          2)
+                try_remove_file "$portwine_exe".ppdb
+                PW_DGV2_LIST="PW_DGV2_DISABLE_D3D PW_DGV2_16BIT_MODE PW_DGV2_USE_DX12 PW_DGV2_FASTMEMORY PW_DGV2_VRAM_INCREASE
+                PW_DGV2_FULLSCREEN
+                "
+                unset $PW_EDIT_DB_LIST $PW_DGV2_LIST
+                /usr/bin/env bash -c ${pw_full_command_line[*]} &
+                exit 0
+                ;;
+    esac
+
+    edit_db_field_read () {
+        output_yad_edit_db=($(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db"))
+        bool_from_yad=0
+        for boole_to_int in $PW_EDIT_DB_LIST ; do
+            export ${boole_to_int}=${output_yad_edit_db[$bool_from_yad]}
+            if [ "${!boole_to_int}" == "TRUE" ]
+            then export ${boole_to_int}="1"
+            else export ${boole_to_int}="0"
+            fi
+            export bool_from_yad=$(( ${bool_from_yad} + 1 ))
+        done
+    }
+
+    edit_db_field_read
+
+    PW_WINDOWS_VER="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $1}')"
+    PW_DLL_INSTALL="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $2}')"
+    WINEDLLOVERRIDES="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $3}')"
+    LAUNCH_PARAMETERS="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $5}')"
+    CPU_LIMIT="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $7}')"
+    PW_GPU_USE="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $8}')"
+    PW_MESA_GL_VERSION_OVERRIDE="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $9}')"
+    PW_VKD3D_FEATURE_LEVEL="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $10}')"
+    PW_LOCALE_SELECT="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $11}')"
+
+    if [[ "${CPU_LIMIT}" != "disabled" ]] ; then
+        export PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $((${CPU_LIMIT} - 1)))"
+    else
+        export PW_WINE_CPU_TOPOLOGY="disabled"
+    fi
+
+    edit_db_from_gui $PW_EDIT_DB_LIST LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY GAMESCOPE_ARGS \
+    PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PW_LOCALE_SELECT
+
+    if [[ -z "$MANGOHUD_CONFIG" ]] ; then
+        MONITOR_HEIGHT="$(echo "$PW_SCREEN_RESOLUTION" | awk -F'x' '{print $2}')"
+        MH_FONT_SIZE="font_size=$(( MONITOR_HEIGHT / 45 ))"
+
+        if [[ ! -z "$MH_FONT_SIZE" ]]
+        then MANGOHUD_CONFIG="$DEFAULT_MANGOHUD_CONFIG,$MH_FONT_SIZE"
+        else MANGOHUD_CONFIG="$DEFAULT_MANGOHUD_CONFIG"
+        fi
+
+        edit_db_from_gui MANGOHUD_CONFIG
+    fi
+    edit_user_conf_from_gui PW_GPU_USE
+    # PW_AMD_VULKAN_USE
+
+    case "$YAD_STATUS" in
+          0)
+                print_info "Restarting PP after update ppdb file..."
+                /usr/bin/env bash -c ${pw_full_command_line[*]} &
+                exit 0
+                ;;
+        150)
+                xdg-open "${PORTWINE_DB_FILE}" &
+                exit 0
+                ;;
+    esac
+}
+
 # GUI VKBASALT
-gui_vkBasalt () {
+gui_vkbasalt () {
     KEY_FX_GUI=$RANDOM
     FILE_VKBASALT_CONF="${PORT_WINE_PATH}/data/vkBasalt.conf"
     LIST_FX=($(grep -E '.fx$|.fxh$' "${FILE_VKBASALT_CONF}" | awk '{print $1}'))
     GET_FX_IN_FILE=($(echo ${PW_VKBASALT_EFFECTS} | sed s/"cas:"// | sed s/":"/" "/g))
 
-    PW_3DFX_INFO=$(eval_gettext 'Simulation of an old 3dfx graphics accelerator (adds horizontal stripes)')
-    PW_AdaptiveSharpen_INFO=$(eval_gettext 'Sharpness increase, can be used with CAS')
-    PW_Bloom_INFO=$(eval_gettext 'Adds glow from bright light sources in the game')
-    PW_Border_INFO=$(eval_gettext 'Cropping the image from the top and bottom (like in a movie =)')
-    PW_Cartoon_INFO=$(eval_gettext 'Strong sharpening of texture edges')
-    PW_ChromaticAberration_INFO=$(eval_gettext 'Adds chromatic aberration to an image')
-    PW_Clarity_INFO=$(eval_gettext 'Sharpening textures with slight modifications of image contrast (similar in effect to CAS)')
-    PW_ColorMatrix_INFO=$(eval_gettext 'Adding cool colors')
-    PW_Colourfulness_INFO=$(eval_gettext 'Increasing color saturation')
-    PW_FakeHDR_INFO=$(eval_gettext 'Add fake HDR')
-    PW_FilmGrain2_INFO=$(eval_gettext 'Adding the film grain effect')
-    PW_Curves_INFO=$(eval_gettext 'Increases the contrast of the image without affecting the bright and dark areas, so that the detail in shadows and sky is not lost')
-    PW_Denoise_INFO=$(eval_gettext 'Reducing noise by blurring the image')
-    PW_Emphasize_INFO=$(eval_gettext 'Reducing the bit depth of color')
-    PW_FakeMotionBlur_INFO=$(eval_gettext 'Strong blurring of objects in motion')
-    PW_FilmicAnamorphSharpen_INFO=$(eval_gettext 'Sharpening (recommended for cartoon games)')
-    PW_FilmicPass_INFO=$(eval_gettext 'Adding cold colors')
-    PW_SMAA_INFO=$(eval_gettext 'Alternative antialiasing option (less effect, but with less consumption of GPU resources, relative to the standard SMAA)')
-    PW_GaussianBlur_INFO=$(eval_gettext 'Slight blur effect on bright objects (such as flames)')
-    PW_Glitch_INFO=$(eval_gettext 'Glitch effect')
-    PW_HighPassSharpen_INFO=$(eval_gettext 'Another method of sharpening using highpass frequencies')
-    PW_HQ4X_INFO=$(eval_gettext 'Smoothing of nearby pixels with the drawing of missing parts (in normal games the picture is blurred)')
-    PW_HSLShift_INFO=$(eval_gettext 'Advanced HSL shift (for each shade)')
-    PW_Layer_INFO=$(eval_gettext "Image overlay on the game")
-    PW_Levels_INFO=$(eval_gettext 'Increases contrast, but some detail in shadows or highlights may be lost')
-    PW_LevelsPlus_INFO=$(eval_gettext 'Same as Levels, but with less loss of detail')
-    PW_LiftGammaGain_INFO=$(eval_gettext 'Gamma correction by individual color channels: red, green and blue')
-    PW_LightDoF_INFO=$(eval_gettext 'Increases depth of field (greatly affects FPS)')
-    PW_LumaSharpen_INFO=$(eval_gettext 'Enhances image sharpness for improved detail')
-    PW_LUT_INFO=$(eval_gettext 'Image color correction')
-    PW_MagicBloom_INFO=$(eval_gettext 'Same as Bloom, but more natural')
-    PW_Monochrome_INFO=$(eval_gettext 'Converts the image into monochrome')
-    PW_MultiLUT_INFO=$(eval_gettext 'Extended version of the LUT (Hollywood loot is pre-installed)')
-    PW_MXAO_INFO=$(eval_gettext 'SSAO algorithm (Greatly affects FPS)')
-    PW_NightVision_INFO=$(eval_gettext 'Night vision effect')
-    PW_Nostalgia_INFO=$(eval_gettext 'Makes the picture look like old photos')
-    PW_PerfectPerspective_INFO=$(eval_gettext 'Fisheye effect (suitable for VR)')
-    PW_PPFX_Godrays_INFO=$(eval_gettext 'Add God rays (also called 3D light rays) effect')
-    PW_Prism_INFO=$(eval_gettext 'The prismatic lens effect')
-    PW_ReflectiveBumpMapping_INFO=$(eval_gettext 'Creates the illusion of depth in textures')
-    PW_Sepia_INFO=$(eval_gettext 'Adds a sepia effect like in old photos')
-    PW_Splitscreen_INFO=$(eval_gettext 'Splits the image into raw and processed output for comparison')
-    PW_SurfaceBlur_INFO=$(eval_gettext 'Reducing object detail without blurring contrast contours')
-    PW_Technicolor_INFO=$(eval_gettext 'Makes the picture look like films from the 1930s')
-    PW_Technicolor2_INFO=$(eval_gettext 'The updated version of Technicolor, gives a different picture by changing colors more aggressively')
-    PW_TiltShift_INFO=$(eval_gettext 'Blur on the edges of the screen to create a Tilt Shift effect')
-    PW_Tonemap_INFO=$(eval_gettext 'Changes the saturation of the picture')
-    PW_TriDither_INFO=$(eval_gettext 'Reduces the amount of noise')
-    PW_UIDetect_INFO=$(eval_gettext 'Automatically switches effects depending on the visibility of the UI')
-    PW_Vibrance_INFO=$(eval_gettext 'Saturates faded colors without touching the bright ones')
-    PW_Vignette_INFO=$(eval_gettext 'Adds a vignette to the image')
-    PW_AspectRatio_INFO=$(eval_gettext 'An effect for adjusting the aspect ratio (for games that do not support widescreen monitors)')
-    PW_UIMask_INFO=$(eval_gettext 'Part of the overall ReShade shader . It uses a mask with gradients from black to white to determine where the effects will be applied')
-    PW_StageDepth_INFO=$(eval_gettext 'Allows you to add new elements to the 3d space inside the game and apply custom textures')
-    PW_PPFX_Bloom_INFO=$(eval_gettext 'Adds a Bloom effect')
+if [[ "${SKIP_VKBASALT_TEXT_INFO}" != 1 ]] ; then
+    export PW_3DFX_INFO=$(eval_gettext 'Simulation of an old 3dfx graphics accelerator (adds horizontal stripes)')
+    export PW_AdaptiveSharpen_INFO=$(eval_gettext 'Sharpness increase, can be used with CAS')
+    export PW_Bloom_INFO=$(eval_gettext 'Adds glow from bright light sources in the game')
+    export PW_Border_INFO=$(eval_gettext 'Cropping the image from the top and bottom (like in a movie =)')
+    export PW_Cartoon_INFO=$(eval_gettext 'Strong sharpening of texture edges')
+    export PW_ChromaticAberration_INFO=$(eval_gettext 'Adds chromatic aberration to an image')
+    export PW_Clarity_INFO=$(eval_gettext 'Sharpening textures with slight modifications of image contrast (similar in effect to CAS)')
+    export PW_ColorMatrix_INFO=$(eval_gettext 'Adding cool colors')
+    export PW_Colourfulness_INFO=$(eval_gettext 'Increasing color saturation')
+    export PW_FakeHDR_INFO=$(eval_gettext 'Add fake HDR')
+    export PW_FilmGrain2_INFO=$(eval_gettext 'Adding the film grain effect')
+    export PW_Curves_INFO=$(eval_gettext 'Increases the contrast of the image without affecting the bright and dark areas, so that the detail in shadows and sky is not lost')
+    export PW_Denoise_INFO=$(eval_gettext 'Reducing noise by blurring the image')
+    export PW_Emphasize_INFO=$(eval_gettext 'Reducing the bit depth of color')
+    export PW_FakeMotionBlur_INFO=$(eval_gettext 'Strong blurring of objects in motion')
+    export PW_FilmicAnamorphSharpen_INFO=$(eval_gettext 'Sharpening (recommended for cartoon games)')
+    export PW_FilmicPass_INFO=$(eval_gettext 'Adding cold colors')
+    export PW_SMAA_INFO=$(eval_gettext 'Alternative antialiasing option (less effect, but with less consumption of GPU resources, relative to the standard SMAA)')
+    export PW_GaussianBlur_INFO=$(eval_gettext 'Slight blur effect on bright objects (such as flames)')
+    export PW_Glitch_INFO=$(eval_gettext 'Glitch effect')
+    export PW_HighPassSharpen_INFO=$(eval_gettext 'Another method of sharpening using highpass frequencies')
+    export PW_HQ4X_INFO=$(eval_gettext 'Smoothing of nearby pixels with the drawing of missing parts (in normal games the picture is blurred)')
+    export PW_HSLShift_INFO=$(eval_gettext 'Advanced HSL shift (for each shade)')
+    export PW_Layer_INFO=$(eval_gettext "Image overlay on the game")
+    export PW_Levels_INFO=$(eval_gettext 'Increases contrast, but some detail in shadows or highlights may be lost')
+    export PW_LevelsPlus_INFO=$(eval_gettext 'Same as Levels, but with less loss of detail')
+    export PW_LiftGammaGain_INFO=$(eval_gettext 'Gamma correction by individual color channels: red, green and blue')
+    export PW_LightDoF_INFO=$(eval_gettext 'Increases depth of field (greatly affects FPS)')
+    export PW_LumaSharpen_INFO=$(eval_gettext 'Enhances image sharpness for improved detail')
+    export PW_LUT_INFO=$(eval_gettext 'Image color correction')
+    export PW_MagicBloom_INFO=$(eval_gettext 'Same as Bloom, but more natural')
+    export PW_Monochrome_INFO=$(eval_gettext 'Converts the image into monochrome')
+    export PW_MultiLUT_INFO=$(eval_gettext 'Extended version of the LUT (Hollywood loot is pre-installed)')
+    export PW_MXAO_INFO=$(eval_gettext 'SSAO algorithm (Greatly affects FPS)')
+    export PW_NightVision_INFO=$(eval_gettext 'Night vision effect')
+    export PW_Nostalgia_INFO=$(eval_gettext 'Makes the picture look like old photos')
+    export PW_PerfectPerspective_INFO=$(eval_gettext 'Fisheye effect (suitable for VR)')
+    export PW_PPFX_Godrays_INFO=$(eval_gettext 'Add God rays (also called 3D light rays) effect')
+    export PW_Prism_INFO=$(eval_gettext 'The prismatic lens effect')
+    export PW_ReflectiveBumpMapping_INFO=$(eval_gettext 'Creates the illusion of depth in textures')
+    export PW_Sepia_INFO=$(eval_gettext 'Adds a sepia effect like in old photos')
+    export PW_Splitscreen_INFO=$(eval_gettext 'Splits the image into raw and processed output for comparison')
+    export PW_SurfaceBlur_INFO=$(eval_gettext 'Reducing object detail without blurring contrast contours')
+    export PW_Technicolor_INFO=$(eval_gettext 'Makes the picture look like films from the 1930s')
+    export PW_Technicolor2_INFO=$(eval_gettext 'The updated version of Technicolor, gives a different picture by changing colors more aggressively')
+    export PW_TiltShift_INFO=$(eval_gettext 'Blur on the edges of the screen to create a Tilt Shift effect')
+    export PW_Tonemap_INFO=$(eval_gettext 'Changes the saturation of the picture')
+    export PW_TriDither_INFO=$(eval_gettext 'Reduces the amount of noise')
+    export PW_UIDetect_INFO=$(eval_gettext 'Automatically switches effects depending on the visibility of the UI')
+    export PW_Vibrance_INFO=$(eval_gettext 'Saturates faded colors without touching the bright ones')
+    export PW_Vignette_INFO=$(eval_gettext 'Adds a vignette to the image')
+    export PW_AspectRatio_INFO=$(eval_gettext 'An effect for adjusting the aspect ratio (for games that do not support widescreen monitors)')
+    export PW_UIMask_INFO=$(eval_gettext 'Part of the overall ReShade shader . It uses a mask with gradients from black to white to determine where the effects will be applied')
+    export PW_StageDepth_INFO=$(eval_gettext 'Allows you to add new elements to the 3d space inside the game and apply custom textures')
+    export PW_PPFX_Bloom_INFO=$(eval_gettext 'Adds a Bloom effect')
+
+    export SKIP_VKBASALT_TEXT_INFO=1
+fi
 
     unset ADD_GUI_FX GUI_FX_RESULT
     for add_list_fx in ${LIST_FX[@]} ; do
@@ -3421,7 +3394,7 @@ gui_vkBasalt () {
     --field="AMD FidelityFX - Contrast Adaptive Sharpening"!"$(eval_gettext "AMD FidelityFX - CAS is designed to dramatically improve texture sharpness without additional modification settings for games, with minimal loss of performance. (For older games it is recommended to set value = 100)")":SCL "${VKBASALT_FFX_CAS_GUI}" \
     1> "${PORT_WINE_TMP_PATH}/tmp_yad_cas_set" 2>/dev/null &
 
-    "${pw_yad}" --paned --key="$KEY_FX_GUI" --center --fixed --title="vkBasalt" \
+    "${pw_yad}" --paned --key="$KEY_FX_GUI" --center --fixed --gui-type=settings --gui-type-height=5 --gui-type-width=5 --title="vkBasalt" \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
     --button="$(eval_gettext "DISABLE") VKBASALT"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Disable vkBasalt and go to the previous menu")":180 \
@@ -3465,7 +3438,7 @@ gui_vkBasalt () {
 }
 
 # GUI MANGOHUD
-gui_MangoHud () {
+gui_mangohud () {
     KEY_MH_GUI=$RANDOM
     LIST_MH=(
         arch battery battery_icon battery_time battery_watt core_bars core_load
@@ -3479,60 +3452,64 @@ gui_MangoHud () {
         time version vkbasalt vram vulkan_driver wine
     )
 
-    PW_MH_arch_INFO=$(eval_gettext 'Show if the application is 32- or 64-bit')
-    PW_MH_battery_INFO=$(eval_gettext 'Display current battery percent and energy consumption')
-    PW_MH_battery_icon_INFO=$(eval_gettext 'Display battery icon instead of percent')
-    PW_MH_battery_time_INFO=$(eval_gettext 'Display remaining time for battery option')
-    PW_MH_battery_watt_INFO=$(eval_gettext 'Display wattage for the battery option')
-    PW_MH_core_bars_INFO=$(eval_gettext 'Change the display of core_load from numbers to vertical bars')
-    PW_MH_core_load_INFO=$(eval_gettext 'Display load & frequency per core')
-    PW_MH_cpu_mhz_INFO=$(eval_gettext 'Show the CPUs current MHz')
-    PW_MH_cpu_power_INFO=$(eval_gettext 'Display CPU draw in watts')
-    PW_MH_cpu_temp_INFO=$(eval_gettext 'Display current CPU temperature')
-    PW_MH_device_battery_icon_INFO=$(eval_gettext 'Display wirless device battery icon.')
-    PW_MH_engine_short_names_INFO=$(eval_gettext 'Display a short version of the used engine (e.g. OGL instead of OpenGL)')
-    PW_MH_engine_version_INFO=$(eval_gettext 'Display OpenGL or vulkan and vulkan-based render engines version')
-    PW_MH_exec_name_INFO=$(eval_gettext 'Display current exec name')
-    PW_MH_fcat_INFO=$(eval_gettext 'Enables frame capture analysis')
-    PW_MH_fps_metrics_INFO=$(eval_gettext 'Takes a list of decimal values or the value avg, e.g avg,0.001')
-    PW_MH_frame_count_INFO=$(eval_gettext 'Display frame count')
-    PW_MH_full_INFO=$(eval_gettext 'Enable most of the toggleable parameters (currently excludes histogram)')
-    PW_MH_gamemode_INFO=$(eval_gettext 'Show if GameMode is on')
-    PW_MH_gpu_core_clock_INFO=$(eval_gettext 'Display GPU core frequency')
-    PW_MH_gpu_fan_INFO=$(eval_gettext 'GPU fan in rpm on AMD, FAN in percent on NVIDIA')
-    PW_MH_gpu_junction_temp_INFO=$(eval_gettext 'Display current GPU temperature')
-    PW_MH_gpu_mem_clock_INFO=$(eval_gettext 'Display GPU memory frequency')
-    PW_MH_gpu_mem_temp_INFO=$(eval_gettext 'Display current GPU temperature')
-    PW_MH_gpu_name_INFO=$(eval_gettext 'Display GPU name from pci.ids')
-    PW_MH_gpu_power_INFO=$(eval_gettext 'Display GPU draw in watts')
-    PW_MH_gpu_temp_INFO=$(eval_gettext 'Display current GPU temperature')
-    PW_MH_gpu_voltage_INFO=$(eval_gettext 'Display GPU voltage (only works on AMD GPUs)')
-    PW_MH_histogram_INFO=$(eval_gettext 'Change FPS graph to histogram')
-    PW_MH_horizontal_INFO=$(eval_gettext 'Display Mangohud in a horizontal position')
-    PW_MH_horizontal_stretch_INFO=$(eval_gettext 'Stretches the background to the screens width in horizontal mode')
-    PW_MH_hud_compact_INFO=$(eval_gettext 'Display compact version of MangoHud')
-    PW_MH_hud_no_margin_INFO=$(eval_gettext 'Remove margins around MangoHud')
-    PW_MH_io_read_INFO=$(eval_gettext 'Show non-cached IO read, in MiB/s')
-    PW_MH_io_write_INFO=$(eval_gettext 'Show non-cached IO write, in MiB/s')
-    PW_MH_no_display_INFO=$(eval_gettext 'Hide the HUD by default')
-    PW_MH_no_small_font_INFO=$(eval_gettext 'Use primary font size for smaller text like units')
-    PW_MH_procmem_INFO=$(eval_gettext 'Displays process memory usage: resident procmem (resident) also toggles others off if disabled')
-    PW_MH_procmem_shared_INFO=$(eval_gettext 'Displays process memory usage: shared')
-    PW_MH_procmem_virt_INFO=$(eval_gettext 'Displays process memory usage: virtual')
-    PW_MH_ram_INFO=$(eval_gettext 'Display system RAM usage')
-    PW_MH_resolution_INFO=$(eval_gettext 'Display the current resolution')
-    PW_MH_show_fps_limit_INFO=$(eval_gettext 'Display the current FPS limit')
-    PW_MH_swap_INFO=$(eval_gettext 'Display swap space usage next to system RAM usage')
-    PW_MH_temp_fahrenheit_INFO=$(eval_gettext 'Show temperature in Fahrenheit')
-    PW_MH_throttling_status_INFO=$(eval_gettext 'Show if GPU is throttling based on Power, current, temp or "other" (Only shows if throttling is currently happening). Currently disabled by default for Nvidia as it causes lag on 3000 series')
-    PW_MH_throttling_status_graph_INFO=$(eval_gettext 'Same as throttling_status but displays throttling in the frametime graph and only power and temp throttling')
-    PW_MH_time_INFO=$(eval_gettext 'Display time')
-    PW_MH_version_INFO=$(eval_gettext 'Show current MangoHud version')
-    PW_MH_vkbasalt_INFO=$(eval_gettext 'Show if vkBasalt is on')
-    PW_MH_vram_INFO=$(eval_gettext 'Display system VRAM usage')
-    PW_MH_vulkan_driver_INFO=$(eval_gettext 'Display used Vulkan driver (radv/amdgpu-pro/amdvlk)')
-    PW_MH_frametime_INFO=$(eval_gettext 'Display frametime next to FPS text')
-    PW_MH_wine_INFO=$(eval_gettext 'Show current Wine or Proton version in use')
+if [[ "${SKIP_MANGOHUD_TEXT_INFO}" != 1 ]] ; then
+    export PW_MH_arch_INFO=$(eval_gettext 'Show if the application is 32- or 64-bit')
+    export PW_MH_battery_INFO=$(eval_gettext 'Display current battery percent and energy consumption')
+    export PW_MH_battery_icon_INFO=$(eval_gettext 'Display battery icon instead of percent')
+    export PW_MH_battery_time_INFO=$(eval_gettext 'Display remaining time for battery option')
+    export PW_MH_battery_watt_INFO=$(eval_gettext 'Display wattage for the battery option')
+    export PW_MH_core_bars_INFO=$(eval_gettext 'Change the display of core_load from numbers to vertical bars')
+    export PW_MH_core_load_INFO=$(eval_gettext 'Display load & frequency per core')
+    export PW_MH_cpu_mhz_INFO=$(eval_gettext 'Show the CPUs current MHz')
+    export PW_MH_cpu_power_INFO=$(eval_gettext 'Display CPU draw in watts')
+    export PW_MH_cpu_temp_INFO=$(eval_gettext 'Display current CPU temperature')
+    export PW_MH_device_battery_icon_INFO=$(eval_gettext 'Display wirless device battery icon.')
+    export PW_MH_engine_short_names_INFO=$(eval_gettext 'Display a short version of the used engine (e.g. OGL instead of OpenGL)')
+    export PW_MH_engine_version_INFO=$(eval_gettext 'Display OpenGL or vulkan and vulkan-based render engines version')
+    export PW_MH_exec_name_INFO=$(eval_gettext 'Display current exec name')
+    export PW_MH_fcat_INFO=$(eval_gettext 'Enables frame capture analysis')
+    export PW_MH_fps_metrics_INFO=$(eval_gettext 'Takes a list of decimal values or the value avg, e.g avg,0.001')
+    export PW_MH_frame_count_INFO=$(eval_gettext 'Display frame count')
+    export PW_MH_full_INFO=$(eval_gettext 'Enable most of the toggleable parameters (currently excludes histogram)')
+    export PW_MH_gamemode_INFO=$(eval_gettext 'Show if GameMode is on')
+    export PW_MH_gpu_core_clock_INFO=$(eval_gettext 'Display GPU core frequency')
+    export PW_MH_gpu_fan_INFO=$(eval_gettext 'GPU fan in rpm on AMD, FAN in percent on NVIDIA')
+    export PW_MH_gpu_junction_temp_INFO=$(eval_gettext 'Display current GPU temperature')
+    export PW_MH_gpu_mem_clock_INFO=$(eval_gettext 'Display GPU memory frequency')
+    export PW_MH_gpu_mem_temp_INFO=$(eval_gettext 'Display current GPU temperature')
+    export PW_MH_gpu_name_INFO=$(eval_gettext 'Display GPU name from pci.ids')
+    export PW_MH_gpu_power_INFO=$(eval_gettext 'Display GPU draw in watts')
+    export PW_MH_gpu_temp_INFO=$(eval_gettext 'Display current GPU temperature')
+    export PW_MH_gpu_voltage_INFO=$(eval_gettext 'Display GPU voltage (only works on AMD GPUs)')
+    export PW_MH_histogram_INFO=$(eval_gettext 'Change FPS graph to histogram')
+    export PW_MH_horizontal_INFO=$(eval_gettext 'Display Mangohud in a horizontal position')
+    export PW_MH_horizontal_stretch_INFO=$(eval_gettext 'Stretches the background to the screens width in horizontal mode')
+    export PW_MH_hud_compact_INFO=$(eval_gettext 'Display compact version of MangoHud')
+    export PW_MH_hud_no_margin_INFO=$(eval_gettext 'Remove margins around MangoHud')
+    export PW_MH_io_read_INFO=$(eval_gettext 'Show non-cached IO read, in MiB/s')
+    export PW_MH_io_write_INFO=$(eval_gettext 'Show non-cached IO write, in MiB/s')
+    export PW_MH_no_display_INFO=$(eval_gettext 'Hide the HUD by default')
+    export PW_MH_no_small_font_INFO=$(eval_gettext 'Use primary font size for smaller text like units')
+    export PW_MH_procmem_INFO=$(eval_gettext 'Displays process memory usage: resident procmem (resident) also toggles others off if disabled')
+    export PW_MH_procmem_shared_INFO=$(eval_gettext 'Displays process memory usage: shared')
+    export PW_MH_procmem_virt_INFO=$(eval_gettext 'Displays process memory usage: virtual')
+    export PW_MH_ram_INFO=$(eval_gettext 'Display system RAM usage')
+    export PW_MH_resolution_INFO=$(eval_gettext 'Display the current resolution')
+    export PW_MH_show_fps_limit_INFO=$(eval_gettext 'Display the current FPS limit')
+    export PW_MH_swap_INFO=$(eval_gettext 'Display swap space usage next to system RAM usage')
+    export PW_MH_temp_fahrenheit_INFO=$(eval_gettext 'Show temperature in Fahrenheit')
+    export PW_MH_throttling_status_INFO=$(eval_gettext 'Show if GPU is throttling based on Power, current, temp or "other" (Only shows if throttling is currently happening). Currently disabled by default for Nvidia as it causes lag on 3000 series')
+    export PW_MH_throttling_status_graph_INFO=$(eval_gettext 'Same as throttling_status but displays throttling in the frametime graph and only power and temp throttling')
+    export PW_MH_time_INFO=$(eval_gettext 'Display time')
+    export PW_MH_version_INFO=$(eval_gettext 'Show current MangoHud version')
+    export PW_MH_vkbasalt_INFO=$(eval_gettext 'Show if vkBasalt is on')
+    export PW_MH_vram_INFO=$(eval_gettext 'Display system VRAM usage')
+    export PW_MH_vulkan_driver_INFO=$(eval_gettext 'Display used Vulkan driver (radv/amdgpu-pro/amdvlk)')
+    export PW_MH_frametime_INFO=$(eval_gettext 'Display frametime next to FPS text')
+    export PW_MH_wine_INFO=$(eval_gettext 'Show current Wine or Proton version in use')
+
+    export SKIP_MANGOHUD_TEXT_INFO=1
+fi
 
     unset ADD_GUI_MH GUI_MH_RESULT ADD_GUI_MH_FPS GUI_MH_FPS_RESULT PW_FPS_LIMIT_VAR PW_MANGOHUD_CONFIG
     try_remove_file "${PORT_WINE_TMP_PATH}/tmp_yad_mh_set"
@@ -3580,7 +3557,7 @@ gui_MangoHud () {
     IFS=$old_IFS
 
     "${pw_yad}" --paned --key="$KEY_MH_GUI" --title="MangoHud" \
-        --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --center --fixed \
+        --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --center --fixed --gui-type=settings --gui-type-height=5 --gui-type-width=5 \
         --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
         --button="$(eval_gettext "DISABLE") MANGOHUD"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Disable MangoHud and go to the previous menu")":182 \
         --button="$(eval_gettext "PREVIEW CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Start vkcube for preview changes")":184 \
@@ -3673,12 +3650,13 @@ gui_MangoHud () {
 }
 
 # GUI DGVOODOO2
-gui_dgVoodoo2 () {
+gui_dgvoodoo2 () {
     KEY_DGV2_GUI=$RANDOM
-    PW_LIST_DGV2="PW_DGV2_DISABLE_D3D PW_DGV2_16BIT_MODE PW_DGV2_USE_DX12 PW_DGV2_FASTMEMORY PW_DGV2_VRAM_INCREASE
+    PW_DGV2_LIST="PW_DGV2_DISABLE_D3D PW_DGV2_16BIT_MODE PW_DGV2_USE_DX12 PW_DGV2_FASTMEMORY PW_DGV2_VRAM_INCREASE
     PW_DGV2_FULLSCREEN
     "
-    # DGVOODOO2 info:
+
+if [[ "${SKIP_DGVOODOO2_TEXT_INFO}" != 1 ]] ; then
     PW_DGV2_DISABLE_D3D_INFO=$(eval_gettext 'Do not use d3d8 and d3d9 dgVoodoo2 libraries. For some old games, using the example of Space Rangers, a bug with a black screen is corrected.')
     PW_DGV2_16BIT_MODE_INFO=$(eval_gettext 'Forced use of 16bit screen mode. Solves the problem of launching old games, such as Moto Racer.')
     PW_DGV2_USE_DX12_INFO=$(eval_gettext 'DirectXD 11 is used by default (and recommended). Use DirectX12 for dgVoodoo2. Doesnt always work better. (Working only on stable dxvk and vkd3d)')
@@ -3686,41 +3664,42 @@ gui_dgVoodoo2 () {
     PW_DGV2_VRAM_INCREASE_INFO=$(eval_gettext 'Increase the amount of vram for dgVoodoo2 (Increases from 256 to 1024)')
     PW_DGV2_FULLSCREEN_INFO=$(eval_gettext 'Render image based on monitor resolution. Can use if the game has a small interface size. Widescreen effect for 16:9')
 
-    unset ADD_CHK_BOX_EDIT_DB output_yad_edit_db
-    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set"
-    try_remove_file "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set_cb"
+    export SKIP_DGVOODOO2_TEXT_INFO=1
+fi
 
-    edit_db_field_add_dgv2 () {
-        for int_to_boole in $@ ; do
+    dgv2_field_add () {
+        unset ADD_CHK_BOX_DGV2
+        for int_to_boole in $PW_DGV2_LIST ; do
             if [ "${!int_to_boole}" == "1" ]
             then export ${int_to_boole}="TRUE"
             else export ${int_to_boole}="FALSE"
             fi
             TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
             int_to_boole_non_pw="$(echo ${int_to_boole} | sed 's/^PW_DGV2//' | sed 's/_/ /g' )"
-            ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
+            ADD_CHK_BOX_DGV2+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
         done
     }
 
-    edit_db_field_add_dgv2 $PW_LIST_DGV2
-
+    dgv2_field_add
     old_IFS=$IFS
     IFS="%"
-    "${pw_yad}" --plug=$KEY_DGV2_GUI --tabnum="1" --form --columns=3 ${ADD_CHK_BOX_EDIT_DB} \
-    --text="$(eval_gettext "dgVoodoo2 settings\n<b>NOTE:</b> To display help for each item, simply hover over the text\n")" \
-    --text-align=center --separator=" " \
+    "${pw_yad}" --plug=$KEY_DGV2_GUI --tabnum="1" --form --separator=" " --columns=3 ${ADD_CHK_BOX_DGV2} \
     1> "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set" 2>/dev/null &
     IFS=$old_IFS
+
     "${pw_yad}" --plug=$KEY_DGV2_GUI --tabnum="2" --form --columns=2 --separator="%" \
     --field="${CHKBOX_SPACE}FILTERING!$(eval_gettext "Forced anisotropic filtering in Direct3D games") :CB" "${PW_DGV2_FILTERING}!disabled!2!4!8!16" \
     --field="${CHKBOX_SPACE}ANTIALIASING!$(eval_gettext "Forced antialiasing in Direct3D and Glide games") :CB" "${PW_DGV2_ANTIALIASING}!disabled!2!4!8" \
     1> "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set_cb" 2>/dev/null &
-    "${pw_yad}" --paned --key=$KEY_DGV2_GUI --height="350" --title="dgVoodoo2" \
-    --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --center --fixed \
+
+    "${pw_yad}" --paned --key=$KEY_DGV2_GUI --height="350" --title="dgVoodoo2" --text-align=center  \
+    --text="$(eval_gettext "dgVoodoo2 settings\n<b>NOTE:</b> To display help for each item, simply hover over the text\n")" \
+    --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --center --fixed --gui-type=settings --gui-type-height=5 --gui-type-width=5 \
     --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
     --button="$(eval_gettext "DISABLE") DGVOODOO2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Disable dgVoodoo2 and go to the previous menu")":162 \
     --button="$(eval_gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Save the current changes, and go to the previous menu")":166 \
     2>/dev/null
+
     YAD_DGV2_STATUS="$?"
     case "${YAD_DGV2_STATUS}" in
         1|252)
@@ -3740,13 +3719,87 @@ gui_dgVoodoo2 () {
             ;;
     esac
 
-    output_yad_edit_db=($(cat "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set"))
-    bool_from_yad=0
+    dgv2_field_read () {
+        output_yad_dgv2=($(cat "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set"))
+        bool_from_yad=0
+        for boole_to_int in $PW_DGV2_LIST ; do
+            export ${boole_to_int}=${output_yad_dgv2[$bool_from_yad]}
+            if [ "${!boole_to_int}" == "TRUE" ]
+            then export ${boole_to_int}="1"
+            else export ${boole_to_int}="0"
+            fi
+            export bool_from_yad=$(( ${bool_from_yad} + 1 ))
+        done
+    }
 
-    edit_db_field_read $PW_LIST_DGV2 $@
+    dgv2_field_read
+
     PW_DGV2_FILTERING="$(cat "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set_cb" | awk -F"%" '{print $1}')"
     PW_DGV2_ANTIALIASING="$(cat "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set_cb" | awk -F"%" '{print $2}')"
-    edit_db_from_gui $PW_LIST_DGV2 PW_DGVOODOO2 PW_DGV2_FILTERING PW_DGV2_ANTIALIASING
+    edit_db_from_gui $PW_DGV2_LIST PW_DGVOODOO2 PW_DGV2_FILTERING PW_DGV2_ANTIALIASING
+
+    export SKIP_CHECK_UPDATES=1
+    /usr/bin/env bash -c ${pw_full_command_line[*]} &
+    exit 0
+}
+
+# GUI GAMESCOPE
+gui_gamescope () {
+    unset ADD_CHK_BOX_GAMESCOPE
+
+if [[ "${SKIP_GAMESCOPE_TEXT_INFO}" != 1 ]] ; then
+
+    export SKIP_GAMESCOPE_TEXT_INFO=1
+fi
+
+    old_IFS=$IFS
+    IFS="%"
+    "${pw_yad}" --plug=$KEY_GAMESCOP_GUI --form --separator=" " --columns=3 ${ADD_CHK_BOX_GAMESCOPE} \
+    1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db" 2>/dev/null &
+    IFS=$old_IFS
+
+    output_yad_gamescope="$("${pw_yad}" --title "GAMESCOPE" --text-align=center --height="350" \
+    --text "$(eval_gettext "Change settings gamescope for") <b>${PORTWINE_DB}</b>\n $(eval_gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand --form --center --fixed \
+    --field="$(eval_gettext "Add arguments for GAMESCOPE:")!$(eval_gettext "
+<b>-W, -H:</b> set the resolution used by gamescope. Resizing the gamescope window will update these settings. Ignored in embedded mode. If -H is specified but -W isn't, a 16:9 aspect ratio is assumed. Defaults to 1280×720.
+<b>-w, -h:</b> set the resolution used by the game. If -h is specified but -w isn't, a 16:9 aspect ratio is assumed. Defaults to the values specified in -W and -H.
+<b>-r:</b> set a frame-rate limit for the game. Specified in frames per second. Defaults to unlimited.
+<b>-o:</b> set a frame-rate limit for the game when unfocused. Specified in frames per second. Defaults to unlimited.
+<b>-F fsr:</b> use AMD FidelityFX™ Super Resolution 1.0 for upscaling.
+<b>-F nis:</b> use NVIDIA Image Scaling v1.0.3 for upscaling.
+<b>-S integer:</b> use integer scaling.
+<b>-S stretch:</b> use stretch scaling, the game will fill the window. (e.g. 4:3 to 16:9).
+<b>-b:</b> create a border-less window.
+<b>-f:</b> create a full-screen window.") :CBE" "\\${GAMESCOPE_ARGS}!-r 60 -F fsr!" \
+    --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
+    --button="$(eval_gettext "DISABLE") GAMESCOPE"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Disable GameScope and go to the previous menu")":162 \
+    --button="$(eval_gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Save the current changes, and go to the previous menu")":166 2>/dev/null)"
+    YAD_STATUS="$?"
+    export SKIP_CHECK_UPDATES=1
+
+    GAMESCOPE_ARGS="$(echo "$output_yad_gamescope" | awk -F"%" '{print $1}')"
+    edit_db_from_gui
+
+    case "${YAD_STATUS}" in
+        1|252)
+            export SKIP_CHECK_UPDATES=1
+            /usr/bin/env bash -c ${pw_full_command_line[*]} &
+            exit 0
+            ;;
+        162)
+            export PW_USE_GAMESCOPE=0
+            edit_db_from_gui PW_USE_GAMESCOPE
+            export SKIP_CHECK_UPDATES=1
+            /usr/bin/env bash -c ${pw_full_command_line[*]} &
+            exit 0
+            ;;
+        166)
+            export PW_USE_GAMESCOPE=1
+            ;;
+    esac
+
+    edit_db_from_gui PW_USE_GAMESCOPE GAMESCOPE_ARGS
 
     export SKIP_CHECK_UPDATES=1
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
@@ -4228,25 +4281,6 @@ EOF
         yad_error "$(eval_gettext "An error occurred while backing up the prefix:") $PW_PREFIX_NAME"
     fi
     return 0
-}
-
-pw_edit_db () {
-    PW_EDIT_DB_LIST="PW_MANGOHUD PW_MANGOHUD_USER_CONF PW_VKBASALT PW_VKBASALT_USER_CONF PW_DGVOODOO2 PW_USE_GAMESCOPE
-    PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU
-    PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME
-    PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE
-    PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_DISABLE_COMPOSITING
-    PW_USE_RUNTIME PW_DINPUT_PROTOCOL"
-
-    if check_wayland_session ; then
-        rm_from_var PW_EDIT_DB_LIST "PW_USE_US_LAYOUT"
-    fi
-    if check_flatpak ; then
-        rm_from_var PW_EDIT_DB_LIST "PW_USE_RUNTIME"
-    fi
-    pw_gui_for_edit_db $PW_EDIT_DB_LIST
-
-    # PW_FORCE_USE_VSYNC PW_HEAP_DELAY_FREE
 }
 
 pw_autoinstall_from_db () {
