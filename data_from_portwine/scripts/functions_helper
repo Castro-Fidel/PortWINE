@@ -3126,20 +3126,16 @@ if [[ "${SKIP_EDIT_DB_TEXT_INFO}" != 1 ]] ; then
     export SKIP_EDIT_DB_TEXT_INFO=1
 fi
 
-    edit_db_field_add () {
-        unset ADD_CHK_BOX_EDIT_DB
-        for int_to_boole in $PW_EDIT_DB_LIST ; do
-            if [ "${!int_to_boole}" == "1" ]
-            then export ${int_to_boole}="TRUE"
-            else export ${int_to_boole}="FALSE"
-            fi
-            TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
-            int_to_boole_non_pw="$(echo ${int_to_boole} | sed 's/^PW_//' | sed 's/_/ /g' )"
-            ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
-        done
-    }
-
-    edit_db_field_add
+    unset ADD_CHK_BOX_EDIT_DB
+    for int_to_boole in $PW_EDIT_DB_LIST ; do
+        if [ "${!int_to_boole}" == "1" ]
+        then export ${int_to_boole}="TRUE"
+        else export ${int_to_boole}="FALSE"
+        fi
+        TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
+        int_to_boole_non_pw="$(echo ${int_to_boole//PW_/} | sed 's/_/ /g')"
+        ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
+    done
 
     old_IFS=$IFS
     IFS="%"
@@ -3153,35 +3149,21 @@ fi
            *) ADD_WINVER_EDIT_DB="10!7!XP" ;;
     esac
 
-    if [[ ! -z "${PW_GPU_USE}" ]] && [[ "${PW_GPU_USE}" != "disabled" ]] ; then
+    if [[ ! -z "${PW_GPU_USE}" ]] \
+    && [[ "${PW_GPU_USE}" != "disabled" ]]
+    then
         GPU_VAR="${PW_GPU_USE}"
     else
         GPU_VAR="disabled"
     fi
 
-    if [[ "${PW_WINE_CPU_TOPOLOGY}" == *[0-9]:* ]] && [[ "${PW_WINE_CPU_TOPOLOGY}" != "disabled" ]] ; then
+    if [[ "${PW_WINE_CPU_TOPOLOGY}" == *[0-9]:* ]] \
+    && [[ "${PW_WINE_CPU_TOPOLOGY}" != "disabled" ]]
+    then
         CPU_LIMIT_VAR="$(echo ${PW_WINE_CPU_TOPOLOGY%%:*})"
     else
         CPU_LIMIT_VAR="disabled"
     fi
-
-    logical_cores=$(grep -c "^processor" /proc/cpuinfo)
-    if [[ "${logical_cores}" -le "4" ]] ; then
-        GET_LOGICAL_CORE="1!$(seq -s! 1 $((${logical_cores} - 1)))"
-    else
-        GET_LOGICAL_CORE="1!2!$(seq -s! 4 4 $((${logical_cores} - 1)))"
-    fi
-
-    GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
-    unset LOCALE_LIST
-    for LOCALE in $GET_LOCALE_LIST ; do
-        if locale -a | grep -i "$LOCALE" &>/dev/null ; then
-            if [[ ! -z "$LOCALE_LIST" ]]
-            then LOCALE_LIST+="!$(locale -a | grep -i "$LOCALE")"
-            else LOCALE_LIST="$(locale -a | grep -i "$LOCALE")"
-            fi
-        fi
-    done
 
     "${pw_yad}" --plug=$KEY_EDIT_DB_GUI --tabnum="2" --form --separator="%" --columns=1 \
     --field="$(eval_gettext "Change the version of <b>WINDOWS</b> emulation")!$(eval_gettext "Changing the <b>WINDOWS</b> emulation version may be required to run older games. <b>WINDOWS</b> versions below 10 do not support new games with DirectX 12") :CB" "${ADD_WINVER_EDIT_DB}" \
@@ -3225,39 +3207,33 @@ A brief instruction:
                 ;;
           2)
                 try_remove_file "$portwine_exe".ppdb
-                PW_DGV2_LIST="PW_DGV2_DISABLE_D3D PW_DGV2_16BIT_MODE PW_DGV2_USE_DX12 PW_DGV2_FASTMEMORY PW_DGV2_VRAM_INCREASE
-                PW_DGV2_FULLSCREEN
-                "
-                unset $PW_EDIT_DB_LIST $PW_DGV2_LIST
                 /usr/bin/env bash -c ${pw_full_command_line[*]} &
                 exit 0
                 ;;
     esac
 
-    edit_db_field_read () {
-        output_yad_edit_db=($(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db"))
-        bool_from_yad=0
-        for boole_to_int in $PW_EDIT_DB_LIST ; do
-            export ${boole_to_int}=${output_yad_edit_db[$bool_from_yad]}
-            if [ "${!boole_to_int}" == "TRUE" ]
-            then export ${boole_to_int}="1"
-            else export ${boole_to_int}="0"
-            fi
-            export bool_from_yad=$(( ${bool_from_yad} + 1 ))
-        done
-    }
+    output_yad_edit_db=($(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db"))
+    bool_from_yad=0
+    for boole_to_int in $PW_EDIT_DB_LIST ; do
+        export ${boole_to_int}=${output_yad_edit_db[$bool_from_yad]}
+        if [ "${!boole_to_int}" == "TRUE" ]
+        then export ${boole_to_int}="1"
+        else export ${boole_to_int}="0"
+        fi
+        export bool_from_yad=$(( ${bool_from_yad} + 1 ))
+    done
+    
+    PW_ADD_SETTINGS=$(head -n 1 "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit")
 
-    edit_db_field_read
-
-    PW_WINDOWS_VER="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $1}')"
-    PW_DLL_INSTALL="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $2}')"
-    WINEDLLOVERRIDES="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $3}')"
-    LAUNCH_PARAMETERS="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $5}')"
-    CPU_LIMIT="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $7}')"
-    PW_GPU_USE="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $8}')"
-    PW_MESA_GL_VERSION_OVERRIDE="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $9}')"
-    PW_VKD3D_FEATURE_LEVEL="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $10}')"
-    PW_LOCALE_SELECT="$(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" | awk -F"%" '{print $11}')"
+    PW_WINDOWS_VER="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $1}')"
+    PW_DLL_INSTALL="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $2}')"
+    WINEDLLOVERRIDES="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $3}')"
+    LAUNCH_PARAMETERS="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $5}')"
+    CPU_LIMIT="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $7}')"
+    PW_GPU_USE="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $8}')"
+    PW_MESA_GL_VERSION_OVERRIDE="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $9}')"
+    PW_VKD3D_FEATURE_LEVEL="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $10}')"
+    PW_LOCALE_SELECT="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $11}')"
 
     if [[ "${CPU_LIMIT}" != "disabled" ]] ; then
         export PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $((${CPU_LIMIT} - 1)))"
@@ -3280,7 +3256,6 @@ A brief instruction:
         edit_db_from_gui MANGOHUD_CONFIG
     fi
     edit_user_conf_from_gui PW_GPU_USE
-    # PW_AMD_VULKAN_USE
 
     case "$YAD_STATUS" in
           0)
@@ -3667,20 +3642,17 @@ if [[ "${SKIP_DGVOODOO2_TEXT_INFO}" != 1 ]] ; then
     export SKIP_DGVOODOO2_TEXT_INFO=1
 fi
 
-    dgv2_field_add () {
-        unset ADD_CHK_BOX_DGV2
-        for int_to_boole in $PW_DGV2_LIST ; do
-            if [ "${!int_to_boole}" == "1" ]
-            then export ${int_to_boole}="TRUE"
-            else export ${int_to_boole}="FALSE"
-            fi
-            TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
-            int_to_boole_non_pw="$(echo ${int_to_boole} | sed 's/^PW_DGV2//' | sed 's/_/ /g' )"
-            ADD_CHK_BOX_DGV2+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
-        done
-    }
+    unset ADD_CHK_BOX_DGV2
+    for int_to_boole in $PW_DGV2_LIST ; do
+        if [ "${!int_to_boole}" == "1" ]
+        then export ${int_to_boole}="TRUE"
+        else export ${int_to_boole}="FALSE"
+        fi
+        TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
+        int_to_boole_non_pw="$(echo ${int_to_boole} | sed 's/^PW_DGV2//' | sed 's/_/ /g' )"
+        ADD_CHK_BOX_DGV2+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
+    done
 
-    dgv2_field_add
     old_IFS=$IFS
     IFS="%"
     "${pw_yad}" --plug=$KEY_DGV2_GUI --tabnum="1" --form --separator=" " --columns=3 ${ADD_CHK_BOX_DGV2} \
@@ -3719,20 +3691,16 @@ fi
             ;;
     esac
 
-    dgv2_field_read () {
-        output_yad_dgv2=($(cat "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set"))
-        bool_from_yad=0
-        for boole_to_int in $PW_DGV2_LIST ; do
-            export ${boole_to_int}=${output_yad_dgv2[$bool_from_yad]}
-            if [ "${!boole_to_int}" == "TRUE" ]
-            then export ${boole_to_int}="1"
-            else export ${boole_to_int}="0"
-            fi
-            export bool_from_yad=$(( ${bool_from_yad} + 1 ))
-        done
-    }
-
-    dgv2_field_read
+    output_yad_dgv2=($(cat "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set"))
+    bool_from_yad=0
+    for boole_to_int in $PW_DGV2_LIST ; do
+        export ${boole_to_int}=${output_yad_dgv2[$bool_from_yad]}
+        if [ "${!boole_to_int}" == "TRUE" ]
+        then export ${boole_to_int}="1"
+        else export ${boole_to_int}="0"
+        fi
+        export bool_from_yad=$(( ${bool_from_yad} + 1 ))
+    done
 
     PW_DGV2_FILTERING="$(cat "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set_cb" | awk -F"%" '{print $1}')"
     PW_DGV2_ANTIALIASING="$(cat "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set_cb" | awk -F"%" '{print $2}')"

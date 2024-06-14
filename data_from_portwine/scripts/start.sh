@@ -209,6 +209,26 @@ then
         print_error "xrandr - not found!"
     fi
     echo ""
+
+    logical_cores=$(grep -c "^processor" /proc/cpuinfo)
+    if [[ "${logical_cores}" -le "4" ]] ; then
+        GET_LOGICAL_CORE="1!$(seq -s! 1 $((${logical_cores} - 1)))"
+    else
+        GET_LOGICAL_CORE="1!2!$(seq -s! 4 4 $((${logical_cores} - 1)))"
+    fi
+    export GET_LOGICAL_CORE
+
+    GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
+    unset LOCALE_LIST
+    for LOCALE in $GET_LOCALE_LIST ; do
+        if locale -a | grep -i "$LOCALE" &>/dev/null ; then
+            if [[ ! -z "$LOCALE_LIST" ]]
+            then LOCALE_LIST+="!$(locale -a | grep -i "$LOCALE")"
+            else LOCALE_LIST="$(locale -a | grep -i "$LOCALE")"
+            fi
+        fi
+    done
+    export LOCALE_LIST
 else
     scripts_install_ver=$(head -n 1 "${PORT_WINE_TMP_PATH}/scripts_ver")
     export scripts_install_ver
