@@ -124,7 +124,7 @@ export STEAM_SCRIPTS="${PORT_WINE_PATH}/steam_scripts"
 export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
 export PW_GUI_THEMES_PATH="${PORT_WINE_PATH}/data/themes"
-export pw_yad="$PW_GUI_THEMES_PATH/gui/yad_gui_pp"
+export pw_yad="${PW_GUI_THEMES_PATH}/gui/yad_gui_pp"
 
 change_locale
 
@@ -436,7 +436,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             --field="PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
             1> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
-            "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns=3 --align-buttons --homogeneous-column \
+            "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="$START_GUI_NOTEBOOK_COLUMNS" --align-buttons --homogeneous-column \
             --field="   $(eval_gettext "Base settings")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Edit database file for") ${PORTWINE_DB}":"FBTN" '@bash -c "button_click_start 118"' \
             --field="   vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click_start 120"' \
             --field="   MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)")":"FBTN" '@bash -c "button_click_start 122"' \
@@ -480,7 +480,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             --field="   PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
             1> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
-            "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns=3 \
+            "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="$START_GUI_PANED_COLUMNS" \
             --align-buttons --homogeneous-row --homogeneous-column \
             --field="   $(eval_gettext "Base settings")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Edit database file for") ${PORTWINE_DB}":"FBTN" '@bash -c "button_click_start 118"' \
             --field="   vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click_start 120"' \
@@ -707,7 +707,6 @@ fi
     WINECMD|112) pw_winecmd ;;
     WINEREG|114) pw_winereg ;;
     WINETRICKS|116) pw_prefix_manager ;;
-    118) pw_edit_db ;;
     gui_clear_pfx) gui_clear_pfx ;;
     gui_open_user_conf) gui_open_user_conf ;;
     gui_wine_uninstaller) gui_wine_uninstaller ;;
@@ -720,9 +719,10 @@ fi
     change_loc) change_loc ;;
     change_mirror) change_mirror ;;
     change_gui_start) change_gui_start ;;
-    120) gui_vkBasalt ;;
-    122) gui_MangoHud ;;
-    124) gui_dgVoodoo2 ;;
+    118) gui_edit_db ;;
+    120) gui_vkbasalt ;;
+    122) gui_mangohud ;;
+    124) gui_dgvoodoo2 ;;
     126) gui_gamescope ;;
     pw_create_prefix_backup) pw_create_prefix_backup ;;
     gui_credits) gui_credits ;;
