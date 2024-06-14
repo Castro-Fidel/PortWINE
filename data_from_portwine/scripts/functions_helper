@@ -53,11 +53,23 @@ change_locale () {
     && [[ -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]] ; then
         echo ""
     else
+
         [[ ! -f "${pw_yad}" ]] && pw_yad="yad"
-        SET_LANG=$("${pw_yad}" --title  "LANGUAGE" --text "Select the language:" --list --radiolist \
-        --column="Set:" --column "Choose language:" TRUE "ru" FALSE "en" FALSE "es" \
-        --window-icon "$PW_GUI_ICON_PATH/portproton.svg" --width=300 --height=195)
-        SET_LANG="$(echo "${SET_LANG}" | awk -F'|' '{print $2}')"
+        SET_LANG=(
+            "${pw_yad}" --list
+            --title="Select language for PortProton"
+            --column="Language" --column=""
+            --width=400 --height=200
+
+            "Russian (Русский)"                     ru
+            "English"                               en
+            "Spanish (Español・Española)"            es
+        )
+
+        out=$("${SET_LANG[@]}")
+        [ -n "$out" ] || return
+        SET_LANG=$(echo "$out" | cut -d'|' -f2)
+
         echo "${SET_LANG}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
         if [[ ! -z "${SET_LANG}" ]]
         then LANGUAGE=${SET_LANG}
