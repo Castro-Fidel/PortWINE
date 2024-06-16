@@ -38,7 +38,7 @@ fatal () {
 
 change_locale () {
     if [[ -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]] ; then
-        LANGUAGE=$(cat "${PORT_WINE_TMP_PATH}/PortProton_loc")
+        LANGUAGE=$(<"${PORT_WINE_TMP_PATH}/PortProton_loc")
     fi
 
     if [[ "$LANGUAGE" == "RUS" ]] ; then
@@ -1643,8 +1643,8 @@ start_portwine () {
     pw_wineboot () {
         LIST_NATIVE_WINE_DLL="winevulkan ir50_32 atl100 ntdll wined3d vulkan-1 shell32 dxgi d3d8 d3d9 d3d10core d3d11 d3d12 d3d12core"
         for change_wine_dll in $LIST_NATIVE_WINE_DLL ; do
-            try_copy_file "${WINEDIR}/lib64/wine/x86_64-windows/${change_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-            try_copy_file "${WINEDIR}/lib/wine/i386-windows/${change_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+            try_force_link_file "${WINEDIR}/lib64/wine/x86_64-windows/${change_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_force_link_file "${WINEDIR}/lib/wine/i386-windows/${change_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
         done
 
         print_info "Used wineboot $@ for prefix: ${PW_PREFIX_NAME}"
@@ -1666,12 +1666,12 @@ start_portwine () {
             pw_update_pfx_cover_gui
             unpack "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
             pw_wineboot -r
-        elif [[ "${PW_CHECK_AUTOINSTAL}" == 1 ]] \
+        elif [[ "${PW_CHECK_AUTOINSTALL}" == 1 ]] \
         && [[ "${DISABLE_CP_DEFPFX}" != 1 ]] ; then
             pw_update_pfx_cover_gui
             unpack "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
             pw_wineboot -r
-        elif [[ "${PW_CHECK_AUTOINSTAL}" == 1 ]] \
+        elif [[ "${PW_CHECK_AUTOINSTALL}" == 1 ]] \
         && [[ "${DISABLE_CP_DEFPFX}" == 1 ]] ; then
             pw_update_pfx_cover_gui
             unpack "${PW_PLUGINS_PATH}/blank_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
@@ -1800,18 +1800,18 @@ start_portwine () {
 
     export DXVK_ENABLE_NVAPI=1
     if [[ "${PW_USE_FAKE_DLSS}" == 1 ]] && [[ -d "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/" ]] ; then
-        try_copy_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-        try_copy_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.ini" "${WINEPREFIX}/drive_c/windows/system32/"
+        try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+        try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.ini" "${WINEPREFIX}/drive_c/windows/system32/"
         enabled_fake_nvidia_videocard old
         var_winedlloverride_update "nvapi,nvapi64,nvngx=n;_nvngx=;nvcuda=b"
     elif [[ "${PW_USE_NVAPI_AND_DLSS}" == 1 ]] ; then
         FIND_NVNGX="$(dirname $(find /usr/* -type f -name "nvngx.dll" 2>/dev/null | head -n 1 | awk '{print $1}'))"
         if [[ ! -z "$FIND_NVNGX" ]] ; then
-            try_copy_file "${FIND_NVNGX}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-            try_copy_file "${FIND_NVNGX}/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_force_link_file "${FIND_NVNGX}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_force_link_file "${FIND_NVNGX}/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
         else
-            try_copy_file "${PW_PLUGINS_PATH}/nvngx/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-            try_copy_file "${PW_PLUGINS_PATH}/nvngx/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_force_link_file "${PW_PLUGINS_PATH}/nvngx/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_force_link_file "${PW_PLUGINS_PATH}/nvngx/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
         fi
         enabled_fake_nvidia_videocard 0
         var_winedlloverride_update "nvngx,_nvngx,nvapi,nvapi64=n;nvcuda=b"
@@ -1976,6 +1976,7 @@ start_portwine () {
     try_force_link_file "${PHYSX_PATH}/cudart32_65.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
     try_force_link_file "${PHYSX_PATH}/cudart64_65.dll" "${WINEPREFIX}/drive_c/windows/system32/"
 
+    # 3D API
     unset CP_VKD3D_FILES CP_DXVK_FILES CP_D8VK_FILES CP_DGV2_FILES CP_WINE_FILES
     unset CP_GALLIUM_NINE_FILES PATH_TO_DXVK_FILES PATH_TO_VKD3D_FILES
     case "${PW_VULKAN_USE}" in
@@ -2082,7 +2083,7 @@ start_portwine () {
             rm_from_var CP_DGV2_FILES "d3d8 d3d9"
             rm_from_var CP_WINE_FILES "ddraw"
         else
-            try_copy_file "${PATH_TO_DGV2_FILES}/x64/d3d9.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_force_link_file "${PATH_TO_DGV2_FILES}/x64/d3d9.dll" "${WINEPREFIX}/drive_c/windows/system32/"
             try_remove_file "${WINEPREFIX}/drive_c/windows/system32/dgVoodoo.conf"
             try_force_link_file "${DGV2CONF}" "${WINEPREFIX}/drive_c/windows/system32/"
             case "${PW_VULKAN_USE}" in
@@ -2115,7 +2116,7 @@ start_portwine () {
             esac
         fi
         for wine_dgv2_dll in $CP_DGV2_FILES ; do
-            try_copy_file "${PATH_TO_DGV2_FILES}/x32/${wine_dgv2_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+            try_force_link_file "${PATH_TO_DGV2_FILES}/x32/${wine_dgv2_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
             var_winedlloverride_update "${wine_dgv2_dll}=n"
         done
         # DGVOODOO2 settings:
@@ -2152,8 +2153,8 @@ start_portwine () {
 
     print_info "Try copy WINE files..."
     for copy_wine_dll in $CP_WINE_FILES "vulkan-1" ; do
-        try_copy_file "${WINEDIR}/lib64/wine/x86_64-windows/${copy_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${copy_wine_dll}.dll"
-        try_copy_file "${WINEDIR}/lib/wine/i386-windows/${copy_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${copy_wine_dll}.dll"
+        try_force_link_file "${WINEDIR}/lib64/wine/x86_64-windows/${copy_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${copy_wine_dll}.dll"
+        try_force_link_file "${WINEDIR}/lib/wine/i386-windows/${copy_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${copy_wine_dll}.dll"
     done
 
     if [[ ! -z "$CP_DXVK_FILES" ]] ; then
@@ -2161,8 +2162,8 @@ start_portwine () {
         check_variables DXVK_HDR "0"
         for wine_dxvk_dll in $CP_DXVK_FILES ; do
             if [[ -f "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll"  ]] ; then
-                try_copy_file "${PATH_TO_DXVK_FILES}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-                try_copy_file "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+                try_force_link_file "${PATH_TO_DXVK_FILES}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+                try_force_link_file "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
                 var_winedlloverride_update "${wine_dxvk_dll}=n"
             fi
         done
@@ -2173,18 +2174,18 @@ start_portwine () {
 
     if [[ "$DXVK_ENABLE_NVAPI" == "1" ]] ; then
         print_info "Try copy NVAPI files..."
-        try_copy_file "${PATH_TO_DXVK_FILES}/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/" || \
-        try_copy_file "${PW_PLUGINS_PATH}/nvapi/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-        try_copy_file "${PATH_TO_DXVK_FILES}/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/" || \
-        try_copy_file "${PW_PLUGINS_PATH}/nvapi/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+        try_force_link_file "${PATH_TO_DXVK_FILES}/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/" || \
+        try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+        try_force_link_file "${PATH_TO_DXVK_FILES}/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/" || \
+        try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/"
     fi
 
     if [[ ! -z "$CP_VKD3D_FILES" ]] ; then
         print_info "Try copy native VKD3D files..."
         for wine_vkd3d_dll in $CP_VKD3D_FILES ; do
             if [[ -f "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" ]] ; then
-                try_copy_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-                try_copy_file "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+                try_force_link_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+                try_force_link_file "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
                 var_winedlloverride_update "${wine_vkd3d_dll}=n"
             fi
         done
@@ -2196,8 +2197,8 @@ start_portwine () {
         print_info "Try copy native D8VK files..."
         PATH_TO_D8VK_FILES="${PW_VULKAN_DIR}/d8vk-${D8VK_VER}"
         for wine_d8vk_dll in $CP_D8VK_FILES ; do
-            try_copy_file "${PATH_TO_D8VK_FILES}/x32/${wine_d8vk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-            try_copy_file "${PATH_TO_D8VK_FILES}/x64/${wine_d8vk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_force_link_file "${PATH_TO_D8VK_FILES}/x32/${wine_d8vk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+            try_force_link_file "${PATH_TO_D8VK_FILES}/x64/${wine_d8vk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
             var_winedlloverride_update "${wine_d8vk_dll}=n"
         done
     fi
@@ -2205,8 +2206,8 @@ start_portwine () {
     if [[ "$CP_GALLIUM_NINE_FILES" == "d3d9" ]] ; then
         print_info "Try copy native GALLIUM_NINE files..."
         PATH_TO_GALLIUM_NINE_FILES="${PW_PLUGINS_PATH}/gallium_nine_v.${PW_GALLIUM_NINE_VER}"
-        try_copy_file "${PATH_TO_GALLIUM_NINE_FILES}/lib32/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/syswow64/d3d9.dll"
-        try_copy_file "${PATH_TO_GALLIUM_NINE_FILES}/lib64/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/system32/d3d9.dll"
+        try_force_link_file "${PATH_TO_GALLIUM_NINE_FILES}/lib32/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/syswow64/d3d9.dll"
+        try_force_link_file "${PATH_TO_GALLIUM_NINE_FILES}/lib64/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/system32/d3d9.dll"
         unset FIND_D3D_MODULE D3D_MODULE_PATH
         if ! check_flatpak ; then
             FIND_D3D_MODULE=$(dirname $(find /usr/ -maxdepth 4 -type f -name "d3dadapter9.so.*") 2>/dev/null)
@@ -2383,7 +2384,7 @@ start_portwine () {
     if ! check_start_from_steam ; then
         pw_tray_icon
         sleep 0.5
-        if [[ "${PW_CHECK_AUTOINSTAL}" != "1" ]] ; then
+        if [[ "${PW_CHECK_AUTOINSTALL}" != "1" ]] ; then
             pw_start_progress_bar_cover "${COVERS_PATH}/loading_${LANGUAGE}.gif"
         fi
     fi
@@ -2518,26 +2519,25 @@ pw_run () {
 export -f pw_run
 
 pw_yad_set_form () {
-    if [[ -f "${PORT_WINE_TMP_PATH}/tmp_yad_form" ]]; then
+    if [[ $(<"${PORT_WINE_TMP_PATH}/tmp_yad_form") != "" ]]; then
         PW_YAD_SET=$(head -n 1 "${PORT_WINE_TMP_PATH}/tmp_yad_form" | awk '{print $1}')
         export PW_YAD_SET
     fi
 }
 
 pw_yad_form_vulkan () {
-    if [[ -f "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" ]] ; then
-        VULKAN_MOD="$(grep \;\; "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" | awk -F";" '{print $1}')"
-        PW_WINE_VER="$(grep \;\; "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" | awk -F";" '{print $2}')"
-        PW_PREFIX_NAME="$(grep \;\; "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" | awk -F";" '{print $3}' | sed -e "s/[[:blank:]]/_/g" )"
-        if [[ -z "${PW_PREFIX_NAME}" ]] \
-        || echo "${PW_PREFIX_NAME}" | grep -E '^_.*'
-        then
+    if [[ "$(<"${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan")" != "" ]] ; then
+        sed -i 's/$/\;/' "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan"
+        YAD_FORM_VULKAN=$(<"${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan")
+        VULKAN_MOD=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $1}')
+        PW_WINE_VER=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $2}')
+        PW_PREFIX_NAME=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $3}' | sed -e s/[[:blank:]]/_/g)
+        if [[ -z "${PW_PREFIX_NAME}" ]] || [[ ! -z "$(echo "${PW_PREFIX_NAME}" | grep -E '^_.*' )" ]] ; then
             PW_PREFIX_NAME="DEFAULT"
         else
             PW_PREFIX_NAME="${PW_PREFIX_NAME^^}"
         fi
         export PW_PREFIX_NAME PW_WINE_VER VULKAN_MOD
-        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan"
     fi
 }
 
@@ -2980,11 +2980,11 @@ gui_proton_downloader () {
             exit 0
         fi
 
-        if [[ ! -z $(cat "${PORT_WINE_TMP_PATH}/tmp_set_wine") ]] ; then
+        if [[ ! -z $(<"${PORT_WINE_TMP_PATH}/tmp_set_wine") ]] ; then
             VERSION_WINE_GIT="$(sed 's/TRUE//' "${PORT_WINE_TMP_PATH}/tmp_set_wine")"
         fi
 
-        if [[ ! -z $(cat "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set") ]] ; then
+        if [[ ! -z $(<"${PORT_WINE_TMP_PATH}/tmp_installed_wine_set") ]] ; then
             VERSION_INSTALLED_WINE="$(sed 's/TRUE//' "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set")"
         fi
 
@@ -3202,7 +3202,7 @@ A brief instruction:
 
     "${pw_yad}" --notebook --key="$KEY_EDIT_DB_GUI" --title "$(eval_gettext "EDIT DB")" --text-align=center \
     --text "$(eval_gettext "Change settings in database file for") <b>${PORTWINE_DB}</b>\n $(eval_gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand --fixed --center --gui-type=settings --gui-type-height=5 --gui-type-width=5 \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand \
     --tab="$(eval_gettext "MAIN")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
     --tab="$(eval_gettext "ADVANCED")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
     --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
@@ -3224,7 +3224,7 @@ A brief instruction:
                 ;;
     esac
 
-    output_yad_edit_db=($(cat "${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db"))
+    output_yad_edit_db=($(<"${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db"))
     bool_from_yad=0
     for boole_to_int in $PW_EDIT_DB_LIST ; do
         export ${boole_to_int}=${output_yad_edit_db[$bool_from_yad]}
@@ -3381,7 +3381,7 @@ fi
     --field="AMD FidelityFX - Contrast Adaptive Sharpening"!"$(eval_gettext "AMD FidelityFX - CAS is designed to dramatically improve texture sharpness without additional modification settings for games, with minimal loss of performance. (For older games it is recommended to set value = 100)")":SCL "${VKBASALT_FFX_CAS_GUI}" \
     1> "${PORT_WINE_TMP_PATH}/tmp_yad_cas_set" 2>/dev/null &
 
-    "${pw_yad}" --paned --key="$KEY_FX_GUI" --center --fixed --gui-type=settings --gui-type-height=5 --gui-type-width=5 --title="vkBasalt" \
+    "${pw_yad}" --paned --key="$KEY_FX_GUI" --sensitive --gui-type=settings --gui-type-height=5 --gui-type-width=5 --title="vkBasalt" \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
     --button="$(eval_gettext "DISABLE") VKBASALT"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Disable vkBasalt and go to the previous menu")":180 \
@@ -3397,7 +3397,7 @@ fi
         182)
             export PW_VKBASALT=1 ;;
     esac
-    YAD_BASALT_SET=$(cat "${PORT_WINE_TMP_PATH}/tmp_yad_basalt_set")
+    YAD_BASALT_SET=$(<"${PORT_WINE_TMP_PATH}/tmp_yad_basalt_set")
     YAD_CAS_SET=$(cat "${PORT_WINE_TMP_PATH}/tmp_yad_cas_set" | sed s/" "//g)
 
     INT_COUNT_FX=0
@@ -3544,7 +3544,7 @@ fi
     IFS=$old_IFS
 
     "${pw_yad}" --paned --key="$KEY_MH_GUI" --title="MangoHud" \
-        --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --center --fixed --gui-type=settings --gui-type-height=5 --gui-type-width=5 \
+        --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --sensitive --gui-type=settings --gui-type-height=5 --gui-type-width=5 \
         --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
         --button="$(eval_gettext "DISABLE") MANGOHUD"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Disable MangoHud and go to the previous menu")":182 \
         --button="$(eval_gettext "PREVIEW CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Start vkcube for preview changes")":184 \
@@ -3644,12 +3644,12 @@ gui_dgvoodoo2 () {
     "
 
 if [[ "${SKIP_DGVOODOO2_TEXT_INFO}" != 1 ]] ; then
-    PW_DGV2_DISABLE_D3D_INFO=$(eval_gettext 'Do not use d3d8 and d3d9 dgVoodoo2 libraries. For some old games, using the example of Space Rangers, a bug with a black screen is corrected.')
-    PW_DGV2_16BIT_MODE_INFO=$(eval_gettext 'Forced use of 16bit screen mode. Solves the problem of launching old games, such as Moto Racer.')
-    PW_DGV2_USE_DX12_INFO=$(eval_gettext 'DirectXD 11 is used by default (and recommended). Use DirectX12 for dgVoodoo2. Doesnt always work better. (Working only on stable dxvk and vkd3d)')
-    PW_DGV2_FASTMEMORY_INFO=$(eval_gettext 'Enable fast memory access. (Enable if games have poor performance, using Unreal 2 as an example)')
-    PW_DGV2_VRAM_INCREASE_INFO=$(eval_gettext 'Increase the amount of vram for dgVoodoo2 (Increases from 256 to 1024)')
-    PW_DGV2_FULLSCREEN_INFO=$(eval_gettext 'Render image based on monitor resolution. Can use if the game has a small interface size. Widescreen effect for 16:9')
+    export PW_DGV2_DISABLE_D3D_INFO=$(eval_gettext 'Do not use d3d8 and d3d9 dgVoodoo2 libraries. For some old games, using the example of Space Rangers, a bug with a black screen is corrected.')
+    export PW_DGV2_16BIT_MODE_INFO=$(eval_gettext 'Forced use of 16bit screen mode. Solves the problem of launching old games, such as Moto Racer.')
+    export PW_DGV2_USE_DX12_INFO=$(eval_gettext 'DirectXD 11 is used by default (and recommended). Use DirectX12 for dgVoodoo2. Doesnt always work better. (Working only on stable dxvk and vkd3d)')
+    export PW_DGV2_FASTMEMORY_INFO=$(eval_gettext 'Enable fast memory access. (Enable if games have poor performance, using Unreal 2 as an example)')
+    export PW_DGV2_VRAM_INCREASE_INFO=$(eval_gettext 'Increase the amount of vram for dgVoodoo2 (Increases from 256 to 1024)')
+    export PW_DGV2_FULLSCREEN_INFO=$(eval_gettext 'Render image based on monitor resolution. Can use if the game has a small interface size. Widescreen effect for 16:9')
 
     export SKIP_DGVOODOO2_TEXT_INFO=1
 fi
@@ -3667,7 +3667,8 @@ fi
 
     old_IFS=$IFS
     IFS="%"
-    "${pw_yad}" --plug=$KEY_DGV2_GUI --tabnum="1" --form --separator=" " --columns=3 ${ADD_CHK_BOX_DGV2} \
+    "${pw_yad}" --plug=$KEY_DGV2_GUI --tabnum="1" --form --separator=" " --columns=3 ${ADD_CHK_BOX_DGV2} --text-align=center \
+    --text="$(eval_gettext "dgVoodoo2 settings\n<b>NOTE:</b> To display help for each item, simply hover over the text\n")" \
     1> "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set" 2>/dev/null &
     IFS=$old_IFS
 
@@ -3676,9 +3677,8 @@ fi
     --field="${CHKBOX_SPACE}ANTIALIASING!$(eval_gettext "Forced antialiasing in Direct3D and Glide games") :CB" "${PW_DGV2_ANTIALIASING}!disabled!2!4!8" \
     1> "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set_cb" 2>/dev/null &
 
-    "${pw_yad}" --paned --key=$KEY_DGV2_GUI --height="350" --title="dgVoodoo2" --text-align=center  \
-    --text="$(eval_gettext "dgVoodoo2 settings\n<b>NOTE:</b> To display help for each item, simply hover over the text\n")" \
-    --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --center --fixed --gui-type=settings --gui-type-height=5 --gui-type-width=5 \
+    "${pw_yad}" --paned --key=$KEY_DGV2_GUI --height="350" --title="dgVoodoo2" \
+    --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --sensitive --gui-type=settings --gui-type-height=5 --gui-type-width=5 \
     --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
     --button="$(eval_gettext "DISABLE") DGVOODOO2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Disable dgVoodoo2 and go to the previous menu")":162 \
     --button="$(eval_gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Save the current changes, and go to the previous menu")":166 \
@@ -3703,7 +3703,7 @@ fi
             ;;
     esac
 
-    output_yad_dgv2=($(cat "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set"))
+    output_yad_dgv2=($(<"${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set"))
     bool_from_yad=0
     for boole_to_int in $PW_DGV2_LIST ; do
         export ${boole_to_int}=${output_yad_dgv2[$bool_from_yad]}
@@ -3714,8 +3714,11 @@ fi
         export bool_from_yad=$(( ${bool_from_yad} + 1 ))
     done
 
-    PW_DGV2_FILTERING="$(cat "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set_cb" | awk -F"%" '{print $1}')"
-    PW_DGV2_ANTIALIASING="$(cat "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set_cb" | awk -F"%" '{print $2}')"
+    PW_ADD_SETTINGS_DGV2=$(head -n 1 "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set_cb")
+
+    PW_DGV2_FILTERING="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $1}')"
+    PW_DGV2_ANTIALIASING="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $2}')"
+
     edit_db_from_gui $PW_DGV2_LIST PW_DGVOODOO2 PW_DGV2_FILTERING PW_DGV2_ANTIALIASING
 
     export SKIP_CHECK_UPDATES=1
@@ -3740,7 +3743,7 @@ fi
 
     output_yad_gamescope="$("${pw_yad}" --title "GAMESCOPE" --text-align=center --height="350" \
     --text "$(eval_gettext "Change settings gamescope for") <b>${PORTWINE_DB}</b>\n $(eval_gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand --form --center --fixed \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand --form \
     --field="$(eval_gettext "Add arguments for GAMESCOPE:")!$(eval_gettext "
 <b>-W, -H:</b> set the resolution used by gamescope. Resizing the gamescope window will update these settings. Ignored in embedded mode. If -H is specified but -W isn't, a 16:9 aspect ratio is assumed. Defaults to 1280×720.
 <b>-w, -h:</b> set the resolution used by the game. If -h is specified but -w isn't, a 16:9 aspect ratio is assumed. Defaults to the values specified in -W and -H.
@@ -4014,7 +4017,7 @@ pw_prefix_manager () {
         try_remove_file  "${PORT_WINE_TMP_PATH}/fonts_list_tmp"
         try_remove_file  "${PORT_WINE_TMP_PATH}/settings_list_tmp"
 
-        for STPFXMNG in $(cat "${PORT_WINE_TMP_PATH}/to_winetricks") ; do
+        for STPFXMNG in $(<"${PORT_WINE_TMP_PATH}/to_winetricks") ; do
             grep $(echo ${STPFXMNG} | awk -F'|' '{print $2}') "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" &>/dev/null
             if [ "$?" == "1" ] ; then
                 [[ ! -z "${STPFXMNG}" ]] && SET_FROM_PFX_MANAGER+="$(echo "${STPFXMNG}" | awk -F'|' '{print $2}') "
@@ -4267,7 +4270,7 @@ pw_autoinstall_from_db () {
     export PW_USER_TEMP="${PORT_WINE_TMP_PATH}"
     export PW_FORCE_LARGE_ADDRESS_AWARE=1
     export PW_USE_GAMEMODE=0
-    export PW_CHECK_AUTOINSTAL=1
+    export PW_CHECK_AUTOINSTALL=1
     export PW_GUI_DISABLED_CS=1
     export PW_NO_WRITE_WATCH=0
     export PW_VULKAN_USE=1
