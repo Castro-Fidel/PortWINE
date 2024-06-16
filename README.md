@@ -1,8 +1,19 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine/img/gui/portproton.svg" width="64">
   <h1 align="center">PortProton</h1>
-  <p align="center">Project designed to make it easy and convenient to run Windows games on Linux for both beginners and advanced users.
-The project strives to make launching games (and other software) as simple as possible, but at the same time provides flexible settings for advanced users.</p>
+  <a href="https://github.com/Castro-Fidel/PortProton_ALT/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/Castro-Fidel/PortWINE" alt="GitHub License">
+  </a>
+  <img src="https://img.shields.io/flathub/downloads/ru.linux_gaming.PortProton?style=flat&logo=flathub" alt="Flathub Downloads">
+  <a href="https://discord.gg/FTaheP99wE">
+    <img src="https://img.shields.io/discord/378683352946835456?logo=discord" alt="Discord">
+  </a>
+  <img src="https://img.shields.io/youtube/channel/subscribers/UCbI8OJx2D3q-4QKt4LffXTw?style=flat&logo=youtube" alt="YouTube Channel Subscribers">
+  <br/>
+  <p align="center">
+    A project designed to make running Windows games on Linux easy and convenient for both beginners and advanced users.<br>
+    The project aims to simplify the process of launching games (and other software) while also providing flexible settings for experienced users.
+  </p>
 </div>
 
 # **Readme Language**
@@ -77,6 +88,12 @@ sudo dnf copr enable boria138/portproton
 sudo dnf install portproton
 ```
 
+* **FlatHub**
+
+```sh
+flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+flatpak install flathub ru.linux_gaming.PortProton
+```
 
 ## Universal (manual) installation
 
@@ -185,11 +202,3 @@ sudo xbps-install -Su void-repo-multilib
 sudo xbps-install -S bash wget icoutils yad bubblewrap zstd cabextract gzip tar xz openssl desktop-file-utils curl dbus freetype xdg-utils
 gdk-pixbuf noto-fonts-ttf nss xrandr lsof mesa-demos ImageMagick Vulkan-Tools libgcc alsa-plugins-32bit libX11-32bit freetype-32bit libglvnd-32bit libgpg-error-32bit nss-32bit openssl-32bit vulkan-loader vulkan-loader-32bit
 ```
-
-## Contacts
-
-<p>
-    <a href="https://discord.gg/FTaheP99wE">
-        <img src="https://img.shields.io/discord/378683352946835456?logo=discord"
-            alt="chat on Discord"></a>
-</p>
