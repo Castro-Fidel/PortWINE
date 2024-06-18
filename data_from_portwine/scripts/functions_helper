@@ -156,11 +156,12 @@ create_new_dir () {
 }
 
 try_force_link_file () {
-    if [ ! -f "$1" ] ; then :
+    if [ ! -f "$1" ] ; then print_warning "file not found for link: $1"
     elif [ -z "$2" ] ; then print_error "no way to link file $1"
     else
+        try_remove_file "$2"
         ln -s -f -r "$1" "$2"
-        [ "$?" != 0 ] && print_error "failed to link file $1 to $2" || return 0
+        return 0
     fi
     return 1
 }
@@ -197,7 +198,6 @@ check_process () {
 export -f check_process
 
 try_download () {
-    local filename="$(basename "$1")"
     local dest="$2"
     local silent="false"
     local no_mirror="false"
@@ -208,6 +208,13 @@ try_download () {
         no_mirror)
                 no_mirror=true
     esac
+
+    if [[ -n "${PW_AUTOINSTALL_EXE}" ]] \
+    && [[ "$no_mirror" == "true" ]] ; then
+        local filename="$(basename "${PW_AUTOINSTALL_EXE}")"
+    else
+        local filename="$(basename "$1")"
+    fi
 
     if [[ "${MIRROR}" == CDN ]] \
     && [[ "$no_mirror" != "true" ]]
@@ -1107,7 +1114,7 @@ check_dirs_and_files_in_pfx () {
         LN_FONTS="arialbd.ttf courbd.ttf georgia.ttf micross.ttf msyh.ttf simsun.ttc arial.ttf cour.ttf malgun.ttf msgothic.ttc nirmala.ttf times.ttf"
         for link_font in $LN_FONTS ; do
             if [[ ! -f "${WINEPREFIX}/drive_c/windows/Fonts/${link_font}" ]] ; then
-                try_force_link_file "${WINEDIR}/share/fonts/${link_font}" "${WINEPREFIX}/drive_c/windows/Fonts/"
+                try_force_link_file "${WINEDIR}/share/fonts/${link_font}" "${WINEPREFIX}/drive_c/windows/Fonts/${link_font}"
             fi
         done
 
@@ -1263,15 +1270,6 @@ pw_init_db () {
             check_variables PW_USE_NVAPI_AND_DLSS "1"
             check_variables PW_USE_FAKE_DLSS "0"
             check_variables PW_USE_RAY_TRACING "1"
-        fi
-
-        if grep "ru" "${PORT_WINE_TMP_PATH}/PortProton_loc" &>/dev/null ; then
-            for chk_lang_and_uname in "steam_emu.ini" "steam_api.ini" "steam_api64.ini" ; do
-                if [[ -f "${PATH_TO_GAME}/${chk_lang_and_uname}" ]] ; then
-                    sed -i "s/Language=english/Language=russian/" "${PATH_TO_GAME}/${chk_lang_and_uname}"
-                    sed -i "/UserName=/c\UserName=${USER}" "${PATH_TO_GAME}/${chk_lang_and_uname}"
-                fi
-            done
         fi
     fi
 
@@ -1641,10 +1639,15 @@ start_portwine () {
     fi
 
     pw_wineboot () {
-        LIST_NATIVE_WINE_DLL="winevulkan ir50_32 atl100 ntdll wined3d vulkan-1 shell32 dxgi d3d8 d3d9 d3d10core d3d11 d3d12 d3d12core"
+        LIST_NATIVE_WINE_DLL="winevulkan ir50_32 wined3d vulkan-1 dxgi d3d8 d3d9 d3d10core d3d11 d3d12 d3d12core"
         for change_wine_dll in $LIST_NATIVE_WINE_DLL ; do
-            try_force_link_file "${WINEDIR}/lib64/wine/x86_64-windows/${change_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-            try_force_link_file "${WINEDIR}/lib/wine/i386-windows/${change_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+            try_force_link_file "${WINEDIR}/lib64/wine/x86_64-windows/${change_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${change_wine_dll}.dll"
+            try_force_link_file "${WINEDIR}/lib/wine/i386-windows/${change_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${change_wine_dll}.dll"
+        done
+
+        for change_wine_dll in atl100 ntdll shell32 ; do
+            try_copy_file "${WINEDIR}/lib64/wine/x86_64-windows/${change_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${change_wine_dll}.dll"
+            try_copy_file "${WINEDIR}/lib/wine/i386-windows/${change_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${change_wine_dll}.dll"
         done
 
         print_info "Used wineboot $@ for prefix: ${PW_PREFIX_NAME}"
@@ -1699,11 +1702,7 @@ start_portwine () {
             pw_wineboot -r
         fi
     fi
-    if grep 'xapofx1_' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" &>/dev/null ; then
-        sed -i '/xapofx1_/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
-        sed -i '/x3daudio/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
-        sed -i '/xaudio2/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
-    fi
+
     echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
 
     if [[ "${PW_NO_ESYNC}" == 1 ]]
@@ -1800,18 +1799,18 @@ start_portwine () {
 
     export DXVK_ENABLE_NVAPI=1
     if [[ "${PW_USE_FAKE_DLSS}" == 1 ]] && [[ -d "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/" ]] ; then
-        try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-        try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.ini" "${WINEPREFIX}/drive_c/windows/system32/"
+        try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
+        try_force_link_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.ini" "${WINEPREFIX}/drive_c/windows/system32/nvngx.ini"
         enabled_fake_nvidia_videocard old
         var_winedlloverride_update "nvapi,nvapi64,nvngx=n;_nvngx=;nvcuda=b"
     elif [[ "${PW_USE_NVAPI_AND_DLSS}" == 1 ]] ; then
         FIND_NVNGX="$(dirname $(find /usr/* -type f -name "nvngx.dll" 2>/dev/null | head -n 1 | awk '{print $1}'))"
         if [[ ! -z "$FIND_NVNGX" ]] ; then
-            try_force_link_file "${FIND_NVNGX}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-            try_force_link_file "${FIND_NVNGX}/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_force_link_file "${FIND_NVNGX}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
+            try_force_link_file "${FIND_NVNGX}/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll"
         else
-            try_force_link_file "${PW_PLUGINS_PATH}/nvngx/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-            try_force_link_file "${PW_PLUGINS_PATH}/nvngx/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_force_link_file "${PW_PLUGINS_PATH}/nvngx/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
+            try_force_link_file "${PW_PLUGINS_PATH}/nvngx/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll"
         fi
         enabled_fake_nvidia_videocard 0
         var_winedlloverride_update "nvngx,_nvngx,nvapi,nvapi64=n;nvcuda=b"
@@ -1953,8 +1952,8 @@ start_portwine () {
         # try link d3d extras libs
         PATH_TO_D3DEXTRAS="${PW_PLUGINS_PATH}/d3d_extras"
         for d3d_extras_from_plugins in $D3D_EXTRAS_LIBS ; do
-            try_force_link_file "${PATH_TO_D3DEXTRAS}/x64/${d3d_extras_from_plugins}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
-            try_force_link_file "${PATH_TO_D3DEXTRAS}/x32/${d3d_extras_from_plugins}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+            try_force_link_file "${PATH_TO_D3DEXTRAS}/x64/${d3d_extras_from_plugins}.dll" "${WINEPREFIX}/drive_c/windows/system32/${d3d_extras_from_plugins}.dll"
+            try_force_link_file "${PATH_TO_D3DEXTRAS}/x32/${d3d_extras_from_plugins}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${d3d_extras_from_plugins}.dll"
             var_winedlloverride_update "${d3d_extras_from_plugins}=n"
             if [[ -z "$(grep "${d3d_extras_from_plugins}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log")" ]] ; then
                 echo "${d3d_extras_from_plugins}" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
@@ -1962,19 +1961,19 @@ start_portwine () {
         done
     else
         for d3d_extras_from_plugins in $D3D_EXTRAS_LIBS ; do
-            try_force_link_file "${WINEDIR}/lib/wine/i386-windows/${d3d_extras_from_plugins}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-            try_force_link_file "${WINEDIR}/lib64/wine/x86_64-windows/${d3d_extras_from_plugins}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_force_link_file "${WINEDIR}/lib/wine/i386-windows/${d3d_extras_from_plugins}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${d3d_extras_from_plugins}.dll"
+            try_force_link_file "${WINEDIR}/lib64/wine/x86_64-windows/${d3d_extras_from_plugins}.dll" "${WINEPREFIX}/drive_c/windows/system32/${d3d_extras_from_plugins}.dll"
         done
     fi
 
     # fix physx
     PHYSX_PATH="${WINEPREFIX}/drive_c/Program Files (x86)/NVIDIA Corporation/PhysX/Common"
     for physx_dll in PhysXDevice PhysXLoader PhysXUpdateLoader ; do
-        try_force_link_file "${PHYSX_PATH}/${physx_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-        try_force_link_file "${PHYSX_PATH}/${physx_dll}64.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+        try_force_link_file "${PHYSX_PATH}/${physx_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${physx_dll}.dll"
+        try_force_link_file "${PHYSX_PATH}/${physx_dll}64.dll" "${WINEPREFIX}/drive_c/windows/system32/${physx_dll}64.dll"
     done
-    try_force_link_file "${PHYSX_PATH}/cudart32_65.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-    try_force_link_file "${PHYSX_PATH}/cudart64_65.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+    try_force_link_file "${PHYSX_PATH}/cudart32_65.dll" "${WINEPREFIX}/drive_c/windows/syswow64/cudart32_65.dll"
+    try_force_link_file "${PHYSX_PATH}/cudart64_65.dll" "${WINEPREFIX}/drive_c/windows/system32/cudart64_65.dll"
 
     # 3D API
     unset CP_VKD3D_FILES CP_DXVK_FILES CP_D8VK_FILES CP_DGV2_FILES CP_WINE_FILES
@@ -2074,7 +2073,7 @@ start_portwine () {
 
     # DGVOODOO2 enable:
     if [[ "${PW_DGVOODOO2}" == "1" ]] ; then
-        print_info "Try copy native DGVOODOO2 files..."
+        print_info "Try create symlink DGVOODOO2 files..."
         PATH_TO_DGV2_FILES="${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}"
         CP_DGV2_FILES="ddraw d3dimm d3d8 d3d9 glide glide2x glide3x"
         try_copy_file "${PATH_TO_DGV2_FILES}/dgVoodoo.conf" "${WINEPREFIX}/drive_c/windows/syswow64/"
@@ -2083,9 +2082,9 @@ start_portwine () {
             rm_from_var CP_DGV2_FILES "d3d8 d3d9"
             rm_from_var CP_WINE_FILES "ddraw"
         else
-            try_force_link_file "${PATH_TO_DGV2_FILES}/x64/d3d9.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_force_link_file "${PATH_TO_DGV2_FILES}/x64/d3d9.dll" "${WINEPREFIX}/drive_c/windows/system32/d3d9.dll"
             try_remove_file "${WINEPREFIX}/drive_c/windows/system32/dgVoodoo.conf"
-            try_force_link_file "${DGV2CONF}" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_force_link_file "${DGV2CONF}" "${WINEPREFIX}/drive_c/windows/system32/dgVoodoo.conf"
             case "${PW_VULKAN_USE}" in
                 0)
                     rm_from_var CP_WINE_FILES "ddraw d3d8 d3d9"
@@ -2116,7 +2115,7 @@ start_portwine () {
             esac
         fi
         for wine_dgv2_dll in $CP_DGV2_FILES ; do
-            try_force_link_file "${PATH_TO_DGV2_FILES}/x32/${wine_dgv2_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
+            try_force_link_file "${PATH_TO_DGV2_FILES}/x32/${wine_dgv2_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dgv2_dll}.dll"
             var_winedlloverride_update "${wine_dgv2_dll}=n"
         done
         # DGVOODOO2 settings:
@@ -2158,12 +2157,12 @@ start_portwine () {
     done
 
     if [[ ! -z "$CP_DXVK_FILES" ]] ; then
-        print_info "Try copy native DXVK files..."
+        print_info "Try create symlink DXVK files..."
         check_variables DXVK_HDR "0"
         for wine_dxvk_dll in $CP_DXVK_FILES ; do
             if [[ -f "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll"  ]] ; then
-                try_force_link_file "${PATH_TO_DXVK_FILES}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-                try_force_link_file "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+                try_force_link_file "${PATH_TO_DXVK_FILES}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
+                try_force_link_file "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
                 var_winedlloverride_update "${wine_dxvk_dll}=n"
             fi
         done
@@ -2174,18 +2173,18 @@ start_portwine () {
 
     if [[ "$DXVK_ENABLE_NVAPI" == "1" ]] ; then
         print_info "Try copy NVAPI files..."
-        try_force_link_file "${PATH_TO_DXVK_FILES}/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/" || \
-        try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-        try_force_link_file "${PATH_TO_DXVK_FILES}/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/" || \
-        try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+        try_force_link_file "${PATH_TO_DXVK_FILES}/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/nvapi.dll" || \
+        try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/nvapi.dll"
+        try_force_link_file "${PATH_TO_DXVK_FILES}/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvapi64.dll" || \
+        try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvapi64.dll"
     fi
 
     if [[ ! -z "$CP_VKD3D_FILES" ]] ; then
-        print_info "Try copy native VKD3D files..."
+        print_info "Try create symlink VKD3D files..."
         for wine_vkd3d_dll in $CP_VKD3D_FILES ; do
             if [[ -f "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" ]] ; then
-                try_force_link_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-                try_force_link_file "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+                try_force_link_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
+                try_force_link_file "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
                 var_winedlloverride_update "${wine_vkd3d_dll}=n"
             fi
         done
@@ -2194,17 +2193,17 @@ start_portwine () {
     fi
 
     if [[ ! -z "$CP_D8VK_FILES" ]] ; then
-        print_info "Try copy native D8VK files..."
+        print_info "Try create symlink D8VK files..."
         PATH_TO_D8VK_FILES="${PW_VULKAN_DIR}/d8vk-${D8VK_VER}"
         for wine_d8vk_dll in $CP_D8VK_FILES ; do
-            try_force_link_file "${PATH_TO_D8VK_FILES}/x32/${wine_d8vk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/"
-            try_force_link_file "${PATH_TO_D8VK_FILES}/x64/${wine_d8vk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/"
+            try_force_link_file "${PATH_TO_D8VK_FILES}/x32/${wine_d8vk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_d8vk_dll}.dll"
+            try_force_link_file "${PATH_TO_D8VK_FILES}/x64/${wine_d8vk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_d8vk_dll}.dll"
             var_winedlloverride_update "${wine_d8vk_dll}=n"
         done
     fi
 
     if [[ "$CP_GALLIUM_NINE_FILES" == "d3d9" ]] ; then
-        print_info "Try copy native GALLIUM_NINE files..."
+        print_info "Try create symlink GALLIUM_NINE files..."
         PATH_TO_GALLIUM_NINE_FILES="${PW_PLUGINS_PATH}/gallium_nine_v.${PW_GALLIUM_NINE_VER}"
         try_force_link_file "${PATH_TO_GALLIUM_NINE_FILES}/lib32/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/syswow64/d3d9.dll"
         try_force_link_file "${PATH_TO_GALLIUM_NINE_FILES}/lib64/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/system32/d3d9.dll"
@@ -2236,8 +2235,8 @@ start_portwine () {
 
     if [[ ! -d "${WINEPREFIX}/drive_c/vrclient/bin" ]] ; then
         create_new_dir "${WINEPREFIX}/drive_c/vrclient/bin"
-        try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/vrclient.dll "${WINEPREFIX}/drive_c/vrclient/bin/"
-        try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/vrclient_x64.dll "${WINEPREFIX}/drive_c/vrclient/bin/"
+        try_force_link_file "${WINEDIR}"/lib/wine/i386-windows/vrclient.dll "${WINEPREFIX}/drive_c/vrclient/bin/vrclient.dll"
+        try_force_link_file "${WINEDIR}"/lib64/wine/x86_64-windows/vrclient_x64.dll "${WINEPREFIX}/drive_c/vrclient/bin/vrclient_x64.dll"
     fi
 
     if [[ "${PW_USE_SHADER_CACHE}" == "1" ]] ; then
@@ -2394,6 +2393,16 @@ start_portwine () {
         export DXVK_CONFIG_FILE="${PATH_TO_GAME}/dxvk.conf"
     fi
 
+    if  [[ "$LANGUAGE" == "ru" ]] ; then
+        for chk_lang_and_uname in "steam_emu.ini" "steam_api.ini" "steam_api64.ini" "SteamConfig.ini" ; do
+            if [[ -f "${PATH_TO_GAME}/${chk_lang_and_uname}" ]] ; then
+                sed -i "/Language/c\Language=russian/" "${PATH_TO_GAME}/${chk_lang_and_uname}"
+                sed -i "/UserName/c\UserName=${USER}" "${PATH_TO_GAME}/${chk_lang_and_uname}"
+                sed -i "/PlayerName/c\PlayerName=${USER}" "${PATH_TO_GAME}/${chk_lang_and_uname}"
+            fi
+        done
+    fi
+
     if [[ "${PW_DISABLE_COMPOSITING}" == "1" ]] \
     && ! check_gamescope_session
     then
@@ -2527,12 +2536,13 @@ pw_yad_set_form () {
 
 pw_yad_form_vulkan () {
     if [[ "$(<"${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan")" != "" ]] ; then
-        sed -i 's/$/\;/' "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan"
-        YAD_FORM_VULKAN=$(<"${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan")
+        YAD_FORM_VULKAN=$(sed 's/$/\;/' "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan")
         VULKAN_MOD=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $1}')
         PW_WINE_VER=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $2}')
         PW_PREFIX_NAME=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $3}' | sed -e s/[[:blank:]]/_/g)
-        if [[ -z "${PW_PREFIX_NAME}" ]] || [[ ! -z "$(echo "${PW_PREFIX_NAME}" | grep -E '^_.*' )" ]] ; then
+        if [[ -z "${PW_PREFIX_NAME}" ]] \
+        || [[ ! -z "$(echo "${PW_PREFIX_NAME}" | grep -E '^_.*' )" ]]
+        then
             PW_PREFIX_NAME="DEFAULT"
         else
             PW_PREFIX_NAME="${PW_PREFIX_NAME^^}"
@@ -2545,7 +2555,7 @@ portwine_launch () {
     start_portwine
     PORTWINE_MSI=$(basename "${portwine_exe}" | grep .msi)
     PORTWINE_BAT=$(basename "${portwine_exe}" | grep .bat)
-    if [[ ! -z "${PW_VIRTUAL_DESKTOP}" && "${PW_VIRTUAL_DESKTOP}" == "1" ]] ; then
+    if [[ "${PW_VIRTUAL_DESKTOP}" == "1" ]] ; then
         pw_run explorer "/desktop=PortProton,${PW_SCREEN_RESOLUTION}" ${WINE_WIN_START} "$portwine_exe"
     elif [ ! -z "${PORTWINE_MSI}" ]; then
         pw_run msiexec /i "$portwine_exe"
@@ -3202,7 +3212,7 @@ A brief instruction:
 
     "${pw_yad}" --notebook --key="$KEY_EDIT_DB_GUI" --title "$(eval_gettext "EDIT DB")" --text-align=center \
     --text "$(eval_gettext "Change settings in database file for") <b>${PORTWINE_DB}</b>\n $(eval_gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand --center \
     --tab="$(eval_gettext "MAIN")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
     --tab="$(eval_gettext "ADVANCED")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
     --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
@@ -3382,7 +3392,7 @@ fi
     1> "${PORT_WINE_TMP_PATH}/tmp_yad_cas_set" 2>/dev/null &
 
     "${pw_yad}" --paned --key="$KEY_FX_GUI" --sensitive --gui-type=settings --gui-type-height=5 --gui-type-width=5 --title="vkBasalt" \
-    --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+    --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --center \
     --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
     --button="$(eval_gettext "DISABLE") VKBASALT"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Disable vkBasalt and go to the previous menu")":180 \
     --button="$(eval_gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Save the current changes, and go to the previous menu")":182 2>/dev/null
@@ -3543,7 +3553,7 @@ fi
         ${ADD_GUI_MH_FPS} 1> "${PORT_WINE_TMP_PATH}/tmp_yad_mh_fps_limit" 2>/dev/null &
     IFS=$old_IFS
 
-    "${pw_yad}" --paned --key="$KEY_MH_GUI" --title="MangoHud" \
+    "${pw_yad}" --paned --key="$KEY_MH_GUI" --title="MangoHud" --center \
         --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --sensitive --gui-type=settings --gui-type-height=5 --gui-type-width=5 \
         --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
         --button="$(eval_gettext "DISABLE") MANGOHUD"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Disable MangoHud and go to the previous menu")":182 \
@@ -3677,7 +3687,7 @@ fi
     --field="${CHKBOX_SPACE}ANTIALIASING!$(eval_gettext "Forced antialiasing in Direct3D and Glide games") :CB" "${PW_DGV2_ANTIALIASING}!disabled!2!4!8" \
     1> "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set_cb" 2>/dev/null &
 
-    "${pw_yad}" --paned --key=$KEY_DGV2_GUI --height="350" --title="dgVoodoo2" \
+    "${pw_yad}" --paned --key=$KEY_DGV2_GUI --height="350" --title="dgVoodoo2" --center \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --sensitive --gui-type=settings --gui-type-height=5 --gui-type-width=5 \
     --button="$(eval_gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Cancel the current changes and return to the previous menu")":1 \
     --button="$(eval_gettext "DISABLE") DGVOODOO2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Disable dgVoodoo2 and go to the previous menu")":162 \
@@ -3743,7 +3753,7 @@ fi
 
     output_yad_gamescope="$("${pw_yad}" --title "GAMESCOPE" --text-align=center --height="350" \
     --text "$(eval_gettext "Change settings gamescope for") <b>${PORTWINE_DB}</b>\n $(eval_gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand --form \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand --center --form \
     --field="$(eval_gettext "Add arguments for GAMESCOPE:")!$(eval_gettext "
 <b>-W, -H:</b> set the resolution used by gamescope. Resizing the gamescope window will update these settings. Ignored in embedded mode. If -H is specified but -W isn't, a 16:9 aspect ratio is assumed. Defaults to 1280×720.
 <b>-w, -h:</b> set the resolution used by the game. If -h is specified but -w isn't, a 16:9 aspect ratio is assumed. Defaults to the values specified in -W and -H.
