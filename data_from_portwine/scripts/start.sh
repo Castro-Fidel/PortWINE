@@ -29,7 +29,9 @@ MISSING_DESKTOP_FILE=0
 
 if [[ -f "$1" ]] ; then
     portwine_exe="$(realpath "$1")"
-elif [[ "$1" == *.exe ]] ; then
+elif [[ -f "$OLDPWD/$1" ]] && [[ "$1" == *.exe ]] ; then
+    portwine_exe="$(realpath "$OLDPWD/$1")"
+elif  [[ ! -z "$1" ]] && [[ ! -f "$OLDPWD/$1" ]] && [[ ! -f "$OLDPWD/$1" ]] ; then
     portwine_exe="$1"
     MISSING_DESKTOP_FILE=1
 fi
