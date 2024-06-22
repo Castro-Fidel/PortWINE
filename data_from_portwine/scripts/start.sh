@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Author: Castro-Fidel (linux-gaming.ru)
-# Development assistants: Cefeiko; Dezert1r; Taz_mania; Anton_Famillianov; gavr; RidBowt; chal55rus; UserDiscord; Boria138; Vano; Akai
+# Development assistants: Cefeiko; Dezert1r; Taz_mania; Anton_Famillianov; gavr; RidBowt; chal55rus; UserDiscord; Boria138; Vano; Akai; Htylol
 # shellcheck disable=SC2140,SC2119,SC2206
 ########################################################################
 echo '
@@ -451,7 +451,9 @@ if [[ -f "${portwine_exe}" ]] ; then
 
         export KEY_START="$RANDOM"
         if [[ "${PW_GUI_START}" == "NOTEBOOK" ]] ; then
-            "${pw_yad}" --plug=$KEY_START --tabnum=1 --form --separator=";" --gui-type=${START_GUI_TYPE_NOTEBOOK} \
+            "${pw_yad}" --plug=$KEY_START --tabnum=1 --form --separator=";" ${START_GUI_TYPE} \
+            --gui-type-box=${START_GUI_TYPE_BOX} --gui-type-layout=${START_GUI_TYPE_LAYOUT_UP} \
+            --gui-type-text=${START_GUI_TYPE_TEXT} --gui-type-images=${START_GUI_TYPE_IMAGE} \
             --image="${PW_ICON_FOR_YAD}" --text-align="center" --text "$PW_COMMENT_DB" \
             --field="3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
             --field="  WINE  : :CB" "${PW_DEFAULT_WINE_USE}" \
@@ -459,6 +461,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             1> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
             "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="${START_GUI_NOTEBOOK_COLUMNS}" --align-buttons --homogeneous-column \
+            --gui-type-layout=${START_GUI_TYPE_LAYOUT_NOTEBOOK} \
             --field="   $(eval_gettext "Base settings")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Edit database file for") ${PORTWINE_DB}":"FBTN" '@bash -c "button_click_start 118"' \
             --field="   vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click_start 120"' \
             --field="   MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)")":"FBTN" '@bash -c "button_click_start 122"' \
@@ -476,6 +479,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             fi
 
             "${pw_yad}" --key=$KEY_START --notebook --active-tab=${TAB_START} \
+            --gui-type=settings-notebook \
             --width="${PW_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" --center \
             --title "PortProton-${install_ver} (${scripts_install_ver})" --expand \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
@@ -495,7 +499,9 @@ if [[ -f "${portwine_exe}" ]] ; then
             pw_yad_form_vulkan
 
         elif [[ "${PW_GUI_START}" == "PANED" ]] ; then
-            "${pw_yad}" --plug=$KEY_START --tabnum=1 --form --separator=";" --gui-type=${START_GUI_TYPE_PANED} \
+            "${pw_yad}" --plug=$KEY_START --tabnum=1 --form --separator=";" ${START_GUI_TYPE} \
+            --gui-type-box=${START_GUI_TYPE_BOX} --gui-type-layout=${START_GUI_TYPE_LAYOUT_UP} \
+            --gui-type-text=${START_GUI_TYPE_TEXT} --gui-type-images=${START_GUI_TYPE_IMAGE} \
             --image="${PW_ICON_FOR_YAD}" --text-align="center" --text "$PW_COMMENT_DB" \
             --field="3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
             --field="  WINE  : :CB" "${PW_DEFAULT_WINE_USE}" \
@@ -503,6 +509,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             1> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
             "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="${START_GUI_PANED_COLUMNS}" \
+            --gui-type-layout=${START_GUI_TYPE_LAYOUT_PANED} \
             --align-buttons --homogeneous-row --homogeneous-column \
             --field="   $(eval_gettext "Base settings")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Edit database file for") ${PORTWINE_DB}":"FBTN" '@bash -c "button_click_start 118"' \
             --field="   vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(eval_gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click_start 120"' \
@@ -512,6 +519,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             2>/dev/null &
 
             "${pw_yad}" --key=$KEY_START --paned --center \
+            --gui-type=settings-paned \
             --width="${PW_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" \
             --title "PortProton-${install_ver} (${scripts_install_ver})" \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
@@ -563,10 +571,12 @@ else
     IFS="$orig_IFS"
     old_IFS=$IFS && IFS="%"
     "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[4]}" --form --columns="$MAIN_GUI_COLUMNS" --homogeneous-column \
+    --gui-type-layout=${MAIN_MENU_GUI_TYPE_LAYOUT} \
     --align-buttons --scroll --separator=" " ${PW_GENERATE_BUTTONS} 2>/dev/null &
     IFS="$orig_IFS"
 
     "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[3]}" --form --columns=3 --align-buttons --separator=";" --homogeneous-column \
+    --gui-type-layout=${MAIN_MENU_GUI_TYPE_LAYOUT} \
     --field="   $(eval_gettext "Reinstall PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_pw_reinstall_pp"' \
     --field="   $(eval_gettext "Remove PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_rm_portproton"' \
     --field="   $(eval_gettext "Update PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_pw_update"' \
@@ -581,6 +591,7 @@ else
     2>/dev/null &
 
     "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[2]}" --form --columns=3 --align-buttons --separator=";" \
+    --gui-type-layout=${MAIN_MENU_GUI_TYPE_LAYOUT} \
     --field="   3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
     --field="   PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
     --field="     WINE  : :CB" "${PW_DEFAULT_WINE_USE}" \
@@ -595,6 +606,7 @@ else
     --field="   $(eval_gettext "Regedit")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(eval_gettext "Run wine regedit")":"FBTN" '@bash -c "button_click WINEREG"' 1> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
     "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[1]}" --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll --homogeneous-column \
+    --gui-type-layout=${MAIN_MENU_GUI_TYPE_LAYOUT} \
     --field="   Dolphin 5.0"!"$PW_GUI_ICON_PATH/dolphin.png"!"$(eval_gettext "Emulator for Nintendo game consoles with high compatibility")":"FBTN" '@bash -c "button_click PW_DOLPHIN"' \
     --field="   MAME"!"$PW_GUI_ICON_PATH/mame.png"!"$(eval_gettext "Multi-arcade emulator that allows you to play old arcade games")":"FBTN" '@bash -c "button_click PW_MAME"' \
     --field="   RetroArch"!"$PW_GUI_ICON_PATH/retroarch.png"!"$(eval_gettext "Multi-platform frontend for emulators with extensive settings")":"FBTN" '@bash -c "button_click PW_RETROARCH"' \
@@ -611,6 +623,7 @@ else
     --field="   Demul"!"$PW_GUI_ICON_PATH/demul.png"!"$(eval_gettext "Emulator for the Sega Dreamcast game console")":"FBTN" '@bash -c "button_click PW_DEMUL"' 2>/dev/null &
 
     "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[0]}" --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll --homogeneous-column \
+    --gui-type-layout=${MAIN_MENU_GUI_TYPE_LAYOUT} \
     --field="   Lesta Game Center"!"$PW_GUI_ICON_PATH/lgc.png"!"":"FBTN" '@bash -c "button_click PW_LGC"' \
     --field="   vkPlay Games Center"!"$PW_GUI_ICON_PATH/mygames.png"!"":"FBTN" '@bash -c "button_click PW_VKPLAY"' \
     --field="   Battle.net Launcher"!"$PW_GUI_ICON_PATH/battle_net.png"!"":"FBTN" '@bash -c "button_click PW_BATTLE_NET"' \
@@ -658,6 +671,7 @@ else
 
     if [[ -z "${PW_ALL_DF}" ]] ; then
         "${pw_yad}" --key=$KEY --notebook --expand \
+        --gui-type=settings-notebook \
         --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
         --auto-close --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
         --title "PortProton-${install_ver} (${scripts_install_ver})" \
@@ -670,6 +684,7 @@ else
         YAD_STATUS="$?"
     else
         "${pw_yad}" --key=$KEY --notebook --expand \
+        --gui-type=settings-notebook \
         --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
         --auto-close --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
         --title "PortProton-${install_ver} (${scripts_install_ver})" \
