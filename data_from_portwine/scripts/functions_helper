@@ -57,6 +57,7 @@ change_locale () {
         [[ ! -f "${pw_yad}" ]] && pw_yad="yad"
         SET_LANG=(
             "${pw_yad}" --list
+            --window-icon="$PW_GUI_ICON_PATH/portproton.svg"
             --title="Select language for PortProton"
             --column="Language" --column=""
             --width=400 --height=200
@@ -2612,6 +2613,7 @@ yad_info () {
         command -v "${pw_yad}" &>/dev/null || fatal "yad not found"
     fi
     "${pw_yad}" --no-wrap --text "$@" --width=400 --height=150 --borders=15 --title "INFO" \
+    --gui-type-layout=${YAD_INFO_GUI_TYPE_LAYOUT} \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/info.svg" \
     --center --text-align=center --fixed \
     --button="$(gettext "OK")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
@@ -2626,6 +2628,7 @@ yad_error () {
         command -v "${pw_yad}" &>/dev/null || fatal "yad not found"
     fi
     "${pw_yad}" --no-wrap --text "$@" --width=400 --height=150 --borders=15 --title "ERROR" \
+    --gui-type-layout=${YAD_INFO_GUI_TYPE_LAYOUT} \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/error.svg" \
     --center --text-align=center --fixed \
     --button="$(gettext "EXIT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
@@ -2654,6 +2657,7 @@ yad_question () {
     fi
     "${pw_yad}" --text "${1}" --width=400 --height=150 --borders=15 --title "$(gettext "Choices")" \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/question.svg" \
+    --gui-type-layout=${YAD_INFO_GUI_TYPE_LAYOUT} \
     --no-wrap --center --text-align=center --fixed \
     --button="$(gettext "CANCEL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
     --button="$(gettext "OK")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null
@@ -2720,9 +2724,9 @@ pw_update_pfx_cover_gui () {
                     PW_TIMER=1
                 fi
         done < "${PORT_WINE_TMP_PATH}/update_pfx_log" | "${pw_yad}" --plug=$PW_KEY_PROGRESS_BAR_UP --tabnum=$TAB_N2 --text-info --tail  2>/dev/null &
-        "${pw_yad}" --plug=$PW_KEY_PROGRESS_BAR_UP --tabnum=$TAB_N1 --picture --filename="${PW_GIF_FILE}" --image-on-top 2>/dev/null &
+        "${pw_yad}" --plug=$PW_KEY_PROGRESS_BAR_UP --tabnum=$TAB_N1 --picture --filename="${PW_GIF_FILE}" 2>/dev/null &
 
-        "${pw_yad}" --notebook --key="$PW_KEY_PROGRESS_BAR_UP" $TAB_PLACE --no-buttons --expand \
+        "${pw_yad}" --notebook --key="$PW_KEY_PROGRESS_BAR_UP" $TAB_PLACE --no-buttons \
         --auto-close --skip-taskbar --width="$PW_GIF_SIZE_X" --height="$PW_GIF_SIZE_Y" $YAD_UNDECORATED \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "PortProton" --tab-pos=bottom --expand 2>/dev/null &
         export PW_YAD_PID_PFX_COVER_UI="$!"
@@ -3148,15 +3152,45 @@ if [[ "${SKIP_EDIT_DB_TEXT_INFO}" != 1 ]] ; then
     export SKIP_EDIT_DB_TEXT_INFO=1
 fi
 
+    case "${PW_VULKAN_USE}" in
+        0)
+            # WineD3D OpenGL
+            VKD3D_CB=DCB
+            DISABLE_EDIT_DB_LIST="PW_VKBASALT PW_VKBASALT_USER_CONF PW_USE_RAY_TRACING PW_USE_OBS_VKCAPTURE
+            "
+            ;;
+        1|2)
+            # Stable or Newest
+            VKD3D_CB=CB
+            ;;
+        3)
+            # Gallium Nine
+            VKD3D_CB=DCB
+            DISABLE_EDIT_DB_LIST="PW_MANGOHUD PW_MANGOHUD_USER_CONF PW_VKBASALT PW_VKBASALT_USER_CONF PW_USE_RAY_TRACING PW_WINE_FULLSCREEN_FSR
+            PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE
+            "
+            ;;
+        4|5|6)
+            # Galliun Zink, Legacy, WineD3D Vulkan
+            VKD3D_CB=DCB
+            DISABLE_EDIT_DB_LIST="PW_USE_RAY_TRACING
+            "
+            ;;
+    esac
+
     unset ADD_CHK_BOX_EDIT_DB
-    for int_to_boole in $PW_EDIT_DB_LIST ; do
+    for int_to_boole in ${PW_EDIT_DB_LIST} ; do
         if [ "${!int_to_boole}" == "1" ]
         then export ${int_to_boole}="TRUE"
         else export ${int_to_boole}="FALSE"
         fi
         TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
         int_to_boole_non_pw="$(echo ${int_to_boole//PW_/} | sed 's/_/ /g')"
-        ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
+        if [[ ! "${PW_VULKAN_USE}" == "1" ]] && [[ ! "${PW_VULKAN_USE}" == "2" ]] \
+        && grep -wo "${int_to_boole}" <<<"${DISABLE_EDIT_DB_LIST}" &>/dev/null
+        then ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:D${THEME_CHKBOX}%${!int_to_boole}%"
+        else ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
+        fi
     done
 
     old_IFS=$IFS
@@ -3223,7 +3257,7 @@ A brief instruction:
     export SKIP_CHECK_UPDATES=1
 
     case "$YAD_STATUS" in
-      1|252)
+        1|252)
                 /usr/bin/env bash -c ${pw_full_command_line[*]} &
                 exit 0
                 ;;
@@ -3236,7 +3270,7 @@ A brief instruction:
 
     output_yad_edit_db=($(<"${PORT_WINE_TMP_PATH}/tmp_output_yad_edit_db"))
     bool_from_yad=0
-    for boole_to_int in $PW_EDIT_DB_LIST ; do
+    for boole_to_int in ${PW_EDIT_DB_LIST} ; do
         export ${boole_to_int}=${output_yad_edit_db[$bool_from_yad]}
         if [ "${!boole_to_int}" == "TRUE" ]
         then export ${boole_to_int}="1"
@@ -3263,7 +3297,7 @@ A brief instruction:
         export PW_WINE_CPU_TOPOLOGY="disabled"
     fi
 
-    edit_db_from_gui $PW_EDIT_DB_LIST LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY GAMESCOPE_ARGS \
+    edit_db_from_gui ${PW_EDIT_DB_LIST} LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY GAMESCOPE_ARGS \
     PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PW_LOCALE_SELECT
 
     if [[ -z "$MANGOHUD_CONFIG" ]] ; then
@@ -3391,7 +3425,8 @@ fi
     --field="AMD FidelityFX - Contrast Adaptive Sharpening"!"$(gettext "AMD FidelityFX - CAS is designed to dramatically improve texture sharpness without additional modification settings for games, with minimal loss of performance. (For older games it is recommended to set value = 100)")":SCL "${VKBASALT_FFX_CAS_GUI}" \
     1> "${PORT_WINE_TMP_PATH}/tmp_yad_cas_set" 2>/dev/null &
 
-    "${pw_yad}" --paned --key="$KEY_FX_GUI" --sensitive --gui-type=settings --gui-type-height=5 --gui-type-width=5 --title="vkBasalt" \
+    "${pw_yad}" --paned --key="$KEY_FX_GUI" --sensitive --title="vkBasalt" \
+    --gui-type=settings-paned \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --center \
     --button="$(gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Cancel the current changes and return to the previous menu")":1 \
     --button="$(gettext "DISABLE") VKBASALT"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Disable vkBasalt and go to the previous menu")":180 \
@@ -3664,15 +3699,26 @@ if [[ "${SKIP_DGVOODOO2_TEXT_INFO}" != 1 ]] ; then
     export SKIP_DGVOODOO2_TEXT_INFO=1
 fi
 
+    case "${PW_VULKAN_USE}" in
+        0|3|4|5|6)
+            DISABLE_DGV2_LIST="PW_DGV2_USE_DX12
+            "
+            ;;
+    esac
+
     unset ADD_CHK_BOX_DGV2
-    for int_to_boole in $PW_DGV2_LIST ; do
+    for int_to_boole in ${PW_DGV2_LIST} ; do
         if [ "${!int_to_boole}" == "1" ]
         then export ${int_to_boole}="TRUE"
         else export ${int_to_boole}="FALSE"
         fi
         TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
-        int_to_boole_non_pw="$(echo ${int_to_boole} | sed 's/^PW_DGV2//' | sed 's/_/ /g' )"
-        ADD_CHK_BOX_DGV2+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
+        int_to_boole_non_pw="$(echo ${int_to_boole//PW_DGV2/} | sed 's/_/ /g' )"
+        if [[ ! "${PW_VULKAN_USE}" == "1" ]] && [[ ! "${PW_VULKAN_USE}" == "2" ]] \
+        && grep -wo "${int_to_boole}" <<<"${DISABLE_DGV2_LIST}" &>/dev/null
+        then ADD_CHK_BOX_DGV2+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:D${THEME_CHKBOX}%${!int_to_boole}%"
+        else ADD_CHK_BOX_DGV2+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
+        fi
     done
 
     old_IFS=$IFS
@@ -3715,7 +3761,7 @@ fi
 
     output_yad_dgv2=($(<"${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set"))
     bool_from_yad=0
-    for boole_to_int in $PW_DGV2_LIST ; do
+    for boole_to_int in ${PW_DGV2_LIST} ; do
         export ${boole_to_int}=${output_yad_dgv2[$bool_from_yad]}
         if [ "${!boole_to_int}" == "TRUE" ]
         then export ${boole_to_int}="1"
@@ -3729,7 +3775,7 @@ fi
     PW_DGV2_FILTERING="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $1}')"
     PW_DGV2_ANTIALIASING="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $2}')"
 
-    edit_db_from_gui $PW_DGV2_LIST PW_DGVOODOO2 PW_DGV2_FILTERING PW_DGV2_ANTIALIASING
+    edit_db_from_gui ${PW_DGV2_LIST} PW_DGVOODOO2 PW_DGV2_FILTERING PW_DGV2_ANTIALIASING
 
     export SKIP_CHECK_UPDATES=1
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
