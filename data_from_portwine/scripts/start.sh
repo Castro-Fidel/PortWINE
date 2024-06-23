@@ -52,9 +52,9 @@ export PORT_SCRIPTS_PATH PORT_WINE_PATH
 export TEXTDOMAIN="PortProton"
 export TEXTDOMAINDIR="${PORT_WINE_PATH}/data/locales"
 
-if [[ -d "$TEXTDOMAINDIR" ]] && command -v gettext &>/dev/null ; then
-:
-else
+if [[ ! -d "$TEXTDOMAINDIR" ]] \
+&& ! command -v gettext &>/dev/null
+then
     gettext() { echo "$1"; }
 fi
 
