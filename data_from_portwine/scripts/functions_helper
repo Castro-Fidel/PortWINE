@@ -50,10 +50,8 @@ change_locale () {
     fi
 
     if [[ ! -z "${LANGUAGE}" ]] \
-    && [[ -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]] ; then
-        echo ""
-    else
-
+    && [[ ! -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]]
+    then
         [[ ! -f "${pw_yad}" ]] && pw_yad="yad"
         SET_LANG=(
             "${pw_yad}" --list
@@ -76,14 +74,24 @@ change_locale () {
         then LANGUAGE=${SET_LANG}
         else exit 1
         fi
+
+
     fi
     export LANGUAGE
 
-    if [[ "$LANGUAGE" == "ru" ]] && check_start_from_steam ; then
-        export LC_ALL=ru_RU.UTF-8
-    elif [[ "$LANGUAGE" == "es" ]] && check_start_from_steam ; then
-        export LC_ALL=es_ES.UTF-8
-    fi
+    case "$LANGUAGE" in
+        ru) 
+            export LC_ALL=ru_RU.UTF-8
+            export FULL_LN="russian"
+            ;;
+        es)
+            export LC_ALL=es_ES.UTF-8
+            export FULL_LN="spanish"
+            ;;
+         *) 
+            export FULL_LN="english"
+            ;;
+    esac
 }
 export -f change_locale
 
@@ -2396,15 +2404,13 @@ start_portwine () {
         export DXVK_CONFIG_FILE="${PATH_TO_GAME}/dxvk.conf"
     fi
 
-    if  [[ "$LANGUAGE" == "ru" ]] ; then
-        for chk_lang_and_uname in "steam_emu.ini" "steam_api.ini" "steam_api64.ini" "SteamConfig.ini" ; do
-            if [[ -f "${PATH_TO_GAME}/${chk_lang_and_uname}" ]] ; then
-                sed -i "/Language/c\Language=russian" "${PATH_TO_GAME}/${chk_lang_and_uname}"
-                sed -i "/UserName/c\UserName=${USER}" "${PATH_TO_GAME}/${chk_lang_and_uname}"
-                sed -i "/PlayerName/c\PlayerName=${USER}" "${PATH_TO_GAME}/${chk_lang_and_uname}"
-            fi
-        done
-    fi
+    for chk_lang_and_uname in "steam_emu.ini" "steam_api.ini" "steam_api64.ini" "SteamConfig.ini" ; do
+        if [[ -f "${PATH_TO_GAME}/${chk_lang_and_uname}" ]] ; then
+            sed -i "/Language/c\Language=${FULL_LN}" "${PATH_TO_GAME}/${chk_lang_and_uname}"
+            sed -i "/UserName/c\UserName=${USER}" "${PATH_TO_GAME}/${chk_lang_and_uname}"
+            sed -i "/PlayerName/c\PlayerName=${USER}" "${PATH_TO_GAME}/${chk_lang_and_uname}"
+        fi
+    done
 
     if [[ "${PW_DISABLE_COMPOSITING}" == "1" ]] \
     && ! check_gamescope_session
