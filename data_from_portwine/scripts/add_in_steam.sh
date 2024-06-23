@@ -11,7 +11,11 @@ fi
 
 NOSTAPPNAME="$name_desktop"
 NOSTEXEPATH="\"${STEAM_SCRIPTS}/${name_desktop}.sh\""
-NOSTSTDIR="\"${PATH_TO_GAME}\""
+# NOSTSTDIR="\"${PATH_TO_GAME}\""
+if [[ -z "${NOSTSTDIR}" ]] ; then
+	NOSTSTDIR="\"${STEAM_SCRIPTS}\""
+fi
+
 # icon
 NOSTICONPATH="${PORT_WINE_PATH}/data/img/${name_desktop}.png"
 # IsHidden
