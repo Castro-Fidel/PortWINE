@@ -462,6 +462,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             1> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
             "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="${START_GUI_NOTEBOOK_COLUMNS}" --align-buttons --homogeneous-column \
+            --gui-type-layout=${START_GUI_TYPE_LAYOUT_NOTEBOOK} \
             --field="   $(gettext "Base settings")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Edit database file for") ${PORTWINE_DB}":"FBTN" '@bash -c "button_click_start 118"' \
             --field="   vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click_start 120"' \
             --field="   MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)")":"FBTN" '@bash -c "button_click_start 122"' \
@@ -576,6 +577,7 @@ else
     IFS="$orig_IFS"
 
     "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[3]}" --form --columns=3 --align-buttons --separator=";" --homogeneous-column \
+    --gui-type-layout=${MAIN_MENU_GUI_TYPE_LAYOUT} \
     --field="   $(gettext "Reinstall PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_pw_reinstall_pp"' \
     --field="   $(gettext "Remove PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_rm_portproton"' \
     --field="   $(gettext "Update PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_pw_update"' \
@@ -605,6 +607,7 @@ else
     --field="   $(gettext "Regedit")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Run wine regedit")":"FBTN" '@bash -c "button_click WINEREG"' 1> "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
     "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[1]}" --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll --homogeneous-column \
+    --gui-type-layout=${MAIN_MENU_GUI_TYPE_LAYOUT} \
     --field="   Dolphin 5.0"!"$PW_GUI_ICON_PATH/dolphin.png"!"$(gettext "Emulator for Nintendo game consoles with high compatibility")":"FBTN" '@bash -c "button_click PW_DOLPHIN"' \
     --field="   MAME"!"$PW_GUI_ICON_PATH/mame.png"!"$(gettext "Multi-arcade emulator that allows you to play old arcade games")":"FBTN" '@bash -c "button_click PW_MAME"' \
     --field="   RetroArch"!"$PW_GUI_ICON_PATH/retroarch.png"!"$(gettext "Multi-platform frontend for emulators with extensive settings")":"FBTN" '@bash -c "button_click PW_RETROARCH"' \
