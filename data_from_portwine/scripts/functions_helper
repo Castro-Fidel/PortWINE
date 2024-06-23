@@ -2644,6 +2644,7 @@ yad_error_download () {
     fi
     "${pw_yad}" --text "$(gettext "You will need to check internet connection,and\npress Repeat for repeat download")" \
     --width=400 --borders=15 --title "$(gettext "Error")" \
+    --gui-type-layout=${YAD_INFO_GUI_TYPE_LAYOUT} \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/download.svg" \
     --no-wrap --center --text-align=center \
     --button="$(gettext "SKIP")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
@@ -2945,6 +2946,7 @@ gui_proton_downloader () {
         export KEY_WINE=$RANDOM
 
         "${pw_yad}" --plug=$KEY_WINE --tabnum=1 --list --checklist --separator="" \
+        --gui-type-layout=${WINE_DOWNLOAD_GUI_TYPE_LAYOUT} --gui-type-text=${WINE_DOWNLOAD_GUI_TYPE_TEXT} \
         --column "$(gettext "Set")" \
         --column "$(gettext "Select WINE for download:")" \
         $TMP_PROTON_PW_GIT \
@@ -2952,6 +2954,7 @@ gui_proton_downloader () {
         2>/dev/null &
 
         "${pw_yad}" --plug=$KEY_WINE --tabnum=2 --list --checklist --separator="" \
+        --gui-type-layout=${WINE_DOWNLOAD_GUI_TYPE_LAYOUT} --gui-type-text=${WINE_DOWNLOAD_GUI_TYPE_TEXT} \
         --column "$(gettext "Set")" \
         --column "$(gettext "Select WINE for download:")" \
         $TMP_PROTON_KR_GIT \
@@ -2959,6 +2962,7 @@ gui_proton_downloader () {
         2>/dev/null &
 
         "${pw_yad}" --plug=$KEY_WINE --tabnum=3 --list --checklist --separator="" \
+        --gui-type-layout=${WINE_DOWNLOAD_GUI_TYPE_LAYOUT} --gui-type-text=${WINE_DOWNLOAD_GUI_TYPE_TEXT} \
         --column "$(gettext "Set")" \
         --column "$(gettext "Select WINE for download:")" \
         $TMP_PROTON_GE_GIT \
@@ -2966,6 +2970,7 @@ gui_proton_downloader () {
         2>/dev/null &
 
         "${pw_yad}" --plug=$KEY_WINE --tabnum=4 --list --checklist --separator="" \
+        --gui-type-layout=${WINE_DOWNLOAD_GUI_TYPE_LAYOUT} --gui-type-text=${WINE_DOWNLOAD_GUI_TYPE_TEXT} \
         --column "$(gettext "Set")" \
         --column "$(gettext "Select WINE for download:")" \
         $TMP_PROTON_CU_GIT \
@@ -2973,13 +2978,15 @@ gui_proton_downloader () {
         2>/dev/null &
 
         "${pw_yad}" --plug=$KEY_WINE --tabnum=5 --list --checklist --separator="" \
+        --gui-type-layout=${WINE_DOWNLOAD_GUI_TYPE_LAYOUT} --gui-type-text=${WINE_DOWNLOAD_GUI_TYPE_TEXT} \
         --column "$(gettext "Set")" \
         --column "$(gettext "Select installed WINE for delete:")" \
         $TMP_INSTALLED_WINE \
         1> "${PORT_WINE_TMP_PATH}/tmp_installed_wine_set" \
         2>/dev/null &
 
-        "${pw_yad}" --key=$KEY_WINE --notebook --width=500 --height=600 --text-align=center  \
+        "${pw_yad}" --key=$KEY_WINE --notebook --width=500 --height=600 --text-align=center \
+        --gui-type=settings-notebook \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "$(gettext "WINE MANAGER")" --separator="" --expand \
         --tab-pos=top \
         --tab="PROTON-LG"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
@@ -3242,13 +3249,15 @@ A brief instruction:
     --field="$(gettext "Limit the use of processor cores")!$(gettext "Limiting the number of CPU cores is useful for Unity games (It is recommended to set the value equal to 8)") :CB" "${CPU_LIMIT_VAR}!disabled!${GET_LOGICAL_CORE}" \
     --field="$(gettext "Choose a graphics card to run the game (in user.conf)")!$(gettext "Select which video card will be used to run the game (used for all running games and programs in PortProton)") :CB" "${GPU_VAR}!disabled!${GET_GPU_NAMES}" \
     --field="$(gettext "Forcibly select the OpenGL version for the game")!$(gettext "You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)") :CB" "${PW_MESA_GL_VERSION_OVERRIDE}!disabled!4.6COMPAT!4.6!4.5COMPAT!4.5!3.3COMPAT!3.3" \
-    --field="$(gettext "Forcibly select the VKD3D feature level")!$(gettext "You can set a forced feature level VKD3D for games on DirectX12") :${VKD3D_CB}" "${PW_VKD3D_FEATURE_LEVEL}!disabled!12_2!12_1!12_0!11_1!11_0" \
+    --field="$(gettext "Forcibly select the VKD3D feature level")!$(gettext "You can set a forced feature level VKD3D for games on DirectX12") :$VKD3D_CB" "${PW_VKD3D_FEATURE_LEVEL}!disabled!12_2!12_1!12_0!11_1!11_0" \
     --field="$(gettext "Force certain locale for an app:")!$(gettext "Fixes encoding issues in legacy software") :CB" "${PW_LOCALE_SELECT}!disabled!$LOCALE_LIST" \
     1> "${PORT_WINE_TMP_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
 
     "${pw_yad}" --notebook --key="$KEY_EDIT_DB_GUI" --title "$(gettext "EDIT DB")" --text-align=center \
     --text "$(gettext "Change settings in database file for") <b>${PORTWINE_DB}</b>\n $(gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand --center \
+    --gui-type=settings-base \
+    --gui-type-text=${SETTINGS_BASE_GUI_TYPE_TEXT} --gui-type-layout=${SETTINGS_BASE_GUI_TYPE_LAYOUT} \
     --tab="$(gettext "MAIN")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
     --tab="$(gettext "ADVANCED")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
     --button="$(gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Cancel the current changes and return to the previous menu")":1 \
@@ -3420,10 +3429,12 @@ fi
     export IFS="%"
     "${pw_yad}" --plug=$KEY_FX_GUI --tabnum="1" --form --columns=4 --separator=" " \
     --text-align=center --text="$(gettext "VkBasalt settings for adding effects to games running under Vulkan. (The <b>HOME</b> key disables vkbasalt)\n<b>NOTE:</b> To display help for each item, simply hover over the text")" \
+    --gui-type-text=${VKBASALT_GUI_TYPE_TEXT_UP} --gui-type-layout=${VKBASALT_GUI_TYPE_LAYOUT_UP} \
     ${ADD_GUI_FX} 1> "${PORT_WINE_TMP_PATH}/tmp_yad_basalt_set" 2>/dev/null &
     export IFS="${old_IFS}"
 
     "${pw_yad}" --plug=$KEY_FX_GUI --tabnum="2" --separator=" " --form \
+    --gui-type-layout=${VKBASALT_GUI_TYPE_LAYOUT_DOWN} \
     --field="AMD FidelityFX - Contrast Adaptive Sharpening"!"$(gettext "AMD FidelityFX - CAS is designed to dramatically improve texture sharpness without additional modification settings for games, with minimal loss of performance. (For older games it is recommended to set value = 100)")":SCL "${VKBASALT_FFX_CAS_GUI}" \
     1> "${PORT_WINE_TMP_PATH}/tmp_yad_cas_set" 2>/dev/null &
 
@@ -3581,17 +3592,20 @@ fi
     old_IFS=$IFS && IFS="%"
     "${pw_yad}" --plug=$KEY_MH_GUI --tabnum="1" --form --columns=4 --separator=" " --text-align=center \
         --text="$(gettext "MangoHud settings (Keys <b>R_SHIFT + F12</b> disable MangoHud)\n<b>note:</b> To display help for each item, just hover the mouse cursor over the text.")" \
+        --gui-type-text=${MANGOHUD_GUI_TYPE_TEXT_UP} --gui-type-layout=${MANGOHUD_GUI_TYPE_LAYOUT_UP} \
         ${ADD_GUI_MH} 1> "${PORT_WINE_TMP_PATH}/tmp_yad_mh_set" 2>/dev/null &
     IFS=$old_IFS
 
     old_IFS=$IFS && IFS="%"
     "${pw_yad}" --plug=$KEY_MH_GUI --tabnum="2" --form --columns=10 --separator=" " --text-align=center \
         --text="$(gettext "Enabling fps limitation with MANGOHUD tools built into PortProton (Keys <b>L_SHIFT + F1</b> Toggles fps limitation)")" \
+        --gui-type-text=${MANGOHUD_GUI_TYPE_TEXT_DOWN} --gui-type-layout=${MANGOHUD_GUI_TYPE_LAYOUT_DOWN} \
         ${ADD_GUI_MH_FPS} 1> "${PORT_WINE_TMP_PATH}/tmp_yad_mh_fps_limit" 2>/dev/null &
     IFS=$old_IFS
 
     "${pw_yad}" --paned --key="$KEY_MH_GUI" --title="MangoHud" --center \
-        --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --sensitive --gui-type=settings --gui-type-height=5 --gui-type-width=5 \
+        --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --sensitive \
+        --gui-type=settings-paned \
         --button="$(gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Cancel the current changes and return to the previous menu")":1 \
         --button="$(gettext "DISABLE") MANGOHUD"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Disable MangoHud and go to the previous menu")":182 \
         --button="$(gettext "PREVIEW CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Start vkcube for preview changes")":184 \
@@ -3727,16 +3741,19 @@ fi
     IFS="%"
     "${pw_yad}" --plug=$KEY_DGV2_GUI --tabnum="1" --form --separator=" " --columns=3 ${ADD_CHK_BOX_DGV2} --text-align=center \
     --text="$(gettext "dgVoodoo2 settings\n<b>NOTE:</b> To display help for each item, simply hover over the text")" \
+    --gui-type-text=${DGVOODOO2_GUI_TYPE_TEXT_UP} --gui-type-layout=${DGVOODOO2_GUI_TYPE_LAYOUT_UP}  \
     1> "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set" 2>/dev/null &
     IFS=$old_IFS
 
     "${pw_yad}" --plug=$KEY_DGV2_GUI --tabnum="2" --form --columns=2 --separator="%" \
+    --gui-type-layout=${DGVOODOO2_GUI_TYPE_LAYOUT_DOWN} \
     --field="${CHKBOX_SPACE}FILTERING!$(gettext "Forced anisotropic filtering in Direct3D games") :CB" "${PW_DGV2_FILTERING}!disabled!2!4!8!16" \
     --field="${CHKBOX_SPACE}ANTIALIASING!$(gettext "Forced antialiasing in Direct3D and Glide games") :CB" "${PW_DGV2_ANTIALIASING}!disabled!2!4!8" \
     1> "${PORT_WINE_TMP_PATH}/tmp_yad_dgv2_set_cb" 2>/dev/null &
 
     "${pw_yad}" --paned --key=$KEY_DGV2_GUI --height="350" --title="dgVoodoo2" --center \
-    --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --sensitive --gui-type=settings --gui-type-height=5 --gui-type-width=5 \
+    --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --sensitive \
+    --gui-type=settings-paned \
     --button="$(gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Cancel the current changes and return to the previous menu")":1 \
     --button="$(gettext "DISABLE") DGVOODOO2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Disable dgVoodoo2 and go to the previous menu")":162 \
     --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":166 \
@@ -3856,10 +3873,13 @@ portwine_create_shortcut () {
 
     if [[ "$1" == "block_name" ]] ; then
         export name_desktop="${PORTPROTON_NAME}"
-        OUTPUT=$("${pw_yad}" --title="$(gettext "Choices")" --form --gui-type=start \
+        OUTPUT=$("${pw_yad}" --title="$(gettext "Choices")" --form \
+        --gui-type=settings-shortcut \
+        --gui-type-box=${SETTINGS_SHORTCUT_GUI_TYPE_BOX} --gui-type-layout=${SETTINGS_SHORTCUT_GUI_TYPE_LAYOUT} \
+        --gui-type-text=${SETTINGS_SHORTCUT_GUI_TYPE_TEXT} --gui-type-images=${SETTINGS_SHORTCUT_GUI_TYPE_IMAGE} \
         --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
         --image "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" \
-        --field="$(gettext "The shortcut will be created in the PortProton directory.")":LBL "" \
+        --text-align="center" --text "$(gettext "The shortcut will be created in the PortProton directory.")" \
         --field="  ${name_desktop}":LBL "" \
         --field="  $(gettext "Add shortcut to MENU -> GAMES")":CHK "TRUE" \
         --field="  $(gettext "Add shortcut to Desktop")":CHK "TRUE" \
@@ -3868,10 +3888,13 @@ portwine_create_shortcut () {
         PW_YAD_OUT=$?
     else
         export name_desktop="${PORTPROTON_NAME}"
-        OUTPUT=$("${pw_yad}" --title="$(gettext "Choices")" --form --gui-type=start \
+        OUTPUT=$("${pw_yad}" --title="$(gettext "Choices")" --form \
+        --gui-type=settings-shortcut \
+        --gui-type-box=${SETTINGS_SHORTCUT_GUI_TYPE_BOX} --gui-type-layout=${SETTINGS_SHORTCUT_GUI_TYPE_LAYOUT} \
+        --gui-type-text=${SETTINGS_SHORTCUT_GUI_TYPE_TEXT} --gui-type-images=${SETTINGS_SHORTCUT_GUI_TYPE_IMAGE} \
         --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
         --image "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" \
-        --field="$(gettext "The shortcut will be created in the PortProton directory.")":LBL "" \
+        --text-align="center" --text "$(gettext "The shortcut will be created in the PortProton directory.")" \
         --field="$(gettext "Name")" "${name_desktop}" \
         --field="  $(gettext "Add shortcut to MENU -> GAMES")":CHK "TRUE" \
         --field="  $(gettext "Add shortcut to Desktop")":CHK "TRUE" \
@@ -4044,23 +4067,27 @@ pw_prefix_manager () {
 
         KEY_EDIT_MANAGER_GUI=$RANDOM
         "${pw_yad}" --plug=$KEY_EDIT_MANAGER_GUI --tabnum=1 --list --checklist \
+        --gui-type-layout=${WINETRICKS_GUI_TYPE_LAYOUT} --gui-type-text=${WINETRICKS_GUI_TYPE_TEXT} \
         --text="$(gettext 'Select components to install in prefix:') <b>\"${PW_PREFIX_NAME}\"</b>, $(gettext 'using wine:') <b>\"${PW_WINE_USE}\"</b>" \
         --column=set --column=dll --column=info < "${PORT_WINE_TMP_PATH}/dll_list_tmp" 1>> "${PORT_WINE_TMP_PATH}/to_winetricks" 2>/dev/null &
 
         "${pw_yad}" --plug=$KEY_EDIT_MANAGER_GUI --tabnum=2 --list --checklist \
+        --gui-type-layout=${WINETRICKS_GUI_TYPE_LAYOUT} --gui-type-text=${WINETRICKS_GUI_TYPE_TEXT} \
         --text="$(gettext 'Select fonts to install in prefix:') <b>\"${PW_PREFIX_NAME}\"</b>, $(gettext 'using wine:') <b>\"${PW_WINE_USE}\"</b>" \
         --column=set --column=dll --column=info < "${PORT_WINE_TMP_PATH}/fonts_list_tmp" 1>> "${PORT_WINE_TMP_PATH}/to_winetricks" 2>/dev/null &
 
         "${pw_yad}" --plug=$KEY_EDIT_MANAGER_GUI --tabnum=3 --list --checklist \
+        --gui-type-layout=${WINETRICKS_GUI_TYPE_LAYOUT} --gui-type-text=${WINETRICKS_GUI_TYPE_TEXT} \
         --text="$(gettext 'Change config for prefix:') <b>\"${PW_PREFIX_NAME}\"</b>" \
         --column=set --column=dll --column=info < "${PORT_WINE_TMP_PATH}/settings_list_tmp" 1>> "${PORT_WINE_TMP_PATH}/to_winetricks" 2>/dev/null &
 
         "${pw_yad}" --key=$KEY_EDIT_MANAGER_GUI --notebook \
         --width=700 --height=700 --expand \
+        --gui-type=settings-notebook \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "$(gettext 'PREFIX MANAGER')" \
         --button="$(gettext "CANCEL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":1 \
         --button="$(gettext "OK")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":0 \
-        --tab-pos=bottom \
+        --tab-pos=top \
         --tab="$(gettext 'DLLS')"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
         --tab="$(gettext 'FONTS')"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
         --tab="$(gettext 'SETTINGS')"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" 2>/dev/null
