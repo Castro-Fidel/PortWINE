@@ -41,14 +41,6 @@ change_locale () {
         LANGUAGE=$(<"${PORT_WINE_TMP_PATH}/PortProton_loc")
     fi
 
-    if [[ "$LANGUAGE" == "RUS" ]] ; then
-        LANGUAGE=ru
-        echo "ru" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
-    elif [[ "$LANGUAGE" == "ENG" ]] ; then
-        LANGUAGE=en
-        echo "en" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
-    fi
-
     if [[ ! -z "${LANGUAGE}" ]] \
     && [[ ! -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]]
     then
@@ -74,18 +66,16 @@ change_locale () {
         then LANGUAGE=${SET_LANG}
         else exit 1
         fi
-
-
     fi
     export LANGUAGE
 
     case "$LANGUAGE" in
         ru) 
-            export LC_ALL=ru_RU.UTF-8
+            check_start_from_steam && export LC_ALL=ru_RU.UTF-8
             export FULL_LN="russian"
             ;;
         es)
-            export LC_ALL=es_ES.UTF-8
+            check_start_from_steam && export LC_ALL=es_ES.UTF-8
             export FULL_LN="spanish"
             ;;
          *) 
