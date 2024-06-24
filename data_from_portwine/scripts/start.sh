@@ -80,7 +80,7 @@ unset MANGOHUD_CONFIG FPS_LIMIT PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER 
 unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NOSTSTDIR
 
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
-rm -f "$PORT_WINE_TMP_PATH"/*{exe,msi,tar}*
+try_remove_file "$PORT_WINE_TMP_PATH"/*{exe,msi,tar}*
 
 echo "" > "${PORT_WINE_TMP_PATH}/tmp_yad_form"
 echo "" > "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan"
@@ -91,7 +91,7 @@ for dist_dir in ./* ; do
     [[ -d "$dist_dir" ]] || continue
     dist_dir_new="${dist_dir//[[:blank:]]/_}"
     if [[ ! -d "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}" ]] ; then
-        mv -- "${PORT_WINE_PATH}/data/dist/$dist_dir" "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}"
+        try_move_force "${PORT_WINE_PATH}/data/dist/$dist_dir" "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}"
     fi
 done
 popd 1>/dev/null || fatal
@@ -106,7 +106,7 @@ for pfx_dir in ./* ; do
     [[ -d "$pfx_dir" ]] || continue
     pfx_dir_new="${pfx_dir//[[:blank:]]/_}"
     if [[ ! -d "${PORT_WINE_PATH}/data/prefixes/${pfx_dir_new^^}" ]] ; then
-        mv -- "${PORT_WINE_PATH}/data/prefixes/$pfx_dir" "${PORT_WINE_PATH}/data/prefixes/${pfx_dir_new^^}"
+        try_move_force "${PORT_WINE_PATH}/data/prefixes/$pfx_dir" "${PORT_WINE_PATH}/data/prefixes/${pfx_dir_new^^}"
     fi
 done
 popd 1>/dev/null || fatal
@@ -275,13 +275,13 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     if [[ -f "/usr/bin/portproton" ]] \
     && [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]]
     then
-        rm -f "${HOME}/.local/share/applications/PortProton.desktop"
+        try_remove_file "${HOME}/.local/share/applications/PortProton.desktop"
     fi
 
     if grep "SteamOS" "/etc/os-release" &>/dev/null \
     && [[ ! -f  "${HOME}/.local/share/applications/PortProton.desktop" ]]
     then
-        cp -f "${PORT_WINE_PATH}/PortProton.desktop" "${HOME}/.local/share/applications/"
+        try_copy_file "${PORT_WINE_PATH}/PortProton.desktop" "${HOME}/.local/share/applications/"
         update-desktop-database -q "${HOME}/.local/share/applications"
     fi
 fi

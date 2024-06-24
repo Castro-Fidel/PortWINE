@@ -120,6 +120,15 @@ generate_pot () {
 }
 export -f generate_pot
 
+try_move_force () {
+    if [[ ! -f "$1" ]] ; then print_info "file $1 not found for move" && return 1
+    elif [[ -z "$2" ]] ; then print_error "no way to move file $1" && return 1
+    else
+        mv -f "$1" "$2" && return 0 || return 1
+    fi
+}
+export -f try_move_force
+
 try_copy_file () {
     if [[ ! -f "$1" ]] ; then print_info "file $1 not found for copy" && return 1
     elif [[ -z "$2" ]] ; then print_error "no way to copy file $1" && return 1
@@ -182,7 +191,7 @@ check_symlink () {
         return 0
     elif [[ ! -z "$(echo "$CHK_SYMLINK_FILE" | grep "broken symbolic link to" | awk '{print $1}')" ]] ; then
         print_error "remove broken symlink: $CHK_SYMLINK_FILE"
-        rm -fr "$CHK_SYMLINK_FILE"
+        try_remove_dir "$CHK_SYMLINK_FILE"
         return 1
     else
         return 1
@@ -434,8 +443,8 @@ pw_clear_pfx () {
     try_remove_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/Program Files (x86)/Internet Explorer"
     try_remove_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/Program Files (x86)/Windows Media Player"
     try_remove_dir "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/Program Files (x86)/Windows NT"
-    rm -f "${PORT_WINE_TMP_PATH}"/*.bin
-    rm -f "${PORT_WINE_TMP_PATH}"/*.foz
+    try_remove_file "${PORT_WINE_TMP_PATH}"/*.bin
+    try_remove_file "${PORT_WINE_TMP_PATH}"/*.foz
     return 0
 }
 
@@ -500,7 +509,7 @@ init_wine_ver () {
         for dist_dir in $(ls -1 "${PORT_WINE_PATH}/data/dist/") ; do
             dist_dir_new=$(echo "${dist_dir}" | awk '$1=$1' | sed -e s/[[:blank:]]/_/g)
             if [[ ! -d "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}" ]] ; then
-                mv -- "${PORT_WINE_PATH}/data/dist/$dist_dir" "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}"
+                try_move_force "${PORT_WINE_PATH}/data/dist/$dist_dir" "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}"
             fi
         done
         IFS="$orig_IFS"
@@ -523,20 +532,20 @@ init_wine_ver () {
         export WINESERVER="${WINEDIR}/bin/wineserver"
         if [[ -d "${WINEDIR}/files" && ! -d "${WINEDIR}/dist" ]] ; then
             for clear_dist_files in $(ls "${WINEDIR}" | sed -e "s/^files$//g" | sed -e "s/^version$//g") ; do
-                rm -fr "${WINEDIR}/$clear_dist_files"
+                try_remove_dir "${WINEDIR}/$clear_dist_files"
             done
-            mv -f "${WINEDIR}/files"/* "${WINEDIR}/"
-            rm -fr "${WINEDIR}/files"
+            try_move_force "${WINEDIR}/files"/* "${WINEDIR}/"
+            try_remove_dir "${WINEDIR}/files"
         elif [[ ! -d "${WINEDIR}/files" && -d "${WINEDIR}/dist" ]] ; then
             for clear_dist_files in $(ls "${WINEDIR}" | sed -e "s/^dist$//g" | sed -e "s/^version$//g") ; do
-                rm -fr "${WINEDIR}/$clear_dist_files"
+                try_remove_dir "${WINEDIR}/$clear_dist_files"
             done
-            mv -f "${WINEDIR}/dist"/* "${WINEDIR}/"
-            rm -fr "${WINEDIR}/dist"
+            try_move_force "${WINEDIR}/dist"/* "${WINEDIR}/"
+            try_remove_dir "${WINEDIR}/dist"
         elif [ -f "${WINEDIR}/proton_dist.tar" ] ; then
             unpack "${WINEDIR}/proton_dist.tar" "${WINEDIR}/"
             for clear_dist_files in $(ls "${WINEDIR}" | sed -e "s/^bin$//g" | sed -e "s/^lib$//g" | sed -e "s/^lib64$//g" | sed -e "s/^share$//g" | sed -e "s/^version$//g") ; do
-                rm -fr "${WINEDIR}/$clear_dist_files"
+                try_remove_dir "${WINEDIR}/$clear_dist_files"
             done
         fi
         if [[ -d "${WINEDIR}" ]] ; then
@@ -544,8 +553,8 @@ init_wine_ver () {
 
             if [[ ! -d "${WINEDIR}/lib64/" ]] && [[ -d "${WINEDIR}/lib/wine/x86_64-unix" ]] ; then
                 create_new_dir "${WINEDIR}/lib64/wine"
-                mv -f "${WINEDIR}/lib/wine/x86_64-unix" "${WINEDIR}/lib64/wine/"
-                mv -f "${WINEDIR}/lib/wine/x86_64-windows" "${WINEDIR}/lib64/wine/"
+                try_move_force "${WINEDIR}/lib/wine/x86_64-unix" "${WINEDIR}/lib64/wine/"
+                try_move_force "${WINEDIR}/lib/wine/x86_64-windows" "${WINEDIR}/lib64/wine/"
             fi
 
             for mono_gecko_chk in "mono" "gecko" ; do
@@ -571,9 +580,9 @@ init_wine_ver () {
                 sed -i '/Steam.exe/d' "${WINEDIR}/share/wine/wine.inf"
                 sed -i '/\\Valve\\Steam/d' "${WINEDIR}/share/wine/wine.inf"
                 sed -i '/winemenubuilder/d' "${WINEDIR}/share/wine/wine.inf"
-                rm -f "${WINEDIR}"/lib*/*steam* &>/dev/null
-                rm -f "${WINEDIR}"/lib*/wine/*/*steam* &>/dev/null
-                rm -f "${WINEDIR}"/lib*/wine/*-windows/winemenubuilder.exe &>/dev/null
+                try_remove_file "${WINEDIR}"/lib*/*steam* &>/dev/null
+                try_remove_file "${WINEDIR}"/lib*/wine/*/*steam* &>/dev/null
+                try_remove_file "${WINEDIR}"/lib*/wine/*-windows/winemenubuilder.exe &>/dev/null
             fi
         fi
 
@@ -821,7 +830,7 @@ pw_kill_autostart () {
     done
 
     if [[ ! -z "$(ls "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/ | grep -m 1 ".tmp")" ]] ; then
-        rm -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/*.tmp
+        try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/*.tmp
     fi
 
     return 0
@@ -1150,7 +1159,7 @@ check_dirs_and_files_in_pfx () {
         fi
 
         find "${WINEPREFIX}/dosdevices" -xtype l -maxdepth 1 2>/dev/null -exec rm {} \;
-        rm -f "${WINEPREFIX}/dosdevices/"*::
+        try_remove_file "${WINEPREFIX}/dosdevices/"*::
         DRIVES=(d e f g i j k l m n o p q r s t u v w x y)
         DEF_MOUNT_DIRS=('/media' "/media/$USER" '/mnt' '/run/media' "/run/media/$USER")
         MOUNT_DIRS=($(find "${DEF_MOUNT_DIRS[@]}" -maxdepth 1 -type d 2>/dev/null | sort -u))
@@ -1356,7 +1365,7 @@ pw_port_update () {
                             tar -czpf "${PORT_WINE_TMP_PATH}/scripts_backup/scripts_v.${scripts_install_ver}.tar.gz" \
                             ./scripts ./img/gui ./locales ./themes ./changelog* ./dxvk.conf ./vkBasalt.conf ./tmp/scripts_ver
                             try_remove_dir "${PORT_WINE_PATH}/data/scripts/"
-                            cp -fr "${PORT_WINE_TMP_PATH}/PortWINE-master/data_from_portwine/"* "${PORT_WINE_PATH}/data/"
+                            try_copy_dir "${PORT_WINE_TMP_PATH}/PortWINE-master/data_from_portwine/"* "${PORT_WINE_PATH}/data/"
                             try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-master.tar.gz"
                             try_remove_dir "${PORT_WINE_TMP_PATH}/PortWINE-master/"
                             echo "${scripts_current_ver}" > "${PORT_WINE_TMP_PATH}/scripts_ver"
@@ -3924,7 +3933,7 @@ portwine_create_shortcut () {
         try_remove_file "${PORT_WINE_PATH}/${name_desktop}.desktop"
 
         if [[ "${PORTPROTON_NAME}" != "${name_desktop_png}" ]]
-        then mv -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" "${PORT_WINE_PATH}/data/img/${name_desktop_png}.png"
+        then try_move_force "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" "${PORT_WINE_PATH}/data/img/${name_desktop_png}.png"
         fi
 
         echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
@@ -3944,16 +3953,16 @@ portwine_create_shortcut () {
 
         if [[ "${create_menu_desktop_shortcut}" == "TRUE" ]] ; then
             try_remove_file "${HOME}/.local/share/applications/${name_desktop}.desktop"
-            cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" "${HOME}/.local/share/applications/"
+            try_copy_file "${PORT_WINE_PATH}/${name_desktop}.desktop" "${HOME}/.local/share/applications/"
         fi
 
         if [[ "${create_desktop_desktop_shortcut}" == "TRUE" ]] ; then
             if [[ -d "${HOME}/Desktop" ]] ; then
-                cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" "${HOME}/Desktop/"
+                try_copy_file "${PORT_WINE_PATH}/${name_desktop}.desktop" "${HOME}/Desktop/"
             elif [[ -d "${HOME}/Рабочий стол" ]] ; then
-                cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" "${HOME}/Рабочий стол/"
+                try_copy_file "${PORT_WINE_PATH}/${name_desktop}.desktop" "${HOME}/Рабочий стол/"
             elif [[ $(xdg-user-dir DESKTOP) ]] ; then
-                cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" "$(xdg-user-dir DESKTOP)"
+                try_copy_file "${PORT_WINE_PATH}/${name_desktop}.desktop" "$(xdg-user-dir DESKTOP)"
             fi
         fi
 
@@ -3998,15 +4007,15 @@ portwine_create_shortcut () {
 }
 
 portwine_delete_shortcut () {
-    rm -f "$(grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop)" &>/dev/null
-    rm -f "$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop)" &>/dev/null
-    # rm -f "$(grep -il "${portwine_exe}" "${STEAM_SCRIPTS}"/*.sh)" &>/dev/null
+    try_remove_file "$(grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop)" &>/dev/null
+    try_remove_file "$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop)" &>/dev/null
+    # try_remove_file "$(grep -il "${portwine_exe}" "${STEAM_SCRIPTS}"/*.sh)" &>/dev/null
     if [[ -d "${HOME}/Desktop" ]] ; then
-        rm -f "$(grep -il "${portwine_exe}" "${HOME}/Desktop"/*.desktop)" &>/dev/null
+        try_remove_file "$(grep -il "${portwine_exe}" "${HOME}/Desktop"/*.desktop)" &>/dev/null
     elif [[ -d "${HOME}/Рабочий стол" ]] ; then
-        rm -f "$(grep -il "${portwine_exe}" "${HOME}/Рабочий стол"/*.desktop)" &>/dev/null
+        try_remove_file "$(grep -il "${portwine_exe}" "${HOME}/Рабочий стол"/*.desktop)" &>/dev/null
     elif [[ $(xdg-user-dir DESKTOP) ]] ; then
-        rm -f "$(grep -il "${portwine_exe}" "$(xdg-user-dir DESKTOP)"/*.desktop)" &>/dev/null
+        try_remove_file "$(grep -il "${portwine_exe}" "$(xdg-user-dir DESKTOP)"/*.desktop)" &>/dev/null
     fi
 }
 
@@ -4346,7 +4355,7 @@ EOF
     ${pw_runtime} ${PW_TERM} "${PORT_WINE_TMP_PATH}"/pp_pfx_backup.sh
     try_remove_file "${PORT_WINE_TMP_PATH}"/pp_pfx_backup.sh
     if [[ -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" ]] ; then
-        mv -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack"
+        try_move_force "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack"
         yad_info "$(gettext "Backup has been successfully created for prefix:") $PW_PREFIX_NAME"
         if [[ ! -f "${PORT_WINE_TMP_PATH}/pfx_backup_info" ]] ; then
             yad_info "$(gettext "Attention! Do not pass the resev copy to third parties, there is a risk of losing accounts!")"
@@ -4431,10 +4440,10 @@ export -f gui_clear_pfx
 
 gui_rm_portproton () {
     if yad_question "$(gettext "Do you really want to remove PortProton?")" ; then
-        rm -fr "${PORT_WINE_PATH}"
-        rm -fr "${PORT_WINE_TMP_PATH}"
-        rm -fr "${HOME}/PortWINE"
-        rm -f "$(grep -il PortProton "${HOME}/.local/share/applications"/*.desktop)"
+        try_remove_dir "${PORT_WINE_PATH}"
+        try_remove_dir "${PORT_WINE_TMP_PATH}"
+        try_remove_dir "${HOME}/PortWINE"
+        try_remove_file "$(grep -il PortProton "${HOME}/.local/share/applications"/*.desktop)"
         update-desktop-database -q "${HOME}/.local/share/applications"
     fi
     exit 0
