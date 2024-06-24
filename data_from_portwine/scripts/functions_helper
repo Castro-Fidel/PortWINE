@@ -1756,8 +1756,8 @@ start_portwine () {
             export INTEL_DEBUG="norbc"
         fi
         if [[ "${PW_GPU_USE}" != "disabled" ]] ; then
-            PW_vendorID="$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep -B3 "${PW_GPU_USE}" | grep vendorID | sort -u | awk -F'0x' '{print $2}')"
-            PW_deviceID="$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep -B3 "${PW_GPU_USE}" | grep deviceID | sort -u | awk -F'0x' '{print $2}')"
+            PW_vendorID="$(echo "${PW_VULKANINFO_PORTABLE[@]}" | grep -B3 "${PW_GPU_USE}" | grep vendorID | sort -u | awk -F'0x' '{print $2}')"
+            PW_deviceID="$(echo "${PW_VULKANINFO_PORTABLE[@]}" | grep -B3 "${PW_GPU_USE}" | grep deviceID | sort -u | awk -F'0x' '{print $2}')"
             PW_ID_VIDEO="--prefer-vk-device ${PW_vendorID}:${PW_deviceID}"
         else
             unset PW_ID_VIDEO
@@ -4246,7 +4246,7 @@ portwine_start_debug () {
     echo "PW_SCREEN_PRIMARY=$PW_SCREEN_PRIMARY" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "----------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "Vulkan info device name:" >> "${PORT_WINE_PATH}/PortProton.log"
-    "$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep -E '^GPU|deviceName|driverName' >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "${PW_VULKANINFO_PORTABLE[@]}" | grep -E '^GPU|deviceName|driverName' >> "${PORT_WINE_PATH}/PortProton.log"
     "${PW_PLUGINS_PATH}/portable/bin/vkcube" --c 50
     if [ $? -eq 0 ]; then
         echo "Vulkan cube test passed successfully" >> "${PORT_WINE_PATH}/PortProton.log"
