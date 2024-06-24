@@ -186,25 +186,23 @@ case "$PW_GUI_START" in
 esac
 
 pw_check_and_download_plugins
-export PW_VULKANINFO_PORTABLE="$PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo"
 
 # check skip update
 if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] \
 && [[ ! -f "/tmp/portproton.lock" ]]
 then
     pw_port_update
-    VULKAN_DRIVER_NAME="$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | grep driverName | awk '{print$3}' | head -1)"
-    GET_GPU_NAMES=$("$PW_VULKANINFO_PORTABLE" 2>/dev/null | awk -F '=' '/deviceName/{print $2}' | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
+    PW_VULKANINFO_PORTABLE="$($PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo 2>/dev/null)"
+    VULKAN_DRIVER_NAME="$(echo "${PW_VULKANINFO_PORTABLE[@]}" | grep driverName | awk '{print$3}' | head -1)"
+    GET_GPU_NAMES=$(echo "${PW_VULKANINFO_PORTABLE[@]}" | awk -F '=' '/deviceName/{print $2}' | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
     LSPCI_VGA="$(lspci -k 2>/dev/null | grep -E 'VGA|3D' | tr -d '\n')"
-    export LSPCI_VGA VULKAN_DRIVER_NAME GET_GPU_NAMES
+    export PW_VULKANINFO_PORTABLE VULKAN_DRIVER_NAME GET_GPU_NAMES LSPCI_VGA
 
     if command -v xrandr &>/dev/null ; then
-        try_remove_file "${PORT_WINE_TMP_PATH}/tmp_screen_configuration"
-        if [[ $(xrandr | grep "primary" | awk '{print $1}') ]] ; then
-            PW_SCREEN_RESOLUTION="$(xrandr | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
-            PW_SCREEN_PRIMARY="$(xrandr | grep "primary" | awk '{print $1}')"
-        fi
-        export PW_SCREEN_PRIMARY PW_SCREEN_RESOLUTION
+        PW_XRANDR="$(xrandr)"
+        PW_SCREEN_RESOLUTION="$(echo "${PW_XRANDR[@]}" | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
+        PW_SCREEN_PRIMARY="$(echo "${PW_XRANDR[@]}" | grep "primary" | awk '{print $1}')"
+        export PW_XRANDR PW_SCREEN_PRIMARY PW_SCREEN_RESOLUTION
         echo ""
         print_var PW_SCREEN_RESOLUTION PW_SCREEN_PRIMARY
     else
@@ -222,11 +220,12 @@ then
 
     GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
     unset LOCALE_LIST
+    PW_LOCALE_ALL="$(locale -a)"
     for LOCALE in $GET_LOCALE_LIST ; do
         if locale -a | grep -i "$LOCALE" &>/dev/null ; then
             if [[ ! -z "$LOCALE_LIST" ]]
-            then LOCALE_LIST+="!$(locale -a | grep -i "$LOCALE")"
-            else LOCALE_LIST="$(locale -a | grep -i "$LOCALE")"
+            then LOCALE_LIST+="!$(echo "${PW_LOCALE_ALL[@]}" | grep -i "$LOCALE")"
+            else LOCALE_LIST="$(echo "${PW_LOCALE_ALL[@]}" | grep -i "$LOCALE")"
             fi
         fi
     done
