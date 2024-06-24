@@ -73,13 +73,16 @@ change_locale () {
         ru) 
             check_start_from_steam && export LC_ALL=ru_RU.UTF-8
             export FULL_LN="russian"
+            export LANGUAGE_GIF="ru"
             ;;
         es)
             check_start_from_steam && export LC_ALL=es_ES.UTF-8
             export FULL_LN="spanish"
+            export LANGUAGE_GIF="en"
             ;;
          *) 
             export FULL_LN="english"
+            export LANGUAGE_GIF="en"
             ;;
     esac
 }
@@ -383,7 +386,7 @@ unpack () {
 
     if [[ "$silent" != "true" ]] ; then
         set -o pipefail
-        pw_start_progress_bar_cover_block "${COVERS_PATH}/unpacking_${LANGUAGE}.gif"
+        pw_start_progress_bar_cover_block "${COVERS_PATH}/unpacking_${LANGUAGE_GIF}.gif"
         $command "$1" -C "$2"
         pw_stop_progress_bar_cover_block
         [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
@@ -542,7 +545,7 @@ init_wine_ver () {
                 if check_symlink "${WINEDIR}/share/wine/${mono_gecko_chk}" ; then
                     print_info "${WINEDIR}/share/wine/${mono_gecko_chk} is symlink. OK."
                 elif [[ -d "${WINEDIR}/share/wine/${mono_gecko_chk}" ]] ; then
-                    pw_start_progress_bar_cover_block "${COVERS_PATH}/loading_${LANGUAGE}.gif"
+                    pw_start_progress_bar_cover_block "${COVERS_PATH}/loading_${LANGUAGE_GIF}.gif"
                     try_copy_dir "${WINEDIR}/share/wine/${mono_gecko_chk}" "${PORT_WINE_TMP_PATH}"
                     try_remove_dir "${WINEDIR}/share/wine/${mono_gecko_chk}"
                     try_force_link_dir "${PORT_WINE_TMP_PATH}/${mono_gecko_chk}" "${WINEDIR}"/share/wine/
@@ -2386,7 +2389,7 @@ start_portwine () {
         pw_tray_icon
         sleep 0.5
         if [[ "${PW_CHECK_AUTOINSTALL}" != "1" ]] ; then
-            pw_start_progress_bar_cover "${COVERS_PATH}/loading_${LANGUAGE}.gif"
+            pw_start_progress_bar_cover "${COVERS_PATH}/loading_${LANGUAGE_GIF}.gif"
         fi
     fi
     add_in_start_portwine
@@ -2706,7 +2709,7 @@ pw_update_pfx_cover_gui () {
     && ! pgrep -a yad | grep "yad_gui_pp --notebook --key=$PW_KEY_PROGRESS_BAR_UP" &>/dev/null
     then
         PW_KEY_PROGRESS_BAR_UP=$RANDOM
-        PW_GIF_FILE="${COVERS_PATH}/update_prefix_${LANGUAGE}.gif"
+        PW_GIF_FILE="${COVERS_PATH}/update_prefix_${LANGUAGE_GIF}.gif"
         PW_GIF_SIZE_X=$(file "${PW_GIF_FILE}" | awk '{print $7 + 20}')
         PW_GIF_SIZE_Y=$(file "${PW_GIF_FILE}" | awk '{print $9 + 65}')
         echo "UPDATE PREFIX..." > "${PORT_WINE_TMP_PATH}/update_pfx_log"
