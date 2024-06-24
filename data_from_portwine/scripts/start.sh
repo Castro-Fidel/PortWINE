@@ -192,7 +192,11 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] \
 && [[ ! -f "/tmp/portproton.lock" ]]
 then
     pw_port_update
-    PW_VULKANINFO_PORTABLE="$($PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo 2>/dev/null)"
+    if command -v vulkaninfo &>/dev/null ; then
+        PW_VULKANINFO_PORTABLE="$(vulkaninfo --summary 2>/dev/null)"
+    else
+        PW_VULKANINFO_PORTABLE="$($PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo 2>/dev/null)"
+    fi
     VULKAN_DRIVER_NAME="$(echo "${PW_VULKANINFO_PORTABLE[@]}" | grep driverName | awk '{print$3}' | head -1)"
     GET_GPU_NAMES=$(echo "${PW_VULKANINFO_PORTABLE[@]}" | awk -F '=' '/deviceName/{print $2}' | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
     LSPCI_VGA="$(lspci -k 2>/dev/null | grep -E 'VGA|3D' | tr -d '\n')"
