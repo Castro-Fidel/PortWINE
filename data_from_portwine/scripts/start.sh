@@ -203,10 +203,9 @@ then
     export PW_VULKANINFO_PORTABLE VULKAN_DRIVER_NAME GET_GPU_NAMES LSPCI_VGA
 
     if command -v xrandr &>/dev/null ; then
-        PW_XRANDR="$(xrandr)"
-        PW_SCREEN_RESOLUTION="$(echo "${PW_XRANDR[@]}" | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
-        PW_SCREEN_PRIMARY="$(echo "${PW_XRANDR[@]}" | grep "primary" | awk '{print $1}')"
-        export PW_XRANDR PW_SCREEN_PRIMARY PW_SCREEN_RESOLUTION
+        PW_SCREEN_RESOLUTION="$(xrandr 2>/dev/null | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
+        PW_SCREEN_PRIMARY="$(xrandr 2>/dev/null | grep "primary" | awk '{print $1}')"
+        export PW_SCREEN_PRIMARY PW_SCREEN_RESOLUTION
         echo ""
         print_var PW_SCREEN_RESOLUTION PW_SCREEN_PRIMARY
     else
