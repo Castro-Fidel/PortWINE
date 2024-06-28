@@ -82,6 +82,14 @@ unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NO
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 rm -f "$PORT_WINE_TMP_PATH"/*{exe,msi,tar}*
 
+if [[ -d "/tmp" ]] ; then
+create_new_dir "/tmp/PortProton"
+export PORT_WINE_TMP_PATH_USE_RAM="/tmp/PortProton"
+else
+create_new_dir "${PORT_WINE_PATH}/data/tmp/PortProton"
+export PORT_WINE_TMP_PATH_USE_RAM="${PORT_WINE_PATH}/data/tmp/PortProton"
+fi
+
 echo "" > "${PORT_WINE_TMP_PATH}/tmp_yad_form"
 echo "" > "${PORT_WINE_TMP_PATH}/tmp_yad_form_vulkan"
 
@@ -187,26 +195,34 @@ esac
 
 pw_check_and_download_plugins
 
-# check skip update
-if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] \
-&& [[ ! -f "/tmp/portproton.lock" ]]
+if [[ ! -f "${PORT_WINE_TMP_PATH_USE_RAM}/portproton.lock" ]]
 then
     pw_port_update
-    if command -v vulkaninfo &>/dev/null ; then
-        PW_VULKANINFO_PORTABLE="$(vulkaninfo --summary 2>/dev/null)"
-    else
-        PW_VULKANINFO_PORTABLE="$($PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo 2>/dev/null)"
+else
+    scripts_install_ver=$(head -n 1 "${PORT_WINE_TMP_PATH}/scripts_ver")
+    export scripts_install_ver
+fi
+
+# check skip update
+if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
+    if command gamescope --help 2> "${PORT_WINE_TMP_PATH_USE_RAM}/gamescope-help.tmp" ; then
+        export GAMESCOPE_INSTALLED="1"
     fi
-    VULKAN_DRIVER_NAME="$(echo "${PW_VULKANINFO_PORTABLE[@]}" | grep driverName | awk '{print$3}' | head -1)"
-    GET_GPU_NAMES=$(echo "${PW_VULKANINFO_PORTABLE[@]}" | awk -F '=' '/deviceName/{print $2}' | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
+    if command -v vulkaninfo &>/dev/null ; then
+        vulkaninfo --summary 2>/dev/null > "${PORT_WINE_TMP_PATH_USE_RAM}/vulkaninfo.tmp"
+    else
+        $PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo 2>/dev/null > "${PORT_WINE_TMP_PATH_USE_RAM}/vulkaninfo.tmp"
+    fi
+    VULKAN_DRIVER_NAME="$(grep -e 'driverName' "${PORT_WINE_TMP_PATH_USE_RAM}/vulkaninfo.tmp" | awk '{print$3}' | head -1)"
+    GET_GPU_NAMES=$(cat "${PORT_WINE_TMP_PATH_USE_RAM}/vulkaninfo.tmp" | awk -F '=' '/deviceName/{print $2}' | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
     LSPCI_VGA="$(lspci -k 2>/dev/null | grep -E 'VGA|3D' | tr -d '\n')"
-    export PW_VULKANINFO_PORTABLE VULKAN_DRIVER_NAME GET_GPU_NAMES LSPCI_VGA
+    export VULKAN_DRIVER_NAME GET_GPU_NAMES LSPCI_VGA
 
     if command -v xrandr &>/dev/null ; then
-        PW_XRANDR="$(xrandr)"
-        PW_SCREEN_RESOLUTION="$(echo "${PW_XRANDR[@]}" | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
-        PW_SCREEN_PRIMARY="$(echo "${PW_XRANDR[@]}" | grep "primary" | awk '{print $1}')"
-        export PW_XRANDR PW_SCREEN_PRIMARY PW_SCREEN_RESOLUTION
+        xrandr --current 2>/dev/null > "${PORT_WINE_TMP_PATH_USE_RAM}/xrandr.tmp"
+        PW_SCREEN_RESOLUTION="$(cat "${PORT_WINE_TMP_PATH_USE_RAM}/xrandr.tmp" | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
+        PW_SCREEN_PRIMARY="$(grep -e 'primary' "${PORT_WINE_TMP_PATH_USE_RAM}/xrandr.tmp" | awk '{print $1}')"
+        export PW_SCREEN_PRIMARY PW_SCREEN_RESOLUTION
         echo ""
         print_var PW_SCREEN_RESOLUTION PW_SCREEN_PRIMARY
     else
@@ -224,34 +240,33 @@ then
 
     GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
     unset LOCALE_LIST
-    PW_LOCALE_ALL="$(locale -a)"
+    locale -a 2>/dev/null > "${PORT_WINE_TMP_PATH_USE_RAM}/locale.tmp"
     for LOCALE in $GET_LOCALE_LIST ; do
-        if locale -a | grep -i "$LOCALE" &>/dev/null ; then
+        if grep -e $LOCALE "${PORT_WINE_TMP_PATH_USE_RAM}/locale.tmp" &>/dev/null ; then
             if [[ ! -z "$LOCALE_LIST" ]]
-            then LOCALE_LIST+="!$(echo "${PW_LOCALE_ALL[@]}" | grep -i "$LOCALE")"
-            else LOCALE_LIST="$(echo "${PW_LOCALE_ALL[@]}" | grep -i "$LOCALE")"
+            then LOCALE_LIST+="!$(grep -e $LOCALE "${PORT_WINE_TMP_PATH_USE_RAM}/locale.tmp")"
+            else LOCALE_LIST="$(grep -e $LOCALE "${PORT_WINE_TMP_PATH_USE_RAM}/locale.tmp")"
             fi
         fi
     done
     export LOCALE_LIST
-else
-    scripts_install_ver=$(head -n 1 "${PORT_WINE_TMP_PATH}/scripts_ver")
-    export scripts_install_ver
 fi
+
 
 # create lock file
 if ! check_flatpak ; then
-if [[ -f "/tmp/portproton.lock" ]] ; then
-    print_warning "Found lock file: /tmp/portproton.lock"
+if [[ -f "${PORT_WINE_TMP_PATH_USE_RAM}/portproton.lock" ]] ; then
+    print_warning "Found lock file: "${PORT_WINE_TMP_PATH_USE_RAM}/portproton.lock""
     yad_question "$(gettext 'A running PortProton session was detected.\nDo you want to end the previous session?')" || exit 0
 fi
-touch "/tmp/portproton.lock"
+fi
+
+touch "${PORT_WINE_TMP_PATH_USE_RAM}/portproton.lock"
 rm_lock_file () {
     echo "Removing the lock file..."
-    rm -fv "/tmp/portproton.lock" && echo "OK"
+    rm -fv "${PORT_WINE_TMP_PATH_USE_RAM}/portproton.lock" && echo "OK"
 }
 trap "rm_lock_file" EXIT
-fi
 
 if check_flatpak
 then try_remove_dir "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
