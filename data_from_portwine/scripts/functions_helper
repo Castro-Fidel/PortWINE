@@ -2392,6 +2392,24 @@ start_portwine () {
         fi
     fi
 
+    WINE_WAYLAND_VAR="$(grep "x11,wayland" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg")"
+    if [[ "${PW_USE_NATIVE_WAYLAND}" == "1" ]] ; then
+        if [[ ! "$WINE_WAYLAND_VAR" ]] ; then
+            print_info "Enable experemental Wayland support"
+            ${pw_runtime} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
+            "${WINELOADER}" reg add "HKEY_CURRENT_USER\Software\Wine\Drivers" /v "Graphics" /t REG_SZ /d "x11,wayland" /f
+        fi
+        export PW_DISPLAY="env DISPLAY="
+        export PW_USE_RUNTIME="0"
+    else
+        unset PW_DISPLAY
+        if [[ "$WINE_WAYLAND_VAR" ]] ; then
+            print_info "Disable experemental Wayland support"
+            ${pw_runtime} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
+            "${WINELOADER}" reg delete "HKCU\Software\Wine\Drivers" /v Graphics /f
+        fi
+    fi
+
     pw_stop_progress_bar &&
     if ! check_start_from_steam ; then
         pw_tray_icon
@@ -2472,6 +2490,7 @@ pw_run () {
             VK_INSTANCE_LAYERS=${PW_VK_INSTANCE_LAYERS} \
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
+            ${PW_DISPLAY} \
             "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
         else
             if [[ "$PW_USE_TERMINAL" == 1 ]] \
@@ -2490,6 +2509,7 @@ pw_run () {
             VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
+            ${PW_DISPLAY} \
             "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
             print_info "Update prefix log:"
             [[ -f "${PORT_WINE_TMP_PATH}/update_pfx_log" ]] && cat "${PORT_WINE_TMP_PATH}/update_pfx_log"
@@ -2515,6 +2535,7 @@ pw_run () {
             ${PW_RUN_GAMESCOPE} \
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
+            ${PW_DISPLAY} \
             "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
             wait_wineserver
         else
@@ -2531,6 +2552,7 @@ pw_run () {
             ${PW_RUN_GAMESCOPE} \
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
+            ${PW_DISPLAY} \
             "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]}
             wait_wineserver
         fi
@@ -3106,7 +3128,7 @@ gui_edit_db () {
     PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME
     PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE
     PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_DISABLE_COMPOSITING
-    PW_USE_RUNTIME PW_DINPUT_PROTOCOL
+    PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_NATIVE_WAYLAND
     "
 
     if check_wayland_session ; then
@@ -3121,6 +3143,7 @@ gui_edit_db () {
 if [[ "${SKIP_EDIT_DB_TEXT_INFO}" != 1 ]] ; then
     export PW_DGVOODOO2_INFO=$(gettext 'Enable dgVoodoo2. Forced use all dgVoodoo2 libs (Glide 2.11-3.1, DirectDraw 1-7, Direct3D 2-9) on all 3D API. For WineD3D OpenGL need use WineLG (For Gallium Nine and Zink use too)')
     export PW_DINPUT_PROTOCOL_INFO=$(gettext 'Force use DirectInput protocol instead of XInput')
+    export PW_USE_NATIVE_WAYLAND_INFO=$(gettext 'Enable experemental native Wayland support (need special wine build to work)')
     export PW_VKBASALT_INFO=$(gettext 'Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)')
     export PW_NO_ESYNC_INFO=$(gettext 'Do not use in-process synchronization primitives based on eventfd. (It is recommended not to change the value.)')
     export PW_NO_FSYNC_INFO=$(gettext 'Do not use futex-based in-process synchronization primitives. (Automatically disabled on systems without FUTEX_WAIT_MULTIPLE support) (It is recommended not to change the value)')
