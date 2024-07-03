@@ -82,16 +82,15 @@ unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NO
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 rm -f "$PORT_WINE_TMP_PATH"/*{exe,msi,tar}*
 
-if [[ -d "/tmp" ]] ; then
-create_new_dir "/tmp/PortProton"
-export PORT_WINE_TMP_PATH_USE_RAM="/tmp/PortProton"
+if mkdir -p "/tmp/PortProton" ; then
+    export PW_TMPFS_PATH="/tmp/PortProton"
 else
-create_new_dir "${PORT_WINE_PATH}/data/tmp/PortProton"
-export PORT_WINE_TMP_PATH_USE_RAM="${PORT_WINE_PATH}/data/tmp/PortProton"
+    create_new_dir "${PORT_WINE_PATH}/data/tmp/PortProton"
+    export PW_TMPFS_PATH="${PORT_WINE_PATH}/data/tmp/PortProton"
 fi
 
-echo "" > "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_form"
-echo "" > "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_form_vulkan"
+echo "" > "${PW_TMPFS_PATH}/tmp_yad_form"
+echo "" > "${PW_TMPFS_PATH}/tmp_yad_form_vulkan"
 
 create_new_dir "${PORT_WINE_PATH}/data/dist"
 pushd "${PORT_WINE_PATH}/data/dist/" 1>/dev/null || fatal
@@ -196,32 +195,24 @@ esac
 pw_check_and_download_plugins
 
 # check skip update
-if [[ ! -f "${PORT_WINE_TMP_PATH_USE_RAM}/portproton.lock" ]] \
-&& [[ "${SKIP_CHECK_UPDATES_FLATPAK}" != 1 ]]
-then
-    pw_port_update
-else
-    scripts_install_ver=$(head -n 1 "${PORT_WINE_TMP_PATH}/scripts_ver")
-    export scripts_install_ver
-fi
-
 if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
-    if command gamescope --help 2> "${PORT_WINE_TMP_PATH_USE_RAM}/gamescope-help.tmp" ; then
+    pw_port_update
+    if command gamescope --help 2> "${PW_TMPFS_PATH}/gamescope-help.tmp" ; then
         export GAMESCOPE_INSTALLED="1"
     fi
     if command -v vulkaninfo &>/dev/null ; then
-        vulkaninfo --summary 2>/dev/null > "${PORT_WINE_TMP_PATH_USE_RAM}/vulkaninfo.tmp"
+        vulkaninfo --summary 2>/dev/null > "${PW_TMPFS_PATH}/vulkaninfo.tmp"
     else
-        $PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo 2>/dev/null > "${PORT_WINE_TMP_PATH_USE_RAM}/vulkaninfo.tmp"
+        $PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo 2>/dev/null > "${PW_TMPFS_PATH}/vulkaninfo.tmp"
     fi
-    VULKAN_DRIVER_NAME="$(grep -e 'driverName' "${PORT_WINE_TMP_PATH_USE_RAM}/vulkaninfo.tmp" | awk '{print$3}' | head -1)"
-    GET_GPU_NAMES=$(cat "${PORT_WINE_TMP_PATH_USE_RAM}/vulkaninfo.tmp" | awk -F '=' '/deviceName/{print $2}' | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
+    VULKAN_DRIVER_NAME="$(grep -e 'driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | awk '{print$3}' | head -1)"
+    GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
     LSPCI_VGA="$(lspci -k 2>/dev/null | grep -E 'VGA|3D' | tr -d '\n')"
     export VULKAN_DRIVER_NAME GET_GPU_NAMES LSPCI_VGA
 
-    if command xrandr --current 2>/dev/null > "${PORT_WINE_TMP_PATH_USE_RAM}/xrandr.tmp" ; then
-        PW_SCREEN_RESOLUTION="$(cat "${PORT_WINE_TMP_PATH_USE_RAM}/xrandr.tmp" | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
-        PW_SCREEN_PRIMARY="$(grep -e 'primary' "${PORT_WINE_TMP_PATH_USE_RAM}/xrandr.tmp" | awk '{print $1}')"
+    if command xrandr --current 2>/dev/null > "${PW_TMPFS_PATH}/xrandr.tmp" ; then
+        PW_SCREEN_RESOLUTION="$(cat "${PW_TMPFS_PATH}/xrandr.tmp" | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
+        PW_SCREEN_PRIMARY="$(grep -e 'primary' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}')"
         export PW_SCREEN_PRIMARY PW_SCREEN_RESOLUTION
         echo ""
         print_var PW_SCREEN_RESOLUTION PW_SCREEN_PRIMARY
@@ -240,36 +231,38 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
 
     GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
     unset LOCALE_LIST
-    locale -a 2>/dev/null > "${PORT_WINE_TMP_PATH_USE_RAM}/locale.tmp"
+    locale -a 2>/dev/null > "${PW_TMPFS_PATH}/locale.tmp"
     for LOCALE in $GET_LOCALE_LIST ; do
-        if grep -e $LOCALE "${PORT_WINE_TMP_PATH_USE_RAM}/locale.tmp" &>/dev/null ; then
+        if grep -e $LOCALE "${PW_TMPFS_PATH}/locale.tmp" &>/dev/null ; then
             if [[ ! -z "$LOCALE_LIST" ]]
-            then LOCALE_LIST+="!$(grep -e $LOCALE "${PORT_WINE_TMP_PATH_USE_RAM}/locale.tmp")"
-            else LOCALE_LIST="$(grep -e $LOCALE "${PORT_WINE_TMP_PATH_USE_RAM}/locale.tmp")"
+            then LOCALE_LIST+="!$(grep -e $LOCALE "${PW_TMPFS_PATH}/locale.tmp")"
+            else LOCALE_LIST="$(grep -e $LOCALE "${PW_TMPFS_PATH}/locale.tmp")"
             fi
         fi
     done
     export LOCALE_LIST
+else
+    scripts_install_ver=$(head -n 1 "${PORT_WINE_TMP_PATH}/scripts_ver")
+    export scripts_install_ver
 fi
 
 
 # create lock file
 if ! check_flatpak ; then
-if [[ -f "${PORT_WINE_TMP_PATH_USE_RAM}/portproton.lock" ]] ; then
-    print_warning "Found lock file: "${PORT_WINE_TMP_PATH_USE_RAM}/portproton.lock""
+if [[ -f "${PW_TMPFS_PATH}/portproton.lock" ]] ; then
+    print_warning "Found lock file: "${PW_TMPFS_PATH}/portproton.lock""
     yad_question "$(gettext 'A running PortProton session was detected.\nDo you want to end the previous session?')" || exit 0
 fi
-touch "${PORT_WINE_TMP_PATH_USE_RAM}/portproton.lock"
+touch "${PW_TMPFS_PATH}/portproton.lock"
 rm_lock_file () {
     echo "Removing the lock file..."
-    rm -fv "${PORT_WINE_TMP_PATH_USE_RAM}/portproton.lock" && echo "OK"
+    rm -fv "${PW_TMPFS_PATH}/portproton.lock" && echo "OK"
 }
 trap "rm_lock_file" EXIT
 fi
 
-if check_flatpak ; then
-export SKIP_CHECK_UPDATES_FLATPAK="1"
-try_remove_dir "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
+if check_flatpak
+then try_remove_dir "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
 else pw_download_libs
 fi
 
@@ -477,7 +470,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             --field="3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
             --field="  WINE  : :CB" "${PW_DEFAULT_WINE_USE}" \
             --field="PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
-            1> "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_form_vulkan" 2>/dev/null &
+            1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
             "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="${START_GUI_NOTEBOOK_COLUMNS}" --align-buttons --homogeneous-column \
             --gui-type-layout=${START_GUI_TYPE_LAYOUT_NOTEBOOK} \
@@ -510,8 +503,8 @@ if [[ -f "${portwine_exe}" ]] ; then
 
             PW_YAD_SET="$?"
             if [[ "$PW_YAD_SET" == "1" || "$PW_YAD_SET" == "252" ]] ; then exit 0 ; fi
-            if [[ $(<"${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_form") != "" ]]; then
-                PW_YAD_SET=$(head -n 1 "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_form" | awk '{print $1}')
+            if [[ $(<"${PW_TMPFS_PATH}/tmp_yad_form") != "" ]]; then
+                PW_YAD_SET=$(head -n 1 "${PW_TMPFS_PATH}/tmp_yad_form" | awk '{print $1}')
                 export PW_YAD_SET
                 export PW_YAD_FORM_TAB="1"
             fi
@@ -525,7 +518,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             --field="3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
             --field="  WINE  : :CB" "${PW_DEFAULT_WINE_USE}" \
             --field="PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
-            1> "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_form_vulkan" 2>/dev/null &
+            1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
             "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="${START_GUI_PANED_COLUMNS}" \
             --gui-type-layout=${START_GUI_TYPE_LAYOUT_PANED} \
@@ -622,7 +615,7 @@ else
     --field="   $(gettext "Prefix Manager")     "!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Run winecfg to edit the settings of the selected prefix")":"FBTN" '@bash -c "button_click WINECFG"' \
     --field="   $(gettext "File Manager")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Run wine file manager")":"FBTN" '@bash -c "button_click WINEFILE"' \
     --field="   $(gettext "Command line")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Run wine cmd")":"FBTN" '@bash -c "button_click WINECMD"' \
-    --field="   $(gettext "Regedit")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Run wine regedit")":"FBTN" '@bash -c "button_click WINEREG"' 1> "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_form_vulkan" 2>/dev/null &
+    --field="   $(gettext "Regedit")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Run wine regedit")":"FBTN" '@bash -c "button_click WINEREG"' 1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
     "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[1]}" --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll --homogeneous-column \
     --gui-type-layout=${MAIN_MENU_GUI_TYPE_LAYOUT} \
@@ -719,8 +712,8 @@ else
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
     pw_yad_set_form
 
-    if [[ "$(<"${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_form_vulkan")" != "" ]] ; then
-        YAD_FORM_VULKAN=$(<"${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_form_vulkan")
+    if [[ "$(<"${PW_TMPFS_PATH}/tmp_yad_form_vulkan")" != "" ]] ; then
+        YAD_FORM_VULKAN=$(<"${PW_TMPFS_PATH}/tmp_yad_form_vulkan")
         VULKAN_MOD=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $1}')
         PW_PREFIX_NAME=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $2}' | sed -e s/[[:blank:]]/_/g)
         PW_WINE_VER=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $3}')

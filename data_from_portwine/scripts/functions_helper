@@ -1561,13 +1561,13 @@ pw_find_exe () {
 
     pw_start_progress_bar_block "$(gettext "Searching for .exe files... Please wait.")"
     find "${PW_PATH_FOR_FIND}" -type f -name '*.exe' ${PW_FIND_TIME} | grep -viE ${PW_EXCLUDE_EXE_FIND} | \
-    awk -F"/prefixes/" '{print $2}' > "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_find_exe"
+    awk -F"/prefixes/" '{print $2}' > "${PW_TMPFS_PATH}/tmp_yad_find_exe"
     pw_stop_progress_bar
 
     unset FIND_TO_GUI
     while read line; do
         FIND_TO_GUI+="${line}%"
-    done < "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_find_exe"
+    done < "${PW_TMPFS_PATH}/tmp_yad_find_exe"
 
     OrigIFS="$IFS" && IFS=%
     PW_SET_FIND_EXE="$("${pw_yad}" --height="500" --width="800" --list --text-align=center \
@@ -2482,39 +2482,30 @@ start_portwine () {
     && ! check_gamescope_session
     then
         if [[ "${PW_GPU_USE}" != "disabled" ]] ; then
-            PW_vendorID="$(cat "${PORT_WINE_TMP_PATH_USE_RAM}/vulkaninfo.tmp" | grep -B3 "${PW_GPU_USE}" | grep vendorID | sort -u | awk -F'0x' '{print $2}')"
-            PW_deviceID="$(cat "${PORT_WINE_TMP_PATH_USE_RAM}/vulkaninfo.tmp" | grep -B3 "${PW_GPU_USE}" | grep deviceID | sort -u | awk -F'0x' '{print $2}')"
+            PW_vendorID="$(cat "${PW_TMPFS_PATH}/vulkaninfo.tmp" | grep -B3 "${PW_GPU_USE}" | grep vendorID | sort -u | awk -F'0x' '{print $2}')"
+            PW_deviceID="$(cat "${PW_TMPFS_PATH}/vulkaninfo.tmp" | grep -B3 "${PW_GPU_USE}" | grep deviceID | sort -u | awk -F'0x' '{print $2}')"
             PW_ID_VIDEO="--prefer-vk-device ${PW_vendorID}:${PW_deviceID}"
         else
             unset PW_ID_VIDEO
         fi
-        unset PW_GAMESCOPE_ARGS_NEW
         if ! check_wayland_session ; then
             export vk_xwayland_wait_ready="false"
         fi
         #checkbox
-        if [ "${PW_GS_BORDERLESS_WINDOW}" == "1" ] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} -b"
-        fi
-        if [ "${PW_GS_FULLSCREEN}" == "1" ] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} -f"
-        fi
-        if [ "${PW_GS_FORCE_FULLSCREEN}" == "1" ] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} --force-windows-fullscreen"
-        fi
-        if [ "${PW_GS_FORCE_GRAB_KEYBOARD}" == "1" ] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} -g"
-        fi
-        if [ "${PW_GS_FORCE_GRAB_CURSOR}" == "1" ] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} --force-grab-cursor"
-        fi
+        local PW_GAMESCOPE_ARGS_NEW=""
+        [[ "${PW_GS_BORDERLESS_WINDOW}" == "1" ]] &&  PW_GAMESCOPE_ARGS_NEW+=" -b"
+        [[ "${PW_GS_FULLSCREEN}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" -f"
+        [[ "${PW_GS_FORCE_FULLSCREEN}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --force-windows-fullscreen"
+        [[ "${PW_GS_FORCE_GRAB_KEYBOARD}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" -g"
+        [[ "${PW_GS_FORCE_GRAB_CURSOR}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --force-grab-cursor"
+
         if [ "${PW_GS_HDR_ENABLE}" == "1" ] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} --hdr-enabled"
+            PW_GAMESCOPE_ARGS_NEW+=" --hdr-enabled"
             export DXVK_HDR="1"
             if [[ ${GAMESCOPE_WITH_BACKEND} == "1" ]] ; then
                 export ENABLE_GAMESCOPE_WSI="1"
                 unset PW_GS_BACKEND_SDL PW_GS_SDL_VIDEODRIVER_X11
-                PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} --backend wayland"
+                PW_GAMESCOPE_ARGS_NEW+=" --backend wayland"
             fi
         fi
         if [ "${PW_GS_SDR_GAMMUT_WIDENESS}" == "1" ] ; then
@@ -2734,15 +2725,15 @@ pw_run () {
 export -f pw_run
 
 pw_yad_set_form () {
-    if [[ $(<"${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_form") != "" ]]; then
-        PW_YAD_SET=$(head -n 1 "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_form" | awk '{print $1}')
+    if [[ $(<"${PW_TMPFS_PATH}/tmp_yad_form") != "" ]]; then
+        PW_YAD_SET=$(head -n 1 "${PW_TMPFS_PATH}/tmp_yad_form" | awk '{print $1}')
         export PW_YAD_SET
     fi
 }
 
 pw_yad_form_vulkan () {
-    if [[ "$(<"${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_form_vulkan")" != "" ]] ; then
-        YAD_FORM_VULKAN=$(sed 's/$/\;/' "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_form_vulkan")
+    if [[ "$(<"${PW_TMPFS_PATH}/tmp_yad_form_vulkan")" != "" ]] ; then
+        YAD_FORM_VULKAN=$(sed 's/$/\;/' "${PW_TMPFS_PATH}/tmp_yad_form_vulkan")
         VULKAN_MOD=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $1}')
         PW_WINE_VER=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $2}')
         PW_PREFIX_NAME=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $3}' | sed -e s/[[:blank:]]/_/g)
@@ -3054,12 +3045,12 @@ pw_tray_icon () {
 # GUI GET OTHER WINE
 gui_proton_downloader () {
     unset VERSION_WINE_GIT VERSION_INSTALLED_WINE URL_VERSION_PROTON_GIT GIVE_WINE_URL
-    try_remove_file "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_proton_pw_git"
-    try_remove_file "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_wine_kron4ek_git"
-    try_remove_file "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_proton_ge_git"
-    try_remove_file "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_wine_ge_custom_git"
-    try_remove_file "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_installed_wine"
-    try_remove_file "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_set_wine"
+    try_remove_file "${PW_TMPFS_PATH}/tmp_proton_pw_git"
+    try_remove_file "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
+    try_remove_file "${PW_TMPFS_PATH}/tmp_proton_ge_git"
+    try_remove_file "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git"
+    try_remove_file "${PW_TMPFS_PATH}/tmp_installed_wine"
+    try_remove_file "${PW_TMPFS_PATH}/tmp_set_wine"
 
     if [[ "$PW_WINE_USE" == PROTON_LG ]]
     then PW_WINE_USE="${PW_PROTON_LG_VER}"
@@ -3080,43 +3071,43 @@ gui_proton_downloader () {
     export PROTON_GE_GIT=($(curl -s "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases" | grep "browser_download_url.*\.tar\.gz" | cut -d \" -f 4))
     if [[ ! -z "${PROTON_GE_GIT}" ]] ; then
         for PGEGIT in ${PROTON_GE_GIT[@]} ; do
-            echo ${PGEGIT} | awk -F/ '{print $NF}' | sed 's/.tar.gz//' >> "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_proton_ge_git"
+            echo ${PGEGIT} | awk -F/ '{print $NF}' | sed 's/.tar.gz//' >> "${PW_TMPFS_PATH}/tmp_proton_ge_git"
         done
-        sed -i '/Proton-6.5-GE-2/,$d' "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_proton_ge_git"
-        sed -i '/github-action/d' "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_proton_ge_git"
-        sed -i '/^$/d' "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_proton_ge_git"
+        sed -i '/Proton-6.5-GE-2/,$d' "${PW_TMPFS_PATH}/tmp_proton_ge_git"
+        sed -i '/github-action/d' "${PW_TMPFS_PATH}/tmp_proton_ge_git"
+        sed -i '/^$/d' "${PW_TMPFS_PATH}/tmp_proton_ge_git"
     fi
 
     # WINE_KRON4EK
     export WINE_KRON4EK=($(curl -s "https://api.github.com/repos/Kron4ek/Wine-Builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4))
     if [[ ! -z "${WINE_KRON4EK}" ]] ; then
         for PGEGIT in ${WINE_KRON4EK[@]} ; do
-            echo ${PGEGIT} | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_wine_kron4ek_git"
+            echo ${PGEGIT} | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
         done
-        sed -i '/6.3/,$d' "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_wine_kron4ek_git"
-        sed -i '/-x86/d' "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_wine_kron4ek_git"
-        sed -i '/^$/d' "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_wine_kron4ek_git"
+        sed -i '/6.3/,$d' "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
+        sed -i '/-x86/d' "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
+        sed -i '/^$/d' "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
     fi
 
     # WINE_GE_CUSTOM
     export WINE_GE_CUSTOM=($(curl -s "https://api.github.com/repos/GloriousEggroll/wine-ge-custom/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4))
     if [[ ! -z "${WINE_GE_CUSTOM}" ]] ; then
         for PGEGIT in ${WINE_GE_CUSTOM[@]} ; do
-            echo ${PGEGIT} | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_wine_ge_custom_git"
+            echo ${PGEGIT} | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git"
         done
-        sed -i '/6.23/,$d' "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_wine_ge_custom_git"
-        sed -i '/^$/d' "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_wine_ge_custom_git"
+        sed -i '/6.23/,$d' "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git"
+        sed -i '/^$/d' "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git"
     fi
 
     # PROTON_LG
     export PROTON_PW_GIT=($(curl -s "https://api.github.com/repos/Castro-Fidel/wine_builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4 | sort -r))
     if [[ ! -z "${PROTON_PW_GIT}" ]] ; then
         for PPWGIT in ${PROTON_PW_GIT[@]} ; do
-            echo ${PPWGIT} | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_proton_pw_git"
+            echo ${PPWGIT} | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_proton_pw_git"
         done
-        sed -i /${PW_WINE_LG_VER}/d "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_proton_pw_git"
-        sed -i '/plugins/d' "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_proton_pw_git"
-        sed -i '/^$/d' "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_proton_pw_git"
+        sed -i /${PW_WINE_LG_VER}/d "${PW_TMPFS_PATH}/tmp_proton_pw_git"
+        sed -i '/plugins/d' "${PW_TMPFS_PATH}/tmp_proton_pw_git"
+        sed -i '/^$/d' "${PW_TMPFS_PATH}/tmp_proton_pw_git"
     fi
     pw_stop_progress_bar
 
@@ -3129,20 +3120,20 @@ gui_proton_downloader () {
 
     pushd "${PORT_WINE_PATH}/data/dist/" || fatal
     for INSTALLING_VERSION_IN_DIST in * ; do
-        sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_proton_pw_git"
-        sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_proton_ge_git"
-        sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_wine_kron4ek_git"
-        sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_wine_ge_custom_git"
+        sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PW_TMPFS_PATH}/tmp_proton_pw_git"
+        sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PW_TMPFS_PATH}/tmp_proton_ge_git"
+        sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
+        sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git"
     done
     popd 1>/dev/null || fatal
 
-    TMP_PROTON_PW_GIT="$(sed 's/^/FALSE /' "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_proton_pw_git" | tr '\n' ' ')"
-    TMP_PROTON_GE_GIT="$(sed 's/^/FALSE /' "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_proton_ge_git" | tr '\n' ' ')"
-    TMP_PROTON_KR_GIT="$(sed 's/^/FALSE /' "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_wine_kron4ek_git" | tr '\n' ' ')"
-    TMP_PROTON_CU_GIT="$(sed 's/^/FALSE /' "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_wine_ge_custom_git" | tr '\n' ' ')"
+    TMP_PROTON_PW_GIT="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_proton_pw_git" | tr '\n' ' ')"
+    TMP_PROTON_GE_GIT="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_proton_ge_git" | tr '\n' ' ')"
+    TMP_PROTON_KR_GIT="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git" | tr '\n' ' ')"
+    TMP_PROTON_CU_GIT="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git" | tr '\n' ' ')"
 
-    ls -l ${PORT_WINE_PATH}/data/dist | awk '{print $9}' | sed "/$PW_PROTON_LG_VER/d" | sed "/$PW_WINE_LG_VER/d" | sed '/^$/d' 1>${PORT_WINE_TMP_PATH_USE_RAM}/tmp_installed_wine
-    TMP_INSTALLED_WINE="$(sed 's/^/FALSE /' "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_installed_wine" | tr '\n' ' ')"
+    ls -l ${PORT_WINE_PATH}/data/dist | awk '{print $9}' | sed "/$PW_PROTON_LG_VER/d" | sed "/$PW_WINE_LG_VER/d" | sed '/^$/d' 1>${PW_TMPFS_PATH}/tmp_installed_wine
+    TMP_INSTALLED_WINE="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_installed_wine" | tr '\n' ' ')"
 
     if [[ "$1" != "silent" ]] ; then
         # GUI
@@ -3153,7 +3144,7 @@ gui_proton_downloader () {
         --column "$(gettext "Set")" \
         --column "$(gettext "Select WINE for download:")" \
         $TMP_PROTON_PW_GIT \
-        1>> "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_set_wine" \
+        1>> "${PW_TMPFS_PATH}/tmp_set_wine" \
         2>/dev/null &
 
         "${pw_yad}" --plug=$KEY_WINE --tabnum=2 --list --checklist --separator="" \
@@ -3161,7 +3152,7 @@ gui_proton_downloader () {
         --column "$(gettext "Set")" \
         --column "$(gettext "Select WINE for download:")" \
         $TMP_PROTON_KR_GIT \
-        1>> "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_set_wine" \
+        1>> "${PW_TMPFS_PATH}/tmp_set_wine" \
         2>/dev/null &
 
         "${pw_yad}" --plug=$KEY_WINE --tabnum=3 --list --checklist --separator="" \
@@ -3169,7 +3160,7 @@ gui_proton_downloader () {
         --column "$(gettext "Set")" \
         --column "$(gettext "Select WINE for download:")" \
         $TMP_PROTON_GE_GIT \
-        1>> "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_set_wine" \
+        1>> "${PW_TMPFS_PATH}/tmp_set_wine" \
         2>/dev/null &
 
         "${pw_yad}" --plug=$KEY_WINE --tabnum=4 --list --checklist --separator="" \
@@ -3177,7 +3168,7 @@ gui_proton_downloader () {
         --column "$(gettext "Set")" \
         --column "$(gettext "Select WINE for download:")" \
         $TMP_PROTON_CU_GIT \
-        1>> "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_set_wine" \
+        1>> "${PW_TMPFS_PATH}/tmp_set_wine" \
         2>/dev/null &
 
         "${pw_yad}" --plug=$KEY_WINE --tabnum=5 --list --checklist --separator="" \
@@ -3185,7 +3176,7 @@ gui_proton_downloader () {
         --column "$(gettext "Set")" \
         --column "$(gettext "Select installed WINE for delete:")" \
         $TMP_INSTALLED_WINE \
-        1> "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_installed_wine_set" \
+        1> "${PW_TMPFS_PATH}/tmp_installed_wine_set" \
         2>/dev/null &
 
         "${pw_yad}" --key=$KEY_WINE --notebook --width=500 --height=600 --text-align=center \
@@ -3206,12 +3197,12 @@ gui_proton_downloader () {
             exit 0
         fi
 
-        if [[ ! -z $(<"${PORT_WINE_TMP_PATH_USE_RAM}/tmp_set_wine") ]] ; then
-            VERSION_WINE_GIT="$(sed 's/TRUE//' "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_set_wine")"
+        if [[ ! -z $(<"${PW_TMPFS_PATH}/tmp_set_wine") ]] ; then
+            VERSION_WINE_GIT="$(sed 's/TRUE//' "${PW_TMPFS_PATH}/tmp_set_wine")"
         fi
 
-        if [[ ! -z $(<"${PORT_WINE_TMP_PATH_USE_RAM}/tmp_installed_wine_set") ]] ; then
-            VERSION_INSTALLED_WINE="$(sed 's/TRUE//' "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_installed_wine_set")"
+        if [[ ! -z $(<"${PW_TMPFS_PATH}/tmp_installed_wine_set") ]] ; then
+            VERSION_INSTALLED_WINE="$(sed 's/TRUE//' "${PW_TMPFS_PATH}/tmp_installed_wine_set")"
         fi
 
         if [[ -z "$VERSION_WINE_GIT" ]] \
@@ -3412,7 +3403,7 @@ fi
     old_IFS=$IFS
     IFS="%"
     "${pw_yad}" --plug=$KEY_EDIT_DB_GUI --tabnum="1" --form --separator=" " --columns=3 ${ADD_CHK_BOX_EDIT_DB} \
-    1> "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_output_yad_edit_db" 2>/dev/null &
+    1> "${PW_TMPFS_PATH}/tmp_output_yad_edit_db" 2>/dev/null &
     IFS=$old_IFS
 
     case ${PW_WINDOWS_VER} in
@@ -3458,7 +3449,7 @@ A brief instruction:
     --field="$(gettext "Forcibly select the OpenGL version for the game")!$(gettext "You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)") :CB" "$(combobox_fix_disabled "${PW_MESA_GL_VERSION_OVERRIDE}" "4.6COMPAT!4.6!4.5COMPAT!4.5!3.3COMPAT!3.3")" \
     --field="$(gettext "Forcibly select the VKD3D feature level")!$(gettext "You can set a forced feature level VKD3D for games on DirectX12") :${VKD3D_CB}" "$(combobox_fix_disabled "${PW_VKD3D_FEATURE_LEVEL}" "12_2!12_1!12_0!11_1!11_0")" \
     --field="$(gettext "Force certain locale for an app:")!$(gettext "Fixes encoding issues in legacy software") :CB" "$(combobox_fix_disabled "${PW_LOCALE_SELECT}" "$LOCALE_LIST")" \
-    1> "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_output_yad_fps_limit" 2>/dev/null &
+    1> "${PW_TMPFS_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
 
     "${pw_yad}" --notebook --key="$KEY_EDIT_DB_GUI" --title "$(gettext "EDIT DB")" --text-align=center \
     --text "$(gettext "Change settings in database file for") <b>${PORTWINE_DB}</b>\n $(gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" \
@@ -3486,7 +3477,7 @@ A brief instruction:
                 ;;
     esac
 
-    output_yad_edit_db=($(<"${PORT_WINE_TMP_PATH_USE_RAM}/tmp_output_yad_edit_db"))
+    output_yad_edit_db=($(<"${PW_TMPFS_PATH}/tmp_output_yad_edit_db"))
     bool_from_yad=0
     for boole_to_int in ${PW_EDIT_DB_LIST} ; do
         export ${boole_to_int}=${output_yad_edit_db[$bool_from_yad]}
@@ -3497,7 +3488,7 @@ A brief instruction:
         export bool_from_yad=$(( ${bool_from_yad} + 1 ))
     done
     
-    PW_ADD_SETTINGS=$(head -n 1 "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_output_yad_fps_limit")
+    PW_ADD_SETTINGS=$(head -n 1 "${PW_TMPFS_PATH}/tmp_output_yad_fps_limit")
 
     PW_WINDOWS_VER="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $1}')"
     PW_DLL_INSTALL="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $2}')"
@@ -3637,13 +3628,13 @@ fi
     "${pw_yad}" --plug=$KEY_FX_GUI --tabnum="1" --form --columns=4 --separator=" " \
     --text-align=center --text="$(gettext "VkBasalt settings for adding effects to games running under Vulkan. (The <b>HOME</b> key disables vkbasalt)\n<b>NOTE:</b> To display help for each item, simply hover over the text")" \
     --gui-type-text=${VKBASALT_GUI_TYPE_TEXT_UP} --gui-type-layout=${VKBASALT_GUI_TYPE_LAYOUT_UP} \
-    ${ADD_GUI_FX} 1> "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_basalt_set" 2>/dev/null &
+    ${ADD_GUI_FX} 1> "${PW_TMPFS_PATH}/tmp_yad_basalt_set" 2>/dev/null &
     export IFS="${old_IFS}"
 
     "${pw_yad}" --plug=$KEY_FX_GUI --tabnum="2" --separator=" " --form \
     --gui-type-layout=${VKBASALT_GUI_TYPE_LAYOUT_DOWN} \
     --field="AMD FidelityFX - Contrast Adaptive Sharpening"!"$(gettext "AMD FidelityFX - CAS is designed to dramatically improve texture sharpness without additional modification settings for games, with minimal loss of performance. (For older games it is recommended to set value = 100)")":SCL "${VKBASALT_FFX_CAS_GUI}" \
-    1> "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_cas_set" 2>/dev/null &
+    1> "${PW_TMPFS_PATH}/tmp_yad_cas_set" 2>/dev/null &
 
     "${pw_yad}" --paned --key="$KEY_FX_GUI" --sensitive --title="vkBasalt" \
     --gui-type=settings-paned \
@@ -3662,8 +3653,8 @@ fi
         182)
             export PW_VKBASALT=1 ;;
     esac
-    YAD_BASALT_SET=$(<"${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_basalt_set")
-    YAD_CAS_SET=$(cat "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_cas_set" | sed s/" "//g)
+    YAD_BASALT_SET=$(<"${PW_TMPFS_PATH}/tmp_yad_basalt_set")
+    YAD_CAS_SET=$(cat "${PW_TMPFS_PATH}/tmp_yad_cas_set" | sed s/" "//g)
 
     INT_COUNT_FX=0
     for read_list_fx in ${YAD_BASALT_SET} ; do
@@ -3764,8 +3755,8 @@ if [[ "${SKIP_MANGOHUD_TEXT_INFO}" != 1 ]] ; then
 fi
 
     unset ADD_GUI_MH GUI_MH_RESULT ADD_GUI_MH_FPS GUI_MH_FPS_RESULT PW_FPS_LIMIT_VAR PW_MANGOHUD_CONFIG
-    try_remove_file "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_mh_set"
-    try_remove_file "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_mh_fps_limit"
+    try_remove_file "${PW_TMPFS_PATH}/tmp_yad_mh_set"
+    try_remove_file "${PW_TMPFS_PATH}/tmp_yad_mh_fps_limit"
 
     GET_REFRESH_RATE=(30 40 45 48 60 75 90 120 144 165 175 240)
 
@@ -3800,14 +3791,14 @@ fi
     "${pw_yad}" --plug=$KEY_MH_GUI --tabnum="1" --form --columns=4 --separator=" " --text-align=center \
         --text="$(gettext "MangoHud settings (Keys <b>R_SHIFT + F12</b> disable MangoHud)\n<b>note:</b> To display help for each item, just hover the mouse cursor over the text.")" \
         --gui-type-text=${MANGOHUD_GUI_TYPE_TEXT_UP} --gui-type-layout=${MANGOHUD_GUI_TYPE_LAYOUT_UP} \
-        ${ADD_GUI_MH} 1> "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_mh_set" 2>/dev/null &
+        ${ADD_GUI_MH} 1> "${PW_TMPFS_PATH}/tmp_yad_mh_set" 2>/dev/null &
     IFS=$old_IFS
 
     old_IFS=$IFS && IFS="%"
     "${pw_yad}" --plug=$KEY_MH_GUI --tabnum="2" --form --columns=10 --separator=" " --text-align=center \
         --text="$(gettext "Enabling fps limitation with MANGOHUD tools built into PortProton (Keys <b>L_SHIFT + F1</b> Toggles fps limitation)")" \
         --gui-type-text=${MANGOHUD_GUI_TYPE_TEXT_DOWN} --gui-type-layout=${MANGOHUD_GUI_TYPE_LAYOUT_DOWN} \
-        ${ADD_GUI_MH_FPS} 1> "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_mh_fps_limit" 2>/dev/null &
+        ${ADD_GUI_MH_FPS} 1> "${PW_TMPFS_PATH}/tmp_yad_mh_fps_limit" 2>/dev/null &
     IFS=$old_IFS
 
     "${pw_yad}" --paned --key="$KEY_MH_GUI" --title="MangoHud" --center \
@@ -3837,8 +3828,8 @@ fi
             ;;
     esac
 
-    YAD_MH_SET=$(<"${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_mh_set")
-    YAD_MH_FPS_LIMIT=$(<"${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_mh_fps_limit")
+    YAD_MH_SET=$(<"${PW_TMPFS_PATH}/tmp_yad_mh_set")
+    YAD_MH_FPS_LIMIT=$(<"${PW_TMPFS_PATH}/tmp_yad_mh_fps_limit")
 
     MONITOR_HEIGHT="$(echo $PW_SCREEN_RESOLUTION | awk -F'x' '{print $2}')"
     if [[ ! -z "$MONITOR_HEIGHT" ]]
@@ -3952,14 +3943,14 @@ fi
     "${pw_yad}" --plug=$KEY_DGV2_GUI --tabnum="1" --form --separator=" " --columns=3 ${ADD_CHK_BOX_DGV2} --text-align=center \
     --text="$(gettext "dgVoodoo2 settings\n<b>NOTE:</b> To display help for each item, simply hover over the text")" \
     --gui-type-text=${DGVOODOO2_GUI_TYPE_TEXT_UP} --gui-type-layout=${DGVOODOO2_GUI_TYPE_LAYOUT_UP}  \
-    1> "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_dgv2_set" 2>/dev/null &
+    1> "${PW_TMPFS_PATH}/tmp_yad_dgv2_set" 2>/dev/null &
     IFS=$old_IFS
 
     "${pw_yad}" --plug=$KEY_DGV2_GUI --tabnum="2" --form --columns=2 --separator="%" \
     --gui-type-layout=${DGVOODOO2_GUI_TYPE_LAYOUT_DOWN} \
     --field="${CHKBOX_SPACE}FILTERING!$(gettext "Forced anisotropic filtering in Direct3D games") :CB" "$(combobox_fix_disabled "${PW_DGV2_FILTERING}" "2!4!8!16")" \
     --field="${CHKBOX_SPACE}ANTIALIASING!$(gettext "Forced antialiasing in Direct3D and Glide games") :CB" "$(combobox_fix_disabled "${PW_DGV2_ANTIALIASING}" "2!4!8")" \
-    1> "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_dgv2_set_cb" 2>/dev/null &
+    1> "${PW_TMPFS_PATH}/tmp_yad_dgv2_set_cb" 2>/dev/null &
 
     "${pw_yad}" --paned --key=$KEY_DGV2_GUI --height="350" --title="dgVoodoo2" --center \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --sensitive \
@@ -3988,7 +3979,7 @@ fi
             ;;
     esac
 
-    output_yad_dgv2=($(<"${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_dgv2_set"))
+    output_yad_dgv2=($(<"${PW_TMPFS_PATH}/tmp_yad_dgv2_set"))
     bool_from_yad=0
     for boole_to_int in ${PW_DGV2_LIST} ; do
         export ${boole_to_int}=${output_yad_dgv2[$bool_from_yad]}
@@ -3999,7 +3990,7 @@ fi
         export bool_from_yad=$(( ${bool_from_yad} + 1 ))
     done
 
-    PW_ADD_SETTINGS_DGV2=$(head -n 1 "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_dgv2_set_cb")
+    PW_ADD_SETTINGS_DGV2=$(head -n 1 "${PW_TMPFS_PATH}/tmp_yad_dgv2_set_cb")
 
     PW_DGV2_FILTERING="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $1}')"
     PW_DGV2_ANTIALIASING="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $2}')"
@@ -4020,10 +4011,10 @@ gui_gamescope () {
     PW_GS_EXPOSE_WAYLAND PW_GS_REALTIME_SCHEDULING PW_GS_FIX_AMD_AND_INTEL
     "
 
-    grep -e '--mangoapp' "${PORT_WINE_TMP_PATH_USE_RAM}/gamescope-help.tmp" &>/dev/null && add_to_var PW_GS_LIST "PW_GS_MANGOAPP"
+    grep -e '--mangoapp' "${PW_TMPFS_PATH}/gamescope-help.tmp" &>/dev/null && add_to_var PW_GS_LIST "PW_GS_MANGOAPP"
 
     if check_wayland_session ; then
-        grep -e '--backend' "${PORT_WINE_TMP_PATH_USE_RAM}/gamescope-help.tmp" &>/dev/null \
+        grep -e '--backend' "${PW_TMPFS_PATH}/gamescope-help.tmp" &>/dev/null \
         && add_to_var PW_GS_LIST "PW_GS_BACKEND_SDL" && add_to_var PW_GS_LIST "PW_GS_SDL_VIDEODRIVER_X11" && export GAMESCOPE_WITH_BACKEND="1"
     else
         export PW_GS_BACKEND_SDL="0"
@@ -4055,7 +4046,7 @@ fi
 
     GS_FILTER_CB="linear!nearest!fsr!nis!pixel"
     #debian bookworm fix
-    if grep -e '-U, --fsr-upscaling' "${PORT_WINE_TMP_PATH_USE_RAM}/gamescope-help.tmp" &>/dev/null ; then
+    if grep -e '-U, --fsr-upscaling' "${PW_TMPFS_PATH}/gamescope-help.tmp" &>/dev/null ; then
         GS_FILTER_CB="fsr!nis"
         export PW_GS_FILTER_MODE_OLD="true"
         rm_from_var PW_GS_LIST "PW_GS_HDR_ENABLE"
@@ -4114,10 +4105,10 @@ fi
     "${pw_yad}" --plug=$KEY_GS_GUI --tabnum="1" --form --columns=4 --separator=" " --text-align=center --text "$GAMESCOPE_NEED_INSTALL" \
     --gui-type-text=${GAMESCOPE_GUI_TYPE_TEXT_UP} --gui-type-layout=${GAMESCOPE_GUI_TYPE_LAYOUT_UP} \
     ${ADD_CHK_BOX_GS} \
-    1> "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_gs_set" 2>/dev/null &
+    1> "${PW_TMPFS_PATH}/tmp_yad_gs_set" 2>/dev/null &
     IFS=$old_IFS
 
-    GAMESCOPE_XRANDR="$(grep -e '[0-9]x' "${PORT_WINE_TMP_PATH_USE_RAM}/xrandr.tmp" | awk '{print $1}' | sort -rVu | grep "^[1-2]" | tr '\n' '!' | sed 's/.$//')"
+    GAMESCOPE_XRANDR="$(grep -e '[0-9]x' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}' | sort -rVu | grep "^[1-2]" | tr '\n' '!' | sed 's/.$//')"
 
     "${pw_yad}" --plug=$KEY_GS_GUI --tabnum="2" --form --columns=3 --separator="%" --homogeneous-row \
     --gui-type-text=${GAMESCOPE_GUI_TYPE_TEXT_DOWN} --gui-type-layout=${GAMESCOPE_GUI_TYPE_LAYOUT_DOWN} \
@@ -4134,7 +4125,7 @@ fi
     --field="${CHKBOX_SPACE}$(gettext "HDR inverse target")!$(gettext "Set the target luninance of the inverse tone mapping process - Max is 10000 nits") :${GS_NUM}" "${PW_GS_ITM_TARGET_NITS}:!0..10000" \
     --field="${CHKBOX_SPACE}$(gettext "Mesa vulkan WSI")!$(gettext "Overrides the WSI present mode") :${GS_CB}" "$(combobox_fix_disabled "${PW_GS_MESA_VK_WSI_PRESENT_MODE}" "fifo!immediate!mailbox!relaxed")" \
     --field="${CHKBOX_SPACE}$(gettext "Gamescope WSI")!$(gettext "This can be useful for some HDR options and for some DXVK v2.3 vsync optimisations") :${GS_CB}" "$(combobox_fix_default "${PW_GS_GAMESCOPE_WSI}" "enable!disable")" \
-    1> "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_gs_set_cb" 2>/dev/null &
+    1> "${PW_TMPFS_PATH}/tmp_yad_gs_set_cb" 2>/dev/null &
 
     "${pw_yad}" --paned --key="$KEY_GS_GUI" --title="GameScope" --center \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
@@ -4164,7 +4155,7 @@ fi
             ;;
     esac
 
-    output_yad_gs=($(<"${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_gs_set"))
+    output_yad_gs=($(<"${PW_TMPFS_PATH}/tmp_yad_gs_set"))
     bool_from_yad=0
     for boole_to_int in ${PW_GS_LIST} ; do
         export ${boole_to_int}=${output_yad_gs[$bool_from_yad]}
@@ -4175,7 +4166,7 @@ fi
         export bool_from_yad=$(( ${bool_from_yad} + 1 ))
     done
 
-    PW_ADD_SETTINGS_GS=$(head -n 1 "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_gs_set_cb")
+    PW_ADD_SETTINGS_GS=$(head -n 1 "${PW_TMPFS_PATH}/tmp_yad_gs_set_cb")
 
     PW_GS_SHOW_RESOLUTION="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $1}')"
     PW_GS_INTERNAL_RESOLUTION="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $2}' | tr ',' '.')"
@@ -4577,7 +4568,7 @@ portwine_start_debug () {
     echo "PW_SCREEN_PRIMARY=$PW_SCREEN_PRIMARY" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "----------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "Vulkan info device name:" >> "${PORT_WINE_PATH}/PortProton.log"
-    grep -E '^GPU|deviceName|driverName' "${PORT_WINE_TMP_PATH_USE_RAM}/vulkaninfo.tmp" >> "${PORT_WINE_PATH}/PortProton.log"
+    grep -E '^GPU|deviceName|driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" >> "${PORT_WINE_PATH}/PortProton.log"
     "${PW_PLUGINS_PATH}/portable/bin/vkcube" --c 50
     if [ $? -eq 0 ]; then
         echo "Vulkan cube test passed successfully" >> "${PORT_WINE_PATH}/PortProton.log"
@@ -4714,7 +4705,7 @@ gui_credits () {
 export -f gui_credits
 
 button_click () {
-    [[ ! -z "$1" ]] && echo "$1" > "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_form"
+    [[ ! -z "$1" ]] && echo "$1" > "${PW_TMPFS_PATH}/tmp_yad_form"
     if [[ ! -z $(pidof -s yad) ]] || [[ ! -z $(pidof -s yad_gui_pp) ]] ; then
         kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \--notebook" | awk '{print $1}') > /dev/null 2>&1
     fi
@@ -4722,7 +4713,7 @@ button_click () {
 export -f button_click
 
 button_click_start () {
-    [[ ! -z "$1" ]] && echo "$1" > "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_form"
+    [[ ! -z "$1" ]] && echo "$1" > "${PW_TMPFS_PATH}/tmp_yad_form"
     if [[ ! -z $(pidof -s yad) ]] || [[ ! -z $(pidof -s yad_gui_pp) ]] ; then
         kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_START} \--notebook" | awk '{print $1}') > /dev/null 2>&1 \
         || kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_START} \--paned" | awk '{print $1}') > /dev/null 2>&1
@@ -4731,7 +4722,7 @@ button_click_start () {
 export -f button_click_start
 
 run_desktop_b_click () {
-    [[ ! -z "$1" ]] && echo "$1" > "${PORT_WINE_TMP_PATH_USE_RAM}/tmp_yad_form"
+    [[ ! -z "$1" ]] && echo "$1" > "${PW_TMPFS_PATH}/tmp_yad_form"
     if [[ ! -z $(pidof -s yad) ]] || [[ ! -z $(pidof -s yad_gui_pp) ]] ; then
         kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \--notebook" | awk '{print $1}') > /dev/null 2>&1
     fi
