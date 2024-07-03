@@ -410,12 +410,15 @@ combobox_fix_empty () {
     name3="${name2//\!${name1}\!/\!}"
     name3="!${name3//${name1}\!/\!}"
     name3="${name3//\!\!/\!}"
-    name4="$(echo ${name3} | awk -F"!" '{print $NF}')"
-    if [[ ${name1} == ${name4} ]]
-    then name3="$(echo ${name3} | sed "s/\!${name1}$//")"
+    name4="$(echo "${name3}" | awk -F"!" '{print $NF}')"
+    if [[ ${name1} == "${name4}" ]] || [[ ${name1} == "\\${name4}" ]]
+    then name3="$(echo "${name3}" | sed "s/\!${name1}$//")"
     fi
-    if [[ ${name1} != "" ]]
-    then fix_empty="!"
+    if [[ ${name1} != "" ]] ; then
+        if [[ ${name1} == "\\" ]]
+        then fix_empty=""
+        else fix_empty="!"
+        fi
     fi
     echo "${name1}${name3}${fix_empty}"
 }
@@ -427,9 +430,9 @@ combobox_fix_default () {
     name3="${name2//\!${name1}\!/\!}"
     name3="!${name3//${name1}\!/\!}"
     name3="${name3//\!\!/\!}"
-    name4="$(echo ${name3} | awk -F"!" '{print $NF}')"
-    if [[ ${name1} == ${name4} ]]
-    then name3="$(echo ${name3} | sed "s/\!${name1}$//")"
+    name4="$(echo "${name3}" | awk -F"!" '{print $NF}')"
+    if [[ ${name1} == "${name4}" ]]
+    then name3="$(echo "${name3}" | sed "s/\!${name1}$//")"
     fi
     if [[ ${name1} != "default" ]]
     then fix_default="!default"
@@ -444,9 +447,9 @@ combobox_fix_disabled () {
     name3="${name2//\!${name1}\!/\!}"
     name3="!${name3//${name1}\!/\!}"
     name3="${name3//\!\!/\!}"
-    name4="$(echo ${name3} | awk -F"!" '{print $NF}')"
-    if [[ ${name1} == ${name4} ]]
-    then name3="$(echo ${name3} | sed "s/\!${name1}$//")"
+    name4="$(echo "${name3}" | awk -F"!" '{print $NF}')"
+    if [[ ${name1} == "${name4}" ]]
+    then name3="$(echo "${name3}" | sed "s/\!${name1}$//")"
     fi
     if [[ ${name1} != "disabled" ]]
     then fix_disabled="!disabled"
@@ -2484,22 +2487,22 @@ start_portwine () {
         if [[ "${PW_GPU_USE}" != "disabled" ]] ; then
             PW_vendorID="$(cat "${PW_TMPFS_PATH}/vulkaninfo.tmp" | grep -B3 "${PW_GPU_USE}" | grep vendorID | sort -u | awk -F'0x' '{print $2}')"
             PW_deviceID="$(cat "${PW_TMPFS_PATH}/vulkaninfo.tmp" | grep -B3 "${PW_GPU_USE}" | grep deviceID | sort -u | awk -F'0x' '{print $2}')"
-            PW_ID_VIDEO="--prefer-vk-device ${PW_vendorID}:${PW_deviceID}"
+            PW_ID_VIDEO=" --prefer-vk-device ${PW_vendorID}:${PW_deviceID}"
         else
-            unset PW_ID_VIDEO
+            PW_ID_VIDEO=""
         fi
         if ! check_wayland_session ; then
             export vk_xwayland_wait_ready="false"
         fi
         #checkbox
         local PW_GAMESCOPE_ARGS_NEW=""
-        [[ "${PW_GS_BORDERLESS_WINDOW}" == "1" ]] &&  PW_GAMESCOPE_ARGS_NEW+=" -b"
         [[ "${PW_GS_FULLSCREEN}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" -f"
         [[ "${PW_GS_FORCE_FULLSCREEN}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --force-windows-fullscreen"
-        [[ "${PW_GS_FORCE_GRAB_KEYBOARD}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" -g"
+        [[ "${PW_GS_BORDERLESS_WINDOW}" == "1" ]] &&  PW_GAMESCOPE_ARGS_NEW+=" -b"
         [[ "${PW_GS_FORCE_GRAB_CURSOR}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --force-grab-cursor"
+        [[ "${PW_GS_FORCE_GRAB_KEYBOARD}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" -g"
 
-        if [ "${PW_GS_HDR_ENABLE}" == "1" ] ; then
+        if [[ "${PW_GS_HDR_ENABLE}" == "1" ]] ; then
             PW_GAMESCOPE_ARGS_NEW+=" --hdr-enabled"
             export DXVK_HDR="1"
             if [[ ${GAMESCOPE_WITH_BACKEND} == "1" ]] ; then
@@ -2508,98 +2511,74 @@ start_portwine () {
                 PW_GAMESCOPE_ARGS_NEW+=" --backend wayland"
             fi
         fi
-        if [ "${PW_GS_SDR_GAMMUT_WIDENESS}" == "1" ] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} --sdr-gamut-wideness"
-        fi
-        if [ "${PW_GS_HDR_ITM_ENABLE}" == "1" ] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} --hdr-itm-enable"
-        fi
-        if [ "${PW_GS_FORCE_COMPOSITION}" == "1" ] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} --force-composition"
-        fi
-        if [ "${PW_GS_HDR_FORCE_SUPPORT}" == "1" ] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} --hdr-debug-force-support"
-        fi
-        if [ "${PW_GS_HDR_FORCE_OUTPUT}" == "1" ] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} --hdr-debug-force-output"
-        fi
-        if [ "${PW_GS_HDR_FORCE_HEATMAP}" == "1" ] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} --hdr-debug-heatmap"
-        fi
-        if [ "${PW_GS_EXPOSE_WAYLAND}" == "1" ] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} --expose-wayland"
-        fi
-        if [ "${PW_GS_REALTIME_SCHEDULING}" == "1" ] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} --rt"
-        fi
-        if [ "${PW_GS_MANGOAPP}" == "1" ] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} --mangoapp"
-            export PW_MANGOHUD="0"
-        fi
-        if [ "${PW_GS_BACKEND_SDL}" == "1" ] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} --backend sdl"
-        fi
-        if [ "${PW_GS_SDL_VIDEODRIVER_X11}" == "1" ] ; then
-            export SDL_VIDEODRIVER="x11"
-        fi
-        if [ "${PW_GS_FIX_AMD_AND_INTEL}" == "1" ] ; then
+
+        [[ "${PW_GS_HDR_ITM_ENABLE}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --hdr-itm-enable"
+        [[ "${PW_GS_SDR_GAMMUT_WIDENESS}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --sdr-gamut-wideness"
+        [[ "${PW_GS_FORCE_COMPOSITION}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --force-composition"
+        [[ "${PW_GS_HDR_FORCE_SUPPORT}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --hdr-debug-force-support"
+        [[ "${PW_GS_HDR_FORCE_OUTPUT}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --hdr-debug-force-output"
+        [[ "${PW_GS_HDR_FORCE_HEATMAP}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --hdr-debug-heatmap"
+        [[ "${PW_GS_EXPOSE_WAYLAND}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --expose-wayland"
+        [[ "${PW_GS_REALTIME_SCHEDULING}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --rt"
+
+        if [[ "${PW_GS_FIX_AMD_AND_INTEL}" == "1" ]] ; then
             export RADV_DEBUG="nodcc"
             export R600_DEBUG="nodcc"
             export INTEL_DEBUG="norbc"
         fi
+
+        if [[ "${PW_GS_MANGOAPP}" == "1" ]] ; then
+            PW_GAMESCOPE_ARGS_NEW+=" --mangoapp"
+            export PW_MANGOHUD="0"
+        fi
+
+        [[ "${PW_GS_BACKEND_SDL}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --backend sdl"
+        [[ "${PW_GS_SDL_VIDEODRIVER_X11}" == "1" ]] && export SDL_VIDEODRIVER="x11"
+
         #combobox
         if [[ "${PW_GS_SHOW_RESOLUTION}" != "disabled" ]] ; then
             PWGSRESSW1="${PW_GS_SHOW_RESOLUTION%x*}"
             PWGSRESSW="${PWGSRESSW1%%-*}"
             PWGSRESSH1="${PW_GS_SHOW_RESOLUTION#*x}"
             PWGSRESSH="${PWGSRESSH1%%-*}"
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} -W ${PWGSRESSW} -H ${PWGSRESSH}"
+            PW_GAMESCOPE_ARGS_NEW+=" -W ${PWGSRESSW} -H ${PWGSRESSH}"
 
             if [[ "${PW_GS_INTERNAL_RESOLUTION}" != "0.0" ]] ; then
                 GS_RES_W=${PW_GS_SHOW_RESOLUTION:0:4}
                 GS_RES_H=${PW_GS_SHOW_RESOLUTION:5:8}
                 PWGSRESIW=$(echo ${GS_RES_W} ${PW_GS_INTERNAL_RESOLUTION} | awk '{print $1*$2}')
                 PWGSRESIH=$(echo ${GS_RES_H} ${PW_GS_INTERNAL_RESOLUTION} | awk '{print $1*$2}')
-                PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} -w ${PWGSRESIW} -h ${PWGSRESIH}"
+                PW_GAMESCOPE_ARGS_NEW+=" -w ${PWGSRESIW} -h ${PWGSRESIH}"
             fi
         fi
-        if [[ "${PW_GS_FRAME_LIMIT}" != "disabled" ]] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} -r ${PW_GS_FRAME_LIMIT}"
-        fi
-        if [[ "${PW_GS_MAX_SCALE_FACTOR}" != "0.0" ]] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} -m ${PW_GS_MAX_SCALE_FACTOR}"
-        fi
+
+        [[ "${PW_GS_FRAME_LIMIT}" != "disabled" ]] && PW_GAMESCOPE_ARGS_NEW+=" -r ${PW_GS_FRAME_LIMIT}"
+        [[ "${PW_GS_MAX_SCALE_FACTOR}" != "0.0" ]] && PW_GAMESCOPE_ARGS_NEW+=" -m ${PW_GS_MAX_SCALE_FACTOR}"
+        [[ "${PW_GS_SCALER_MODE}" != "disabled" ]] && PW_GAMESCOPE_ARGS_NEW+=" -S ${PW_GS_SCALER_MODE}"
+
         if [[ "${PW_GS_FILTER_MODE}" != "disabled" ]] ; then
             export PW_WINE_FULLSCREEN_FSR="0"
             if [[ "${PW_GS_FILTER_MODE_OLD}" != "true" ]] ; then
-                PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} -F ${PW_GS_FILTER_MODE}"
+                PW_GAMESCOPE_ARGS_NEW+=" -F ${PW_GS_FILTER_MODE}"
             else
                 if [[ "${PW_GS_FILTER_MODE}" == "fsr" ]] ; then
-                    PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} -U"
+                    PW_GAMESCOPE_ARGS_NEW+=" -U"
                 elif [[ "${PW_GS_FILTER_MODE}" == "nis" ]] ; then
-                    PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} -Y"
+                    PW_GAMESCOPE_ARGS_NEW+=" -Y"
                 fi
             fi
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} --sharpness ${PW_GS_UPSCALE_SHARPNESS}"
+            PW_GAMESCOPE_ARGS_NEW+=" --sharpness ${PW_GS_UPSCALE_SHARPNESS}"
         fi
-        if [[ "${PW_GS_SCALER_MODE}" != "disabled" ]] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} -S ${PW_GS_SCALER_MODE}"
-        fi
-        if [[ "${PW_GS_MOUSE_SENSITIVITY}" != "0.0" ]] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} -s ${PW_GS_MOUSE_SENSITIVITY}"
-        fi
-        if [[ "${PW_GS_SDR_CONTENT_NITS}" != "400" ]] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} --hdr-sdr-content-nits ${PW_GS_SDR_CONTENT_NITS}"
-        fi
-        if [[ "${PW_GS_ITM_SDR_NITS}" != "0" ]] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} --hdr-itm-sdr-nits ${PW_GS_ITM_SDR_NITS}"
-        fi
-        if [[ "${PW_GS_ITM_TARGET_NITS}" != "0" ]] ; then
-            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW} --hdr-itm-target-nits ${PW_GS_ITM_TARGET_NITS}"
-        fi
+
+        [[ "${PW_GS_MOUSE_SENSITIVITY}" != "0.0" ]] && PW_GAMESCOPE_ARGS_NEW+=" -s ${PW_GS_MOUSE_SENSITIVITY}"
+        [[ "${PW_GS_SDR_CONTENT_NITS}" != "400" ]] && PW_GAMESCOPE_ARGS_NEW+=" --hdr-sdr-content-nits ${PW_GS_SDR_CONTENT_NITS}"
+        [[ "${PW_GS_ITM_SDR_NITS}" != "0" ]] && PW_GAMESCOPE_ARGS_NEW+=" --hdr-itm-sdr-nits ${PW_GS_ITM_SDR_NITS}"
+        [[ "${PW_GS_ITM_TARGET_NITS}" != "0" ]] && PW_GAMESCOPE_ARGS_NEW+=" --hdr-itm-target-nits ${PW_GS_ITM_TARGET_NITS}"
+
         if [[ "${PW_GS_MESA_VK_WSI_PRESENT_MODE}" != "disabled" ]] ; then
             export MESA_VK_WSI_PRESENT_MODE=${PW_GS_MESA_VK_WSI_PRESENT_MODE}
         fi
+
         if [[ "${PW_GS_GAMESCOPE_WSI}" != "default" ]] ; then
             if [[ "${PW_GS_GAMESCOPE_WSI}" == "enable" ]] ; then
                 export ENABLE_GAMESCOPE_WSI="1"
@@ -2609,7 +2588,7 @@ start_portwine () {
         fi
 
         edit_db_from_gui PW_GAMESCOPE_ARGS_NEW
-        export PW_RUN_GAMESCOPE="gamescope ${PW_ID_VIDEO}${PW_GAMESCOPE_ARGS_NEW} --"
+        export PW_RUN_GAMESCOPE="gamescope${PW_ID_VIDEO}${PW_GAMESCOPE_ARGS_NEW} --"
     fi
 
     pw_mangohud_check
@@ -2655,7 +2634,7 @@ pw_run () {
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
-            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
+            "${WINELOADER}" "$@" "${LAUNCH_PARAMETERS[@]}" &>>"${PW_LOG_TO_FILE}"
         else
             if [[ "$PW_USE_TERMINAL" == 1 ]] \
             && [[ "$PW_USE_RUNTIME" == 1 ]]
@@ -2674,7 +2653,7 @@ pw_run () {
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
-            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
+            "${WINELOADER}" "$@" "${LAUNCH_PARAMETERS[@]}" &>>"${PW_LOG_TO_FILE}"
             print_info "Update prefix log:"
             [[ -f "${PORT_WINE_TMP_PATH}/update_pfx_log" ]] && cat "${PORT_WINE_TMP_PATH}/update_pfx_log"
             echo
@@ -2700,7 +2679,7 @@ pw_run () {
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
-            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
+            "${WINELOADER}" "$@" "${LAUNCH_PARAMETERS[@]}" &>>"${PW_LOG_TO_FILE}"
             wait_wineserver
         else
             print_info "Update prefix log:"
@@ -2717,7 +2696,7 @@ pw_run () {
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
-            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]}
+            "${WINELOADER}" "$@" "${LAUNCH_PARAMETERS[@]}"
             wait_wineserver
         fi
     fi
@@ -3196,17 +3175,15 @@ gui_proton_downloader () {
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
         fi
-
         if [[ ! -z $(<"${PW_TMPFS_PATH}/tmp_set_wine") ]] ; then
             VERSION_WINE_GIT="$(sed 's/TRUE//' "${PW_TMPFS_PATH}/tmp_set_wine")"
         fi
-
         if [[ ! -z $(<"${PW_TMPFS_PATH}/tmp_installed_wine_set") ]] ; then
             VERSION_INSTALLED_WINE="$(sed 's/TRUE//' "${PW_TMPFS_PATH}/tmp_installed_wine_set")"
         fi
 
-        if [[ -z "$VERSION_WINE_GIT" ]] \
-        && [[ -z "$VERSION_INSTALLED_WINE" ]]
+        if [[ -z "${VERSION_WINE_GIT}" ]] \
+        && [[ -z "${VERSION_INSTALLED_WINE}" ]]
         then
             print_info "Nothing to do."
             export SKIP_CHECK_UPDATES=1
@@ -3252,29 +3229,30 @@ gui_proton_downloader () {
         for REMOVE_WINE in ${VERSION_INSTALLED_WINE} ; do
             try_remove_dir "${PORT_WINE_PATH}/data/dist/${REMOVE_WINE}"
         done
-        if [[ -z "$VERSION_WINE_GIT" ]] ; then
-            export SKIP_CHECK_UPDATES=1
+        if [[ -z "${VERSION_WINE_GIT}" ]] ; then
+            export SKIP_CHECK_UPDATES="1"
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
         fi
     fi
 
+    VERSION_WINE_GIT=$(echo ${VERSION_WINE_GIT})
     if [[ "$1" != "silent" ]] ; then
-        for GIVE_ALL_WINE in $VERSION_WINE_GIT ; do
-            for GIVE_WINE_URL in ${PROTON_GE_GIT[@]} ${PROTON_PW_GIT[@]} ${WINE_KRON4EK[@]} ${WINE_GE_CUSTOM[@]} ; do
+        for GIVE_ALL_WINE in ${VERSION_WINE_GIT} ; do
+            for GIVE_WINE_URL in ${WINE_GE_CUSTOM[@]} ${PROTON_GE_GIT[@]} ${WINE_KRON4EK[@]} ${PROTON_PW_GIT[@]} ; do
                 if [ ! -z $(echo ${GIVE_WINE_URL} | grep -i "${GIVE_ALL_WINE}") ] ; then
                     export URL_VERSION_PROTON_GIT="${GIVE_WINE_URL}"
                 fi
             done
             pw_download_get_wine
         done
-        export SKIP_CHECK_UPDATES=1
+        export SKIP_CHECK_UPDATES="1"
         edit_db_from_gui
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     else
         init_wine_ver
-        for GIVE_WINE_URL in ${PROTON_GE_GIT[@]} ${PROTON_PW_GIT[@]} ${WINE_KRON4EK[@]} ${WINE_GE_CUSTOM[@]} ; do
+        for GIVE_WINE_URL in ${WINE_GE_CUSTOM[@]} ${PROTON_GE_GIT[@]} ${WINE_KRON4EK[@]} ${PROTON_PW_GIT[@]} ; do
             if [ ! -z $(echo ${GIVE_WINE_URL} | grep -i "${PW_WINE_USE}") ] ; then
                 export URL_VERSION_PROTON_GIT="${GIVE_WINE_URL}"
             fi
@@ -3430,7 +3408,7 @@ fi
 
     "${pw_yad}" --plug=$KEY_EDIT_DB_GUI --tabnum="2" --form --separator="%" --columns=1 \
     --field="$(gettext "Change the version of <b>WINDOWS</b> emulation")!$(gettext "Changing the <b>WINDOWS</b> emulation version may be required to run older games. <b>WINDOWS</b> versions below 10 do not support new games with DirectX 12") :CB" "${ADD_WINVER_EDIT_DB}" \
-    --field="$(gettext "AUTOINSTALL WITH <b>WINETRICKS</b>")!$(gettext "Automatically install with <b>WINETRICKS</b> additional libraries required to run the game/program. List of libraries separated by spaces") :CBE" "${PW_DLL_INSTALL}!vcrun2019 corefonts lucida" \
+    --field="$(gettext "AUTOINSTALL WITH <b>WINETRICKS</b>")!$(gettext "Automatically install with <b>WINETRICKS</b> additional libraries required to run the game/program. List of libraries separated by spaces") :CBE" "$(combobox_fix_empty "${PW_DLL_INSTALL}" "vcrun2019 corefonts lucida")" \
     --field="$(gettext "Forced to use/disable libraries")!$(gettext "Forced to use/disable the library only for the given application. (There are examples in the drop-down list)
 
 A brief instruction:
@@ -3440,9 +3418,9 @@ A brief instruction:
     * library=b - use <b>WINE</b> (built-in) library
     * library=n,b - use <b>WINDOWS</b> library and then <b>WINE</b>
     * library=b,n - use <b>WINE</b> library and then <b>WINDOWS</b>
-    * library= - disable the use of this library") :CBE" "${WINEDLLOVERRIDES}!libglesv2=!d3dx9_36,d3dx9_42=n,b;mfc120=b,n" \
+    * library= - disable the use of this library") :CBE" "$(combobox_fix_empty "${WINEDLLOVERRIDES}" "libglesv2=!d3dx9_36,d3dx9_42=n,b;mfc120=b,n")" \
     --field=":LBL" "" \
-    --field="$(gettext "ADD ARGUMENTS FOR .EXE FILE")!$(gettext "Adding an argument after the <b>.exe</b> file, just like you would add an argument in a shortcut on a <b>WINDOWS </b> system") :CBE" "\\${LAUNCH_PARAMETERS[@]}!-dx11 -skipintro 1" \
+    --field="$(gettext "ADD ARGUMENTS FOR .EXE FILE")!$(gettext "Adding an argument after the <b>.exe</b> file, just like you would add an argument in a shortcut on a <b>WINDOWS </b> system") :CBE" "$(combobox_fix_empty "\\${LAUNCH_PARAMETERS[@]}" "-dx11 -skipintro 1")" \
     --field=":LBL" "" \
     --field="$(gettext "Limit the use of processor cores")!$(gettext "Limiting the number of CPU cores is useful for Unity games (It is recommended to set the value equal to 8)") :CB" "$(combobox_fix_disabled "${CPU_LIMIT_VAR}" "${GET_LOGICAL_CORE}")" \
     --field="$(gettext "Choose a graphics card to run the game (in user.conf)")!$(gettext "Select which video card will be used to run the game (used for all running games and programs in PortProton)") :CB" "$(combobox_fix_disabled "${GPU_VAR}" "${GET_GPU_NAMES}")" \
