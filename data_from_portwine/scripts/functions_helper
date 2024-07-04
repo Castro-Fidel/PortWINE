@@ -283,7 +283,7 @@ try_download () {
 }
 
 var_winedlloverride_update () {
-    if [ ! -z "$WINEDLLOVERRIDES" ]
+    if [[ "$WINEDLLOVERRIDES" ]]
     then export WINEDLLOVERRIDES="$1;$WINEDLLOVERRIDES"
     else export WINEDLLOVERRIDES="$1"
     fi
@@ -291,7 +291,9 @@ var_winedlloverride_update () {
 }
 
 var_vkd3d_config_update () {
-    if [ ! -z "$VKD3D_CONFIG" ]
+    if echo "$VKD3D_CONFIG" | grep "$1"
+    then return 0
+    elif [[ "$VKD3D_CONFIG" ]]
     then export VKD3D_CONFIG="$1;$VKD3D_CONFIG"
     else export VKD3D_CONFIG="$1"
     fi
@@ -299,7 +301,9 @@ var_vkd3d_config_update () {
 }
 
 var_radv_perftest_config_update () {
-    if [ ! -z "$RADV_PERFTEST" ]
+    if echo "$RADV_PERFTEST" | grep "$1"
+    then return 0
+    elif [[ "$RADV_PERFTEST" ]]
     then export RADV_PERFTEST="$1;$RADV_PERFTEST"
     else export RADV_PERFTEST="$1"
     fi
@@ -307,7 +311,9 @@ var_radv_perftest_config_update () {
 }
 
 var_pw_vk_istance_layers_config_update () {
-    if [ ! -z "$PW_VK_INSTANCE_LAYERS" ]
+    if echo "$PW_VK_INSTANCE_LAYERS" | grep "$1"
+    then return 0
+    elif [[ "$PW_VK_INSTANCE_LAYERS" ]]
     then export PW_VK_INSTANCE_LAYERS="$1:$PW_VK_INSTANCE_LAYERS"
     else export PW_VK_INSTANCE_LAYERS="$1"
     fi
@@ -317,7 +323,7 @@ var_pw_vk_istance_layers_config_update () {
 var_ld_library_path_update () {
     if echo "$LD_LIBRARY_PATH" | grep "$1"
     then return 0
-    elif [[ ! -z "$LD_LIBRARY_PATH" ]]
+    elif [[ "$LD_LIBRARY_PATH" ]]
     then export LD_LIBRARY_PATH="$1:$LD_LIBRARY_PATH"
     else export LD_LIBRARY_PATH="$1"
     fi
@@ -2634,7 +2640,7 @@ pw_run () {
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
-            "${WINELOADER}" "$@" "${LAUNCH_PARAMETERS[@]}" &>>"${PW_LOG_TO_FILE}"
+            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
         else
             if [[ "$PW_USE_TERMINAL" == 1 ]] \
             && [[ "$PW_USE_RUNTIME" == 1 ]]
@@ -2653,7 +2659,7 @@ pw_run () {
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
-            "${WINELOADER}" "$@" "${LAUNCH_PARAMETERS[@]}" &>>"${PW_LOG_TO_FILE}"
+            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
             print_info "Update prefix log:"
             [[ -f "${PORT_WINE_TMP_PATH}/update_pfx_log" ]] && cat "${PORT_WINE_TMP_PATH}/update_pfx_log"
             echo
@@ -2679,7 +2685,7 @@ pw_run () {
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
-            "${WINELOADER}" "$@" "${LAUNCH_PARAMETERS[@]}" &>>"${PW_LOG_TO_FILE}"
+            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
             wait_wineserver
         else
             print_info "Update prefix log:"
@@ -2696,7 +2702,7 @@ pw_run () {
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
-            "${WINELOADER}" "$@" "${LAUNCH_PARAMETERS[@]}"
+            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]}
             wait_wineserver
         fi
     fi
