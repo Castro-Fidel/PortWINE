@@ -3,7 +3,7 @@
 ########################################################################
 export PW_PREFIX_NAME="DOTNET"
 export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/wos_client.exe"
-export LAUNCH_PARAMETERS=("/S")
+# export LAUNCH_PARAMETERS=("/S" "/p=C:\\\\users\\\\$USER")
 export PW_DLL_INSTALL="faudio dotnet48"
 export PW_VULKAN_USE=1
 
@@ -13,14 +13,16 @@ WOSB_VERSION="$(curl -s --list-only --connect-timeout 3 https://www.worldofseaba
 start_portwine
 if try_download "https://installer.launcher.xsolla.com/xlauncher-builds/xsolla-launcher-update/${WOSB_VERSION}/bin/installer.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
 then
-    pw_start_progress_bar_block "Installing World of Sea Battle."
+    # pw_start_progress_bar_block "Installing World of Sea Battle."
     pw_run "${PW_AUTOINSTALL_EXE}"
     try_remove_file "${PW_AUTOINSTALL_EXE}"
+    pw_start_progress_bar_block "Installing World of Sea Battle."
+    export FIND_PP_EXE="$(find "$WINEPREFIX/drive_c/" -type f -name "launcher.exe")"
     pw_stop_progress_bar
     kill_portwine
 
-if [[ "$LANGUAGE" == "ru" ]] ; then
-        export portwine_exe="$WINEPREFIX/drive_c/users/$USER/AppData/Local/Wosb Launcher/launcher.exe"
+    if [[ "$LANGUAGE" == "ru" ]] ; then
+        export portwine_exe="$FIND_PP_EXE"
         export PORTWINE_CREATE_SHORTCUT_NAME="World of Sea Battle RU"
         pw_create_unique_exe "wosb_launcher_ru"
         try_remove_file "${portwine_exe}.ppdb"
@@ -28,7 +30,7 @@ if [[ "$LANGUAGE" == "ru" ]] ; then
         portwine_create_shortcut block_name
     fi
 
-    export portwine_exe="$WINEPREFIX/drive_c/users/$USER/AppData/Local/Wosb Launcher/launcher.exe"
+    export portwine_exe="$FIND_PP_EXE"
     export PORTWINE_CREATE_SHORTCUT_NAME="World of Sea Battle EN"
     pw_create_unique_exe "wosb_launcher_en"
     try_remove_file "${portwine_exe}.ppdb"
