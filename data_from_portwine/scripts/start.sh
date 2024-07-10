@@ -560,13 +560,25 @@ else
     fi
     PW_GENERATE_BUTTONS="--field=   $(gettext "Create shortcut...")!${PW_GUI_ICON_PATH}/find_48.svg!:FBTN%@bash -c \"button_click pw_find_exe\"%"
     for PW_DESKTOP_FILES in ${PW_ALL_DF} ; do
-        PW_NAME_D_ICON="$(grep Icon "${PORT_WINE_PATH}/${PW_DESKTOP_FILES}" | awk -F= '{print $2}')"
-        PW_NAME_D_ICON_48="${PW_NAME_D_ICON//".png"/"_48.png"}"
-        if [[ ! -f "${PW_NAME_D_ICON_48}" ]]  \
-        && [[ -f "${PW_NAME_D_ICON}" ]] \
-        && command -v "convert" 2>/dev/null
-        then
-            convert "${PW_NAME_D_ICON}" -resize 48x48 "${PW_NAME_D_ICON_48}"
+        if check_flatpak
+        then PW_NAME_D_ICON="$(grep Exec "${PORT_WINE_PATH}/${PW_DESKTOP_FILES}" | awk -F'=' '{print $2}' |
+        sed -e 's|flatpak run ru.linux_gaming.PortProton||' -e 's|"||g' -e 's|^[ \t]*||')"
+        else PW_NAME_D_ICON="$(grep Exec "${PORT_WINE_PATH}/${PW_DESKTOP_FILES}" | awk -F"=env " '{print $2}' |
+        sed 's|"||g' -e 's|^[ \t]*||')"
+        fi
+        PW_ICON_PATH="$(grep Icon "${PORT_WINE_PATH}/${PW_DESKTOP_FILES}" | awk -F= '{print $2}')"
+        PW_NAME_D_ICON_48="${PW_ICON_PATH%.png}_48.png"
+        if [[ ! -f "${PW_NAME_D_ICON_48}" ]] \
+        && [[ -f "${PW_NAME_D_ICON}" ]] ; then
+            if check_flatpak ; then
+                exe-thumbnailer --force-resize -s "48" "${PW_NAME_D_ICON}" "${PW_NAME_D_ICON_48}"
+            else
+                env PYTHONPATH="${PW_PLUGINS_PATH}/portable/lib/python3.9/site-packages/" \
+                LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" \
+                "${PW_WINELIB}/runtime/files/bin/python3.9" \
+                "${PW_PLUGINS_PATH}/portable/bin/exe-thumbnailer" \
+                --force-resize -s "48" "${PW_NAME_D_ICON}" "${PW_NAME_D_ICON_48}"
+            fi
         fi
         PW_GENERATE_BUTTONS+="--field=   ${PW_DESKTOP_FILES//".desktop"/""}!${PW_NAME_D_ICON_48}!:FBTN%@bash -c \"run_desktop_b_click "${PW_DESKTOP_FILES//" "/¬}"\"%"
     done
