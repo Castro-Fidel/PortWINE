@@ -324,6 +324,7 @@ EOF
         if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut" ]] ; then
             while IFS= read -r line
             do
+                export PW_NO_RESTART="1"
                 export portwine_exe="$PORT_WINE_PATH/data/prefixes/$PW_PREFIX_NAME/$line"
                 portwine_create_shortcut "$PORT_WINE_PATH/data/prefixes/$PW_PREFIX_NAME/$line"
             done < "$PORT_WINE_PATH/data/prefixes/$PW_PREFIX_NAME/.create_shortcut"

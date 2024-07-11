@@ -2899,7 +2899,7 @@ pw_winecmd () {
     export PW_USE_TERMINAL=1
     start_portwine
     cd "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c" || fatal
-    ${pw_runtime} ${PW_TERM} "${WINELOADER}" cmd
+    pw_run cmd
     stop_portwine
 }
 
@@ -4512,10 +4512,12 @@ portwine_create_shortcut () {
             unset PW_SKIP_RESTART_STEAM
         fi
 
-        print_info "Restarting PP..."
-        export SKIP_CHECK_UPDATES=1
-        /usr/bin/env bash -c ${pw_full_command_line[*]} &
-        exit 0
+        if [[ "$PW_NO_RESTART" != "1" ]] ; then
+            print_info "Restarting PP..."
+            export SKIP_CHECK_UPDATES=1
+            /usr/bin/env bash -c ${pw_full_command_line[*]} &
+            exit 0
+        fi        
     fi
 }
 
