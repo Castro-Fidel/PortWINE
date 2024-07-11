@@ -421,9 +421,11 @@ if [[ ! -z "${PORTWINE_DB_FILE}" ]] ; then
     [[ -z "${PW_COMMENT_DB}" ]] && PW_COMMENT_DB="$(gettext "Launching") <b>${PORTWINE_DB}</b>."
     PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_LG_VER}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
 else
-    if [[ $PW_WINE_USE == "PROTON_LG" ]] ; then
+    if [[ $PW_WINE_USE == PROTON_LG ]] ; then
         PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
-    elif [[ $PW_WINE_USE == "WINE_*_LG" ]] ; then
+    elif [[ $PW_WINE_USE == WINE_*_LG ]] \
+    || [[ $PW_WINE_USE == WINE_LG ]]
+    then
         PW_DEFAULT_WINE_USE="${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
     else
         PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_LG_VER}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
