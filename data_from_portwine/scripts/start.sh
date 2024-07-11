@@ -419,34 +419,14 @@ esac
 
 if [[ ! -z "${PORTWINE_DB_FILE}" ]] ; then
     [[ -z "${PW_COMMENT_DB}" ]] && PW_COMMENT_DB="$(gettext "Launching") <b>${PORTWINE_DB}</b>."
-    if [[ ! -z $(echo "${PW_WINE_USE}" | grep "^PROTON_LG$") ]] ; then
-        PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
-    elif [[ ! -z $(echo "${PW_WINE_USE}" | grep "^PROTON_GE$") ]] ; then
-        PW_DEFAULT_WINE_USE="${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
-    else
-        if [[ "${PW_WINE_USE}" == "${PW_PROTON_LG_VER}" ]] ; then
-            PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
-        elif [[ "${PW_WINE_USE}" == "${PW_WINE_LG_VER}" ]] ; then
-            PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
-        else
-            DIST_ADD_TO_GUI="${DIST_ADD_TO_GUI//\"\!${PW_WINE_USE}$//}"
-            PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
-        fi
-    fi
+    PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_LG_VER}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
 else
-    if [[ $PW_WINE_USE == PROTON_LG ]] ; then
+    if [[ $PW_WINE_USE == "PROTON_LG" ]] ; then
         PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
-    elif [[ $PW_WINE_USE == WINE_*_LG ]] ; then
+    elif [[ $PW_WINE_USE == "WINE_*_LG" ]] ; then
         PW_DEFAULT_WINE_USE="${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
     else
-        if [[ "${PW_WINE_USE}" == "${PW_PROTON_LG_VER}" ]] ; then
-            PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
-        elif [[ "${PW_WINE_USE}" == "${PW_WINE_LG_VER}" ]] ; then
-            PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
-        else
-            DIST_ADD_TO_GUI="${DIST_ADD_TO_GUI//\"\!${PW_WINE_USE}$//}"
-            PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
-        fi
+        PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_LG_VER}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
     fi
     unset PW_GUI_DISABLED_CS
 fi
@@ -468,7 +448,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             --gui-type-text=${START_GUI_TYPE_TEXT} --gui-type-images=${START_GUI_TYPE_IMAGE} \
             --image="${PW_ICON_FOR_YAD}" --text-align="center" --text "$PW_COMMENT_DB" \
             --field="3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
-            --field="  WINE  : :CB" "${PW_DEFAULT_WINE_USE}" \
+            --field="  WINE  : :CB" "$(combobox_fix "${PW_WINE_USE}" "${PW_DEFAULT_WINE_USE}")" \
             --field="PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
             1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
@@ -516,7 +496,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             --gui-type-text=${START_GUI_TYPE_TEXT} --gui-type-images=${START_GUI_TYPE_IMAGE} \
             --image="${PW_ICON_FOR_YAD}" --text-align="center" --text "$PW_COMMENT_DB" \
             --field="3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
-            --field="  WINE  : :CB" "${PW_DEFAULT_WINE_USE}" \
+            --field="  WINE  : :CB" "$(combobox_fix "${PW_WINE_USE}" "${PW_DEFAULT_WINE_USE}")" \
             --field="PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
             1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
