@@ -1275,13 +1275,17 @@ pw_init_db () {
             elif [[ $(echo "$PW_FIND_DB_FILE" | wc -l) -eq 1 ]] ; then
                 PORTWINE_DB_FILE="${PW_FIND_DB_FILE}"
             fi
+
             IFS="$orig_IFS"
-            if [[ -f "${PW_FIND_DB_FILE}" ]] && [[ -z $(grep "^export PW_DISABLED_CREATE_DB=1" "${PW_FIND_DB_FILE}") ]] ; then
+            if [[ -f "${PW_FIND_DB_FILE}" ]] \
+            && [[ "${PW_DISABLED_CREATE_DB}" != 1 ]] \
+            && [[ -z $(grep "^export PW_DISABLED_CREATE_DB=1" "${PW_FIND_DB_FILE}") ]]
+            then
                 try_copy_file "${PW_FIND_DB_FILE}" "${portwine_exe}".ppdb
                 PORTWINE_DB_FILE="${portwine_exe}".ppdb
             fi
-            if [[ ! -z $(echo "${portwine_exe}" | grep "/data/prefixes/") ]] && \
-                [[ -z $(echo "${portwine_exe}" | grep "/data/prefixes/DEFAULT/") ]]
+            if [[ ! -z $(echo "${portwine_exe}" | grep "/data/prefixes/") ]] \
+            && [[ -z $(echo "${portwine_exe}" | grep "/data/prefixes/DEFAULT/") ]]
             then
                 PW_PREFIX_NAME=$(echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
             fi
@@ -1464,6 +1468,10 @@ update_winetricks () {
 }
 
 edit_db_from_gui () {
+    if [[ "${PW_DISABLED_CREATE_DB}" == 1 ]] ; then
+        print_warning "Skipped edit_db_from_gui"
+        return 0
+    fi
     print_info "edit_db_from_gui PORTWINE_DB_FILE=$PORTWINE_DB_FILE"
     if [[ ! -z "$PORTWINE_DB_FILE" ]] \
     && [[ -f "$PORTWINE_DB_FILE" ]]
@@ -1501,7 +1509,9 @@ edit_user_conf_from_gui () {
 }
 
 pw_create_gui_png () {
-    if [[ -z "$PORTPROTON_NAME" ]] ; then
+    if [[ -z "$PORTPROTON_NAME" ]] \
+    || [[ "$PW_NO_RESTART_PPDB" == "1" ]]
+    then
         if [[ ! -z "${PORTWINE_CREATE_SHORTCUT_NAME}" ]] ; then
             PORTPROTON_NAME="${PORTWINE_CREATE_SHORTCUT_NAME}"
         else
@@ -4401,6 +4411,9 @@ portwine_create_shortcut () {
     [[ ! -e ${portwine_exe} ]] && return 1
     pw_create_gui_png
 
+print_error "portwine_exe: $portwine_exe"
+print_error "PORTPROTON_NAME: ${PORTPROTON_NAME}"
+
     if [[ "$1" == "block_name" ]] ; then
         export name_desktop="${PORTPROTON_NAME}"
         OUTPUT=$("${pw_yad}" --title="$(gettext "Choices")" --form \
@@ -4513,7 +4526,7 @@ portwine_create_shortcut () {
             unset PW_SKIP_RESTART_STEAM
         fi
 
-        if [[ "$PW_NO_RESTART" != "1" ]] ; then
+        if [[ "$PW_NO_RESTART_PPDB" != "1" ]] ; then
             print_info "Restarting PP..."
             export SKIP_CHECK_UPDATES=1
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
