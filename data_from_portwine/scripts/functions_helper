@@ -1720,7 +1720,7 @@ start_portwine () {
         print_info "Used wineboot $@ for prefix: ${PW_PREFIX_NAME}"
         ${pw_runtime} GST_PLUGIN_SYSTEM_PATH_1_0="" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" \
         WINEDEBUG="fixme-all,err+loaddll,err+dll,err+file,err+reg" \
-        "${WINELOADER}" wineboot $@ &>>"${PORT_WINE_TMP_PATH}/update_pfx_log"
+        "${WINELOADER}" wineboot $@ &>>"${PW_TMPFS_PATH}/update_pfx_log"
         wait_wineserver
         print_info "The prefix has been updated."
     }
@@ -2501,11 +2501,11 @@ start_portwine () {
         if [[ "${USE_WT_FROM_DB}" == "1" ]] ; then
             pw_update_pfx_cover_gui
             update_winetricks
-            echo "START WINETRICKS..." >> "${PORT_WINE_TMP_PATH}/update_pfx_log"
-            echo "Try to install DLL in prefix: ${PW_DLL_NEED_INSTALL}" >> "${PORT_WINE_TMP_PATH}/update_pfx_log"
+            echo "START WINETRICKS..." >> "${PW_TMPFS_PATH}/update_pfx_log"
+            echo "Try to install DLL in prefix: ${PW_DLL_NEED_INSTALL}" >> "${PW_TMPFS_PATH}/update_pfx_log"
             print_info "Try to install DLL in prefix: ${PW_DLL_NEED_INSTALL}"
             ${pw_runtime} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
-            "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${PW_DLL_NEED_INSTALL} | tee -a "${PORT_WINE_TMP_PATH}/update_pfx_log"
+            "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${PW_DLL_NEED_INSTALL} | tee -a "${PW_TMPFS_PATH}/update_pfx_log"
             wait_wineserver
             kill_portwine
         fi
@@ -2762,7 +2762,7 @@ pw_run () {
         if [[ "${PW_LOG}" == 1 ]] ; then
             echo "WINEDLLOVERRIDES=${WINEDLLOVERRIDES}" >> "${PW_LOG_TO_FILE}"
             echo "------------------------------------" >> "${PW_LOG_TO_FILE}"
-            [[ -f "${PORT_WINE_TMP_PATH}/update_pfx_log" ]] && cat "${PORT_WINE_TMP_PATH}/update_pfx_log" >> "${PW_LOG_TO_FILE}"
+            [[ -f "${PW_TMPFS_PATH}/update_pfx_log" ]] && cat "${PW_TMPFS_PATH}/update_pfx_log" >> "${PW_LOG_TO_FILE}"
             echo "-" >> "${PW_LOG_TO_FILE}"
             echo "Log WINE:" >> "${PW_LOG_TO_FILE}"
             echo ""
@@ -2797,7 +2797,7 @@ pw_run () {
             ${PW_DISPLAY} \
             "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
             print_info "Update prefix log:"
-            [[ -f "${PORT_WINE_TMP_PATH}/update_pfx_log" ]] && cat "${PORT_WINE_TMP_PATH}/update_pfx_log"
+            [[ -f "${PW_TMPFS_PATH}/update_pfx_log" ]] && cat "${PW_TMPFS_PATH}/update_pfx_log"
             echo
             print_info "Log from RUNTIME and WINE:"
             cat "${PW_LOG_TO_FILE}"
@@ -2807,7 +2807,7 @@ pw_run () {
         if [[ "${PW_LOG}" == 1 ]] ; then
             echo "WINEDLLOVERRIDES=${WINEDLLOVERRIDES}" >> "${PW_LOG_TO_FILE}"
             echo "------------------------------------" >> "${PW_LOG_TO_FILE}"
-            [[ -f "${PORT_WINE_TMP_PATH}/update_pfx_log" ]] && cat "${PORT_WINE_TMP_PATH}/update_pfx_log" >> "${PW_LOG_TO_FILE}"
+            [[ -f "${PW_TMPFS_PATH}/update_pfx_log" ]] && cat "${PW_TMPFS_PATH}/update_pfx_log" >> "${PW_LOG_TO_FILE}"
             echo "-" >> "${PW_LOG_TO_FILE}"
             echo "Log WINE:" >> "${PW_LOG_TO_FILE}"
             echo ""
@@ -2825,7 +2825,7 @@ pw_run () {
             wait_wineserver
         else
             print_info "Update prefix log:"
-            [[ -f "${PORT_WINE_TMP_PATH}/update_pfx_log" ]] && cat "${PORT_WINE_TMP_PATH}/update_pfx_log"
+            [[ -f "${PW_TMPFS_PATH}/update_pfx_log" ]] && cat "${PW_TMPFS_PATH}/update_pfx_log"
             echo ""
             echo "Log WINE:" > "${PW_LOG_TO_FILE}"
             print_info "Log WINE:"
@@ -3027,7 +3027,7 @@ pw_update_pfx_cover_gui () {
         PW_GIF_FILE="${COVERS_PATH}/update_prefix_${LANGUAGE_GIF}.gif"
         PW_GIF_SIZE_X=$(file "${PW_GIF_FILE}" | awk '{print $7 + 20}')
         PW_GIF_SIZE_Y=$(file "${PW_GIF_FILE}" | awk '{print $9 + 65}')
-        echo "UPDATE PREFIX..." > "${PORT_WINE_TMP_PATH}/update_pfx_log"
+        echo "UPDATE PREFIX..." > "${PW_TMPFS_PATH}/update_pfx_log"
         export PW_TIMER=0
         while read -r line || [[ ! -z $(pgrep -a yad | grep "yad_gui_pp --notebook --key=$PW_KEY_PROGRESS_BAR_UP" | awk '{print $1}') ]] ; do
                 sleep 0.005
@@ -3041,7 +3041,7 @@ pw_update_pfx_cover_gui () {
                     sleep 3
                     PW_TIMER=1
                 fi
-        done < "${PORT_WINE_TMP_PATH}/update_pfx_log" | "${pw_yad}" --plug=$PW_KEY_PROGRESS_BAR_UP --tabnum=$TAB_N2 --text-info --tail  2>/dev/null &
+        done < "${PW_TMPFS_PATH}/update_pfx_log" | "${pw_yad}" --plug=$PW_KEY_PROGRESS_BAR_UP --tabnum=$TAB_N2 --text-info --tail  2>/dev/null &
         "${pw_yad}" --plug=$PW_KEY_PROGRESS_BAR_UP --tabnum=$TAB_N1 --picture --filename="${PW_GIF_FILE}" 2>/dev/null &
 
         "${pw_yad}" --notebook --key="$PW_KEY_PROGRESS_BAR_UP" $TAB_PLACE --no-buttons \
@@ -4557,61 +4557,61 @@ pw_prefix_manager () {
     fi
 
     pw_start_progress_bar_block "$(gettext "Starting prefix manager:") $PW_PREFIX_NAME"
-    "${PORT_WINE_TMP_PATH}/winetricks" dlls list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/dll_list"
-    "${PORT_WINE_TMP_PATH}/winetricks" fonts list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/fonts_list"
-    "${PORT_WINE_TMP_PATH}/winetricks" settings list | awk -F'(' '{print $1}' 1> "${PORT_WINE_TMP_PATH}/settings_list"
+    "${PORT_WINE_TMP_PATH}/winetricks" dlls list | awk -F'(' '{print $1}' 1> "${PW_TMPFS_PATH}/dll_list"
+    "${PORT_WINE_TMP_PATH}/winetricks" fonts list | awk -F'(' '{print $1}' 1> "${PW_TMPFS_PATH}/fonts_list"
+    "${PORT_WINE_TMP_PATH}/winetricks" settings list | awk -F'(' '{print $1}' 1> "${PW_TMPFS_PATH}/settings_list"
 
     gui_prefix_manager () {
         unset SET_FROM_PFX_MANAGER_TMP SET_FROM_PFX_MANAGER
         old_IFS=$IFS
         IFS=$'\n'
-        try_remove_file  "${PORT_WINE_TMP_PATH}/dll_list_tmp"
+        try_remove_file  "${PW_TMPFS_PATH}/dll_list_tmp"
         while read PW_BOOL_IN_DLL_LIST ; do
             if [[ -z $(echo "${PW_BOOL_IN_DLL_LIST}" | grep -E 'd3d|directx9|dont_use|dxvk|vkd3d|galliumnine|faudio1|Foundation') ]] ; then
                 if grep "^$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{print $1}')$" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
-                    echo -e "true\n$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{print $1}')\n$(echo ${PW_BOOL_IN_DLL_LIST} | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PORT_WINE_TMP_PATH}/dll_list_tmp"
+                    echo -e "true\n$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{print $1}')\n$(echo ${PW_BOOL_IN_DLL_LIST} | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PW_TMPFS_PATH}/dll_list_tmp"
                 else
-                    echo -e "false\n$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{print $1}')\n$(echo ${PW_BOOL_IN_DLL_LIST} | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PORT_WINE_TMP_PATH}/dll_list_tmp"
+                    echo -e "false\n$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{print $1}')\n$(echo ${PW_BOOL_IN_DLL_LIST} | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PW_TMPFS_PATH}/dll_list_tmp"
                 fi
             fi
-        done < "${PORT_WINE_TMP_PATH}/dll_list"
-        try_remove_file  "${PORT_WINE_TMP_PATH}/fonts_list_tmp"
+        done < "${PW_TMPFS_PATH}/dll_list"
+        try_remove_file  "${PW_TMPFS_PATH}/fonts_list_tmp"
         while read PW_BOOL_IN_FONTS_LIST ; do
             if [[ -z $(echo "${PW_BOOL_IN_FONTS_LIST}" | grep -E 'dont_use') ]] ; then
                 if grep "^$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')$" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
-                    echo -e "true\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PORT_WINE_TMP_PATH}/fonts_list_tmp"
+                    echo -e "true\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PW_TMPFS_PATH}/fonts_list_tmp"
                 else
-                    echo -e "false\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PORT_WINE_TMP_PATH}/fonts_list_tmp"
+                    echo -e "false\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PW_TMPFS_PATH}/fonts_list_tmp"
                 fi
             fi
-        done < "${PORT_WINE_TMP_PATH}/fonts_list"
-        try_remove_file  "${PORT_WINE_TMP_PATH}/settings_list_tmp"
+        done < "${PW_TMPFS_PATH}/fonts_list"
+        try_remove_file  "${PW_TMPFS_PATH}/settings_list_tmp"
         while read PW_BOOL_IN_FONTS_LIST ; do
             if [[ -z $(echo "${PW_BOOL_IN_FONTS_LIST}" | grep -E 'vista|alldlls|autostart_|bad|good|win|videomemory|vd=|isolate_home') ]] ; then
                 if grep "^$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')$" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
-                    echo -e "true\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PORT_WINE_TMP_PATH}/settings_list_tmp"
+                    echo -e "true\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PW_TMPFS_PATH}/settings_list_tmp"
                 else
-                    echo -e "false\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PORT_WINE_TMP_PATH}/settings_list_tmp"
+                    echo -e "false\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PW_TMPFS_PATH}/settings_list_tmp"
                 fi
             fi
-        done < "${PORT_WINE_TMP_PATH}/settings_list"
+        done < "${PW_TMPFS_PATH}/settings_list"
         pw_stop_progress_bar
 
         KEY_EDIT_MANAGER_GUI=$RANDOM
         "${pw_yad}" --plug=$KEY_EDIT_MANAGER_GUI --tabnum=1 --list --checklist \
         --gui-type-layout=${WINETRICKS_GUI_TYPE_LAYOUT} --gui-type-text=${WINETRICKS_GUI_TYPE_TEXT} \
         --text="$(gettext 'Select components to install in prefix:') <b>\"${PW_PREFIX_NAME}\"</b>, $(gettext 'using wine:') <b>\"${PW_WINE_USE}\"</b>" \
-        --column=set --column=dll --column=info < "${PORT_WINE_TMP_PATH}/dll_list_tmp" 1>> "${PORT_WINE_TMP_PATH}/to_winetricks" 2>/dev/null &
+        --column=set --column=dll --column=info < "${PW_TMPFS_PATH}/dll_list_tmp" 1>> "${PW_TMPFS_PATH}/to_winetricks" 2>/dev/null &
 
         "${pw_yad}" --plug=$KEY_EDIT_MANAGER_GUI --tabnum=2 --list --checklist \
         --gui-type-layout=${WINETRICKS_GUI_TYPE_LAYOUT} --gui-type-text=${WINETRICKS_GUI_TYPE_TEXT} \
         --text="$(gettext 'Select fonts to install in prefix:') <b>\"${PW_PREFIX_NAME}\"</b>, $(gettext 'using wine:') <b>\"${PW_WINE_USE}\"</b>" \
-        --column=set --column=dll --column=info < "${PORT_WINE_TMP_PATH}/fonts_list_tmp" 1>> "${PORT_WINE_TMP_PATH}/to_winetricks" 2>/dev/null &
+        --column=set --column=dll --column=info < "${PW_TMPFS_PATH}/fonts_list_tmp" 1>> "${PW_TMPFS_PATH}/to_winetricks" 2>/dev/null &
 
         "${pw_yad}" --plug=$KEY_EDIT_MANAGER_GUI --tabnum=3 --list --checklist \
         --gui-type-layout=${WINETRICKS_GUI_TYPE_LAYOUT} --gui-type-text=${WINETRICKS_GUI_TYPE_TEXT} \
         --text="$(gettext 'Change config for prefix:') <b>\"${PW_PREFIX_NAME}\"</b>" \
-        --column=set --column=dll --column=info < "${PORT_WINE_TMP_PATH}/settings_list_tmp" 1>> "${PORT_WINE_TMP_PATH}/to_winetricks" 2>/dev/null &
+        --column=set --column=dll --column=info < "${PW_TMPFS_PATH}/settings_list_tmp" 1>> "${PW_TMPFS_PATH}/to_winetricks" 2>/dev/null &
 
         "${pw_yad}" --key=$KEY_EDIT_MANAGER_GUI --notebook \
         --width=700 --height=700 --expand \
@@ -4630,26 +4630,26 @@ pw_prefix_manager () {
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
         fi
-        try_remove_file  "${PORT_WINE_TMP_PATH}/dll_list_tmp"
-        try_remove_file  "${PORT_WINE_TMP_PATH}/fonts_list_tmp"
-        try_remove_file  "${PORT_WINE_TMP_PATH}/settings_list_tmp"
+        try_remove_file  "${PW_TMPFS_PATH}/dll_list_tmp"
+        try_remove_file  "${PW_TMPFS_PATH}/fonts_list_tmp"
+        try_remove_file  "${PW_TMPFS_PATH}/settings_list_tmp"
 
-        for STPFXMNG in $(<"${PORT_WINE_TMP_PATH}/to_winetricks") ; do
+        for STPFXMNG in $(<"${PW_TMPFS_PATH}/to_winetricks") ; do
             grep $(echo ${STPFXMNG} | awk -F'|' '{print $2}') "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" &>/dev/null
             if [ "$?" == "1" ] ; then
                 [[ ! -z "${STPFXMNG}" ]] && SET_FROM_PFX_MANAGER+="$(echo "${STPFXMNG}" | awk -F'|' '{print $2}') "
             fi
         done
         IFS=${old_IFS}
-        try_remove_file  "${PORT_WINE_TMP_PATH}/to_winetricks"
+        try_remove_file "${PW_TMPFS_PATH}/to_winetricks"
 
         if [[ ! -z ${SET_FROM_PFX_MANAGER} ]] ; then
             pw_update_pfx_cover_gui "winetricks"
-            echo "START WINETRICKS..." >> "${PORT_WINE_TMP_PATH}/update_pfx_log"
-            echo "Try to install DLL in prefix: ${SET_FROM_PFX_MANAGER}" >> "${PORT_WINE_TMP_PATH}/update_pfx_log"
+            echo "START WINETRICKS..." >> "${PW_TMPFS_PATH}/update_pfx_log"
+            echo "Try to install DLL in prefix: ${SET_FROM_PFX_MANAGER}" >> "${PW_TMPFS_PATH}/update_pfx_log"
             print_info "Try to install DLL in prefix: ${SET_FROM_PFX_MANAGER}"
             ${pw_runtime} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
-            "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${SET_FROM_PFX_MANAGER} | tee -a "${PORT_WINE_TMP_PATH}/update_pfx_log"
+            "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${SET_FROM_PFX_MANAGER} | tee -a "${PW_TMPFS_PATH}/update_pfx_log"
             wait_wineserver
             kill_portwine
             pw_stop_progress_bar
@@ -4861,15 +4861,15 @@ pw_create_prefix_backup () {
     else TMP_ALL_PATH="LD_LIBRARY_PATH=\"${PW_LD_LIBRARY_PATH}\""
     fi
     chmod -R u+w "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"
-cat << EOF > "${PORT_WINE_TMP_PATH}"/pp_pfx_backup.sh
+cat << EOF > "${PW_TMPFS_PATH}"/pp_pfx_backup.sh
     #!/usr/bin/env bash
     ${TMP_ALL_PATH} mksquashfs "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" \
     "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" -comp zstd \
     || rm -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part"
 EOF
-    chmod u+x "${PORT_WINE_TMP_PATH}"/pp_pfx_backup.sh
-    ${pw_runtime} ${PW_TERM} "${PORT_WINE_TMP_PATH}"/pp_pfx_backup.sh
-    try_remove_file "${PORT_WINE_TMP_PATH}"/pp_pfx_backup.sh
+    chmod u+x "${PW_TMPFS_PATH}"/pp_pfx_backup.sh
+    ${pw_runtime} ${PW_TERM} "${PW_TMPFS_PATH}"/pp_pfx_backup.sh
+    try_remove_file "${PW_TMPFS_PATH}"/pp_pfx_backup.sh
     if [[ -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" ]] ; then
         mv -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack"
         yad_info "$(gettext "Backup has been successfully created for prefix:") $PW_PREFIX_NAME"
