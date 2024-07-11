@@ -429,23 +429,6 @@ combobox_fix_empty () {
     echo "${name1}${name3}${fix_empty}"
 }
 
-combobox_fix_default () {
-    name1="$1"
-    name2="$2"
-
-    name3="${name2//\!${name1}\!/\!}"
-    name3="!${name3//${name1}\!/\!}"
-    name3="${name3//\!\!/\!}"
-    name4="$(echo "${name3}" | awk -F"!" '{print $NF}')"
-    if [[ ${name1} == "${name4}" ]]
-    then name3="$(echo "${name3}" | sed "s/\!${name1}$//")"
-    fi
-    if [[ ${name1} != "default" ]]
-    then fix_default="!default"
-    fi
-    echo "${name1}${name3}${fix_default}"
-}
-
 combobox_fix_disabled () {
     name1="$1"
     name2="$2"
@@ -2511,12 +2494,9 @@ start_portwine () {
         if [[ "${PW_GS_HDR_ENABLE}" == "1" ]] ; then
             PW_GAMESCOPE_ARGS_NEW+=" --hdr-enabled"
             export DXVK_HDR="1"
-            if [[ ${GAMESCOPE_WITH_BACKEND} == "1" ]] ; then
-                export ENABLE_GAMESCOPE_WSI="1"
-                unset PW_GS_BACKEND_SDL PW_GS_SDL_VIDEODRIVER_X11
-                PW_GAMESCOPE_ARGS_NEW+=" --backend wayland"
-            fi
         fi
+
+        [[ "${PW_GS_ENABLE_GAMESCOPE_WSI}" == "1" ]] && export ENABLE_GAMESCOPE_WSI="1"
 
         [[ "${PW_GS_HDR_ITM_ENABLE}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --hdr-itm-enable"
         [[ "${PW_GS_SDR_GAMMUT_WIDENESS}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --sdr-gamut-wideness"
@@ -2559,6 +2539,11 @@ start_portwine () {
         fi
 
         [[ "${PW_GS_FRAME_LIMIT}" != "disabled" ]] && PW_GAMESCOPE_ARGS_NEW+=" -r ${PW_GS_FRAME_LIMIT}"
+
+        if [[ "${PW_GS_MESA_VK_WSI_PRESENT_MODE}" != "disabled" ]] ; then
+            export MESA_VK_WSI_PRESENT_MODE=${PW_GS_MESA_VK_WSI_PRESENT_MODE}
+        fi
+
         [[ "${PW_GS_MAX_SCALE_FACTOR}" != "0.0" ]] && PW_GAMESCOPE_ARGS_NEW+=" -m ${PW_GS_MAX_SCALE_FACTOR}"
         [[ "${PW_GS_SCALER_MODE}" != "disabled" ]] && PW_GAMESCOPE_ARGS_NEW+=" -S ${PW_GS_SCALER_MODE}"
 
@@ -2580,18 +2565,6 @@ start_portwine () {
         [[ "${PW_GS_SDR_CONTENT_NITS}" != "400" ]] && PW_GAMESCOPE_ARGS_NEW+=" --hdr-sdr-content-nits ${PW_GS_SDR_CONTENT_NITS}"
         [[ "${PW_GS_ITM_SDR_NITS}" != "0" ]] && PW_GAMESCOPE_ARGS_NEW+=" --hdr-itm-sdr-nits ${PW_GS_ITM_SDR_NITS}"
         [[ "${PW_GS_ITM_TARGET_NITS}" != "0" ]] && PW_GAMESCOPE_ARGS_NEW+=" --hdr-itm-target-nits ${PW_GS_ITM_TARGET_NITS}"
-
-        if [[ "${PW_GS_MESA_VK_WSI_PRESENT_MODE}" != "disabled" ]] ; then
-            export MESA_VK_WSI_PRESENT_MODE=${PW_GS_MESA_VK_WSI_PRESENT_MODE}
-        fi
-
-        if [[ "${PW_GS_GAMESCOPE_WSI}" != "default" ]] ; then
-            if [[ "${PW_GS_GAMESCOPE_WSI}" == "enable" ]] ; then
-                export ENABLE_GAMESCOPE_WSI="1"
-            elif [[ "${PW_GS_GAMESCOPE_WSI}" == "disable" ]] ; then
-                export DISABLE_GAMESCOPE_WSI="1"
-            fi
-        fi
 
         edit_db_from_gui PW_GAMESCOPE_ARGS_NEW
         export PW_RUN_GAMESCOPE="gamescope${PW_ID_VIDEO}${PW_GAMESCOPE_ARGS_NEW} --"
@@ -3990,7 +3963,7 @@ fi
 gui_gamescope () {
     KEY_GS_GUI=$RANDOM
     PW_GS_LIST="PW_GS_FULLSCREEN PW_GS_FORCE_FULLSCREEN PW_GS_BORDERLESS_WINDOW PW_GS_FORCE_GRAB_CURSOR
-    PW_GS_FORCE_GRAB_KEYBOARD PW_GS_HDR_ENABLE PW_GS_HDR_ITM_ENABLE PW_GS_SDR_GAMMUT_WIDENESS
+    PW_GS_FORCE_GRAB_KEYBOARD PW_GS_HDR_ENABLE PW_GS_ENABLE_GAMESCOPE_WSI PW_GS_HDR_ITM_ENABLE PW_GS_SDR_GAMMUT_WIDENESS
     PW_GS_FORCE_COMPOSITION PW_GS_HDR_FORCE_SUPPORT PW_GS_HDR_FORCE_OUTPUT PW_GS_HDR_FORCE_HEATMAP
     PW_GS_EXPOSE_WAYLAND PW_GS_REALTIME_SCHEDULING PW_GS_FIX_AMD_AND_INTEL
     "
@@ -3999,10 +3972,23 @@ gui_gamescope () {
 
     if check_wayland_session ; then
         grep -e '--backend' "${PW_TMPFS_PATH}/gamescope-help.tmp" &>/dev/null \
-        && add_to_var PW_GS_LIST "PW_GS_BACKEND_SDL" && add_to_var PW_GS_LIST "PW_GS_SDL_VIDEODRIVER_X11" && export GAMESCOPE_WITH_BACKEND="1"
+        && add_to_var PW_GS_LIST "PW_GS_BACKEND_SDL" && add_to_var PW_GS_LIST "PW_GS_SDL_VIDEODRIVER_X11"
     else
         export PW_GS_BACKEND_SDL="0"
         export PW_GS_SDL_VIDEODRIVER_X11="0"
+    fi
+
+    GS_FILTER_CB="linear!nearest!fsr!nis!pixel"
+    #debian bookworm fix
+    if grep -e '-U, --fsr-upscaling' "${PW_TMPFS_PATH}/gamescope-help.tmp" &>/dev/null ; then
+        GS_FILTER_CB="fsr!nis"
+        export PW_GS_FILTER_MODE_OLD="true"
+        rm_from_var PW_GS_LIST "PW_GS_HDR_ENABLE"
+        rm_from_var PW_GS_LIST "PW_GS_HDR_FORCE_SUPPORT"
+        rm_from_var PW_GS_LIST "PW_GS_HDR_FORCE_OUTPUT"
+        rm_from_var PW_GS_LIST "PW_GS_HDR_FORCE_SUPPORT"
+        rm_from_var PW_GS_LIST "PW_GS_FORCE_GRAB_CURSOR"
+        rm_from_var PW_GS_LIST "PW_GS_FORCE_GRAB_KEYBOARD"
     fi
 
 if [[ "${SKIP_GAMESCOPE_TEXT_INFO}" != 1 ]] ; then
@@ -4012,6 +3998,7 @@ if [[ "${SKIP_GAMESCOPE_TEXT_INFO}" != 1 ]] ; then
     export PW_GS_FORCE_GRAB_KEYBOARD_INFO=$(gettext 'Grab the keyboard')
     export PW_GS_FORCE_GRAB_CURSOR_INFO=$(gettext 'Always use relative mouse mode instead of flipping dependent on cursor visibility.')
     export PW_GS_HDR_ENABLE_INFO=$(gettext 'Enable HDR output (needs Gamescope WSI layer enabled for support from clients). If this is not set, and there is a HDR client, it will be tonemapped SDR'.)
+    export PW_GS_ENABLE_GAMESCOPE_WSI_INFO=$(gettext 'This can be useful for some HDR options and for some DXVK v2.3 vsync optimisations')
     export PW_GS_SDR_GAMMUT_WIDENESS_INFO=$(gettext "Set the 'wideness' of the gamut for SDR comment. 0 - 1.")
     export PW_GS_HDR_ITM_ENABLE_INFO=$(gettext 'Enable SDR->HDR inverse tone mapping. only works for SDR input.')
     export PW_GS_FORCE_COMPOSITION_INFO=$(gettext 'Disables direct scan-out')
@@ -4027,19 +4014,6 @@ if [[ "${SKIP_GAMESCOPE_TEXT_INFO}" != 1 ]] ; then
 
     export SKIP_GAMESCOPE_TEXT_INFO=1
 fi
-
-    GS_FILTER_CB="linear!nearest!fsr!nis!pixel"
-    #debian bookworm fix
-    if grep -e '-U, --fsr-upscaling' "${PW_TMPFS_PATH}/gamescope-help.tmp" &>/dev/null ; then
-        GS_FILTER_CB="fsr!nis"
-        export PW_GS_FILTER_MODE_OLD="true"
-        rm_from_var PW_GS_LIST "PW_GS_HDR_ENABLE"
-        rm_from_var PW_GS_LIST "PW_GS_HDR_FORCE_SUPPORT"
-        rm_from_var PW_GS_LIST "PW_GS_HDR_FORCE_OUTPUT"
-        rm_from_var PW_GS_LIST "PW_GS_HDR_FORCE_SUPPORT"
-        rm_from_var PW_GS_LIST "PW_GS_FORCE_GRAB_CURSOR"
-        rm_from_var PW_GS_LIST "PW_GS_FORCE_GRAB_KEYBOARD"
-    fi
 
     unset ADD_CHK_BOX_GS
     if [[ "${GAMESCOPE_INSTALLED}" == 1 ]] ; then
@@ -4064,15 +4038,15 @@ fi
         PW_GS_SHOW_RESOLUTION="disabled"
         PW_GS_INTERNAL_RESOLUTION="0.0"
         PW_GS_FRAME_LIMIT="disabled"
-        PW_GS_MAX_SCALE_FACTOR="0.0"
+        PW_GS_MESA_VK_WSI_PRESENT_MODE="disabled"
         PW_GS_SCALER_MODE="disabled"
         PW_GS_FILTER_MODE="disabled"
         PW_GS_UPSCALE_SHARPNESS="0"
+        PW_GS_MAX_SCALE_FACTOR="0.0"
         PW_GS_MOUSE_SENSITIVITY="0.0"
         PW_GS_SDR_CONTENT_NITS="0"
         PW_GS_ITM_SDR_NITS="0"
         PW_GS_ITM_TARGET_NITS="0"
-        PW_GS_MESA_VK_WSI_PRESENT_MODE="disabled"
         for int_to_boole in ${PW_GS_LIST} ; do
             if [ "${!int_to_boole}" == "1" ]
             then export ${int_to_boole}="TRUE"
@@ -4086,7 +4060,7 @@ fi
 
     old_IFS=$IFS
     IFS="%"
-    "${pw_yad}" --plug=$KEY_GS_GUI --tabnum="1" --form --columns=4 --separator=" " --text-align=center --text "$GAMESCOPE_NEED_INSTALL" \
+    "${pw_yad}" --plug=$KEY_GS_GUI --tabnum="1" --form --columns=3 --separator=" " --text-align=center --text "$GAMESCOPE_NEED_INSTALL" \
     --gui-type-text=${GAMESCOPE_GUI_TYPE_TEXT_UP} --gui-type-layout=${GAMESCOPE_GUI_TYPE_LAYOUT_UP} \
     ${ADD_CHK_BOX_GS} \
     1> "${PW_TMPFS_PATH}/tmp_yad_gs_set" 2>/dev/null &
@@ -4099,23 +4073,27 @@ fi
     --field="${CHKBOX_SPACE}$(gettext "Show resolution")!$(gettext "Set the resolution used by gamescope. Resizing the gamescope window will update these settings. Defaults to 1280x720.") :${GS_CBE}" "$(combobox_fix_disabled "${PW_GS_SHOW_RESOLUTION}" "${GAMESCOPE_XRANDR}")" \
     --field="${CHKBOX_SPACE}$(gettext "Internal resolution")!$(gettext "Scale internal resolution (0.0 is unused)") :${GS_NUMN}" "${PW_GS_INTERNAL_RESOLUTION}:!0..2" \
     --field="${CHKBOX_SPACE}$(gettext "Frame limit")!$(gettext "Set a framerate limit. Specified in frames per second") :${GS_CBE}" "$(combobox_fix_disabled "${PW_GS_FRAME_LIMIT}" "30!60!90!120!144")" \
-    --field="${CHKBOX_SPACE}$(gettext "Max scale factor")!$(gettext "Maximum Scale Factor. Working only on X11 or backend sdl (0.0 is unused)") :${GS_NUMN}" "${PW_GS_MAX_SCALE_FACTOR}:!0..100" \
+    --field="${CHKBOX_SPACE}$(gettext "Mesa vulkan WSI")!$(gettext "Overrides the WSI present mode:
+fifo - First in, first out. Limits the frame rate + no tearing. (VSync)
+immediate - Unlimited frame rate + tearing.
+mailbox - Triple buffering. Unlimited frame rate + no tearing.
+relaxed - Same as fifo but allows tearing when below the monitors refresh rate.") :${GS_CB}" "$(combobox_fix_disabled "${PW_GS_MESA_VK_WSI_PRESENT_MODE}" "fifo!immediate!mailbox!relaxed")" \
     --field="${CHKBOX_SPACE}$(gettext "Scaler mode")!$(gettext "Specify how to scale the GameScope window content") :${GS_CB}" "$(combobox_fix_disabled "${PW_GS_SCALER_MODE}" "auto!integer!fit!fill!stretch")" \
     --field="${CHKBOX_SPACE}$(gettext "Filter mode")!$(gettext "Use a filter such as AMD FidelityFX SuperResolution 1.0 (FSR) or NVIDIA Image Scaling v1.0.3 (NIS)") :${GS_CB}" "$(combobox_fix_disabled "${PW_GS_FILTER_MODE}" "${GS_FILTER_CB}")" \
     --field="${CHKBOX_SPACE}$(gettext "Upscale sharpness")!$(gettext "Sharpening value for FidelityFX SuperResolution 1.0 (FSR) and NVIDIA Image Scaling v1.0.3 (NIS). 0 is max sharpening, 20 is min sharpening.") :${GS_NUM}" "${PW_GS_UPSCALE_SHARPNESS}:!0..20" \
+    --field="${CHKBOX_SPACE}$(gettext "Max scale factor")!$(gettext "Maximum Scale Factor. Working only on X11 or backend sdl (0.0 is unused)") :${GS_NUMN}" "${PW_GS_MAX_SCALE_FACTOR}:!0..100" \
     --field="${CHKBOX_SPACE}$(gettext "Mouse sensitivity")!$(gettext "Configurable mouse sensitivity, multiply mouse movement by specified decimal number amount") :${GS_NUMN}" "${PW_GS_MOUSE_SENSITIVITY}:!0..100" \
     --field="${CHKBOX_SPACE}$(gettext "HDR SDR nits")!$(gettext "Set the luminance of SDR content in nits. Default: 400 nits.") :${GS_NUM}" "${PW_GS_SDR_CONTENT_NITS}:!0..10000" \
     --field="${CHKBOX_SPACE}$(gettext "HDR inverse SDR")!$(gettext "Set the luminance of SDR content in nets used as the input for the inverse tone mapping process - Maximum is 1000 nits") :${GS_NUM}" "${PW_GS_ITM_SDR_NITS}:!0..1000" \
     --field="${CHKBOX_SPACE}$(gettext "HDR inverse target")!$(gettext "Set the target luninance of the inverse tone mapping process - Max is 10000 nits") :${GS_NUM}" "${PW_GS_ITM_TARGET_NITS}:!0..10000" \
-    --field="${CHKBOX_SPACE}$(gettext "Mesa vulkan WSI")!$(gettext "Overrides the WSI present mode") :${GS_CB}" "$(combobox_fix_disabled "${PW_GS_MESA_VK_WSI_PRESENT_MODE}" "fifo!immediate!mailbox!relaxed")" \
-    --field="${CHKBOX_SPACE}$(gettext "Gamescope WSI")!$(gettext "This can be useful for some HDR options and for some DXVK v2.3 vsync optimisations") :${GS_CB}" "$(combobox_fix_default "${PW_GS_GAMESCOPE_WSI}" "enable!disable")" \
     1> "${PW_TMPFS_PATH}/tmp_yad_gs_set_cb" 2>/dev/null &
 
     "${pw_yad}" --paned --key="$KEY_GS_GUI" --title="GameScope" --center \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --gui-type=settings-paned \
     --button="$(gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Cancel the current changes and return to the previous menu")":1 \
-    --button="$(gettext "RESET") GAMESCOPE"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Restore default settings for") Gamescope":162 \
+    --button="$(gettext "RESET") GAMESCOPE"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Restore default settings for") GameScope":162 \
+    --button="$(gettext "DISABLE") GAMESCOPE"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Disable GameScope and go to the previous menu")":164 \
     --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":166 \
     2>/dev/null
 
@@ -4128,6 +4106,13 @@ fi
             ;;
         162)
             sed -i '/PW_GS/d' "$portwine_exe".ppdb
+            export PW_GAMESCOPE=0
+            edit_db_from_gui PW_GAMESCOPE
+            export SKIP_CHECK_UPDATES=1
+            /usr/bin/env bash -c ${pw_full_command_line[*]} &
+            exit 0
+            ;;
+        164)
             export PW_GAMESCOPE=0
             edit_db_from_gui PW_GAMESCOPE
             export SKIP_CHECK_UPDATES=1
@@ -4155,21 +4140,20 @@ fi
     PW_GS_SHOW_RESOLUTION="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $1}')"
     PW_GS_INTERNAL_RESOLUTION="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $2}' | tr ',' '.')"
     PW_GS_FRAME_LIMIT="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $3}')"
-    PW_GS_MAX_SCALE_FACTOR="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $4}' | tr ',' '.')"
+    PW_GS_MESA_VK_WSI_PRESENT_MODE="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $4}')"
     PW_GS_SCALER_MODE="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $5}')"
     PW_GS_FILTER_MODE="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $6}')"
     PW_GS_UPSCALE_SHARPNESS="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $7}')"
-    PW_GS_MOUSE_SENSITIVITY="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $8}' | tr ',' '.')"
-    PW_GS_SDR_CONTENT_NITS="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $9}')"
-    PW_GS_ITM_SDR_NITS="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $10}')"
-    PW_GS_ITM_TARGET_NITS="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $11}')"
-    PW_GS_MESA_VK_WSI_PRESENT_MODE="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $12}')"
-    PW_GS_GAMESCOPE_WSI="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $13}')"
+    PW_GS_MAX_SCALE_FACTOR="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $8}' | tr ',' '.')"
+    PW_GS_MOUSE_SENSITIVITY="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $9}' | tr ',' '.')"
+    PW_GS_SDR_CONTENT_NITS="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $10}')"
+    PW_GS_ITM_SDR_NITS="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $11}')"
+    PW_GS_ITM_TARGET_NITS="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $12}')"
 
     edit_db_from_gui ${PW_GS_LIST} PW_GAMESCOPE PW_GS_SHOW_RESOLUTION PW_GS_INTERNAL_RESOLUTION \
-    PW_GS_FRAME_LIMIT PW_GS_MAX_SCALE_FACTOR PW_GS_FILTER_MODE PW_GS_SCALER_MODE \
-    PW_GS_MOUSE_SENSITIVITY PW_GS_UPSCALE_SHARPNESS PW_GS_MESA_VK_WSI_PRESENT_MODE \
-    PW_GS_SDR_CONTENT_NITS PW_GS_ITM_SDR_NITS PW_GS_ITM_TARGET_NITS PW_GS_GAMESCOPE_WSI
+    PW_GS_FRAME_LIMIT PW_GS_MESA_VK_WSI_PRESENT_MODE PW_GS_SCALER_MODE  PW_GS_FILTER_MODE \
+    PW_GS_UPSCALE_SHARPNESS PW_GS_MAX_SCALE_FACTOR PW_GS_MOUSE_SENSITIVITY \
+    PW_GS_SDR_CONTENT_NITS PW_GS_ITM_SDR_NITS PW_GS_ITM_TARGET_NITS
 
 
     export SKIP_CHECK_UPDATES=1
