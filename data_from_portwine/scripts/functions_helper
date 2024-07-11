@@ -416,6 +416,10 @@ combobox_fix () {
     name3="${name2//\!${name1}\!/\!}"
     name3="!${name3//${name1}\!/\!}"
     name3="${name3//\!\!/\!}"
+    name4="$(echo "${name3}" | awk -F"!" '{print $NF}')"
+    if [[ ${name1} == "${name4}" ]] || [[ ${name1} == "\\${name4}" ]]
+    then name3="$(echo "${name3}" | sed "s/\!${name1}$//")"
+    fi
     echo "${name1}${name3}"
 }
 
@@ -1029,7 +1033,7 @@ pw_check_and_download_dxvk_and_vkd3d () {
     done
 
     # Download stable and git version VKD3D
-    for VKD3D_VAR_VER in "${VKD3D_STABLE_VER}" "${VKD3D_DGV2_VER}" "${VKD3D_GIT_VER}" ; do
+    for VKD3D_VAR_VER in "${VKD3D_STABLE_VER}" "${VKD3D_GIT_VER}" ; do
         if [ ! -d "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}" ] ; then
             print_info "Download and install VKD3D-PROTON v.${VKD3D_VAR_VER}"
             if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/vkd3d-proton-${VKD3D_VAR_VER}/vkd3d-proton-${VKD3D_VAR_VER}.tar.xz" \
@@ -2158,6 +2162,13 @@ start_portwine () {
                     ;;
             esac
         fi
+
+        if [[ "${PW_DGV2_GLIDE_NAPALM}" == "1" ]] ; then
+            rm_from_var CP_DGV2_FILES "glide3x"
+            try_force_link_file "${PATH_TO_DGV2_FILES}/x32/glide3x-napalm.dll" "${WINEPREFIX}/drive_c/windows/syswow64/glide3x.dll"
+            var_winedlloverride_update "glide3x=n"
+        fi
+
         for wine_dgv2_dll in $CP_DGV2_FILES ; do
             try_force_link_file "${PATH_TO_DGV2_FILES}/x32/${wine_dgv2_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dgv2_dll}.dll"
             var_winedlloverride_update "${wine_dgv2_dll}=n"
@@ -2165,23 +2176,165 @@ start_portwine () {
         # DGVOODOO2 settings:
         if [[ "${PW_DGV2_USE_DX12}" == "1" ]] ; then
             if [[ "${PW_VULKAN_USE}" == "1" ]] || [[ "${PW_VULKAN_USE}" == "2" ]]
-            then
-                sed -i "s/OutputAPI = d3d11_fl11_0/OutputAPI = d3d12_fl12_0/" "$DGV2CONF"
+            then sed -i "s/OutputAPI = d3d11_fl11_0/OutputAPI = d3d12_fl12_0/" "$DGV2CONF"
             fi
-            [[ "${PW_VULKAN_USE}" == "2" ]] && PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_DGV2_VER}"
         fi
-        [[ "${PW_DGV2_16BIT_MODE}" == "1" ]] && sed -i "s/DesktopBitDepth =/DesktopBitDepth = 16/" "$DGV2CONF"
-        [[ "${PW_DGV2_FULLSCREEN}" == "1" ]] && sed -i "s/Resolution = unforced/Resolution = desktop/g" "$DGV2CONF"
+
+        if [[ "${PW_DGV2_ENABLE_CRT}" == "1" ]] ; then
+            sed -i "s/ScalingMode = unspecified/ScalingMode = stretched_ar_crt/" "$DGV2CONF"
+        else
+            if [[ "${PW_DGV2_RESAMPLING}" != "disabled" ]] ; then
+                sed -i "s/ScalingMode = unspecified/ScalingMode = stretched_ar/" "$DGV2CONF"
+            elif [[ "${PW_DGV2_DISPLAY_ROI}" != "disabled" ]] ; then
+                sed -i "s/ScalingMode = unspecified/ScalingMode = stretched_ar/" "$DGV2CONF"
+            elif [[ "${PW_DGV2_CURSOR_SCALE}" != "0" ]] ; then
+                sed -i "s/ScalingMode = unspecified/ScalingMode = stretched_ar/" "$DGV2CONF"
+            else
+                sed -i "s/ScalingMode = unspecified/ScalingMode = stretched/" "$DGV2CONF"
+            fi
+        fi
+
+        [[ "${PW_DGV2_FREE_MOUSE}" == "1" ]] && sed -i "s/FreeMouse = false/FreeMouse = true/" "$DGV2CONF"
         [[ "${PW_DGV2_FASTMEMORY}" == "1" ]] && sed -i "s/FastVideoMemoryAccess = false/FastVideoMemoryAccess = true/" "$DGV2CONF"
-        [[ "${PW_DGV2_VRAM_INCREASE}" == "1" ]] && sed -i "s/VRAM = 256/VRAM = 1024/" "$DGV2CONF"
+
+        if [[ "${PW_DGV2_FORCE_VSYNC}" == "1" ]] ; then
+            sed -i "s/ForceVerticalSync = false/ForceVerticalSync = true/" "$DGV2CONF"
+        fi
+
+        [[ "${PW_DGV2_DISABLE_MIPMAPPING}" == "1" ]] && sed -i "s/DisableMipmapping = false/DisableMipmapping = true/g" "$DGV2CONF"
+        [[ "${PW_DGV2_GLIDE_GAMMA_RAMP}" != "1" ]] && sed -i "s/EnableGlideGammaRamp = true/EnableGlideGammaRamp = false/" "$DGV2CONF"
+        [[ "${PW_DGV2_BLIT_STRETCH}" == "1" ]] && sed -i "s/BilinearBlitStretch = false/BilinearBlitStretch = true/" "$DGV2CONF"
+        [[ "${PW_DGV2_PHONG_SHADING}" == "1" ]] && sed -i "s/PhongShadingWhenPossible = false/PhongShadingWhenPossible = true/" "$DGV2CONF"
+        [[ "${PW_DGV2_16_BIT_DEPTH_BUFFER}" == "1" ]] && sed -i "s/16BitDepthBuffer = false/16BitDepthBuffer = true/" "$DGV2CONF"
+        [[ "${PW_DGV2_3DFX_SPLASH_SCREEN}" == "1" ]] && sed -i "s/3DfxSplashScreen = false/3DfxSplashScreen = true/" "$DGV2CONF"
+        [[ "${PW_DGV2_3DFX_WATERMARK}" == "1" ]] && sed -i "s/3DfxWatermark = false/3DfxWatermark = true/" "$DGV2CONF"
+        [[ "${PW_DGV2_FILTER_POINT_SAMPLED}" == "1" ]] && sed -i "s/KeepFilterIfPointSampled = false/KeepFilterIfPointSampled = true/" "$DGV2CONF"
+        [[ "${PW_DGV2_DGVOODOO_WATERMARK}" == "1" ]] && sed -i "s/dgVoodooWatermark = false/dgVoodooWatermark = true/" "$DGV2CONF"
+        [[ "${PW_DGV2_EMULATING_PCI_ACCESS}" == "1" ]] && sed -i "s/ForceEmulatingTruePCIAccess = false/ForceEmulatingTruePCIAccess = true/" "$DGV2CONF"
+        [[ "${PW_DGV2_INACTIVE_APP_STATE}" == "1" ]] && sed -i "s/EnableInactiveAppState = false/EnableInactiveAppState = true/" "$DGV2CONF"
+
         if [[ "${PW_DGV2_FILTERING}" != "disabled" ]] ; then
-            export PW_DGV2_FILTERING="${PW_DGV2_FILTERING}"
-            sed -i "s/Filtering = appdriven/Filtering = ${PW_DGV2_FILTERING}/" "$DGV2CONF"
+            [[ "${PW_DGV2_FILTERING}" == "Point sampled" ]] && sed -i "s/\<Filtering = appdriven\>/Filtering = pointsampled/" "$DGV2CONF"
+            [[ "${PW_DGV2_FILTERING}" == "Bilinear" ]] && sed -i "s/\<Filtering = appdriven\>/Filtering = bilinear/" "$DGV2CONF"
+            [[ "${PW_DGV2_FILTERING}" == "Linear mip" ]] && sed -i "s/\<Filtering = appdriven\>/Filtering = linearmip/" "$DGV2CONF"
+            [[ "${PW_DGV2_FILTERING}" == "Trilinear" ]] && sed -i "s/\<Filtering = appdriven\>/Filtering = trilinear/" "$DGV2CONF"
+            [[ "${PW_DGV2_FILTERING}" == "Anisotropic 2x" ]] && sed -i "s/\<Filtering = appdriven\>/Filtering = 2/" "$DGV2CONF"
+            [[ "${PW_DGV2_FILTERING}" == "Anisotropic 4x" ]] && sed -i "s/\<Filtering = appdriven\>/Filtering = 4/" "$DGV2CONF"
+            [[ "${PW_DGV2_FILTERING}" == "Anisotropic 8x" ]] && sed -i "s/\<Filtering = appdriven\>/Filtering = 8/" "$DGV2CONF"
+            [[ "${PW_DGV2_FILTERING}" == "Anisotropic 16x" ]] && sed -i "s/\<Filtering = appdriven\>/Filtering = 16/" "$DGV2CONF"
+            case "${PW_DGV2_FILTERING}" in
+            "Point sampled")
+                sed -i "s/TMUFiltering = appdriven/TMUFiltering = pointsampled/" "$DGV2CONF" ;;
+            "Bilinear"|"Linear mip"|"Trilinear"|"Anisotropic 2x"|"Anisotropic 4x"|"Anisotropic 8x"|"Anisotropic 16x")
+                sed -i "s/TMUFiltering = appdriven/TMUFiltering = bilinear/" "$DGV2CONF" ;;
+            esac
         fi
-        if [[ "${PW_DGV2_ANTIALIASING}" != "disabled" ]] ; then
-            export PW_DGV2_ANTIALIASING="${PW_DGV2_ANTIALIASING}"
-            sed -i "s/Antialiasing = appdriven/Antialiasing = ${PW_DGV2_ANTIALIASING}x/g" "$DGV2CONF"
+
+        if [[ "${PW_DGV2_ANTIALIASING}" != "disabled" ]] && [[ "${PW_DGV2_GLIDE_NAPALM}" != "1" ]] ; then
+            sed -i "s/Antialiasing = appdriven/Antialiasing = ${PW_DGV2_ANTIALIASING}/g" "$DGV2CONF"
+        elif [[ "${PW_DGV2_ANTIALIASING}" != "disabled" ]] && [[ "${PW_DGV2_GLIDE_NAPALM}" == "1" ]] ; then
+            sed -i "86s/Antialiasing = appdriven/Antialiasing = ${PW_DGV2_ANTIALIASING}/" "$DGV2CONF"
         fi
+
+        if [[ "${PW_DGV2_VRAM}" != "disabled" ]] ; then
+            if [[ "${PW_DGV2_VIDEOCARD}" == "dgVoodoo2 SVGA 3D" ]] ; then
+                if [[ "${PW_DGV2_VRAM}" -le "128" ]] ; then
+                    sed -i "s/VRAM = 256/VRAM = ${PW_DGV2_VRAM}/" "$DGV2CONF"
+                else
+                    sed -i "s/VRAM = 256/VRAM = 64/" "$DGV2CONF"
+                fi
+            fi
+            [[ "${PW_DGV2_VIDEOCARD}" == "Geforce 4 Ti 4800" ]] && [[ "${PW_DGV2_VRAM}" -ge "64" ]] && [[ "${PW_DGV2_VRAM}" -le "256" ]] \
+                && sed -i "s/VRAM = 256/VRAM = ${PW_DGV2_VRAM}/" "$DGV2CONF"
+            [[ "${PW_DGV2_VIDEOCARD}" == "ATI Radeon 8500" ]] && [[ "${PW_DGV2_VRAM}" -ge "64" ]] && [[ "${PW_DGV2_VRAM}" -le "256" ]] \
+                && sed -i "s/VRAM = 256/VRAM = ${PW_DGV2_VRAM}/" "$DGV2CONF"
+            [[ "${PW_DGV2_VIDEOCARD}" == "Matrox Parhelia-512" ]] && [[ "${PW_DGV2_VRAM}" -ge "128" ]] && [[ "${PW_DGV2_VRAM}" -le "256" ]] \
+                && sed -i "s/VRAM = 256/VRAM = ${PW_DGV2_VRAM}/" "$DGV2CONF"
+            [[ "${PW_DGV2_VIDEOCARD}" == "GeForce FX 5700 Ultra" ]] && [[ "${PW_DGV2_VRAM}" -ge "64" ]] && [[ "${PW_DGV2_VRAM}" -le "256" ]] \
+                && sed -i "s/VRAM = 256/VRAM = ${PW_DGV2_VRAM}/" "$DGV2CONF"
+            if [[ "${PW_DGV2_VIDEOCARD}" == "GeForce 9800 GT" ]] ; then
+                if [[ "${PW_DGV2_VRAM}" -ge "512" ]] && [[ "${PW_DGV2_VRAM}" -le "1024" ]] ; then
+                    sed -i "s/VRAM = 256/VRAM = ${PW_DGV2_VRAM}/" "$DGV2CONF"
+                else
+                    sed -i "s/VRAM = 256/VRAM = 512/" "$DGV2CONF"
+                fi
+            fi
+        else
+            [[ "${PW_DGV2_VIDEOCARD}" == "dgVoodoo2 SVGA 3D" ]] && sed -i "s/VRAM = 256/VRAM = 64/" "$DGV2CONF"
+            [[ "${PW_DGV2_VIDEOCARD}" == "GeForce 9800 GT" ]] && sed -i "s/VRAM = 256/VRAM = 512/" "$DGV2CONF"
+        fi
+
+        if [[ "${PW_DGV2_RESOLUTION}" != "disabled" ]] ; then
+            if [[ "${PW_DGV2_RESOLUTION}" == "2x app resolution" ]] ; then
+                sed -i "s/Resolution = unforced/Resolution = 2x/g" "$DGV2CONF"
+            elif [[ "${PW_DGV2_RESOLUTION}" == "3x app resolution" ]] ; then
+                sed -i "s/Resolution = unforced/Resolution = 3x/g" "$DGV2CONF"
+            elif [[ "${PW_DGV2_RESOLUTION}" == "4x app resolution" ]] ; then
+                sed -i "s/Resolution = unforced/Resolution = 4x/g" "$DGV2CONF"
+            else
+                H_RES_DGV2="${PW_DGV2_RESOLUTION:0:4}"
+                V_RES_DGV2="${PW_DGV2_RESOLUTION:5:9}"
+                sed -i "s/Resolution = unforced/Resolution = h:${H_RES_DGV2}, v:${V_RES_DGV2}/g" "$DGV2CONF"
+            fi
+        fi
+
+        if [[ "${PW_DGV2_DISPLAY_ROI}" != "disabled" ]] ; then
+            sed -i "s/DisplayROI =/DisplayROI = ${PW_DGV2_DISPLAY_ROI}, pos:centered/" "$DGV2CONF"
+        fi
+
+        [[ "${PW_DGV2_FPS_LIMIT}" != "disabled" ]] && sed -i "s/FPSLimit = 0/FPSLimit = ${PW_DGV2_FPS_LIMIT}/" "$DGV2CONF"
+        [[ "${PW_DGV2_BIT_DEPTH}" != "disabled" ]]  && sed -i "s/DesktopBitDepth =/DesktopBitDepth = ${PW_DGV2_BIT_DEPTH}/" "$DGV2CONF"
+        [[ "${PW_DGV2_CURSOR_SCALE}" != "0" ]]  && sed -i "s/CursorScaleFactor = 0/CursorScaleFactor = ${PW_DGV2_CURSOR_SCALE}/" "$DGV2CONF"
+
+        if [[ "${PW_DGV2_RESAMPLING}" != "disabled" ]] ; then
+            [[ "${PW_DGV2_RESAMPLING}" == "Point sampled" ]] && sed -i "s/Resampling = bilinear/Resampling = pointsampled/" "$DGV2CONF"
+            [[ "${PW_DGV2_RESAMPLING}" == "Lanczos-2" ]] && sed -i "s/Resampling = bilinear/Resampling = lanczos-2" "$DGV2CONF"
+            [[ "${PW_DGV2_RESAMPLING}" == "Bicubic" ]] && sed -i "s/Resampling = bilinear/Resampling = bicubic" "$DGV2CONF"
+            [[ "${PW_DGV2_RESAMPLING}" == "Lanczos-3" ]] && sed -i "s/Resampling = bilinear/Resampling = lanczos-3" "$DGV2CONF"
+        fi
+
+        if [[ "${PW_DGV2_VIDEOCARD}" != "dgVoodoo2 Virtual 3D" ]] ; then
+            [[ "${PW_DGV2_VIDEOCARD}" == "dgVoodoo2 SVGA 3D" ]] && sed -i "s/VideoCard = internal3D/VideoCard = svga/" "$DGV2CONF"
+            [[ "${PW_DGV2_VIDEOCARD}" == "Geforce 4 Ti 4800" ]] && sed -i "s/VideoCard = internal3D/VideoCard = geforce_ti_4800/" "$DGV2CONF"
+            [[ "${PW_DGV2_VIDEOCARD}" == "ATI Radeon 8500" ]] && sed -i "s/VideoCard = internal3D/VideoCard = ati_radeon_8500/" "$DGV2CONF"
+            [[ "${PW_DGV2_VIDEOCARD}" == "Matrox Parhelia-512" ]] && sed -i "s/VideoCard = internal3D/VideoCard = matrox_parhelia-512/" "$DGV2CONF"
+            [[ "${PW_DGV2_VIDEOCARD}" == "GeForce FX 5700 Ultra" ]] && sed -i "s/VideoCard = internal3D/VideoCard = geforce_fx_5700_ultra/" "$DGV2CONF"
+            [[ "${PW_DGV2_VIDEOCARD}" == "GeForce 9800 GT" ]] && sed -i "s/VideoCard = internal3D/VideoCard = geforce_9800_gt/" "$DGV2CONF"
+            if [[ "${PW_DGV2_VIDEOCARD}" == "Voodoo Graphics" ]] ; then
+                sed -i "s/VideoCard = voodoo_2/VideoCard = voodoo_graphics/" "$DGV2CONF"
+                sed -i "s/NumberOfTMUs = 2/NumberOfTMUs = 1/" "$DGV2CONF"
+                if [[ "${PW_DGV2_ONBOARD_RAM}" == "1" ]] ; then
+                    sed -i "s/OnboardRAM = 8/OnboardRAM = 4/" "$DGV2CONF"
+                else
+                    sed -i "s/OnboardRAM = 8/OnboardRAM = 2/" "$DGV2CONF"
+                fi
+            fi
+            if [[ "${PW_DGV2_VIDEOCARD}" == "Voodoo Rush" ]] ; then
+                sed -i "s/VideoCard = voodoo_2/VideoCard = voodoo_rush/" "$DGV2CONF"
+                sed -i "s/NumberOfTMUs = 2/NumberOfTMUs = 1/" "$DGV2CONF"
+                if [[ "${PW_DGV2_ONBOARD_RAM}" == "1" ]] ; then
+                    sed -i "s/OnboardRAM = 8/OnboardRAM = 4/" "$DGV2CONF"
+                else
+                    sed -i "s/OnboardRAM = 8/OnboardRAM = 2/" "$DGV2CONF"
+                fi
+            fi
+            if [[ "${PW_DGV2_VIDEOCARD}" == "Voodoo 2" ]] ; then
+                if [[ "${PW_DGV2_ONBOARD_RAM}" == "1" ]] ; then
+                    sed -i "s/OnboardRAM = 8/OnboardRAM = 12/" "$DGV2CONF"
+                fi
+            fi
+            if [[ "${PW_DGV2_VIDEOCARD}" == "Voodoo Banshee" ]] ; then
+                sed -i "s/VideoCard = voodoo_2/VideoCard = voodoo_banshee/" "$DGV2CONF"
+                sed -i "s/NumberOfTMUs = 2/NumberOfTMUs = 1/" "$DGV2CONF"
+                if [[ "${PW_DGV2_ONBOARD_RAM}" == "1" ]] ; then
+                    sed -i "s/OnboardRAM = 8/OnboardRAM = 16/" "$DGV2CONF"
+                fi
+            fi
+        fi
+
+        [[ "${PW_DGV2_BRIGHTNESS}" != "100" ]] && sed -i "s/Brightness = 100/Brightness = ${PW_DGV2_BRIGHTNESS}/" "$DGV2CONF"
+        [[ "${PW_DGV2_COLOR}" != "100" ]] && sed -i "s/Color = 100/Color = ${PW_DGV2_COLOR}/" "$DGV2CONF"
+        [[ "${PW_DGV2_CONTRAST}" != "100" ]] && sed -i "s/Contrast = 100/Contrast = ${PW_DGV2_CONTRAST}/" "$DGV2CONF"
     else
         for rm_dgv2_dll in d3dimm glide glide2x glide3x ; do
             try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/${rm_dgv2_dll}.dll"
@@ -3868,20 +4021,39 @@ fi
 # GUI DGVOODOO2
 gui_dgvoodoo2 () {
     KEY_DGV2_GUI=$RANDOM
-    PW_DGV2_LIST="PW_DGV2_DISABLE_D3D PW_DGV2_16BIT_MODE PW_DGV2_USE_DX12 PW_DGV2_FASTMEMORY PW_DGV2_VRAM_INCREASE
-    PW_DGV2_FULLSCREEN
+    PW_DGV2_LIST="PW_DGV2_USE_DX12 PW_DGV2_DISABLE_MIPMAPPING PW_DGV2_FREE_MOUSE PW_DGV2_ENABLE_CRT PW_DGV2_DISABLE_D3D PW_DGV2_FILTER_POINT_SAMPLED
+    PW_DGV2_BLIT_STRETCH PW_DGV2_FORCE_VSYNC PW_DGV2_FASTMEMORY PW_DGV2_PHONG_SHADING PW_DGV2_DGVOODOO_WATERMARK PW_DGV2_GLIDE_NAPALM PW_DGV2_ONBOARD_RAM
+    PW_DGV2_GLIDE_GAMMA_RAMP PW_DGV2_EMULATING_PCI_ACCESS PW_DGV2_16_BIT_DEPTH_BUFFER PW_DGV2_3DFX_WATERMARK PW_DGV2_3DFX_SPLASH_SCREEN
+    PW_DGV2_INACTIVE_APP_STATE
     "
 
 if [[ "${SKIP_DGVOODOO2_TEXT_INFO}" != 1 ]] ; then
-    export PW_DGV2_DISABLE_D3D_INFO=$(gettext 'Do not use d3d8 and d3d9 dgVoodoo2 libraries. For some old games, using the example of Space Rangers, a bug with a black screen is corrected.')
-    export PW_DGV2_16BIT_MODE_INFO=$(gettext 'Forced use of 16bit screen mode. Solves the problem of launching old games, such as Moto Racer.')
-    export PW_DGV2_USE_DX12_INFO=$(gettext 'DirectXD 11 is used by default (and recommended). Use DirectX12 for dgVoodoo2. Doesnt always work better. (Working only on stable dxvk and vkd3d)')
-    export PW_DGV2_FASTMEMORY_INFO=$(gettext 'Enable fast memory access. (Enable if games have poor performance, using Unreal 2 as an example)')
-    export PW_DGV2_VRAM_INCREASE_INFO=$(gettext 'Increase the amount of vram for dgVoodoo2 (Increases from 256 to 1024)')
-    export PW_DGV2_FULLSCREEN_INFO=$(gettext 'Render image based on monitor resolution. Can use if the game has a small interface size. Widescreen effect for 16:9')
+    export PW_DGV2_USE_DX12_INFO=$(gettext 'Use DirectX12 for dgVoodoo2. Doesnt always work better. (Working only on newest and stable dxvk/vkd3d) (Direct3D and Glide settings)')
+    export PW_DGV2_FORCE_VSYNC_INFO=$(gettext 'Force the vertical sync to avoid tearing or prevent the GPU from rendering at crazy high speed. Keep in mind that some application need unforced vSync because of synchronization reasons. (Direct3D settings)')
+    export PW_DGV2_DGVOODOO_WATERMARK_INFO=$(gettext 'Shows the dgVoodoo watermark in-game when enabled. (Direct3D settings)')
+    export PW_DGV2_ENABLE_CRT_INFO=$(gettext 'CRT-like blurred appearance. (Direct3D and Glide settings)')
+    export PW_DGV2_DISABLE_MIPMAPPING_INFO=$(gettext 'Disabling mipmapping can be used to make textured surfaces sharper. (Direct3D and Glide settings)')
+    export PW_DGV2_FREE_MOUSE_INFO=$(gettext 'If enabled then physical mouse is free to move inside the game window when using emulated scaling and/or application and forced resolution differs. Can be useful when a game relies and the physical window size. (Direct3D and Glide settings)')
+    export PW_DGV2_DISABLE_D3D_INFO=$(gettext 'Do not use d3d8 and d3d9 dgVoodoo2 libraries. For some old games, using the example of Space Rangers, a bug with a black screen is corrected. (Direct3D settings)')
+    export PW_DGV2_FILTER_POINT_SAMPLED_INFO=$(gettext 'if enabled then forced filtering affects only non-point sampled textures. (Direct3D settings)')
+    export PW_DGV2_FASTMEMORY_INFO=$(gettext 'Enable fast memory access. (Enable if games have poor performance, using Unreal 2 as an example) (Direct3D settings)')
+    export PW_DGV2_PHONG_SHADING_INFO=$(gettext 'If this option is enabled then Phong shading is applied in place of Gouraud when it is possible. It works only when an application uses the fixed function vertex/pixel pipline and pushes all the work of the vertex transforming and lighting to Direct3D when rendering primitives. Keep in mind that it requires much more GPU power than default shading. (Direct3D settings)')
+    export PW_DGV2_BLIT_STRETCH_INFO=$(gettext 'If this options enabled then linear filtering is applied for stretched copying between 2D surfaces (DirectDraw only). Early hardware did not support or apply point sampled blitting which can end up very pixelated results. Linear filtering is much nicer in general but can cause artifacts especially with colorkeyed blitting. (Direct3D settings)')
+    export PW_DGV2_GLIDE_NAPALM_INFO=$(gettext 'Use 3dfx glide napalm, uses antialiasing provided by the application. (Disables antialiasing setting) (Glide settings)')
+    export PW_DGV2_GLIDE_GAMMA_RAMP_INFO=$(gettext 'Enable gamma ramp coming for Glide. (Glide settings)')
+    export PW_DGV2_ONBOARD_RAM_INFO=$(gettext 'Increases memory for videocard Voodoo Graphics, Voodoo Rush, Voodoo 2, Voodoo Banshee. You can set the game resolution higher. (Glide settings)')
+    export PW_DGV2_EMULATING_PCI_ACCESS_INFO=$(gettext 'When enabled, the virtual 3Dfx card will have PCI bus speeds emulated as closely as possible. Emulation of true PCI access should theoretically never be disabled but there can be possible degradation of performance when left enabled. Only some games require accurate emulation of the PCI bus, so in most cases PCI bus emulation should be left disabled. (Glide settings)')
+    export PW_DGV2_16_BIT_DEPTH_BUFFER_INFO=$(gettext 'Enabling 16-bit depth buffers can prevent Z-fighting in games, but also has the disadvantage of possibly causing artifacting. (Glide settings)')
+    export PW_DGV2_3DFX_WATERMARK_INFO=$(gettext 'Shows the 3Dfx watermark in-game when enabled. (Glide settings)')
+    export PW_DGV2_3DFX_SPLASH_SCREEN_INFO=$(gettext 'The 3Dfx splash screen is seen when an application starts, disabling this option prevents this animation from playing. (Glide settings)')
+    export PW_DGV2_INACTIVE_APP_STATE_INFO=$(gettext 'Enabling inactive state prevents the application from detecting losing the application focus. Most of the Glide applications close or deactivate themself when losing focus, so this can be used to let the application run in the background. (Glide settings)')
 
     export SKIP_DGVOODOO2_TEXT_INFO=1
 fi
+
+    # fix
+    [[ "${PW_DGV2_FILTERING}" == "0" ]] && export PW_DGV2_FILTERING="disabled" && edit_db_from_gui PW_DGV2_FILTERING
+    [[ "${PW_DGV2_ANTIALIASING}" == "0" ]] && export PW_DGV2_ANTIALIASING="disabled" && edit_db_from_gui PW_DGV2_ANTIALIASING
 
     case "${PW_VULKAN_USE}" in
         0|3|4|5|6)
@@ -3907,23 +4079,52 @@ fi
 
     old_IFS=$IFS
     IFS="%"
-    "${pw_yad}" --plug=$KEY_DGV2_GUI --tabnum="1" --form --separator=" " --columns=3 ${ADD_CHK_BOX_DGV2} --text-align=center \
+    "${pw_yad}" --plug=$KEY_DGV2_GUI --tabnum="1" --form --separator=" " --columns=4 ${ADD_CHK_BOX_DGV2} --text-align=center \
     --text="$(gettext "dgVoodoo2 settings\n<b>NOTE:</b> To display help for each item, simply hover over the text")" \
     --gui-type-text=${DGVOODOO2_GUI_TYPE_TEXT_UP} --gui-type-layout=${DGVOODOO2_GUI_TYPE_LAYOUT_UP}  \
     1> "${PW_TMPFS_PATH}/tmp_yad_dgv2_set" 2>/dev/null &
     IFS=$old_IFS
 
-    "${pw_yad}" --plug=$KEY_DGV2_GUI --tabnum="2" --form --columns=2 --separator="%" \
+    DGVOODOO2_XRANDR="$(grep -e '[0-9]x' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}' | sort -rVu | grep "^[1-2]" | tr '\n' '!' | sed 's/.$//')"
+    DGVOODOO2_FILTERING="Point sampled!Bilinear!Linear mip!Trilinear!Anisotropic 2x!Anisotropic 4x!Anisotropic 8x!Anisotropic 16x"
+    DGVOODOO2_RESAMPLING="Point sampled!Bilinear!Lanczos-2!Bicubic!Lanczos-3"
+    DGVOODOO2_VIDEOCARD="dgVoodoo2 SVGA 3D!dgVoodoo2 Virtual 3D!Geforce 4 Ti 4800!ATI Radeon 8500!Matrox Parhelia-512!GeForce FX 5700 Ultra!GeForce 9800 GT!Voodoo Graphics!Voodoo Rush!Voodoo 2!Voodoo Banshee"
+
+    "${pw_yad}" --plug=$KEY_DGV2_GUI --tabnum="2" --form --columns=3 --separator="%" \
     --gui-type-layout=${DGVOODOO2_GUI_TYPE_LAYOUT_DOWN} \
-    --field="${CHKBOX_SPACE}FILTERING!$(gettext "Forced anisotropic filtering in Direct3D games") :CB" "$(combobox_fix_disabled "${PW_DGV2_FILTERING}" "2!4!8!16")" \
-    --field="${CHKBOX_SPACE}ANTIALIASING!$(gettext "Forced antialiasing in Direct3D and Glide games") :CB" "$(combobox_fix_disabled "${PW_DGV2_ANTIALIASING}" "2!4!8")" \
+    --field="${CHKBOX_SPACE}RESOLUTION!$(gettext "Set the resolution used. (Direct3D and Glide settings)") :CBE" "$(combobox_fix_disabled "${PW_DGV2_RESOLUTION}" "4x app resolution!3x app resolution!2x app resolution!${DGVOODOO2_XRANDR}")" \
+    --field="${CHKBOX_SPACE}FPS LIMIT!$(gettext "You can configure fps limit. (Direct3D and Glide settings)") :CBE" "$(combobox_fix_disabled "${PW_DGV2_FPS_LIMIT}" "30!40!45!48!60!75!90!120!144!165!175!240")" \
+    --field="${CHKBOX_SPACE}FILTERING!$(gettext "You can select from various texture filtering modes here. Forcing other than the app default can result in glitches or break some rendering effects. (Glide have max filtering bilinear) (Direct3D and Glide settings)") :CB" "$(combobox_fix_disabled "${PW_DGV2_FILTERING}" "${DGVOODOO2_FILTERING}")" \
+    --field="${CHKBOX_SPACE}ANTIALIASING!$(gettext "Forcing antialiasing. This can cause artifacts. (Direct3D and Glide settings)") :CB" "$(combobox_fix_disabled "${PW_DGV2_ANTIALIASING}" "2x!4x!8x")" \
+    --field="${CHKBOX_SPACE}BIT DEPTH!$(gettext "You can define what screen bit depth should be reported through dgVoodoo. (For game MOTO need 16 bit depth) (Direct3D and Glide settings)") :CB" "$(combobox_fix_disabled "${PW_DGV2_BIT_DEPTH}" "8!16!32")" \
+    --field="${CHKBOX_SPACE}VIDEOCARD!$(gettext "You can select a virtual video card. (For game Quake 2 need Voodoo Graphics or Voodoo Rush card) (Direct3D and Glide settings)") :CB" "$(combobox_fix "${PW_DGV2_VIDEOCARD}" "${DGVOODOO2_VIDEOCARD}")" \
+    --field="${CHKBOX_SPACE}VRAM!$(gettext "Increase the amount of vram for dgVoodoo2. (Direct3D settings)
+- dgVoodoo2 SVGA 3D: 16 - 128
+- dgVoodoo2 Virtual 3D: 16 - 4096
+- Geforce 4 Ti 4800: 64 - 256
+- ATI Radeon 8500: 64 - 256
+- Matrox Parhelia-512: 128 - 256
+- GeForce FX 5700 Ultra: 64 - 256
+- GeForce 9800 GT: 512 - 1024") :CB" "$(combobox_fix "${PW_DGV2_VRAM}" "16!32!64!128!256!512!1024!2048!4096")" \
+    --field="${CHKBOX_SPACE}BRIGHTNESS!$(gettext "Brightness can be finetuned here. (Direct3D and Glide settings)") :NUM" "${PW_DGV2_BRIGHTNESS}:!0..400" \
+    --field="${CHKBOX_SPACE}COLOR!$(gettext "Color intensity. Finetued it to make colors or less vital compared to the application default, or even Black and White, according to your taste. (Direct3D and Glide settings)") :NUM" "${PW_DGV2_COLOR}:!0..400" \
+    --field="${CHKBOX_SPACE}CONTRAST!$(gettext "Contrast is the intensity difference between dark and bright regions. Only static contrast is implemented and you can finetune it here. (Direct3D and Glide settings)") :NUM" "${PW_DGV2_CONTRAST}:!0..400" \
+    --field="${CHKBOX_SPACE}DISPLAY ROI!$(gettext "Useful for applications rendering into a widescreen subrectangle inside a 4:3 resolution - the widescreen subrectangle can be defined as display ROI, the input of the scaling process. (Direct3D and Glide settings)") :CBE" "$(combobox_fix_disabled "${PW_DGV2_DISPLAY_ROI}" "3_2!4_3!5_4!16_9!16_10!21_9")" \
+    --field="${CHKBOX_SPACE}RESAMPLING!$(gettext "If scaling is done by the dgVoodoo than you can choose which resampling method to use. The more complex filter the more computationally expensive. Available ones in order of complexty. (Direct3D and Glide settings)
+- Point sampled (unblurred pixels)
+- Bilinear (smoothed)
+- Lanczos-2 (smoothed but sharper)
+- Bicubic (smoothed but sharper)
+- Lanczos-3 (smoothed, sharpest)") :CB" "$(combobox_fix_disabled "${PW_DGV2_RESAMPLING}" "${DGVOODOO2_RESAMPLING}")" \
+    --field="${CHKBOX_SPACE}CURSOR SCALE!$(gettext "Integer scale factor of the emulated hardware mouse cursor. 0: calculated from the application and forced resolution. (Direct3D and Glide settings)") :NUM" "${PW_DGV2_CURSOR_SCALE}:!0..5" \
     1> "${PW_TMPFS_PATH}/tmp_yad_dgv2_set_cb" 2>/dev/null &
 
     "${pw_yad}" --paned --key=$KEY_DGV2_GUI --height="350" --title="dgVoodoo2" --center \
-    --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --sensitive \
+    --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --gui-type=settings-paned \
     --button="$(gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Cancel the current changes and return to the previous menu")":1 \
-    --button="$(gettext "DISABLE") DGVOODOO2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Disable dgVoodoo2 and go to the previous menu")":162 \
+    --button="$(gettext "RESET") DGVOODOO2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Restore default settings for") dgVoodoo2":162 \
+    --button="$(gettext "DISABLE") DGVOODOO2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Disable dgVoodoo2 and go to the previous menu")":164 \
     --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":166 \
     2>/dev/null
 
@@ -3935,6 +4136,14 @@ fi
             exit 0
             ;;
         162)
+            sed -i '/PW_DGV2/d' "$portwine_exe".ppdb
+            export PW_DGVOODOO2=0
+            edit_db_from_gui PW_DGVOODOO2
+            export SKIP_CHECK_UPDATES=1
+            /usr/bin/env bash -c ${pw_full_command_line[*]} &
+            exit 0
+            ;;
+        164)
             export PW_DGVOODOO2=0
             edit_db_from_gui PW_DGVOODOO2
             export SKIP_CHECK_UPDATES=1
@@ -3959,10 +4168,23 @@ fi
 
     PW_ADD_SETTINGS_DGV2=$(head -n 1 "${PW_TMPFS_PATH}/tmp_yad_dgv2_set_cb")
 
-    PW_DGV2_FILTERING="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $1}')"
-    PW_DGV2_ANTIALIASING="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $2}')"
+    PW_DGV2_RESOLUTION="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $1}')"
+    PW_DGV2_FPS_LIMIT="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $2}')"
+    PW_DGV2_FILTERING="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $3}')"
+    PW_DGV2_ANTIALIASING="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $4}')"
+    PW_DGV2_BIT_DEPTH="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $5}')"
+    PW_DGV2_VIDEOCARD="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $6}')"
+    PW_DGV2_VRAM="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $7}')"
+    PW_DGV2_BRIGHTNESS="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $8}')"
+    PW_DGV2_COLOR="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $9}')"
+    PW_DGV2_CONTRAST="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $10}')"
+    PW_DGV2_DISPLAY_ROI="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $11}')"
+    PW_DGV2_RESAMPLING="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $12}')"
+    PW_DGV2_CURSOR_SCALE="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $13}')"
 
-    edit_db_from_gui ${PW_DGV2_LIST} PW_DGVOODOO2 PW_DGV2_FILTERING PW_DGV2_ANTIALIASING
+    edit_db_from_gui ${PW_DGV2_LIST} PW_DGVOODOO2 PW_DGV2_FILTERING PW_DGV2_ANTIALIASING PW_DGV2_VRAM PW_DGV2_RESOLUTION \
+    PW_DGV2_FPS_LIMIT PW_DGV2_BIT_DEPTH PW_DGV2_BRIGHTNESS PW_DGV2_COLOR PW_DGV2_CONTRAST PW_DGV2_VIDEOCARD PW_DGV2_DISPLAY_ROI \
+    PW_DGV2_CURSOR_SCALE PW_DGV2_RESAMPLING
 
     export SKIP_CHECK_UPDATES=1
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
@@ -4082,7 +4304,7 @@ fi
     --gui-type-text=${GAMESCOPE_GUI_TYPE_TEXT_DOWN} --gui-type-layout=${GAMESCOPE_GUI_TYPE_LAYOUT_DOWN} \
     --field="${CHKBOX_SPACE}$(gettext "Show resolution")!$(gettext "Set the resolution used by gamescope. Resizing the gamescope window will update these settings. Defaults to 1280x720.") :${GS_CBE}" "$(combobox_fix_disabled "${PW_GS_SHOW_RESOLUTION}" "${GAMESCOPE_XRANDR}")" \
     --field="${CHKBOX_SPACE}$(gettext "Internal resolution")!$(gettext "Scale internal resolution (0.0 is unused)") :${GS_NUMN}" "${PW_GS_INTERNAL_RESOLUTION}:!0..2" \
-    --field="${CHKBOX_SPACE}$(gettext "Frame limit")!$(gettext "Set a framerate limit. Specified in frames per second") :${GS_CBE}" "$(combobox_fix_disabled "${PW_GS_FRAME_LIMIT}" "30!60!90!120!144")" \
+    --field="${CHKBOX_SPACE}$(gettext "Frame limit")!$(gettext "Set a framerate limit. Specified in frames per second") :${GS_CBE}" "$(combobox_fix_disabled "${PW_GS_FRAME_LIMIT}" "30!40!45!48!60!75!90!120!144!165!175!240")" \
     --field="${CHKBOX_SPACE}$(gettext "Mesa vulkan WSI")!$(gettext "Overrides the WSI present mode:
 fifo - First in, first out. Limits the frame rate + no tearing. (VSync)
 immediate - Unlimited frame rate + tearing.
