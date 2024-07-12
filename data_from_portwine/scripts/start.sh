@@ -374,8 +374,9 @@ use: [--reinstall] [--autoinstall]
         exit 0 ;;
 
     '--debug' )
+        clear
         export PW_DEBUG="set -x"
-        /usr/bin/env bash -c "${PORT_WINE_PATH}/data/scripts/start.sh"
+        /usr/bin/env bash -c ${pw_full_command_line[*]} 2>&1 | tee "$PORT_WINE_PATH/scripts.log" &
         exit 0 ;;
 esac
 
@@ -431,7 +432,12 @@ case "${PW_VULKAN_USE}" in
     *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY!$SORT_G_ZINK!$SORT_G_NINE!$SORT_OPENGL!$SORT_VULKAN" ;;
 esac
 
-[[ -z "${PW_COMMENT_DB}" ]] && PW_COMMENT_DB="$(gettext "Launching") <b>${PORTWINE_DB}</b>."
+if [[ ! -z "${PW_COMMENT_DB}" ]] ; then :
+elif  [[ ! -z "${PORTPROTON_NAME}" ]] ; then
+    PW_COMMENT_DB="$(gettext "Launching") <b>${PORTPROTON_NAME}</b>"
+else
+    PW_COMMENT_DB="$(gettext "Launching") <b>${PORTWINE_DB}</b>"
+fi
 
 if [[ $PW_WINE_USE == PROTON_LG ]] ; then
     PW_WINE_USE="${PW_PROTON_LG_VER}"
