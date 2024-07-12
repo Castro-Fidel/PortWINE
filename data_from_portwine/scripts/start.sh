@@ -3,6 +3,7 @@
 # Development assistants: Cefeiko; Dezert1r; Taz_mania; Anton_Famillianov; gavr; RidBowt; chal55rus; UserDiscord; Boria138; Vano; Akai; Htylol
 # shellcheck disable=SC2140,SC2119,SC2206
 ########################################################################
+$PW_DEBUG
 echo '
             █░░ █ █▄░█ █░█ ▀▄▀ ▄▄ █▀▀ ▄▀█ █▀▄▀█ █ █▄░█ █▀▀ ░ █▀█ █░█
             █▄▄ █ █░▀█ █▄█ █░█ ░░ █▄█ █▀█ █░▀░█ █ █░▀█ █▄█ ▄ █▀▄ █▄█
@@ -350,6 +351,9 @@ use: [--reinstall] [--autoinstall]
         echo "
 --generate-pot                                      generated pot file
 "
+        echo "
+--debug                                             debug scripts for PortProton
+"
         exit 0 ;;
 
     '--reinstall' )
@@ -363,6 +367,11 @@ use: [--reinstall] [--autoinstall]
 
     '--generate-pot' )
         generate_pot
+        exit 0 ;;
+
+    '--debug' )
+        export PW_DEBUG="set -x"
+        /usr/bin/env bash -c "${PORT_WINE_PATH}/data/scripts/start.sh"
         exit 0 ;;
 esac
 
