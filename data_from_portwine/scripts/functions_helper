@@ -4876,15 +4876,15 @@ pw_create_prefix_backup () {
     else TMP_ALL_PATH="LD_LIBRARY_PATH=\"${PW_LD_LIBRARY_PATH}\""
     fi
     chmod -R u+w "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"
-cat << EOF > "${PW_TMPFS_PATH}"/pp_pfx_backup.sh
+cat << EOF > "${PORT_WINE_TMP_PATH}"/pp_pfx_backup.sh
     #!/usr/bin/env bash
     ${TMP_ALL_PATH} mksquashfs "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" \
     "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" -comp zstd \
     || rm -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part"
 EOF
-    chmod u+x "${PW_TMPFS_PATH}"/pp_pfx_backup.sh
-    ${pw_runtime} ${PW_TERM} "${PW_TMPFS_PATH}"/pp_pfx_backup.sh
-    try_remove_file "${PW_TMPFS_PATH}"/pp_pfx_backup.sh
+    chmod u+x "${PORT_WINE_TMP_PATH}"/pp_pfx_backup.sh
+    ${pw_runtime} ${PW_TERM} "${PORT_WINE_TMP_PATH}"/pp_pfx_backup.sh
+    try_remove_file "${PORT_WINE_TMP_PATH}"/pp_pfx_backup.sh
     if [[ -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" ]] ; then
         mv -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack"
         yad_info "$(gettext "Backup has been successfully created for prefix:") $PW_PREFIX_NAME"
