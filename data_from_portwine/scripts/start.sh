@@ -27,7 +27,11 @@ export pw_full_command_line=("$0" $*)
 
 MISSING_DESKTOP_FILE=0
 
-if [[ -f "$1" ]] ; then
+if [[ "$1" == *.ppack ]] ; then
+    export PW_NO_RESTART_PPDB="1"
+    export PW_DISABLED_CREATE_DB="1"
+    portwine_exe="$1"
+elif [[ -f "$1" ]] ; then
     portwine_exe="$(realpath "$1")"
 elif [[ -f "$OLDPWD/$1" ]] && [[ "$1" == *.exe ]] ; then
     portwine_exe="$(realpath "$OLDPWD/$1")"
@@ -72,7 +76,7 @@ else
 fi
 
 unset MANGOHUD MANGOHUD_DLSYM PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_YAD_SET PW_ICON_FOR_YAD
-unset PW_CHECK_AUTOINSTALL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PORTWINE_DB_FILE PW_DISABLED_CREATE_DB RADV_PERFTEST
+unset PW_CHECK_AUTOINSTALL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PORTWINE_DB_FILE RADV_PERFTEST
 unset CHK_SYMLINK_FILE PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME PW_PATH
 unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD PW_WINE_CPU_TOPOLOGY
 unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_ALL_DF PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
@@ -324,9 +328,8 @@ EOF
         if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut" ]] ; then
             while IFS= read -r line
             do
-                export PW_NO_RESTART="1"
                 export portwine_exe="$PORT_WINE_PATH/data/prefixes/$PW_PREFIX_NAME/$line"
-                portwine_create_shortcut "$PORT_WINE_PATH/data/prefixes/$PW_PREFIX_NAME/$line"
+                portwine_create_shortcut
             done < "$PORT_WINE_PATH/data/prefixes/$PW_PREFIX_NAME/.create_shortcut"
         fi
         yad_info "$(gettext "Unpack is DONE for prefix:") <b>\"${PW_PREFIX_NAME}\"</b>."
