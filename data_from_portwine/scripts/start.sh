@@ -28,6 +28,7 @@ export pw_full_command_line=("$0" $*)
 
 MISSING_DESKTOP_FILE=0
 
+unset PW_NO_RESTART_PPDB PW_DISABLED_CREATE_DB
 if [[ "$1" == *.ppack ]] ; then
     export PW_NO_RESTART_PPDB="1"
     export PW_DISABLED_CREATE_DB="1"
