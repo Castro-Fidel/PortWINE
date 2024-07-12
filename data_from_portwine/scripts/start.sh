@@ -421,19 +421,21 @@ case "${PW_VULKAN_USE}" in
     *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY!$SORT_G_ZINK!$SORT_G_NINE!$SORT_OPENGL!$SORT_VULKAN" ;;
 esac
 
-if [[ ! -z "${PORTWINE_DB_FILE}" ]] ; then
-    [[ -z "${PW_COMMENT_DB}" ]] && PW_COMMENT_DB="$(gettext "Launching") <b>${PORTWINE_DB}</b>."
-    PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_LG_VER}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
+[[ -z "${PW_COMMENT_DB}" ]] && PW_COMMENT_DB="$(gettext "Launching") <b>${PORTWINE_DB}</b>."
+
+if [[ $PW_WINE_USE == PROTON_LG ]] ; then
+    PW_WINE_USE="${PW_PROTON_LG_VER}"
+    PW_DEFAULT_WINE_USE="${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
+elif [[ $PW_WINE_USE == WINE_*_LG ]] \
+|| [[ $PW_WINE_USE == WINE_LG ]]
+then
+    PW_WINE_USE="${PW_WINE_LG_VER}"
+    PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
 else
-    if [[ $PW_WINE_USE == PROTON_LG ]] ; then
-        PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
-    elif [[ $PW_WINE_USE == WINE_*_LG ]] \
-    || [[ $PW_WINE_USE == WINE_LG ]]
-    then
-        PW_DEFAULT_WINE_USE="${PW_WINE_LG_VER}!${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
-    else
-        PW_DEFAULT_WINE_USE="${PW_WINE_USE}!${PW_PROTON_LG_VER}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
-    fi
+    PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
+fi
+
+if [[ -z "${PORTWINE_DB_FILE}" ]] ; then
     unset PW_GUI_DISABLED_CS
 fi
 
@@ -592,7 +594,7 @@ else
     --gui-type-layout=${MAIN_MENU_GUI_TYPE_LAYOUT} \
     --field="   3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
     --field="   PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
-    --field="     WINE  : :CB" "${PW_DEFAULT_WINE_USE}" \
+    --field="     WINE  : :CB" "$(combobox_fix "${PW_WINE_USE}" "${PW_DEFAULT_WINE_USE}")" \
     --field="$(gettext "Create prefix backup")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"CFBTN" '@bash -c "button_click pw_create_prefix_backup"' \
     --field="   Winetricks"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Run winetricks to install additional libraries to the selected prefix")":"FBTN" '@bash -c "button_click WINETRICKS"' \
     --field="   $(gettext "Clear prefix")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Clear the prefix to fix problems")":"FBTN" '@bash -c "button_click gui_clear_pfx"' \
