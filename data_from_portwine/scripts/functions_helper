@@ -1353,7 +1353,7 @@ pw_init_db () {
     return 0
 }
 
-# SCRIPTS UPDATE
+# GUI UPDATE SCRIPTS
 pw_port_update () {
     case "$BRANCH" in
         master|stable) 
@@ -1399,8 +1399,10 @@ pw_port_update () {
             then local pw_yad="yad"
             else local pw_yad="not_found"
             fi
-            if [[ "${pw_yad}" == "not_found" ]] ; then
+            if [[ "${pw_yad}" == "not_found" ]] \
+            || [[ "$PW_CHANGE_BRANCH" == "1" ]] ; then
                 xcsd="$(gettext "UPDATING NOW")"
+                unset PW_CHANGE_BRANCH
             else
                 curl -s --list-only "${URL_FOR_CHANGELOG}/${PW_CHANGELOG_FILE}" | tee "${PORT_WINE_TMP_PATH}/curent_var_ver"
                 CHANGLOG_NEWS=$(sed "/Scripts version ${scripts_install_ver}/,$ d" "${PORT_WINE_TMP_PATH}/curent_var_ver" | sed '1,/---/ d' )
@@ -5035,6 +5037,8 @@ change_branch () {
         yad_info "$(gettext "Branch changed to:")  <b>DEVEL</b>"
     else
         sed -i 's/="devel"/="master"/g' "$USER_CONF"
+        echo "2024" > "${PORT_WINE_TMP_PATH}/scripts_ver"
+        export PW_CHANGE_BRANCH="1"
         yad_info "$(gettext "Branch changed to:")  <b>STABLE</b>"
     fi
     print_info "Restarting PP for change branch..."
