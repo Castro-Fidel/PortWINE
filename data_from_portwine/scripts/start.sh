@@ -171,17 +171,30 @@ else
 echo 'export GUI_THEME="default"' >> "$USER_CONF"
 fi
 
+# choose branch
+if [[ -z "$BRANCH" ]] ; then
+    echo 'export BRANCH="master"' >> "$USER_CONF"
+    export BRANCH="master"
+fi
+if [[ "$BRANCH" == "master" ]]
+then print_info "Branch in used: STABLE\n"
+else print_warning "Branch in used: DEVEL\n"
+fi
+
 # choose mirror
 if [[ -z "$MIRROR" ]] \
-&& [[ "$LANGUAGE" == "ru" ]]
+&& [[ "$LANGUAGE" == "ru" ]] \
+&& [[ "$BRANCH" != "devel" ]]
 then
     echo 'export MIRROR="CDN"' >> "$USER_CONF"
-    export MIRROR="CDN"
+    MIRROR="CDN"
 elif [[ -z "$MIRROR" ]] ; then
     echo 'export MIRROR="GITHUB"' >> "$USER_CONF"
-    export MIRROR="GITHUB"
+    MIRROR="GITHUB"
 fi
+export MIRROR
 print_info "The first mirror in used: $MIRROR\n"
+
 
 if [[ "${INSTALLING_PORT}" == 1 ]] ; then
     return 0
@@ -189,9 +202,8 @@ fi
 
 # choose gui start
 case "$PW_GUI_START" in
-       PANED) : ;;
-    NOTEBOOK) : ;;
-           *)
+    PANED|NOTEBOOK) : ;;
+    *)
               sed -i '/export PW_GUI_START=/d' "$USER_CONF"
               echo 'export PW_GUI_START="NOTEBOOK"' >> "$USER_CONF"
               export PW_GUI_START="NOTEBOOK"
@@ -560,9 +572,9 @@ else
     else NEW_MIRROR="CDN"
     fi
 
-    if [[ "$PW_GUI_START" == "NOTEBOOK" ]]
-    then NEW_PW_GUI_START="PANED"
-    else NEW_PW_GUI_START="NOTEBOOK"
+    if [[ "$BRANCH" == "master" ]]
+    then NEW_BRANCH="DEVEL"
+    else NEW_BRANCH="STABLE"
     fi
 
     orig_IFS="$IFS" && IFS=$'\n'
@@ -603,6 +615,7 @@ else
     --field="   Xterm"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click pw_start_cont_xterm"' \
     --field="   $(gettext "Credits")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_credits"' \
     --field="   $(gettext "Change mirror to") $NEW_MIRROR"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click change_mirror"' \
+    --field="   $(gettext "Change branch to") $NEW_BRANCH"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click change_branch"' \
     --field="   $(gettext "Change start gui")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click change_gui_start"' \
     2>/dev/null &
 
@@ -767,6 +780,7 @@ fi
     open_changelog) open_changelog ;;
     change_loc) change_loc ;;
     change_mirror) change_mirror ;;
+    change_branch) change_branch ;;
     change_gui_start) change_gui_start ;;
     118) gui_edit_db ;;
     120) gui_vkbasalt ;;
