@@ -132,6 +132,43 @@ try_copy_file () {
 }
 export -f try_copy_file
 
+try_copy_file_with_checksums () {
+    if [[ ! -f "$1" ]] ; then print_info "file $1 not found for copy" && return 1
+    elif [[ -z "$2" ]] ; then print_error "no way to copy file $1" && return 1
+    else
+        if [[ "${PW_FILESYSTEM}" == "ext2/ext3" ]] \
+        || [[ "${PW_FILESYSTEM}" == "f2fs" ]] \
+        || [[ "${PW_FILESYSTEM}" != "btrfs" ]]
+        then
+            checksum1=($(sha256sum "$1"))
+            if [[ ! -f "$2" ]] ; then
+                cp -f "$1" "$2" \
+                && echo $checksum1 > "$2.sha256sum" \
+                && return 0 || return 1
+            else
+                if [[ ! -f "$2.sha256sum" ]] ; then
+                    checksum2=($(sha256sum "$2"))
+                    echo $checksum2 > "$2.sha256sum"
+                else
+                    checksum2=$(<"$2.sha256sum")
+                fi
+            fi
+            if [[ "$checksum1" == "$checksum2" ]] ; then
+                return 0
+            else
+                try_remove_file "$2" \
+                && cp -f "$1" "$2" \
+                && echo $checksum1 > "$2.sha256sum" \
+                && return 0 || return 1
+            fi
+        else
+            [[ -e "$2/$(basename "$1")" ]] && rm -f "$2/$(basename "$1")"
+            cp -f "$1" "$2" && return 0 || return 1
+        fi
+    fi
+}
+export -f try_copy_file_with_checksums
+
 try_copy_dir () {
     if [ ! -d "$1" ] ; then print_info "directory $1 not found for copy"
     elif [ -z "$2" ] ; then print_error "no way to copy directory $1"
@@ -1850,35 +1887,39 @@ start_portwine () {
         fi
     }
 
-    for rm_dll in "nvml.dll" "nvngx.ini" "nvngx.dll" "_nvngx.dll" ; do
-        try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/$rm_dll"
-        try_remove_file "${WINEPREFIX}/drive_c/windows/system32/$rm_dll"
-    done
+    try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/nvml.dll"
+    try_remove_file "${WINEPREFIX}/drive_c/windows/system32/nvml.dll"
 
-    export DXVK_ENABLE_NVAPI="1"
     if [[ "${PW_USE_FAKE_DLSS}" == "1" ]] \
     && [[ -d "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/" ]]
     then
-        try_copy_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
-        try_copy_file "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.ini" "${WINEPREFIX}/drive_c/windows/system32/nvngx.ini"
+        DXVK_ENABLE_NVAPI="1"
+        try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/_nvngx.dll"
+        try_remove_file "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll"
+        try_copy_file_with_checksums "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
+        try_copy_file_with_checksums "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.ini" "${WINEPREFIX}/drive_c/windows/system32/nvngx.ini"
         enabled_fake_nvidia_videocard old
         var_winedlloverride_update "nvapi,nvapi64,nvngx=n;_nvngx=;nvcuda=b"
     elif [[ "${PW_USE_NVAPI_AND_DLSS}" == 1 ]] ; then
+        DXVK_ENABLE_NVAPI="1"
+        try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/nvngx.ini"
+        try_remove_file "${WINEPREFIX}/drive_c/windows/system32/nvngx.ini"
         FIND_NVNGX="$(dirname $(find /usr/* -type f -name "nvngx.dll" 2>/dev/null | head -n 1 | awk '{print $1}'))"
         if [[ ! -z "$FIND_NVNGX" ]] ; then
-            try_copy_file "${FIND_NVNGX}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
-            try_copy_file "${FIND_NVNGX}/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll"
+            try_copy_file_with_checksums "${FIND_NVNGX}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
+            try_copy_file_with_checksums "${FIND_NVNGX}/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll"
         else
-            try_copy_file "${PW_PLUGINS_PATH}/nvngx/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
-            try_copy_file "${PW_PLUGINS_PATH}/nvngx/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll"
+            try_copy_file_with_checksums "${PW_PLUGINS_PATH}/nvngx/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
+            try_copy_file_with_checksums "${PW_PLUGINS_PATH}/nvngx/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll"
         fi
         enabled_fake_nvidia_videocard 0
         var_winedlloverride_update "nvngx,_nvngx,nvapi,nvapi64=n;nvcuda=b"
     else
+        DXVK_ENABLE_NVAPI="0"
         enabled_fake_nvidia_videocard 0
-        export DXVK_ENABLE_NVAPI=0
         var_winedlloverride_update "nvngx,_nvngx="
     fi
+    export DXVK_ENABLE_NVAPI
 
     if [[ "${PW_HEAP_DELAY_FREE}" == 1 ]]
     then export WINE_HEAP_DELAY_FREE="1"
@@ -4763,9 +4804,9 @@ portwine_start_debug () {
     echo "RAM:" >> "${PORT_WINE_PATH}/PortProton.log"
     free -m >> "${PORT_WINE_PATH}/PortProton.log"
     echo "--------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Filesystem ${PATH_TO_GAME} $(stat -f -c %T "${PATH_TO_GAME}"):" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Filesystem ${PORT_WINE_PATH} $(stat -f -c %T "${PORT_WINE_PATH}"):" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Filesystem ${PW_TMPFS_PATH} $(stat -f -c %T "${PW_TMPFS_PATH}"):" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "Filesystem "${PATH_TO_GAME}" - $(stat -f -c %T "${PATH_TO_GAME}")" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "Filesystem "${PORT_WINE_PATH}" - $(stat -f -c %T "${PORT_WINE_PATH}")" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "Filesystem "${PW_TMPFS_PATH}" - $(stat -f -c %T "${PW_TMPFS_PATH}")" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "-----------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "Graphic cards and drivers:" >> "${PORT_WINE_PATH}/PortProton.log"
     echo 'lspci -k | grep -EA3 VGA|3D|Display :' >> "${PORT_WINE_PATH}/PortProton.log"
