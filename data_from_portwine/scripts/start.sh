@@ -229,7 +229,7 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
         if ! command -v gamescope &>/dev/null ; then
             print_error "gamescope - not found!"
         else
-            print_error "gamescope - broken!"
+            yad_error "gamescope - broken!"
         fi
     fi
 
@@ -245,7 +245,7 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
             export VULKAN_DRIVER_NAME GET_GPU_NAMES
             print_warning "use portable vulkaninfo"
         else
-            print_error "vulkaninfo - broken!"
+            yad_error "vulkaninfo - broken!"
         fi
     fi
 
@@ -256,7 +256,7 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
         if ! command -v lspci &>/dev/null ; then
             print_error "lspci - not found!"
         else
-            print_error "lspci - broken!"
+            yad_error "lspci - broken!"
         fi
     fi
 
@@ -270,7 +270,7 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
         if ! command -v xrandr &>/dev/null ; then
             print_error "xrandr - not found!"
         else
-            print_error "xrandr - broken!"
+            yad_error "xrandr - broken!"
         fi
     fi
     echo ""
@@ -299,7 +299,7 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
         if ! command -v locale &>/dev/null ; then
             print_error "locale - not found!"
         else
-            print_error "locale - broken!"
+            yad_error "locale - broken!"
         fi
     fi
 else
