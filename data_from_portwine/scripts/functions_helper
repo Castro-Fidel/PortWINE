@@ -4763,8 +4763,15 @@ portwine_start_debug () {
     echo "The installation path of the PortProton:" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "$PORT_WINE_PATH" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Operating system:" >> "${PORT_WINE_PATH}/PortProton.log"
-    cat /etc/os-release | grep -oP 'PRETTY_NAME="\K[^"]+' >> "${PORT_WINE_PATH}/PortProton.log"
+    if check_flatpak ; then
+        echo "Flatpak runtime:" >> "${PORT_WINE_PATH}/PortProton.log"
+        cat /etc/os-release | grep -oP 'PRETTY_NAME="\K[^"]+' >> "${PORT_WINE_PATH}/PortProton.log"
+        echo "Operating system:" >> "${PORT_WINE_PATH}/PortProton.log"
+        cat /run/host/etc/os-release | grep -oP 'PRETTY_NAME="\K[^"]+' >> "${PORT_WINE_PATH}/PortProton.log"
+    else
+        echo "Operating system:" >> "${PORT_WINE_PATH}/PortProton.log"
+        cat /etc/os-release | grep -oP 'PRETTY_NAME="\K[^"]+' >> "${PORT_WINE_PATH}/PortProton.log"
+    fi
     echo "--------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "Desktop environment:" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "Desktop session: ${DESKTOP_SESSION}" >> "${PORT_WINE_PATH}/PortProton.log"
