@@ -181,7 +181,7 @@ if [[ "$BRANCH" == "master" ]] ; then
     export BRANCH_VERSION=""
 else
     print_warning "Branch in used: DEVEL\n"
-    export BRANCH_VERSION="dev"
+    export BRANCH_VERSION="-dev"
 fi
 
 # choose mirror
@@ -512,7 +512,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             "${pw_yad}" --key=$KEY_START --notebook --active-tab=${TAB_START} \
             --gui-type=settings-notebook \
             --width="${PW_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" --center \
-            --title "PortProton-${install_ver} (${scripts_install_ver}-${BRANCH_VERSION})" --expand \
+            --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" --expand \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
             --tab="$(gettext "GENERAL")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
             --tab="$(gettext "SETTINGS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
@@ -552,7 +552,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             "${pw_yad}" --key=$KEY_START --paned --center \
             --gui-type=settings-paned \
             --width="${PW_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" \
-            --title "PortProton-${install_ver} (${scripts_install_ver}-${BRANCH_VERSION})" \
+            --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
             --button="${PW_SHORTCUT}" \
             --button="$(gettext "DEBUG")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Launch with the creation of a .log file at the root PortProton")":102 \
@@ -707,7 +707,7 @@ else
         --gui-type=settings-notebook \
         --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
         --auto-close --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-        --title "PortProton-${install_ver} (${scripts_install_ver}-${BRANCH_VERSION})" \
+        --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
         --tab-pos=bottom \
         --tab="$(gettext "AUTOINSTALLS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
         --tab="$(gettext "EMULATORS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
@@ -720,7 +720,7 @@ else
         --gui-type=settings-notebook \
         --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
         --auto-close --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-        --title "PortProton-${install_ver} (${scripts_install_ver}-${BRANCH_VERSION})" \
+        --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
         --tab-pos=bottom \
         --tab="$(gettext "INSTALLED")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
         --tab="$(gettext "AUTOINSTALLS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
