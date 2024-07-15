@@ -218,27 +218,56 @@ pw_check_and_download_plugins
 # check skip update
 if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     pw_port_update
-    if command gamescope --help 2> "${PW_TMPFS_PATH}/gamescope-help.tmp" ; then
-        export GAMESCOPE_INSTALLED="1"
-    fi
-    if command -v vulkaninfo &>/dev/null ; then
-        vulkaninfo --summary 2>/dev/null > "${PW_TMPFS_PATH}/vulkaninfo.tmp"
-    else
-        $PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo 2>/dev/null > "${PW_TMPFS_PATH}/vulkaninfo.tmp"
-    fi
-    VULKAN_DRIVER_NAME="$(grep -e 'driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | awk '{print$3}' | head -1)"
-    GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
-    LSPCI_VGA="$(lspci -k 2>/dev/null | grep -E 'VGA|3D' | tr -d '\n')"
-    export VULKAN_DRIVER_NAME GET_GPU_NAMES LSPCI_VGA
 
-    if command xrandr --current 2>/dev/null > "${PW_TMPFS_PATH}/xrandr.tmp" ; then
+    if timeout 5 gamescope --help 2> "${PW_TMPFS_PATH}/gamescope-help.tmp" ; then
+        export GAMESCOPE_INSTALLED="1"
+    else
+        if ! command -v gamescope &>/dev/null ; then
+            print_error "gamescope - not found!"
+        else
+            print_error "gamescope - broken!"
+        fi
+    fi
+
+    if timeout 5 vulkaninfo --summary 2>/dev/null > "${PW_TMPFS_PATH}/vulkaninfo.tmp" ; then
+        VULKAN_DRIVER_NAME="$(grep -e 'driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | awk '{print$3}' | head -1)"
+        GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
+        export VULKAN_DRIVER_NAME GET_GPU_NAMES
+    else
+        if ! command -v vulkaninfo &>/dev/null ; then
+            $PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo 2>/dev/null > "${PW_TMPFS_PATH}/vulkaninfo.tmp"
+            VULKAN_DRIVER_NAME="$(grep -e 'driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | awk '{print$3}' | head -1)"
+            GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
+            export VULKAN_DRIVER_NAME GET_GPU_NAMES
+            print_warning "use portable vulkaninfo"
+        else
+            print_error "vulkaninfo - broken!"
+        fi
+    fi
+
+    if timeout 5 lspci -k 2>/dev/null > "${PW_TMPFS_PATH}/lspci.tmp" ; then
+        LSPCI_VGA="$(grep -e 'VGA|3D' "${PW_TMPFS_PATH}/lspci.tmp" | tr -d '\n')"
+        export LSPCI_VGA
+    else
+        if ! command -v lspci &>/dev/null ; then
+            print_error "lspci - not found!"
+        else
+            print_error "lspci - broken!"
+        fi
+    fi
+
+    if timeout 5 xrandr --current 2>/dev/null > "${PW_TMPFS_PATH}/xrandr.tmp" ; then
         PW_SCREEN_RESOLUTION="$(cat "${PW_TMPFS_PATH}/xrandr.tmp" | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
         PW_SCREEN_PRIMARY="$(grep -e 'primary' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}')"
         export PW_SCREEN_PRIMARY PW_SCREEN_RESOLUTION
         echo ""
         print_var PW_SCREEN_RESOLUTION PW_SCREEN_PRIMARY
     else
-        print_error "xrandr - not found!"
+        if ! command -v xrandr &>/dev/null ; then
+            print_error "xrandr - not found!"
+        else
+            print_error "xrandr - broken!"
+        fi
     fi
     echo ""
 
@@ -250,23 +279,29 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     fi
     export GET_LOGICAL_CORE
 
-    GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
-    unset LOCALE_LIST
-    locale -a 2>/dev/null > "${PW_TMPFS_PATH}/locale.tmp"
-    for LOCALE in $GET_LOCALE_LIST ; do
-        if grep -e $LOCALE "${PW_TMPFS_PATH}/locale.tmp" &>/dev/null ; then
-            if [[ ! -z "$LOCALE_LIST" ]]
-            then LOCALE_LIST+="!$(grep -e $LOCALE "${PW_TMPFS_PATH}/locale.tmp")"
-            else LOCALE_LIST="$(grep -e $LOCALE "${PW_TMPFS_PATH}/locale.tmp")"
+    if timeout 5 locale -a 2>/dev/null > "${PW_TMPFS_PATH}/locale.tmp" ; then
+        GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
+        unset LOCALE_LIST
+        for LOCALE in $GET_LOCALE_LIST ; do
+            if grep -e $LOCALE "${PW_TMPFS_PATH}/locale.tmp" &>/dev/null ; then
+                if [[ ! -z "$LOCALE_LIST" ]]
+                then LOCALE_LIST+="!$(grep -e $LOCALE "${PW_TMPFS_PATH}/locale.tmp")"
+                else LOCALE_LIST="$(grep -e $LOCALE "${PW_TMPFS_PATH}/locale.tmp")"
+                fi
             fi
+        done
+        export LOCALE_LIST
+    else
+        if ! command -v locale &>/dev/null ; then
+            print_error "locale - not found!"
+        else
+            print_error "locale - broken!"
         fi
-    done
-    export LOCALE_LIST
+    fi
 else
     scripts_install_ver=$(head -n 1 "${PORT_WINE_TMP_PATH}/scripts_ver")
     export scripts_install_ver
 fi
-
 
 # create lock file
 if ! check_flatpak ; then
