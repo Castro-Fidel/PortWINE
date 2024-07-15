@@ -397,33 +397,34 @@ esac
 
 ### GUI ###
 
-pushd "${PORT_WINE_PATH}/data/prefixes/" 1>/dev/null || fatal
 unset PW_ADD_PREFIXES_TO_GUI
-PW_PREFIX_NAME="${PW_PREFIX_NAME//[[:blank:]]/_}"
-for PAIG in ./* ; do
-    if [[ "${PAIG//'./'/}" != "${PORTWINE_DB^^//[[:blank:]]/_}" ]] \
-    && [[ "${PAIG//'./'/}" != "${PW_PREFIX_NAME}" ]] \
-    && [[ -d "${PAIG}" ]]
-    then
-        PW_ADD_PREFIXES_TO_GUI="${PW_ADD_PREFIXES_TO_GUI}!${PAIG//'./'/}"
-    fi
-done
-PW_ADD_PREFIXES_TO_GUI="${PW_PREFIX_NAME^^}${PW_ADD_PREFIXES_TO_GUI}"
-popd 1>/dev/null || fatal
+if [[ -d "${PORT_WINE_PATH}/data/prefixes/" ]] ; then
+    PW_PREFIX_NAME="${PW_PREFIX_NAME//[[:blank:]]/_}"
+    for PAIG in ${PORT_WINE_PATH}/data/prefixes/* ; do
+        if [[ "${PAIG//"${PORT_WINE_PATH}/data/prefixes/"/}" != "${PORTWINE_DB^^//[[:blank:]]/_}" ]] \
+        && [[ "${PAIG//"${PORT_WINE_PATH}/data/prefixes/"/}" != "${PW_PREFIX_NAME}" ]] \
+        && [[ "${PAIG//"${PORT_WINE_PATH}/data/prefixes/"/}" != "*" ]]
+        then
+            PW_ADD_PREFIXES_TO_GUI="${PW_ADD_PREFIXES_TO_GUI}!${PAIG//"${PORT_WINE_PATH}/data/prefixes/"/}"
+        fi
+    done
+    PW_ADD_PREFIXES_TO_GUI="${PW_PREFIX_NAME^^}${PW_ADD_PREFIXES_TO_GUI}"
+fi
 
-pushd "${PORT_WINE_PATH}/data/dist/" 1>/dev/null || fatal
+unset DIST_ADD_TO_GUI
 if command -v wine &>/dev/null
 then DIST_ADD_TO_GUI="!USE_SYSTEM_WINE"
-else unset DIST_ADD_TO_GUI
 fi
-for DAIG in ./* ; do
-    if [[ "${DAIG//'./'/}" != "${PW_WINE_LG_VER}" ]] \
-    && [[ "${DAIG//'./'/}" != "${PW_PROTON_LG_VER}" ]]
-    then
-        DIST_ADD_TO_GUI="${DIST_ADD_TO_GUI}!${DAIG//'./'/}"
-    fi
-done
-popd 1>/dev/null || fatal
+if [[ -d "${PORT_WINE_PATH}/data/dist/" ]] ; then
+    for DAIG in ${PORT_WINE_PATH}/data/dist/* ; do
+        if [[ "${DAIG//"${PORT_WINE_PATH}/data/dist/"/}" != "${PW_WINE_LG_VER}" ]] \
+        && [[ "${DAIG//"${PORT_WINE_PATH}/data/dist/"/}" != "${PW_PROTON_LG_VER}" ]] \
+        && [[ "${DAIG//"${PORT_WINE_PATH}/data/dist/"/}" != "*" ]]
+        then
+            DIST_ADD_TO_GUI="${DIST_ADD_TO_GUI}!${DAIG//"${PORT_WINE_PATH}/data/dist/"/}"
+        fi
+    done
+fi
 
 # [[ "${PW_DGVOODOO2}" == "1" ]] && DGV2_TXT='<b>dgVoodoo2 </b>' || unset DGV2_TXT
 # [[ "${PW_VKBASALT}" == "1" ]] && VKBASALT_TXT='<b>vkBasalt </b>' || unset VKBASALT_TXT
