@@ -3,7 +3,6 @@
 # Development assistants: Cefeiko; Dezert1r; Taz_mania; Anton_Famillianov; gavr; RidBowt; chal55rus; UserDiscord; Boria138; Vano; Akai; Htylol
 # shellcheck disable=SC2140,SC2119,SC2206
 ########################################################################
-$PW_DEBUG
 echo '
             █░░ █ █▄░█ █░█ ▀▄▀ ▄▄ █▀▀ ▄▀█ █▀▄▀█ █ █▄░█ █▀▀ ░ █▀█ █░█
             █▄▄ █ █░▀█ █▄█ █░█ ░░ █▄█ █▀█ █░▀░█ █ █░▀█ █▄█ ▄ █▀▄ █▄█
@@ -16,6 +15,7 @@ echo '
 ╚═╝░░░░░░╚════╝░╚═╝░░╚═╝░░░╚═╝░░░╚═╝░░░░░╚═╝░░╚═╝░╚════╝░░░░╚═╝░░░░╚════╝░╚═╝░░╚══╝
 '
 
+$PW_DEBUG
 if [[ $(id -u) = 0 ]] ; then
     echo "Do not run this script as root!"
     exit 1
@@ -37,6 +37,10 @@ elif [[ -f "$1" ]] ; then
     portwine_exe="$(realpath "$1")"
 elif [[ -f "$OLDPWD/$1" ]] && [[ "$1" == *.exe ]] ; then
     portwine_exe="$(realpath "$OLDPWD/$1")"
+elif [[ "$1" == "--debug" ]] && [[ -f "$2" ]] ; then
+    portwine_exe="$(realpath "$2")"
+elif [[ "$1" == "--debug" ]] && [[ -f "$OLDPWD/$2" ]] && [[ "$2" == *.exe ]] ; then
+    portwine_exe="$(realpath "$OLDPWD/$2")"
 elif [[ "$1" == *.exe ]] ; then
     portwine_exe="$1"
     MISSING_DESKTOP_FILE=1
@@ -409,6 +413,7 @@ use: [--repair] [--reinstall] [--autoinstall]
 "
         echo "
 --debug                                             debug scripts for PortProton
+                                                    (saved log in "$PORT_WINE_PATH/scripts-debug.log")
 "
         exit 0 ;;
 
@@ -428,7 +433,7 @@ use: [--repair] [--reinstall] [--autoinstall]
     '--debug' )
         clear
         export PW_DEBUG="set -x"
-        /usr/bin/env bash -c ${pw_full_command_line[*]} 2>&1 | tee "$PORT_WINE_PATH/scripts.log" &
+        /usr/bin/env bash -c ${pw_full_command_line[*]} 2>&1 | tee "$PORT_WINE_PATH/scripts-debug.log" &
         exit 0 ;;
 esac
 
