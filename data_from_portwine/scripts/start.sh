@@ -219,7 +219,7 @@ pw_check_and_download_plugins
 if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     pw_port_update
 
-    if timeout 5 gamescope --help 2> "${PW_TMPFS_PATH}/gamescope-help.tmp" ; then
+    if timeout 3 gamescope --help 2> "${PW_TMPFS_PATH}/gamescope-help.tmp" ; then
         export GAMESCOPE_INSTALLED="1"
     else
         if ! command -v gamescope &>/dev/null ; then
@@ -229,7 +229,7 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
         fi
     fi
 
-    if timeout 5 vulkaninfo --summary 2>/dev/null > "${PW_TMPFS_PATH}/vulkaninfo.tmp" ; then
+    if timeout 3 vulkaninfo --summary 2>/dev/null > "${PW_TMPFS_PATH}/vulkaninfo.tmp" ; then
         VULKAN_DRIVER_NAME="$(grep -e 'driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | awk '{print$3}' | head -1)"
         GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
         export VULKAN_DRIVER_NAME GET_GPU_NAMES
@@ -245,7 +245,7 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
         fi
     fi
 
-    if timeout 5 lspci -k 2>/dev/null > "${PW_TMPFS_PATH}/lspci.tmp" ; then
+    if timeout 3 lspci -k 2>/dev/null > "${PW_TMPFS_PATH}/lspci.tmp" ; then
         LSPCI_VGA="$(grep -e 'VGA|3D' "${PW_TMPFS_PATH}/lspci.tmp" | tr -d '\n')"
         export LSPCI_VGA
     else
@@ -256,7 +256,7 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
         fi
     fi
 
-    if timeout 5 xrandr --current 2>/dev/null > "${PW_TMPFS_PATH}/xrandr.tmp" ; then
+    if timeout 3 xrandr --current 2>/dev/null > "${PW_TMPFS_PATH}/xrandr.tmp" ; then
         PW_SCREEN_RESOLUTION="$(cat "${PW_TMPFS_PATH}/xrandr.tmp" | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
         PW_SCREEN_PRIMARY="$(grep -e 'primary' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}')"
         export PW_SCREEN_PRIMARY PW_SCREEN_RESOLUTION
@@ -279,7 +279,7 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     fi
     export GET_LOGICAL_CORE
 
-    if timeout 5 locale -a 2>/dev/null > "${PW_TMPFS_PATH}/locale.tmp" ; then
+    if timeout 3 locale -a 2>/dev/null > "${PW_TMPFS_PATH}/locale.tmp" ; then
         GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
         unset LOCALE_LIST
         for LOCALE in $GET_LOCALE_LIST ; do
