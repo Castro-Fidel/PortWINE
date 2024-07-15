@@ -468,10 +468,6 @@ if [[ -d "${PORT_WINE_PATH}/data/dist/" ]] ; then
     done
 fi
 
-# [[ "${PW_DGVOODOO2}" == "1" ]] && DGV2_TXT='<b>dgVoodoo2 </b>' || unset DGV2_TXT
-# [[ "${PW_VKBASALT}" == "1" ]] && VKBASALT_TXT='<b>vkBasalt </b>' || unset VKBASALT_TXT
-# [[ "${PW_MANGOHUD}" == "1" ]] && MANGOHUD_TXT='<b>MangoHud </b>' || unset MANGOHUD_TXT
-
 SORT_OPENGL="$(gettext 'WineD3D OpenGL (For video cards without Vulkan)')"
 SORT_VULKAN="$(gettext 'WineD3D Vulkan (Damavand experimental)')"
 SORT_LEGACY="$(gettext 'Legacy DXVK (Vulkan v1.1)')"

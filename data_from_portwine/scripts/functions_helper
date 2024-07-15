@@ -1064,25 +1064,6 @@ pw_check_and_download_dxvk_and_vkd3d () {
         fi
     done
 
-    # Download D8VK
-    if [ ! -d "${PW_VULKAN_DIR}/d8vk-${D8VK_VER}" ] ; then
-        print_info "Download and install D8VK v.${D8VK_VER}"
-        if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/d8vk-${D8VK_VER}/d8vk-${D8VK_VER}.tar.xz" \
-        "${PW_VULKAN_DIR}/d8vk-${D8VK_VER}.tar.xz"
-        then
-            if unpack "${PW_VULKAN_DIR}/d8vk-${D8VK_VER}.tar.xz" "${PW_VULKAN_DIR}" ; then
-                try_remove_file "${PW_VULKAN_DIR}/d8vk-${D8VK_VER}.tar.xz"
-            else
-                try_remove_file "${PW_VULKAN_DIR}/d8vk-${D8VK_VER}.tar.xz"
-                try_remove_dir "${PW_VULKAN_DIR}/d8vk-${D8VK_VER}"
-
-                yad_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
-            fi
-        else
-            yad_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
-        fi
-    fi
-
     # Download DGVOODOO2
     if [ ! -f "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}/dgVoodoo.conf" ] ; then
         print_info "Download and install DGVOODOO2 v.${DGV2_VER}"
@@ -2055,7 +2036,7 @@ start_portwine () {
     try_force_link_file "${PHYSX_PATH}/cudart64_65.dll" "${WINEPREFIX}/drive_c/windows/system32/cudart64_65.dll"
 
     # 3D API
-    unset CP_VKD3D_FILES CP_DXVK_FILES CP_D8VK_FILES CP_DGV2_FILES CP_WINE_FILES
+    unset CP_VKD3D_FILES CP_DXVK_FILES CP_DGV2_FILES CP_WINE_FILES
     unset CP_GALLIUM_NINE_FILES PATH_TO_DXVK_FILES PATH_TO_VKD3D_FILES
     case "${PW_VULKAN_USE}" in
         0)
@@ -2085,8 +2066,7 @@ start_portwine () {
             print_info "VKD3D-PROTON v.${VKD3D_GIT_VER} in use"
             PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
-            CP_D8VK_FILES="d3d8"
-            CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi" # openvr_api_dxvk
+            CP_DXVK_FILES="d3d11 d3d10core d3d9 d3d8 dxgi" # openvr_api_dxvk
             CP_VKD3D_FILES="d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1"
             CP_WINE_FILES="ddraw d3d10_1 d3d10"
             ;;
@@ -2175,8 +2155,7 @@ start_portwine () {
                     ;;
                 2)
                     rm_from_var CP_WINE_FILES "ddraw"
-                    rm_from_var CP_D8VK_FILES "d3d8"
-                    rm_from_var CP_DXVK_FILES "d3d9"
+                    rm_from_var CP_DXVK_FILES "d3d9 d3d8"
                     ;;
                 3)
                     rm_from_var CP_WINE_FILES "ddraw d3d8"
@@ -2418,16 +2397,6 @@ start_portwine () {
         done
         create_new_dir "${PATH_TO_VKD3D_FILES}/vkd3d_cache"
         export VKD3D_SHADER_CACHE_PATH="${PATH_TO_VKD3D_FILES}/vkd3d_cache"
-    fi
-
-    if [[ ! -z "$CP_D8VK_FILES" ]] ; then
-        print_info "Try create symlink D8VK files..."
-        PATH_TO_D8VK_FILES="${PW_VULKAN_DIR}/d8vk-${D8VK_VER}"
-        for wine_d8vk_dll in $CP_D8VK_FILES ; do
-            try_force_link_file "${PATH_TO_D8VK_FILES}/x32/${wine_d8vk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_d8vk_dll}.dll"
-            try_force_link_file "${PATH_TO_D8VK_FILES}/x64/${wine_d8vk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_d8vk_dll}.dll"
-            var_winedlloverride_update "${wine_d8vk_dll}=n"
-        done
     fi
 
     if [[ "$CP_GALLIUM_NINE_FILES" == "d3d9" ]] ; then
@@ -4794,13 +4763,9 @@ portwine_start_debug () {
     echo "RAM:" >> "${PORT_WINE_PATH}/PortProton.log"
     free -m >> "${PORT_WINE_PATH}/PortProton.log"
     echo "--------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Filesystems:" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Filesystem ${PATH_TO_GAME}": >> "${PORT_WINE_PATH}/PortProton.log"
-    stat -f -c %T "${PATH_TO_GAME}" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Filesystem ${PORT_WINE_PATH}": >> "${PORT_WINE_PATH}/PortProton.log"
-    stat -f -c %T "${PORT_WINE_PATH}" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Filesystem ${PW_TMPFS_PATH}": >> "${PORT_WINE_PATH}/PortProton.log"
-    stat -f -c %T "${PW_TMPFS_PATH}" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "Filesystem ${PATH_TO_GAME} $(stat -f -c %T "${PATH_TO_GAME}"):" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "Filesystem ${PORT_WINE_PATH} $(stat -f -c %T "${PORT_WINE_PATH}"):" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "Filesystem ${PW_TMPFS_PATH} $(stat -f -c %T "${PW_TMPFS_PATH}"):" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "-----------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "Graphic cards and drivers:" >> "${PORT_WINE_PATH}/PortProton.log"
     echo 'lspci -k | grep -EA3 VGA|3D|Display :' >> "${PORT_WINE_PATH}/PortProton.log"
