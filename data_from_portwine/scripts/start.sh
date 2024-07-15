@@ -510,7 +510,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             fi
 
             "${pw_yad}" --key=$KEY_START --notebook --active-tab=${TAB_START} \
-            --gui-type=settings-notebook \
+            --gui-type="settings-notebook" \
             --width="${PW_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" --center \
             --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" --expand \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
@@ -550,7 +550,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             2>/dev/null &
 
             "${pw_yad}" --key=$KEY_START --paned --center \
-            --gui-type=settings-paned \
+            --gui-type="settings-paned" \
             --width="${PW_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" \
             --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
@@ -704,11 +704,11 @@ else
 
     if [[ -z "${PW_ALL_DF}" ]] ; then
         "${pw_yad}" --key=$KEY --notebook --expand \
-        --gui-type=settings-notebook \
+        --gui-type="settings-notebook" \
         --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
-        --auto-close --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
         --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
-        --tab-pos=bottom \
+        --tab-pos="bottom" \
         --tab="$(gettext "AUTOINSTALLS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
         --tab="$(gettext "EMULATORS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
         --tab="$(gettext "WINE SETTINGS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
@@ -717,11 +717,11 @@ else
         YAD_STATUS="$?"
     else
         "${pw_yad}" --key=$KEY --notebook --expand \
-        --gui-type=settings-notebook \
+        --gui-type="settings-notebook" \
         --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
-        --auto-close --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
         --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
-        --tab-pos=bottom \
+        --tab-pos="bottom" \
         --tab="$(gettext "INSTALLED")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
         --tab="$(gettext "AUTOINSTALLS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
         --tab="$(gettext "EMULATORS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
