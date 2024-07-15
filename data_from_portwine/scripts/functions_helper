@@ -1277,16 +1277,20 @@ pw_init_db () {
             elif [[ $(echo "$PW_FIND_DB_FILE" | wc -l) -eq 1 ]] ; then
                 PORTWINE_DB_FILE="${PW_FIND_DB_FILE}"
             fi
-
             IFS="$orig_IFS"
-            # shellcheck source=/dev/null
-            source "${PORTWINE_DB_FILE}"
+            
+            if [[ -f "${PW_FIND_DB_FILE}" ]] ; then
+                # shellcheck source=/dev/null
+                source "${PORTWINE_DB_FILE}"
+            fi
+
             if [[ -f "${PW_FIND_DB_FILE}" ]] \
             && [[ "${PW_DISABLED_CREATE_DB}" != 1 ]]
             then
                 try_copy_file "${PW_FIND_DB_FILE}" "${portwine_exe}".ppdb
                 PORTWINE_DB_FILE="${portwine_exe}".ppdb
             fi
+
             if [[ ! -z $(echo "${portwine_exe}" | grep "/data/prefixes/") ]] \
             && [[ -z $(echo "${portwine_exe}" | grep "/data/prefixes/DEFAULT/") ]]
             then
