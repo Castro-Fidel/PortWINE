@@ -1360,12 +1360,12 @@ pw_init_db () {
 # GUI UPDATE SCRIPTS
 pw_port_update () {
     case "$BRANCH" in
-        master|stable) 
-            BRANCH_VERSION="SCRIPTS_STABLE_VERSION"
+        master|stable)
+            BRANCH_VERSION_UPDATE="SCRIPTS_STABLE_VERSION"
             BRANCH="master"
             ;;
-         devel|beta) 
-            BRANCH_VERSION="SCRIPTS_NEXT_VERSION"
+         devel|beta)
+            BRANCH_VERSION_UPDATE="SCRIPTS_NEXT_VERSION"
             BRANCH="devel"
             ;;
     esac
@@ -1393,7 +1393,7 @@ pw_port_update () {
     [[ ! -f "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ]] && echo "1" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     read "scripts_update_not" < "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     if [[ "${scripts_update_not}" == "1" ]] ; then
-        scripts_current_ver=$(grep "$BRANCH_VERSION" "${PORT_WINE_TMP_PATH}/curent_var_ver" | awk -F "=" '{print $2}')
+        scripts_current_ver=$(grep "$BRANCH_VERSION_UPDATE" "${PORT_WINE_TMP_PATH}/curent_var_ver" | awk -F "=" '{print $2}')
         print_info "Scripts version in git = ${scripts_current_ver}"
         print_info "Scripts version local = ${scripts_install_ver}"
         if [[ ! -z "${scripts_current_ver}" ]] &&  [[ "${scripts_current_ver}" -gt "${scripts_install_ver}" ]] ; then
@@ -1410,7 +1410,7 @@ pw_port_update () {
             else
                 curl -s --list-only "${URL_FOR_CHANGELOG}/${PW_CHANGELOG_FILE}" | tee "${PORT_WINE_TMP_PATH}/curent_var_ver"
                 CHANGLOG_NEWS=$(sed "/Scripts version ${scripts_install_ver}/,$ d" "${PORT_WINE_TMP_PATH}/curent_var_ver" | sed '1,/---/ d' )
-                xcsd=$("${pw_yad}" --title "$(gettext "Update scripts:") v.${scripts_current_ver}" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+                xcsd=$("${pw_yad}" --title "$(gettext "Update scripts:") v.(${scripts_install_ver}-${BRANCH_VERSION})" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
                 --form --separator='%%%' --width=1200 --height=600 \
                 --field=":TXT" "${CHANGLOG_NEWS}" \
                 --button="$(gettext "EXIT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":252 \
