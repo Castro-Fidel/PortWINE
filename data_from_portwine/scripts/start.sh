@@ -178,10 +178,10 @@ if [[ -z "$BRANCH" ]] ; then
 fi
 if [[ "$BRANCH" == "master" ]] ; then
     print_info "Branch in used: STABLE\n"
-    export BRANCH_VERSION="$(gettext 'stable')"
+    export BRANCH_VERSION=""
 else
     print_warning "Branch in used: DEVEL\n"
-    export BRANCH_VERSION="devel"
+    export BRANCH_VERSION="dev"
 fi
 
 # choose mirror
