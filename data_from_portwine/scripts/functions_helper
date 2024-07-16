@@ -142,24 +142,30 @@ try_copy_file_with_checksums () {
         then
             checksum1=($(sha256sum "$1"))
             if [[ ! -f "$2" ]] ; then
-                cp -f "$1" "$2" \
-                && echo $checksum1 > "$2.sha256sum" \
-                && return 0 || return 1
+                if cp -f "$1" "$2" ; then
+                    echo "${checksum1[0]}" > "$2.sha256sum"
+                    return 0
+                else
+                    return 1
+                fi
             else
                 if [[ ! -f "$2.sha256sum" ]] ; then
                     checksum2=($(sha256sum "$2"))
-                    echo $checksum2 > "$2.sha256sum"
+                    echo "${checksum2[0]}" > "$2.sha256sum"
                 else
                     checksum2=$(<"$2.sha256sum")
                 fi
             fi
-            if [[ "$checksum1" == "$checksum2" ]] ; then
+            if [[ "${checksum1[0]}" == "${checksum2[0]}" ]] ; then
                 return 0
             else
-                try_remove_file "$2" \
-                && cp -f "$1" "$2" \
-                && echo $checksum1 > "$2.sha256sum" \
-                && return 0 || return 1
+                try_remove_file "$2"
+                if cp -f "$1" "$2" ; then
+                    echo "${checksum1[0]}" > "$2.sha256sum"
+                    return 0
+                else
+                    return 1
+                fi
             fi
         else
             [[ -e "$2/$(basename "$1")" ]] && rm -f "$2/$(basename "$1")"
@@ -1887,9 +1893,6 @@ start_portwine () {
         fi
     }
 
-    try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/nvml.dll"
-    try_remove_file "${WINEPREFIX}/drive_c/windows/system32/nvml.dll"
-
     if [[ "${PW_USE_FAKE_DLSS}" == "1" ]] \
     && [[ -d "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/" ]]
     then
@@ -1916,6 +1919,10 @@ start_portwine () {
         var_winedlloverride_update "nvngx,_nvngx,nvapi,nvapi64=n;nvcuda=b"
     else
         DXVK_ENABLE_NVAPI="0"
+        for rm_dll in "nvngx.ini" "nvngx.dll" "_nvngx.dll" ; do
+            try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/$rm_dll"
+            try_remove_file "${WINEPREFIX}/drive_c/windows/system32/$rm_dll"
+        done
         enabled_fake_nvidia_videocard 0
         var_winedlloverride_update "nvngx,_nvngx="
     fi
