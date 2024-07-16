@@ -13,14 +13,6 @@ fi
 NOSTICONPATH="${PORT_WINE_PATH}/data/img/${name_desktop}.png"
 BASESTEAMGRIDDBAPI="https://www.steamgriddb.com/api/v2"
 
-function checkSGDbApi {
-	if [ -z "$SGDBAPIKEY" ] || [ "$SGDBAPIKEY" == "$NON" ]; then
-		return 1
-	else
-		return 0
-	fi
-}
-
 ## How Non-Steam AppIDs work, because it took me almost a year to figure this out
 ## ----------------------
 ## Steam stores shortcuts in a binary 'shortcuts.vdf', at SROOT/userdata/<id>/config
@@ -169,9 +161,8 @@ function downloadArtFromSteamGridDB {
 
     RESPONSE_LENGTH=$(jq '.data | length' <<< "$RESPONSE")
 
-    if [ "$RESPONSE_LENGTH" -eq 0 ]; then
+    if [[ "$RESPONSE_LENGTH" == "0" ]] ; then
         echo "No grid found to download - maybe loosen filters?"
-        return
     fi
 
     if jq -e ".data[0].url" <<< "$RESPONSE" > /dev/null; then
@@ -182,11 +173,9 @@ function downloadArtFromSteamGridDB {
     for i in $(seq 0 $(("$RESPONSE_LENGTH" - 1))); do
         if ! jq -e ".data[$i].success" <<< "$RESPONSE" > /dev/null; then
             echo "The server response for '$SEARCHID' wasn't 'success'"
-            continue
         fi
         if ! URLSTR=$(jq -e -r ".data[$i].data[0].url" <<< "$RESPONSE"); then
             echo "No grid found to download for '$SEARCHID' - maybe loosen filters?"
-            continue
         fi
 
         GRIDDLURL="${URLSTR//\"}"
@@ -208,7 +197,12 @@ function downloadArtFromSteamGridDB {
             fi
 
             if [ "$STARTDL" -eq 1 ]; then
-                curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$DLSRC" -o "$DLDST"
+				filename="$(basename "$DLDST")"
+                curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$DLSRC" -o "$DLDST" 2>&1 | \
+                 tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
+				"$pw_yad" --progress --text="$(gettext "Downloading") $filename" --auto-close --no-escape \
+				--auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
+				--window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders="$PROGRESS_BAR_BORDERS_SIZE"
             fi
         else
             echo "No grid found to download for '$SEARCHID' - maybe loosen filters?"
@@ -231,7 +225,7 @@ function getSGDBGameIDFromTitle {
 	SGDBSEARCHNAME="$1"
 
 	if [ -n "$SGDBSEARCHNAME" ]; then
-	SGDBSEARCHENDPOINT="${BASESTEAMGRIDDBAPI}/search/autocomplete/${SGDBSEARCHNAME}"
+		SGDBSEARCHENDPOINT="${BASESTEAMGRIDDBAPI}/search/autocomplete/${SGDBSEARCHNAME}"
 		SGDBSEARCHNAMERESP="$(curl -H "Authorization: Bearer $SGDBAPIKEY" -s "$SGDBSEARCHENDPOINT" 2>  >(grep -v "SSL_INIT") )"
 		if jq -e '.success' 1> /dev/null <<< "$SGDBSEARCHNAMERESP"; then
 			if [ "$(jq '.data | length' <<< "$SGDBSEARCHNAMERESP" )" -gt 0 ]; then
@@ -241,9 +235,9 @@ function getSGDBGameIDFromTitle {
 				echo "$SGDBSEARCH_FOUNDGAID"
 			fi
 		fi
-else
-	echo "No game name given."
-fi
+	else
+		echo "No game name given."
+	fi
 }
 
 # Used to get either Steam or Non-Steam artwork depending on a flag -- Used internally and for commandline usage
@@ -281,12 +275,9 @@ function commandlineGetSteamGridDBArtwork {
 	# If we pass a name to search on and we get a Game ID back from SteamGridDB, set this as the ID to search for artwork on
 	if [ -n "$GSGDBA_SEARCHNAME" ]; then
 		if [ -n "$GSGDBA_FILENAME" ]; then
-			#writelog "INFO" "${FUNCNAME[0]} - Searching SteamGridDB for game name matching '$GSGDBA_SEARCHNAME'"
 			GSGDBA_FOUNDGAMEID="$( getSGDBGameIDFromTitle "$GSGDBA_SEARCHNAME" )"
 			if [ -n "$GSGDBA_FOUNDGAMEID" ]; then
-				#writelog "INFO" "${FUNCNAME[0]} - Found game name matching '$GSGDBA_SEARCHNAME' with Game ID '$GSGDBA_FOUNDGAMEID' -- Using this Game ID to search for SteamGridDB Game Art"
 				GSGDBA_APPID="$GSGDBA_FOUNDGAMEID"
-				#writelog "INFO" "${FUNCNAME[0]} - Forcing endpoint type as --nonsteam since we're searching with a found SteamGridDB Game ID"
 				SGDBENDPOINTTYPE="game"
 			fi
 		else
@@ -329,7 +320,8 @@ NOSTSEARCHFLAG="--nonsteam"  # Whether to search using a Steam AppID or SteamGri
 
 # Only add NOSTAPPNAME as fallback if we don't have an ID to search on, because commandlineGetSteamGridDBArtwork will prefer name over ID, so if we have to fall back to Non-Steam Name (i.e. no entered custom name) then only do so if we don't have an ID given
 if [ -n "$NOSTAPPNAME" ]; then
-   	NOSTSEARCHNAME="$NOSTAPPNAME"
+	NOSTSEARCHNAME="$NOSTAPPNAME"
+	NOSTSEARCHNAME="${NOSTSEARCHNAME// /_}"
 fi
 
 # Store the ID we searched with, so getSteamGridDBNonSteamIcon doesn't have to hit the endpoint again and we save an API call
