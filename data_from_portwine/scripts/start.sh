@@ -239,11 +239,11 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
         export VULKAN_DRIVER_NAME GET_GPU_NAMES
     else
         if ! command -v vulkaninfo &>/dev/null ; then
+            print_warning "use portable vulkaninfo"
             $PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo 2>/dev/null > "${PW_TMPFS_PATH}/vulkaninfo.tmp"
             VULKAN_DRIVER_NAME="$(grep -e 'driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | awk '{print$3}' | head -1)"
             GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
             export VULKAN_DRIVER_NAME GET_GPU_NAMES
-            print_warning "use portable vulkaninfo"
         else
             yad_error "vulkaninfo - broken!"
         fi

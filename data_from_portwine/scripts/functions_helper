@@ -125,6 +125,13 @@ export -f generate_pot
 try_copy_file () {
     if [[ ! -f "$1" ]] ; then print_info "file $1 not found for copy" && return 1
     elif [[ -z "$2" ]] ; then print_error "no way to copy file $1" && return 1
+    elif [[ -L "$2" ]] ; then print_warning "$2 is a file with a symbolic link"
+        try_remove_file "$2"
+        cp -f "$1" "$2" && return 0 || return 1
+    elif [[ -f "$2.sha256sum" ]] ; then print_warning "$2 this file has sha256sum"
+        try_remove_file "$2"
+        try_remove_file "$2.sha256sum"
+        cp -f "$1" "$2" && return 0 || return 1
     else
         [[ -e "$2/$(basename "$1")" ]] && rm -f "$2/$(basename "$1")"
         cp -f "$1" "$2" && return 0 || return 1
@@ -135,6 +142,20 @@ export -f try_copy_file
 try_copy_file_with_checksums () {
     if [[ ! -f "$1" ]] ; then print_info "file $1 not found for copy" && return 1
     elif [[ -z "$2" ]] ; then print_error "no way to copy file $1" && return 1
+    elif [[ -L "$2" ]] ; then print_warning "$2 is a file with a symbolic link"
+        try_remove_file "$2"
+        if cp -f "$1" "$2" ; then
+            if [[ "${PW_FILESYSTEM}" == "ext2/ext3" ]] \
+            || [[ "${PW_FILESYSTEM}" == "f2fs" ]] \
+            || [[ "${PW_FILESYSTEM}" != "btrfs" ]]
+            then
+                checksum1=($(sha256sum "$1"))
+                echo "${checksum1[0]}" > "$2.sha256sum"
+            fi
+            return 0
+        else
+            return 1
+        fi
     else
         if [[ "${PW_FILESYSTEM}" == "ext2/ext3" ]] \
         || [[ "${PW_FILESYSTEM}" == "f2fs" ]] \
@@ -210,8 +231,13 @@ create_new_dir () {
 }
 
 try_force_link_file () {
-    if [ ! -f "$1" ] ; then print_warning "file not found for link: $1"
-    elif [ -z "$2" ] ; then print_error "no way to link file $1"
+    if [[ ! -f "$1" ]] ; then print_warning "file not found for link: $1" && return 1
+    elif [[ -z "$2" ]] ; then print_error "no way to link file $1" && return 1
+    elif [[ -f "$2.sha256sum" ]] ; then print_warning "$2 this file has sha256sum"
+        try_remove_file "$2"
+        try_remove_file "$2.sha256sum"
+        ln -s -f -r "$1" "$2"
+        return 0
     else
         try_remove_file "$2"
         ln -s -f -r "$1" "$2"
