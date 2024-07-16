@@ -302,6 +302,9 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
             yad_error "locale - broken!"
         fi
     fi
+
+    PW_FILESYSTEM=$(stat -f -c %T "${PORT_WINE_PATH}")
+    export PW_FILESYSTEM
 else
     scripts_install_ver=$(head -n 1 "${PORT_WINE_TMP_PATH}/scripts_ver")
     export scripts_install_ver
@@ -561,7 +564,7 @@ if [[ -f "${portwine_exe}" ]] ; then
 
             PW_YAD_SET="$?"
             if [[ "$PW_YAD_SET" == "1" || "$PW_YAD_SET" == "252" ]] ; then exit 0 ; fi
-            if [[ $(<"${PW_TMPFS_PATH}/tmp_yad_form") != "" ]]; then
+            if [[ $(<"${PW_TMPFS_PATH}/tmp_yad_form") != "" ]] ; then
                 PW_YAD_SET=$(head -n 1 "${PW_TMPFS_PATH}/tmp_yad_form" | awk '{print $1}')
                 export PW_YAD_SET
                 export PW_YAD_FORM_TAB="1"
