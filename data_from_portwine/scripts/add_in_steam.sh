@@ -13,9 +13,6 @@ fi
 NOSTICONPATH="${PORT_WINE_PATH}/data/img/${name_desktop}.png"
 BASESTEAMGRIDDBAPI="https://www.steamgriddb.com/api/v2"
 
-# Get our APi on https://www.steamgriddb.com/profile/preferences/api/
-SGDBAPIKEY="."
-
 function checkSGDbApi {
 	if [ -z "$SGDBAPIKEY" ] || [ "$SGDBAPIKEY" == "$NON" ]; then
 		return 1
