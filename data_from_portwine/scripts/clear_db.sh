@@ -23,10 +23,7 @@ for ppdb in $SELF_PATH/portwine_db/* ; do
     sed -i '/##export/d' "$ppdb"
     sed -i '/##add_/d' "$ppdb"
 
-    if echo "$ppdb" | grep -iE "#launcher.exe$" ; then
-        rm -f "$ppdb"
-        continue
-    elif echo "$ppdb" | grep -i "setup" ; then
+    if echo "$ppdb" | grep -i "setup" ; then
         continue
     fi
 
