@@ -47,14 +47,14 @@ The **official website of the project** since September 2022 is: https://linux-g
 
 * **Alt Linux** (package in the official repository) is installed with the command:
 
-`apt`:
+`apt-get`:
 
 ```sh
 su -
 
-apt update && apt dist-upgrade -y
+apt-get update && apt-get dist-upgrade -y
 
-apt install portproton i586-{libvulkan1,libd3d,libGL,libgio,libnm,libnsl1,libnss,glibc-nss,glibc-pthread,libunwind,xorg-dri-swrast}
+apt-get install portproton i586-{libvulkan1,libd3d,libGL,libgio,libnm,libnsl1,libnss,glibc-nss,glibc-pthread,libunwind,xorg-dri-swrast}
 
 exit
 ```
@@ -172,9 +172,9 @@ sudo dnf install curl bubblewrap zstd cabextract tar openssl mesa-dri-drivers.i6
 ```sh
 su -
 
-apt update && apt dist-upgrade -y
+apt-get update && apt-get dist-upgrade -y
 
-apt install bubblewrap cabextract  zstd gawk tar xz pciutils coreutils file curl icoutils wmctrl xdg-utils desktop-file-utils libvulkan1 vulkan-tools libd3d libGL fontconfig xrdb libcurl libgio libnm libnsl1 libnss glibc-nss glibc-pthread i586-{libvulkan1,libd3d,libGL,libgio,libnm,libnsl1,libnss,glibc-nss,glibc-pthread,libunwind,xorg-dri-swrast}
+apt-get install bubblewrap cabextract  zstd gawk tar xz pciutils coreutils file curl icoutils wmctrl xdg-utils desktop-file-utils libvulkan1 vulkan-tools libd3d libGL fontconfig xrdb libcurl libgio libnm libnsl1 libnss glibc-nss glibc-pthread i586-{libvulkan1,libd3d,libGL,libgio,libnm,libnsl1,libnss,glibc-nss,glibc-pthread,libunwind,xorg-dri-swrast}
 
 exit
 ```

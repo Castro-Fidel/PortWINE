@@ -45,14 +45,13 @@
 
 * **Alt Linux**
 
-`apt` :
-
+`apt-get` :
 ```sh
 su -
 
-apt update && apt dist-upgrade -y
+apt-get update && apt-get dist-upgrade -y
 
-apt install portproton i586-{libvulkan1,libd3d,libGL,libgio,libnm,libnsl1,libnss,glibc-nss,glibc-pthread,libunwind,xorg-dri-swrast}
+apt-get install portproton i586-{libvulkan1,libd3d,libGL,libgio,libnm,libnsl1,libnss,glibc-nss,glibc-pthread,libunwind,xorg-dri-swrast}
 
 exit
 ```
@@ -168,11 +167,11 @@ sudo dnf install curl bubblewrap zstd cabextract tar openssl mesa-dri-drivers.i6
 * **Alt Linux**
 
 ```sh
-sudo apt update
+sudo apt-get update
 
-sudo apt dist-upgrade -y
+sudo apt-get dist-upgrade -y
 
-sudo apt install bubblewrap cabextract curl icoutils i586-libvulkan1 libvulkan1 vulkan-tools  zstd
+sudo apt-get install bubblewrap cabextract curl icoutils i586-libvulkan1 libvulkan1 vulkan-tools  zstd
 ```
 
 * **ROSA DESKTOP FRESH R12**
