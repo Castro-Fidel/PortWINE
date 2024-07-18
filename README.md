@@ -1,6 +1,6 @@
-<div align="center">
+<div style="text-align: center;">
   <img src="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine/img/gui/portproton.svg" width="64">
-  <h1 align="center">PortProton</h1>
+  <h1 style="text-align: center;">PortProton</h1>
   <a href="https://github.com/Castro-Fidel/PortProton_ALT/blob/main/LICENSE">
     <img src="https://img.shields.io/github/license/Castro-Fidel/PortWINE" alt="GitHub License">
   </a>
@@ -10,51 +10,57 @@
   </a>
   <img src="https://img.shields.io/youtube/channel/subscribers/UCbI8OJx2D3q-4QKt4LffXTw?style=flat&logo=youtube" alt="YouTube Channel Subscribers">
   <br/>
-  <p align="center">
+  <p style="text-align: center;">
     A project designed to make running Windows games on Linux easy and convenient for both beginners and advanced users.<br>
     The project aims to simplify the process of launching games (and other software) while also providing flexible settings for experienced users.
   </p>
 </div>
 
 # **Readme Language**
+
 **English** - [Русский](README-RU.md)
 
 ## Attention
-The **official website of the project** since September 2022: https://linux-gaming.ru.  **Any other site is fake!**
+
+The **official website of the project** since September 2022 is: https://linux-gaming.ru.  **Any other site is fake!**
 
 ## Features
 
 - Based on the version of WINE from Valve (Proton) and its modifications (Proton GE).
-Includes a set of scripts combined with wine-proton itself, a Steam Runtime Sniper container with the addition of ported versions of MANGOHUD (output useful information over the game window: FPS, FrameTime, CPU, GPU, etc) and vkBasalt (improvement of graphics in games, very good in in conjunction with FSR, DLSS) + many already configured optimizations for maximum performance.
+  Includes a set of scripts combined with wine-proton itself, a Steam Runtime Sniper container with the addition of
+  ported mangoHud (output useful information over the game window: FPS, frametime, CPU, GPU, etc.),
+  vkBasalt (improvement of graphics in games, great alongside FSR or DLSS) versions,
+  and many already configured optimizations for maximum performance.
+- Implemented one-click auto-installation (in the AUTOINSTALL tab) of popular launchers such as WGC, Epic Games, Battle.net, Origin, EVE Online, Rockstar, Ubisoft Connect, League of Legends, and many others.
 
-- Implemented one-click auto-installation (in the AUTOINSTALL tab ) of popular launchers such as: WGC, Epic Games, Battle.net, Origin, EVE Online, RockStar, Ubisoft connect , League of Legends and many others.
+- For fans of console games, there are many console emulators to choose from (in the EMULATORS tab): PPSSPP, Citra, Cemu, ePSXe, MAME, and many others.
 
-- For fans of console games, there are many console emulators to choose from (in the EMULATORS tab ): PPSSPP, Citra, Cemu, ePSXe, MAME and many others.
-
-**PLEASE DO NOT REPORT BUGS ENCOUNTERED WITH THIS AT WINEHQ OR VALVE SOFTWARE!**
+**PLEASE DON'T REPORT BUGS ENCOUNTERED WITH THIS AT WINEHQ OR VALVE SOFTWARE!**
 
 ## **Wine sources used in PortWINE:**
 
 * WINE-PROTON: https://github.com/ValveSoftware/Proton
 
-* WINE-PROTON-GE: https://github.com/GloriousEggroll/proton-ge-custom/
+* WINE-PROTON-GE: https://github.com/GloriousEggroll/proton-ge-custom
 
 ## Installation using packages
 
 * **Alt Linux** (package in the official repository) is installed with the command:
 
-`apt-get`:
+`apt`:
+
 ```sh
 su -
 
-apt-get update && apt-get dist-upgrade -y
+apt update && apt dist-upgrade -y
 
-apt-get install portproton i586-{libvulkan1,libd3d,libGL,libgio,libnm,libnsl1,libnss,glibc-nss,glibc-pthread,libunwind,xorg-dri-swrast}
+apt install portproton i586-{libvulkan1,libd3d,libGL,libgio,libnm,libnsl1,libnss,glibc-nss,glibc-pthread,libunwind,xorg-dri-swrast}
 
 exit
 ```
 
 `epm`:
+
 ```sh
 su -
 
@@ -71,14 +77,14 @@ exit
 sudo urpmi portproton
 ```
 
-* **Ubuntu 24.04**, **Debian 12**, **Linux Mint 21.x** **Deepin** :
-[portproton_1.4-1_amd64.deb](https://github.com/Castro-Fidel/PortProton_dpkg/releases/download/portproton_1.4-1_amd64/portproton_1.4-1_amd64.deb)
+* **Ubuntu 24.04**, **Debian 12**, **Linux Mint 21.x**, and **Deepin**:
+  [portproton_1.4-1_amd64.deb](https://github.com/Castro-Fidel/PortProton_dpkg/releases/download/portproton_1.4-1_amd64/portproton_1.4-1_amd64.deb)
 
-* **Arch Linux** and derivatives (Manjaro, Garuda, etc.) :
-[AUR](https://aur.archlinux.org/packages/portproton)
+* **Arch Linux** and derivatives (Manjaro, Garuda, etc.):
+  [AUR](https://aur.archlinux.org/packages/portproton)
 
-* **OpenSuse**:
-[OBS](https://software.opensuse.org/download/package?package=portproton&project=home%3ABoria138%3APortProton)
+* **openSUSE**:
+  [OBS](https://software.opensuse.org/download/package?package=portproton&project=home%3ABoria138%3APortProton)
 
 * **Fedora 38+** and **Nobara**:
 
@@ -88,7 +94,7 @@ sudo dnf copr enable boria138/portproton
 sudo dnf install portproton
 ```
 
-* **FlatHub**
+* **Flathub**
 
 ```sh
 flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
@@ -97,7 +103,7 @@ flatpak install flathub ru.linux_gaming.PortProton
 
 ## Universal (manual) installation
 
-**ATTENTION** : with the universal method of installing PortProton, dependencies must be installed manually!
+**ATTENTION**: with the universal method of installing PortProton, dependencies must be installed manually!
 
 ```sh
 wget -c "https://github.com/Castro-Fidel/PortProton_ALT/raw/main/portproton" && sh portproton
@@ -107,7 +113,7 @@ wget -c "https://github.com/Castro-Fidel/PortProton_ALT/raw/main/portproton" && 
 
 * **NVIDIA graphics card users**
 
-If you have a video card from NVIDIA and a proprietary driver is installed, then you need to check if lib32-nvidia-utils is installed (no 32-bit game will work without it)
+If you have a video card from NVIDIA and a proprietary driver is installed, then you need to check if lib32-nvidia-utils is installed (32-bit games don't work without it)
 
 * **Ubuntu / Linux Mint / Pop!_OS**
 
@@ -166,9 +172,9 @@ sudo dnf install curl bubblewrap zstd cabextract tar openssl mesa-dri-drivers.i6
 ```sh
 su -
 
-apt-get update && apt-get dist-upgrade -y
+apt update && apt dist-upgrade -y
 
-apt-get install bubblewrap cabextract  zstd gawk tar xz pciutils coreutils file curl icoutils wmctrl xdg-utils desktop-file-utils libvulkan1 vulkan-tools libd3d libGL fontconfig xrdb libcurl libgio libnm libnsl1 libnss glibc-nss glibc-pthread i586-{libvulkan1,libd3d,libGL,libgio,libnm,libnsl1,libnss,glibc-nss,glibc-pthread,libunwind,xorg-dri-swrast}
+apt install bubblewrap cabextract  zstd gawk tar xz pciutils coreutils file curl icoutils wmctrl xdg-utils desktop-file-utils libvulkan1 vulkan-tools libd3d libGL fontconfig xrdb libcurl libgio libnm libnsl1 libnss glibc-nss glibc-pthread i586-{libvulkan1,libd3d,libGL,libgio,libnm,libnsl1,libnss,glibc-nss,glibc-pthread,libunwind,xorg-dri-swrast}
 
 exit
 ```
@@ -196,6 +202,7 @@ sudo eopkg it curl file bubblewrap curl icoutils tar zstd cabextract xdg-utils o
 ```
 
 * **Void**
+
 ```sh
 sudo xbps-install -Su void-repo-multilib
 
