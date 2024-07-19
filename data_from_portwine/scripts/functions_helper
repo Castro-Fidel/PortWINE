@@ -1259,15 +1259,17 @@ check_dirs_and_files_in_pfx () {
         then try_force_link_dir "${WINEPREFIX}/drive_c/users/steamuser/AppData/Local" "${WINEPREFIX}/drive_c/users/steamuser/Local Settings/Application Data"
         fi
 
-        find "${WINEPREFIX}/dosdevices" -xtype l -maxdepth 1 2>/dev/null -exec rm {} \;
-        rm -f "${WINEPREFIX}/dosdevices/"*::
         DRIVES=(d e f g i j k l m n o p q r s t u v w x y)
         DEF_MOUNT_DIRS=('/media' "/media/$USER" '/mnt' '/run/media' "/run/media/$USER")
         MOUNT_DIRS=($(find "${DEF_MOUNT_DIRS[@]}" -maxdepth 1 -type d 2>/dev/null | sort -u))
 
+        rm -fv "${WINEPREFIX}/dosdevices/"*::
+        for drive in "${DRIVES[@]}"; do
+            rm -fv "${WINEPREFIX}/dosdevices/${drive}:" 2>/dev/null
+        done
         for drive_dir in "${MOUNT_DIRS[@]}" ; do
             if [[ ! "${DEF_MOUNT_DIRS[@]}" =~ "$drive_dir" ]] \
-            && ! realpath "${WINEPREFIX}/dosdevices"/*: | grep "$drive_dir" &>/dev/null ; then
+            && ! realpath "${WINEPREFIX}/dosdevices"/*: | grep -w "$drive_dir$" &>/dev/null ; then
                 drive_num=0
                 while [[ "$drive_num" -lt "${#DRIVES[@]}" ]] ; do
                     drive_path="${WINEPREFIX}/dosdevices/${DRIVES[$drive_num]}:"
