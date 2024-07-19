@@ -1000,18 +1000,31 @@ stop_portwine () {
     fi
 
     for check in ${PORT_WINE_PATH}/*.desktop ; do
-        SHORTCUT_SKIP_LIST+="$check"
+        if PREFIX_SKIP_LIST="$(grep -A1 '###AUTOCREATE###' "$check")" ; then
+            SHORTCUT_SKIP_LIST+="${check//"${PORT_WINE_PATH}/"/""}${PREFIX_SKIP_LIST//###AUTOCREATE###[[:space:]]###PREFIX:/"%"}"
+        fi
     done
-    SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//"${PORT_WINE_PATH}/"/""}"
-    if [[ ${SHORTCUT_SKIP_LIST} != "*.desktop" ]] ; then
+
+    if [[ ${SHORTCUT_SKIP_LIST} != "*.desktop%" ]] ; then
         SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//" "/"*"}"
-        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//".desktop"/".lnk "}"
-        for skip in ${SHORTCUT_SKIP_LIST} ; do
-            SHORTCUT_SKIP_LIST_NEW+="-not -name "${skip}" "
-        done
+        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//".desktop"/".lnk"}"
+        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//"###"/" "}"
+    else
+        SHORTCUT_SKIP_LIST=""
     fi
 
-    for prefix_dir in "${PORT_WINE_PATH}"/prefixes/*; do
+    shortcut_fix () {
+    SHORTCUT_SKIP_LIST_NEW=""
+    prefix_check=${dir//*prefixes\/}
+    prefix_check=${prefix_check//\/drive_c*/}
+    for fix in ${SHORTCUT_SKIP_LIST} ; do
+        if [[ "${prefix_check}" == ${fix//*%/} ]] ; then
+            SHORTCUT_SKIP_LIST_NEW+="-not -name "${fix//%*/}" "
+        fi
+    done
+    }
+
+    for prefix_dir in "${PORT_WINE_PATH}"/prefixes/* ; do
         DESKTOP_DIRS+=(
             "${prefix_dir}/drive_c/users/steamuser/Desktop"
             "${prefix_dir}/drive_c/users/Public/Desktop"
@@ -1019,6 +1032,7 @@ stop_portwine () {
     done
 
     for dir in "${DESKTOP_DIRS[@]}" ; do
+        shortcut_fix
         while IFS= read -r -d '' link_file; do
             LINKS+=("$link_file")
         done < <(find "$dir" -type f -iname "*.lnk" ${SHORTCUT_SKIP_LIST_NEW} -print0 2>/dev/null | sort -u)
@@ -1026,8 +1040,8 @@ stop_portwine () {
 
     for link_file in "${LINKS[@]}"; do
         if timeout 3 exiftool "$link_file" 2>/dev/null > "${PW_TMPFS_PATH}/exiftool.tmp" ; then
-            prefix_name=$(echo $link_file | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
-            if grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" ; then
+            prefix_name=$(echo "$link_file" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
+            if grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" &>/dev/null ; then
                 link_drive=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
                 link_path=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/$prefix_name/dosdevices/$link_drive|g" | sed 's/\\/\//g')
             else
@@ -1036,13 +1050,12 @@ stop_portwine () {
             fi
             link_name=$(sed -n 's/^File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|\.lnk||')
             link_cmd=$(sed -n 's/^Command Line Arguments\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
-            echo $link_path
         else
             if ! command -v exiftool &>/dev/null ; then
                 print_warning "use portable exiftool"
-                prefix_name=$(echo $link_file | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
+                prefix_name=$(echo "$link_file" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
                 env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" "$link_file" 2>/dev/null > "${PW_TMPFS_PATH}/exiftool.tmp"
-                if grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" ; then
+                if grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" &>/dev/null ; then
                     link_drive=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
                     link_path=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/$prefix_name/dosdevices/$link_drive|g" | sed 's/\\/\//g')
                 else
@@ -1055,9 +1068,17 @@ stop_portwine () {
                 yad_error "exiftool - broken!"
             fi
         fi
-        exe_path="$(realpath "${link_path}")"
-        create_shortcut_from_link
-        print_info "Created link for $link_name"
+        if ! exe_path="$(realpath "${link_path}")" ; then
+            try_remove_file "$link_file"
+            print_warning "Removed broken link for $link_name"
+        else
+            create_shortcut_from_link
+            if [[ "${CREATE_WITH_PREFIX}" == "true" ]] ; then
+                print_info "Created link for $link_name - $prefix_name"
+            else
+                print_info "Created link for $link_name"
+            fi
+        fi
     done
 
     add_in_stop_portwine
@@ -1376,17 +1397,26 @@ create_shortcut_from_link () {
         fi
     fi
 
-    echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
-    echo "Name=${PORTPROTON_NAME}" >> "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
+    if [[ -f "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop" ]] ; then
+        mv -f "${link_file}" "${link_file//".lnk"/" - ${prefix_name}.lnk"}"
+        PW_NAME_DESKTOP="${PORT_WINE_PATH}/${PORTPROTON_NAME} - ${prefix_name}.desktop"
+        export CREATE_WITH_PREFIX="true"
+    else
+        PW_NAME_DESKTOP="${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
+        export CREATE_WITH_PREFIX=""
+    fi
+
+    echo "[Desktop Entry]" > "${PW_NAME_DESKTOP}"
+    echo "Name=${PORTPROTON_NAME}" >> "${PW_NAME_DESKTOP}"
     if [[ ! -z "$link_cmd" ]] ; then
         if check_flatpak
-        then echo "Exec=flatpak run ru.linux_gaming.PortProton \"${exe_path}\" \"${link_cmd}\"" >> "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
-        else echo "Exec=env \"${PORT_SCRIPTS_PATH}/start.sh\" \"${exe_path}\" \"${link_cmd}\"" >> "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
+        then echo "Exec=flatpak run ru.linux_gaming.PortProton \"${exe_path}\" \"${link_cmd}\"" >> "${PW_NAME_DESKTOP}"
+        else echo "Exec=env \"${PORT_SCRIPTS_PATH}/start.sh\" \"${exe_path}\" \"${link_cmd}\"" >> "${PW_NAME_DESKTOP}"
         fi
     else
         if check_flatpak
-        then echo "Exec=flatpak run ru.linux_gaming.PortProton \"${exe_path}\"" >> "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
-        else echo "Exec=env \"${PORT_SCRIPTS_PATH}/start.sh\" \"${exe_path}\"" >> "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
+        then echo "Exec=flatpak run ru.linux_gaming.PortProton \"${exe_path}\"" >> "${PW_NAME_DESKTOP}"
+        else echo "Exec=env \"${PORT_SCRIPTS_PATH}/start.sh\" \"${exe_path}\"" >> "${PW_NAME_DESKTOP}"
         fi
     fi
     {
@@ -1395,19 +1425,21 @@ create_shortcut_from_link () {
         echo "StartupNotify=true"
         echo "Path=${PORT_SCRIPTS_PATH}/"
         echo "Icon=${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
-    } >> "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
-    chmod u+x "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
+        echo "###AUTOCREATE###"
+        echo "###PREFIX:$prefix_name###"
+    } >> "${PW_NAME_DESKTOP}"
+    chmod u+x "${PW_NAME_DESKTOP}"
 
     if [[ "$DESKTOP_SESSION" =~ "gnome" ]] ; then
         try_remove_file "${HOME}/.local/share/applications/${PORTPROTON_NAME}.desktop"
-        cp -f "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop" "${HOME}/.local/share/applications/"
+        cp -f "${PW_NAME_DESKTOP}" "${HOME}/.local/share/applications/"
     else
         if [[ -d "${HOME}/Desktop" ]] ; then
-            cp -f "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop" "${HOME}/Desktop/"
+            cp -f "${PW_NAME_DESKTOP}" "${HOME}/Desktop/"
         elif [[ -d "${HOME}/Рабочий стол" ]] ; then
-            cp -f "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop" "${HOME}/Рабочий стол/"
+            cp -f "${PW_NAME_DESKTOP}" "${HOME}/Рабочий стол/"
         elif [[ $(xdg-user-dir DESKTOP) ]] ; then
-            cp -f "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop" "$(xdg-user-dir DESKTOP)"
+            cp -f "${PW_NAME_DESKTOP}" "$(xdg-user-dir DESKTOP)"
         fi
     fi
 }
