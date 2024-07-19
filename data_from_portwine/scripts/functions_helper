@@ -999,18 +999,25 @@ stop_portwine () {
         kill -s SIGUSR1 "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')" 2>/dev/null
     fi
 
-    for check in ${PORT_WINE_PATH}/*.desktop ; do
-        if PREFIX_SKIP_LIST="$(grep -A1 '###AUTOCREATE###' "$check")" ; then
-            SHORTCUT_SKIP_LIST+="${check//"${PORT_WINE_PATH}/"/""}${PREFIX_SKIP_LIST//###AUTOCREATE###[[:space:]]###PREFIX:/"%"}"
-        fi
-    done
+    SHORTCUT_SKIP_LIST="$(grep -i '###PREFIX:' ${PORT_WINE_PATH}/*.desktop 2>/dev/null)"
 
-    if [[ ${SHORTCUT_SKIP_LIST} != "*.desktop%" ]] ; then
+    if [[ ${SHORTCUT_SKIP_LIST} == "" ]] ; then
+        export DESKTOP_LIST_EMPTY="1"
+    elif [[ ${SHORTCUT_SKIP_LIST} == '###PREFIX:'* ]] ; then
+        SHORTCUT_SKIP_LIST="$(grep -il '###PREFIX:' ${PORT_WINE_PATH}/*.desktop 2>/dev/null)"
+        SHORTCUT_SKIP_LIST+="$(grep -i '###PREFIX:' ${PORT_WINE_PATH}/*.desktop 2>/dev/null)"
+        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//"${PORT_WINE_PATH}/"/""}"
+        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//###PREFIX:/"%"}"
         SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//" "/"*"}"
+        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//###/""}"
         SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//".desktop"/".lnk"}"
-        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//"###"/" "}"
     else
-        SHORTCUT_SKIP_LIST=""
+        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//"${PORT_WINE_PATH}/"/""}"
+        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//:###PREFIX:/"%"}"
+        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//" "/"*"}"
+        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//[[:space:]]/" "}"
+        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//###/""}"
+        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//".desktop"/".lnk"}"
     fi
 
     shortcut_fix () {
@@ -1070,13 +1077,13 @@ stop_portwine () {
         fi
         if ! exe_path="$(realpath "${link_path}")" ; then
             try_remove_file "$link_file"
-            print_warning "Removed broken link for $link_name"
+            print_warning "Removed broken link for: $link_name"
         else
             create_shortcut_from_link
-            if [[ "${CREATE_WITH_PREFIX}" == "true" ]] ; then
-                print_info "Created link for $link_name - $prefix_name"
+            if [[ "${SHORTCUT_DUBLICATE}" == "true" ]] ; then
+                print_info "Created link for dublicate: $link_name - $prefix_name"
             else
-                print_info "Created link for $link_name"
+                print_info "Created link for: $link_name"
             fi
         fi
     done
@@ -1397,13 +1404,15 @@ create_shortcut_from_link () {
         fi
     fi
 
-    if [[ -f "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop" ]] ; then
-        mv -f "${link_file}" "${link_file//".lnk"/" - ${prefix_name}.lnk"}"
-        PW_NAME_DESKTOP="${PORT_WINE_PATH}/${PORTPROTON_NAME} - ${prefix_name}.desktop"
-        export CREATE_WITH_PREFIX="true"
+    if [[ -f "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop" ]] \
+    && [[ "$DESKTOP_LIST_EMPTY" != "1" ]] ; then
+        rm -f "${link_file}"
+        create_new_dir "${PORT_WINE_PATH}/dublicate"
+        PW_NAME_DESKTOP="${PORT_WINE_PATH}/dublicate/${PORTPROTON_NAME} - ${prefix_name}.desktop"
+        export SHORTCUT_DUBLICATE="true"
     else
         PW_NAME_DESKTOP="${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
-        export CREATE_WITH_PREFIX=""
+        export SHORTCUT_DUBLICATE=""
     fi
 
     echo "[Desktop Entry]" > "${PW_NAME_DESKTOP}"
@@ -1425,8 +1434,7 @@ create_shortcut_from_link () {
         echo "StartupNotify=true"
         echo "Path=${PORT_SCRIPTS_PATH}/"
         echo "Icon=${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
-        echo "###AUTOCREATE###"
-        echo "###PREFIX:$prefix_name###"
+        echo "###PREFIX:${prefix_name}###"
     } >> "${PW_NAME_DESKTOP}"
     chmod u+x "${PW_NAME_DESKTOP}"
 
@@ -4699,6 +4707,7 @@ portwine_create_shortcut () {
             echo "StartupNotify=true"
             echo "Path=${PORT_SCRIPTS_PATH}/"
             echo "Icon=${PORT_WINE_PATH}/data/img/${name_desktop_png}.png"
+            echo "###PREFIX:${PW_PREFIX_NAME}###"
         } >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
         chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 
@@ -4762,18 +4771,24 @@ portwine_create_shortcut () {
 }
 
 portwine_delete_shortcut () {
-    rm -f "$(grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop)" &>/dev/null
-    rm -f "$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop)" &>/dev/null
-    # rm -f "$(grep -il "${portwine_exe}" "${STEAM_SCRIPTS}"/*.sh)" &>/dev/null
+    rm_helper="$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop 2>/dev/null)"
+    rm_helper="${rm_helper//"${PORT_WINE_PATH}/"/""}"
+    rm_helper="${rm_helper//".desktop"/""}"
+    rm -f "${PORT_WINE_PATH}/data/prefixes/$PW_PREFIX_NAME/drive_c/users/steamuser/Desktop/${rm_helper}.lnk"
+    rm -f "${PORT_WINE_PATH}/data/prefixes/$PW_PREFIX_NAME/drive_c/users/Public/Desktop/${rm_helper}.lnk"
+
+    # rm -f "${STEAM_SCRIPTS}/${rm_helper}.sh"
+
+    rm -f "$(grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop)"
+    rm -f "$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop)"
+
     if [[ -d "${HOME}/Desktop" ]] ; then
-        rm -f "$(grep -il "${portwine_exe}" "${HOME}/Desktop"/*.desktop)" &>/dev/null
+        rm -f "$(grep -il "${portwine_exe}" "${HOME}/Desktop"/*.desktop)"
     elif [[ -d "${HOME}/Рабочий стол" ]] ; then
-        rm -f "$(grep -il "${portwine_exe}" "${HOME}/Рабочий стол"/*.desktop)" &>/dev/null
+        rm -f "$(grep -il "${portwine_exe}" "${HOME}/Рабочий стол"/*.desktop)"
     elif [[ $(xdg-user-dir DESKTOP) ]] ; then
-        rm -f "$(grep -il "${portwine_exe}" "$(xdg-user-dir DESKTOP)"/*.desktop)" &>/dev/null
+        rm -f "$(grep -il "${portwine_exe}" "$(xdg-user-dir DESKTOP)"/*.desktop)"
     fi
-    rm -f "$(grep -il "${portwine_exe}" " ${PORT_WINE_PATH}/data/prefixes/$PW_PREFIX_NAME/drive_c/users/steamuser/Desktop"/*.lnk)" &>/dev/null
-    rm -f "$(grep -il "${portwine_exe}" " ${PORT_WINE_PATH}/data/prefixes/$PW_PREFIX_NAME/drive_c/users/Public/Desktop"/*.lnk)" &>/dev/null
 }
 
 portwine_missing_shortcut () {
