@@ -999,38 +999,6 @@ stop_portwine () {
         kill -s SIGUSR1 "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')" 2>/dev/null
     fi
 
-    SHORTCUT_SKIP_LIST="$(grep -i '###PREFIX:' ${PORT_WINE_PATH}/*.desktop 2>/dev/null)"
-
-    if [[ ${SHORTCUT_SKIP_LIST} == "" ]] ; then
-        export DESKTOP_LIST_EMPTY="1"
-    elif [[ ${SHORTCUT_SKIP_LIST} == '###PREFIX:'* ]] ; then
-        SHORTCUT_SKIP_LIST="$(grep -il '###PREFIX:' ${PORT_WINE_PATH}/*.desktop 2>/dev/null)"
-        SHORTCUT_SKIP_LIST+="$(grep -i '###PREFIX:' ${PORT_WINE_PATH}/*.desktop 2>/dev/null)"
-        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//"${PORT_WINE_PATH}/"/""}"
-        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//###PREFIX:/"%"}"
-        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//" "/"*"}"
-        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//###/""}"
-        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//".desktop"/".lnk"}"
-    else
-        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//"${PORT_WINE_PATH}/"/""}"
-        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//:###PREFIX:/"%"}"
-        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//" "/"*"}"
-        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//[[:space:]]/" "}"
-        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//###/""}"
-        SHORTCUT_SKIP_LIST="${SHORTCUT_SKIP_LIST//".desktop"/".lnk"}"
-    fi
-
-    shortcut_fix () {
-    SHORTCUT_SKIP_LIST_NEW=""
-    prefix_check=${dir//*prefixes\/}
-    prefix_check=${prefix_check//\/drive_c*/}
-    for fix in ${SHORTCUT_SKIP_LIST} ; do
-        if [[ "${prefix_check}" == ${fix//*%/} ]] ; then
-            SHORTCUT_SKIP_LIST_NEW+="-not -name "${fix//%*/}" "
-        fi
-    done
-    }
-
     for prefix_dir in "${PORT_WINE_PATH}"/prefixes/* ; do
         DESKTOP_DIRS+=(
             "${prefix_dir}/drive_c/users/steamuser/Desktop"
@@ -1039,7 +1007,6 @@ stop_portwine () {
     done
 
     for dir in "${DESKTOP_DIRS[@]}" ; do
-        shortcut_fix
         while IFS= read -r -d '' link_file; do
             LINKS+=("$link_file")
         done < <(find "$dir" -type f -iname "*.lnk" ${SHORTCUT_SKIP_LIST_NEW} -print0 2>/dev/null | sort -u)
@@ -1404,9 +1371,7 @@ create_shortcut_from_link () {
         fi
     fi
 
-    if [[ -f "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop" ]] \
-    && [[ "$DESKTOP_LIST_EMPTY" != "1" ]] ; then
-        rm -f "${link_file}"
+    if [[ -f "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop" ]] ; then
         create_new_dir "${PORT_WINE_PATH}/dublicate"
         PW_NAME_DESKTOP="${PORT_WINE_PATH}/dublicate/${PORTPROTON_NAME} - ${prefix_name}.desktop"
         export SHORTCUT_DUBLICATE="true"
@@ -1414,6 +1379,7 @@ create_shortcut_from_link () {
         PW_NAME_DESKTOP="${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
         export SHORTCUT_DUBLICATE=""
     fi
+    rm -f "${link_file}"
 
     echo "[Desktop Entry]" > "${PW_NAME_DESKTOP}"
     echo "Name=${PORTPROTON_NAME}" >> "${PW_NAME_DESKTOP}"
@@ -1434,20 +1400,23 @@ create_shortcut_from_link () {
         echo "StartupNotify=true"
         echo "Path=${PORT_SCRIPTS_PATH}/"
         echo "Icon=${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
-        echo "###PREFIX:${prefix_name}###"
     } >> "${PW_NAME_DESKTOP}"
     chmod u+x "${PW_NAME_DESKTOP}"
+
+    [[ -z "${PW_SHORTCUT_DESKTOP}" ]] && PW_SHORTCUT_DESKTOP="TRUE"
 
     if [[ "$DESKTOP_SESSION" =~ "gnome" ]] ; then
         try_remove_file "${HOME}/.local/share/applications/${PORTPROTON_NAME}.desktop"
         cp -f "${PW_NAME_DESKTOP}" "${HOME}/.local/share/applications/"
     else
-        if [[ -d "${HOME}/Desktop" ]] ; then
-            cp -f "${PW_NAME_DESKTOP}" "${HOME}/Desktop/"
-        elif [[ -d "${HOME}/Рабочий стол" ]] ; then
-            cp -f "${PW_NAME_DESKTOP}" "${HOME}/Рабочий стол/"
-        elif [[ $(xdg-user-dir DESKTOP) ]] ; then
-            cp -f "${PW_NAME_DESKTOP}" "$(xdg-user-dir DESKTOP)"
+        if [[ ${PW_SHORTCUT_DESKTOP} == "TRUE" ]] ; then
+            if [[ -d "${HOME}/Desktop" ]] ; then
+                cp -f "${PW_NAME_DESKTOP}" "${HOME}/Desktop/"
+            elif [[ -d "${HOME}/Рабочий стол" ]] ; then
+                cp -f "${PW_NAME_DESKTOP}" "${HOME}/Рабочий стол/"
+            elif [[ $(xdg-user-dir DESKTOP) ]] ; then
+                cp -f "${PW_NAME_DESKTOP}" "$(xdg-user-dir DESKTOP)"
+            fi
         fi
     fi
 }
@@ -1838,6 +1807,45 @@ pw_find_exe () {
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     fi
+}
+
+pw_dublicate () {
+    orig_IFS="$IFS" && IFS=$'\n'
+    PW_DUBLICATE="$(ls "${PORT_WINE_PATH}"/dublicate/ | grep .desktop)"
+    for PW_DUBLICATE_FILES_D in ${PW_DUBLICATE} ; do
+        PW_NAME_D_ICON_D="$(grep Icon "${PORT_WINE_PATH}/dublicate/${PW_DUBLICATE_FILES_D}" | awk -F= '{print $2}')"
+        PW_NAME_D_ICON_48_D="${PW_NAME_D_ICON_D//".png"/"_48.png"}"
+        if [[ ! -f "${PW_NAME_D_ICON_48_D}" ]]  \
+        && [[ -f "${PW_NAME_D_ICON_D}" ]] \
+        && command -v "convert" 2>/dev/null
+        then
+            convert "${PW_NAME_D_ICON_D}" -resize 48x48 "${PW_NAME_D_ICON_48_D}"
+        fi
+        PW_DUBLICATE_HELPER_D="${PW_DUBLICATE_FILES_D// /@_@}"
+        PW_GENERATE_BUTTONS_D+="--field=   ${PW_DUBLICATE_FILES_D//".desktop"/""}!${PW_NAME_D_ICON_48_D}!:FBTN%@bash -c \"run_desktop_b_click "${PW_DUBLICATE_HELPER_D}"\"%"
+    done
+
+    export USE_DUBLICATE_GUI="1"
+
+    IFS="$orig_IFS"
+    old_IFS=$IFS && IFS="%"
+    GUI_DUBLICATE="$("${pw_yad}" --width="${PW_DUBLICATE_SIZE_W}" --height="${PW_DUBLICATE_SIZE_H}" \
+    --columns="$MAIN_GUI_COLUMNS" --homogeneous-column --form \
+    --gui-type-layout=${MAIN_MENU_GUI_TYPE_LAYOUT} \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+    --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
+    --align-buttons --scroll --separator=" " ${PW_GENERATE_BUTTONS_D} 2>/dev/null)"
+    YAD_STATUS="$?"
+    IFS="$orig_IFS"
+
+    if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
+        exit 0
+    fi
+
+    pw_yad_set_form
+    [[ ! -z "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
+    *.desktop) run_desktop_b_click ;;
+    esac
 }
 
 pw_create_unique_exe () {
@@ -4679,13 +4687,9 @@ portwine_create_shortcut () {
         fi
         name_desktop="$(echo "${name_desktop}" | sed "s/\`//g" | sed "s/\"//g" | sed "s/'//g")"
         name_desktop_png="${name_desktop// /_}"
-        create_menu_desktop_shortcut=$(echo "$OUTPUT" | awk -F'|' '{print $2}')
-        create_desktop_desktop_shortcut=$(echo "$OUTPUT" | awk -F'|' '{print $3}')
-        create_menu_steam_shortcut=$(echo "$OUTPUT" | awk -F'|' '{print $4}')
-
-        PW_SHORTCUT_MENU="$create_menu_desktop_shortcut"
-        PW_SHORTCUT_DESKTOP="$create_desktop_desktop_shortcut"
-        PW_SHORTCUT_STEAM="$create_menu_steam_shortcut"
+        PW_SHORTCUT_MENU=$(echo "$OUTPUT" | awk -F'|' '{print $2}')
+        PW_SHORTCUT_DESKTOP=$(echo "$OUTPUT" | awk -F'|' '{print $3}')
+        PW_SHORTCUT_STEAM=$(echo "$OUTPUT" | awk -F'|' '{print $4}')
 
         edit_user_conf_from_gui PW_SHORTCUT_MENU PW_SHORTCUT_DESKTOP PW_SHORTCUT_STEAM
 
@@ -4707,16 +4711,15 @@ portwine_create_shortcut () {
             echo "StartupNotify=true"
             echo "Path=${PORT_SCRIPTS_PATH}/"
             echo "Icon=${PORT_WINE_PATH}/data/img/${name_desktop_png}.png"
-            echo "###PREFIX:${PW_PREFIX_NAME}###"
         } >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
         chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 
-        if [[ "${create_menu_desktop_shortcut}" == "TRUE" ]] ; then
+        if [[ "${PW_SHORTCUT_MENU}" == "TRUE" ]] ; then
             try_remove_file "${HOME}/.local/share/applications/${name_desktop}.desktop"
             cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" "${HOME}/.local/share/applications/"
         fi
 
-        if [[ "${create_desktop_desktop_shortcut}" == "TRUE" ]] ; then
+        if [[ "${PW_SHORTCUT_DESKTOP}" == "TRUE" ]] ; then
             if [[ -d "${HOME}/Desktop" ]] ; then
                 cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" "${HOME}/Desktop/"
             elif [[ -d "${HOME}/Рабочий стол" ]] ; then
@@ -4726,7 +4729,7 @@ portwine_create_shortcut () {
             fi
         fi
 
-        if [[ "${create_menu_steam_shortcut}" == "TRUE" ]] ; then
+        if [[ "${PW_SHORTCUT_STEAM}" == "TRUE" ]] ; then
             export STEAM_SCRIPTS="${PORT_WINE_PATH}/steam_scripts"
             create_new_dir "${STEAM_SCRIPTS}"
             echo "#!/usr/bin/env bash" > "${STEAM_SCRIPTS}/${name_desktop}.sh"
@@ -4771,23 +4774,15 @@ portwine_create_shortcut () {
 }
 
 portwine_delete_shortcut () {
-    rm_helper="$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop 2>/dev/null)"
-    rm_helper="${rm_helper//"${PORT_WINE_PATH}/"/""}"
-    rm_helper="${rm_helper//".desktop"/""}"
-    rm -f "${PORT_WINE_PATH}/data/prefixes/$PW_PREFIX_NAME/drive_c/users/steamuser/Desktop/${rm_helper}.lnk"
-    rm -f "${PORT_WINE_PATH}/data/prefixes/$PW_PREFIX_NAME/drive_c/users/Public/Desktop/${rm_helper}.lnk"
-
-    # rm -f "${STEAM_SCRIPTS}/${rm_helper}.sh"
-
-    rm -f "$(grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop)"
-    rm -f "$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop)"
-
+    rm -f "$(grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop)" &>/dev/null
+    rm -f "$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop)" &>/dev/null
+    # rm -f "$(grep -il "${portwine_exe}" "${STEAM_SCRIPTS}"/*.sh)" &>/dev/null
     if [[ -d "${HOME}/Desktop" ]] ; then
-        rm -f "$(grep -il "${portwine_exe}" "${HOME}/Desktop"/*.desktop)"
+        rm -f "$(grep -il "${portwine_exe}" "${HOME}/Desktop"/*.desktop)" &>/dev/null
     elif [[ -d "${HOME}/Рабочий стол" ]] ; then
-        rm -f "$(grep -il "${portwine_exe}" "${HOME}/Рабочий стол"/*.desktop)"
+        rm -f "$(grep -il "${portwine_exe}" "${HOME}/Рабочий стол"/*.desktop)" &>/dev/null
     elif [[ $(xdg-user-dir DESKTOP) ]] ; then
-        rm -f "$(grep -il "${portwine_exe}" "$(xdg-user-dir DESKTOP)"/*.desktop)"
+        rm -f "$(grep -il "${portwine_exe}" "$(xdg-user-dir DESKTOP)"/*.desktop)" &>/dev/null
     fi
 }
 
@@ -5196,13 +5191,22 @@ export -f button_click_start
 
 run_desktop_b_click () {
     [[ ! -z "$1" ]] && echo "$1" > "${PW_TMPFS_PATH}/tmp_yad_form"
-    if [[ ! -z $(pidof -s yad) ]] || [[ ! -z $(pidof -s yad_gui_pp) ]] ; then
-        kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \--notebook" | awk '{print $1}') > /dev/null 2>&1
-    fi
-
-    if check_flatpak
-    then PW_EXEC_FROM_DESKTOP="$(grep Exec "${PORT_WINE_PATH}/${PW_YAD_SET//@_@/ }" | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
-    else PW_EXEC_FROM_DESKTOP="$(grep Exec "${PORT_WINE_PATH}/${PW_YAD_SET//@_@/ }" | head -n 1 | awk -F"=env " '{print $2}')"
+    if [[ "${USE_DUBLICATE_GUI}" == "1" ]] ; then
+        if [[ ! -z $(pidof -s yad) ]] || [[ ! -z $(pidof -s yad_gui_pp) ]] ; then
+            kill -s SIGUSR1 $(pgrep -a yad | grep "\--width="${PW_DUBLICATE_SIZE_W}" \--height="${PW_DUBLICATE_SIZE_H}"" | awk '{print $1}') > /dev/null 2>&1
+        fi
+        if check_flatpak
+        then PW_EXEC_FROM_DESKTOP="$(grep Exec "${PORT_WINE_PATH}/dublicate/${PW_YAD_SET//@_@/ }" | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
+        else PW_EXEC_FROM_DESKTOP="$(grep Exec "${PORT_WINE_PATH}/dublicate/${PW_YAD_SET//@_@/ }" | head -n 1 | awk -F"=env " '{print $2}')"
+        fi
+    else
+        if [[ ! -z $(pidof -s yad) ]] || [[ ! -z $(pidof -s yad_gui_pp) ]] ; then
+            kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \--notebook" | awk '{print $1}') > /dev/null 2>&1
+        fi
+        if check_flatpak
+        then PW_EXEC_FROM_DESKTOP="$(grep Exec "${PORT_WINE_PATH}/${PW_YAD_SET//@_@/ }" | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
+        else PW_EXEC_FROM_DESKTOP="$(grep Exec "${PORT_WINE_PATH}/${PW_YAD_SET//@_@/ }" | head -n 1 | awk -F"=env " '{print $2}')"
+        fi
     fi
 
     print_info "Restarting PP after choose desktop file..."
