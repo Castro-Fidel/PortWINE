@@ -1009,7 +1009,7 @@ stop_portwine () {
     for dir in "${DESKTOP_DIRS[@]}" ; do
         while IFS= read -r -d '' link_file; do
             LINKS+=("$link_file")
-        done < <(find "$dir" -type f -iname "*.lnk" ${SHORTCUT_SKIP_LIST_NEW} -print0 2>/dev/null | sort -u)
+        done < <(find "$dir" -type f -iname "*.lnk" -print0 2>/dev/null | sort -u)
     done
 
     for link_file in "${LINKS[@]}"; do
@@ -1048,7 +1048,7 @@ stop_portwine () {
         else
             create_shortcut_from_link
             if [[ "${SHORTCUT_DUBLICATE}" == "true" ]] ; then
-                print_info "Created link for dublicate: $link_name - $prefix_name"
+                print_info "Created link for dublicate: $link_name - $prefix_name [$number_dublication]"
             else
                 print_info "Created link for: $link_name"
             fi
@@ -1371,15 +1371,30 @@ create_shortcut_from_link () {
         fi
     fi
 
+    rm -f "${link_file}"
     if [[ -f "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop" ]] ; then
-        create_new_dir "${PORT_WINE_PATH}/dublicate"
-        PW_NAME_DESKTOP="${PORT_WINE_PATH}/dublicate/${PORTPROTON_NAME} - ${prefix_name}.desktop"
-        export SHORTCUT_DUBLICATE="true"
+        if ! grep -i "${exe_path}" "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop" &>/dev/null ; then
+            create_new_dir "${PORT_WINE_PATH}/dublicate"
+            SHORTCUT_DUBLICATE="true"
+            number_dublication="1"
+            if [[ -f "${PORT_WINE_PATH}/dublicate/${PORTPROTON_NAME} - ${prefix_name} [$number_dublication].desktop" ]] ; then
+                number_dublication="$(ls "${PORT_WINE_PATH}/dublicate"/ 2>/dev/null)"
+                number_dublication="${number_dublication//*[/}"
+                number_dublication="${number_dublication//]*/}"
+                if ! grep -i "${exe_path}" "${PORT_WINE_PATH}/dublicate/${PORTPROTON_NAME} - ${prefix_name} [$number_dublication].desktop" &>/dev/null ; then
+                    number_dublication="$(($number_dublication+1))"
+                else
+                    exit 0
+                fi
+            fi
+            PW_NAME_DESKTOP="${PORT_WINE_PATH}/dublicate/${PORTPROTON_NAME} - ${prefix_name} [$number_dublication].desktop"
+        else
+            exit 0
+        fi
     else
         PW_NAME_DESKTOP="${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
-        export SHORTCUT_DUBLICATE=""
+        SHORTCUT_DUBLICATE=""
     fi
-    rm -f "${link_file}"
 
     echo "[Desktop Entry]" > "${PW_NAME_DESKTOP}"
     echo "Name=${PORTPROTON_NAME}" >> "${PW_NAME_DESKTOP}"
