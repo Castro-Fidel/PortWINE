@@ -87,7 +87,7 @@ unset CHK_SYMLINK_FILE PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PATH_T
 unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD PW_WINE_CPU_TOPOLOGY
 unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_ALL_DF PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
 unset MANGOHUD_CONFIG FPS_LIMIT PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME PORTWINE_CREATE_SHORTCUT_NAME MIRROR
-unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NOSTSTDIR USE_DUBLICATE_GUI
+unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NOSTSTDIR USE_DUPLICATE_GUI
 
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 rm -f "$PORT_WINE_TMP_PATH"/*{exe,msi,tar}*
@@ -629,8 +629,8 @@ else
     else PW_GUI_SORT_TABS=(2 3 4 5 1)
     fi
     PW_GENERATE_BUTTONS="--field=   $(gettext "Create shortcut...")!${PW_GUI_ICON_PATH}/find_48.svg!:FBTN%@bash -c \"button_click pw_find_exe\"%"
-    if grep -i "[Desktop Entry]" "${PORT_WINE_PATH}/dublicate"/* &>/dev/null ; then
-        PW_GENERATE_BUTTONS+="--field=   $(gettext "Dublicate")!${PW_GUI_ICON_PATH}/find_48.svg!:FBTN%@bash -c \"button_click pw_dublicate\"%"
+    if grep -i "[Desktop Entry]" "${PORT_WINE_PATH}/duplicate"/* &>/dev/null ; then
+        PW_GENERATE_BUTTONS+="--field=   $(gettext "Duplicates")!${PW_GUI_ICON_PATH}/find_48.svg!:FBTN%@bash -c \"button_click pw_duplicate\"%"
     fi
     for PW_DESKTOP_FILES in ${PW_ALL_DF} ; do
         PW_NAME_D_ICON="$(grep Icon "${PORT_WINE_PATH}/${PW_DESKTOP_FILES}" | awk -F= '{print $2}')"
@@ -840,7 +840,7 @@ fi
     gui_credits) gui_credits ;;
     pw_start_cont_xterm) pw_start_cont_xterm ;;
     pw_find_exe) pw_find_exe ;;
-    pw_dublicate) pw_dublicate ;;
+    pw_duplicate) pw_duplicate ;;
     PW_*) pw_autoinstall_from_db ;;
     *.desktop) run_desktop_b_click ;;
     1|252|*) exit 0 ;;

@@ -1047,8 +1047,8 @@ stop_portwine () {
             print_warning "Removed broken link for: $link_name"
         else
             create_shortcut_from_link
-            if [[ "${SHORTCUT_DUBLICATE}" == "true" ]] ; then
-                print_info "Created link for dublicate: $link_name - $prefix_name [$number_dublication]"
+            if [[ "${SHORTCUT_DUPLICATE}" == "true" ]] ; then
+                print_info "Created link for duplicate: $link_name - $prefix_name [$number_duplication]"
             else
                 print_info "Created link for: $link_name"
             fi
@@ -1361,7 +1361,7 @@ create_shortcut_from_link () {
     try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
 
      if [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
-        if command -v exe-thumbnailer &>/dev/null ; then
+        if command -v exe-thumbnailer &>/dev/null && [[ ! $(sestatus | grep "Current mode: *enforcing" &>/dev/null) ]] ; then
             exe-thumbnailer -s 128 "$(readlink -f "${exe_path}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
         else
             env PYTHONPATH="${PW_PLUGINS_PATH}/portable/lib/python3.9/site-packages/" \
@@ -1374,26 +1374,48 @@ create_shortcut_from_link () {
     rm -f "${link_file}"
     if [[ -f "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop" ]] ; then
         if ! grep -i "${exe_path}" "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop" &>/dev/null ; then
-            create_new_dir "${PORT_WINE_PATH}/dublicate"
-            SHORTCUT_DUBLICATE="true"
-            number_dublication="1"
-            if [[ -f "${PORT_WINE_PATH}/dublicate/${PORTPROTON_NAME} - ${prefix_name} [$number_dublication].desktop" ]] ; then
-                number_dublication="$(ls "${PORT_WINE_PATH}/dublicate"/ 2>/dev/null)"
-                number_dublication="${number_dublication//*[/}"
-                number_dublication="${number_dublication//]*/}"
-                if ! grep -i "${exe_path}" "${PORT_WINE_PATH}/dublicate/${PORTPROTON_NAME} - ${prefix_name} [$number_dublication].desktop" &>/dev/null ; then
-                    number_dublication="$(($number_dublication+1))"
+            create_new_dir "${PORT_WINE_PATH}/duplicate"
+            if [[ "$(ls -A "${PORT_WINE_PATH}/duplicate/${PORTPROTON_NAME} - ${prefix_name}"* 2>/dev/null)" ]] ; then
+                if ! grep -i "${exe_path}" "${PORT_WINE_PATH}/duplicate/${PORTPROTON_NAME} - ${prefix_name}"* &>/dev/null ; then
+                    number_duplication="$(ls "${PORT_WINE_PATH}/duplicate"/ 2>/dev/null)"
+                    number_duplication="${number_duplication//${PORTPROTON_NAME} - ${prefix_name}/}"
+                    number_duplication="${number_duplication//].desktop/}"
+                    number_duplication=(${number_duplication//[/})
+                    dup_prev="0"
+                    for dup_num in ${number_duplication[@]} ; do
+                        dup_num_list="$(("$dup_num" - 1))"
+                        if [[ "$dup_num_list" != "$dup_prev" ]] ; then
+                            dup_num_list_new+="$dup_num_list "
+                        fi
+                        dup_prev="$dup_num"
+                    done
+
+                    if [[ -z "$dup_num_list_new" ]] ; then
+                        number_duplication="${dup_prev}"
+                    else
+                        dup_helper="$(echo ${dup_num_list_new} | awk '{print $1}')"
+                        for dup in ${number_duplication[@]} ; do
+                            if (( "$dup_helper" > "$dup" )) ; then
+                                dup_helper_new+="$dup "
+                            fi
+                        done
+                        number_duplication="$(echo ${dup_helper_new} | awk '{print $NF}')"
+                    fi
+                    number_duplication="$(("$number_duplication" + 1))"
                 else
                     exit 0
                 fi
+            else
+                number_duplication="1"
             fi
-            PW_NAME_DESKTOP="${PORT_WINE_PATH}/dublicate/${PORTPROTON_NAME} - ${prefix_name} [$number_dublication].desktop"
+            PW_NAME_DESKTOP="${PORT_WINE_PATH}/duplicate/${PORTPROTON_NAME} - ${prefix_name} [$number_duplication].desktop"
+            SHORTCUT_DUPLICATE="true"
         else
             exit 0
         fi
     else
         PW_NAME_DESKTOP="${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
-        SHORTCUT_DUBLICATE=""
+        SHORTCUT_DUPLICATE=""
     fi
 
     echo "[Desktop Entry]" > "${PW_NAME_DESKTOP}"
@@ -1824,11 +1846,12 @@ pw_find_exe () {
     fi
 }
 
-pw_dublicate () {
+pw_duplicate () {
+    export USE_DUPLICATE_GUI="1"
     orig_IFS="$IFS" && IFS=$'\n'
-    PW_DUBLICATE="$(ls "${PORT_WINE_PATH}"/dublicate/ | grep .desktop)"
-    for PW_DUBLICATE_FILES_D in ${PW_DUBLICATE} ; do
-        PW_NAME_D_ICON_D="$(grep Icon "${PORT_WINE_PATH}/dublicate/${PW_DUBLICATE_FILES_D}" | awk -F= '{print $2}')"
+    PW_DESKTOP_D="$(ls "${PORT_WINE_PATH}"/duplicate/ | grep .desktop)"
+    for PW_DESKTOP_FILES_D in ${PW_DESKTOP_D} ; do
+        PW_NAME_D_ICON_D="$(grep Icon "${PORT_WINE_PATH}/duplicate/${PW_DESKTOP_FILES_D}" | awk -F= '{print $2}')"
         PW_NAME_D_ICON_48_D="${PW_NAME_D_ICON_D//".png"/"_48.png"}"
         if [[ ! -f "${PW_NAME_D_ICON_48_D}" ]]  \
         && [[ -f "${PW_NAME_D_ICON_D}" ]] \
@@ -1836,31 +1859,27 @@ pw_dublicate () {
         then
             convert "${PW_NAME_D_ICON_D}" -resize 48x48 "${PW_NAME_D_ICON_48_D}"
         fi
-        PW_DUBLICATE_HELPER_D="${PW_DUBLICATE_FILES_D// /@_@}"
-        PW_GENERATE_BUTTONS_D+="--field=   ${PW_DUBLICATE_FILES_D//".desktop"/""}!${PW_NAME_D_ICON_48_D}!:FBTN%@bash -c \"run_desktop_b_click "${PW_DUBLICATE_HELPER_D}"\"%"
+        PW_DESKTOP_HELPER_D="${PW_DESKTOP_FILES_D// /@_@}"
+        PW_GENERATE_BUTTONS_D+="--field=   ${PW_DESKTOP_FILES_D//".desktop"/""}!${PW_NAME_D_ICON_48_D}!:FBTN%@bash -c \"run_desktop_b_click "${PW_DESKTOP_HELPER_D}"\"%"
     done
-
-    export USE_DUBLICATE_GUI="1"
-
     IFS="$orig_IFS"
+
     old_IFS=$IFS && IFS="%"
-    GUI_DUBLICATE="$("${pw_yad}" --width="${PW_DUBLICATE_SIZE_W}" --height="${PW_DUBLICATE_SIZE_H}" \
+    PW_DUPLICATE_GUI="$("${pw_yad}" --width="${PW_DUPLICATE_SIZE_W}" --height="${PW_DUPLICATE_SIZE_H}" \
     --columns="$MAIN_GUI_COLUMNS" --homogeneous-column --form \
     --gui-type-layout=${MAIN_MENU_GUI_TYPE_LAYOUT} \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
     --align-buttons --scroll --separator=" " ${PW_GENERATE_BUTTONS_D} 2>/dev/null)"
-    YAD_STATUS="$?"
     IFS="$orig_IFS"
+    YAD_STATUS="$?"
 
-    if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
-        exit 0
-    fi
+    if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
 
     pw_yad_set_form
-    [[ ! -z "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
-    *.desktop) run_desktop_b_click ;;
-    esac
+    if [[ "$PW_YAD_SET" == *.desktop ]] ; then
+        run_desktop_b_click
+    fi
 }
 
 pw_create_unique_exe () {
@@ -4791,6 +4810,7 @@ portwine_create_shortcut () {
 portwine_delete_shortcut () {
     rm -f "$(grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop)" &>/dev/null
     rm -f "$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop)" &>/dev/null
+    rm -f "$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}/duplicate"/*.desktop)" &>/dev/null
     # rm -f "$(grep -il "${portwine_exe}" "${STEAM_SCRIPTS}"/*.sh)" &>/dev/null
     if [[ -d "${HOME}/Desktop" ]] ; then
         rm -f "$(grep -il "${portwine_exe}" "${HOME}/Desktop"/*.desktop)" &>/dev/null
@@ -5206,13 +5226,13 @@ export -f button_click_start
 
 run_desktop_b_click () {
     [[ ! -z "$1" ]] && echo "$1" > "${PW_TMPFS_PATH}/tmp_yad_form"
-    if [[ "${USE_DUBLICATE_GUI}" == "1" ]] ; then
+    if [[ "${USE_DUPLICATE_GUI}" == "1" ]] ; then
         if [[ ! -z $(pidof -s yad) ]] || [[ ! -z $(pidof -s yad_gui_pp) ]] ; then
-            kill -s SIGUSR1 $(pgrep -a yad | grep "\--width="${PW_DUBLICATE_SIZE_W}" \--height="${PW_DUBLICATE_SIZE_H}"" | awk '{print $1}') > /dev/null 2>&1
+            kill -s SIGUSR1 $(pgrep -a yad | grep "\--width="${PW_DUPLICATE_SIZE_W}" \--height="${PW_DUPLICATE_SIZE_H}"" | awk '{print $1}') > /dev/null 2>&1
         fi
         if check_flatpak
-        then PW_EXEC_FROM_DESKTOP="$(grep Exec "${PORT_WINE_PATH}/dublicate/${PW_YAD_SET//@_@/ }" | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
-        else PW_EXEC_FROM_DESKTOP="$(grep Exec "${PORT_WINE_PATH}/dublicate/${PW_YAD_SET//@_@/ }" | head -n 1 | awk -F"=env " '{print $2}')"
+        then PW_EXEC_FROM_DESKTOP="$(grep Exec "${PORT_WINE_PATH}/duplicate/${PW_YAD_SET//@_@/ }" | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
+        else PW_EXEC_FROM_DESKTOP="$(grep Exec "${PORT_WINE_PATH}/duplicate/${PW_YAD_SET//@_@/ }" | head -n 1 | awk -F"=env " '{print $2}')"
         fi
     else
         if [[ ! -z $(pidof -s yad) ]] || [[ ! -z $(pidof -s yad_gui_pp) ]] ; then
