@@ -1015,7 +1015,8 @@ stop_portwine () {
     for link_file in "${LINKS[@]}"; do
         if timeout 3 exiftool "$link_file" 2>/dev/null > "${PW_TMPFS_PATH}/exiftool.tmp" ; then
             prefix_name=$(echo "$link_file" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
-            if grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" &>/dev/null ; then
+            if fix_icon_name=$(grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" 2>/dev/null) \
+            && [[ "${fix_icon_name//*.exe/true}" == "true" ]] ; then
                 link_drive=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
                 link_path=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/$prefix_name/dosdevices/$link_drive|g" | sed 's/\\/\//g')
             else
@@ -1027,9 +1028,10 @@ stop_portwine () {
         else
             if ! command -v exiftool &>/dev/null ; then
                 print_warning "use portable exiftool"
-                prefix_name=$(echo "$link_file" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
                 env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" "$link_file" 2>/dev/null > "${PW_TMPFS_PATH}/exiftool.tmp"
-                if grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" &>/dev/null ; then
+                prefix_name=$(echo "$link_file" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
+                if fix_icon_name=$(grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" 2>/dev/null) \
+                && [[ "${fix_icon_name//*.exe/true}" == "true" ]] ; then
                     link_drive=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
                     link_path=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/$prefix_name/dosdevices/$link_drive|g" | sed 's/\\/\//g')
                 else
@@ -1865,21 +1867,27 @@ pw_duplicate () {
     IFS="$orig_IFS"
 
     old_IFS=$IFS && IFS="%"
-    PW_DUPLICATE_GUI="$("${pw_yad}" --width="${PW_DUPLICATE_SIZE_W}" --height="${PW_DUPLICATE_SIZE_H}" \
+    "${pw_yad}" --width="${PW_DUPLICATE_SIZE_W}" --height="${PW_DUPLICATE_SIZE_H}" \
     --columns="$MAIN_GUI_COLUMNS" --homogeneous-column --form \
     --gui-type-layout=${MAIN_MENU_GUI_TYPE_LAYOUT} \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
-    --align-buttons --scroll --separator=" " ${PW_GENERATE_BUTTONS_D} 2>/dev/null)"
+    --align-buttons --scroll --separator=" " ${PW_GENERATE_BUTTONS_D} \
+    --button="$(gettext "MAIN MENU")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null
     IFS="$orig_IFS"
-    YAD_STATUS="$?"
-
-    if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
 
     pw_yad_set_form
-    if [[ "$PW_YAD_SET" == *.desktop ]] ; then
-        run_desktop_b_click
-    fi
+    [[ ! -z "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
+        *.desktop)
+                        run_desktop_b_click
+                        ;;
+        pw_duplicate)
+                        export SKIP_CHECK_UPDATES=1
+                        /usr/bin/env bash -c ${pw_full_command_line[*]} &
+                        print_info "Restarting..."
+                        exit 0
+                        ;;
+    esac
 }
 
 pw_create_unique_exe () {

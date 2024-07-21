@@ -630,7 +630,7 @@ else
     fi
     PW_GENERATE_BUTTONS="--field=   $(gettext "Create shortcut...")!${PW_GUI_ICON_PATH}/find_48.svg!:FBTN%@bash -c \"button_click pw_find_exe\"%"
     if grep -i "[Desktop Entry]" "${PORT_WINE_PATH}/duplicate"/* &>/dev/null ; then
-        PW_GENERATE_BUTTONS+="--field=   $(gettext "Duplicates")!${PW_GUI_ICON_PATH}/find_48.svg!:FBTN%@bash -c \"button_click pw_duplicate\"%"
+        PW_GENERATE_BUTTONS+="--field=   $(gettext "Duplicates")!${PW_GUI_ICON_PATH}/duplicate.svg!:FBTN%@bash -c \"button_click pw_duplicate\"%"
     fi
     for PW_DESKTOP_FILES in ${PW_ALL_DF} ; do
         PW_NAME_D_ICON="$(grep Icon "${PORT_WINE_PATH}/${PW_DESKTOP_FILES}" | awk -F= '{print $2}')"
