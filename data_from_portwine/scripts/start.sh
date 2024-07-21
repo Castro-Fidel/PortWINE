@@ -26,7 +26,7 @@ export NO_AT_BRIDGE="1"
 export GDK_BACKEND="x11"
 export pw_full_command_line=("$0" $*)
 
-MISSING_DESKTOP_FILE=0
+MISSING_DESKTOP_FILE="0"
 
 unset PW_NO_RESTART_PPDB PW_DISABLED_CREATE_DB
 if [[ "$1" == *.ppack ]] ; then
@@ -53,7 +53,7 @@ if echo "$portwine_exe" | grep ModernWarships &>/dev/null \
 then
     portwine_exe="$(dirname "${portwine_exe}")/Modern Warships.exe"
     export portwine_exe
-    MISSING_DESKTOP_FILE=0
+    MISSING_DESKTOP_FILE="0"
 fi
 
 cd "$(dirname "$(readlink -f "$0")")" && PORT_SCRIPTS_PATH="$(pwd)" || fatal
@@ -558,18 +558,12 @@ if [[ -f "${portwine_exe}" ]] ; then
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
             --tab="$(gettext "GENERAL")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
             --tab="$(gettext "SETTINGS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+            --button="$(gettext "MAIN MENU")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Main menu")":128 \
             --button="${PW_SHORTCUT}" \
             --button="$(gettext "DEBUG")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Launch with the creation of a .log file at the root PortProton")":102 \
             --button="$(gettext "LAUNCH")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Run file ...")":106 2>/dev/null
-
             PW_YAD_SET="$?"
-            if [[ "$PW_YAD_SET" == "1" || "$PW_YAD_SET" == "252" ]] ; then exit 0 ; fi
-            if [[ $(<"${PW_TMPFS_PATH}/tmp_yad_form") != "" ]] ; then
-                PW_YAD_SET=$(head -n 1 "${PW_TMPFS_PATH}/tmp_yad_form" | awk '{print $1}')
-                export PW_YAD_SET
-                export PW_YAD_FORM_TAB="1"
-            fi
-            pw_yad_form_vulkan
+            export PW_YAD_FORM_TAB="1"
 
         elif [[ "${PW_GUI_START}" == "PANED" ]] ; then
             "${pw_yad}" --plug=$KEY_START --tabnum=1 --form --separator=";" ${START_GUI_TYPE} \
@@ -596,16 +590,29 @@ if [[ -f "${portwine_exe}" ]] ; then
             --width="${PW_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" \
             --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+            --button="$(gettext "MAIN MENU")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Main menu")":128 \
             --button="${PW_SHORTCUT}" \
             --button="$(gettext "DEBUG")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Launch with the creation of a .log file at the root PortProton")":102 \
             --button="$(gettext "LAUNCH")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Run file ...")":106 2>/dev/null
-
             PW_YAD_SET="$?"
-            if [[ "$PW_YAD_SET" == "1" || "$PW_YAD_SET" == "252" ]] ; then exit 0 ; fi
-            pw_yad_set_form
-            pw_yad_form_vulkan
         fi
-
+        [[ ! -z "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
+            128)
+                    if [[ "${PW_GUI_START}" == "NOTEBOOK" ]] ; then
+                        unset PW_YAD_FORM_TAB
+                    fi
+                    unset PW_NO_RESTART_PPDB PW_DISABLED_CREATE_DB KEY_START portwine_exe
+                    export SKIP_CHECK_UPDATES=1
+                    /usr/bin/env bash -c ${pw_full_command_line[*]} &
+                    print_info "Restarting..."
+                    exit 0
+                    ;;
+            1|252)
+                    exit 0
+                    ;;
+        esac
+        pw_yad_set_form
+        pw_yad_form_vulkan
     elif [[ -f "${PORTWINE_DB_FILE}" ]] ; then
         portwine_launch
     fi
@@ -774,19 +781,7 @@ else
 
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
     pw_yad_set_form
-
-    if [[ "$(<"${PW_TMPFS_PATH}/tmp_yad_form_vulkan")" != "" ]] ; then
-        YAD_FORM_VULKAN=$(<"${PW_TMPFS_PATH}/tmp_yad_form_vulkan")
-        VULKAN_MOD=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $1}')
-        PW_PREFIX_NAME=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $2}' | sed -e s/[[:blank:]]/_/g)
-        PW_WINE_VER=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $3}')
-        if [[ -z "${PW_PREFIX_NAME}" ]] || [[ ! -z "$(echo "${PW_PREFIX_NAME}" | grep -E '^_.*' )" ]] ; then
-            PW_PREFIX_NAME="DEFAULT"
-        else
-            PW_PREFIX_NAME="${PW_PREFIX_NAME^^}"
-        fi
-        export PW_PREFIX_NAME PW_WINE_VER VULKAN_MOD
-    fi
+    pw_yad_form_vulkan
     export PW_DISABLED_CREATE_DB=1
 fi
 

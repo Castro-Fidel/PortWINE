@@ -2929,10 +2929,17 @@ pw_yad_set_form () {
 
 pw_yad_form_vulkan () {
     if [[ "$(<"${PW_TMPFS_PATH}/tmp_yad_form_vulkan")" != "" ]] ; then
-        YAD_FORM_VULKAN=$(sed 's/$/\;/' "${PW_TMPFS_PATH}/tmp_yad_form_vulkan")
-        VULKAN_MOD=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $1}')
-        PW_WINE_VER=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $2}')
-        PW_PREFIX_NAME=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $3}' | sed -e s/[[:blank:]]/_/g)
+        if [[ ! -z "${KEY_START}" ]] ; then
+            YAD_FORM_VULKAN=$(sed 's/$/\;/' "${PW_TMPFS_PATH}/tmp_yad_form_vulkan")
+            VULKAN_MOD=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $1}')
+            PW_WINE_VER=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $2}')
+            PW_PREFIX_NAME=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $3}' | sed -e s/[[:blank:]]/_/g)
+        else
+            YAD_FORM_VULKAN=$(<"${PW_TMPFS_PATH}/tmp_yad_form_vulkan")
+            VULKAN_MOD=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $1}')
+            PW_PREFIX_NAME=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $2}' | sed -e s/[[:blank:]]/_/g)
+            PW_WINE_VER=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $3}')
+        fi
         if [[ -z "${PW_PREFIX_NAME}" ]] \
         || [[ ! -z "$(echo "${PW_PREFIX_NAME}" | grep -E '^_.*' )" ]]
         then
