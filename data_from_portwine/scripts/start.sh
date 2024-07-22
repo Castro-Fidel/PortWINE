@@ -634,9 +634,9 @@ else
         PW_NAME_D_ICON_48="${PW_NAME_D_ICON//".png"/"_48.png"}"
         if [[ ! -f "${PW_NAME_D_ICON_48}" ]]  \
         && [[ -f "${PW_NAME_D_ICON}" ]] \
-        && command -v "convert" 2>/dev/null
+        && command -v "convert" &>/dev/null
         then
-            convert "${PW_NAME_D_ICON}" -resize 48x48 "${PW_NAME_D_ICON_48}"
+            convert "${PW_NAME_D_ICON}" -resize 48x48 "${PW_NAME_D_ICON_48}" &>/dev/null
         fi
         PW_DESKTOP_HELPER="${PW_DESKTOP_FILES// /@_@}"
         PW_GENERATE_BUTTONS+="--field=   ${PW_DESKTOP_FILES//".desktop"/""}!${PW_NAME_D_ICON_48}!:FBTN%@bash -c \"run_desktop_b_click "${PW_DESKTOP_HELPER}"\"%"
