@@ -1615,7 +1615,12 @@ pw_create_gui_png () {
     try_remove_file "${PORT_WINE_PATH}/data/img/launcher.png"
     try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
     if [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
-        if command -v exe-thumbnailer &>/dev/null && [[ ! $(sestatus | grep "Current mode: *enforcing") ]] ; then
+        if command -v sestatus &>/dev/null && sestatus | grep "Current mode: *enforcing" ; then
+            SESTATUS="1"
+        else
+            SESTATUS="0"
+        fi
+        if command -v exe-thumbnailer &>/dev/null && [[ "${SESTATUS}" == "0" ]] ; then
             exe-thumbnailer -s "${PW_RESIZE_TO}" "$(readlink -f "${portwine_exe}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
         else
             env PYTHONPATH="${PW_PLUGINS_PATH}/portable/lib/python3.9/site-packages/" \
