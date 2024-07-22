@@ -40,18 +40,15 @@ fatal () {
 change_locale () {
     if [[ -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]] ; then
         LANGUAGE=$(<"${PORT_WINE_TMP_PATH}/PortProton_loc")
-    fi
-
-    if [[ "$LANGUAGE" == "RUS" ]] ; then
-        LANGUAGE="ru"
-        echo "ru" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
-    elif [[ "$LANGUAGE" == "ENG" ]] ; then
-        LANGUAGE="en"
-        echo "en" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
-    fi
-
-    if [[ ! -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]]
-    then
+        # TODO: drop legacy check language after 01.01.2025
+        if [[ "$LANGUAGE" == "RUS" ]] ; then
+            LANGUAGE="ru"
+            echo "ru" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
+        elif [[ "$LANGUAGE" == "ENG" ]] ; then
+            LANGUAGE="en"
+            echo "en" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
+        fi
+    else
         [[ ! -f "${pw_yad}" ]] && pw_yad="yad"
         SET_LANG=(
             "${pw_yad}" --list
@@ -66,7 +63,7 @@ change_locale () {
         )
 
         out=$("${SET_LANG[@]}")
-        [ -n "$out" ] || return
+        [ -n "$out" ] || fatal "Language is not set!" 
         SET_LANG=$(echo "$out" | cut -d'|' -f2)
 
         echo "${SET_LANG}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
@@ -1649,7 +1646,6 @@ pw_find_exe () {
     pw_start_progress_bar_block "$(gettext "Searching for .exe files... Please wait.")"
     find "${PW_PATH_FOR_FIND}" -type f -name '*.exe' ${PW_FIND_TIME} | grep -viE ${PW_EXCLUDE_EXE_FIND} | \
     awk -F"/prefixes/" '{print $2}' > "${PW_TMPFS_PATH}/tmp_yad_find_exe"
-    sleep 0.001
     pw_stop_progress_bar
 
     unset FIND_TO_GUI
@@ -3171,6 +3167,7 @@ pw_start_progress_bar_install_game () {
 }
 
 pw_stop_progress_bar () {
+    sleep 0.01
     for PW_KILL_YAD_PID in "$PW_YAD_PID_PROGRESS_BAR_BLOCK" "$PW_YAD_PID_PROGRESS_BAR_CS" \
                            "$PW_YAD_PID_PFX_COVER_UI" "$PW_YAD_PID_PROGRESS_BAR_COVER"
     do
