@@ -50,8 +50,7 @@ change_locale () {
         echo "en" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
     fi
 
-    if [[ ! -z "${LANGUAGE}" ]] \
-    && [[ ! -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]]
+    if [[ ! -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]]
     then
         [[ ! -f "${pw_yad}" ]] && pw_yad="yad"
         SET_LANG=(
@@ -472,7 +471,7 @@ unpack () {
     if [[ "$silent" != "true" ]] ; then
         set -o pipefail
         pw_start_progress_bar_cover_block "${COVERS_PATH}/unpacking_${LANGUAGE_GIF}.gif"
-        $command "$1" -C "$2"
+        $command "$1" -C "$2" 2>/dev/null
         pw_stop_progress_bar_cover_block
         [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
     else
@@ -1650,6 +1649,7 @@ pw_find_exe () {
     pw_start_progress_bar_block "$(gettext "Searching for .exe files... Please wait.")"
     find "${PW_PATH_FOR_FIND}" -type f -name '*.exe' ${PW_FIND_TIME} | grep -viE ${PW_EXCLUDE_EXE_FIND} | \
     awk -F"/prefixes/" '{print $2}' > "${PW_TMPFS_PATH}/tmp_yad_find_exe"
+    sleep 0.001
     pw_stop_progress_bar
 
     unset FIND_TO_GUI
@@ -3176,6 +3176,8 @@ pw_stop_progress_bar () {
     do
         kill -s SIGUSR1 "$PW_KILL_YAD_PID" &>/dev/null
     done
+    unset PW_YAD_PID_PROGRESS_BAR_BLOCK PW_YAD_PID_PROGRESS_BAR_CS \
+    PW_YAD_PID_PFX_COVER_UI PW_YAD_PID_PROGRESS_BAR_COVER
     return 0
 }
 export -f pw_stop_progress_bar
