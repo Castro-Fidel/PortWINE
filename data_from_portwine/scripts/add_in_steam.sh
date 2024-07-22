@@ -3,14 +3,14 @@
 # based on https://github.com/sonic2kk/steamtinkerlaunch/blob/master/steamtinkerlaunch
 
 PROGNAME="PortProton"
-
+name_desktop_png="${name_desktop// /_}"
 NOSTAPPNAME="$name_desktop"
 NOSTEXEPATH="\"${STEAM_SCRIPTS}/${name_desktop}.sh\""
 # NOSTSTDIR="\"${PATH_TO_GAME}\""
 if [[ -z "${NOSTSTDIR}" ]] ; then
 	NOSTSTDIR="\"${STEAM_SCRIPTS}\""
 fi
-NOSTICONPATH="${PORT_WINE_PATH}/data/img/${name_desktop}.png"
+NOSTICONPATH="${PORT_WINE_PATH}/data/img/$name_desktop_png.png"
 BASESTEAMGRIDDBAPI="https://www.steamgriddb.com/api/v2"
 
 ## How Non-Steam AppIDs work, because it took me almost a year to figure this out
