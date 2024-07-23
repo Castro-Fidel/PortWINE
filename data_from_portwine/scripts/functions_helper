@@ -1363,7 +1363,12 @@ create_shortcut_from_link () {
     try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
 
      if [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
-        if command -v exe-thumbnailer &>/dev/null && [[ ! $(sestatus | grep "Current mode: *enforcing" &>/dev/null) ]] ; then
+        if command -v sestatus &>/dev/null && sestatus | grep "Current mode: *enforcing" ; then
+            SESTATUS="1"
+        else
+            SESTATUS="0"
+        fi
+        if command -v exe-thumbnailer &>/dev/null && [[ "${SESTATUS}" == "0" ]] ; then
             exe-thumbnailer -s 128 "$(readlink -f "${exe_path}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
         else
             env PYTHONPATH="${PW_PLUGINS_PATH}/portable/lib/python3.9/site-packages/" \
@@ -1873,20 +1878,20 @@ pw_duplicate () {
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
     --align-buttons --scroll --separator=" " ${PW_GENERATE_BUTTONS_D} \
-    --button="$(gettext "MAIN MENU")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null
+    --button="$(gettext "MAIN MENU")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
     IFS="$orig_IFS"
 
     pw_yad_set_form
-    [[ ! -z "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
+    case "$PW_YAD_SET" in
         *.desktop)
-                        run_desktop_b_click
-                        ;;
+                    run_desktop_b_click
+                    ;;
         pw_duplicate)
-                        export SKIP_CHECK_UPDATES=1
-                        /usr/bin/env bash -c ${pw_full_command_line[*]} &
-                        print_info "Restarting..."
-                        exit 0
-                        ;;
+                    export SKIP_CHECK_UPDATES=1
+                    /usr/bin/env bash -c ${pw_full_command_line[*]} &
+                    print_info "Restarting..."
+                    exit 0
+                    ;;
     esac
 }
 
