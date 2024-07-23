@@ -3172,7 +3172,7 @@ pw_start_progress_bar_install_game () {
 }
 
 pw_stop_progress_bar () {
-    sleep 0.01
+    sleep 0.1
     for PW_KILL_YAD_PID in "$PW_YAD_PID_PROGRESS_BAR_BLOCK" "$PW_YAD_PID_PROGRESS_BAR_CS" \
                            "$PW_YAD_PID_PFX_COVER_UI" "$PW_YAD_PID_PROGRESS_BAR_COVER"
     do
@@ -3198,10 +3198,17 @@ export -f pw_stop_progress_bar_cover_block
 
 open_changelog () {
     [[ "$LANGUAGE" == ru ]] && local PW_CHANGELOG_FILE="changelog_ru" || local PW_CHANGELOG_FILE="changelog_en"
-    "${pw_yad}" --title="$(gettext "CHANGELOG")" --no-buttons --text-align=center \
+    "${pw_yad}" --title="$(gettext "CHANGELOG")" --no-buttons \
     --text-info --show-uri --wrap --width=1200 --height=700 --uri-color=red \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --filename="${PORT_WINE_PATH}/data/${PW_CHANGELOG_FILE}" &>/dev/null
+    YAD_STATUS="$?"
+    if [[ "$YAD_STATUS" == "252" ]] && [[ -z "$WINEPREFIX" ]] ; then
+        export SKIP_CHECK_UPDATES=1
+        /usr/bin/env bash -c ${pw_full_command_line[*]} &
+        print_info "Restarting..."
+        exit 0
+    fi
 }
 export -f open_changelog
 
@@ -5150,7 +5157,29 @@ gui_wine_uninstaller () {
 export -f gui_wine_uninstaller
 
 gui_open_user_conf () {
-    xdg-open "${PORT_WINE_PATH}/data/user.conf"
+    PW_USERCONF_GUI="$("${pw_yad}" --title="$(gettext "EDIT USER CONFIG")" \
+    --text-info --editable --width=800 --height=600 \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+    --button="$(gettext "MAIN MENU")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":1 \
+    --button="$(gettext "SAVE")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":2 \
+    --filename="${PORT_WINE_PATH}/data/user.conf" 2>/dev/null)"
+    YAD_STATUS="$?"
+
+    case "${YAD_STATUS}" in
+        1|252)
+                export SKIP_CHECK_UPDATES=1
+                /usr/bin/env bash -c ${pw_full_command_line[*]} &
+                print_info "Restarting..."
+                exit 0
+                ;;
+            2)
+                echo "${PW_USERCONF_GUI}" > "${PORT_WINE_PATH}/data/user.conf"
+                export SKIP_CHECK_UPDATES=1
+                /usr/bin/env bash -c ${pw_full_command_line[*]} &
+                print_info "Restarting..."
+                exit 0
+                ;;
+    esac
 }
 export -f gui_open_user_conf
 
