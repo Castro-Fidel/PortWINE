@@ -1225,6 +1225,12 @@ check_dirs_and_files_in_pfx () {
         [ ! -d "${WINEPREFIX}/dosdevices/z:" ] && try_force_link_dir "/" "${WINEPREFIX}/dosdevices/z:"
         [ ! -d "${WINEPREFIX}/dosdevices/h:" ] && try_force_link_dir "$HOME" "${WINEPREFIX}/dosdevices/h:"
 
+        if [ ! -d "${WINEPREFIX}/dosdevices/s:" ] \
+        && [ -d "$HOME/.local/share/Steam/steamapps/common/" ]
+        then
+            try_force_link_dir "$HOME/.local/share/Steam/steamapps/common/" "${WINEPREFIX}/dosdevices/s:"
+        fi
+
         create_new_dir "${WINEPREFIX}/drive_c/windows/Fonts/"
         LN_FONTS="arialbd.ttf courbd.ttf georgia.ttf micross.ttf msyh.ttf simsun.ttc arial.ttf cour.ttf malgun.ttf msgothic.ttc nirmala.ttf times.ttf"
         for link_font in $LN_FONTS ; do
@@ -1255,7 +1261,7 @@ check_dirs_and_files_in_pfx () {
         then try_force_link_dir "${WINEPREFIX}/drive_c/users/steamuser/AppData/Local" "${WINEPREFIX}/drive_c/users/steamuser/Local Settings/Application Data"
         fi
 
-        DRIVES=(d e f g i j k l m n o p q r s t u v w x y)
+        DRIVES=(d e f g i j k l m n o p q r t u v w x y)
         DEF_MOUNT_DIRS=('/media' '/mnt' '/run/media')
         MOUNT_DIRS=($(find "${DEF_MOUNT_DIRS[@]}" -maxdepth 1 -mindepth 1  -type d 2>/dev/null | sort -u))
 
@@ -1594,6 +1600,11 @@ edit_user_conf_from_gui () {
 }
 
 pw_create_gui_png () {
+    if echo "$(basename "${portwine_exe}")" | grep -i "setup\|install" &>/dev/null ; then
+        export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/setup.png"
+        return 0
+    fi
+
     if [[ -z "$PORTPROTON_NAME" ]] \
     || [[ "$PW_NO_RESTART_PPDB" == "1" ]]
     then
@@ -1627,8 +1638,6 @@ pw_create_gui_png () {
         edit_db_from_gui PORTPROTON_NAME
     fi
     PW_RESIZE_TO="128"
-    try_remove_file "${PORT_WINE_PATH}/data/img/setup.png"
-    try_remove_file "${PORT_WINE_PATH}/data/img/Setup.png"
     try_remove_file "${PORT_WINE_PATH}/data/img/launcher.png"
     try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
     if [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
