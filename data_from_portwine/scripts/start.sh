@@ -551,7 +551,7 @@ if [[ -f "${portwine_exe}" ]] ; then
                 export TAB_START="1"
             fi
 
-            "${pw_yad}" --key=$KEY_START --notebook --active-tab=${TAB_START} \
+            "${pw_yad}" --key=$KEY_START --notebook --active-tab="${TAB_START}" \
             --gui-type="settings-notebook" \
             --width="${PW_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" --center \
             --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" --expand \
@@ -742,11 +742,14 @@ else
     # --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"'
     # --field="   League of Legends"!"$PW_GUI_ICON_PATH/lol.png"!"":"FBTN" '@bash -c "button_click PW_LOL"'
 
-    export START_FROM_PP_GUI=1
+    export START_FROM_PP_GUI="1"
+    if [[ -z ${TAB_MAIN_MENU} ]] ; then
+        export TAB_MAIN_MENU="1"
+    fi
 
     if [[ -z "${PW_ALL_DF}" ]] ; then
         "${pw_yad}" --key=$KEY --notebook --expand \
-        --gui-type="settings-notebook" \
+        --gui-type="settings-notebook" --active-tab="${TAB_MAIN_MENU}" \
         --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
         --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
@@ -759,7 +762,7 @@ else
         YAD_STATUS="$?"
     else
         "${pw_yad}" --key=$KEY --notebook --expand \
-        --gui-type="settings-notebook" \
+        --gui-type="settings-notebook" --active-tab="${TAB_MAIN_MENU}" \
         --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
         --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
@@ -771,6 +774,7 @@ else
         --tab="$(gettext "PORTPROTON SETTINGS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" 2>/dev/null
         YAD_STATUS="$?"
     fi
+    unset TAB_MAIN_MENU
 
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
     pw_yad_set_form
@@ -787,7 +791,7 @@ else
         fi
         export PW_PREFIX_NAME PW_WINE_VER VULKAN_MOD
     fi
-    export PW_DISABLED_CREATE_DB=1
+    export PW_DISABLED_CREATE_DB="1"
 fi
 
 case "${VULKAN_MOD}" in
