@@ -1255,25 +1255,42 @@ check_dirs_and_files_in_pfx () {
         then try_force_link_dir "${WINEPREFIX}/drive_c/users/steamuser/AppData/Local" "${WINEPREFIX}/drive_c/users/steamuser/Local Settings/Application Data"
         fi
 
-        find "${WINEPREFIX}/dosdevices" -xtype l -maxdepth 1 2>/dev/null -exec rm {} \;
-        rm -f "${WINEPREFIX}/dosdevices/"*::
         DRIVES=(d e f g i j k l m n o p q r s t u v w x y)
-        DEF_MOUNT_DIRS=('/media' "/media/$USER" '/mnt' '/run/media' "/run/media/$USER")
-        MOUNT_DIRS=($(find "${DEF_MOUNT_DIRS[@]}" -maxdepth 1 -type d 2>/dev/null | sort -u))
+        DEF_MOUNT_DIRS=('/media' '/mnt' '/run/media')
+        MOUNT_DIRS=($(find "${DEF_MOUNT_DIRS[@]}" -maxdepth 1 -mindepth 1  -type d 2>/dev/null | sort -u))
+
+        rm -f "${WINEPREFIX}/dosdevices/com"*
+        rm -f "${WINEPREFIX}/dosdevices/"*::
+
+        for drive in "${DRIVES[@]}"; do
+            rm -f "${WINEPREFIX}/dosdevices/${drive}:"
+        done
 
         for drive_dir in "${MOUNT_DIRS[@]}" ; do
-            if [[ ! "${DEF_MOUNT_DIRS[@]}" =~ "$drive_dir" ]] \
-            && ! realpath "${WINEPREFIX}/dosdevices"/*: | grep "$drive_dir" &>/dev/null ; then
-                drive_num=0
-                while [[ "$drive_num" -lt "${#DRIVES[@]}" ]] ; do
-                    drive_path="${WINEPREFIX}/dosdevices/${DRIVES[$drive_num]}:"
-                    if [ ! -d "$drive_path" ] ; then
-                        ln -sf "$drive_dir" "$drive_path"
-                        break
-                    else
-                        ((drive_num++))
-                    fi
-                done
+            if  mountpoint -q "$drive_dir" ; then
+                if ! realpath "${WINEPREFIX}/dosdevices"/*: | grep -w "$drive_dir$" &>/dev/null ; then
+                    drive_num=0
+                    while [[ "$drive_num" -lt "${#DRIVES[@]}" ]] ; do
+                        drive_path="${WINEPREFIX}/dosdevices/${DRIVES[$drive_num]}:"
+                        mount_point=$(df -P "$drive_dir" | awk 'NR==2 {print $1}')
+                        mount_name=$(lsblk -no pkname "$mount_point" 2>/dev/null)
+
+                        if [[ ! -L "$drive_path" ]] ; then
+                            if [[ $(cat "/sys/class/block/$mount_name/removable") != "1" ]] 2>/dev/null ; then
+                                if [[ ! $(echo "$mount_point" | grep "mmc") ]] 2>/dev/null ; then
+                                    ln -sf "$drive_dir" "$drive_path"
+                                    break
+                                else
+                                    ((drive_num++))
+                                fi
+                            else
+                                ((drive_num++))
+                            fi
+                        else
+                            ((drive_num++))
+                        fi
+                    done
+                fi
             fi
         done
     }
