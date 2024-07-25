@@ -1546,7 +1546,7 @@ pw_init_db () {
         else
             if [[ "${PW_DISABLED_CREATE_DB}" != 1 ]] ; then
                 if [[ ! -z "${PORTWINE_DB}" ]] ; then
-                    export PORTWINE_DB_FILE=$(grep -il "\#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/*)
+                    export PORTWINE_DB_FILE=$(grep -il "#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/*)
                     if [[ -z "${PORTWINE_DB_FILE}" ]] ; then
                         {
                             echo "#!/usr/bin/env bash"
@@ -3751,7 +3751,10 @@ gui_edit_db () {
 
     if check_wayland_session ; then
         rm_from_var PW_EDIT_DB_LIST "PW_USE_US_LAYOUT"
+    else
+        rm_from_var PW_EDIT_DB_LIST "PW_USE_NATIVE_WAYLAND"
     fi
+
     if check_flatpak ; then
         rm_from_var PW_EDIT_DB_LIST "PW_USE_RUNTIME"
     fi
@@ -3983,8 +3986,8 @@ A brief instruction:
                 exit 0
                 ;;
         150)
-                xdg-open "${PORTWINE_DB_FILE}" &
-                exit 0
+                print_info "Restarting PP after update ppdb file..."
+                gui_edit_db_file
                 ;;
     esac
 }
@@ -5448,6 +5451,28 @@ gui_open_user_conf () {
     esac
 }
 export -f gui_open_user_conf
+
+gui_edit_db_file () {
+    GUI_EDIT_DB_FILE="$("${pw_yad}" --title="$(gettext "EDIT DB")" \
+    --text-info --editable --width=800 --height=600 \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+    --button="$(gettext "SETTINGS")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":1 \
+    --button="$(gettext "SAVE")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":2 \
+    --filename="${PORTWINE_DB_FILE}" 2>/dev/null)"
+    YAD_STATUS="$?"
+
+    case "$YAD_STATUS" in
+        1|252)
+                /usr/bin/env bash -c ${pw_full_command_line[*]} &
+                exit 0
+                ;;
+          2)
+                echo "${GUI_EDIT_DB_FILE}" > "${PORTWINE_DB_FILE}"
+                /usr/bin/env bash -c ${pw_full_command_line[*]} &
+                exit 0
+                ;;
+    esac
+}
 
 gui_open_scripts_from_backup () {
     cd "${PORT_WINE_TMP_PATH}/scripts_backup/" || fatal
