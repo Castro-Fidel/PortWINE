@@ -1337,6 +1337,7 @@ create_shortcut_from_link () {
         fi
     fi
 
+    unset SHORTCUT_DUPLICATE SHORTCUT_ALREADY_CREATED
     if [[ -f "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop" ]] ; then
         if ! grep -i "${exe_path}" "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop" &>/dev/null ; then
             create_new_dir "${PORT_WINE_PATH}/duplicate"
@@ -1368,19 +1369,21 @@ create_shortcut_from_link () {
                     fi
                     number_duplication="$(("$number_duplication" + 1))"
                 else
-                    exit 0
+                    SHORTCUT_DUPLICATE="true"
+                    SHORTCUT_ALREADY_CREATED="true"
+                    return 0
                 fi
             else
                 number_duplication="1"
             fi
-            PW_NAME_DESKTOP="${PORT_WINE_PATH}/duplicate/${PORTPROTON_NAME} - ${prefix_name} [$number_duplication].desktop"
             SHORTCUT_DUPLICATE="true"
+            PW_NAME_DESKTOP="${PORT_WINE_PATH}/duplicate/${PORTPROTON_NAME} - ${prefix_name} [$number_duplication].desktop"
         else
-            exit 0
+            SHORTCUT_ALREADY_CREATED="true"
+            return 0
         fi
     else
         PW_NAME_DESKTOP="${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
-        SHORTCUT_DUPLICATE=""
     fi
 
     echo "[Desktop Entry]" > "${PW_NAME_DESKTOP}"
@@ -1425,19 +1428,21 @@ create_shortcut_from_link () {
 
 pw_auto_create_shortcut () {
     [[ "${PW_CHECK_AUTOINSTALL}" == 1 ]] && return 0
+
     unset LINKS
-    orig_IFS="$IFS" && IFS=$'\n'
-    for link_file in "${PORT_WINE_PATH}"/prefixes/*/drive_c/users/steamuser/Desktop/*.lnk
+    for link_file in "${PORT_WINE_PATH}"/data/prefixes/*/drive_c/users/*/Desktop/*.lnk
     do
-        if echo "$link_file" | grep "\*.lnk" &>/dev/null
-        then continue
-        else LINKS+=("$link_file")
+        if ! echo "$link_file" | grep "\*.lnk" &>/dev/null ; then
+            link_file=$(readlink -f "${link_file}")
+            LINKS+=("${link_file// /@_@}")
+        else
+            continue
         fi
     done
-    IFS="$orig_IFS"
     [[ -z "$LINKS" ]] && return 0
+    SORTED_LINKS=($(echo ${LINKS[@]} | tr ' ' '\n' | sort -u))
 
-    for link_file in "${LINKS[@]}"; do
+    for link_file in "${SORTED_LINKS[@]//@_@/ }" ; do
         if timeout 3 exiftool "$link_file" 2>/dev/null > "${PW_TMPFS_PATH}/exiftool.tmp" ; then
             prefix_name=$(echo "$link_file" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
             if fix_icon_name=$(grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" 2>/dev/null) \
@@ -1472,15 +1477,23 @@ pw_auto_create_shortcut () {
         
         try_remove_file "$link_file"
 
-        if ! exe_path="$(realpath "${link_path}")" ; then
+        if ! exe_path="$(realpath "${link_path}" 2>/dev/null)" ; then
             print_warning "Removed broken link for: $link_name"
         else
-            if [[ "${SHORTCUT_DUPLICATE}" == "true" ]] ; then
-                print_info "Created link for duplicate: $link_name - $prefix_name [$number_duplication]"
-            else
-                print_info "Created link for: $link_name"
-            fi
             create_shortcut_from_link
+            if [[ "${SHORTCUT_DUPLICATE}" == "true" ]] ; then
+                if [[ "${SHORTCUT_ALREADY_CREATED}" == "true" ]] ; then
+                    print_warning "There is already a shortcut with this path for duplicate: $link_name - $prefix_name"
+                else
+                    print_info "Created link for duplicate: $link_name - $prefix_name [$number_duplication]"
+                fi
+            else
+                if [[ "${SHORTCUT_ALREADY_CREATED}" == "true" ]] ; then
+                    print_warning "There is already a shortcut with this path for: $link_name"
+                else
+                    print_info "Created link for: $link_name"
+                fi
+            fi
         fi
     done
 }
@@ -2094,7 +2107,7 @@ start_portwine () {
             pw_wineboot -r
         fi
     fi
-    rm -f "${PORT_WINE_PATH}"/prefixes/*/drive_c/users/*/Desktop/*.lnk
+    rm -f "${PORT_WINE_PATH}"/data/prefixes/*/drive_c/users/*/Desktop/*.lnk
 
     echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
 
