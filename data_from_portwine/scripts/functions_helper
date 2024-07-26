@@ -2489,10 +2489,8 @@ start_portwine () {
 
     if [[ "$DXVK_ENABLE_NVAPI" == "1" ]] ; then
         print_info "Try copy NVAPI files..."
-        try_force_link_file "${PATH_TO_DXVK_FILES}/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/nvapi.dll" || \
-        try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/nvapi.dll"
-        try_force_link_file "${PATH_TO_DXVK_FILES}/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvapi64.dll" || \
-        try_force_link_file "${PW_PLUGINS_PATH}/nvapi/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvapi64.dll"
+        try_force_link_file "${PATH_TO_DXVK_FILES}/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/nvapi.dll"
+        try_force_link_file "${PATH_TO_DXVK_FILES}/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvapi64.dll"
     fi
 
     if [[ ! -z "$CP_VKD3D_FILES" ]] ; then
@@ -3281,7 +3279,7 @@ pw_tray_icon () {
 
     PW_GUI_TRAY_PATH="${PW_GUI_THEMES_PATH}/tray"
     cd "${PW_GUI_TRAY_PATH}"
-    "${PW_GUI_TRAY_PATH}/tray_pp" &
+    env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${PW_GUI_TRAY_PATH}/tray_pp" &
     cd -
 
     return 0
