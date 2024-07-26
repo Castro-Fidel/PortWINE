@@ -438,6 +438,7 @@ check_wayland_session () {
         return 1
     fi
 }
+export -f check_wayland_session
 
 check_flatpak () {
     if [[ ! -z "$FLATPAK_IN_USE" ]]
@@ -991,8 +992,11 @@ stop_portwine () {
     kill_portwine &&
     try_remove_dir "${PW_WINELIB}/var"
     find "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/" -maxdepth 1 -type f -name "*.tmp" -delete
-    if [[ ! -z "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')" ]] ; then
-        kill -s SIGUSR1 "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')" 2>/dev/null
+    if [[ ! -z "$(pgrep -a pw_tray)" ]] ; then
+        kill -s SIGUSR1 $(pgrep -a pw_tray) 2>/dev/null
+    fi
+    if [[ ! -z "$(pgrep -a yad_gui_pp)" ]] ; then
+        kill -s SIGUSR1 $(pgrep -a pw_yad_pp) 2>/dev/null
     fi
     pw_auto_create_shortcut
     add_in_stop_portwine
@@ -3461,14 +3465,9 @@ open_changelog () {
 export -f open_changelog
 
 pw_tray_icon () {
-    if [ ! -z "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')" ] ; then
-        kill -s SIGUSR1 "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')"
+    if [[ ! -z "$(pgrep -a pw_tray)" ]] ; then
+        kill -s SIGUSR1 $(pgrep -a pw_tray) 2>/dev/null
     fi
-
-    tray_icon_click () {
-        echo ""
-    }
-    export -f tray_icon_click
 
     pw_tray_winefile () {
         pw_run winefile "C:\\users\\${USER}\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\"
@@ -3486,15 +3485,10 @@ pw_tray_icon () {
     }
     export -f tray_icon_click_exit
 
-    "${pw_yad}" --notification --no-middle \
-    --image="$PW_GUI_ICON_PATH/portproton_tray_flatpak.svg" \
-    --command="bash -c tray_icon_click" \
-    --tooltip="PortProton" \
-    --icon-size=32 --menu="| \
-    $(gettext "WINEFILE")!bash -c pw_tray_winefile!"$PW_GUI_ICON_PATH/wine_file.svg"|| \
-    $(gettext "TASKMGR")!bash -c pw_tray_taskmgr!"$PW_GUI_ICON_PATH/wine_system.svg"|| \
-    $(gettext "CHANGELOG")!bash -c open_changelog!"$PW_GUI_ICON_PATH/history.svg"|| \
-    $(gettext "FORCE EXIT")     !bash -c tray_icon_click_exit!"$PW_GUI_ICON_PATH/close.svg"||" 2>/dev/null &
+    export PW_GUI_TRAY_PATH="${PW_GUI_THEMES_PATH}/tray"
+    cd ${PW_GUI_TRAY_PATH}
+    env LD_LIBRARY_PATH="${PW_GUI_TRAY_PATH}" "${PW_GUI_TRAY_PATH}/pw_tray" &
+    cd -
 
     return 0
 }
