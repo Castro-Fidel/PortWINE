@@ -40,19 +40,15 @@ fatal () {
 change_locale () {
     if [[ -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]] ; then
         LANGUAGE=$(<"${PORT_WINE_TMP_PATH}/PortProton_loc")
-    fi
-
-    if [[ "$LANGUAGE" == "RUS" ]] ; then
-        LANGUAGE="ru"
-        echo "ru" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
-    elif [[ "$LANGUAGE" == "ENG" ]] ; then
-        LANGUAGE="en"
-        echo "en" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
-    fi
-
-    if [[ ! -z "${LANGUAGE}" ]] \
-    && [[ ! -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]]
-    then
+        # TODO: drop legacy check language after 01.01.2025
+        if [[ "$LANGUAGE" == "RUS" ]] ; then
+            LANGUAGE="ru"
+            echo "ru" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
+        elif [[ "$LANGUAGE" == "ENG" ]] ; then
+            LANGUAGE="en"
+            echo "en" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
+        fi
+    else
         [[ ! -f "${pw_yad}" ]] && pw_yad="yad"
         SET_LANG=(
             "${pw_yad}" --list
@@ -67,7 +63,7 @@ change_locale () {
         )
 
         out=$("${SET_LANG[@]}")
-        [ -n "$out" ] || return
+        [ -n "$out" ] || fatal "Language is not set!" 
         SET_LANG=$(echo "$out" | cut -d'|' -f2)
 
         echo "${SET_LANG}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
@@ -472,7 +468,7 @@ unpack () {
     if [[ "$silent" != "true" ]] ; then
         set -o pipefail
         pw_start_progress_bar_cover_block "${COVERS_PATH}/unpacking_${LANGUAGE_GIF}.gif"
-        $command "$1" -C "$2"
+        $command "$1" -C "$2" 2>/dev/null
         pw_stop_progress_bar_cover_block
         [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
     else
@@ -588,7 +584,7 @@ pw_reinstall_pp () {
     try_remove_file "${PORT_WINE_TMP_PATH}/scripts_ver"
     echo
     print_info "Restarting PP for reinstall files..."
-    export SKIP_CHECK_UPDATES=0
+    export SKIP_CHECK_UPDATES="0"
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
@@ -998,6 +994,7 @@ stop_portwine () {
     if [[ ! -z "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')" ]] ; then
         kill -s SIGUSR1 "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')" 2>/dev/null
     fi
+    pw_auto_create_shortcut
     add_in_stop_portwine
     unset SKIP_CHECK_UPDATES
     exit 0
@@ -1229,6 +1226,12 @@ check_dirs_and_files_in_pfx () {
         [ ! -d "${WINEPREFIX}/dosdevices/z:" ] && try_force_link_dir "/" "${WINEPREFIX}/dosdevices/z:"
         [ ! -d "${WINEPREFIX}/dosdevices/h:" ] && try_force_link_dir "$HOME" "${WINEPREFIX}/dosdevices/h:"
 
+        if [ ! -d "${WINEPREFIX}/dosdevices/s:" ] \
+        && [ -d "$HOME/.local/share/Steam/steamapps/common/" ]
+        then
+            try_force_link_dir "$HOME/.local/share/Steam/steamapps/common/" "${WINEPREFIX}/dosdevices/s:"
+        fi
+
         create_new_dir "${WINEPREFIX}/drive_c/windows/Fonts/"
         LN_FONTS="arialbd.ttf courbd.ttf georgia.ttf micross.ttf msyh.ttf simsun.ttc arial.ttf cour.ttf malgun.ttf msgothic.ttc nirmala.ttf times.ttf"
         for link_font in $LN_FONTS ; do
@@ -1259,25 +1262,42 @@ check_dirs_and_files_in_pfx () {
         then try_force_link_dir "${WINEPREFIX}/drive_c/users/steamuser/AppData/Local" "${WINEPREFIX}/drive_c/users/steamuser/Local Settings/Application Data"
         fi
 
-        find "${WINEPREFIX}/dosdevices" -xtype l -maxdepth 1 2>/dev/null -exec rm {} \;
+        DRIVES=(d e f g i j k l m n o p q r t u v w x y)
+        DEF_MOUNT_DIRS=('/media' '/mnt' '/run/media')
+        MOUNT_DIRS=($(find "${DEF_MOUNT_DIRS[@]}" -maxdepth 1 -mindepth 1  -type d 2>/dev/null | sort -u))
+
+        rm -f "${WINEPREFIX}/dosdevices/com"*
         rm -f "${WINEPREFIX}/dosdevices/"*::
-        DRIVES=(d e f g i j k l m n o p q r s t u v w x y)
-        DEF_MOUNT_DIRS=('/media' "/media/$USER" '/mnt' '/run/media' "/run/media/$USER")
-        MOUNT_DIRS=($(find "${DEF_MOUNT_DIRS[@]}" -maxdepth 1 -type d 2>/dev/null | sort -u))
+
+        for drive in "${DRIVES[@]}"; do
+            rm -f "${WINEPREFIX}/dosdevices/${drive}:"
+        done
 
         for drive_dir in "${MOUNT_DIRS[@]}" ; do
-            if [[ ! "${DEF_MOUNT_DIRS[@]}" =~ "$drive_dir" ]] \
-            && ! realpath "${WINEPREFIX}/dosdevices"/*: | grep "$drive_dir" &>/dev/null ; then
-                drive_num=0
-                while [[ "$drive_num" -lt "${#DRIVES[@]}" ]] ; do
-                    drive_path="${WINEPREFIX}/dosdevices/${DRIVES[$drive_num]}:"
-                    if [ ! -d "$drive_path" ] ; then
-                        ln -sf "$drive_dir" "$drive_path"
-                        break
-                    else
-                        ((drive_num++))
-                    fi
-                done
+            if  mountpoint -q "$drive_dir" ; then
+                if ! realpath "${WINEPREFIX}/dosdevices"/*: | grep -w "$drive_dir$" &>/dev/null ; then
+                    drive_num=0
+                    while [[ "$drive_num" -lt "${#DRIVES[@]}" ]] ; do
+                        drive_path="${WINEPREFIX}/dosdevices/${DRIVES[$drive_num]}:"
+                        mount_point=$(df -P "$drive_dir" | awk 'NR==2 {print $1}')
+                        mount_name=$(lsblk -no pkname "$mount_point" 2>/dev/null)
+
+                        if [[ ! -L "$drive_path" ]] ; then
+                            if [[ $(cat "/sys/class/block/$mount_name/removable") != "1" ]] 2>/dev/null ; then
+                                if [[ ! $(echo "$mount_point" | grep "mmc") ]] 2>/dev/null ; then
+                                    ln -sf "$drive_dir" "$drive_path"
+                                    break
+                                else
+                                    ((drive_num++))
+                                fi
+                            else
+                                ((drive_num++))
+                            fi
+                        else
+                            ((drive_num++))
+                        fi
+                    done
+                fi
             fi
         done
     }
@@ -1292,6 +1312,177 @@ check_nvidia_rtx () {
         [[ "$LSPCI_VGA" == *AD[0-9]* ]] || [[ "$LSPCI_VGA" == *2[6-8][0-9]* ]] && return 0
     fi
     return 1
+}
+
+create_shortcut_from_link () {
+    PORTPROTON_NAME="$link_name"
+    PW_RESIZE_TO=128
+
+    try_remove_file "${PORT_WINE_PATH}/data/img/launcher.png"
+    try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
+
+     if [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
+        if command -v sestatus &>/dev/null && sestatus | grep "Current mode: *enforcing" ; then
+            SESTATUS="1"
+        else
+            SESTATUS="0"
+        fi
+        if command -v exe-thumbnailer &>/dev/null && [[ "${SESTATUS}" == "0" ]] ; then
+            exe-thumbnailer -s 128 "$(readlink -f "${exe_path}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
+        else
+            env PYTHONPATH="${PW_PLUGINS_PATH}/portable/lib/python3.9/site-packages/" \
+            LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" \
+            "${PW_WINELIB}/runtime/files/bin/python3.9"  \
+            "${PW_PLUGINS_PATH}/portable/bin/exe-thumbnailer" -s 128 "$(readlink -f "${exe_path}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
+        fi
+    fi
+
+    if [[ -f "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop" ]] ; then
+        if ! grep -i "${exe_path}" "${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop" &>/dev/null ; then
+            create_new_dir "${PORT_WINE_PATH}/duplicate"
+            if [[ "$(ls -A "${PORT_WINE_PATH}/duplicate/${PORTPROTON_NAME} - ${prefix_name}"* 2>/dev/null)" ]] ; then
+                if ! grep -i "${exe_path}" "${PORT_WINE_PATH}/duplicate/${PORTPROTON_NAME} - ${prefix_name}"* &>/dev/null ; then
+                    number_duplication="$(ls "${PORT_WINE_PATH}/duplicate"/ 2>/dev/null)"
+                    number_duplication="${number_duplication//${PORTPROTON_NAME} - ${prefix_name}/}"
+                    number_duplication="${number_duplication//].desktop/}"
+                    number_duplication=(${number_duplication//[/})
+                    dup_prev="0"
+                    for dup_num in ${number_duplication[@]} ; do
+                        dup_num_list="$(("$dup_num" - 1))"
+                        if [[ "$dup_num_list" != "$dup_prev" ]] ; then
+                            dup_num_list_new+="$dup_num_list "
+                        fi
+                        dup_prev="$dup_num"
+                    done
+
+                    if [[ -z "$dup_num_list_new" ]] ; then
+                        number_duplication="${dup_prev}"
+                    else
+                        dup_helper="$(echo ${dup_num_list_new} | awk '{print $1}')"
+                        for dup in ${number_duplication[@]} ; do
+                            if (( "$dup_helper" > "$dup" )) ; then
+                                dup_helper_new+="$dup "
+                            fi
+                        done
+                        number_duplication="$(echo ${dup_helper_new} | awk '{print $NF}')"
+                    fi
+                    number_duplication="$(("$number_duplication" + 1))"
+                else
+                    exit 0
+                fi
+            else
+                number_duplication="1"
+            fi
+            PW_NAME_DESKTOP="${PORT_WINE_PATH}/duplicate/${PORTPROTON_NAME} - ${prefix_name} [$number_duplication].desktop"
+            SHORTCUT_DUPLICATE="true"
+        else
+            exit 0
+        fi
+    else
+        PW_NAME_DESKTOP="${PORT_WINE_PATH}/${PORTPROTON_NAME}.desktop"
+        SHORTCUT_DUPLICATE=""
+    fi
+
+    echo "[Desktop Entry]" > "${PW_NAME_DESKTOP}"
+    echo "Name=${PORTPROTON_NAME}" >> "${PW_NAME_DESKTOP}"
+    if [[ ! -z "$link_cmd" ]] ; then
+        if check_flatpak
+        then echo "Exec=flatpak run ru.linux_gaming.PortProton \"${exe_path}\" \"${link_cmd}\"" >> "${PW_NAME_DESKTOP}"
+        else echo "Exec=env \"${PORT_SCRIPTS_PATH}/start.sh\" \"${exe_path}\" \"${link_cmd}\"" >> "${PW_NAME_DESKTOP}"
+        fi
+    else
+        if check_flatpak
+        then echo "Exec=flatpak run ru.linux_gaming.PortProton \"${exe_path}\"" >> "${PW_NAME_DESKTOP}"
+        else echo "Exec=env \"${PORT_SCRIPTS_PATH}/start.sh\" \"${exe_path}\"" >> "${PW_NAME_DESKTOP}"
+        fi
+    fi
+    {
+        echo "Type=Application"
+        echo "Categories=Game"
+        echo "StartupNotify=true"
+        echo "Path=${PORT_SCRIPTS_PATH}/"
+        echo "Icon=${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
+    } >> "${PW_NAME_DESKTOP}"
+    chmod u+x "${PW_NAME_DESKTOP}"
+
+    [[ -z "${PW_SHORTCUT_DESKTOP}" ]] && PW_SHORTCUT_DESKTOP="TRUE"
+
+    if [[ "$DESKTOP_SESSION" =~ "gnome" ]] ; then
+        try_remove_file "${HOME}/.local/share/applications/${PORTPROTON_NAME}.desktop"
+        cp -f "${PW_NAME_DESKTOP}" "${HOME}/.local/share/applications/"
+    else
+        if [[ ${PW_SHORTCUT_DESKTOP} == "TRUE" ]] ; then
+            if [[ -d "${HOME}/Desktop" ]] ; then
+                cp -f "${PW_NAME_DESKTOP}" "${HOME}/Desktop/"
+            elif [[ -d "${HOME}/Рабочий стол" ]] ; then
+                cp -f "${PW_NAME_DESKTOP}" "${HOME}/Рабочий стол/"
+            elif [[ $(xdg-user-dir DESKTOP) ]] ; then
+                cp -f "${PW_NAME_DESKTOP}" "$(xdg-user-dir DESKTOP)"
+            fi
+        fi
+    fi
+}
+
+pw_auto_create_shortcut () {
+    [[ "${PW_CHECK_AUTOINSTALL}" == 1 ]] && return 0
+    unset LINKS
+    orig_IFS="$IFS" && IFS=$'\n'
+    for link_file in "${PORT_WINE_PATH}"/prefixes/*/drive_c/users/steamuser/Desktop/*.lnk
+    do
+        if echo "$link_file" | grep "\*.lnk" &>/dev/null
+        then continue
+        else LINKS+=("$link_file")
+        fi
+    done
+    IFS="$orig_IFS"
+    [[ -z "$LINKS" ]] && return 0
+
+    for link_file in "${LINKS[@]}"; do
+        if timeout 3 exiftool "$link_file" 2>/dev/null > "${PW_TMPFS_PATH}/exiftool.tmp" ; then
+            prefix_name=$(echo "$link_file" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
+            if fix_icon_name=$(grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" 2>/dev/null) \
+            && [[ "${fix_icon_name//*.exe/true}" == "true" ]] ; then
+                link_drive=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
+                link_path=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/$prefix_name/dosdevices/$link_drive|g" | sed 's/\\/\//g')
+            else
+                link_drive=$(sed -n 's/^Local Base Path\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
+                link_path=$(sed -n 's/^Local Base Path\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/$prefix_name/dosdevices/$link_drive|g" | sed 's/\\/\//g')
+            fi
+            link_name=$(sed -n 's/^File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|\.lnk||')
+            link_cmd=$(sed -n 's/^Command Line Arguments\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
+        else
+            if ! command -v exiftool &>/dev/null ; then
+                print_warning "use portable exiftool"
+                env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" "$link_file" 2>/dev/null > "${PW_TMPFS_PATH}/exiftool.tmp"
+                prefix_name=$(echo "$link_file" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
+                if fix_icon_name=$(grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" 2>/dev/null) \
+                && [[ "${fix_icon_name//*.exe/true}" == "true" ]] ; then
+                    link_drive=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
+                    link_path=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/$prefix_name/dosdevices/$link_drive|g" | sed 's/\\/\//g')
+                else
+                    link_drive=$(sed -n 's/^Local Base Path\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
+                    link_path=$(sed -n 's/^Local Base Path\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/$prefix_name/dosdevices/$link_drive|g" | sed 's/\\/\//g')
+                fi
+                link_name=$(sed -n 's/^File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|\.lnk||')
+                link_cmd=$(sed -n 's/^Command Line Arguments\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
+            else
+                yad_error "exiftool - broken!"
+            fi
+        fi
+        
+        try_remove_file "$link_file"
+
+        if ! exe_path="$(realpath "${link_path}")" ; then
+            print_warning "Removed broken link for: $link_name"
+        else
+            if [[ "${SHORTCUT_DUPLICATE}" == "true" ]] ; then
+                print_info "Created link for duplicate: $link_name - $prefix_name [$number_duplication]"
+            else
+                print_info "Created link for: $link_name"
+            fi
+            create_shortcut_from_link
+        fi
+    done
 }
 
 pw_init_db () {
@@ -1356,7 +1547,7 @@ pw_init_db () {
         else
             if [[ "${PW_DISABLED_CREATE_DB}" != 1 ]] ; then
                 if [[ ! -z "${PORTWINE_DB}" ]] ; then
-                    export PORTWINE_DB_FILE=$(grep -il "\#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/*)
+                    export PORTWINE_DB_FILE=$(grep -il "#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/*)
                     if [[ -z "${PORTWINE_DB_FILE}" ]] ; then
                         {
                             echo "#!/usr/bin/env bash"
@@ -1463,11 +1654,13 @@ pw_port_update () {
                 xcsd=$("${pw_yad}" --title "$(gettext "Update scripts:") v.(${scripts_install_ver}${BRANCH_VERSION})" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
                 --form --separator='%%%' --width=1000 --height=500 \
                 --field=":TXT" "${CHANGLOG_NEWS}" \
-                --button="$(gettext "EXIT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":252 \
                 --button="$(gettext "DO NOT REMIND ME")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":16 \
                 --button="$(gettext "REMIND ME LATER")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":18 \
                 --button="$(gettext "UPDATING NOW")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":20 2>/dev/null)
                 YAD_STATUS="$?"
+
+                # --button="$(gettext "EXIT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":252 \
+                
                 case "${YAD_STATUS}" in
                     1|252) exit 0 ;;
                        16) xcsd="$(gettext "DO NOT REMIND ME")" ;;
@@ -1579,6 +1772,11 @@ edit_user_conf_from_gui () {
 }
 
 pw_create_gui_png () {
+    if echo "$(basename "${portwine_exe}")" | grep -i "setup\|install" &>/dev/null ; then
+        export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/setup.png"
+        return 0
+    fi
+
     if [[ -z "$PORTPROTON_NAME" ]] \
     || [[ "$PW_NO_RESTART_PPDB" == "1" ]]
     then
@@ -1612,12 +1810,15 @@ pw_create_gui_png () {
         edit_db_from_gui PORTPROTON_NAME
     fi
     PW_RESIZE_TO="128"
-    try_remove_file "${PORT_WINE_PATH}/data/img/setup.png"
-    try_remove_file "${PORT_WINE_PATH}/data/img/Setup.png"
     try_remove_file "${PORT_WINE_PATH}/data/img/launcher.png"
     try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
     if [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
-        if command -v exe-thumbnailer &>/dev/null ; then
+        if command -v sestatus &>/dev/null && sestatus | grep "Current mode: *enforcing" ; then
+            SESTATUS="1"
+        else
+            SESTATUS="0"
+        fi
+        if command -v exe-thumbnailer &>/dev/null && [[ "${SESTATUS}" == "0" ]] ; then
             exe-thumbnailer -s "${PW_RESIZE_TO}" "$(readlink -f "${portwine_exe}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
         else
             env PYTHONPATH="${PW_PLUGINS_PATH}/portable/lib/python3.9/site-packages/" \
@@ -1665,7 +1866,7 @@ pw_find_exe () {
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
         if [[ -z "${PW_SET_FIND_EXE}" ]] ; then
-            export SKIP_CHECK_UPDATES=1
+            export SKIP_CHECK_UPDATES="1"
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             print_info "Restarting..."
         fi
@@ -1676,10 +1877,52 @@ pw_find_exe () {
     if [[ ! -z "${PW_SET_FIND_EXE}" ]] ; then
         portwine_exe="${PW_PATH_FOR_FIND}$(echo "${PW_SET_FIND_EXE}" | awk -F'|' '{print $1}')"
         portwine_create_shortcut silent
-        export SKIP_CHECK_UPDATES=1
+        export SKIP_CHECK_UPDATES="1"
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     fi
+}
+
+pw_duplicate () {
+    export USE_DUPLICATE_GUI="1"
+    orig_IFS="$IFS" && IFS=$'\n'
+    PW_DESKTOP_D="$(ls "${PORT_WINE_PATH}"/duplicate/ | grep .desktop)"
+    for PW_DESKTOP_FILES_D in ${PW_DESKTOP_D} ; do
+        PW_NAME_D_ICON_D="$(grep Icon "${PORT_WINE_PATH}/duplicate/${PW_DESKTOP_FILES_D}" | awk -F= '{print $2}')"
+        PW_NAME_D_ICON_48_D="${PW_NAME_D_ICON_D//".png"/"_48.png"}"
+        if [[ ! -f "${PW_NAME_D_ICON_48_D}" ]]  \
+        && [[ -f "${PW_NAME_D_ICON_D}" ]] \
+        && command -v "convert" 2>/dev/null
+        then
+            convert "${PW_NAME_D_ICON_D}" -resize 48x48 "${PW_NAME_D_ICON_48_D}"
+        fi
+        PW_DESKTOP_HELPER_D="${PW_DESKTOP_FILES_D// /@_@}"
+        PW_GENERATE_BUTTONS_D+="--field=   ${PW_DESKTOP_FILES_D//".desktop"/""}!${PW_NAME_D_ICON_48_D}!:FBTN%@bash -c \"run_desktop_b_click "${PW_DESKTOP_HELPER_D}"\"%"
+    done
+    IFS="$orig_IFS"
+
+    old_IFS=$IFS && IFS="%"
+    "${pw_yad}" --width="${PW_DUPLICATE_SIZE_W}" --height="${PW_DUPLICATE_SIZE_H}" \
+    --columns="$MAIN_GUI_COLUMNS" --homogeneous-column --form \
+    --gui-type-layout=${MAIN_MENU_GUI_TYPE_LAYOUT} \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+    --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
+    --align-buttons --scroll --separator=" " ${PW_GENERATE_BUTTONS_D} \
+    --button="$(gettext "MAIN MENU")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
+    IFS="$orig_IFS"
+
+    pw_yad_set_form
+    case "$PW_YAD_SET" in
+        *.desktop)
+                    run_desktop_b_click
+                    ;;
+        pw_duplicate)
+                    export SKIP_CHECK_UPDATES=1
+                    /usr/bin/env bash -c ${pw_full_command_line[*]} &
+                    print_info "Restarting..."
+                    exit 0
+                    ;;
+    esac
 }
 
 pw_create_unique_exe () {
@@ -1851,6 +2094,7 @@ start_portwine () {
             pw_wineboot -r
         fi
     fi
+    rm -f "${PORT_WINE_PATH}"/prefixes/*/drive_c/users/*/Desktop/*.lnk
 
     echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
 
@@ -3176,11 +3420,14 @@ pw_start_progress_bar_install_game () {
 }
 
 pw_stop_progress_bar () {
+    sleep 0.1
     for PW_KILL_YAD_PID in "$PW_YAD_PID_PROGRESS_BAR_BLOCK" "$PW_YAD_PID_PROGRESS_BAR_CS" \
                            "$PW_YAD_PID_PFX_COVER_UI" "$PW_YAD_PID_PROGRESS_BAR_COVER"
     do
         kill -s SIGUSR1 "$PW_KILL_YAD_PID" &>/dev/null
     done
+    unset PW_YAD_PID_PROGRESS_BAR_BLOCK PW_YAD_PID_PROGRESS_BAR_CS \
+    PW_YAD_PID_PFX_COVER_UI PW_YAD_PID_PROGRESS_BAR_COVER
     return 0
 }
 export -f pw_stop_progress_bar
@@ -3199,10 +3446,24 @@ export -f pw_stop_progress_bar_cover_block
 
 open_changelog () {
     [[ "$LANGUAGE" == ru ]] && local PW_CHANGELOG_FILE="changelog_ru" || local PW_CHANGELOG_FILE="changelog_en"
-    "${pw_yad}" --title="$(gettext "CHANGELOG")" --no-buttons --text-align=center \
+    "${pw_yad}" --title="$(gettext "CHANGELOG")" --no-buttons \
     --text-info --show-uri --wrap --width=1200 --height=700 --uri-color=red \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --filename="${PORT_WINE_PATH}/data/${PW_CHANGELOG_FILE}" &>/dev/null
+    YAD_STATUS="$?"
+    if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] && [[ -z "$WINEPREFIX" ]] ; then
+        export SKIP_CHECK_UPDATES="1"
+        if [[ -z "${PW_ALL_DF}" ]] ; then
+            export TAB_MAIN_MENU="4"
+        else
+            export TAB_MAIN_MENU="5"
+        fi
+        /usr/bin/env bash -c ${pw_full_command_line[*]} &
+        print_info "Restarting..."
+        exit 0
+    else
+        exit 0
+    fi
 }
 export -f open_changelog
 
@@ -3316,7 +3577,7 @@ gui_proton_downloader () {
 
     if [[ -z "${PROTON_PW_GIT}" ]] ; then
         yad_error "$(gettext "Error: check wine.")"
-        export SKIP_CHECK_UPDATES=1
+        export SKIP_CHECK_UPDATES="1"
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     fi
@@ -3395,7 +3656,7 @@ gui_proton_downloader () {
         --button="$(gettext "OK")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":0 2>/dev/null
         YAD_WINE_STATUS="$?"
         if [[ "$YAD_WINE_STATUS" == "1" || "$YAD_WINE_STATUS" == "252" ]] ; then
-            export SKIP_CHECK_UPDATES=1
+            export SKIP_CHECK_UPDATES="1"
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
         fi
@@ -3410,7 +3671,7 @@ gui_proton_downloader () {
         && [[ -z "${VERSION_INSTALLED_WINE}" ]]
         then
             print_info "Nothing to do."
-            export SKIP_CHECK_UPDATES=1
+            export SKIP_CHECK_UPDATES="1"
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
         fi
@@ -3499,7 +3760,10 @@ gui_edit_db () {
 
     if check_wayland_session ; then
         rm_from_var PW_EDIT_DB_LIST "PW_USE_US_LAYOUT"
+    else
+        rm_from_var PW_EDIT_DB_LIST "PW_USE_NATIVE_WAYLAND"
     fi
+
     if check_flatpak ; then
         rm_from_var PW_EDIT_DB_LIST "PW_USE_RUNTIME"
     fi
@@ -3665,7 +3929,7 @@ A brief instruction:
     --button="$(gettext "OPEN THE SETTINGS FILE")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Open the <b>.ppdb</b> settings file in a system text editor to view and change variables manually")":150 \
     --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":0 2>/dev/null
     YAD_STATUS="$?"
-    export SKIP_CHECK_UPDATES=1
+    export SKIP_CHECK_UPDATES="1"
 
     case "$YAD_STATUS" in
         1|252)
@@ -3731,8 +3995,8 @@ A brief instruction:
                 exit 0
                 ;;
         150)
-                xdg-open "${PORTWINE_DB_FILE}" &
-                exit 0
+                print_info "Restarting PP after update ppdb file..."
+                gui_edit_db_file
                 ;;
     esac
 }
@@ -3848,7 +4112,7 @@ fi
     YAD_VKBASALT_STATUS="$?"
     case "${YAD_VKBASALT_STATUS}" in
         1|252)
-            export SKIP_CHECK_UPDATES=1
+            export SKIP_CHECK_UPDATES="1"
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0 ;;
         180)
@@ -3878,7 +4142,7 @@ fi
     else export PW_VKBASALT_FFX_CAS="0.$YAD_CAS_SET"
     fi
     edit_db_from_gui PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PW_VKBASALT
-    export SKIP_CHECK_UPDATES=1
+    export SKIP_CHECK_UPDATES="1"
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
@@ -4015,14 +4279,14 @@ fi
     YAD_MANGOHUD_STATUS="$?"
     case "${YAD_MANGOHUD_STATUS}" in
         1|252)
-            export SKIP_CHECK_UPDATES=1
+            export SKIP_CHECK_UPDATES="1"
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
             ;;
         182)
             export PW_MANGOHUD=0
             edit_db_from_gui PW_MANGOHUD FPS_LIMIT
-            export SKIP_CHECK_UPDATES=1
+            export SKIP_CHECK_UPDATES="1"
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
             ;;
@@ -4096,7 +4360,7 @@ fi
         gui_mangohud
     fi
 
-    export SKIP_CHECK_UPDATES=1
+    export SKIP_CHECK_UPDATES="1"
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
@@ -4214,7 +4478,7 @@ fi
     YAD_DGV2_STATUS="$?"
     case "${YAD_DGV2_STATUS}" in
         1|252)
-            export SKIP_CHECK_UPDATES=1
+            export SKIP_CHECK_UPDATES="1"
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
             ;;
@@ -4222,14 +4486,14 @@ fi
             sed -i '/PW_DGV2/d' "$portwine_exe".ppdb
             export PW_DGVOODOO2=0
             edit_db_from_gui PW_DGVOODOO2
-            export SKIP_CHECK_UPDATES=1
+            export SKIP_CHECK_UPDATES="1"
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
             ;;
         164)
             export PW_DGVOODOO2=0
             edit_db_from_gui PW_DGVOODOO2
-            export SKIP_CHECK_UPDATES=1
+            export SKIP_CHECK_UPDATES="1"
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
             ;;
@@ -4269,7 +4533,7 @@ fi
     PW_DGV2_FPS_LIMIT PW_DGV2_BIT_DEPTH PW_DGV2_BRIGHTNESS PW_DGV2_COLOR PW_DGV2_CONTRAST PW_DGV2_VIDEOCARD PW_DGV2_DISPLAY_ROI \
     PW_DGV2_CURSOR_SCALE PW_DGV2_RESAMPLING
 
-    export SKIP_CHECK_UPDATES=1
+    export SKIP_CHECK_UPDATES="1"
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
@@ -4376,7 +4640,7 @@ fi
 
     old_IFS=$IFS
     IFS="%"
-    "${pw_yad}" --plug=$KEY_GS_GUI --tabnum="1" --form --columns=3 --separator=" " --text-align=center --text "$GAMESCOPE_NEED_INSTALL" \
+    "${pw_yad}" --plug=$KEY_GS_GUI --tabnum="1" --form --columns=4 --separator=" " --text-align=center --text "$GAMESCOPE_NEED_INSTALL" \
     --gui-type-text=${GAMESCOPE_GUI_TYPE_TEXT_UP} --gui-type-layout=${GAMESCOPE_GUI_TYPE_LAYOUT_UP} $YAD_TEXT_SELECTION \
     ${ADD_CHK_BOX_GS} \
     1> "${PW_TMPFS_PATH}/tmp_yad_gs_set" 2>/dev/null &
@@ -4384,7 +4648,7 @@ fi
 
     GAMESCOPE_XRANDR="$(grep -e '[0-9]x' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}' | sort -rVu | grep "^[1-2]" | tr '\n' '!' | sed 's/.$//')"
 
-    "${pw_yad}" --plug=$KEY_GS_GUI --tabnum="2" --form --columns=3 --separator="%" --homogeneous-row \
+    "${pw_yad}" --plug=$KEY_GS_GUI --tabnum="2" --form --columns=2 --separator="%" --homogeneous-row \
     --gui-type-text=${GAMESCOPE_GUI_TYPE_TEXT_DOWN} --gui-type-layout=${GAMESCOPE_GUI_TYPE_LAYOUT_DOWN} \
     --field="${CHKBOX_SPACE}$(gettext "Show resolution")!$(gettext "Set the resolution used by gamescope. Resizing the gamescope window will update these settings. Defaults to 1280x720.") :${GS_CBE}" "$(combobox_fix_disabled "${PW_GS_SHOW_RESOLUTION}" "${GAMESCOPE_XRANDR}")" \
     --field="${CHKBOX_SPACE}$(gettext "Internal resolution")!$(gettext "Scale internal resolution (0.0 is unused)") :${GS_NUMN}" "${PW_GS_INTERNAL_RESOLUTION}:!0..2" \
@@ -4416,7 +4680,7 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate."
     YAD_GAMESCOPE_STATUS="$?"
     case "${YAD_GAMESCOPE_STATUS}" in
         1|252)
-            export SKIP_CHECK_UPDATES=1
+            export SKIP_CHECK_UPDATES="1"
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
             ;;
@@ -4424,14 +4688,14 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate."
             sed -i '/PW_GS/d' "$portwine_exe".ppdb
             export PW_GAMESCOPE=0
             edit_db_from_gui PW_GAMESCOPE
-            export SKIP_CHECK_UPDATES=1
+            export SKIP_CHECK_UPDATES="1"
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
             ;;
         164)
             export PW_GAMESCOPE=0
             edit_db_from_gui PW_GAMESCOPE
-            export SKIP_CHECK_UPDATES=1
+            export SKIP_CHECK_UPDATES="1"
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
             ;;
@@ -4471,8 +4735,7 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate."
     PW_GS_UPSCALE_SHARPNESS PW_GS_MAX_SCALE_FACTOR PW_GS_MOUSE_SENSITIVITY \
     PW_GS_SDR_CONTENT_NITS PW_GS_ITM_SDR_NITS PW_GS_ITM_TARGET_NITS
 
-
-    export SKIP_CHECK_UPDATES=1
+    export SKIP_CHECK_UPDATES="1"
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
@@ -4528,13 +4791,9 @@ portwine_create_shortcut () {
         fi
         name_desktop="$(echo "${name_desktop}" | sed "s/\`//g" | sed "s/\"//g" | sed "s/'//g")"
         name_desktop_png="${name_desktop// /_}"
-        create_menu_desktop_shortcut=$(echo "$OUTPUT" | awk -F'|' '{print $2}')
-        create_desktop_desktop_shortcut=$(echo "$OUTPUT" | awk -F'|' '{print $3}')
-        create_menu_steam_shortcut=$(echo "$OUTPUT" | awk -F'|' '{print $4}')
-
-        PW_SHORTCUT_MENU="$create_menu_desktop_shortcut"
-        PW_SHORTCUT_DESKTOP="$create_desktop_desktop_shortcut"
-        PW_SHORTCUT_STEAM="$create_menu_steam_shortcut"
+        PW_SHORTCUT_MENU=$(echo "$OUTPUT" | awk -F'|' '{print $2}')
+        PW_SHORTCUT_DESKTOP=$(echo "$OUTPUT" | awk -F'|' '{print $3}')
+        PW_SHORTCUT_STEAM=$(echo "$OUTPUT" | awk -F'|' '{print $4}')
 
         edit_user_conf_from_gui PW_SHORTCUT_MENU PW_SHORTCUT_DESKTOP PW_SHORTCUT_STEAM
 
@@ -4559,12 +4818,12 @@ portwine_create_shortcut () {
         } >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
         chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 
-        if [[ "${create_menu_desktop_shortcut}" == "TRUE" ]] ; then
+        if [[ "${PW_SHORTCUT_MENU}" == "TRUE" ]] ; then
             try_remove_file "${HOME}/.local/share/applications/${name_desktop}.desktop"
             cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" "${HOME}/.local/share/applications/"
         fi
 
-        if [[ "${create_desktop_desktop_shortcut}" == "TRUE" ]] ; then
+        if [[ "${PW_SHORTCUT_DESKTOP}" == "TRUE" ]] ; then
             if [[ -d "${HOME}/Desktop" ]] ; then
                 cp -f "${PORT_WINE_PATH}/${name_desktop}.desktop" "${HOME}/Desktop/"
             elif [[ -d "${HOME}/Рабочий стол" ]] ; then
@@ -4574,7 +4833,7 @@ portwine_create_shortcut () {
             fi
         fi
 
-        if [[ "${create_menu_steam_shortcut}" == "TRUE" ]] ; then
+        if [[ "${PW_SHORTCUT_STEAM}" == "TRUE" ]] ; then
             export STEAM_SCRIPTS="${PORT_WINE_PATH}/steam_scripts"
             create_new_dir "${STEAM_SCRIPTS}"
             echo "#!/usr/bin/env bash" > "${STEAM_SCRIPTS}/${name_desktop}.sh"
@@ -4611,7 +4870,7 @@ portwine_create_shortcut () {
 
         if [[ "$PW_NO_RESTART_PPDB" != "1" ]] ; then
             print_info "Restarting PP..."
-            export SKIP_CHECK_UPDATES=1
+            export SKIP_CHECK_UPDATES="1"
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
         fi
@@ -4621,6 +4880,7 @@ portwine_create_shortcut () {
 portwine_delete_shortcut () {
     rm -f "$(grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop)" &>/dev/null
     rm -f "$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop)" &>/dev/null
+    rm -f "$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}/duplicate"/*.desktop)" &>/dev/null
     # rm -f "$(grep -il "${portwine_exe}" "${STEAM_SCRIPTS}"/*.sh)" &>/dev/null
     if [[ -d "${HOME}/Desktop" ]] ; then
         rm -f "$(grep -il "${portwine_exe}" "${HOME}/Desktop"/*.desktop)" &>/dev/null
@@ -5013,6 +5273,11 @@ pw_autoinstall_from_db () {
 }
 
 gui_credits () {
+    if [[ -z "${PW_ALL_DF}" ]] ; then
+        export TAB_MAIN_MENU="4"
+    else
+        export TAB_MAIN_MENU="5"
+    fi
     . "${PORT_SCRIPTS_PATH}/credits"
 }
 export -f gui_credits
@@ -5036,18 +5301,27 @@ export -f button_click_start
 
 run_desktop_b_click () {
     [[ ! -z "$1" ]] && echo "$1" > "${PW_TMPFS_PATH}/tmp_yad_form"
-    if [[ ! -z $(pidof -s yad) ]] || [[ ! -z $(pidof -s yad_gui_pp) ]] ; then
-        kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \--notebook" | awk '{print $1}') > /dev/null 2>&1
-    fi
-
-    if check_flatpak
-    then PW_EXEC_FROM_DESKTOP="$(grep Exec "${PORT_WINE_PATH}/${PW_YAD_SET//@_@/ }" | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
-    else PW_EXEC_FROM_DESKTOP="$(grep Exec "${PORT_WINE_PATH}/${PW_YAD_SET//@_@/ }" | head -n 1 | awk -F"=env " '{print $2}')"
+    if [[ "${USE_DUPLICATE_GUI}" == "1" ]] ; then
+        if [[ ! -z $(pidof -s yad) ]] || [[ ! -z $(pidof -s yad_gui_pp) ]] ; then
+            kill -s SIGUSR1 $(pgrep -a yad | grep "\--width="${PW_DUPLICATE_SIZE_W}" \--height="${PW_DUPLICATE_SIZE_H}"" | awk '{print $1}') > /dev/null 2>&1
+        fi
+        if check_flatpak
+        then PW_EXEC_FROM_DESKTOP="$(grep Exec "${PORT_WINE_PATH}/duplicate/${PW_YAD_SET//@_@/ }" | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
+        else PW_EXEC_FROM_DESKTOP="$(grep Exec "${PORT_WINE_PATH}/duplicate/${PW_YAD_SET//@_@/ }" | head -n 1 | awk -F"=env " '{print $2}')"
+        fi
+    else
+        if [[ ! -z $(pidof -s yad) ]] || [[ ! -z $(pidof -s yad_gui_pp) ]] ; then
+            kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \--notebook" | awk '{print $1}') > /dev/null 2>&1
+        fi
+        if check_flatpak
+        then PW_EXEC_FROM_DESKTOP="$(grep Exec "${PORT_WINE_PATH}/${PW_YAD_SET//@_@/ }" | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
+        else PW_EXEC_FROM_DESKTOP="$(grep Exec "${PORT_WINE_PATH}/${PW_YAD_SET//@_@/ }" | head -n 1 | awk -F"=env " '{print $2}')"
+        fi
     fi
 
     print_info "Restarting PP after choose desktop file..."
     # stop_portwine
-    export SKIP_CHECK_UPDATES=1
+    export SKIP_CHECK_UPDATES="1"
     /usr/bin/env bash -c "${PW_EXEC_FROM_DESKTOP}" &
     exit 0
 }
@@ -5057,7 +5331,7 @@ gui_clear_pfx () {
     if yad_question "$(gettext "Do you want to clear prefix in PortProton?")" ; then
         pw_clear_pfx
         print_info "Restarting PP after clearing prefix..."
-        export SKIP_CHECK_UPDATES=1
+        export SKIP_CHECK_UPDATES="1"
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     fi
@@ -5079,7 +5353,7 @@ export -f gui_rm_portproton
 gui_pw_update () {
     try_remove_file "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     print_info "Restarting PP for check update..."
-    export SKIP_CHECK_UPDATES=0
+    export SKIP_CHECK_UPDATES="0"
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
@@ -5088,7 +5362,7 @@ export -f gui_pw_update
 change_loc () {
     try_remove_file "${PORT_WINE_TMP_PATH}/PortProton_loc"
     print_info "Restarting PP for change language..."
-    export SKIP_CHECK_UPDATES=1
+    export SKIP_CHECK_UPDATES="1"
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
@@ -5103,7 +5377,7 @@ change_mirror () {
         yad_info "$(gettext "Mirror changed to:")  <b>CDN</b>"
     fi
     print_info "Restarting PP for change mirror..."
-    export SKIP_CHECK_UPDATES=1
+    export SKIP_CHECK_UPDATES="1"
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
@@ -5138,7 +5412,7 @@ change_gui_start () {
         yad_info "$(gettext "Gui start changed to:") NOTEBOOK"
     fi
     print_info "Restarting PP for change gui start..."
-    export SKIP_CHECK_UPDATES=1
+    export SKIP_CHECK_UPDATES="1"
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
@@ -5151,9 +5425,63 @@ gui_wine_uninstaller () {
 export -f gui_wine_uninstaller
 
 gui_open_user_conf () {
-    xdg-open "${PORT_WINE_PATH}/data/user.conf"
+    PW_USERCONF_GUI="$("${pw_yad}" --title="$(gettext "EDIT USER CONFIG")" \
+    --text-info --editable --width=800 --height=600 \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+    --button="$(gettext "MAIN MENU")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":1 \
+    --button="$(gettext "SAVE")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":2 \
+    --filename="${PORT_WINE_PATH}/data/user.conf" 2>/dev/null)"
+    YAD_STATUS="$?"
+
+    case "${YAD_STATUS}" in
+        1|252)
+                export SKIP_CHECK_UPDATES="1"
+                if [[ -z "${PW_ALL_DF}" ]] ; then
+                    export TAB_MAIN_MENU="4"
+                else
+                    export TAB_MAIN_MENU="5"
+                fi
+                /usr/bin/env bash -c ${pw_full_command_line[*]} &
+                print_info "Restarting..."
+                exit 0
+                ;;
+            2)
+                echo "${PW_USERCONF_GUI}" > "${PORT_WINE_PATH}/data/user.conf"
+                export SKIP_CHECK_UPDATES="1"
+                if [[ -z "${PW_ALL_DF}" ]] ; then
+                    export TAB_MAIN_MENU="4"
+                else
+                    export TAB_MAIN_MENU="5"
+                fi
+                /usr/bin/env bash -c ${pw_full_command_line[*]} &
+                print_info "Restarting..."
+                exit 0
+                ;;
+    esac
 }
 export -f gui_open_user_conf
+
+gui_edit_db_file () {
+    GUI_EDIT_DB_FILE="$("${pw_yad}" --title="$(gettext "EDIT DB")" \
+    --text-info --editable --width=800 --height=600 \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+    --button="$(gettext "SETTINGS")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":1 \
+    --button="$(gettext "SAVE")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":2 \
+    --filename="${PORTWINE_DB_FILE}" 2>/dev/null)"
+    YAD_STATUS="$?"
+
+    case "$YAD_STATUS" in
+        1|252)
+                /usr/bin/env bash -c ${pw_full_command_line[*]} &
+                exit 0
+                ;;
+          2)
+                echo "${GUI_EDIT_DB_FILE}" > "${PORTWINE_DB_FILE}"
+                /usr/bin/env bash -c ${pw_full_command_line[*]} &
+                exit 0
+                ;;
+    esac
+}
 
 gui_open_scripts_from_backup () {
     cd "${PORT_WINE_TMP_PATH}/scripts_backup/" || fatal
@@ -5164,7 +5492,7 @@ gui_open_scripts_from_backup () {
     unpack "$PW_SCRIPT_FROM_BACKUP" "${PORT_WINE_PATH}/data/"
     echo "0" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     print_info "Restarting PP after backup..."
-    export SKIP_CHECK_UPDATES=1
+    export SKIP_CHECK_UPDATES="1"
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }

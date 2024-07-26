@@ -1,6 +1,6 @@
-<div align="center">
+<div style="text-align: center;">
   <img src="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine/img/gui/portproton.svg" width="64">
-  <h1 align="center">PortProton</h1>
+  <h1 style="text-align: center;">PortProton</h1>
   <a href="https://github.com/Castro-Fidel/PortWINE/blob/master/LICENSE">
     <img src="https://img.shields.io/github/license/Castro-Fidel/PortWine?logo=github" alt="GitHub License">
   </a>
@@ -10,22 +10,24 @@
   </a>
   <img src="https://img.shields.io/youtube/channel/subscribers/UCbI8OJx2D3q-4QKt4LffXTw?style=flat&logo=youtube" alt="YouTube Channel Subscribers">
   <br/>
-  <p align="center">
+  <p style="text-align: center;">
     Проект, призванный сделать запуск Windows-игр в Linux простым и удобным как для начинающих, так и для опытных пользователей.<br>
     Проект стремится сделать запуск игр (и другого программного обеспечения) максимально простым, но в то же время предоставляет гибкие настройки для опытных пользователей.
   </p>
 </div>
 
 # **Язык README**
+
 **Русский** - [English](README.md)
 
 ## Внимание
+
 **Официальный сайт проекта** с сентября 2022 года: https://linux-gaming.ru.  **Любой другой сайт - фальшивка!**
 
 ## Особенности
 
 - Основан на версии WINE от Valve (Proton) и ее модификациях (Proton GE).
-Включает набор скриптов, объединенных с самим wine-proton, контейнер Steam Runtime Sniper с добавлением портированных версий MANGOHUD (вывод полезной информации в окно игры: FPS, FrameTime, CPU, GPU и т.д.) и vkBasalt (улучшение графики в играх, очень хорош в связке с FSR, DLSS) + множество уже настроенных оптимизаций для максимальной производительности.
+  Включает набор скриптов, объединенных с самим wine-proton, контейнер Steam Runtime Sniper с добавлением портированных версий MANGOHUD (вывод полезной информации в окно игры: FPS, FrameTime, CPU, GPU и т.д.) и vkBasalt (улучшение графики в играх, очень хорош в связке с FSR, DLSS) + множество уже настроенных оптимизаций для максимальной производительности.
 
 - Реализована автоматическая установка одним щелчком мыши (на вкладке АВТОУСТАНОВКА) популярных лаунчеров, таких как: WGC, Epic Games, Battle.net, Origin, EVE Online, RockStar, Ubisoft connect , League of Legends и многие другие.
 
@@ -37,7 +39,7 @@
 
 * WINE-PROTON: https://github.com/ValveSoftware/Proton
 
-* WINE-PROTON-GE: https://github.com/GloriousEggroll/proton-ge-custom/
+* WINE-PROTON-GE: https://github.com/GloriousEggroll/proton-ge-custom
 
 ## Установка с помощью пакетов
 
@@ -55,6 +57,7 @@ exit
 ```
 
 `Вариант установки с помощью eepm`:
+
 ```sh
 su -
 
@@ -66,13 +69,13 @@ exit
 ```
 
 * **Ubuntu 24.04**, **Debian 12**, **Linux Mint 21.x** **Deepin** :
-[portproton_1.4-1_amd64.deb](https://github.com/Castro-Fidel/PortProton_dpkg/releases/download/portproton_1.4-1_amd64/portproton_1.4-1_amd64.deb)
+  [portproton_1.7-2_amd64.deb](https://github.com/Castro-Fidel/PortProton_dpkg/releases/download/portproton_1.7-2_amd64/portproton_1.7-2_amd64.deb)
 
 * **Arch Linux** и производные (Manjaro, Garuda, и т.д.) :
-[AUR](https://aur.archlinux.org/packages/portproton)
+  [AUR](https://aur.archlinux.org/packages/portproton)
 
-* **OpenSuse**:
-[OBS](https://software.opensuse.org/download/package?package=portproton&project=home%3ABoria138%3APortProton)
+* **openSUSE**:
+  [OBS](https://software.opensuse.org/download/package?package=portproton&project=home%3ABoria138%3APortProton)
 
 * **ROSA Linux** устанавливается с помощью этой команды:
 
@@ -194,6 +197,7 @@ sudo eopkg it curl file bubblewrap curl icoutils tar  zstd cabextract xdg-utils 
 ```
 
 * **Void**
+
 ```sh
 sudo xbps-install -Su void-repo-multilib
 

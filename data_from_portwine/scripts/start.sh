@@ -87,7 +87,7 @@ unset CHK_SYMLINK_FILE PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PATH_T
 unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD PW_WINE_CPU_TOPOLOGY
 unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_ALL_DF PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
 unset MANGOHUD_CONFIG FPS_LIMIT PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME PORTWINE_CREATE_SHORTCUT_NAME MIRROR
-unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NOSTSTDIR
+unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NOSTSTDIR USE_DUPLICATE_GUI
 
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 rm -f "$PORT_WINE_TMP_PATH"/*{exe,msi,tar}*
@@ -172,8 +172,9 @@ then
 else
     # shellcheck source=/dev/null
     source "$PW_GUI_THEMES_PATH/default.pptheme"
-echo 'export GUI_THEME="default"' >> "$USER_CONF"
+    echo 'export GUI_THEME="default"' >> "$USER_CONF"
 fi
+[[ "$XDG_SESSION_DESKTOP" == "KDE" ]] && export YAD_OPTIONS+="--center"
 
 # choose branch
 if [[ -z "$BRANCH" ]] ; then
@@ -551,7 +552,7 @@ if [[ -f "${portwine_exe}" ]] ; then
                 export TAB_START="1"
             fi
 
-            "${pw_yad}" --key=$KEY_START --notebook --active-tab=${TAB_START} \
+            "${pw_yad}" --key=$KEY_START --notebook --active-tab="${TAB_START}" \
             --gui-type="settings-notebook" \
             --width="${PW_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" --center \
             --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" --expand \
@@ -636,14 +637,17 @@ else
     else PW_GUI_SORT_TABS=(2 3 4 5 1)
     fi
     PW_GENERATE_BUTTONS="--field=   $(gettext "Create shortcut...")!${PW_GUI_ICON_PATH}/find_48.svg!:FBTN%@bash -c \"button_click pw_find_exe\"%"
+    if grep -i "[Desktop Entry]" "${PORT_WINE_PATH}/duplicate"/* &>/dev/null ; then
+        PW_GENERATE_BUTTONS+="--field=   $(gettext "Duplicates")!${PW_GUI_ICON_PATH}/duplicate.svg!:FBTN%@bash -c \"button_click pw_duplicate\"%"
+    fi
     for PW_DESKTOP_FILES in ${PW_ALL_DF} ; do
         PW_NAME_D_ICON="$(grep Icon "${PORT_WINE_PATH}/${PW_DESKTOP_FILES}" | awk -F= '{print $2}')"
         PW_NAME_D_ICON_48="${PW_NAME_D_ICON//".png"/"_48.png"}"
         if [[ ! -f "${PW_NAME_D_ICON_48}" ]]  \
         && [[ -f "${PW_NAME_D_ICON}" ]] \
-        && command -v "convert" 2>/dev/null
+        && command -v "convert" &>/dev/null
         then
-            convert "${PW_NAME_D_ICON}" -resize 48x48 "${PW_NAME_D_ICON_48}"
+            convert "${PW_NAME_D_ICON}" -resize 48x48 "${PW_NAME_D_ICON_48}" &>/dev/null
         fi
         PW_DESKTOP_HELPER="${PW_DESKTOP_FILES// /@_@}"
         PW_GENERATE_BUTTONS+="--field=   ${PW_DESKTOP_FILES//".desktop"/""}!${PW_NAME_D_ICON_48}!:FBTN%@bash -c \"run_desktop_b_click "${PW_DESKTOP_HELPER}"\"%"
@@ -749,11 +753,14 @@ else
     # --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"'
     # --field="   League of Legends"!"$PW_GUI_ICON_PATH/lol.png"!"":"FBTN" '@bash -c "button_click PW_LOL"'
 
-    export START_FROM_PP_GUI=1
+    export START_FROM_PP_GUI="1"
+    if [[ -z ${TAB_MAIN_MENU} ]] ; then
+        export TAB_MAIN_MENU="1"
+    fi
 
     if [[ -z "${PW_ALL_DF}" ]] ; then
         "${pw_yad}" --key=$KEY --notebook --expand \
-        --gui-type="settings-notebook" \
+        --gui-type="settings-notebook" --active-tab="${TAB_MAIN_MENU}" \
         --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
         --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
@@ -766,7 +773,7 @@ else
         YAD_STATUS="$?"
     else
         "${pw_yad}" --key=$KEY --notebook --expand \
-        --gui-type="settings-notebook" \
+        --gui-type="settings-notebook" --active-tab="${TAB_MAIN_MENU}" \
         --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
         --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
@@ -778,11 +785,12 @@ else
         --tab="$(gettext "PORTPROTON SETTINGS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" 2>/dev/null
         YAD_STATUS="$?"
     fi
+    unset TAB_MAIN_MENU
 
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
     pw_yad_set_form
     pw_yad_form_vulkan
-    export PW_DISABLED_CREATE_DB=1
+    export PW_DISABLED_CREATE_DB="1"
 fi
 
 case "${VULKAN_MOD}" in
@@ -832,6 +840,7 @@ fi
     gui_credits) gui_credits ;;
     pw_start_cont_xterm) pw_start_cont_xterm ;;
     pw_find_exe) pw_find_exe ;;
+    pw_duplicate) pw_duplicate ;;
     PW_*) pw_autoinstall_from_db ;;
     *.desktop) run_desktop_b_click ;;
     1|252|*) exit 0 ;;
