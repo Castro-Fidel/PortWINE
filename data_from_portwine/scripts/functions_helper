@@ -992,11 +992,11 @@ stop_portwine () {
     kill_portwine &&
     try_remove_dir "${PW_WINELIB}/var"
     find "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/" -maxdepth 1 -type f -name "*.tmp" -delete
-    if [[ ! -z "$(pgrep -a tray_pp)" ]] ; then
-        kill -s SIGUSR1 $(pgrep -a tray_pp) 2>/dev/null
+    if [[ ! -z "$(pgrep -a tray_gui_pp)" ]] ; then
+        kill -s SIGUSR1 $(pgrep -a tray_gui_pp) 2>/dev/null
     fi
     if [[ ! -z "$(pgrep -a yad_gui_pp)" ]] ; then
-        kill -s SIGUSR1 $(pgrep -a pw_yad_pp) 2>/dev/null
+        kill -s SIGUSR1 $(pgrep -a yad_gui_pp) 2>/dev/null
     fi
     pw_auto_create_shortcut
     add_in_stop_portwine
@@ -3257,8 +3257,8 @@ open_changelog () {
 export -f open_changelog
 
 pw_tray_icon () {
-    if [[ ! -z "$(pgrep -a tray_pp)" ]] ; then
-        kill -s SIGUSR1 $(pgrep -a tray_pp) 2>/dev/null
+    if [[ ! -z "$(pgrep -a tray_gui_pp)" ]] ; then
+        kill -s SIGUSR1 $(pgrep -a tray_gui_pp) 2>/dev/null
     fi
 
     pw_tray_winefile () {
@@ -3278,9 +3278,7 @@ pw_tray_icon () {
     export -f tray_icon_click_exit
 
     PW_GUI_TRAY_PATH="${PW_GUI_THEMES_PATH}/tray"
-    cd "${PW_GUI_TRAY_PATH}"
-    env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${PW_GUI_TRAY_PATH}/tray_pp" &
-    cd -
+    env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${PW_GUI_TRAY_PATH}/tray_gui_pp" &
 
     return 0
 }
