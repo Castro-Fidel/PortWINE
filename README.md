@@ -1,14 +1,18 @@
-<div style="text-align: center;">
+<div align="center">
   <img src="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/master/data_from_portwine/img/gui/portproton.svg" width="64">
-  <h1 style="text-align: center;">PortProton</h1>
-  <a href="https://github.com/Castro-Fidel/PortProton_ALT/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/Castro-Fidel/PortWINE" alt="GitHub License">
+  <h1 align="center">PortProton</h1>
+  <a href="https://github.com/Castro-Fidel/PortWINE/blob/master/LICENSE">
+    <img src="https://img.shields.io/github/license/Castro-Fidel/PortWine?logo=github" alt="GitHub License">
   </a>
-  <img src="https://img.shields.io/flathub/downloads/ru.linux_gaming.PortProton?style=flat&logo=flathub" alt="Flathub Downloads">
+  <a href="https://flathub.org/apps/ru.linux_gaming.PortProton">
+    <img src="https://img.shields.io/flathub/downloads/ru.linux_gaming.PortProton?style=flat&logo=flathub" alt="Flathub Downloads">
+  </a>
   <a href="https://discord.gg/FTaheP99wE">
     <img src="https://img.shields.io/discord/378683352946835456?logo=discord" alt="Discord">
   </a>
-  <img src="https://img.shields.io/youtube/channel/subscribers/UCbI8OJx2D3q-4QKt4LffXTw?style=flat&logo=youtube" alt="YouTube Channel Subscribers">
+  <a href="https://www.youtube.com/@linux-gaming5986">
+    <img src="https://img.shields.io/youtube/channel/subscribers/UCbI8OJx2D3q-4QKt4LffXTw?style=flat&logo=youtube" alt="YouTube Channel Subscribers">
+  </a>
   <br/>
   <p style="text-align: center;">
     A project designed to make running Windows games on Linux easy and convenient for both beginners and advanced users.<br>
