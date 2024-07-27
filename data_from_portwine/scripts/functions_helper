@@ -1269,13 +1269,7 @@ check_dirs_and_files_in_pfx () {
         DRIVES=(d e f g i j k l m n o p q r t u v w x y)
         DEF_MOUNT_DIRS=('/media' '/mnt' '/run/media')
         MOUNT_DIRS=($(find "${DEF_MOUNT_DIRS[@]}" -maxdepth 1 -mindepth 1  -type d 2>/dev/null | sort -u))
-
-        rm -f "${WINEPREFIX}/dosdevices/com"*
-        rm -f "${WINEPREFIX}/dosdevices/"*::
-
-        for drive in "${DRIVES[@]}"; do
-            rm -f "${WINEPREFIX}/dosdevices/${drive}:"
-        done
+        find -L "$WINEPREFIX/dosdevices" -maxdepth 1 -type l -exec rm -rf {} \; 2>/dev/null ;
 
         for drive_dir in "${MOUNT_DIRS[@]}" ; do
             if  mountpoint -q "$drive_dir" ; then
@@ -1290,6 +1284,7 @@ check_dirs_and_files_in_pfx () {
                             if [[ $(cat "/sys/class/block/$mount_name/removable") != "1" ]] 2>/dev/null ; then
                                 if [[ ! $(echo "$mount_point" | grep "mmc") ]] 2>/dev/null ; then
                                     ln -sf "$drive_dir" "$drive_path"
+                                    print_info "Mounted ${drive_dir} to ${drive_path}"
                                     break
                                 else
                                     ((drive_num++))
