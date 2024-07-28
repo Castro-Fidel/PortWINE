@@ -3604,27 +3604,24 @@ fi
     case "${PW_VULKAN_USE}" in
         0)
             # WineD3D OpenGL
-            VKD3D_CB=DCB
-            PW_VKD3D_FEATURE_LEVEL="disabled"
+            VKD3D_CB="DCB"
             DISABLE_EDIT_DB_LIST="PW_VKBASALT PW_VKBASALT_USER_CONF PW_USE_RAY_TRACING PW_USE_OBS_VKCAPTURE
             "
             ;;
         1|2)
             # Stable, Newest
-            VKD3D_CB=CB
+            VKD3D_CB="CB"
             ;;
         3)
             # Gallium Nine
-            VKD3D_CB=DCB
-            PW_VKD3D_FEATURE_LEVEL="disabled"
+            VKD3D_CB="DCB"
             DISABLE_EDIT_DB_LIST="PW_MANGOHUD PW_MANGOHUD_USER_CONF PW_VKBASALT PW_VKBASALT_USER_CONF PW_USE_RAY_TRACING PW_WINE_FULLSCREEN_FSR
             PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE
             "
             ;;
         4|5|6)
             # Galliun Zink, Legacy, WineD3D Vulkan
-            VKD3D_CB=DCB
-            PW_VKD3D_FEATURE_LEVEL="disabled"
+            VKD3D_CB="DCB"
             DISABLE_EDIT_DB_LIST="PW_USE_RAY_TRACING
             "
             ;;
@@ -3640,7 +3637,7 @@ fi
         int_to_boole_non_pw="$(echo ${int_to_boole//PW_/} | sed 's/_/ /g')"
         if [[ ! "${PW_VULKAN_USE}" == "1" ]] && [[ ! "${PW_VULKAN_USE}" == "2" ]] \
         && grep -wo "${int_to_boole}" <<<"${DISABLE_EDIT_DB_LIST}" &>/dev/null
-        then ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:FD${THEME_CHKBOX}%${!int_to_boole}%"
+        then ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:D${THEME_CHKBOX}%${!int_to_boole}%"
         else ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
         fi
     done
@@ -3686,9 +3683,9 @@ A brief instruction:
     * library=n,b - use <b>WINDOWS</b> library and then <b>WINE</b>
     * library=b,n - use <b>WINE</b> library and then <b>WINDOWS</b>
     * library= - disable the use of this library") :CBE" "$(combobox_fix_empty "${WINEDLLOVERRIDES}" "libglesv2=!d3dx9_36,d3dx9_42=n,b;mfc120=b,n")" \
-    --field=":LBL" "" \
+    --field=":LBLH" "" \
     --field="$(gettext "ADD ARGUMENTS FOR .EXE FILE")!$(gettext "Adding an argument after the <b>.exe</b> file, just like you would add an argument in a shortcut on a <b>WINDOWS </b> system") :CBE" "$(combobox_fix_empty "\\${LAUNCH_PARAMETERS[@]}" "-dx11 -skipintro 1")" \
-    --field=":LBL" "" \
+    --field=":LBLH" "" \
     --field="$(gettext "Limit the use of processor cores")!$(gettext "Limiting the number of CPU cores is useful for Unity games (It is recommended to set the value equal to 8)") :CB" "$(combobox_fix_disabled "${CPU_LIMIT_VAR}" "${GET_LOGICAL_CORE}")" \
     --field="$(gettext "Choose a graphics card to run the game (in user.conf)")!$(gettext "Select which video card will be used to run the game (used for all running games and programs in PortProton)") :CB" "$(combobox_fix_disabled "${GPU_VAR}" "${GET_GPU_NAMES}")" \
     --field="$(gettext "Forcibly select the OpenGL version for the game")!$(gettext "You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)") :CB" "$(combobox_fix_disabled "${PW_MESA_GL_VERSION_OVERRIDE}" "4.6COMPAT!4.6!4.5COMPAT!4.5!3.3COMPAT!3.3")" \
@@ -4034,7 +4031,7 @@ fi
     done
 
     old_IFS=$IFS && IFS="%"
-    "${pw_yad}" --plug=$KEY_MH_GUI --tabnum="1" --form --columns=4 --separator=" " --text-align=center \
+    "${pw_yad}" --plug=$KEY_MH_GUI --tabnum="1" --form --columns=5 --separator=" " --text-align=center \
         --text="$(gettext "MangoHud settings (Keys <b>R_SHIFT + F12</b> disable MangoHud)\n<b>note:</b> To display help for each item, just hover the mouse cursor over the text.")" \
         --gui-type-text=${MANGOHUD_GUI_TYPE_TEXT_UP} --gui-type-layout=${MANGOHUD_GUI_TYPE_LAYOUT_UP} \
         ${ADD_GUI_MH} 1> "${PW_TMPFS_PATH}/tmp_yad_mh_set" 2>/dev/null &
@@ -4198,7 +4195,7 @@ fi
         int_to_boole_non_pw="$(echo ${int_to_boole//PW_DGV2/} | sed 's/_/ /g' )"
         if [[ ! "${PW_VULKAN_USE}" == "1" ]] && [[ ! "${PW_VULKAN_USE}" == "2" ]] \
         && grep -wo "${int_to_boole}" <<<"${DISABLE_DGV2_LIST}" &>/dev/null
-        then ADD_CHK_BOX_DGV2+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:FD${THEME_CHKBOX}%${!int_to_boole}%"
+        then ADD_CHK_BOX_DGV2+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:D${THEME_CHKBOX}%${!int_to_boole}%"
         else ADD_CHK_BOX_DGV2+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
         fi
     done
@@ -4413,7 +4410,7 @@ fi
             fi
             TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
             int_to_boole_non_pw="$(echo ${int_to_boole//PW_GS/} | sed 's/_/ /g' )"
-            ADD_CHK_BOX_GS+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:FD${THEME_CHKBOX}%${!int_to_boole}%"
+            ADD_CHK_BOX_GS+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:D${THEME_CHKBOX}%${!int_to_boole}%"
         done
     fi
 
