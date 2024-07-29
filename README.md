@@ -75,11 +75,6 @@ epm play portproton
 exit
 ```
 
-* **ROSA Linux** (package in the official repository) is installed with the command:
-
-```sh
-sudo urpmi portproton
-```
 
 * **Ubuntu 24.04**, **Debian 12**, **Linux Mint 21.x**, and **Deepin**:
   [portproton_1.7-2_amd64.deb](https://github.com/Castro-Fidel/PortProton_dpkg/releases/download/portproton_1.7-2_amd64/portproton_1.7-2_amd64.deb)
@@ -87,10 +82,13 @@ sudo urpmi portproton
 * **Arch Linux** and derivatives (Manjaro, Garuda, etc.):
   [AUR](https://aur.archlinux.org/packages/portproton)
 
-* **openSUSE**:
-  [OBS](https://software.opensuse.org/download/package?package=portproton&project=home%3ABoria138%3APortProton)
+* **ROSA Linux** (package in the official repository) is installed with the command:
 
-* **Fedora 38+** and **Nobara**:
+```sh
+sudo urpmi portproton
+```
+
+* **Fedora 39+** and **Nobara**:
 
 ```sh
 sudo dnf copr enable boria138/portproton

@@ -78,16 +78,13 @@ exit
 * **Arch Linux** и производные (Manjaro, Garuda, и т.д.) :
   [AUR](https://aur.archlinux.org/packages/portproton)
 
-* **openSUSE**:
-  [OBS](https://software.opensuse.org/download/package?package=portproton&project=home%3ABoria138%3APortProton)
-
 * **ROSA Linux** устанавливается с помощью этой команды:
 
 ```sh
 sudo urpmi portproton
 ```
 
-* **Fedora 38+** and **Nobara**:
+* **Fedora 39+** and **Nobara**:
 
 ```sh
 sudo dnf copr enable boria138/portproton
