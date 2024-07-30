@@ -1803,13 +1803,14 @@ start_portwine () {
     fi
 
     pw_wineboot () {
-        LIST_NATIVE_WINE_DLL="winevulkan ir50_32 wined3d vulkan-1 dxgi d3d8 d3d9 d3d10core d3d11 d3d12 d3d12core"
-        for change_wine_dll in $LIST_NATIVE_WINE_DLL ; do
+        LIST_NATIVE_WINE_DLL_LINKS="winevulkan ir50_32 wined3d vulkan-1"
+        for change_wine_dll in $LIST_NATIVE_WINE_DLL_LINKS ; do
             try_force_link_file "${WINEDIR}/lib64/wine/x86_64-windows/${change_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${change_wine_dll}.dll"
             try_force_link_file "${WINEDIR}/lib/wine/i386-windows/${change_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${change_wine_dll}.dll"
         done
 
-        for change_wine_dll in atl100 ntdll shell32 ; do
+        LIST_NATIVE_WINE_DLL_COPY="atl100 ntdll shell32"
+        for change_wine_dll in $LIST_NATIVE_WINE_DLL_COPY ; do
             try_copy_file "${WINEDIR}/lib64/wine/x86_64-windows/${change_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${change_wine_dll}.dll"
             try_copy_file "${WINEDIR}/lib/wine/i386-windows/${change_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${change_wine_dll}.dll"
         done
@@ -2134,7 +2135,7 @@ start_portwine () {
             print_info "Use WINED3D OpenGL"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
             CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
-            CP_WINE_FILES="ddraw d3d8 d3d9 d3d10core d3d10_1 d3d10 d3d11 dxgi d3d12 d3d12core"
+            CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d9 d3d8 dxgi"
             export __GL_YIELD="NOTHING"
             export mesa_glthread="true"
             export WINE_D3D_CONFIG="renderer=gl"
@@ -2146,9 +2147,9 @@ start_portwine () {
             print_info "VKD3D-PROTON v.${VKD3D_STABLE_VER} in use"
             PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
-            CP_DXVK_FILES="d3d11 d3d10_1 d3d10 d3d10core d3d9 dxgi" # openvr_api_dxvk
+            CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi" # openvr_api_dxvk
             CP_VKD3D_FILES="d3d12 libvkd3d-shader-1"
-            CP_WINE_FILES="ddraw d3d8 d3d12core"
+            CP_WINE_FILES="d3d12core d3d8"
             ;;
         2)
             # NEWEST DXVK AND VKD3D
@@ -2158,7 +2159,7 @@ start_portwine () {
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
             CP_DXVK_FILES="d3d11 d3d10core d3d9 d3d8 dxgi" # openvr_api_dxvk
             CP_VKD3D_FILES="d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1"
-            CP_WINE_FILES="ddraw d3d10_1 d3d10"
+            CP_WINE_FILES="d3d10_1 d3d10"
             ;;
         3)
             # GALLIUM NINE
@@ -2166,7 +2167,7 @@ start_portwine () {
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
             CP_GALLIUM_NINE_FILES="d3d9"
             CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
-            CP_WINE_FILES="ddraw d3d8 d3d11 d3d10core d3d10_1 d3d10 dxgi d3d12 d3d12core"
+            CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d8 dxgi"
             export __GL_YIELD="NOTHING"
             export mesa_glthread="true"
             export WINE_D3D_CONFIG="renderer=gl"
@@ -2188,7 +2189,7 @@ start_portwine () {
             print_info "Use GALLIUM-ZINK (OpenGL on MESA vulkan drivers)"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
             CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
-            CP_WINE_FILES="ddraw d3d8 d3d9 d3d10core d3d10_1 d3d10 d3d11 dxgi d3d12 d3d12core"
+            CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d9 d3d8 dxgi"
             export __GL_YIELD="NOTHING"
             export mesa_glthread="true"
             export WINE_D3D_CONFIG="renderer=gl"
@@ -2209,14 +2210,14 @@ start_portwine () {
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
             CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
             CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
-            CP_WINE_FILES="ddraw d3d8 d3d12 d3d12core"
+            CP_WINE_FILES="d3d12 d3d12core d3d8"
             ;;
         6)
             # WINED3D VULKAN (DAMAVAND)
             print_info "Use DAMAVAND (DirectX to wined3d vulkan)"
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
             CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
-            CP_WINE_FILES="ddraw d3d8 d3d9 d3d10core d3d10_1 d3d10 d3d11 dxgi d3d12 d3d12core"
+            CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d9 d3d8 dxgi"
             export WINE_D3D_CONFIG="renderer=vulkan"
             ;;
     esac
@@ -2225,41 +2226,39 @@ start_portwine () {
     if [[ "${PW_DGVOODOO2}" == "1" ]] ; then
         print_info "Try create symlink DGVOODOO2 files..."
         PATH_TO_DGV2_FILES="${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}"
-        CP_DGV2_FILES="ddraw d3dimm d3d8 d3d9 glide glide2x glide3x"
+        CP_DGV2_FILES="d3d9 d3d8 d3dimm ddraw glide3x glide2x glide"
         try_copy_file "${PATH_TO_DGV2_FILES}/dgVoodoo.conf" "${WINEPREFIX}/drive_c/windows/syswow64/"
         DGV2CONF="${WINEPREFIX}/drive_c/windows/syswow64/dgVoodoo.conf"
         if [[ "${PW_DGV2_DISABLE_D3D}" == "1" ]] ; then
-            rm_from_var CP_DGV2_FILES "d3d8 d3d9"
-            rm_from_var CP_WINE_FILES "ddraw"
+            rm_from_var CP_DGV2_FILES "d3d9 d3d8"
         else
             try_force_link_file "${PATH_TO_DGV2_FILES}/x64/d3d9.dll" "${WINEPREFIX}/drive_c/windows/system32/d3d9.dll"
             try_remove_file "${WINEPREFIX}/drive_c/windows/system32/dgVoodoo.conf"
             try_force_link_file "${DGV2CONF}" "${WINEPREFIX}/drive_c/windows/system32/dgVoodoo.conf"
             case "${PW_VULKAN_USE}" in
                 0)
-                    rm_from_var CP_WINE_FILES "ddraw d3d8 d3d9"
+                    rm_from_var CP_WINE_FILES "d3d9 d3d8"
                     ;;
                 1)
-                    rm_from_var CP_WINE_FILES "ddraw d3d8"
                     rm_from_var CP_DXVK_FILES "d3d9"
+                    rm_from_var CP_WINE_FILES "d3d8"
                     ;;
                 2)
-                    rm_from_var CP_WINE_FILES "ddraw"
                     rm_from_var CP_DXVK_FILES "d3d9 d3d8"
                     ;;
                 3)
-                    rm_from_var CP_WINE_FILES "ddraw d3d8"
                     rm_from_var CP_GALLIUM_NINE_FILES "d3d9"
+                    rm_from_var CP_WINE_FILES "d3d8"
                     ;;
                 4)
-                    rm_from_var CP_WINE_FILES "ddraw d3d8 d3d9"
+                    rm_from_var CP_WINE_FILES "d3d9 d3d8"
                     ;;
                 5)
-                    rm_from_var CP_WINE_FILES "ddraw d3d8"
                     rm_from_var CP_DXVK_FILES "d3d9"
+                    rm_from_var CP_WINE_FILES "d3d8"
                     ;;
                 6)
-                    rm_from_var CP_WINE_FILES "ddraw d3d8 d3d9"
+                    rm_from_var CP_WINE_FILES "d3d9 d3d8"
                     ;;
             esac
         fi
@@ -2440,6 +2439,7 @@ start_portwine () {
         for rm_dgv2_dll in d3dimm glide glide2x glide3x ; do
             try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/${rm_dgv2_dll}.dll"
         done
+        add_to_var CP_WINE_FILES "ddraw"
     fi
 
     # force use dxgi.dll from wine
@@ -2448,8 +2448,8 @@ start_portwine () {
         add_to_var CP_WINE_FILES "dxgi"
     fi
 
-    print_info "Try copy WINE files..."
-    for copy_wine_dll in $CP_WINE_FILES "vulkan-1" ; do
+    print_info "Try create symlink WINE files..."
+    for copy_wine_dll in $CP_WINE_FILES ; do
         try_force_link_file "${WINEDIR}/lib64/wine/x86_64-windows/${copy_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${copy_wine_dll}.dll"
         try_force_link_file "${WINEDIR}/lib/wine/i386-windows/${copy_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${copy_wine_dll}.dll"
     done
@@ -2469,7 +2469,7 @@ start_portwine () {
     fi
 
     if [[ "$DXVK_ENABLE_NVAPI" == "1" ]] ; then
-        print_info "Try copy NVAPI files..."
+        print_info "Try create symlink NVAPI files..."
         try_force_link_file "${PATH_TO_DXVK_FILES}/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/nvapi.dll"
         try_force_link_file "${PATH_TO_DXVK_FILES}/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvapi64.dll"
     fi
