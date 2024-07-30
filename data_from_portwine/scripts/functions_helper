@@ -1642,20 +1642,11 @@ pw_create_gui_png () {
         export PORTPROTON_NAME
         edit_db_from_gui PORTPROTON_NAME
     fi
-    PW_RESIZE_TO="128"
-    try_remove_file "${PORT_WINE_PATH}/data/img/launcher.png"
-    try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
+
     if [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
-        if check_flatpak ; then
-            exe-thumbnailer --force-resize -s "${PW_RESIZE_TO}" "$(readlink -f "${portwine_exe}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
-        else
-            env PYTHONPATH="${PW_PLUGINS_PATH}/portable/lib/python3.9/site-packages/" \
-            LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" \
-            "${PW_WINELIB}/runtime/files/bin/python3.9" \
-            "${PW_PLUGINS_PATH}/portable/bin/exe-thumbnailer" --force-resize -s "${PW_RESIZE_TO}" \
-            "$(readlink -f "${portwine_exe}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
-        fi
+        resize_png "$portwine_exe" "${PORTPROTON_NAME}" "128"
     fi
+
     if [[ -z "${PW_ICON_FOR_YAD}" ]] ; then
         if [[ ! -z "$(file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}")" ]] ; then
             export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
@@ -4513,6 +4504,31 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate."
     exit 0
 }
 
+# RESIZE PNG FILE
+resize_png () {
+    if [[ -z "$1" ]] || [[ -z "$2" ]] || [[ -z "$2" ]] ; then
+        print_error "no argument specified for resize_png"
+        return 1
+    else
+        local RESIZE_FILE="$1"
+        local RESIZE_NAME_PNG="$2"
+        local RESIZE_TO="$3"
+    fi
+
+    try_remove_file "${PORT_WINE_PATH}/data/img/launcher.png"
+    try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
+
+    if check_flatpak ; then
+        exe-thumbnailer --force-resize -s "$RESIZE_TO" "$(readlink -f "${RESIZE_FILE}")" "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png"
+    else
+        env PYTHONPATH="${PW_PLUGINS_PATH}/portable/lib/python3.9/site-packages/" \
+        LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" \
+        "${PW_WINELIB}/runtime/files/bin/python3.9"  \
+        "${PW_PLUGINS_PATH}/portable/bin/exe-thumbnailer" --force-resize -s "$RESIZE_TO" "$(readlink -f "${RESIZE_FILE}")" "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png"
+    fi
+    return 0
+}
+
 # GUI CREATE SHORTCUT
 portwine_create_shortcut () {
     export GDK_BACKEND="x11"
@@ -4653,31 +4669,6 @@ portwine_create_shortcut () {
     fi
 }
 
-
-create_shortcut_from_link () {
-    PORTPROTON_NAME="$link_name"
-    PW_RESIZE_TO=128
-
-    try_remove_file "${PORT_WINE_PATH}/data/img/launcher.png"
-    try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
-
-     if [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
-        if check_flatpak ; then
-            exe-thumbnailer --force-resize -s 128 "$(readlink -f "${exe_path}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
-        else
-            env PYTHONPATH="${PW_PLUGINS_PATH}/portable/lib/python3.9/site-packages/" \
-            LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" \
-            "${PW_WINELIB}/runtime/files/bin/python3.9"  \
-            "${PW_PLUGINS_PATH}/portable/bin/exe-thumbnailer" --force-resize -s 128 "$(readlink -f "${exe_path}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
-        fi
-    fi
-
-    export portwine_exe="$exe_path"
-    export PW_NO_RESTART_PPDB=1
-    portwine_create_shortcut
-}
-export -f create_shortcut_from_link
-
 pw_auto_create_shortcut () {
     [[ "${PW_CHECK_AUTOINSTALL}" == 1 ]] && return 0
 
@@ -4733,7 +4724,13 @@ pw_auto_create_shortcut () {
             print_warning "Removed broken link for: $link_name"
         else
             print_info "Created link for: $link_name"
-            create_shortcut_from_link
+            PORTPROTON_NAME="$link_name"
+            export portwine_exe="$exe_path"
+            if [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
+                resize_png "$portwine_exe" "${PORTPROTON_NAME}" "128"
+            fi
+            export PW_NO_RESTART_PPDB=1
+            portwine_create_shortcut
         fi
     done
 }
