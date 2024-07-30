@@ -4188,14 +4188,20 @@ fi
     1> "${PW_TMPFS_PATH}/tmp_yad_dgv2_set" 2>/dev/null &
     IFS=$old_IFS
 
-    DGVOODOO2_XRANDR="$(grep -e '[0-9]x' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}' | sort -rVu | grep "^[1-2]" | tr '\n' '!' | sed 's/.$//')"
+    DGVOODOO2_XRANDR="$(grep -e '[0-9]x' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}' | sort -rVu | grep "^[0-9]" | tr '\n' ' ')"
+    for drop_low in ${DGVOODOO2_XRANDR} ; do
+        if (( "${drop_low//x/}" > "1000000" )) ; then
+            DGVOODOO2_XRANDR_NEW+="${drop_low}!"
+        fi
+    done
+
     DGVOODOO2_FILTERING="Point sampled!Bilinear!Linear mip!Trilinear!Anisotropic 2x!Anisotropic 4x!Anisotropic 8x!Anisotropic 16x"
     DGVOODOO2_RESAMPLING="Point sampled!Bilinear!Lanczos-2!Bicubic!Lanczos-3"
     DGVOODOO2_VIDEOCARD="dgVoodoo2 SVGA 3D!dgVoodoo2 Virtual 3D!Geforce 4 Ti 4800!ATI Radeon 8500!Matrox Parhelia-512!GeForce FX 5700 Ultra!GeForce 9800 GT!Voodoo Graphics!Voodoo Rush!Voodoo 2!Voodoo Banshee"
 
     "${pw_yad}" --plug=$KEY_DGV2_GUI --tabnum="2" --form --columns=3 --separator="%" \
     --gui-type-layout=${DGVOODOO2_GUI_TYPE_LAYOUT_DOWN} \
-    --field="${CHKBOX_SPACE}RESOLUTION!$(gettext "Set the resolution used. (Direct3D and Glide settings)") :CBE" "$(combobox_fix_disabled "${PW_DGV2_RESOLUTION}" "4x app resolution!3x app resolution!2x app resolution!${DGVOODOO2_XRANDR}")" \
+    --field="${CHKBOX_SPACE}RESOLUTION!$(gettext "Set the resolution used. (Direct3D and Glide settings)") :CBE" "$(combobox_fix_disabled "${PW_DGV2_RESOLUTION}" "4x app resolution!3x app resolution!2x app resolution!${DGVOODOO2_XRANDR_NEW::-1}")" \
     --field="${CHKBOX_SPACE}FPS LIMIT!$(gettext "You can configure fps limit. (Direct3D and Glide settings)") :CBE" "$(combobox_fix_disabled "${PW_DGV2_FPS_LIMIT}" "30!40!45!48!60!75!90!120!144!165!175!240")" \
     --field="${CHKBOX_SPACE}FILTERING!$(gettext "You can select from various texture filtering modes here. Forcing other than the app default can result in glitches or break some rendering effects. (Glide have max filtering bilinear) (Direct3D and Glide settings)") :CB" "$(combobox_fix_disabled "${PW_DGV2_FILTERING}" "${DGVOODOO2_FILTERING}")" \
     --field="${CHKBOX_SPACE}ANTIALIASING!$(gettext "Forcing antialiasing. This can cause artifacts. (Direct3D and Glide settings)") :CB" "$(combobox_fix_disabled "${PW_DGV2_ANTIALIASING}" "2x!4x!8x")" \
@@ -4402,11 +4408,16 @@ fi
     1> "${PW_TMPFS_PATH}/tmp_yad_gs_set" 2>/dev/null &
     IFS=$old_IFS
 
-    GAMESCOPE_XRANDR="$(grep -e '[0-9]x' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}' | sort -rVu | grep "^[1-2]" | tr '\n' '!' | sed 's/.$//')"
+    GAMESCOPE_XRANDR="$(grep -e '[0-9]x' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}' | sort -rVu | grep "^[0-9]" | tr '\n' ' ')"
+    for drop_low in ${GAMESCOPE_XRANDR} ; do
+        if (( "${drop_low//x/}" > "1000000" )) ; then
+            GAMESCOPE_XRANDR_NEW+="${drop_low}!"
+        fi
+    done
 
     "${pw_yad}" --plug=$KEY_GS_GUI --tabnum="2" --form --columns=2 --separator="%" --homogeneous-row \
     --gui-type-text=${GAMESCOPE_GUI_TYPE_TEXT_DOWN} --gui-type-layout=${GAMESCOPE_GUI_TYPE_LAYOUT_DOWN} \
-    --field="${CHKBOX_SPACE}$(gettext "Show resolution")!$(gettext "Set the resolution used by gamescope. Resizing the gamescope window will update these settings. Defaults to 1280x720.") :${GS_CBE}" "$(combobox_fix_disabled "${PW_GS_SHOW_RESOLUTION}" "${GAMESCOPE_XRANDR}")" \
+    --field="${CHKBOX_SPACE}$(gettext "Show resolution")!$(gettext "Set the resolution used by gamescope. Resizing the gamescope window will update these settings. Defaults to 1280x720.") :${GS_CBE}" "$(combobox_fix_disabled "${PW_GS_SHOW_RESOLUTION}" "${GAMESCOPE_XRANDR_NEW::-1}")" \
     --field="${CHKBOX_SPACE}$(gettext "Internal resolution")!$(gettext "Scale internal resolution (0.0 is unused)") :${GS_NUMN}" "${PW_GS_INTERNAL_RESOLUTION}:!0..2" \
     --field="${CHKBOX_SPACE}$(gettext "Frame limit")!$(gettext "Set a framerate limit. Specified in frames per second") :${GS_CBE}" "$(combobox_fix_disabled "${PW_GS_FRAME_LIMIT}" "30!40!45!48!60!75!90!120!144!165!175!240")" \
     --field="${CHKBOX_SPACE}$(gettext "Mesa vulkan WSI")!$(gettext "Overrides the WSI present mode:
