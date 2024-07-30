@@ -477,6 +477,16 @@ unpack () {
     fi
 }
 
+debug_timer () {
+    if [[ "$1" == "--start" ]] ; then
+        START=$(date +%s%N)
+    elif [[ "$1" == "--end" ]] ; then
+        END=$(date +%s%N)
+        DIFF=$((($END - $START)/1000000))
+        print_warning "It took $DIFF milliseconds for $2"
+    fi
+}
+
 combobox_fix () {
     name1="$1"
     name2="$2"
@@ -1617,9 +1627,17 @@ pw_create_gui_png () {
             PORTPROTON_NAME="${PORTWINE_CREATE_SHORTCUT_NAME}"
         else
             if command -v exiftool &>/dev/null ; then
-                PW_PRODUCTNAME=$(exiftool -ProductName "${portwine_exe}" 2>/dev/null | sed -n 's/^Product Name\s*:\s*//p')
+                if ! PW_PRODUCTNAME=$(timeout 3 exiftool -ProductName "${portwine_exe}" 2>/dev/null | sed -n 's/^Product Name\s*:\s*//p') ; then
+                    print_error "exiftool - broken!"
+                    if [[ ! -z $PW_DEBUG ]] ; then
+                        debug_timer --start
+                        timeout 5 exiftool -ProductName "${portwine_exe}"
+                        debug_timer --end "exiftool"
+                    fi
+                fi
             else
-                PW_PRODUCTNAME=$(env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" -ProductName "${portwine_exe}" 2>/dev/null | sed -n 's/^Product Name\s*:\s*//p')
+                print_warning "use portable exiftool"
+                PW_PRODUCTNAME=$(env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" -ProductName "${portwine_exe}" | sed -n 's/^Product Name\s*:\s*//p')
             fi
 
             if [[ "$PW_PRODUCTNAME" =~ "Launcher" ]] \
@@ -4314,10 +4332,10 @@ gui_gamescope () {
     PW_GS_EXPOSE_WAYLAND PW_GS_REALTIME_SCHEDULING PW_GS_FIX_AMD_AND_INTEL
     "
 
-    grep -e '--mangoapp' "${PW_TMPFS_PATH}/gamescope-help.tmp" &>/dev/null && add_to_var PW_GS_LIST "PW_GS_MANGOAPP"
+    grep -e '--mangoapp' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null && add_to_var PW_GS_LIST "PW_GS_MANGOAPP"
 
     if check_wayland_session ; then
-        grep -e '--backend' "${PW_TMPFS_PATH}/gamescope-help.tmp" &>/dev/null \
+        grep -e '--backend' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null \
         && add_to_var PW_GS_LIST "PW_GS_BACKEND_SDL" && add_to_var PW_GS_LIST "PW_GS_SDL_VIDEODRIVER_X11"
     else
         export PW_GS_BACKEND_SDL="0"
@@ -4326,7 +4344,7 @@ gui_gamescope () {
 
     GS_FILTER_CB="linear!nearest!fsr!nis!pixel"
     #debian bookworm fix
-    if grep -e '-U, --fsr-upscaling' "${PW_TMPFS_PATH}/gamescope-help.tmp" &>/dev/null ; then
+    if grep -e '-U, --fsr-upscaling' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null ; then
         GS_FILTER_CB="fsr!nis"
         export PW_GS_FILTER_MODE_OLD="true"
         rm_from_var PW_GS_LIST "PW_GS_HDR_ENABLE"
@@ -4527,8 +4545,18 @@ resize_png () {
     try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
 
     if check_flatpak ; then
-        exe-thumbnailer --force-resize -s "$RESIZE_TO" "$(readlink -f "${RESIZE_FILE}")" "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png"
+        if ! timeout 3 \
+        exe-thumbnailer --force-resize -s "$RESIZE_TO" "$(readlink -f "${RESIZE_FILE}")" "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png" 2>/dev/null
+        then
+            print_error "exe-thumbnailer - broken!"
+            if [[ ! -z $PW_DEBUG ]] ; then
+                debug_timer --start
+                timeout 5 exe-thumbnailer --force-resize -s "$RESIZE_TO" "$(readlink -f "${RESIZE_FILE}")" "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png"
+                debug_timer --end "exe-thumbnailer"
+            fi
+        fi
     else
+        print_warning "use portable exe-thumbnailer"
         env PYTHONPATH="${PW_PLUGINS_PATH}/portable/lib/python3.9/site-packages/" \
         LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" \
         "${PW_WINELIB}/runtime/files/bin/python3.9"  \
@@ -4694,22 +4722,8 @@ pw_auto_create_shortcut () {
     SORTED_LINKS=($(echo ${LINKS[@]} | tr ' ' '\n' | sort -u))
 
     for link_file in "${SORTED_LINKS[@]//@_@/ }" ; do
-        if timeout 3 exiftool "$link_file" 2>/dev/null > "${PW_TMPFS_PATH}/exiftool.tmp" ; then
-            prefix_name=$(echo "$link_file" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
-            if fix_icon_name=$(grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" 2>/dev/null) \
-            && [[ "${fix_icon_name//*.exe/true}" == "true" ]] ; then
-                link_drive=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
-                link_path=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/$prefix_name/dosdevices/$link_drive|g" | sed 's/\\/\//g')
-            else
-                link_drive=$(sed -n 's/^Local Base Path\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
-                link_path=$(sed -n 's/^Local Base Path\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/$prefix_name/dosdevices/$link_drive|g" | sed 's/\\/\//g')
-            fi
-            link_name=$(sed -n 's/^File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|\.lnk||')
-            link_cmd=$(sed -n 's/^Command Line Arguments\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
-        else
-            if ! command -v exiftool &>/dev/null ; then
-                print_warning "use portable exiftool"
-                env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" "$link_file" 2>/dev/null > "${PW_TMPFS_PATH}/exiftool.tmp"
+        if command -v exiftool &>/dev/null ; then
+            if timeout 3 exiftool "$link_file" 2>/dev/null &> "${PW_TMPFS_PATH}/exiftool.tmp" ; then
                 prefix_name=$(echo "$link_file" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
                 if fix_icon_name=$(grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" 2>/dev/null) \
                 && [[ "${fix_icon_name//*.exe/true}" == "true" ]] ; then
@@ -4722,8 +4736,27 @@ pw_auto_create_shortcut () {
                 link_name=$(sed -n 's/^File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|\.lnk||')
                 link_cmd=$(sed -n 's/^Command Line Arguments\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
             else
-                yad_error "exiftool - broken!"
+                print_error "exiftool - broken!"
+                if [[ ! -z $PW_DEBUG ]] ; then
+                    debug_timer --start
+                    timeout 5 exiftool "$link_file"
+                    debug_timer --end "exiftool"
+                fi
             fi
+        else
+            print_warning "use portable exiftool"
+            env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" "$link_file" &> "${PW_TMPFS_PATH}/exiftool.tmp"
+            prefix_name=$(echo "$link_file" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
+            if fix_icon_name=$(grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" 2>/dev/null) \
+            && [[ "${fix_icon_name//*.exe/true}" == "true" ]] ; then
+                link_drive=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
+                link_path=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/$prefix_name/dosdevices/$link_drive|g" | sed 's/\\/\//g')
+            else
+                link_drive=$(sed -n 's/^Local Base Path\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
+                link_path=$(sed -n 's/^Local Base Path\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/$prefix_name/dosdevices/$link_drive|g" | sed 's/\\/\//g')
+            fi
+            link_name=$(sed -n 's/^File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|\.lnk||')
+            link_cmd=$(sed -n 's/^Command Line Arguments\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
         fi
         
         try_remove_file "$link_file"
@@ -4981,11 +5014,11 @@ portwine_start_debug () {
     echo "------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "RAM:" >> "${PORT_WINE_PATH}/PortProton.log"
     free -m >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "--------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "--------------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "Filesystem "${PATH_TO_GAME}" - $(stat -f -c %T "${PATH_TO_GAME}")" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "Filesystem "${PORT_WINE_PATH}" - $(stat -f -c %T "${PORT_WINE_PATH}")" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "Filesystem "${PW_TMPFS_PATH}" - $(stat -f -c %T "${PW_TMPFS_PATH}")" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "-----------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "---------------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "Graphic cards and drivers:" >> "${PORT_WINE_PATH}/PortProton.log"
     echo 'lspci -k | grep -EA3 VGA|3D|Display :' >> "${PORT_WINE_PATH}/PortProton.log"
     lspci -k | grep -EA3 'VGA|3D|Display' >> "${PORT_WINE_PATH}/PortProton.log"
