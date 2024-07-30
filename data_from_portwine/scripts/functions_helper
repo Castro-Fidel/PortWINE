@@ -1317,7 +1317,12 @@ pw_init_db () {
     if [[ -f "${portwine_exe}" ]] ; then
         PORTWINE_DB="$(basename "${portwine_exe}" .exe)"
         export PORTWINE_DB
-        if [[ -f "${portwine_exe}".ppdb ]] ; then
+        if echo "${PORTWINE_DB}" | grep -i "_vo_\|_gv_" &>/dev/null ; then
+            print_warning "Force use gamesvoice.ppdb file!"
+            PORTWINE_DB_FILE="${PORT_SCRIPTS_PATH}/portwine_db/gamesvoice.ppdb"
+            # shellcheck source=/dev/null
+            source "${PORTWINE_DB_FILE}"
+        elif [[ -f "${portwine_exe}".ppdb ]] ; then
             PORTWINE_DB_FILE="${portwine_exe}".ppdb
             # shellcheck source=/dev/null
             source "${PORTWINE_DB_FILE}"
