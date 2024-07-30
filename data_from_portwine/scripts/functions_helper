@@ -1646,18 +1646,13 @@ pw_create_gui_png () {
     try_remove_file "${PORT_WINE_PATH}/data/img/launcher.png"
     try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
     if [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
-        if command -v sestatus &>/dev/null && sestatus | grep "Current mode: *enforcing" ; then
-            SESTATUS="1"
-        else
-            SESTATUS="0"
-        fi
-        if command -v exe-thumbnailer &>/dev/null && [[ "${SESTATUS}" == "0" ]] ; then
-            exe-thumbnailer -s "${PW_RESIZE_TO}" "$(readlink -f "${portwine_exe}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
+        if check_flatpak ; then
+            exe-thumbnailer --force-resize -s "${PW_RESIZE_TO}" "$(readlink -f "${portwine_exe}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
         else
             env PYTHONPATH="${PW_PLUGINS_PATH}/portable/lib/python3.9/site-packages/" \
             LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" \
             "${PW_WINELIB}/runtime/files/bin/python3.9" \
-            "${PW_PLUGINS_PATH}/portable/bin/exe-thumbnailer" -s "${PW_RESIZE_TO}" \
+            "${PW_PLUGINS_PATH}/portable/bin/exe-thumbnailer" --force-resize -s "${PW_RESIZE_TO}" \
             "$(readlink -f "${portwine_exe}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
         fi
     fi
@@ -4667,18 +4662,13 @@ create_shortcut_from_link () {
     try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
 
      if [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
-        if command -v sestatus &>/dev/null && sestatus | grep "Current mode: *enforcing" ; then
-            SESTATUS="1"
-        else
-            SESTATUS="0"
-        fi
-        if command -v exe-thumbnailer &>/dev/null && [[ "${SESTATUS}" == "0" ]] ; then
-            exe-thumbnailer -s 128 "$(readlink -f "${exe_path}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
+        if check_flatpak ; then
+            exe-thumbnailer --force-resize -s 128 "$(readlink -f "${exe_path}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
         else
             env PYTHONPATH="${PW_PLUGINS_PATH}/portable/lib/python3.9/site-packages/" \
             LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" \
             "${PW_WINELIB}/runtime/files/bin/python3.9"  \
-            "${PW_PLUGINS_PATH}/portable/bin/exe-thumbnailer" -s 128 "$(readlink -f "${exe_path}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
+            "${PW_PLUGINS_PATH}/portable/bin/exe-thumbnailer" --force-resize -s 128 "$(readlink -f "${exe_path}")" "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
         fi
     fi
 
