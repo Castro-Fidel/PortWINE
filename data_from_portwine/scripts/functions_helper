@@ -2687,13 +2687,20 @@ start_portwine () {
         fi
     fi
 
-    if [[ "${PW_SOUND_DRIVER_USE}" != "disabled" ]] && [[ ! $(grep "\"Audio\"=\"$PW_SOUND_DRIVER_USE\"" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg") ]] ; then
-        if [[ $(grep "\"Audio\"=" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg") ]] ; then
+    if [[ "${PW_SOUND_DRIVER_USE}" != "disabled" ]] \
+    && grep -v "\"Audio\"=\"$PW_SOUND_DRIVER_USE\"" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" &>/dev/null
+    then
+        if grep "\"Audio\"=" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" &>/dev/null ; then
             sed -i 's/"Audio"=".*"/"Audio"="'${PW_SOUND_DRIVER_USE}'"/' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
         else
             echo -e '\n[Software\\Wine\\Drivers]\n"Audio"="'${PW_SOUND_DRIVER_USE}'"' >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
         fi
         kill_portwine
+    elif [[ "${PW_SOUND_DRIVER_USE}" == "disabled" ]] \
+    && grep -v "\"Audio\"=" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" &>/dev/null
+    then
+        sed -i '/\[Software\\Wine\\Drivers\]/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" &>/dev/null
+        sed -i "/\"Audio\"=/d" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" &>/dev/null
     fi
 
     pw_stop_progress_bar &&
