@@ -2687,6 +2687,15 @@ start_portwine () {
         fi
     fi
 
+    if [[ "${PW_SOUND_DRIVER_USE}" != "disabled" ]] && [[ ! $(grep "\"Audio\"=\"$PW_SOUND_DRIVER_USE\"" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg") ]] ; then
+        if [[ $(grep "\"Audio\"=" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg") ]] ; then
+            sed -i 's/"Audio"=".*"/"Audio"="'${PW_SOUND_DRIVER_USE}'"/' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
+        else
+            echo -e '\n[Software\\Wine\\Drivers]\n"Audio"="'${PW_SOUND_DRIVER_USE}'"' >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
+        fi
+        kill_portwine
+    fi
+
     pw_stop_progress_bar &&
     if ! check_start_from_steam ; then
         pw_tray_icon
@@ -3639,6 +3648,14 @@ fi
            *) ADD_WINVER_EDIT_DB="11!10!7!XP" ;;
     esac
 
+    if [[ ! -z "${PW_SOUND_DRIVER_USE}" ]] \
+    && [[ "${PW_SOUND_DRIVER_USE}" != "disabled" ]]
+    then
+        SOUND_DRIVER_VAR="${PW_SOUND_DRIVER_USE}"
+    else
+        SOUND_DRIVER_VAR="disabled"
+    fi
+
     if [[ ! -z "${PW_GPU_USE}" ]] \
     && [[ "${PW_GPU_USE}" != "disabled" ]]
     then
@@ -3676,6 +3693,7 @@ A brief instruction:
     --field="$(gettext "Forcibly select the OpenGL version for the game")!$(gettext "You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)") :CB" "$(combobox_fix_disabled "${PW_MESA_GL_VERSION_OVERRIDE}" "4.6COMPAT!4.6!4.5COMPAT!4.5!3.3COMPAT!3.3")" \
     --field="$(gettext "Forcibly select the VKD3D feature level")!$(gettext "You can set a forced feature level VKD3D for games on DirectX12") :${VKD3D_CB}" "$(combobox_fix_disabled "${PW_VKD3D_FEATURE_LEVEL}" "12_2!12_1!12_0!11_1!11_0")" \
     --field="$(gettext "Force certain locale for an app:")!$(gettext "Fixes encoding issues in legacy software") :CB" "$(combobox_fix_disabled "${PW_LOCALE_SELECT}" "$LOCALE_LIST")" \
+    --field="$(gettext "Choice wine audio driver")!$(gettext "Fixes sound popling if choice alsa") :CB" "$(combobox_fix_disabled "${SOUND_DRIVER_VAR}" "alsa!oss!pulse")" \
     1> "${PW_TMPFS_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
 
     "${pw_yad}" --notebook --key="$KEY_EDIT_DB_GUI" --title "$(gettext "EDIT DB")" --text-align=center \
@@ -3726,6 +3744,7 @@ A brief instruction:
     PW_MESA_GL_VERSION_OVERRIDE="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $9}')"
     PW_VKD3D_FEATURE_LEVEL="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $10}')"
     PW_LOCALE_SELECT="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $11}')"
+    PW_SOUND_DRIVER_USE="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $12}')"
 
     if [[ "${CPU_LIMIT}" != "disabled" ]] ; then
         export PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $((${CPU_LIMIT} - 1)))"
@@ -3747,7 +3766,7 @@ A brief instruction:
 
         edit_db_from_gui MANGOHUD_CONFIG
     fi
-    edit_user_conf_from_gui PW_GPU_USE
+    edit_user_conf_from_gui PW_GPU_USE PW_SOUND_DRIVER_USE
 
     case "$YAD_STATUS" in
           0)
