@@ -1328,9 +1328,13 @@ pw_init_db () {
             PORTWINE_DB_FILE="${portwine_exe}".ppdb
             # shellcheck source=/dev/null
             source "${PORTWINE_DB_FILE}"
-            if [[ -z "$(ls "${PORT_WINE_PATH}/prefixes/" | grep -e "^${PW_PREFIX_NAME}$")" ]] ; then
-                PW_PREFIX_NAME=$(echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
-                edit_db_from_gui PW_PREFIX_NAME
+            if echo "${portwine_exe}" | grep "/prefixes/" &>/dev/null ; then
+                if [[ -z $(ls "${PORT_WINE_PATH}/prefixes/" | grep -e "^${PW_PREFIX_NAME}$") ]] \
+                || [[ -z $(grep -e "^export PW_PREFIX_NAME=" "${PORTWINE_DB_FILE}" 2>/dev/null) ]]
+                then
+                    PW_PREFIX_NAME=$(echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
+                    edit_db_from_gui PW_PREFIX_NAME
+                fi
             fi
         else
             orig_IFS="$IFS"
@@ -1365,12 +1369,14 @@ pw_init_db () {
             then
                 try_copy_file "${PW_FIND_DB_FILE}" "${portwine_exe}".ppdb
                 PORTWINE_DB_FILE="${portwine_exe}".ppdb
-            fi
-
-            if [[ ! -z $(echo "${portwine_exe}" | grep "/data/prefixes/") ]] \
-            && [[ -z $(echo "${portwine_exe}" | grep "/data/prefixes/DEFAULT/") ]]
-            then
-                PW_PREFIX_NAME=$(echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
+                if echo "${portwine_exe}" | grep "/prefixes/" &>/dev/null ; then
+                    if [[ -z $(ls "${PORT_WINE_PATH}/prefixes/" | grep -e "^${PW_PREFIX_NAME}$") ]] \
+                    || [[ -z $(grep -e "^export PW_PREFIX_NAME=" "${PORTWINE_DB_FILE}" 2>/dev/null) ]]
+                    then
+                        PW_PREFIX_NAME=$(echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
+                        edit_db_from_gui PW_PREFIX_NAME
+                    fi
+                fi
             fi
         fi
 
@@ -3308,8 +3314,9 @@ gui_proton_downloader () {
     then PW_WINE_USE="${PW_PROTON_LG_VER}"
     elif [[ "$PW_WINE_USE" == WINE_*_LG ]] || [[ "$PW_WINE_USE" == WINE_LG ]]
     then PW_WINE_USE="${PW_WINE_LG_VER}"
+    elif [[ "$1" == "silent" ]] && [[ ! -z "$2" ]]
+    then PW_WINE_USE="$2"
     fi
-
     export PW_WINE_USE
 
     if [[ "$1" == "silent" ]] \
@@ -3524,7 +3531,8 @@ gui_proton_downloader () {
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     else
-        init_wine_ver
+        # init_wine_ver
+        print_error "$PW_WINE_USE"
         for GIVE_WINE_URL in ${WINE_GE_CUSTOM[@]} ${PROTON_GE_GIT[@]} ${WINE_KRON4EK[@]} ${PROTON_PW_GIT[@]} ; do
             if [ ! -z $(echo ${GIVE_WINE_URL} | grep -i "${PW_WINE_USE}") ] ; then
                 export URL_VERSION_PROTON_GIT="${GIVE_WINE_URL}"
