@@ -224,57 +224,76 @@ pw_check_and_download_plugins
 if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     pw_port_update
 
-    if timeout 3 gamescope --help 2> "${PW_TMPFS_PATH}/gamescope-help.tmp" ; then
-        export GAMESCOPE_INSTALLED="1"
-    else
-        if ! command -v gamescope &>/dev/null ; then
-            print_error "gamescope - not found!"
+    if command -v gamescope &>/dev/null ; then
+        if timeout 3 gamescope --help 2>/dev/null &> "${PW_TMPFS_PATH}/gamescope.tmp" ; then
+            export GAMESCOPE_INSTALLED="1"
         else
-            yad_error "gamescope - broken!"
+            print_error "gamescope - broken!"
+            if [[ ! -z $PW_DEBUG ]] ; then
+                debug_timer --start
+                timeout 5 gamescope --help
+                debug_timer --end "gamescope"
+            fi
         fi
+    else
+        print_warning "gamescope - not found!"
     fi
 
-    if timeout 3 vulkaninfo --summary 2>/dev/null > "${PW_TMPFS_PATH}/vulkaninfo.tmp" ; then
-        VULKAN_DRIVER_NAME="$(grep -e 'driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | awk '{print$3}' | head -1)"
-        GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
-        export VULKAN_DRIVER_NAME GET_GPU_NAMES
-    else
-        if ! command -v vulkaninfo &>/dev/null ; then
-            print_warning "use portable vulkaninfo"
-            $PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo 2>/dev/null > "${PW_TMPFS_PATH}/vulkaninfo.tmp"
+    if command -v vulkaninfo &>/dev/null ; then
+        if timeout 3 vulkaninfo --summary 2>/dev/null &> "${PW_TMPFS_PATH}/vulkaninfo.tmp" ; then
             VULKAN_DRIVER_NAME="$(grep -e 'driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | awk '{print$3}' | head -1)"
             GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
             export VULKAN_DRIVER_NAME GET_GPU_NAMES
         else
-            yad_error "vulkaninfo - broken!"
+            print_error "vulkaninfo - broken!"
+            if [[ ! -z $PW_DEBUG ]] ; then
+                debug_timer --start
+                timeout 5 vulkaninfo
+                debug_timer --end "vulkaninfo"
+            fi
         fi
+    else
+        print_warning "use portable vulkaninfo"
+        $PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo &> "${PW_TMPFS_PATH}/vulkaninfo.tmp"
+        VULKAN_DRIVER_NAME="$(grep -e 'driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | awk '{print$3}' | head -1)"
+        GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
+        export VULKAN_DRIVER_NAME GET_GPU_NAMES
     fi
 
-    if timeout 3 lspci -k 2>/dev/null > "${PW_TMPFS_PATH}/lspci.tmp" ; then
-        LSPCI_VGA="$(grep -e 'VGA|3D' "${PW_TMPFS_PATH}/lspci.tmp" | tr -d '\n')"
-        export LSPCI_VGA
-    else
-        if ! command -v lspci &>/dev/null ; then
-            print_error "lspci - not found!"
+    if command -v lspci &>/dev/null ; then
+        if timeout 3 lspci -k 2>/dev/null &> "${PW_TMPFS_PATH}/lspci.tmp" ; then
+            LSPCI_VGA="$(grep -e 'VGA|3D' "${PW_TMPFS_PATH}/lspci.tmp" | tr -d '\n')"
+            export LSPCI_VGA
         else
-            yad_error "lspci - broken!"
+            print_error "lspci - broken!"
+            if [[ ! -z $PW_DEBUG ]] ; then
+                debug_timer --start
+                timeout 5 lspci -vv
+                debug_timer --end "lspci"
+            fi
         fi
+    else
+        print_warning "lspci - not found!"
     fi
 
-    if timeout 3 xrandr --current 2>/dev/null > "${PW_TMPFS_PATH}/xrandr.tmp" ; then
-        PW_SCREEN_RESOLUTION="$(cat "${PW_TMPFS_PATH}/xrandr.tmp" | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
-        PW_SCREEN_PRIMARY="$(grep -e 'primary' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}')"
-        export PW_SCREEN_PRIMARY PW_SCREEN_RESOLUTION
-        echo ""
-        print_var PW_SCREEN_RESOLUTION PW_SCREEN_PRIMARY
-    else
-        if ! command -v xrandr &>/dev/null ; then
-            print_error "xrandr - not found!"
+    if command -v xrandr &>/dev/null ; then
+        if timeout 3 xrandr --current 2>/dev/null &> "${PW_TMPFS_PATH}/xrandr.tmp" ; then
+            PW_SCREEN_RESOLUTION="$(cat "${PW_TMPFS_PATH}/xrandr.tmp" | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
+            PW_SCREEN_PRIMARY="$(grep -e 'primary' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}')"
+            export PW_SCREEN_PRIMARY PW_SCREEN_RESOLUTION
+            echo ""
+            print_var PW_SCREEN_RESOLUTION PW_SCREEN_PRIMARY
         else
-            yad_error "xrandr - broken!"
+            print_error "xrandr - broken!"
+            if [[ ! -z $PW_DEBUG ]] ; then
+                debug_timer --start
+                timeout 5 xrandr --verbose
+                debug_timer --end "xrandr"
+            fi
         fi
+    else
+        print_warning "xrandr - not found!"
     fi
-    echo ""
 
     logical_cores=$(grep -c "^processor" /proc/cpuinfo)
     if [[ "${logical_cores}" -le "4" ]] ; then
@@ -284,24 +303,29 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     fi
     export GET_LOGICAL_CORE
 
-    if timeout 3 locale -a 2>/dev/null > "${PW_TMPFS_PATH}/locale.tmp" ; then
-        GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
-        unset LOCALE_LIST
-        for LOCALE in $GET_LOCALE_LIST ; do
-            if grep -e $LOCALE "${PW_TMPFS_PATH}/locale.tmp" &>/dev/null ; then
-                if [[ ! -z "$LOCALE_LIST" ]]
-                then LOCALE_LIST+="!$(grep -e $LOCALE "${PW_TMPFS_PATH}/locale.tmp")"
-                else LOCALE_LIST="$(grep -e $LOCALE "${PW_TMPFS_PATH}/locale.tmp")"
+    if command -v locale &>/dev/null ; then
+        if timeout 3 locale -a 2>/dev/null &> "${PW_TMPFS_PATH}/locale.tmp" ; then
+            GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
+            unset LOCALE_LIST
+            for LOCALE in $GET_LOCALE_LIST ; do
+                if grep -e $LOCALE "${PW_TMPFS_PATH}/locale.tmp" &>/dev/null ; then
+                    if [[ ! -z "$LOCALE_LIST" ]]
+                    then LOCALE_LIST+="!$(grep -e $LOCALE "${PW_TMPFS_PATH}/locale.tmp")"
+                    else LOCALE_LIST="$(grep -e $LOCALE "${PW_TMPFS_PATH}/locale.tmp")"
+                    fi
                 fi
-            fi
-        done
-        export LOCALE_LIST
-    else
-        if ! command -v locale &>/dev/null ; then
-            print_error "locale - not found!"
+            done
+            export LOCALE_LIST
         else
-            yad_error "locale - broken!"
+            print_error "locale - broken!"
+            if [[ ! -z $PW_DEBUG ]] ; then
+                debug_timer --start
+                timeout 5 locale -a
+                debug_timer --end "locale"
+            fi
         fi
+    else
+        print_warning "locale - not found!"
     fi
 
     PW_FILESYSTEM=$(stat -f -c %T "${PORT_WINE_PATH}")
@@ -648,20 +672,12 @@ else
         fi
         PW_ICON_PATH="$(grep Icon "${PORT_WINE_PATH}/${PW_DESKTOP_FILES}" | awk -F= '{print $2}')"
         PW_NAME_D_ICON_48="${PW_ICON_PATH%.png}_48.png"
+        PW_NAME_D_ICON_48_HELPER="${PW_ICON_PATH%.png}_48"
         if [[ ! -f "${PW_NAME_D_ICON_48}" ]] \
         && [[ -f "${PW_NAME_D_ICON}" ]] ; then
-            if check_flatpak ; then
-                exe-thumbnailer --force-resize -s "48" "${PW_NAME_D_ICON}" "${PW_NAME_D_ICON_48}"
-            else
-                env PYTHONPATH="${PW_PLUGINS_PATH}/portable/lib/python3.9/site-packages/" \
-                LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" \
-                "${PW_WINELIB}/runtime/files/bin/python3.9" \
-                "${PW_PLUGINS_PATH}/portable/bin/exe-thumbnailer" \
-                --force-resize -s "48" "${PW_NAME_D_ICON}" "${PW_NAME_D_ICON_48}"
-            fi
+            resize_png "${PW_NAME_D_ICON}" "${PW_NAME_D_ICON_48_HELPER//"${PORT_WINE_PATH}/data/img/"/}" "48"
         fi
-        PW_DESKTOP_HELPER="${PW_DESKTOP_FILES// /@_@}"
-        PW_GENERATE_BUTTONS+="--field=   ${PW_DESKTOP_FILES//".desktop"/""}!${PW_NAME_D_ICON_48}!:FBTN%@bash -c \"run_desktop_b_click "${PW_DESKTOP_HELPER}"\"%"
+        PW_GENERATE_BUTTONS+="--field=   ${PW_DESKTOP_FILES//".desktop"/""}!${PW_NAME_D_ICON_48}!:FBTN%@bash -c \"run_desktop_b_click "${PW_DESKTOP_FILES// /@_@}"\"%"
     done
 
     IFS="$orig_IFS"
