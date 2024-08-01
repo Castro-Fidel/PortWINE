@@ -1661,13 +1661,12 @@ pw_create_gui_png () {
         edit_db_from_gui PORTPROTON_NAME
     fi
 
-    if [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
-        resize_png "$portwine_exe" "${PORTPROTON_NAME}" "128"
-    fi
+    resize_png "$portwine_exe" "${PORTPROTON_NAME}" "128"
 
+    PORTPROTON_NAME_PNG="${PORTPROTON_NAME// /_}.png"
     if [[ -z "${PW_ICON_FOR_YAD}" ]] ; then
-        if [[ ! -z "$(file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}")" ]] ; then
-            export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png"
+        if [[ ! -z "$(file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME_PNG}" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}")" ]] ; then
+            export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME_PNG}"
         else
             export PW_ICON_FOR_YAD="${PW_GUI_ICON_PATH}/port_proton.png"
         fi
@@ -4563,9 +4562,11 @@ resize_png () {
         return 1
     else
         local RESIZE_FILE="$1"
-        local RESIZE_NAME_PNG="$2"
+        local RESIZE_NAME_PNG="${2// /_}"
         local RESIZE_TO="$3"
     fi
+    
+    [[ -f "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png" ]] && return 0
 
     try_remove_file "${PORT_WINE_PATH}/data/img/launcher.png"
     try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
@@ -4603,37 +4604,37 @@ portwine_create_shortcut () {
     [[ -z "${PW_SHORTCUT_DESKTOP}" ]] && PW_SHORTCUT_DESKTOP="TRUE"
     [[ -z "${PW_SHORTCUT_STEAM}" ]] && PW_SHORTCUT_STEAM="FALSE"
 
+    export name_desktop="${PORTPROTON_NAME}"
+    name_desktop_png="${PORTPROTON_NAME// /_}"
     if [[ "$1" == "block_name" ]] ; then
-        export name_desktop="${PORTPROTON_NAME}"
         OUTPUT=$("${pw_yad}" --title="$(gettext "Choices")" --form \
         --gui-type="settings-shortcut" \
         --gui-type-box=${SETTINGS_SHORTCUT_GUI_TYPE_BOX} --gui-type-layout=${SETTINGS_SHORTCUT_GUI_TYPE_LAYOUT} \
         --gui-type-text=${SETTINGS_SHORTCUT_GUI_TYPE_TEXT} --gui-type-images=${SETTINGS_SHORTCUT_GUI_TYPE_IMAGE} \
         --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
-        --image "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" \
+        --image "${PORT_WINE_PATH}/data/img/${name_desktop_png}.png" \
         --text-align="center" --text "$(gettext "The shortcut will be created in the PortProton directory.")" \
         --field="  ${name_desktop}":LBL "" \
         --field="  $(gettext "Add shortcut to MENU -> GAMES")":CHK "$PW_SHORTCUT_MENU" \
         --field="  $(gettext "Add shortcut to Desktop")":CHK "$PW_SHORTCUT_DESKTOP" \
         --field="  $(gettext "Add shortcut to STEAM library")":CHK "$PW_SHORTCUT_STEAM" \
         --button="$(gettext "CANCEL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":2 \
-        --button="$(gettext "CREATE SHORTCUT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0)
+        --button="$(gettext "CREATE SHORTCUT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
         PW_YAD_OUT=$?
     else
-        export name_desktop="${PORTPROTON_NAME}"
         OUTPUT=$("${pw_yad}" --title="$(gettext "Choices")" --form \
         --gui-type="settings-shortcut" \
         --gui-type-box=${SETTINGS_SHORTCUT_GUI_TYPE_BOX} --gui-type-layout=${SETTINGS_SHORTCUT_GUI_TYPE_LAYOUT} \
         --gui-type-text=${SETTINGS_SHORTCUT_GUI_TYPE_TEXT} --gui-type-images=${SETTINGS_SHORTCUT_GUI_TYPE_IMAGE} \
         --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
-        --image "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" \
+        --image "${PORT_WINE_PATH}/data/img/${name_desktop_png}.png" \
         --text-align="center" --text "$(gettext "The shortcut will be created in the PortProton directory.")" \
         --field="$(gettext "Name")" "${name_desktop}" \
         --field="  $(gettext "Add shortcut to MENU -> GAMES")":CHK "$PW_SHORTCUT_MENU" \
         --field="  $(gettext "Add shortcut to Desktop")":CHK "$PW_SHORTCUT_DESKTOP" \
         --field="  $(gettext "Add shortcut to STEAM library")":CHK "$PW_SHORTCUT_STEAM" \
         --button="$(gettext "CANCEL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":2 \
-        --button="$(gettext "CREATE SHORTCUT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0)
+        --button="$(gettext "CREATE SHORTCUT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
         PW_YAD_OUT=$?
     fi
 
@@ -4793,9 +4794,7 @@ pw_auto_create_shortcut () {
             print_info "Created link for: $link_name"
             PORTPROTON_NAME="$link_name"
             export portwine_exe="$exe_path"
-            if [[ ! -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME}.png" ]] ; then
-                resize_png "$portwine_exe" "${PORTPROTON_NAME}" "128"
-            fi
+            resize_png "$portwine_exe" "${PORTPROTON_NAME}" "128"
             export PW_NO_RESTART_PPDB=1
             portwine_create_shortcut
         fi
