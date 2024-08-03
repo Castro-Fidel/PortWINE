@@ -63,13 +63,11 @@ change_locale () {
         )
 
         out=$("${SET_LANG[@]}")
-        [ -n "$out" ] || fatal "Language is not set!" 
-        SET_LANG=$(echo "$out" | cut -d'|' -f2)
-
-        echo "${SET_LANG}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
-        if [[ ! -z "${SET_LANG}" ]]
-        then LANGUAGE=${SET_LANG}
-        else exit 1
+        if [[ -z $out ]] ; then
+            fatal "Language is not set!"
+        else
+            LANGUAGE=$(echo "$out" | cut -d '|' -f2)
+            echo "${LANGUAGE}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
         fi
     fi
     export LANGUAGE
