@@ -4636,7 +4636,6 @@ portwine_create_shortcut () {
         else name_desktop=$(echo "$OUTPUT" | awk -F'|' '{print $1}')
         fi
         name_desktop="$(echo "${name_desktop}" | sed "s/\`//g" | sed "s/\"//g" | sed "s/'//g")"
-        name_desktop_png="${name_desktop// /_}"
         PW_SHORTCUT_MENU=$(echo "$OUTPUT" | awk -F'|' '{print $2}')
         PW_SHORTCUT_DESKTOP=$(echo "$OUTPUT" | awk -F'|' '{print $3}')
         PW_SHORTCUT_STEAM=$(echo "$OUTPUT" | awk -F'|' '{print $4}')
@@ -4644,10 +4643,6 @@ portwine_create_shortcut () {
         edit_user_conf_from_gui PW_SHORTCUT_MENU PW_SHORTCUT_DESKTOP PW_SHORTCUT_STEAM
 
         try_remove_file "${PORT_WINE_PATH}/${name_desktop}.desktop"
-
-        if [[ "${PORTPROTON_NAME_PNG}" != "${name_desktop_png}" ]]
-        then mv -f "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME_PNG}.png" "${PORT_WINE_PATH}/data/img/${name_desktop_png}.png"
-        fi
 
         echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
         echo "Name=${name_desktop}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
