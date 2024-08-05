@@ -68,7 +68,7 @@ then
     gettext() { echo "$1"; }
 fi
 
-# shellcheck source=./functions_helper
+# shellcheck source=/dev/null
 source "${PORT_SCRIPTS_PATH}/functions_helper"
 
 create_new_dir "${HOME}/.local/share/applications"
@@ -136,7 +136,7 @@ create_new_dir "${PW_VULKAN_DIR}"
 
 cd "${PORT_SCRIPTS_PATH}" || fatal
 
-# shellcheck source=./var
+# shellcheck source=/dev/null
 source "${PORT_SCRIPTS_PATH}/var"
 
 export STEAM_SCRIPTS="${PORT_WINE_PATH}/steam_scripts"
@@ -225,11 +225,11 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     pw_port_update
 
     if command -v gamescope &>/dev/null ; then
-        if timeout 3 gamescope --help 2>/dev/null &> "${PW_TMPFS_PATH}/gamescope.tmp" ; then
+        if timeout 3 gamescope --help &> "${PW_TMPFS_PATH}/gamescope.tmp" ; then
             export GAMESCOPE_INSTALLED="1"
         else
             print_error "gamescope - broken!"
-            if [[ ! -z $PW_DEBUG ]] ; then
+            if [[ -n $PW_DEBUG ]] ; then
                 debug_timer --start
                 timeout 5 gamescope --help
                 debug_timer --end "gamescope"
@@ -240,13 +240,13 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     fi
 
     if command -v vulkaninfo &>/dev/null ; then
-        if timeout 3 vulkaninfo --summary 2>/dev/null &> "${PW_TMPFS_PATH}/vulkaninfo.tmp" ; then
+        if timeout 3 vulkaninfo --summary &> "${PW_TMPFS_PATH}/vulkaninfo.tmp" ; then
             VULKAN_DRIVER_NAME="$(grep -e 'driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | awk '{print$3}' | head -1)"
             GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
             export VULKAN_DRIVER_NAME GET_GPU_NAMES
         else
             print_error "vulkaninfo - broken!"
-            if [[ ! -z $PW_DEBUG ]] ; then
+            if [[ -n $PW_DEBUG ]] ; then
                 debug_timer --start
                 timeout 5 vulkaninfo
                 debug_timer --end "vulkaninfo"
@@ -254,19 +254,19 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
         fi
     else
         print_warning "use portable vulkaninfo"
-        $PW_PLUGINS_PATH/portable/bin/x86_64-linux-gnu-vulkaninfo &> "${PW_TMPFS_PATH}/vulkaninfo.tmp"
+        "$PW_PLUGINS_PATH"/portable/bin/x86_64-linux-gnu-vulkaninfo &> "${PW_TMPFS_PATH}/vulkaninfo.tmp"
         VULKAN_DRIVER_NAME="$(grep -e 'driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | awk '{print$3}' | head -1)"
         GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
         export VULKAN_DRIVER_NAME GET_GPU_NAMES
     fi
 
     if command -v lspci &>/dev/null ; then
-        if timeout 3 lspci -k 2>/dev/null &> "${PW_TMPFS_PATH}/lspci.tmp" ; then
+        if timeout 3 lspci -k &> "${PW_TMPFS_PATH}/lspci.tmp" ; then
             LSPCI_VGA="$(grep -e 'VGA|3D' "${PW_TMPFS_PATH}/lspci.tmp" | tr -d '\n')"
             export LSPCI_VGA
         else
             print_error "lspci - broken!"
-            if [[ ! -z $PW_DEBUG ]] ; then
+            if [[ -n $PW_DEBUG ]] ; then
                 debug_timer --start
                 timeout 5 lspci -vv
                 debug_timer --end "lspci"
@@ -277,15 +277,15 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     fi
 
     if command -v xrandr &>/dev/null ; then
-        if timeout 3 xrandr --current 2>/dev/null &> "${PW_TMPFS_PATH}/xrandr.tmp" ; then
-            PW_SCREEN_RESOLUTION="$(cat "${PW_TMPFS_PATH}/xrandr.tmp" | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
+        if timeout 3 xrandr --current &> "${PW_TMPFS_PATH}/xrandr.tmp" ; then
+            PW_SCREEN_RESOLUTION="$(<"${PW_TMPFS_PATH}/xrandr.tmp" sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
             PW_SCREEN_PRIMARY="$(grep -e 'primary' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}')"
             export PW_SCREEN_PRIMARY PW_SCREEN_RESOLUTION
             echo ""
             print_var PW_SCREEN_RESOLUTION PW_SCREEN_PRIMARY
         else
             print_error "xrandr - broken!"
-            if [[ ! -z $PW_DEBUG ]] ; then
+            if [[ -n $PW_DEBUG ]] ; then
                 debug_timer --start
                 timeout 5 xrandr --verbose
                 debug_timer --end "xrandr"
@@ -297,28 +297,28 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
 
     logical_cores=$(grep -c "^processor" /proc/cpuinfo)
     if [[ "${logical_cores}" -le "4" ]] ; then
-        GET_LOGICAL_CORE="1!$(seq -s! 1 $((${logical_cores} - 1)))"
+        GET_LOGICAL_CORE="1!$(seq -s! 1 $(( logical_cores - 1 )))"
     else
-        GET_LOGICAL_CORE="1!2!$(seq -s! 4 4 $((${logical_cores} - 1)))"
+        GET_LOGICAL_CORE="1!2!$(seq -s! 4 4 $(( logical_cores - 1 )))"
     fi
     export GET_LOGICAL_CORE
 
     if command -v locale &>/dev/null ; then
-        if timeout 3 locale -a 2>/dev/null &> "${PW_TMPFS_PATH}/locale.tmp" ; then
+        if timeout 3 locale -a &> "${PW_TMPFS_PATH}/locale.tmp" ; then
             GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
             unset LOCALE_LIST
             for LOCALE in $GET_LOCALE_LIST ; do
-                if grep -e $LOCALE "${PW_TMPFS_PATH}/locale.tmp" &>/dev/null ; then
+                if grep -e "$LOCALE" "${PW_TMPFS_PATH}/locale.tmp" &>/dev/null ; then
                     if [[ ! -z "$LOCALE_LIST" ]]
-                    then LOCALE_LIST+="!$(grep -e $LOCALE "${PW_TMPFS_PATH}/locale.tmp")"
-                    else LOCALE_LIST="$(grep -e $LOCALE "${PW_TMPFS_PATH}/locale.tmp")"
+                    then LOCALE_LIST+="!$(grep -e "$LOCALE" "${PW_TMPFS_PATH}/locale.tmp")"
+                    else LOCALE_LIST="$(grep -e "$LOCALE" "${PW_TMPFS_PATH}/locale.tmp")"
                     fi
                 fi
             done
             export LOCALE_LIST
         else
             print_error "locale - broken!"
-            if [[ ! -z $PW_DEBUG ]] ; then
+            if [[ -n $PW_DEBUG ]] ; then
                 debug_timer --start
                 timeout 5 locale -a
                 debug_timer --end "locale"
@@ -338,7 +338,7 @@ fi
 # create lock file
 if ! check_flatpak ; then
 if [[ -f "${PW_TMPFS_PATH}/portproton.lock" ]] ; then
-    print_warning "Found lock file: "${PW_TMPFS_PATH}/portproton.lock""
+    print_warning "Found lock file: ${PW_TMPFS_PATH}/portproton.lock"
     yad_question "$(gettext 'A running PortProton session was detected.\nDo you want to end the previous session?')" || exit 0
 fi
 touch "${PW_TMPFS_PATH}/portproton.lock"
@@ -441,7 +441,7 @@ use: [--repair] [--reinstall] [--autoinstall]
 "
         echo "
 --debug                                             debug scripts for PortProton
-                                                    (saved log in "$PORT_WINE_PATH/scripts-debug.log")
+                                                    (saved log in $PORT_WINE_PATH/scripts-debug.log)
 "
         exit 0 ;;
 
@@ -470,7 +470,7 @@ esac
 unset PW_ADD_PREFIXES_TO_GUI
 if [[ -d "${PORT_WINE_PATH}/data/prefixes/" ]] ; then
     PW_PREFIX_NAME="${PW_PREFIX_NAME//[[:blank:]]/_}"
-    for PAIG in ${PORT_WINE_PATH}/data/prefixes/* ; do
+    for PAIG in "${PORT_WINE_PATH}"/data/prefixes/* ; do
         if [[ "${PAIG//"${PORT_WINE_PATH}/data/prefixes/"/}" != "${PORTWINE_DB^^//[[:blank:]]/_}" ]] \
         && [[ "${PAIG//"${PORT_WINE_PATH}/data/prefixes/"/}" != "${PW_PREFIX_NAME}" ]] \
         && [[ "${PAIG//"${PORT_WINE_PATH}/data/prefixes/"/}" != "*" ]]
@@ -486,7 +486,7 @@ if command -v wine &>/dev/null
 then DIST_ADD_TO_GUI="!USE_SYSTEM_WINE"
 fi
 if [[ -d "${PORT_WINE_PATH}/data/dist/" ]] ; then
-    for DAIG in ${PORT_WINE_PATH}/data/dist/* ; do
+    for DAIG in "${PORT_WINE_PATH}"/data/dist/* ; do
         if [[ "${DAIG//"${PORT_WINE_PATH}/data/dist/"/}" != "${PW_WINE_LG_VER}" ]] \
         && [[ "${DAIG//"${PORT_WINE_PATH}/data/dist/"/}" != "${PW_PROTON_LG_VER}" ]] \
         && [[ "${DAIG//"${PORT_WINE_PATH}/data/dist/"/}" != "*" ]]
@@ -550,8 +550,8 @@ if [[ -f "${portwine_exe}" ]] ; then
         export KEY_START="$RANDOM"
         if [[ "${PW_GUI_START}" == "NOTEBOOK" ]] ; then
             "${pw_yad}" --plug=$KEY_START --tabnum=1 --form --separator=";" ${START_GUI_TYPE} \
-            --gui-type-box=${START_GUI_TYPE_BOX} --gui-type-layout=${START_GUI_TYPE_LAYOUT_UP} \
-            --gui-type-text=${START_GUI_TYPE_TEXT} --gui-type-images=${START_GUI_TYPE_IMAGE} \
+            --gui-type-box="${START_GUI_TYPE_BOX}" --gui-type-layout="${START_GUI_TYPE_LAYOUT_UP}" \
+            --gui-type-text="${START_GUI_TYPE_TEXT}" --gui-type-images="${START_GUI_TYPE_IMAGE}" \
             --image="${PW_ICON_FOR_YAD}" --text-align="center" --text "$PW_COMMENT_DB" \
             --field="3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
             --field="  WINE  : :CB" "$(combobox_fix "${PW_WINE_USE}" "${PW_DEFAULT_WINE_USE}")" \
@@ -559,7 +559,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
             "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="${START_GUI_NOTEBOOK_COLUMNS}" --align-buttons --homogeneous-column \
-            --gui-type-layout=${START_GUI_TYPE_LAYOUT_NOTEBOOK} \
+            --gui-type-layout="${START_GUI_TYPE_LAYOUT_NOTEBOOK}" \
             --field="   $(gettext "Base settings")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Edit database file for") ${PORTWINE_DB}":"FBTN" '@bash -c "button_click_start 118"' \
             --field="   vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click_start 120"' \
             --field="   MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)")":"FBTN" '@bash -c "button_click_start 122"' \
@@ -592,8 +592,8 @@ if [[ -f "${portwine_exe}" ]] ; then
 
         elif [[ "${PW_GUI_START}" == "PANED" ]] ; then
             "${pw_yad}" --plug=$KEY_START --tabnum=1 --form --separator=";" ${START_GUI_TYPE} \
-            --gui-type-box=${START_GUI_TYPE_BOX} --gui-type-layout=${START_GUI_TYPE_LAYOUT_UP} \
-            --gui-type-text=${START_GUI_TYPE_TEXT} --gui-type-images=${START_GUI_TYPE_IMAGE} \
+            --gui-type-box="${START_GUI_TYPE_BOX}" --gui-type-layout="${START_GUI_TYPE_LAYOUT_UP}" \
+            --gui-type-text="${START_GUI_TYPE_TEXT}" --gui-type-images="${START_GUI_TYPE_IMAGE}" \
             --image="${PW_ICON_FOR_YAD}" --text-align="center" --text "$PW_COMMENT_DB" \
             --field="3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
             --field="  WINE  : :CB" "$(combobox_fix "${PW_WINE_USE}" "${PW_DEFAULT_WINE_USE}")" \
@@ -601,7 +601,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
             "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="${START_GUI_PANED_COLUMNS}" \
-            --gui-type-layout=${START_GUI_TYPE_LAYOUT_PANED} \
+            --gui-type-layout="${START_GUI_TYPE_LAYOUT_PANED}" \
             --align-buttons --homogeneous-row --homogeneous-column \
             --field="   $(gettext "Base settings")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Edit database file for") ${PORTWINE_DB}":"FBTN" '@bash -c "button_click_start 118"' \
             --field="   vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click_start 120"' \
@@ -679,8 +679,7 @@ else
         PW_GENERATE_BUTTONS+="--field=   ${PW_DESKTOP_FILES//".desktop"/""}!${PW_NAME_D_ICON_48}.png!:FBTN%@bash -c \"run_desktop_b_click "${PW_DESKTOP_FILES// /@_@}"\"%"
     done
 
-    IFS="$orig_IFS"
-    old_IFS=$IFS && IFS="%"
+    IFS="%"
     "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[4]}" --form --columns="$MAIN_GUI_COLUMNS" --homogeneous-column \
     --gui-type-layout=${MAIN_MENU_GUI_TYPE_LAYOUT} \
     --align-buttons --scroll --separator=" " ${PW_GENERATE_BUTTONS} 2>/dev/null &
@@ -703,7 +702,7 @@ else
     2>/dev/null &
 
     "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[2]}" --form --columns=3 --align-buttons --separator=";" \
-    --gui-type-layout=${MAIN_MENU_GUI_TYPE_LAYOUT} \
+    --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
     --field="   3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
     --field="   PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
     --field="     WINE  : :CB" "$(combobox_fix "${PW_WINE_USE}" "${PW_DEFAULT_WINE_USE}")" \
@@ -718,7 +717,7 @@ else
     --field="   $(gettext "Regedit")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Run wine regedit")":"FBTN" '@bash -c "button_click WINEREG"' 1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
     "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[1]}" --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll --homogeneous-column \
-    --gui-type-layout=${MAIN_MENU_GUI_TYPE_LAYOUT} \
+    --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
     --field="   Dolphin 5.0"!"$PW_GUI_ICON_PATH/dolphin.png"!"$(gettext "Emulator for Nintendo game consoles with high compatibility")":"FBTN" '@bash -c "button_click PW_DOLPHIN"' \
     --field="   MAME"!"$PW_GUI_ICON_PATH/mame.png"!"$(gettext "Multi-arcade emulator that allows you to play old arcade games")":"FBTN" '@bash -c "button_click PW_MAME"' \
     --field="   RetroArch"!"$PW_GUI_ICON_PATH/retroarch.png"!"$(gettext "Multi-platform frontend for emulators with extensive settings")":"FBTN" '@bash -c "button_click PW_RETROARCH"' \
@@ -735,7 +734,7 @@ else
     --field="   Demul"!"$PW_GUI_ICON_PATH/demul.png"!"$(gettext "Emulator for the Sega Dreamcast game console")":"FBTN" '@bash -c "button_click PW_DEMUL"' 2>/dev/null &
 
     "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[0]}" --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll --homogeneous-column \
-    --gui-type-layout=${MAIN_MENU_GUI_TYPE_LAYOUT} \
+    --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
     --field="   Lesta Game Center"!"$PW_GUI_ICON_PATH/lgc.png"!"":"FBTN" '@bash -c "button_click PW_LGC"' \
     --field="   vkPlay Games Center"!"$PW_GUI_ICON_PATH/mygames.png"!"":"FBTN" '@bash -c "button_click PW_VKPLAY"' \
     --field="   Battle.net Launcher"!"$PW_GUI_ICON_PATH/battle_net.png"!"":"FBTN" '@bash -c "button_click PW_BATTLE_NET"' \

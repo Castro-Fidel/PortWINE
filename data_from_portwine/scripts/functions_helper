@@ -693,7 +693,7 @@ init_wine_ver () {
                 fi
             done
 
-            if ! grep 'Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' "${WINEDIR}/share/wine/wine.inf" &> /dev/null ; then
+            if ! grep 'Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' "${WINEDIR}/share/wine/wine.inf" &>/dev/null ; then
                 echo 'HKLM,Software\NVIDIA Corporation\Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
                 echo 'HKLM,System\ControlSet001\Services\nvlddmkm,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
                 sed -i '/Steam.exe/d' "${WINEDIR}/share/wine/wine.inf"
@@ -4750,7 +4750,7 @@ pw_auto_create_shortcut () {
 
     for link_file in "${SORTED_LINKS[@]//@_@/ }" ; do
         if command -v exiftool &>/dev/null ; then
-            if timeout 3 exiftool "$link_file" 2>/dev/null &> "${PW_TMPFS_PATH}/exiftool.tmp" ; then
+            if timeout 3 exiftool "$link_file" &> "${PW_TMPFS_PATH}/exiftool.tmp" ; then
                 prefix_name=$(echo "$link_file" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
                 if fix_icon_name=$(grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" 2>/dev/null) \
                 && [[ "${fix_icon_name//*.exe/true}" == "true" ]] ; then
