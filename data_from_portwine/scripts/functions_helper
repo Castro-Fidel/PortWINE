@@ -623,7 +623,6 @@ init_wine_ver () {
         unset WINEDLLPATH
     else
         if [[ -d "${PORT_WINE_PATH}/data/dist" ]] ; then
-        orig_IFS="$IFS"
         IFS=$'\n'
         for dist_dir in $(ls -1 "${PORT_WINE_PATH}/data/dist/") ; do
             dist_dir_new=$(echo "${dist_dir}" | awk '$1=$1' | sed -e s/[[:blank:]]/_/g)
@@ -1337,7 +1336,6 @@ pw_init_db () {
                 fi
             fi
         else
-            orig_IFS="$IFS"
             IFS=$'\n'
             PW_FIND_DB_FILE=$(grep -ilw "#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/* | sed s/".exe"/""/gi)
             if [[ $(echo "$PW_FIND_DB_FILE" | wc -l) -gt 1 ]] ; then
@@ -1690,7 +1688,7 @@ pw_find_exe () {
         FIND_TO_GUI+="${line}%"
     done < "${PW_TMPFS_PATH}/tmp_yad_find_exe"
 
-    OrigIFS="$IFS" && IFS=%
+    IFS="%"
     PW_SET_FIND_EXE="$("${pw_yad}" --height="500" --width="800" --list --text-align=center \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "$(gettext "Create shortcut for...")" \
     --text="\n$(gettext "Choose the .exe file for which you need to create a shortcut and click OK.\n")" \
@@ -1706,7 +1704,7 @@ pw_find_exe () {
         fi
         exit 0
     fi
-    IFS=$OrigIFS
+    IFS="$orig_IFS"
 
     if [[ ! -z "${PW_SET_FIND_EXE}" ]] ; then
         portwine_exe="${PW_PATH_FOR_FIND}$(echo "${PW_SET_FIND_EXE}" | awk -F'|' '{print $1}')"
@@ -2516,7 +2514,6 @@ start_portwine () {
         if ! check_flatpak ; then
             FIND_D3D_MODULE=$(dirname $(find /usr/ -maxdepth 4 -type f -name "d3dadapter9.so.*") 2>/dev/null)
             if [[ ! -z "$FIND_D3D_MODULE" ]] ; then
-                old_IFS=$IFS
                 IFS=$'\n'
                 for D3D_MP in $FIND_D3D_MODULE ; do
                     if [[ ! -z "$D3D_MODULE_PATH" ]]
@@ -2524,7 +2521,7 @@ start_portwine () {
                     else export D3D_MODULE_PATH="/run/host${D3D_MP}"
                     fi
                 done
-                IFS=$old_IFS
+                IFS="$orig_IFS"
                 print_info "D3D_MODULE_PATH=${D3D_MODULE_PATH}"
             else
                 pw_stop_progress_bar
@@ -3659,11 +3656,10 @@ fi
         fi
     done
 
-    old_IFS=$IFS
     IFS="%"
     "${pw_yad}" --plug=$KEY_EDIT_DB_GUI --tabnum="1" --form --separator=" " --columns=3 ${ADD_CHK_BOX_EDIT_DB} \
     1> "${PW_TMPFS_PATH}/tmp_output_yad_edit_db" 2>/dev/null &
-    IFS=$old_IFS
+    IFS="$orig_IFS"
 
     case ${PW_WINDOWS_VER} in
          "7") ADD_WINVER_EDIT_DB="7!10!11!XP" ;;
@@ -3894,13 +3890,12 @@ fi
     else
         VKBASALT_FFX_CAS_GUI=66
     fi
-    export old_IFS=$IFS
-    export IFS="%"
+    IFS="%"
     "${pw_yad}" --plug=$KEY_FX_GUI --tabnum="1" --form --columns=4 --separator=" " \
     --text-align=center --text="$(gettext "VkBasalt settings for adding effects to games running under Vulkan. (The <b>HOME</b> key disables vkbasalt)\n<b>NOTE:</b> To display help for each item, simply hover over the text")" \
     --gui-type-text=${VKBASALT_GUI_TYPE_TEXT_UP} --gui-type-layout=${VKBASALT_GUI_TYPE_LAYOUT_UP} \
     ${ADD_GUI_FX} 1> "${PW_TMPFS_PATH}/tmp_yad_basalt_set" 2>/dev/null &
-    export IFS="${old_IFS}"
+    IFS="$orig_IFS"
 
     "${pw_yad}" --plug=$KEY_FX_GUI --tabnum="2" --separator=" " --form \
     --gui-type-layout=${VKBASALT_GUI_TYPE_LAYOUT_DOWN} \
@@ -4058,19 +4053,16 @@ fi
         fi
     done
 
-    old_IFS=$IFS && IFS="%"
+    IFS="%"
     "${pw_yad}" --plug=$KEY_MH_GUI --tabnum="1" --form --columns=5 --separator=" " --text-align=center \
         --text="$(gettext "MangoHud settings (Keys <b>R_SHIFT + F12</b> disable MangoHud)\n<b>note:</b> To display help for each item, just hover the mouse cursor over the text.")" \
         --gui-type-text=${MANGOHUD_GUI_TYPE_TEXT_UP} --gui-type-layout=${MANGOHUD_GUI_TYPE_LAYOUT_UP} \
         ${ADD_GUI_MH} 1> "${PW_TMPFS_PATH}/tmp_yad_mh_set" 2>/dev/null &
-    IFS=$old_IFS
-
-    old_IFS=$IFS && IFS="%"
     "${pw_yad}" --plug=$KEY_MH_GUI --tabnum="2" --form --columns=10 --separator=" " --text-align=center \
         --text="$(gettext "Enabling fps limitation with MANGOHUD tools built into PortProton (Keys <b>L_SHIFT + F1</b> Toggles fps limitation)")" \
         --gui-type-text=${MANGOHUD_GUI_TYPE_TEXT_DOWN} --gui-type-layout=${MANGOHUD_GUI_TYPE_LAYOUT_DOWN} \
         ${ADD_GUI_MH_FPS} 1> "${PW_TMPFS_PATH}/tmp_yad_mh_fps_limit" 2>/dev/null &
-    IFS=$old_IFS
+    IFS="$orig_IFS"
 
     "${pw_yad}" --paned --key="$KEY_MH_GUI" --title="MangoHud" --center \
         --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --sensitive \
@@ -4228,13 +4220,12 @@ fi
         fi
     done
 
-    old_IFS=$IFS
     IFS="%"
     "${pw_yad}" --plug=$KEY_DGV2_GUI --tabnum="1" --form --separator=" " --columns=4 ${ADD_CHK_BOX_DGV2} --text-align=center \
     --text="$(gettext "dgVoodoo2 settings\n<b>NOTE:</b> To display help for each item, simply hover over the text")" \
     --gui-type-text=${DGVOODOO2_GUI_TYPE_TEXT_UP} --gui-type-layout=${DGVOODOO2_GUI_TYPE_LAYOUT_UP}  \
     1> "${PW_TMPFS_PATH}/tmp_yad_dgv2_set" 2>/dev/null &
-    IFS=$old_IFS
+    IFS="$orig_IFS"
 
     DGVOODOO2_XRANDR="$(grep -e '[0-9]x' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}' | sort -rVu | grep "^[0-9]" | tr '\n' ' ')"
     for drop_low in ${DGVOODOO2_XRANDR} ; do
@@ -4448,13 +4439,12 @@ fi
         done
     fi
 
-    old_IFS=$IFS
     IFS="%"
     "${pw_yad}" --plug=$KEY_GS_GUI --tabnum="1" --form --columns=4 --separator=" " --text-align=center --text "$GAMESCOPE_NEED_INSTALL" \
     --gui-type-text=${GAMESCOPE_GUI_TYPE_TEXT_UP} --gui-type-layout=${GAMESCOPE_GUI_TYPE_LAYOUT_UP} $YAD_TEXT_SELECTION \
     ${ADD_CHK_BOX_GS} \
     1> "${PW_TMPFS_PATH}/tmp_yad_gs_set" 2>/dev/null &
-    IFS=$old_IFS
+    IFS="$orig_IFS"
 
     GAMESCOPE_XRANDR="$(grep -e '[0-9]x' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}' | sort -rVu | grep "^[0-9]" | tr '\n' ' ')"
     for drop_low in ${GAMESCOPE_XRANDR} ; do
@@ -4855,7 +4845,6 @@ pw_prefix_manager () {
 
     gui_prefix_manager () {
         unset SET_FROM_PFX_MANAGER_TMP SET_FROM_PFX_MANAGER
-        old_IFS=$IFS
         IFS=$'\n'
         try_remove_file  "${PW_TMPFS_PATH}/dll_list_tmp"
         while read PW_BOOL_IN_DLL_LIST ; do
@@ -4935,7 +4924,7 @@ pw_prefix_manager () {
                 [[ ! -z "${STPFXMNG}" ]] && SET_FROM_PFX_MANAGER+="$(echo "${STPFXMNG}" | awk -F'|' '{print $2}') "
             fi
         done
-        IFS=${old_IFS}
+        IFS="$orig_IFS"
         try_remove_file "${PW_TMPFS_PATH}/to_winetricks"
 
         if [[ ! -z ${SET_FROM_PFX_MANAGER} ]] ; then

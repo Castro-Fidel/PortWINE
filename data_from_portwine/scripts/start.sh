@@ -25,6 +25,7 @@ export PW_START_PID="$$"
 export NO_AT_BRIDGE="1"
 export GDK_BACKEND="x11"
 export pw_full_command_line=("$0" $*)
+export orig_IFS="$IFS"
 
 MISSING_DESKTOP_FILE="0"
 
@@ -654,7 +655,7 @@ else
     else NEW_BRANCH="STABLE"
     fi
 
-    orig_IFS="$IFS" && IFS=$'\n'
+    IFS=$'\n'
     PW_ALL_DF="$(ls "${PORT_WINE_PATH}"/ | grep .desktop | grep -vE '(PortProton|readme)')"
     if [[ -z "${PW_ALL_DF}" ]]
     then PW_GUI_SORT_TABS=(1 2 3 4 5)
@@ -678,6 +679,7 @@ else
         fi
         PW_GENERATE_BUTTONS+="--field=   ${PW_DESKTOP_FILES//".desktop"/""}!${PW_NAME_D_ICON_48}.png!:FBTN%@bash -c \"run_desktop_b_click "${PW_DESKTOP_FILES// /@_@}"\"%"
     done
+    IFS="$orig_IFS"
 
     IFS="%"
     "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[4]}" --form --columns="$MAIN_GUI_COLUMNS" --homogeneous-column \
