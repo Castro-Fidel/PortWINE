@@ -673,9 +673,10 @@ else
         fi
         PW_ICON_PATH="$(grep Icon "${PORT_WINE_PATH}/${PW_DESKTOP_FILES}" | awk -F= '{print $2}')"
         PW_NAME_D_ICON_48="${PW_ICON_PATH%.png}_48"
+        PW_NAME_D_ICON_128="${PW_ICON_PATH%.png}"
         if [[ -f "${PW_NAME_D_ICON}" ]] ; then
             resize_png "${PW_NAME_D_ICON}" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
-            resize_png "${PW_NAME_D_ICON}" "$(basename "$PW_ICON_PATH" .png)" "128"
+            resize_png "${PW_NAME_D_ICON}" "${PW_NAME_D_ICON_128//"${PORT_WINE_PATH}/data/img/"/}" "128"
         fi
         PW_GENERATE_BUTTONS+="--field=   ${PW_DESKTOP_FILES//".desktop"/""}!${PW_NAME_D_ICON_48}.png!:FBTN%@bash -c \"run_desktop_b_click "${PW_DESKTOP_FILES// /@_@}"\"%"
     done
