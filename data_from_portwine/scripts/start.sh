@@ -149,7 +149,7 @@ export pw_yad="${PW_GUI_THEMES_PATH}/gui/yad_gui_pp"
 change_locale
 
 export urlg="https://linux-gaming.ru/portproton/"
-export url_cdn="https://cdn.linux-gaming.ru"
+export url_cloud="https://cloud.linux-gaming.ru/portproton"
 export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
 try_remove_dir "${PW_WINELIB}/var"
 install_ver="$(head -n 1 "${PORT_WINE_TMP_PATH}/PortProton_ver")"
@@ -157,6 +157,8 @@ export install_ver
 export WINETRICKS_DOWNLOADER="curl"
 export USER_CONF="${PORT_WINE_PATH}/data/user.conf"
 check_user_conf
+sed -i 's/="CDN"/="CLOUD"/g' "$USER_CONF"
+
 check_variables PW_LOG "0"
 
 try_remove_file "${PW_TMPFS_PATH}/update_pfx_log"
@@ -195,8 +197,8 @@ if [[ -z "$MIRROR" ]] \
 && [[ "$LANGUAGE" == "ru" ]] \
 && [[ "$BRANCH" != "devel" ]]
 then
-    echo 'export MIRROR="CDN"' >> "$USER_CONF"
-    MIRROR="CDN"
+    echo 'export MIRROR="CLOUD"' >> "$USER_CONF"
+    MIRROR="CLOUD"
 elif [[ -z "$MIRROR" ]] ; then
     echo 'export MIRROR="GITHUB"' >> "$USER_CONF"
     MIRROR="GITHUB"
@@ -645,9 +647,9 @@ if [[ -f "${portwine_exe}" ]] ; then
 else
     export KEY="$RANDOM"
 
-    if [[ "$MIRROR" == "CDN" ]]
+    if [[ "$MIRROR" == "CLOUD" ]]
     then NEW_MIRROR="GITHUB"
-    else NEW_MIRROR="CDN"
+    else NEW_MIRROR="CLOUD"
     fi
 
     if [[ "$BRANCH" == "master" ]]
