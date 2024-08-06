@@ -396,13 +396,54 @@ var_ld_library_path_update () {
 }
 
 pw_notify_send () {
-    if command -v notify-send &>/dev/null ; then
-        if [[ -f "$PW_GUI_ICON_PATH/portproton.svg" ]]
-        then notify-send -a PortProton -i "$PW_GUI_ICON_PATH/portproton.svg" $@ "${PW_NOTIFY_TEXT}"
-        else notify-send -a PortProton $@ "${PW_NOTIFY_TEXT}"
-        fi
+    if command -v gdbus &>/dev/null ; then
+        local app="PortProton"
+        local icon=""
+        local timeout="5000"
+        local title=""
+        local body=""
+
+        local OPTIND="1"
+        while getopts a:i:t: opt ; do
+            case "$opt" in
+                a)  
+                    local app=$OPTARG
+                    ;;
+                i)  
+                    case "$OPTARG" in
+                        info) local OPTARG="${PORT_WINE_PATH}/data/img/gui/notify_info.svg";;
+                        warning) local OPTARG="${PORT_WINE_PATH}/data/img/gui/notify_warning.svg";;
+                        error) local OPTARG="${PORT_WINE_PATH}/data/img/gui/notify_error.svg";;
+                    esac
+                    local icon=$OPTARG
+                    ;;
+                t) 
+                    local timeout=$OPTARG
+                    ;;
+                *) 
+                    echo "usage: $0
+                    [-a] name application (PortProton default)
+                    [-i] info, warning, error (none default)
+                    [-t] timeout in ms (5000 default)" >&2
+                    return 1
+                    ;;
+            esac
+        done
+        shift $(( OPTIND - 1 ))
+        [[ "$1" == "--" ]] && shift
+
+        local title="$1"
+        shift
+        local body="$*"
+
+        gdbus call --session --dest org.freedesktop.Notifications \
+            --object-path /org/freedesktop/Notifications \
+            --method org.freedesktop.Notifications.Notify \
+            "$app" 0 "$icon" "$title" "$body" "[]" "{}" "$timeout" &>/dev/null
+        return 0
     fi
 }
+export -f pw_notify_send
 
 check_start_from_steam () {
     if [[ "${START_FROM_STEAM}" == 1 ]]
@@ -1193,8 +1234,8 @@ pw_check_and_download_plugins () {
                 fi
             fi
         else
-            PW_NOTIFY_TEXT="Please wait for update PortProton"
-            pw_notify_send -u normal
+            pw_notify_send -i info -t 10000 \
+            "$(gettext "Please wait for update PortProton")"
             if try_download "github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" \
                                    "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" silent ; then
                 if unpack "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}" ; then
@@ -1208,9 +1249,9 @@ pw_check_and_download_plugins () {
                         done
                     fi
                 else
-                    PW_NOTIFY_TEXT="Failed updating PortProton!"
-                    pw_notify_send -u critical
                     print_error "Failed updating PortProton!"
+                    pw_notify_send -i error -t 10000 \
+                    "$(gettext "Failed updating PortProton!")"
                 fi
             fi
         fi
@@ -4949,7 +4990,9 @@ portwine_start_debug () {
     kill_portwine
     export PW_LOG=1
     if [[ -z "$VULKAN_DRIVER_NAME" ]] || [[ "$VULKAN_DRIVER_NAME" == "llvmpipe" ]] ; then
-    yad_info "$(gettext "Attention working version of vulkan not detected!\nIt is recommended to run games in OpenGL (low performance possible)!")"
+    pw_notify_send -i warning -t 10000 \
+    "$(gettext "Attention working version of vulkan not detected!")" \
+    "$(gettext "It is recommended to run games in OpenGL (low performance possible)!")"
     fi
     echo "$(gettext "PortProton was launched in creation mode PortProton.log and it is successfully stored in the root directory of the port")" > "${PORT_WINE_PATH}/PortProton.log"
     echo "$(gettext "To diagnose the problem, copy ALL of the log to discord server: https://discord.gg/FTaheP99wE")" >> "${PORT_WINE_PATH}/PortProton.log"
@@ -5284,13 +5327,20 @@ export -f change_loc
 change_mirror () {
     if [[ "$MIRROR" == "CDN" ]] ; then
         sed -i 's/="CDN"/="GITHUB"/g' "$USER_CONF"
-        yad_info "$(gettext "Mirror changed to:")  <b>GITHUB</b>"
+        pw_notify_send -i info -t 10000 \
+        "$(gettext "Mirror changed to:")" "<b>GITHUB</b>"
     else
         sed -i 's/="GITHUB"/="CDN"/g' "$USER_CONF"
-        yad_info "$(gettext "Mirror changed to:")  <b>CDN</b>"
+        pw_notify_send -i info -t 10000 \
+        "$(gettext "Mirror changed to:")" "<b>CDN</b>"
     fi
     print_info "Restarting PP for change mirror..."
     export SKIP_CHECK_UPDATES="1"
+    if [[ -z "${PW_ALL_DF}" ]] ; then
+        export TAB_MAIN_MENU="4"
+    else
+        export TAB_MAIN_MENU="5"
+    fi
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
@@ -5319,13 +5369,20 @@ export -f change_branch
 change_gui_start () {
     if [[ "$PW_GUI_START" == "NOTEBOOK" ]] ; then
         sed -i 's/="NOTEBOOK"/="PANED"/g' "$USER_CONF"
-        yad_info "$(gettext "Gui start changed to:") PANED"
+        pw_notify_send -i info -t 10000 \
+        "$(gettext "Gui start changed to:")" "<b>PANED</b>"
     else
         sed -i 's/="PANED"/="NOTEBOOK"/g' "$USER_CONF"
-        yad_info "$(gettext "Gui start changed to:") NOTEBOOK"
+        pw_notify_send -i info -t 10000 \
+        "$(gettext "Gui start changed to:")" "<b>NOTEBOOK</b>"
     fi
     print_info "Restarting PP for change gui start..."
     export SKIP_CHECK_UPDATES="1"
+    if [[ -z "${PW_ALL_DF}" ]] ; then
+        export TAB_MAIN_MENU="4"
+    else
+        export TAB_MAIN_MENU="5"
+    fi
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
