@@ -271,11 +271,28 @@ check_process () {
 }
 export -f check_process
 
+try_check_sha256sum () {
+    SHA256SUM_EXT=$(curl -L "${1//.tar*/}.sha256sum" | awk '{print $1}')
+    if [[ ${#SHA256SUM_EXT} == 64 ]] ; then
+        SHA256SUM_INT=$(sha256sum "$dest" | awk '{print $1}')
+        if [[ "$SHA256SUM_EXT" == "$SHA256SUM_INT" ]] ; then
+            print_ok "Verification sha256sum was successfully."
+            return 0
+        else
+            print_error "Verification sha256sum was failed."
+            return 1
+        fi
+    else
+        print_warning "sha256sum not found for $(basename "$dest") on server. Skip it."
+        return 0
+    fi
+}
+
 try_download () {
-    local dest="$2"
+    export dest="$2"
     local silent="false"
     local no_mirror="false"
-
+ 
     case "$3" in
            silent)
                 silent=true ;;
@@ -291,14 +308,14 @@ try_download () {
         local filename="$(basename "$1")"
     fi
 
-    if [[ "${MIRROR}" == CDN ]] \
+    if [[ "${MIRROR}" == CLOUD ]] \
     && [[ "$no_mirror" != "true" ]]
     then
-        FIRST_URL="$url_cdn/$filename"
-        SECOND_URL="$1"
+        FIRST_URL=("$url_cloud/$filename" "-u" "portproton:portproton")
+        SECOND_URL=("$1")
     else
-        FIRST_URL="$1"
-        SECOND_URL="$url_cdn/$filename"
+        FIRST_URL=("$1")
+        SECOND_URL=("$url_cloud/$filename" "-u" "portproton:portproton")
     fi
 
     [[ ! -f "${pw_yad}" ]] && local pw_yad="yad"
@@ -306,19 +323,19 @@ try_download () {
     # If gamescope session is active, use PW_TERM for downloading
     if check_gamescope_session ; then
         $PW_TERM curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
-        -H 'Pragma: no-cache' -L "$FIRST_URL" -o "$dest"
+        -H 'Pragma: no-cache' -L ${FIRST_URL[@]} -o "$dest"
         [ "$?" != 0 ] && return 1 || return 0
     fi
 
     # Normal download
-    print_info "Download $filename from $FIRST_URL..."
+    print_info "Download $filename from ${FIRST_URL[0]}..."
     set -o pipefail
     if [[ "$silent" == "true" ]] ; then
         curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
-        -H 'Pragma: no-cache' -L "$FIRST_URL" -o "$dest" 2>&1
+        -H 'Pragma: no-cache' -L ${FIRST_URL[@]} -o "$dest" 2>&1
     else
         curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
-        -H 'Pragma: no-cache' -L "$FIRST_URL" -o "$dest" 2>&1 | \
+        -H 'Pragma: no-cache' -L ${FIRST_URL[@]} -o "$dest" 2>&1 | \
         tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
         "$pw_yad" --progress --text="$(gettext "Downloading") $filename" --auto-close --no-escape \
         --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
@@ -327,9 +344,9 @@ try_download () {
 
     if [[ "${PIPESTATUS[0]}" != 0 ]] ; then
         if [[ "$no_mirror" != "true" ]] ; then
-            print_warning "Failed download $filename from $FIRST_URL, trying mirror..."
+            print_warning "Failed download $filename from ${FIRST_URL[0]}, trying mirror..."
             curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
-            -H 'Pragma: no-cache' -L "$SECOND_URL" -o "$dest" 2>&1 | \
+            -H 'Pragma: no-cache' -L ${SECOND_URL[@]} -o "$dest" 2>&1 | \
             tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
             "$pw_yad" --progress --text="$(gettext "Downloading") $filename" --auto-close --no-escape \
             --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
@@ -339,12 +356,12 @@ try_download () {
             print_error "Failed to download $filename from mirror. Skipping..."
             return 1
         else
-            print_ok "File downloaded successfully: $filename from $SECOND_URL"
-            return 0
+            print_ok "File downloaded successfully: $filename from ${SECOND_URL[0]}"
+            try_check_sha256sum ${SECOND_URL[@]} && return 0 || return 1
         fi
     fi
-    print_ok "File downloaded successfully: $filename from $FIRST_URL"
-    return 0
+    print_ok "File downloaded successfully: $filename from ${FIRST_URL[0]}"
+    try_check_sha256sum ${FIRST_URL[@]} && return 0 || return 1
 }
 
 var_winedlloverride_update () {
@@ -5325,14 +5342,14 @@ change_loc () {
 export -f change_loc
 
 change_mirror () {
-    if [[ "$MIRROR" == "CDN" ]] ; then
-        sed -i 's/="CDN"/="GITHUB"/g' "$USER_CONF"
+    if [[ "$MIRROR" == "CLOUD" ]] ; then
+        sed -i 's/="CLOUD"/="GITHUB"/g' "$USER_CONF"
         pw_notify_send -i info -t 10000 \
         "$(gettext "Mirror changed to:")" "<b>GITHUB</b>"
     else
-        sed -i 's/="GITHUB"/="CDN"/g' "$USER_CONF"
+        sed -i 's/="GITHUB"/="CLOUD"/g' "$USER_CONF"
         pw_notify_send -i info -t 10000 \
-        "$(gettext "Mirror changed to:")" "<b>CDN</b>"
+        "$(gettext "Mirror changed to:")" "<b>CLOUD.LINUX-GAMING.RU</b>"
     fi
     print_info "Restarting PP for change mirror..."
     export SKIP_CHECK_UPDATES="1"
@@ -5349,9 +5366,6 @@ export -f change_mirror
 change_branch () {
     if [[ "$BRANCH" == "master" ]] ; then
         sed -i 's/="master"/="devel"/g' "$USER_CONF"
-        if [[ "$MIRROR" != "GITHUB" ]] ; then
-            sed -i 's/="CDN"/="GITHUB"/g' "$USER_CONF"
-        fi
         export MIRROR="GITHUB"
         yad_info "$(gettext "Branch changed to:")  <b>DEVEL</b>"
     else
