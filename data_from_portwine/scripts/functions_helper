@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Author: Castro-Fidel (linux-gaming.ru)
-# shellcheck disable=SC2140,SC2034
+# shellcheck disable=SC2140,SC2034,SC2068,SC2206
 ########################################################################
 $PW_DEBUG
 print_error () { printf "\E[31m%s Error: $@ %s\e[0m\n" ;}
@@ -311,11 +311,11 @@ try_download () {
     if [[ "${MIRROR}" == CLOUD ]] \
     && [[ "$no_mirror" != "true" ]]
     then
-        FIRST_URL=("$url_cloud/$filename" "-u" "portproton:portproton")
-        SECOND_URL=("$1")
+        FIRST_URL=("$url_cloud/$filename")
+        SECOND_URL=($1)
     else
-        FIRST_URL=("$1")
-        SECOND_URL=("$url_cloud/$filename" "-u" "portproton:portproton")
+        FIRST_URL=($1)
+        SECOND_URL=("$url_cloud/$filename")
     fi
 
     [[ ! -f "${pw_yad}" ]] && local pw_yad="yad"
@@ -344,7 +344,7 @@ try_download () {
 
     if [[ "${PIPESTATUS[0]}" != 0 ]] ; then
         if [[ "$no_mirror" != "true" ]] ; then
-            print_warning "Failed download $filename from ${FIRST_URL[0]}, trying mirror..."
+            print_warning "Failed download $filename from ${FIRST_URL[0]}, trying mirror: ${SECOND_URL[0]}"
             curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
             -H 'Pragma: no-cache' -L ${SECOND_URL[@]} -o "$dest" 2>&1 | \
             tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
@@ -357,11 +357,21 @@ try_download () {
             return 1
         else
             print_ok "File downloaded successfully: $filename from ${SECOND_URL[0]}"
-            try_check_sha256sum ${SECOND_URL[@]} && return 0 || return 1
+            if try_check_sha256sum ${SECOND_URL[@]} ; then
+                return 0
+            else
+                try_remove_file "$dest"
+                return 1
+            fi
         fi
     fi
     print_ok "File downloaded successfully: $filename from ${FIRST_URL[0]}"
-    try_check_sha256sum ${FIRST_URL[@]} && return 0 || return 1
+    if try_check_sha256sum ${SECOND_URL[@]} ; then
+        return 0
+    else
+        try_remove_file "$dest"
+        return 1
+    fi
 }
 
 var_winedlloverride_update () {
@@ -412,6 +422,7 @@ var_ld_library_path_update () {
     return 0
 }
 
+# GUI NOTIFY SEND
 pw_notify_send () {
     if command -v gdbus &>/dev/null ; then
         local app="PortProton"
@@ -1251,7 +1262,7 @@ pw_check_and_download_plugins () {
                 fi
             fi
         else
-            pw_notify_send -i info -t 10000 \
+            pw_notify_send -i info \
             "$(gettext "Please wait for update PortProton")"
             if try_download "github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" \
                                    "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" silent ; then
@@ -1267,7 +1278,7 @@ pw_check_and_download_plugins () {
                     fi
                 else
                     print_error "Failed updating PortProton!"
-                    pw_notify_send -i error -t 10000 \
+                    pw_notify_send -i error \
                     "$(gettext "Failed updating PortProton!")"
                 fi
             fi
@@ -5007,7 +5018,7 @@ portwine_start_debug () {
     kill_portwine
     export PW_LOG=1
     if [[ -z "$VULKAN_DRIVER_NAME" ]] || [[ "$VULKAN_DRIVER_NAME" == "llvmpipe" ]] ; then
-    pw_notify_send -i warning -t 10000 \
+    pw_notify_send -i warning \
     "$(gettext "Attention working version of vulkan not detected!")" \
     "$(gettext "It is recommended to run games in OpenGL (low performance possible)!")"
     fi
@@ -5344,12 +5355,12 @@ export -f change_loc
 change_mirror () {
     if [[ "$MIRROR" == "CLOUD" ]] ; then
         sed -i 's/="CLOUD"/="GITHUB"/g' "$USER_CONF"
-        pw_notify_send -i info -t 10000 \
-        "$(gettext "Mirror changed to:")" "<b>GITHUB</b>"
+        pw_notify_send -i info \
+        "$(gettext "Mirror changed to:")" "<b>https://github.com/Castro-Fidel</b>"
     else
         sed -i 's/="GITHUB"/="CLOUD"/g' "$USER_CONF"
-        pw_notify_send -i info -t 10000 \
-        "$(gettext "Mirror changed to:")" "<b>CLOUD.LINUX-GAMING.RU</b>"
+        pw_notify_send -i info \
+        "$(gettext "Mirror changed to:")" "<b>https://cloud.linux-gaming.ru</b>"
     fi
     print_info "Restarting PP for change mirror..."
     export SKIP_CHECK_UPDATES="1"
@@ -5383,11 +5394,11 @@ export -f change_branch
 change_gui_start () {
     if [[ "$PW_GUI_START" == "NOTEBOOK" ]] ; then
         sed -i 's/="NOTEBOOK"/="PANED"/g' "$USER_CONF"
-        pw_notify_send -i info -t 10000 \
+        pw_notify_send -i info \
         "$(gettext "Gui start changed to:")" "<b>PANED</b>"
     else
         sed -i 's/="PANED"/="NOTEBOOK"/g' "$USER_CONF"
-        pw_notify_send -i info -t 10000 \
+        pw_notify_send -i info \
         "$(gettext "Gui start changed to:")" "<b>NOTEBOOK</b>"
     fi
     print_info "Restarting PP for change gui start..."

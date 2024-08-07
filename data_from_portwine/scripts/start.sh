@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Author: Castro-Fidel (linux-gaming.ru)
 # Development assistants: Cefeiko; Dezert1r; Taz_mania; Anton_Famillianov; gavr; RidBowt; chal55rus; UserDiscord; Boria138; Vano; Akai; Htylol
-# shellcheck disable=SC2140,SC2119,SC2206
+# shellcheck disable=SC2140,SC2119,SC2206,SC2068
 ########################################################################
 echo '
             █░░ █ █▄░█ █░█ ▀▄▀ ▄▄ █▀▀ ▄▀█ █▀▄▀█ █ █▄░█ █▀▀ ░ █▀█ █░█
