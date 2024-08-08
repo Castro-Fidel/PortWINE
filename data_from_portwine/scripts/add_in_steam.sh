@@ -1,7 +1,6 @@
 #!/bin/bash
 # GPL-3.0 license
 # based on https://github.com/sonic2kk/steamtinkerlaunch/blob/master/steamtinkerlaunch
-
 PROGNAME="PortProton"
 name_desktop_png="${name_desktop// /_}"
 NOSTAPPNAME="$name_desktop"
@@ -151,7 +150,15 @@ function downloadArtFromSteamGridDB {
     [ -n "$SEARCHHUMOR" ] && SGDB_ENDPOINT_STR+="&humor=${SEARCHHUMOR}"
     [ -n "$SEARCHEPILEPSY" ] && SGDB_ENDPOINT_STR+="&epilepsy=${SEARCHEPILEPSY}"
 
+    set -o pipefail
     RESPONSE=$(curl -H "Authorization: Bearer $SGDBAPIKEY" -s "$SGDB_ENDPOINT_STR" 2> >(grep -v "SSL_INIT"))
+    if [[ "${PIPESTATUS[0]}" != 0 ]] && [[ "$DOWNLOAD_STEAM_GRID" != 0 ]] ; then
+		pw_notify_send -i info \
+		"$(gettext "SteamGridDB is not response, force disable cover download")"
+		sed -i 's/DOWNLOAD_STEAM_GRID=.*/DOWNLOAD_STEAM_GRID="0"/' "$USER_CONF"
+		export DOWNLOAD_STEAM_GRID="0"
+		return
+    fi
 
 
     if ! jq -e '.success' <<< "$RESPONSE" > /dev/null; then
@@ -289,6 +296,7 @@ function commandlineGetSteamGridDBArtwork {
 	SGDBSEARCHENDPOINT_LOGO="${BASESTEAMGRIDDBAPI}/logos/${SGDBENDPOINTTYPE}"
 	SGDBSEARCHENDPOINT_BOXART="${BASESTEAMGRIDDBAPI}/grids/${SGDBENDPOINTTYPE}"	 # Grid endpoint is used for Boxart and Tenfoot, which SteamGridDB counts as vertical/horizontal grids respectively
 
+
 	# Download Hero, Logo, Boxart, Tenfoot from SteamGridDB from given endpoint using given AppID
 	# On SteamGridDB tenfoot called horizontal Steam grid, so fetch it by passing specific dimensions matching this -- Users can override this, but default is what SteamGridDB expects for the tenfoot sizes
 	downloadArtFromSteamGridDB "$GSGDBA_APPID" "$SGDBSEARCHENDPOINT_HERO" "${GSGDBA_FILENAME}_hero" "$SGDBHEROSTYLES" "$SGDBHERODIMS" "$SGDBHEROTYPES" "$SGDBHERONSFW" "$SGDBHEROHUMOR" "$SGDBHEROEPILEPSY" "$GSGDBA_HASFILE" "$GSGDBA_APPLYARTWORK"
@@ -325,7 +333,9 @@ if [ -n "$NOSTAPPNAME" ]; then
 fi
 
 # Store the ID we searched with, so getSteamGridDBNonSteamIcon doesn't have to hit the endpoint again and we save an API call
-commandlineGetSteamGridDBArtwork --search-name="$NOSTSEARCHNAME" --filename-appid="$NOSTAIDGRID" "$NOSTSEARCHFLAG" --apply --replace-existing
+if [[ "$DOWNLOAD_STEAM_GRID" == "1" ]] ; then
+	commandlineGetSteamGridDBArtwork --search-name="$NOSTSEARCHNAME" --filename-appid="$NOSTAIDGRID" "$NOSTSEARCHFLAG" --apply --replace-existing
+fi
 {
 	printf '\x00%s\x00' "$NEWSET"
 	printf '\x02%s\x00%b' "appid" "$NOSTAIDVDFHEXFMT"
@@ -356,4 +366,6 @@ commandlineGetSteamGridDBArtwork --search-name="$NOSTSEARCHNAME" --filename-appi
 	printf '\x08\x08\x08\x08'
 } >> "$SCPATH"
 
-setGameArt "$NOSTAIDGRID" --hero="$NOSTGHERO" --logo="$NOSTGLOGO" --boxart="$NOSTGBOXART" --tenfoot="$NOSTGTENFOOT" "$SGACOPYMETHOD"
+if [[ "$DOWNLOAD_STEAM_GRID" == "1" ]] ; then
+	setGameArt "$NOSTAIDGRID" --hero="$NOSTGHERO" --logo="$NOSTGLOGO" --boxart="$NOSTGBOXART" --tenfoot="$NOSTGTENFOOT" "$SGACOPYMETHOD"
+fi
