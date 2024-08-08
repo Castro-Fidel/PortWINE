@@ -466,6 +466,11 @@ use: [--repair] [--reinstall] [--autoinstall]
         export PW_DEBUG="set -x"
         /usr/bin/env bash -c ${pw_full_command_line[*]} 2>&1 | tee "$PORT_WINE_PATH/scripts-debug.log" &
         exit 0 ;;
+    '--server-file-access' )
+        echo
+        curl -s --list-only "https://cloud.linux-gaming.ru/log/$(date +20%y_%m)_file_access.log" | sort -r
+        echo
+        exit 0 ;;
 esac
 
 ### GUI ###

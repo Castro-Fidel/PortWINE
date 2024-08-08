@@ -272,7 +272,7 @@ check_process () {
 export -f check_process
 
 try_check_sha256sum () {
-    SHA256SUM_EXT=$(curl -L --silent "${1//.tar*/}.sha256sum" | awk '{print $1}')
+    SHA256SUM_EXT=$(curl --silent -L "${1//.tar*/}.sha256sum" | awk '{print $1}')
     if [[ ${#SHA256SUM_EXT} == 64 ]] ; then
         SHA256SUM_INT=$(sha256sum "$dest" | awk '{print $1}')
         if [[ "$SHA256SUM_EXT" == "$SHA256SUM_INT" ]] ; then
@@ -366,7 +366,7 @@ try_download () {
         fi
     fi
     print_ok "File downloaded successfully: $filename from ${FIRST_URL[0]}"
-    if try_check_sha256sum ${SECOND_URL[@]} ; then
+    if try_check_sha256sum ${FIRST_URL[@]} ; then
         return 0
     else
         try_remove_file "$dest"
