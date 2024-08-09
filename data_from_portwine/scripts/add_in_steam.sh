@@ -289,6 +289,7 @@ function commandlineGetSteamGridDBArtwork {
 	SGDBSEARCHENDPOINT_LOGO="${BASESTEAMGRIDDBAPI}/logos/${SGDBENDPOINTTYPE}"
 	SGDBSEARCHENDPOINT_BOXART="${BASESTEAMGRIDDBAPI}/grids/${SGDBENDPOINTTYPE}"	 # Grid endpoint is used for Boxart and Tenfoot, which SteamGridDB counts as vertical/horizontal grids respectively
 
+
 	# Download Hero, Logo, Boxart, Tenfoot from SteamGridDB from given endpoint using given AppID
 	# On SteamGridDB tenfoot called horizontal Steam grid, so fetch it by passing specific dimensions matching this -- Users can override this, but default is what SteamGridDB expects for the tenfoot sizes
 	downloadArtFromSteamGridDB "$GSGDBA_APPID" "$SGDBSEARCHENDPOINT_HERO" "${GSGDBA_FILENAME}_hero" "$SGDBHEROSTYLES" "$SGDBHERODIMS" "$SGDBHEROTYPES" "$SGDBHERONSFW" "$SGDBHEROHUMOR" "$SGDBHEROEPILEPSY" "$GSGDBA_HASFILE" "$GSGDBA_APPLYARTWORK"
@@ -325,7 +326,9 @@ if [ -n "$NOSTAPPNAME" ]; then
 fi
 
 # Store the ID we searched with, so getSteamGridDBNonSteamIcon doesn't have to hit the endpoint again and we save an API call
-commandlineGetSteamGridDBArtwork --search-name="$NOSTSEARCHNAME" --filename-appid="$NOSTAIDGRID" "$NOSTSEARCHFLAG" --apply --replace-existing
+if [[ "$DOWNLOAD_STEAM_GRID" == "1" ]] ; then
+	commandlineGetSteamGridDBArtwork --search-name="$NOSTSEARCHNAME" --filename-appid="$NOSTAIDGRID" "$NOSTSEARCHFLAG" --apply --replace-existing
+fi
 {
 	printf '\x00%s\x00' "$NEWSET"
 	printf '\x02%s\x00%b' "appid" "$NOSTAIDVDFHEXFMT"
