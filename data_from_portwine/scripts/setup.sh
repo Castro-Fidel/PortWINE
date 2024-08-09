@@ -39,7 +39,7 @@ fi
 
 if ! check_flatpak ; then
 	update-desktop-database -q "${HOME}/.local/share/applications"
-	xdg-mime default PortProton.desktop "application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program"
+	xdg-mime default PortProton.desktop "application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program;text/win-bat;"
 fi
 
 if [[ -f /usr/bin/portproton ]] \
