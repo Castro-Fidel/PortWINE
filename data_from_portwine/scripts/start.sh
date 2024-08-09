@@ -176,7 +176,7 @@ else
     source "$PW_GUI_THEMES_PATH/default.pptheme"
     echo 'export GUI_THEME="default"' >> "$USER_CONF"
 fi
-[[ "$XDG_SESSION_DESKTOP" == "KDE" ]] && export YAD_OPTIONS+="--center"
+[[ "$XDG_SESSION_DESKTOP" =~ "KDE" ]] && export YAD_OPTIONS+="--center"
 
 # choose branch
 if [[ -z "$BRANCH" ]] ; then
