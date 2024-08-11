@@ -49,7 +49,8 @@ elif [[ "$1" == "--debug" ]] \
 && [[ "$2" == *.exe || "$2" == *.bat || "$2" == *.reg || "$2" == *.msi ]]
 then
     portwine_exe="$(realpath "$OLDPWD/$2")"
-elif [[ "$1" == *.exe || "$1" == *.bat || "$1" == *.msi ]]; then
+elif [[ "$1" == *.exe || "$1" == *.bat || "$1" == *.msi || "$1" == *.reg ]]
+then
     portwine_exe="$1"
     MISSING_DESKTOP_FILE=1
 fi
@@ -679,8 +680,8 @@ else
     fi
 
     if [[ "$DOWNLOAD_STEAM_GRID" == "1" ]]
-    then NEW_STEAM_BEHAVIOR="$(gettext "Enable")"
-    else NEW_STEAM_BEHAVIOR="$(gettext "Disable")"
+    then NEW_STEAM_BEHAVIOR="$(gettext "Disable")"
+    else NEW_STEAM_BEHAVIOR="$(gettext "Enable")"
     fi
 
     IFS=$'\n'
