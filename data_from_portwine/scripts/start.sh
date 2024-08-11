@@ -471,7 +471,8 @@ use: [--repair] [--reinstall] [--autoinstall]
         exit 0 ;;
     '--server-file-access' )
         echo
-        curl -s --list-only "https://cloud.linux-gaming.ru/log/$(date +20%y_%m)_file_access.log" | sort -V -k 2,2
+        curl -s --list-only "https://cloud.linux-gaming.ru/log/$(date +20%y_%m)_file_access.log" | sort -V -k 2,2 \
+        | sed 's/count=//g' | awk '{a=$1; $1=$2; $2=a} 1' | awk 'BEGIN {print "Count: Name:"} {print}' | column -t
         echo
         exit 0 ;;
 esac
