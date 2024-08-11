@@ -36,13 +36,20 @@ if [[ "$1" == *.ppack ]] ; then
     portwine_exe="$1"
 elif [[ -f "$1" ]] ; then
     portwine_exe="$(realpath "$1")"
-elif [[ -f "$OLDPWD/$1" ]] && ([[ "$1" == *.exe ]] || [[ "$1" == *.bat ]]); then
+elif [[ -f "$OLDPWD/$1" ]] \
+&& [[ "$1" == *.exe || "$1" == *.bat || "$1" == *.reg || "$1" == *.msi ]]
+then
     portwine_exe="$(realpath "$OLDPWD/$1")"
-elif [[ "$1" == "--debug" ]] && [[ -f "$2" ]] ; then
+elif [[ "$1" == "--debug" ]] \
+&& [[ -f "$2" ]]
+then
     portwine_exe="$(realpath "$2")"
-elif [[ "$1" == "--debug" ]] && [[ -f "$OLDPWD/$2" ]] && ([[ "$2" == *.exe ]] || [[ "$2" == *.bat ]]); then
+elif [[ "$1" == "--debug" ]] \
+&& [[ -f "$OLDPWD/$2" ]] \
+&& [[ "$2" == *.exe || "$2" == *.bat || "$2" == *.reg || "$2" == *.msi ]]
+then
     portwine_exe="$(realpath "$OLDPWD/$2")"
-elif [[ "$1" == *.exe ]] || [[ "$1" == *.bat ]]; then
+elif [[ "$1" == *.exe || "$1" == *.bat || "$1" == *.msi ]]; then
     portwine_exe="$1"
     MISSING_DESKTOP_FILE=1
 fi
