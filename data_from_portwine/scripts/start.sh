@@ -209,6 +209,11 @@ fi
 export MIRROR
 print_info "The first mirror in used: $MIRROR\n"
 
+# choose downloading covers from SteamGridDB or not
+if [[ -z "$DOWNLOAD_STEAM_GRID" ]] ; then
+    echo 'export DOWNLOAD_STEAM_GRID="1"' >> "$USER_CONF"
+    export DOWNLOAD_STEAM_GRID="1"
+fi
 
 if [[ "${INSTALLING_PORT}" == 1 ]] ; then
     return 0
@@ -666,6 +671,11 @@ else
     else NEW_BRANCH="STABLE"
     fi
 
+    if [[ "$DOWNLOAD_STEAM_GRID" == "1" ]]
+    then NEW_STEAM_BEHAVIOR="Disable"
+    else NEW_STEAM_BEHAVIOR="Enable"
+    fi
+
     IFS=$'\n'
     PW_ALL_DF="$(ls "${PORT_WINE_PATH}"/ | grep .desktop | grep -vE '(PortProton|readme)')"
     if [[ -z "${PW_ALL_DF}" ]]
@@ -713,6 +723,7 @@ else
     --field="   $(gettext "Change mirror to") $NEW_MIRROR"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click change_mirror"' \
     --field="   $(gettext "Change branch to") $NEW_BRANCH"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click change_branch"' \
     --field="   $(gettext "Change start gui")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click change_gui_start"' \
+    --field="   $NEW_STEAM_BEHAVIOR $(gettext "steam covers download")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click change_download_grid"' \
     2>/dev/null &
 
     "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[2]}" --form --columns=3 --align-buttons --separator=";" \
@@ -870,6 +881,7 @@ fi
     change_mirror) change_mirror ;;
     change_branch) change_branch ;;
     change_gui_start) change_gui_start ;;
+    change_download_grid) change_download_grid ;;
     118) gui_edit_db ;;
     120) gui_vkbasalt ;;
     122) gui_mangohud ;;

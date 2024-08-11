@@ -5403,6 +5403,28 @@ change_branch () {
 }
 export -f change_branch
 
+change_download_grid () {
+    if [[ "$DOWNLOAD_STEAM_GRID" == "1" ]] ; then
+        sed -i 's/DOWNLOAD_STEAM_GRID=.*/DOWNLOAD_STEAM_GRID="0"/' "$USER_CONF"
+        pw_notify_send -i info \
+        "$(gettext "Cover downloads are enabled")"
+    else
+        sed -i 's/DOWNLOAD_STEAM_GRID=.*/DOWNLOAD_STEAM_GRID="1"/' "$USER_CONF"
+        pw_notify_send -i info \
+        "$(gettext "Cover downloads are disabled")"
+    fi
+    print_info "Restarting PP for change cover download behavior..."
+    export SKIP_CHECK_UPDATES="1"
+    if [[ -z "${PW_ALL_DF}" ]] ; then
+        export TAB_MAIN_MENU="4"
+    else
+        export TAB_MAIN_MENU="5"
+    fi
+    /usr/bin/env bash -c ${pw_full_command_line[*]} &
+    exit 0
+}
+export -f change_download_grid
+
 change_gui_start () {
     if [[ "$PW_GUI_START" == "NOTEBOOK" ]] ; then
         sed -i 's/="NOTEBOOK"/="PANED"/g' "$USER_CONF"
