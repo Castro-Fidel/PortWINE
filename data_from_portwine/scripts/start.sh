@@ -679,8 +679,8 @@ else
     fi
 
     if [[ "$DOWNLOAD_STEAM_GRID" == "1" ]]
-    then NEW_STEAM_BEHAVIOR="Disable"
-    else NEW_STEAM_BEHAVIOR="Enable"
+    then NEW_STEAM_BEHAVIOR="$(gettext "Enable")"
+    else NEW_STEAM_BEHAVIOR="$(gettext "Disable")"
     fi
 
     IFS=$'\n'
