@@ -3071,17 +3071,26 @@ pw_yad_form_vulkan () {
 
 portwine_launch () {
     start_portwine
-    PORTWINE_MSI=$(basename "${portwine_exe}" | grep .msi)
-    PORTWINE_BAT=$(basename "${portwine_exe}" | grep .bat)
+    export GST_PLUGIN_SYSTEM_PATH_1_0=""
     if [[ "${PW_VIRTUAL_DESKTOP}" == "1" ]] ; then
         pw_run explorer "/desktop=PortProton,${PW_SCREEN_RESOLUTION}" ${WINE_WIN_START} "$portwine_exe"
-    elif [ ! -z "${PORTWINE_MSI}" ]; then
-        pw_run msiexec /i "$portwine_exe"
-    elif [[ ! -z "${PORTWINE_BAT}" || -n "${portwine_exe}" ]] ; then
-        pw_run ${WINE_WIN_START} "$portwine_exe"
-    else
-        pw_run winefile
     fi
+
+    case "$portwine_exe" in
+        *.bat)
+            PW_USE_TERMINAL=1
+            pw_run cmd /c "$portwine_exe"
+        ;;
+        *.msi)
+            pw_run msiexec /i "$portwine_exe"
+        ;;
+        *.reg)
+            pw_run regedit "$portwine_exe"
+        ;;
+        *)
+            pw_run winefile
+        ;;
+    esac
 }
 
 pw_winecfg () {
