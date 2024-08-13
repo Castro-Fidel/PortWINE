@@ -184,10 +184,9 @@ else
     source "$PW_GUI_THEMES_PATH/default.pptheme"
     echo 'export GUI_THEME="default"' >> "$USER_CONF"
 fi
-if [[ "$XDG_SESSION_DESKTOP" =~ "KDE" ]] \
-|| [[ "$XDG_CURRENT_DESKTOP" == "XFCE" ]]
-then
-    export YAD_OPTIONS+="--center"
+if [[ "${DESKTOP_SESSION}" =~ "gnome" ]]
+then :
+else export YAD_OPTIONS+="--center"
 fi
 
 # choose branch
@@ -603,7 +602,7 @@ if [[ -f "${portwine_exe}" ]] ; then
 
             "${pw_yad}" --key=$KEY_START --notebook --active-tab="${TAB_START}" \
             --gui-type="settings-notebook" \
-            --width="${PW_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" --center \
+            --width="${PW_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" \
             --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" --expand \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
             --tab="$(gettext "GENERAL")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
@@ -635,7 +634,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             --field="   GameScope"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Enable GameScope by default (Wayland micro compositor)")":"FBTN" '@bash -c "button_click_start 126"' \
             2>/dev/null &
 
-            "${pw_yad}" --key=$KEY_START --paned --center \
+            "${pw_yad}" --key=$KEY_START --paned \
             --gui-type="settings-paned" \
             --width="${PW_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" \
             --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \

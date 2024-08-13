@@ -208,7 +208,7 @@ function downloadArtFromSteamGridDB {
                 curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$DLSRC" -o "$DLDST" 2>&1 | \
                  tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
 				"$pw_yad" --progress --text="$(gettext "Downloading") $filename" --auto-close --no-escape \
-				--auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
+				--auto-kill --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
 				--window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders="$PROGRESS_BAR_BORDERS_SIZE"
             fi
         else
