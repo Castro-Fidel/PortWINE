@@ -99,11 +99,14 @@ generate_pot () {
         LANG_PO="${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/PortProton.po"
         LANG_MO="${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/PortProton.mo"
         TEMPLATE_POT="${PORT_WINE_PATH}/data/locales/PortProton.pot"
+        pushd "${PORT_WINE_PATH}" 1>/dev/null || fatal
         xgettext --from-code=UTF-8 --language Shell -i \
-        "${PORT_WINE_PATH}/data/scripts/start.sh" \
-        "${PORT_WINE_PATH}/data/scripts/setup.sh" \
-        "${PORT_WINE_PATH}/data/scripts/functions_helper" \
+        "data/scripts/start.sh" \
+        "data/scripts/setup.sh" \
+        "data/scripts/functions_helper" \
+        "data/scripts/credits" \
         -o "$TEMPLATE_POT"
+        popd 1>/dev/null || fatal
         if [[ -f "$LANG_PO" ]] ; then
             echo "update $LANG_PO file"
             msgmerge --update "$LANG_PO" "$TEMPLATE_POT"
@@ -115,6 +118,10 @@ generate_pot () {
     done
 }
 export -f generate_pot
+
+eval_gettext () {
+  gettext "$1" | (export PATH `envsubst --variables "$1"`; envsubst "$1")
+}
 
 try_copy_file () {
     if [[ ! -f "$1" ]] ; then print_info "file $1 not found for copy" && return 1
