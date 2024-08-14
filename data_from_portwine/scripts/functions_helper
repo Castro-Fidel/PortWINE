@@ -104,7 +104,6 @@ generate_pot () {
         "data/scripts/start.sh" \
         "data/scripts/setup.sh" \
         "data/scripts/functions_helper" \
-        "data/scripts/credits" \
         -o "$TEMPLATE_POT"
         popd 1>/dev/null || fatal
         if [[ -f "$LANG_PO" ]] ; then
@@ -5303,16 +5302,6 @@ pw_autoinstall_from_db () {
     . "${PORT_SCRIPTS_PATH}/pw_autoinstall/${PW_YAD_SET}"
 }
 
-gui_credits () {
-    if [[ -z "${PW_ALL_DF}" ]] ; then
-        export TAB_MAIN_MENU="4"
-    else
-        export TAB_MAIN_MENU="5"
-    fi
-    . "${PORT_SCRIPTS_PATH}/credits"
-}
-export -f gui_credits
-
 button_click () {
     [[ ! -z "$1" ]] && echo "$1" > "${PW_TMPFS_PATH}/tmp_yad_form"
     if [[ ! -z $(pidof -s yad) ]] || [[ ! -z $(pidof -s yad_gui_pp) ]] ; then
@@ -5552,3 +5541,104 @@ gui_open_scripts_from_backup () {
     exit 0
 }
 export -f gui_open_scripts_from_backup
+
+#GUI CREDITS AND ABOUT
+gui_credits () {
+    ########################################################################
+    # grep ';subscription;' stat-subscriptions.csv | awk -F';' '{print $1}' | sort -u | sed "s/\"//g" > thanks
+    ########################################################################
+    KEY_CREDITS=$RANDOM
+    DATE=$(date +'%Y')
+
+    . "${PORT_WINE_PATH}/data/scripts/thanks"
+
+    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=1 --show-uri --scroll \
+    --text-align=center --text="$(eval_gettext "PortProton v. \${install_ver}
+    scripts v. \${scripts_install_ver}")" --text-info <<< "$(eval_gettext "https://linux-gaming.ru
+
+Copyright © \$DATE Castro-Fidel (linux-gaming.ru)
+
+This program comes with absolutely no warranty.
+See the License for details.
+")" 2>/dev/null &
+
+    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=2 --scroll \
+    --text-info <<< "$(gettext "Author:   Casro-Fidel (Mikhail Tergoev)
+
+Developer assistants and testers:")
+
+$(IFS=$'\n' credits_devel | column)
+" 2>/dev/null &
+
+    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=3 --text-info --scroll <<< "$(eval_gettext "MIT License
+
+Copyright © \$DATE Castro-Fidel (linux-gaming.ru)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the \"Software\"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED (AS IS), WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+")" 2>/dev/null &
+
+    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=4 \
+    --text-info --show-uri --scroll \
+    <<< "$(gettext "The project was supported:
+https://boosty.to/portwine-linux.ru")
+
+$(IFS=$'\n' credits_boosty | column)
+
+$(gettext "The list will be updated...
+")" 2>/dev/null &
+
+    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=5 \
+    --text="$(gettext "Do you want to join and help in the development of the project:")" \
+    --image-path="$PW_GUI_ICON_PATH" --image="port_proton" \
+    --uri-color=red --show-uri --text-info --scroll <<< "$(gettext "Website:  http://linux-gaming.ru
+Discord:  http://discord.gg/yJSEFjF
+VK:       https://vk.com/linuxgamingru
+-------------------------------------------
+Become a paid subscriber:
+boosty:  https://boosty.to/portwine-linux.ru
+Yandex wallet:   410012267513818
+-------------------------------------------")" 2>/dev/null &
+
+    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=6 --show-uri --title="THIRD PARTY LIBRARIES" \
+    --text-info <<< "$(gettext "                               Third-party libraries that are used in PortProton
+
+            PortProton is built on the basis of the following free software libraries:
+
+WINE-PROTON: https://github.com/ValveSoftware/Proton
+WINE-PROTON-GE: https://github.com/GloriousEggroll/proton-ge-custom/
+Kron4ek/Wine: https://github.com/Kron4ek/Wine-Builds
+YAD: https://github.com/v1cont/yad
+DGVOODOO2: https://dege.fw.hu/"
+)" 2>/dev/null &
+
+    "${pw_yad}" --title "$(gettext "ABOUT US")" --key="${KEY_CREDITS}" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+    --notebook --no-buttons  --tab-pos=bottom --expand --width=750 --height=400 \
+    --tab="$(gettext "ABOUT PORTPROTON")" --tab="$(gettext "AUTORS")" --tab="$(gettext "LICENSE")" \
+    --tab="$(gettext "SPONSORS")" --tab="$(gettext "JOIN")" --tab="$(gettext "THIRD PARTY LIBRARIES")"
+
+    if [[ -z "${PW_ALL_DF}" ]] ; then
+        export TAB_MAIN_MENU="4"
+    else
+        export TAB_MAIN_MENU="5"
+    fi
+
+    echo "Exit from credits"
+    /usr/bin/env bash -c "${pw_full_command_line[*]}" &
+    exit 0
+}
