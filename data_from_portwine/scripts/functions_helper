@@ -338,7 +338,7 @@ try_download () {
         -H 'Pragma: no-cache' -L ${FIRST_URL[@]} -o "$dest" 2>&1 | \
         tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
         "$pw_yad" --progress --text="$(gettext "Downloading") $filename" --auto-close --no-escape \
-        --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
+        --auto-kill --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders="$PROGRESS_BAR_BORDERS_SIZE"
     fi
 
@@ -349,7 +349,7 @@ try_download () {
             -H 'Pragma: no-cache' -L ${SECOND_URL[@]} -o "$dest" 2>&1 | \
             tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
             "$pw_yad" --progress --text="$(gettext "Downloading") $filename" --auto-close --no-escape \
-            --auto-kill --center --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
+            --auto-kill --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders="$PROGRESS_BAR_BORDERS_SIZE"
         fi
         if [[ "${PIPESTATUS[0]}" != 0 ]] ; then
@@ -3154,7 +3154,7 @@ yad_info () {
     "${pw_yad}" --no-wrap --text "$@" --width=400 --height=150 --borders=15 --title "INFO" \
     --gui-type-layout=${YAD_INFO_GUI_TYPE_LAYOUT} \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/info.svg" \
-    --center --text-align=center --fixed \
+    --text-align=center --fixed \
     --button="$(gettext "OK")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
 }
 export -f yad_info
@@ -3169,7 +3169,7 @@ yad_error () {
     "${pw_yad}" --no-wrap --text "$@" --width=400 --height=150 --borders=15 --title "ERROR" \
     --gui-type-layout=${YAD_INFO_GUI_TYPE_LAYOUT} \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/error.svg" \
-    --center --text-align=center --fixed \
+    --text-align=center --fixed \
     --button="$(gettext "EXIT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
 }
 export -f yad_error
@@ -3183,7 +3183,7 @@ yad_error_download () {
     --width=400 --borders=15 --title "$(gettext "Error")" \
     --gui-type-layout=${YAD_INFO_GUI_TYPE_LAYOUT} \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/download.svg" \
-    --no-wrap --center --text-align=center \
+    --no-wrap --text-align=center \
     --button="$(gettext "SKIP")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
     --button="$(gettext "REPEAT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null
     [[ "$?" != 0 ]] && return 1 || return 0
@@ -3198,7 +3198,7 @@ yad_question () {
     "${pw_yad}" --text "${1}" --width=400 --height=150 --borders=15 --title "$(gettext "Choices")" \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/question.svg" \
     --gui-type-layout=${YAD_INFO_GUI_TYPE_LAYOUT} \
-    --no-wrap --center --text-align=center --fixed \
+    --no-wrap --text-align=center --fixed \
     --button="$(gettext "CANCEL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
     --button="$(gettext "OK")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null
     [[ "$?" != 0 ]] && return 1 || return 0
@@ -3209,7 +3209,7 @@ pw_start_progress_bar_cover () {
         PW_GIF_FILE="$1"
         PW_GIF_SIZE_X=$(file "${PW_GIF_FILE}" | awk '{print $7 + 8}')
         PW_GIF_SIZE_Y=$(file "${PW_GIF_FILE}" | awk '{print $9 + 15}')
-        "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated --center \
+        "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated \
         --skip-taskbar --width="$PW_GIF_SIZE_X" --height="$PW_GIF_SIZE_Y" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" > /dev/null 2>&1 &
         export PW_YAD_PID_PROGRESS_BAR_COVER="$!"
         return 0
@@ -3222,7 +3222,7 @@ pw_start_progress_bar_cover_block () {
         PW_GIF_FILE="$1"
         PW_GIF_SIZE_X=$(file "${PW_GIF_FILE}" | awk '{print $7 + 8}')
         PW_GIF_SIZE_Y=$(file "${PW_GIF_FILE}" | awk '{print $9 + 15}')
-        "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated --center \
+        "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated \
         --skip-taskbar --width="$PW_GIF_SIZE_X" --height="$PW_GIF_SIZE_Y" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" > /dev/null 2>&1 &
         export PW_YAD_PID_PROGRESS_BAR_COVER_BLOCK="$!"
         return 0
@@ -3239,7 +3239,7 @@ pw_update_pfx_cover_gui () {
         TAB_PLACE="--tab=$(gettext "LOGO")!$PW_GUI_ICON_PATH/$TAB_SIZE.png --tab=$(gettext "TERMINAL")!$PW_GUI_ICON_PATH/$TAB_SIZE.png"
         TAB_N1=1
         TAB_N2=2
-        YAD_UNDECORATED="--undecorated --center"
+        YAD_UNDECORATED="--undecorated"
     fi
 
     if ! check_start_from_steam \
@@ -3278,7 +3278,7 @@ pw_start_progress_bar_cs () {
     if ! check_start_from_steam ; then
         "${pw_yad}" --progress-old --text="$@
         " --pulsate --hide-text --close-on-unfocus --borders="$PROGRESS_BAR_BORDERS_SIZE" \
-        --no-buttons --undecorated --center --skip-taskbar \
+        --no-buttons --undecorated --skip-taskbar \
         --width="$PROGRESS_BAR_WIDTH_SIZE" \
         --wrap-width="$PROGRESS_BAR_WIDTH_SIZE" \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" &>/dev/null &
@@ -3291,7 +3291,7 @@ pw_start_progress_bar_block () {
     if ! check_start_from_steam ; then
         "${pw_yad}" --progress-old --text="$@
         " --pulsate --hide-text --borders="$PROGRESS_BAR_BORDERS_SIZE" \
-        --no-buttons --undecorated --center --skip-taskbar \
+        --no-buttons --undecorated --skip-taskbar \
         --no-escape --text-align="center" --height=90 --fixed \
         --width="$PROGRESS_BAR_WIDTH_SIZE" \
         --wrap-width="$PROGRESS_BAR_WIDTH_SIZE" \
@@ -3305,7 +3305,7 @@ pw_start_progress_bar_install_game () {
     if ! check_start_from_steam ; then
         "${pw_yad}" --progress-old --text="$(gettext "Please wait. Installing the") $@
         " --pulsate --hide-text --borders="$PROGRESS_BAR_BORDERS_SIZE" \
-        --no-buttons --undecorated --center --skip-taskbar \
+        --no-buttons --undecorated --skip-taskbar \
         --no-escape --text-align="center" --height=90 --fixed \
         --width="$PROGRESS_BAR_WIDTH_SIZE" \
         --wrap-width="$PROGRESS_BAR_WIDTH_SIZE" \
@@ -3811,7 +3811,7 @@ A brief instruction:
 
     "${pw_yad}" --notebook --key="$KEY_EDIT_DB_GUI" --title "$(gettext "EDIT DB")" --text-align=center \
     --text "$(gettext "Change settings in database file for") <b>${PORTWINE_DB}</b>\n $(gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand --center \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand \
     --gui-type="settings-base" \
     --gui-type-text=${SETTINGS_BASE_GUI_TYPE_TEXT} --gui-type-layout=${SETTINGS_BASE_GUI_TYPE_LAYOUT} \
     --tab="$(gettext "MAIN")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
@@ -3997,7 +3997,7 @@ fi
 
     "${pw_yad}" --paned --key="$KEY_FX_GUI" --sensitive --title="vkBasalt" \
     --gui-type="settings-paned" \
-    --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --center \
+    --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --button="$(gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Cancel the current changes and return to the previous menu")":1 \
     --button="$(gettext "DISABLE") VKBASALT"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Disable vkBasalt and go to the previous menu")":180 \
     --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":182 2>/dev/null
@@ -4157,7 +4157,7 @@ fi
         ${ADD_GUI_MH_FPS} 1> "${PW_TMPFS_PATH}/tmp_yad_mh_fps_limit" 2>/dev/null &
     IFS="$orig_IFS"
 
-    "${pw_yad}" --paned --key="$KEY_MH_GUI" --title="MangoHud" --center \
+    "${pw_yad}" --paned --key="$KEY_MH_GUI" --title="MangoHud" \
         --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --sensitive \
         --gui-type="settings-paned" \
         --button="$(gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Cancel the current changes and return to the previous menu")":1 \
@@ -4360,7 +4360,7 @@ fi
     --field="${CHKBOX_SPACE}CURSOR SCALE!$(gettext "Integer scale factor of the emulated hardware mouse cursor. 0: calculated from the application and forced resolution. (Direct3D and Glide settings)") :NUM" "${PW_DGV2_CURSOR_SCALE}:!0..5" \
     1> "${PW_TMPFS_PATH}/tmp_yad_dgv2_set_cb" 2>/dev/null &
 
-    "${pw_yad}" --paned --key=$KEY_DGV2_GUI --height="350" --title="dgVoodoo2" --center \
+    "${pw_yad}" --paned --key=$KEY_DGV2_GUI --height="350" --title="dgVoodoo2" \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --gui-type="settings-paned" \
     --button="$(gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Cancel the current changes and return to the previous menu")":1 \
@@ -4566,7 +4566,7 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate."
     --field="${CHKBOX_SPACE}$(gettext "HDR inverse target")!$(gettext "Set the target luninance of the inverse tone mapping process - Max is 10000 nits") :${GS_NUM}" "${PW_GS_ITM_TARGET_NITS}:!0..10000" \
     1> "${PW_TMPFS_PATH}/tmp_yad_gs_set_cb" 2>/dev/null &
 
-    "${pw_yad}" --paned --key="$KEY_GS_GUI" --title="GameScope" --center \
+    "${pw_yad}" --paned --key="$KEY_GS_GUI" --title="GameScope" \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --gui-type="settings-paned" \
     --button="$(gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Cancel the current changes and return to the previous menu")":1 \
@@ -4916,7 +4916,7 @@ portwine_delete_shortcut () {
 
 portwine_missing_shortcut () {
     "${pw_yad}" --title="$(gettext "Error")" --form \
-    --window-icon "$PW_GUI_ICON_PATH/portproton.svg" --fixed --center \
+    --window-icon "$PW_GUI_ICON_PATH/portproton.svg" --fixed \
     --image "$PW_GUI_ICON_PATH/error.svg" \
     --text "\n$(gettext "Could not find the file:")\n${portwine_exe}\n\n$(gettext "ATTENTION:\nIf you forgot to mount the disk with the running application, click CANCEL!")\n" \
     --button="$(gettext "DELETE SHORTCUT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 \
