@@ -30,14 +30,14 @@ export orig_IFS="$IFS"
 MISSING_DESKTOP_FILE="0"
 
 unset PW_NO_RESTART_PPDB PW_DISABLED_CREATE_DB
-if [[ "$1" == *.ppack ]] ; then
+if [[ "$1" == *.[Pp][Pp][Aa][Cc][Kk] ]] ; then
     export PW_NO_RESTART_PPDB="1"
     export PW_DISABLED_CREATE_DB="1"
     portwine_exe="$1"
 elif [[ -f "$1" ]] ; then
     portwine_exe="$(realpath "$1")"
 elif [[ -f "$OLDPWD/$1" ]] \
-&& [[ "$1" == *.exe || "$1" == *.bat || "$1" == *.reg || "$1" == *.msi ]]
+&& [[ "$1" == *.[Ee][Xx][Ee] || "$1" == *.[Bb][Aa][Tt] || "$1" == *.[Rr][Ee][Gg] || "$1" == *.[Mm][Ss][Ii] ]]
 then
     portwine_exe="$(realpath "$OLDPWD/$1")"
 elif [[ "$1" == "--debug" ]] \
@@ -46,10 +46,10 @@ then
     portwine_exe="$(realpath "$2")"
 elif [[ "$1" == "--debug" ]] \
 && [[ -f "$OLDPWD/$2" ]] \
-&& [[ "$2" == *.exe || "$2" == *.bat || "$2" == *.reg || "$2" == *.msi ]]
+&& [[ "$2" == *.[Ee][Xx][Ee] || "$2" == *.[Bb][Aa][Tt] || "$2" == *.[Rr][Ee][Gg] || "$2" == *.[Mm][Ss][Ii] ]]
 then
     portwine_exe="$(realpath "$OLDPWD/$2")"
-elif [[ "$1" == *.exe || "$1" == *.bat || "$1" == *.msi || "$1" == *.reg ]]
+elif [[ "$1" == *.[Ee][Xx][Ee] || "$1" == *.[Bb][Aa][Tt] || "$1" == *.[Mm][Ss][Ii] || "$1" == *.[Rr][Ee][Gg] ]]
 then
     portwine_exe="$1"
     MISSING_DESKTOP_FILE=1
