@@ -65,9 +65,12 @@ then
     MISSING_DESKTOP_FILE="0"
 fi
 
-cd "$(dirname "$(readlink -f "$0")")" && PORT_SCRIPTS_PATH="$(pwd)" || fatal
-cd "${PORT_SCRIPTS_PATH}/../../" && PORT_WINE_PATH="$(pwd)" || fatal
-export PORT_SCRIPTS_PATH PORT_WINE_PATH
+if PORT_SCRIPTS_PATH="$(readlink -f "${0%/*}")" ; then
+    export PORT_SCRIPTS_PATH
+    export PORT_WINE_PATH="${PORT_SCRIPTS_PATH%/*/*}"
+else
+    fatal
+fi
 export TEXTDOMAIN="PortProton"
 export TEXTDOMAINDIR="${PORT_WINE_PATH}/data/locales"
 
