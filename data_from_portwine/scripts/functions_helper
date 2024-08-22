@@ -1405,7 +1405,7 @@ check_nvidia_rtx () {
 
 pw_init_db () {
     if [[ -f "${portwine_exe}" ]] ; then
-        PORTWINE_DB="$(basename "${portwine_exe}" .exe)"
+        PORTWINE_DB="$(basename "${portwine_exe%.[Ee][Xx][Ee]}")"
         export PORTWINE_DB
         if echo "${PORTWINE_DB}" | grep -i "_vo_\|_gv_" &>/dev/null ; then
             print_warning "Force use gamesvoice.ppdb file!"
@@ -1747,7 +1747,7 @@ pw_create_gui_png () {
             then
                 PORTPROTON_NAME="$PW_PRODUCTNAME"
             else
-                PORTPROTON_NAME="$(basename "${portwine_exe}" .exe)"
+                PORTPROTON_NAME="$(basename "${portwine_exe%.[Ee][Xx][Ee]}")"
             fi
         fi
 
@@ -3105,17 +3105,17 @@ portwine_launch () {
     fi
 
     case "$portwine_exe" in
-        *.exe)
+        *.[Ee][Xx][Ee])
             pw_run ${PW_VD_TMP[@]} ${WINE_WIN_START} "$portwine_exe"
         ;;
-        *.bat)
+        *.[Bb][Aa][Tt])
             PW_USE_TERMINAL=1
             pw_run ${PW_VD_TMP[@]} cmd /c "$portwine_exe"
         ;;
-        *.msi)
+        *.[Mm][Ss][Ii])
             pw_run ${PW_VD_TMP[@]} msiexec /i "$portwine_exe"
         ;;
-        *.reg)
+        *.[Rr][Ee][Gg])
             pw_run ${PW_VD_TMP[@]} regedit "$portwine_exe"
         ;;
         *)
