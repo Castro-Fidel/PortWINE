@@ -2023,41 +2023,57 @@ start_portwine () {
 
     enabled_fake_nvidia_videocard ()
     {
-        if [[ "${1}" == old ]] ; then
-            sed -i /'dxgi.customDeviceDesc =/c # dxgi.customDeviceDesc =' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.customDeviceId =/c dxgi.customDeviceId = 222F' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.customVendorId =/c dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.hideAmdGpu =/c # dxgi.hideAmdGpu =' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.hideNvidiaGpu =/c # dxgi.hideNvidiaGpu =' "${DXVK_CONFIG_FILE}"
-            unset WINE_HIDE_NVIDIA_GPU WINE_HIDE_AMD_GPU
-            unset DXVK_NVAPI_DRIVER_VERSION DXVK_NVAPI_ALLOW_OTHER_DRIVERS
-        elif [[ "${1}" == new ]] ; then
-            sed -i /'dxgi.customDeviceDesc =/c dxgi.customDeviceDesc = "NVIDIA GeForce RTX 4090"' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.customDeviceId =/c dxgi.customDeviceId = 2684' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.customVendorId =/c dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.hideAmdGpu =/c dxgi.hideAmdGpu = True' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.hideNvidiaGpu =/c dxgi.hideNvidiaGpu = False' "${DXVK_CONFIG_FILE}"
-            export WINE_HIDE_NVIDIA_GPU="0"
-            export WINE_HIDE_AMD_GPU="1"
-            export DXVK_NVAPI_DRIVER_VERSION="53713"
-            export DXVK_NVAPI_ALLOW_OTHER_DRIVERS="1"
-            export WINEHAGS="1"
-        elif [[ "${1}" == 0 ]] ; then
-            sed -i /'dxgi.customDeviceDesc =/c # dxgi.customDeviceDesc =' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.customDeviceId =/c # dxgi.customDeviceId =' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.customVendorId =/c # dxgi.customVendorId =' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.hideAmdGpu =/c # dxgi.hideAmdGpu =' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.hideNvidiaGpu =/c # dxgi.hideNvidiaGpu =' "${DXVK_CONFIG_FILE}"
-            unset WINE_HIDE_NVIDIA_GPU WINE_HIDE_AMD_GPU
-            unset DXVK_NVAPI_DRIVER_VERSION DXVK_NVAPI_ALLOW_OTHER_DRIVERS
-        fi
+        case "$1" in
+            old)
+                sed -i /'dxgi.customDeviceDesc =/c # dxgi.customDeviceDesc =' "${DXVK_CONFIG_FILE}"
+                sed -i /'dxgi.customDeviceId =/c dxgi.customDeviceId = 222F' "${DXVK_CONFIG_FILE}"
+                sed -i /'dxgi.customVendorId =/c dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
+                sed -i /'dxgi.hideAmdGpu =/c # dxgi.hideAmdGpu =' "${DXVK_CONFIG_FILE}"
+                sed -i /'dxgi.hideNvidiaGpu =/c # dxgi.hideNvidiaGpu =' "${DXVK_CONFIG_FILE}"
+                unset WINE_HIDE_NVIDIA_GPU WINE_HIDE_AMD_GPU
+                unset DXVK_NVAPI_DRIVER_VERSION DXVK_NVAPI_ALLOW_OTHER_DRIVERS
+                ;;
+
+            new)
+                sed -i /'dxgi.customDeviceDesc =/c dxgi.customDeviceDesc = "NVIDIA GeForce RTX 4090"' "${DXVK_CONFIG_FILE}"
+                sed -i /'dxgi.customDeviceId =/c dxgi.customDeviceId = 2684' "${DXVK_CONFIG_FILE}"
+                sed -i /'dxgi.customVendorId =/c dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
+                sed -i /'dxgi.hideAmdGpu =/c dxgi.hideAmdGpu = True' "${DXVK_CONFIG_FILE}"
+                sed -i /'dxgi.hideNvidiaGpu =/c dxgi.hideNvidiaGpu = False' "${DXVK_CONFIG_FILE}"
+                export WINE_HIDE_NVIDIA_GPU="0"
+                export WINE_HIDE_AMD_GPU="1"
+                export DXVK_NVAPI_DRIVER_VERSION="53713"
+                export DXVK_NVAPI_ALLOW_OTHER_DRIVERS="1"
+                export WINEHAGS="1"
+                ;;
+                
+            *)
+                sed -i /'dxgi.customDeviceDesc =/c # dxgi.customDeviceDesc =' "${DXVK_CONFIG_FILE}"
+                sed -i /'dxgi.customDeviceId =/c # dxgi.customDeviceId =' "${DXVK_CONFIG_FILE}"
+                sed -i /'dxgi.customVendorId =/c # dxgi.customVendorId =' "${DXVK_CONFIG_FILE}"
+                sed -i /'dxgi.hideAmdGpu =/c # dxgi.hideAmdGpu =' "${DXVK_CONFIG_FILE}"
+                sed -i /'dxgi.hideNvidiaGpu =/c # dxgi.hideNvidiaGpu =' "${DXVK_CONFIG_FILE}"
+                unset WINE_HIDE_NVIDIA_GPU WINE_HIDE_AMD_GPU
+                unset DXVK_NVAPI_DRIVER_VERSION DXVK_NVAPI_ALLOW_OTHER_DRIVERS
+                ;;
+        esac
     }
 
-    if [[ "${PW_USE_FAKE_DLSS}" == "1" ]] \
-    && [[ -d "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/" ]]
-    then
+    # NVAPI, DLSS AND FAKE DLSS
+    if [[ "${PW_USE_FAKE_DLSS_3}" == "1" ]] ; then
+        FAKE_DLSS_3_FILES="amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll dlss-enabler.dll dlss-enabler-upscaler.dll 
+        dlssg_to_fsr3_amd_is_better-3.0.dll dlssg_to_fsr3_amd_is_better.dll libxess.dll nvapi64-proxy.dll winmm.dll
+        _nvngx.dll nvngx-wrapper.dll nvngx.ini"
         DXVK_ENABLE_NVAPI="1"
-        try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/_nvngx.dll"
+        for cp_fdlls3 in $FAKE_DLSS_3_FILES ; do
+            try_copy_file_with_checksums "${PW_PLUGINS_PATH}/fake_dlss_3/$cp_fdlls3" "${WINEPREFIX}/drive_c/windows/system32/$cp_fdlls3"
+            [[ "$cp_fdlls3" == *.dll ]] && var_winedlloverride_update "${cp_fdlls3//.dll}=n"
+        done
+        try_remove_file "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
+        # try_copy_file_with_checksums "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
+        enabled_fake_nvidia_videocard new
+    elif [[ "${PW_USE_FAKE_DLSS}" == "1" ]] ; then
+        DXVK_ENABLE_NVAPI="1"
         try_remove_file "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll"
         try_copy_file_with_checksums "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
         try_copy_file_with_checksums "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.ini" "${WINEPREFIX}/drive_c/windows/system32/nvngx.ini"
@@ -2065,7 +2081,6 @@ start_portwine () {
         var_winedlloverride_update "nvapi,nvapi64,nvngx=n;_nvngx=;nvcuda=b"
     elif [[ "${PW_USE_NVAPI_AND_DLSS}" == 1 ]] ; then
         DXVK_ENABLE_NVAPI="1"
-        try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/nvngx.ini"
         try_remove_file "${WINEPREFIX}/drive_c/windows/system32/nvngx.ini"
         FIND_NVNGX="$(dirname $(find /usr/* -type f -name "nvngx.dll" 2>/dev/null | head -n 1 | awk '{print $1}'))"
         if [[ ! -z "$FIND_NVNGX" ]] ; then
@@ -2080,7 +2095,6 @@ start_portwine () {
     else
         DXVK_ENABLE_NVAPI="0"
         for rm_dll in "nvngx.ini" "nvngx.dll" "_nvngx.dll" ; do
-            try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/$rm_dll"
             try_remove_file "${WINEPREFIX}/drive_c/windows/system32/$rm_dll"
         done
         enabled_fake_nvidia_videocard 0
@@ -3021,7 +3035,7 @@ pw_run () {
             [[ -f "${PW_TMPFS_PATH}/update_pfx_log" ]] && cat "${PW_TMPFS_PATH}/update_pfx_log"
             echo
             print_info "Log from RUNTIME and WINE:"
-            cat "${PW_LOG_TO_FILE}"
+            awk '! a[$0]++' "${PW_LOG_TO_FILE}"
             echo
         fi
     else
@@ -3655,12 +3669,13 @@ export -f gui_proton_downloader
 gui_edit_db () {
     KEY_EDIT_DB_GUI=$RANDOM
     PW_EDIT_DB_LIST="PW_MANGOHUD PW_MANGOHUD_USER_CONF PW_VKBASALT PW_VKBASALT_USER_CONF PW_DGVOODOO2 PW_GAMESCOPE
-    PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU
-    PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME
-    PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE PW_USE_SHADER_CACHE
-    PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE PW_DISABLE_COMPOSITING
-    PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_NATIVE_WAYLAND
+    PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_WINE_FULLSCREEN_FSR
+    PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS
+    PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE
+    PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE
+    PW_DISABLE_COMPOSITING PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_NATIVE_WAYLAND
     "
+    # PW_USE_FAKE_DLSS_3
 
     if check_wayland_session ; then
         rm_from_var PW_EDIT_DB_LIST "PW_USE_US_LAYOUT"
@@ -5097,23 +5112,16 @@ portwine_start_debug () {
     echo "GLIBC version:" >> "${PORT_WINE_PATH}/PortProton.log"
     echo $(ldd --version | grep -m1 ldd | awk '{print $NF}') >> "${PORT_WINE_PATH}/PortProton.log"
     echo "--------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    if [[ "${PW_VULKAN_USE}" = "0" ]] ; then
-        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DirectX to wined3d opengl" >> "${PORT_WINE_PATH}/PortProton.log"
-    elif [[ "${PW_VULKAN_USE}" = "1" ]] ; then
-        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_STABLE_VER}, VKD3D-PROTON v.${VKD3D_STABLE_VER}" >> "${PORT_WINE_PATH}/PortProton.log"
-    elif [[ "${PW_VULKAN_USE}" = "2" ]] ; then
-        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_GIT_VER}, VKD3D-PROTON v.${VKD3D_GIT_VER}" >> "${PORT_WINE_PATH}/PortProton.log"
-    elif [[ "${PW_VULKAN_USE}" = "3" ]] ; then
-        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - Native DX9 on MESA drivers" >> "${PORT_WINE_PATH}/PortProton.log"
-    elif [[ "${PW_VULKAN_USE}" = "4" ]] ; then
-        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - OpenGL on MESA vulkan drivers" >> "${PORT_WINE_PATH}/PortProton.log"
-    elif [[ "${PW_VULKAN_USE}" = "5" ]] ; then
-        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_LEGACY_VER}" >> "${PORT_WINE_PATH}/PortProton.log"
-    elif [[ "${PW_VULKAN_USE}" = "6" ]] ; then
-        echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DirectX to wined3d vulkan" >> "${PORT_WINE_PATH}/PortProton.log"
-    else
-        echo "PW_VULKAN_USE=${PW_VULKAN_USE}" >> "${PORT_WINE_PATH}/PortProton.log"
-    fi
+    case "$PW_VULKAN_USE" in
+        0) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DirectX to wined3d opengl" >> "${PORT_WINE_PATH}/PortProton.log" ;;
+        1) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_STABLE_VER}, VKD3D-PROTON v.${VKD3D_STABLE_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
+        2) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_GIT_VER}, VKD3D-PROTON v.${VKD3D_GIT_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
+        3) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - Native DX9 on MESA drivers" >> "${PORT_WINE_PATH}/PortProton.log" ;;
+        4) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - OpenGL on MESA vulkan drivers" >> "${PORT_WINE_PATH}/PortProton.log" ;;
+        5) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_LEGACY_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
+        6) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DirectX to wined3d vulkan" >> "${PORT_WINE_PATH}/PortProton.log" ;;
+        *) echo "PW_VULKAN_USE=${PW_VULKAN_USE}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
+    esac
     echo "--------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "Version WINE in use:" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "$PW_WINE_USE" >> "${PORT_WINE_PATH}/PortProton.log"
