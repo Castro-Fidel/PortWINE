@@ -4707,7 +4707,6 @@ resize_png () {
     fi
     return 0
 }
-export -f resize_png
 
 # GUI CREATE SHORTCUT
 portwine_create_shortcut () {
@@ -4849,7 +4848,6 @@ portwine_create_shortcut () {
         fi
     fi
 }
-export -f portwine_create_shortcut
 
 pw_auto_create_shortcut () {
     if [[ "${PW_CHECK_AUTOINSTALL}" == 1 ]] \
@@ -5034,21 +5032,32 @@ pw_prefix_manager () {
         --gui-type="settings-notebook" \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "$(gettext 'PREFIX MANAGER')" \
         --button="$(gettext "CANCEL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":1 \
-        --button="$(gettext "OK")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":0 \
+        --button="$(gettext "FORCE INSTALL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Installation with forced redownload of libraries")":2 \
+        --button="$(gettext "INSTALL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Standard installation.")":0 \
         --tab-pos="top" \
         --tab="$(gettext 'DLLS')"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
         --tab="$(gettext 'FONTS')"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
         --tab="$(gettext 'SETTINGS')"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" 2>/dev/null
         YAD_STATUS="$?"
-        if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
-            print_info "Nothing to do. Restarting PortProton..."
-            stop_portwine &
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0
-        fi
+
         try_remove_file  "${PW_TMPFS_PATH}/dll_list_tmp"
         try_remove_file  "${PW_TMPFS_PATH}/fonts_list_tmp"
         try_remove_file  "${PW_TMPFS_PATH}/settings_list_tmp"
+
+        case "$YAD_STATUS" in
+            1|252)
+                print_info "Nothing to do. Restarting PortProton..."
+                stop_portwine &
+                /usr/bin/env bash -c ${pw_full_command_line[*]} &
+                exit 0
+                ;;
+            0)
+                WT_FORCE=""
+                ;;
+            2)
+                WT_FORCE="-r -f"
+                ;;
+        esac
 
         for STPFXMNG in $(<"${PW_TMPFS_PATH}/to_winetricks") ; do
             grep $(echo ${STPFXMNG} | awk -F'|' '{print $2}') "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" &>/dev/null
@@ -5065,7 +5074,7 @@ pw_prefix_manager () {
             echo "Try to install DLL in prefix: ${SET_FROM_PFX_MANAGER}" >> "${PW_TMPFS_PATH}/update_pfx_log"
             print_info "Try to install DLL in prefix: ${SET_FROM_PFX_MANAGER}"
             ${pw_runtime} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
-            "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${SET_FROM_PFX_MANAGER} | tee -a "${PW_TMPFS_PATH}/update_pfx_log"
+            "${PORT_WINE_TMP_PATH}/winetricks" -q ${WT_FORCE} ${SET_FROM_PFX_MANAGER} | tee -a "${PW_TMPFS_PATH}/update_pfx_log"
             wait_wineserver
             kill_portwine
             pw_stop_progress_bar
