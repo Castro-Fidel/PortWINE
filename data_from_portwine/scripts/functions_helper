@@ -1997,10 +1997,10 @@ start_portwine () {
         || ! grep "${PW_WINE_USE}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver" &>/dev/null
         then
             pw_update_pfx_cover_gui
-            # HOTFIX - update prefix for vkPlay
-            if echo "$portwine_exe" | grep -i vkplay &>/dev/null
-            then pw_kill_autostart GameCe 5 please & :
-            fi
+            # # HOTFIX - update prefix for vkPlay
+            # if echo "$portwine_exe" | grep -i vkplay &>/dev/null
+            # then pw_kill_autostart GameCe 5 please & :
+            # fi
             pw_wineboot -r
         fi
     fi
@@ -4871,8 +4871,11 @@ portwine_create_shortcut () {
 
 pw_auto_create_shortcut () {
     if [[ "${PW_CHECK_AUTOINSTALL}" == 1 ]] \
-    || echo "${portwine_exe}" | grep "gc_api.exe\|VKPlay" &>/dev/null
-    then return 0
+    || [[ -z "${portwine_exe}" ]] \
+    || echo "${portwine_exe}" | grep -i "gc_api.exe\|vkplay" &>/dev/null
+    then
+        print_warning "Skipping auto create shortcut"
+        return 0
     fi
 
     unset LINKS
