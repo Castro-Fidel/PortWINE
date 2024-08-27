@@ -620,7 +620,8 @@ combobox_fix () {
 }
 
 pw_clear_pfx () {
-    try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.dotnet48"
+    rm -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/.dot*
+    rm -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/.prog*
     try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
     try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
     try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
@@ -800,6 +801,8 @@ init_wine_ver () {
     fi
 
     export WINE_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib"
+    export MEDIACONV_BLANK_VIDEO_FILE="${WINEDIR}"/share/media/blank.mkv
+    export MEDIACONV_BLANK_AUDIO_FILE="${WINEDIR}"/share/media/blank.ptna
     return 0
 }
 
@@ -1846,31 +1849,47 @@ start_portwine () {
     WINEPREFIX="$(readlink -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}")"
     export WINEPREFIX
 
-    PROGPFX_URL="github.com/Castro-Fidel/PortWINE/releases/download/progpfx${PROGPFX_VER}/progpfx${PROGPFX_VER}.tar.xz"
-    if [[ "${PW_PREFIX_NAME}" == "PROGRAMS" && ! -f "${WINEPREFIX}"/.progpfx ]] ; then
-        print_info "Download and install PROGRAMS pfx..."
-        if try_download "${PROGPFX_URL}" "${PORT_WINE_PATH}/data/tmp/progpfx.tar.xz" ; then
-            unpack "${PORT_WINE_PATH}/data/tmp/progpfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/"
-            try_remove_file "${PORT_WINE_PATH}/data/tmp/progpfx.tar.xz"
-        else
-            try_remove_file "${PORT_WINE_PATH}/data/tmp/progpfx.tar.xz"
-            yad_error_download && exit 1
-        fi
-    fi
+    pw_get_pfx () {
+        case "${PW_PREFIX_NAME}" in
+            PROGRAMS) local FILE_NAME_PFX="progpfx${PROGPFX_VER}" ;;
+              DOTNET) local FILE_NAME_PFX="dotpfx${DOTPFX_VER}" ;;
+                   *) return 0 ;;
+        esac
 
-    DOTPFX_URL="github.com/Castro-Fidel/PortWINE/releases/download/dotpfx${DOTPFX_VER}/dotpfx${DOTPFX_VER}.tar.xz"
-    if [[ "${PW_PREFIX_NAME}" == "DOTNET" ]] && [[ ! -f "${WINEPREFIX}"/.dotnet${DOTPFX_VER} ]] ; then
-        print_info "Download and install DOTNET pfx..."
-        if try_download "${DOTPFX_URL}" "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz" ; then
-            if unpack "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/"
-            then touch "${WINEPREFIX}/.dotnet${DOTPFX_VER}"
-            fi
-            try_remove_file "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz"
-        else
-            try_remove_file "${PORT_WINE_PATH}/data/tmp/dotpfx.tar.xz"
-            yad_error_download && exit 1
+        local PFX_URL="github.com/Castro-Fidel/PortWINE/releases/download/${FILE_NAME_PFX}/${FILE_NAME_PFX}.tar.xz"
+        local PFX_TMP="${PORT_WINE_PATH}/data/tmp/pfx"
+        create_new_dir "${PFX_TMP}"
+
+        # TODO: drop this fix legacy file .dotnet later
+        if [[ -f "${WINEPREFIX}/.dotnet${DOTPFX_VER}" ]] ; then
+            touch "${WINEPREFIX}/.${FILE_NAME_PFX}"
+            try_remove_file "${WINEPREFIX}/.dotnet${DOTPFX_VER}"
         fi
-    fi
+
+        if [[ ! -f "${WINEPREFIX}/.${FILE_NAME_PFX}" ]] ; then
+            print_info "Download and install ${FILE_NAME_PFX} pfx..."
+            if [[ ! -f "${PFX_TMP}/${FILE_NAME_PFX}.tar.xz" ]] ; then
+                if try_download "${PFX_URL}" "${PFX_TMP}/${FILE_NAME_PFX}.tar.xz" ; then
+                    if unpack "${PFX_TMP}/${FILE_NAME_PFX}.tar.xz" "${PORT_WINE_PATH}/data/prefixes/"
+                    then touch "${WINEPREFIX}/.${FILE_NAME_PFX}"
+                    fi
+                else
+                    try_remove_file "${PFX_TMP}/${FILE_NAME_PFX}.tar.xz"
+                    yad_error_download && exit 1
+                fi
+            else
+                if unpack "${PFX_TMP}/${FILE_NAME_PFX}.tar.xz" "${PORT_WINE_PATH}/data/prefixes/"
+                then touch "${WINEPREFIX}/.${FILE_NAME_PFX}"
+                else
+                    try_remove_file "${PFX_TMP}/${FILE_NAME_PFX}.tar.xz"
+                    yad_error_download && exit 1 
+                fi
+            fi
+        fi
+        return 0
+    }
+
+    pw_get_pfx
 
     var_winedlloverride_update "${PW_MUST_WINEDLLOVERRIDES}"
     pw_list_install_dll_in_prefix
@@ -1893,9 +1912,10 @@ start_portwine () {
         then
             export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/gstreamer-1.0:${WINEDIR}/lib/gstreamer-1.0"
         fi
+        export GST_GL_WINDOW="surfaceless"
         create_new_dir "${PORT_WINE_TMP_PATH}"/gstreamer_tmp/
         export WINE_GST_REGISTRY_DIR="${PORT_WINE_TMP_PATH}"/gstreamer_tmp/
-        export MEDIACONV_AUDIO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/gstreamer_tmp/audio.foz
+        export MEDIACONV_AUDIO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/gstreamer_tmp/audiov2.foz
         export MEDIACONV_AUDIO_TRANSCODED_FILE="${PORT_WINE_TMP_PATH}"/gstreamer_tmp/transcoded_audio.foz
         export MEDIACONV_VIDEO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/gstreamer_tmp/video.foz
         export MEDIACONV_VIDEO_TRANSCODED_FILE="${PORT_WINE_TMP_PATH}"/gstreamer_tmp/transcoded_video.foz
