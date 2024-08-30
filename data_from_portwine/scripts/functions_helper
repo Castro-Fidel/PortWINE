@@ -298,7 +298,7 @@ try_download () {
     export dest="$2"
     local silent="false"
     local no_mirror="false"
- 
+
     case "$3" in
            silent)
                 silent=true ;;
@@ -440,10 +440,10 @@ pw_notify_send () {
         local OPTIND="1"
         while getopts a:i:t: opt ; do
             case "$opt" in
-                a)  
+                a)
                     local app=$OPTARG
                     ;;
-                i)  
+                i)
                     case "$OPTARG" in
                         info) local OPTARG="${PORT_WINE_PATH}/data/img/gui/notify_info.svg";;
                         warning) local OPTARG="${PORT_WINE_PATH}/data/img/gui/notify_warning.svg";;
@@ -451,10 +451,10 @@ pw_notify_send () {
                     esac
                     local icon=$OPTARG
                     ;;
-                t) 
+                t)
                     local timeout=$OPTARG
                     ;;
-                *) 
+                *)
                     echo "usage: $0
                     [-a] name application (PortProton default)
                     [-i] info, warning, error (none default)
@@ -1448,7 +1448,7 @@ pw_init_db () {
                 PORTWINE_DB_FILE="${PW_FIND_DB_FILE}"
             fi
             IFS="$orig_IFS"
-            
+
             if [[ -f "${PW_FIND_DB_FILE}" ]] ; then
                 # shellcheck source=/dev/null
                 source "${PORTWINE_DB_FILE}"
@@ -1591,7 +1591,7 @@ pw_port_update () {
                 YAD_STATUS="$?"
 
                 # --button="$(gettext "EXIT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":252 \
-                
+
                 case "${YAD_STATUS}" in
                     1|252) exit 0 ;;
                        16) xcsd="$(gettext "DO NOT REMIND ME")" ;;
@@ -1881,7 +1881,7 @@ start_portwine () {
                 then touch "${WINEPREFIX}/.${FILE_NAME_PFX}"
                 else
                     try_remove_file "${PFX_TMP}/${FILE_NAME_PFX}.tar.xz"
-                    yad_error_download && exit 1 
+                    yad_error_download && exit 1
                 fi
             fi
         fi
@@ -2065,7 +2065,7 @@ start_portwine () {
                 export DXVK_NVAPI_ALLOW_OTHER_DRIVERS="1"
                 export WINEHAGS="1"
                 ;;
-                
+
             *)
                 sed -i /'dxgi.customDeviceDesc =/c # dxgi.customDeviceDesc =' "${DXVK_CONFIG_FILE}"
                 sed -i /'dxgi.customDeviceId =/c # dxgi.customDeviceId =' "${DXVK_CONFIG_FILE}"
@@ -2080,7 +2080,7 @@ start_portwine () {
 
     # NVAPI, DLSS AND FAKE DLSS
     if [[ "${PW_USE_FAKE_DLSS_3}" == "1" ]] ; then
-        FAKE_DLSS_3_FILES="amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll dlss-enabler.dll dlss-enabler-upscaler.dll 
+        FAKE_DLSS_3_FILES="amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll dlss-enabler.dll dlss-enabler-upscaler.dll
         dlssg_to_fsr3_amd_is_better-3.0.dll dlssg_to_fsr3_amd_is_better.dll libxess.dll nvapi64-proxy.dll winmm.dll
         _nvngx.dll nvngx-wrapper.dll nvngx.ini"
         DXVK_ENABLE_NVAPI="1"
@@ -4700,7 +4700,7 @@ resize_png () {
         local RESIZE_NAME_PNG="${2// /_}"
         local RESIZE_TO="$3"
     fi
-    
+
     [[ -f "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png" ]] && return 0
 
     try_remove_file "${PORT_WINE_PATH}/data/img/launcher.png"
@@ -4870,8 +4870,7 @@ portwine_create_shortcut () {
 
 pw_auto_create_shortcut () {
     if [[ "${PW_CHECK_AUTOINSTALL}" == 1 ]] \
-    || [[ -z "${portwine_exe}" ]] \
-    || echo "${portwine_exe}" | grep -i "gc_api.exe\|vkplay\|pulseonline" &>/dev/null
+    || [[ -z "${portwine_exe}" ]]
     then
         print_warning "Skipping auto create shortcut"
         return 0
@@ -4880,6 +4879,11 @@ pw_auto_create_shortcut () {
     unset LINKS
     for link_file in "${PORT_WINE_PATH}"/data/prefixes/*/drive_c/users/*/Desktop/*.lnk
     do
+        if [[ "${PW_NO_AUTO_CREATE_SHORTCUT}" == 1 ]]
+        then
+            try_remove_file "$link_file"
+            continue
+        fi
         if ! echo "$link_file" | grep "\*.lnk" &>/dev/null ; then
             link_file=$(readlink -f "${link_file}")
             LINKS+=("${link_file// /@_@}")
@@ -4927,7 +4931,7 @@ pw_auto_create_shortcut () {
             link_name=$(sed -n 's/^File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|\.lnk||')
             link_cmd=$(sed -n 's/^Command Line Arguments\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
         fi
-        
+
         try_remove_file "$link_file"
 
         if ! exe_path="$(realpath "${link_path}" 2>/dev/null)" ; then
