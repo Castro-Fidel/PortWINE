@@ -1085,8 +1085,14 @@ stop_portwine () {
     kill_portwine &&
     try_remove_dir "${PW_WINELIB}/var"
     find "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/" -maxdepth 1 -type f -name "*.tmp" -delete
-    if [[ ! -z "$(pgrep -a tray_gui_pp)" ]] ; then
-        kill -s SIGUSR1 $(pgrep -a tray_gui_pp) 2>/dev/null
+    if [[ "$XDG_SESSION_TYPE" == "tty" ]] ; then
+        if [ ! -z "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')" ] ; then
+            kill -s SIGUSR1 "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')"
+        fi
+    else
+        if [[ ! -z "$(pgrep -a tray_gui_pp)" ]] ; then
+            kill -s SIGUSR1 $(pgrep -a tray_gui_pp) 2>/dev/null
+        fi
     fi
     if [[ ! -z "$(pgrep -a yad_gui_pp)" ]] ; then
         kill -s SIGUSR1 $(pgrep -a yad_gui_pp) 2>/dev/null
@@ -3415,8 +3421,14 @@ open_changelog () {
 export -f open_changelog
 
 pw_tray_icon () {
-    if [[ ! -z "$(pgrep -a tray_gui_pp)" ]] ; then
-        kill -s SIGUSR1 $(pgrep -a tray_gui_pp) 2>/dev/null
+    if [[ "$XDG_SESSION_TYPE" == "tty" ]] ; then
+        if [ ! -z "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')" ] ; then
+            kill -s SIGUSR1 "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')"
+        fi
+    else
+        if [[ ! -z "$(pgrep -a tray_gui_pp)" ]] ; then
+            kill -s SIGUSR1 $(pgrep -a tray_gui_pp) 2>/dev/null
+        fi
     fi
 
     pw_tray_winefile () {
@@ -3435,8 +3447,24 @@ pw_tray_icon () {
     }
     export -f tray_icon_click_exit
 
-    PW_GUI_TRAY_PATH="${PW_GUI_THEMES_PATH}/tray"
-    env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${PW_GUI_TRAY_PATH}/tray_gui_pp" &
+    if [[ "$XDG_SESSION_TYPE" == "tty" ]] ; then
+        tray_icon_click () {
+            echo ""
+        }
+        export -f tray_icon_click
+        "${pw_yad}" --notification --no-middle \
+        --image="$PW_GUI_ICON_PATH/portproton_tray_flatpak.svg" \
+        --command="bash -c tray_icon_click" \
+        --tooltip="PortProton" \
+        --icon-size=32 --menu="| \
+        $(gettext "WINEFILE")!bash -c pw_tray_winefile!"$PW_GUI_ICON_PATH/wine_file.svg"|| \
+        $(gettext "TASKMGR")!bash -c pw_tray_taskmgr!"$PW_GUI_ICON_PATH/wine_system.svg"|| \
+        $(gettext "CHANGELOG")!bash -c open_changelog!"$PW_GUI_ICON_PATH/history.svg"|| \
+        $(gettext "FORCE EXIT")     !bash -c tray_icon_click_exit!"$PW_GUI_ICON_PATH/close.svg"||" 2>/dev/null &
+    else
+        PW_GUI_TRAY_PATH="${PW_GUI_THEMES_PATH}/tray"
+        env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${PW_GUI_TRAY_PATH}/tray_gui_pp" &
+    fi
 
     return 0
 }
