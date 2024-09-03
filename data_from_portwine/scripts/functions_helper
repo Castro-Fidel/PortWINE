@@ -981,7 +981,7 @@ regdlloverrides () {
 }
 
 wait_wineserver () {
-    while ls -l /proc/*/exe 2>/dev/null | grep -ie PortProton | grep -E 'wine(64)?-preloader|wineserver'
+    while ls -l /proc/*/exe >/dev/null 2>&1 | grep -ie PortProton | grep -E 'wine(64)?-preloader|wineserver'
     do
         sleep 1
     done
@@ -992,21 +992,25 @@ export -f wait_wineserver
 
 kill_portwine () {
     if [[ "${PW_WINE_USE}" != "USE_SYSTEM_WINE" ]] ; then
-        wine_pids="$(ls -l /proc/*/exe 2>/dev/null | grep -ie PortProton | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}')"
+        wine_pids=$(ls -l /proc/*/exe >/dev/null 2>&1 | grep -ie PortProton | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}')
         for pw_kill_pids in ${wine_pids} ; do
             if ps cax | grep "${pw_kill_pids}" ; then
                 kill -n 9 "${pw_kill_pids}" &>/dev/null
             fi
         done
 
-        bwrap_pids="$(pgrep -a wrap | grep PortProton | head -n 1 | awk '{print $1}')"
+            if [[ $( grep -oP 'PRETTY_NAME="\K[^"]+' /run/host/etc/os-release) =~ "Alpine Linux" ]] ; then
+                bwrap_pids=$(pgrep -f wrap | grep PortProton | head -n 1)
+            else
+                bwrap_pids="$(pgrep -a wrap | grep PortProton | head -n 1 | awk '{print $1}')"
+            fi
         for pw_kill_pids in ${bwrap_pids} ; do
             if ps cax | grep "${pw_kill_pids}" ; then
                 kill -n 9 "${pw_kill_pids}" &>/dev/null
             fi
         done
     else
-        wine_pids="$(ls -l /proc/*/exe 2>/dev/null | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}')"
+        wine_pids=$(ls -l /proc/*/exe >/dev/null 2>&1 | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}')
         for pw_kill_pids in ${wine_pids} ; do
             if ps cax | grep "${pw_kill_pids}" ; then
                 kill -n 9 "${pw_kill_pids}" &>/dev/null
@@ -2178,7 +2182,7 @@ start_portwine () {
 
     if check_gamescope_session ; then
         export PW_GAMEMODERUN_SLR=""
-    elif [[ "$PW_USE_GAMEMODE" = "1" ]] ; then
+    elif [[ "$PW_USE_GAMEMODE" = "1" && ! -z $DBUS_SESSION_BUS_ADDRESS  ]] ; then
         if command -v gamemoded &>/dev/null ; then
             export GAMEMODERUN=1
             PW_GAMEMODERUN_SLR="gamemoderun"
@@ -4708,7 +4712,7 @@ resize_png () {
 
     if check_flatpak ; then
         if ! timeout 3 \
-        exe-thumbnailer --force-resize -s "$RESIZE_TO" "$(readlink -f "${RESIZE_FILE}")" "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png" 2>/dev/null
+        exe-thumbnailer --force-resize -s "$RESIZE_TO" "$(readlink -f "${RESIZE_FILE}")" "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png" && [ ! $( grep -oP 'PRETTY_NAME="\K[^"]+' /run/host/etc/os-release) =~ "Alpine Linux" ]
         then
             print_error "exe-thumbnailer - broken!"
             if [[ ! -z $PW_DEBUG ]] ; then
