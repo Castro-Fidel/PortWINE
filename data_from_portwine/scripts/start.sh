@@ -187,9 +187,9 @@ else
     source "$PW_GUI_THEMES_PATH/default.pptheme"
     echo 'export GUI_THEME="default"' >> "$USER_CONF"
 fi
+export YAD_OPTIONS+="--center"
 if [[ "${DESKTOP_SESSION}" =~ "gnome" ]]
-then :
-else export YAD_OPTIONS+="--center"
+then export YAD_OPTIONS+="--fixed"
 fi
 
 # choose branch
