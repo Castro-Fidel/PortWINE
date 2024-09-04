@@ -188,9 +188,6 @@ else
     echo 'export GUI_THEME="default"' >> "$USER_CONF"
 fi
 export YAD_OPTIONS+="--center"
-if [[ "${DESKTOP_SESSION}" =~ "gnome" ]]
-then export YAD_OPTIONS+="--fixed"
-fi
 
 # choose branch
 if [[ -z "$BRANCH" ]] ; then
