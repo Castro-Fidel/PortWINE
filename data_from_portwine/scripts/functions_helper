@@ -2188,7 +2188,9 @@ start_portwine () {
 
     if check_gamescope_session ; then
         export PW_GAMEMODERUN_SLR=""
-    elif [[ "$PW_USE_GAMEMODE" = "1" && ! -z $DBUS_SESSION_BUS_ADDRESS  ]] ; then
+    elif [[ "$PW_USE_GAMEMODE" = "1" ]] \
+    && [[ ! -z "$DBUS_SESSION_BUS_ADDRESS"  ]]
+    then
         if command -v gamemoded &>/dev/null ; then
             export GAMEMODERUN=1
             PW_GAMEMODERUN_SLR="gamemoderun"
@@ -4740,7 +4742,8 @@ resize_png () {
 
     if check_flatpak ; then
         if ! timeout 3 \
-        exe-thumbnailer --force-resize -s "$RESIZE_TO" "$(readlink -f "${RESIZE_FILE}")" "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png" && [ ! $( grep -oP 'PRETTY_NAME="\K[^"]+' /run/host/etc/os-release) =~ "Alpine Linux" ]
+        exe-thumbnailer --force-resize -s "$RESIZE_TO" "$(readlink -f "${RESIZE_FILE}")" "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png" \
+        && [[ ! $(grep -i "Alpine Linux" "/run/host/etc/os-release") ]]
         then
             print_error "exe-thumbnailer - broken!"
             if [[ ! -z $PW_DEBUG ]] ; then
