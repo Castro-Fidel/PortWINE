@@ -4586,7 +4586,9 @@ fi
         done
     else
         if check_flatpak ; then
-            GAMESCOPE_NEED_INSTALL="$(gettext "<b>Gamescope is not detected on the system, to install it, run the command in the terminal:\n flatpak install -y runtime/org.freedesktop.Platform.VulkanLayer.gamescope/x86_64/23.08\n (Can be selected and copied)</b>")"
+            GAMESCOPE_VERSION="$(cat /etc/os-release | grep 'VERSION_ID=')"
+            GAMESCOPE_VERSION="${GAMESCOPE_VERSION//VERSION_ID=/}"
+            GAMESCOPE_NEED_INSTALL="$(eval_gettext "<b>Gamescope is not detected on the system, to install it, run the command in the terminal:\n flatpak install -y runtime/org.freedesktop.Platform.VulkanLayer.gamescope/x86_64/\${GAMESCOPE_VERSION}\n (Can be selected and copied)</b>")"
             YAD_TEXT_SELECTION="--selectable-labels"
         else
             GAMESCOPE_NEED_INSTALL="$(gettext "<b>Gamescope is not detected on the system, please contact the manufacturer of your distribution\n or search the Internet for information on how to install gamescope on your system.</b>")"
