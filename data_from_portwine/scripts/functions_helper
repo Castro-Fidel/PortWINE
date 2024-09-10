@@ -3739,7 +3739,7 @@ gui_edit_db () {
 
     # PW_FORCE_USE_VSYNC PW_HEAP_DELAY_FREE
 
-if [[ "${SKIP_EDIT_DB_TEXT_INFO}" != 1 ]] ; then
+if [[ "${SKIP_EDIT_DB_TEXT_INFO}" != "1" ]] ; then
     export PW_DGVOODOO2_INFO=$(gettext 'Enable dgVoodoo2. Forced use all dgVoodoo2 libs (Glide 2.11-3.1, DirectDraw 1-7, Direct3D 2-9) on all 3D API. For WineD3D OpenGL need use WineLG (For Gallium Nine and Zink use too)')
     export PW_DINPUT_PROTOCOL_INFO=$(gettext 'Force use DirectInput protocol instead of XInput')
     export PW_USE_NATIVE_WAYLAND_INFO=$(gettext 'Enable experemental native Wayland support (need special wine build to work)')
@@ -3788,7 +3788,7 @@ if [[ "${SKIP_EDIT_DB_TEXT_INFO}" != 1 ]] ; then
 <b>Super + G :</b> Toggle keyboard grab
 <b>Super + C :</b> Update clipboard')
 
-    export SKIP_EDIT_DB_TEXT_INFO=1
+    export SKIP_EDIT_DB_TEXT_INFO="1"
 fi
 
     case "${PW_VULKAN_USE}" in
@@ -3984,7 +3984,7 @@ gui_vkbasalt () {
     LIST_FX=($(grep -E '.fx$|.fxh$' "${FILE_VKBASALT_CONF}" | awk '{print $1}'))
     GET_FX_IN_FILE=($(echo ${PW_VKBASALT_EFFECTS} | sed s/"cas:"// | sed s/":"/" "/g))
 
-if [[ "${SKIP_VKBASALT_TEXT_INFO}" != 1 ]] ; then
+if [[ "${SKIP_VKBASALT_TEXT_INFO}" != "1" ]] ; then
     export PW_3DFX_INFO=$(gettext 'Simulation of an old 3dfx graphics accelerator (adds horizontal stripes)')
     export PW_AdaptiveSharpen_INFO=$(gettext 'Sharpness increase, can be used with CAS')
     export PW_Bloom_INFO=$(gettext 'Adds glow from bright light sources in the game')
@@ -4041,7 +4041,7 @@ if [[ "${SKIP_VKBASALT_TEXT_INFO}" != 1 ]] ; then
     export PW_StageDepth_INFO=$(gettext 'Allows you to add new elements to the 3d space inside the game and apply custom textures')
     export PW_PPFX_Bloom_INFO=$(gettext 'Adds a Bloom effect')
 
-    export SKIP_VKBASALT_TEXT_INFO=1
+    export SKIP_VKBASALT_TEXT_INFO="1"
 fi
 
     unset ADD_GUI_FX GUI_FX_RESULT
@@ -4082,18 +4082,24 @@ fi
     --gui-type="settings-paned" \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --button="$(gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Cancel the current changes and return to the previous menu")":1 \
+    --button="$(gettext "RESET") VKBASALT"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Restore default settings for") vkBasalt":178 \
     --button="$(gettext "DISABLE") VKBASALT"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Disable vkBasalt and go to the previous menu")":180 \
     --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":182 2>/dev/null
     YAD_VKBASALT_STATUS="$?"
+    export SKIP_CHECK_UPDATES="1"
+
     case "${YAD_VKBASALT_STATUS}" in
         1|252)
-            export SKIP_CHECK_UPDATES="1"
+            /usr/bin/env bash -c ${pw_full_command_line[*]} &
+            exit 0 ;;
+        178)
+            sed -i '/VKBASALT/d' "$portwine_exe".ppdb
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0 ;;
         180)
-            export PW_VKBASALT=0 ;;
+            export PW_VKBASALT="0" ;;
         182)
-            export PW_VKBASALT=1 ;;
+            export PW_VKBASALT="1" ;;
     esac
     YAD_BASALT_SET=$(<"${PW_TMPFS_PATH}/tmp_yad_basalt_set")
     YAD_CAS_SET=$(cat "${PW_TMPFS_PATH}/tmp_yad_cas_set" | sed s/" "//g)
@@ -4116,8 +4122,8 @@ fi
     then export PW_VKBASALT_FFX_CAS="0.0$YAD_CAS_SET"
     else export PW_VKBASALT_FFX_CAS="0.$YAD_CAS_SET"
     fi
+
     edit_db_from_gui PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PW_VKBASALT
-    export SKIP_CHECK_UPDATES="1"
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
@@ -4137,7 +4143,7 @@ gui_mangohud () {
         time version vkbasalt vram vulkan_driver wine
     )
 
-if [[ "${SKIP_MANGOHUD_TEXT_INFO}" != 1 ]] ; then
+if [[ "${SKIP_MANGOHUD_TEXT_INFO}" != "1" ]] ; then
     export PW_MH_arch_INFO=$(gettext 'Show if the application is 32- or 64-bit')
     export PW_MH_battery_INFO=$(gettext 'Display current battery percent and energy consumption')
     export PW_MH_battery_icon_INFO=$(gettext 'Display battery icon instead of percent')
@@ -4193,7 +4199,7 @@ if [[ "${SKIP_MANGOHUD_TEXT_INFO}" != 1 ]] ; then
     export PW_MH_frametime_INFO=$(gettext 'Display frametime next to FPS text')
     export PW_MH_wine_INFO=$(gettext 'Show current Wine or Proton version in use')
 
-    export SKIP_MANGOHUD_TEXT_INFO=1
+    export SKIP_MANGOHUD_TEXT_INFO="1"
 fi
 
     unset ADD_GUI_MH GUI_MH_RESULT ADD_GUI_MH_FPS GUI_MH_FPS_RESULT PW_FPS_LIMIT_VAR PW_MANGOHUD_CONFIG
@@ -4244,26 +4250,28 @@ fi
         --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --sensitive \
         --gui-type="settings-paned" \
         --button="$(gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Cancel the current changes and return to the previous menu")":1 \
-        --button="$(gettext "DISABLE") MANGOHUD"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Disable MangoHud and go to the previous menu")":182 \
+        --button="$(gettext "RESET") MANGOHUD"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Restore default settings for") MangoHud":180 \
         --button="$(gettext "PREVIEW CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Start vkcube for preview changes")":184 \
+        --button="$(gettext "DISABLE") MANGOHUD"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Disable MangoHud and go to the previous menu")":182 \
         --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":186  2>/dev/null
-
     YAD_MANGOHUD_STATUS="$?"
+    export SKIP_CHECK_UPDATES="1"
+
     case "${YAD_MANGOHUD_STATUS}" in
         1|252)
-            export SKIP_CHECK_UPDATES="1"
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
             ;;
-        182)
-            export PW_MANGOHUD=0
-            edit_db_from_gui PW_MANGOHUD FPS_LIMIT
-            export SKIP_CHECK_UPDATES="1"
+        180)
+            sed -i '/FPS_LIMIT/d' "$portwine_exe".ppdb
+            sed -i '/MANGOHUD/d' "$portwine_exe".ppdb
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0
+            exit 0 ;;
+        182)
+            export PW_MANGOHUD="0"
             ;;
         186)
-            export PW_MANGOHUD=1
+            export PW_MANGOHUD="1"
             ;;
     esac
 
@@ -4322,6 +4330,7 @@ fi
     edit_db_from_gui MANGOHUD_CONFIG PW_MANGOHUD FPS_LIMIT
 
     if [[  "${YAD_MANGOHUD_STATUS}" == "184" ]] ; then
+        PW_MANGOHUD="1"
         pw_init_runtime
         pw_mangohud_check
         ${pw_runtime} \
@@ -4332,7 +4341,6 @@ fi
         gui_mangohud
     fi
 
-    export SKIP_CHECK_UPDATES="1"
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
@@ -4346,7 +4354,7 @@ gui_dgvoodoo2 () {
     PW_DGV2_INACTIVE_APP_STATE
     "
 
-if [[ "${SKIP_DGVOODOO2_TEXT_INFO}" != 1 ]] ; then
+if [[ "${SKIP_DGVOODOO2_TEXT_INFO}" != "1" ]] ; then
     export PW_DGV2_USE_DX12_INFO=$(gettext 'Use DirectX12 for dgVoodoo2. Doesnt always work better. (Working only on newest and stable dxvk/vkd3d) (Direct3D and Glide settings)')
     export PW_DGV2_FORCE_VSYNC_INFO=$(gettext 'Force the vertical sync to avoid tearing or prevent the GPU from rendering at crazy high speed. Keep in mind that some application need unforced vSync because of synchronization reasons. (Direct3D settings)')
     export PW_DGV2_DGVOODOO_WATERMARK_INFO=$(gettext 'Shows the dgVoodoo watermark in-game when enabled. (Direct3D settings)')
@@ -4367,7 +4375,7 @@ if [[ "${SKIP_DGVOODOO2_TEXT_INFO}" != 1 ]] ; then
     export PW_DGV2_3DFX_SPLASH_SCREEN_INFO=$(gettext 'The 3Dfx splash screen is seen when an application starts, disabling this option prevents this animation from playing. (Glide settings)')
     export PW_DGV2_INACTIVE_APP_STATE_INFO=$(gettext 'Enabling inactive state prevents the application from detecting losing the application focus. Most of the Glide applications close or deactivate themself when losing focus, so this can be used to let the application run in the background. (Glide settings)')
 
-    export SKIP_DGVOODOO2_TEXT_INFO=1
+    export SKIP_DGVOODOO2_TEXT_INFO="1"
 fi
 
     # fix
@@ -4451,31 +4459,25 @@ fi
     --button="$(gettext "DISABLE") DGVOODOO2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Disable dgVoodoo2 and go to the previous menu")":164 \
     --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":166 \
     2>/dev/null
-
     YAD_DGV2_STATUS="$?"
+    export SKIP_CHECK_UPDATES="1"
+
     case "${YAD_DGV2_STATUS}" in
         1|252)
-            export SKIP_CHECK_UPDATES="1"
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
             ;;
         162)
             sed -i '/PW_DGV2/d' "$portwine_exe".ppdb
-            export PW_DGVOODOO2=0
-            edit_db_from_gui PW_DGVOODOO2
-            export SKIP_CHECK_UPDATES="1"
+            sed -i '/DGVOODOO2/d' "$portwine_exe".ppdb
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
             ;;
         164)
-            export PW_DGVOODOO2=0
-            edit_db_from_gui PW_DGVOODOO2
-            export SKIP_CHECK_UPDATES="1"
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0
+            export PW_DGVOODOO2="0"
             ;;
         166)
-            export PW_DGVOODOO2=1
+            export PW_DGVOODOO2="1"
             ;;
     esac
 
@@ -4510,7 +4512,6 @@ fi
     PW_DGV2_FPS_LIMIT PW_DGV2_BIT_DEPTH PW_DGV2_BRIGHTNESS PW_DGV2_COLOR PW_DGV2_CONTRAST PW_DGV2_VIDEOCARD PW_DGV2_DISPLAY_ROI \
     PW_DGV2_CURSOR_SCALE PW_DGV2_RESAMPLING
 
-    export SKIP_CHECK_UPDATES="1"
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
@@ -4547,7 +4548,7 @@ gui_gamescope () {
         rm_from_var PW_GS_LIST "PW_GS_FORCE_GRAB_KEYBOARD"
     fi
 
-if [[ "${SKIP_GAMESCOPE_TEXT_INFO}" != 1 ]] ; then
+if [[ "${SKIP_GAMESCOPE_TEXT_INFO}" != "1" ]] ; then
     export PW_GS_FULLSCREEN_INFO=$(gettext 'Make the window fullscreen')
     export PW_GS_FORCE_FULLSCREEN_INFO=$(gettext 'Force windows inside of gamescope to be the size of the nested display (fullscreen)')
     export PW_GS_BORDERLESS_WINDOW_INFO=$(gettext 'Make the window borderless. Working only with backend sdl or X11 session.')
@@ -4568,7 +4569,7 @@ if [[ "${SKIP_GAMESCOPE_TEXT_INFO}" != 1 ]] ; then
     export PW_GS_SDL_VIDEODRIVER_X11_INFO=$(gettext 'Force use sdl videodriver x11, works with BACKEND SDL. (Default is wayland)')
     export PW_GS_FIX_AMD_AND_INTEL_INFO=$(gettext 'Fixes artifacts on AMD and Intel video cards. (Use only when necessary).')
 
-    export SKIP_GAMESCOPE_TEXT_INFO=1
+    export SKIP_GAMESCOPE_TEXT_INFO="1"
 fi
 
     unset ADD_CHK_BOX_GS
@@ -4657,31 +4658,25 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate."
     --button="$(gettext "DISABLE") GAMESCOPE"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Disable GameScope and go to the previous menu")":164 \
     --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":166 \
     2>/dev/null
-
     YAD_GAMESCOPE_STATUS="$?"
+    export SKIP_CHECK_UPDATES="1"
+
     case "${YAD_GAMESCOPE_STATUS}" in
         1|252)
-            export SKIP_CHECK_UPDATES="1"
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
             ;;
         162)
             sed -i '/PW_GS/d' "$portwine_exe".ppdb
-            export PW_GAMESCOPE=0
-            edit_db_from_gui PW_GAMESCOPE
-            export SKIP_CHECK_UPDATES="1"
+            sed -i '/GAMESCOPE/d' "$portwine_exe".ppdb
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
             ;;
         164)
-            export PW_GAMESCOPE=0
-            edit_db_from_gui PW_GAMESCOPE
-            export SKIP_CHECK_UPDATES="1"
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0
+            export PW_GAMESCOPE="0"
             ;;
         166)
-            export PW_GAMESCOPE=1
+            export PW_GAMESCOPE="1"
             ;;
     esac
 
@@ -4716,7 +4711,6 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate."
     PW_GS_UPSCALE_SHARPNESS PW_GS_MAX_SCALE_FACTOR PW_GS_MOUSE_SENSITIVITY \
     PW_GS_SDR_CONTENT_NITS PW_GS_ITM_SDR_NITS PW_GS_ITM_TARGET_NITS
 
-    export SKIP_CHECK_UPDATES="1"
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
