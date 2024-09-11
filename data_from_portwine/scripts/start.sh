@@ -594,6 +594,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             --gui-type-layout="${START_GUI_TYPE_LAYOUT_NOTEBOOK}" \
             --field="   $(gettext "Base settings")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Edit database file for") ${PORTWINE_DB}":"FBTN" '@bash -c "button_click --start 118"' \
             --field="   $(gettext "Settings user.conf")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Settings for user.conf")":"FBTN" '@bash -c "button_click --start 128"' \
+            --field="   $(gettext "Open directory")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Open directory with <b>.ppdb</b> file")":"FBTN" '@bash -c "button_click --start open_game_folder"' \
             --field="   vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click --start 120"' \
             --field="   MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)")":"FBTN" '@bash -c "button_click --start 122"' \
             --field="   dgVoodoo2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)")":"FBTN" '@bash -c "button_click --start 124"' \
@@ -638,6 +639,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             --align-buttons --homogeneous-row --homogeneous-column \
             --field="   $(gettext "Base settings")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Edit database file for") ${PORTWINE_DB}":"FBTN" '@bash -c "button_click --start 118"' \
             --field="   $(gettext "Settings user.conf")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Settings for user.conf")":"FBTN" '@bash -c "button_click --start 128"' \
+            --field="   $(gettext "Open directory")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Open directory with <b>.ppdb</b> file")":"FBTN" '@bash -c "button_click --start open_game_folder"' \
             --field="   vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click --start 120"' \
             --field="   MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)")":"FBTN" '@bash -c "button_click --start 122"' \
             --field="   dgVoodoo2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)")":"FBTN" '@bash -c "button_click --start 124"' \
@@ -902,6 +904,7 @@ esac
     change_branch) change_branch ;;
     change_gui_start) change_gui_start ;;
     change_download_grid) change_download_grid ;;
+    open_game_folder) open_game_folder ;;
     118) gui_edit_db ;;
     120) gui_vkbasalt ;;
     122) gui_mangohud ;;
