@@ -3855,7 +3855,7 @@ A brief instruction:
     --field="$(gettext "ADD ARGUMENTS FOR .EXE FILE")!$(gettext "Adding an argument after the <b>.exe</b> file, just like you would add an argument in a shortcut on a <b>WINDOWS </b> system") :CBE" "$(combobox_fix --empty "\\${LAUNCH_PARAMETERS[@]}" "-dx11 -skipintro 1")" \
     --field=":LBLH" "" \
     --field="$(gettext "Limit the use of processor cores")!$(gettext "Limiting the number of CPU cores is useful for Unity games (It is recommended to set the value equal to 8)") :CB" "$(combobox_fix --disabled "${CPU_LIMIT_VAR}" "${GET_LOGICAL_CORE}")" \
-    --field="$(gettext "Forcibly select the OpenGL version for the game")!$(gettext "You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)") :CB" "$(combobox_fix --disabled "${PW_MESA_GL_VERSION_OVERRIDE}" "4.6COMPAT!4.6!4.5COMPAT!4.5!3.3COMPAT!3.3")" \
+    --field="$(gettext "Forcibly select the OpenGL version for the game")!$(gettext "You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)") :CBE" "$(combobox_fix --disabled "${PW_MESA_GL_VERSION_OVERRIDE}" "4.6COMPAT!4.6!4.5COMPAT!4.5!3.3COMPAT!3.3")" \
     --field="$(gettext "Forcibly select the VKD3D feature level")!$(gettext "You can set a forced feature level VKD3D for games on DirectX12") :${VKD3D_CB}" "$(combobox_fix --disabled "${PW_VKD3D_FEATURE_LEVEL}" "12_2!12_1!12_0!11_1!11_0")" \
     --field="$(gettext "Force certain locale for an app:")!$(gettext "Fixes encoding issues in legacy software") :CB" "$(combobox_fix --disabled "${PW_LOCALE_SELECT}" "$LOCALE_LIST")" \
     1> "${PW_TMPFS_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
@@ -4696,12 +4696,13 @@ gui_userconf () {
 
     KEY_USERCONF_GUI=$RANDOM
 
-    "${pw_yad}" --plug=$KEY_USERCONF_GUI --tabnum="1" --form --columns=2 --separator=" " --text-align=center --align-buttons --homogeneous-column \
-    --gui-type-text="${PANED_GUI_TYPE_TEXT_UP}" --gui-type-layout="${PANED_GUI_TYPE_LAYOUT_UP}" \
-    --field="   $(gettext "Change mirror to") $NEW_MIRROR"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --userconf change_mirror"' \
-    --field="   $(gettext "Change branch to") $NEW_BRANCH"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --userconf change_branch"' \
-    --field="   $(gettext "Change start gui to") $NEW_START_GUI"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --userconf change_gui_start"' \
-    --field="   $NEW_STEAM_BEHAVIOR $(gettext "steam covers download")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --userconf change_download_grid"' \
+    "${pw_yad}" --plug=$KEY_USERCONF_GUI --tabnum="1" --form --columns=3 --separator=" " --text-align=center \
+    --text "$(gettext "Change settings for") <b>user.conf</b>\n $(gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" \
+    --align-buttons --homogeneous-column --gui-type-text="${PANED_GUI_TYPE_TEXT_UP}" --gui-type-layout="${PANED_GUI_TYPE_LAYOUT_UP}" \
+    --field="   $(gettext "Change mirror to") $NEW_MIRROR"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Depending on which mirror is selected, updates will be downloaded from there.")":"FBTN" '@bash -c "button_click --userconf change_mirror"' \
+    --field="   $(gettext "Change branch to") $NEW_BRANCH"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Depending on the version of the scripts, PortProton will receive the latest changes first (the DEVEL branch), the STABLE branch is updated later and is stable.")":"FBTN" '@bash -c "button_click --userconf change_branch"' \
+    --field="   $(gettext "Change start gui to") $NEW_START_GUI"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "When using PANED in the game start menu, additional buttons are located on one large page; if NOTEBOOK, then they are divided into several.")":"FBTN" '@bash -c "button_click --userconf change_gui_start"' \
+    --field="   $NEW_STEAM_BEHAVIOR $(gettext "steam covers download")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "If downloading steam covers is enabled, they will be downloaded and created. (Disablement is provided in cases where their downloading is unavailable for some reason)")":"FBTN" '@bash -c "button_click --userconf change_download_grid"' \
     2>/dev/null &
 
     if [[ ! -z "${PW_SOUND_DRIVER_USE}" ]] \
