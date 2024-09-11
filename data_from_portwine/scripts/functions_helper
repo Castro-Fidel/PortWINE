@@ -2041,7 +2041,7 @@ start_portwine () {
     fi
 
     if [[ "${PW_VULKAN_NO_ASYNC}" == 1 ]] ; then
-        export RADV_DEBUG="llvm"
+        export RADV_DEBUG+="llvm "
         var_vkd3d_config_update single_queue
     fi
 
@@ -2331,15 +2331,6 @@ start_portwine () {
             export PW_VKBASALT="0"
             export PW_MANGOHUD="0"
             export PW_WINE_FULLSCREEN_FSR="0"
-            if echo "$LSPCI_VGA" | grep -i "AMD" &>/dev/null \
-            && ! check_wayland_session
-            then
-                if check_gamescope_session \
-                || [[ "${PW_GAMESCOPE}" = "1" ]]
-                then
-                    export AMD_DEBUG="nodcc"
-                fi
-            fi
             ;;
         4)
             # GALLIUM ZINK
@@ -2893,8 +2884,23 @@ start_portwine () {
     fi
 
     # GAMESCOPE enable:
-    if [[ "${PW_GAMESCOPE}" == 1 ]] \
-    && [[ "${GAMESCOPE_INSTALLED}" == 1 ]] \
+    if [[ "${PW_GAMESCOPE}" == "1" && "${GAMESCOPE_INSTALLED}" == "1" ]] \
+    || check_gamescope_session
+    then
+        export vk_xwayland_wait_ready="false"
+        if [[ -d /sys/bus/pci/drivers/amdgpu ]] ; then
+            export RADV_DEBUG+="nodcc "
+            export AMD_DEBUG="nodcc"
+            if [[ ! "$(cat "${PW_TMPFS_PATH}/vulkaninfo.tmp" | grep -i VK_EXT_image_drm_format_modifier)" ]] ; then
+                export R600_DEBUG="nodcc"
+                grep -e '--backend' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null && PW_GS_BACKEND_SDL="1"
+            fi
+        fi
+        if [[ -d /sys/bus/pci/drivers/i915 ]]  ; then
+            export INTEL_DEBUG="norbc"
+        fi
+    fi
+    if [[ "${PW_GAMESCOPE}" == "1" && "${GAMESCOPE_INSTALLED}" == "1" ]] \
     && ! check_gamescope_session
     then
         if [[ "${PW_GPU_USE}" != "disabled" ]] ; then
@@ -2904,11 +2910,9 @@ start_portwine () {
         else
             PW_ID_VIDEO=""
         fi
-        if ! check_wayland_session ; then
-            export vk_xwayland_wait_ready="false"
-        fi
+
         #checkbox
-        local PW_GAMESCOPE_ARGS_NEW=""
+        PW_GAMESCOPE_ARGS_NEW=""
         [[ "${PW_GS_FULLSCREEN}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" -f"
         [[ "${PW_GS_FORCE_FULLSCREEN}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --force-windows-fullscreen"
         [[ "${PW_GS_BORDERLESS_WINDOW}" == "1" ]] &&  PW_GAMESCOPE_ARGS_NEW+=" -b"
@@ -2930,12 +2934,6 @@ start_portwine () {
         [[ "${PW_GS_HDR_FORCE_HEATMAP}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --hdr-debug-heatmap"
         [[ "${PW_GS_EXPOSE_WAYLAND}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --expose-wayland"
         [[ "${PW_GS_REALTIME_SCHEDULING}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --rt"
-
-        if [[ "${PW_GS_FIX_AMD_AND_INTEL}" == "1" ]] ; then
-            export RADV_DEBUG="nodcc"
-            export R600_DEBUG="nodcc"
-            export INTEL_DEBUG="norbc"
-        fi
 
         if [[ "${PW_GS_MANGOAPP}" == "1" ]] ; then
             PW_GAMESCOPE_ARGS_NEW+=" --mangoapp"
@@ -4482,18 +4480,12 @@ gui_gamescope () {
     PW_GS_LIST="PW_GS_FULLSCREEN PW_GS_FORCE_FULLSCREEN PW_GS_BORDERLESS_WINDOW PW_GS_FORCE_GRAB_CURSOR
     PW_GS_FORCE_GRAB_KEYBOARD PW_GS_HDR_ENABLE PW_GS_ENABLE_GAMESCOPE_WSI PW_GS_HDR_ITM_ENABLE PW_GS_SDR_GAMMUT_WIDENESS
     PW_GS_FORCE_COMPOSITION PW_GS_HDR_FORCE_SUPPORT PW_GS_HDR_FORCE_OUTPUT PW_GS_HDR_FORCE_HEATMAP
-    PW_GS_EXPOSE_WAYLAND PW_GS_REALTIME_SCHEDULING PW_GS_FIX_AMD_AND_INTEL
+    PW_GS_EXPOSE_WAYLAND PW_GS_REALTIME_SCHEDULING
     "
 
     grep -e '--mangoapp' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null && add_to_var PW_GS_LIST "PW_GS_MANGOAPP"
-
-    if check_wayland_session ; then
-        grep -e '--backend' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null \
-        && add_to_var PW_GS_LIST "PW_GS_BACKEND_SDL" && add_to_var PW_GS_LIST "PW_GS_SDL_VIDEODRIVER_X11"
-    else
-        export PW_GS_BACKEND_SDL="0"
-        export PW_GS_SDL_VIDEODRIVER_X11="0"
-    fi
+    grep -e '--backend' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null \
+    && add_to_var PW_GS_LIST "PW_GS_BACKEND_SDL" && add_to_var PW_GS_LIST "PW_GS_SDL_VIDEODRIVER_X11"
 
     GS_FILTER_CB="linear!nearest!fsr!nis!pixel"
     #debian bookworm fix
@@ -4527,7 +4519,6 @@ if [[ "${SKIP_GAMESCOPE_TEXT_INFO}" != "1" ]] ; then
     export PW_GS_MANGOAPP_INFO=$(gettext 'Launch with the mangoapp (mangohud) performance overlay enabled. You should use this instead of using mangohud on the game or gamescope.')
     export PW_GS_BACKEND_SDL_INFO=$(gettext 'Use sdl backend. (by default wayland backend is used).')
     export PW_GS_SDL_VIDEODRIVER_X11_INFO=$(gettext 'Force use sdl videodriver x11, works with BACKEND SDL. (Default is wayland)')
-    export PW_GS_FIX_AMD_AND_INTEL_INFO=$(gettext 'Fixes artifacts on AMD and Intel video cards. (Use only when necessary).')
 
     export SKIP_GAMESCOPE_TEXT_INFO="1"
 fi
