@@ -857,7 +857,28 @@ if [[ -f "${PORTWINE_DB_FILE}" ]] ; then
     edit_db_from_gui PW_VULKAN_USE PW_WINE_USE PW_PREFIX_NAME
 fi
 
-[[ ! -z "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
+[[ -n "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
+    gui_pw_reinstall_pp|open_changelog|\
+    128|gui_pw_update|\
+    change_loc|gui_open_scripts_from_backup|\
+    gui_credits)
+        if [[ -z "${PW_ALL_DF}" ]] ; then
+            export TAB_MAIN_MENU="4"
+        else
+            export TAB_MAIN_MENU="5"
+        fi
+        ;;
+    gui_proton_downloader|WINETRICKS|\
+    116|pw_create_prefix_backup|\
+    gui_clear_pfx)
+        if [[ -z "${PW_ALL_DF}" ]] ; then
+            export TAB_MAIN_MENU="3"
+        else
+            export TAB_MAIN_MENU="4"
+        fi
+esac
+
+[[ -n "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
     98) portwine_delete_shortcut ;;
     100) portwine_create_shortcut ;;
     DEBUG|102) portwine_start_debug ;;

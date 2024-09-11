@@ -661,11 +661,6 @@ pw_clear_pfx () {
 }
 
 pw_reinstall_pp () {
-    if [[ -z "${PW_ALL_DF}" ]] ; then
-        export TAB_MAIN_MENU="4"
-    else
-        export TAB_MAIN_MENU="5"
-    fi
     if [[ "${PW_REINSTALL_FROM_TERMINAL}" == 1 ]] ; then
         read -p "Do you want to reinstall PortProton? (Y,y - Yes):   " -n 1 -r
         if [[ ! $REPLY =~ ^[Yy]$ ]]
@@ -3410,12 +3405,8 @@ open_changelog () {
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --filename="${PORT_WINE_PATH}/data/${PW_CHANGELOG_FILE}" &>/dev/null
     YAD_STATUS="$?"
+
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] && [[ -z "$WINEPREFIX" ]] ; then
-        if [[ -z "${PW_ALL_DF}" ]] ; then
-            export TAB_MAIN_MENU="4"
-        else
-            export TAB_MAIN_MENU="5"
-        fi
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         print_info "Restarting..."
         exit 0
@@ -3476,11 +3467,6 @@ pw_tray_icon () {
 
 # GUI GET OTHER WINE
 gui_proton_downloader () {
-    if [[ -z "${PW_ALL_DF}" ]] ; then
-        export TAB_MAIN_MENU="3"
-    else
-        export TAB_MAIN_MENU="4"
-    fi
     unset VERSION_WINE_GIT VERSION_INSTALLED_WINE URL_VERSION_PROTON_GIT GIVE_WINE_URL
     try_remove_file "${PW_TMPFS_PATH}/tmp_proton_pw_git"
     try_remove_file "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
@@ -4693,12 +4679,6 @@ gui_userconf () {
     if [[ -f "${portwine_exe}" ]] ; then
         export PW_YAD_FORM_TAB="1"
         export TAB_START="2"
-    else
-        if [[ -z "${PW_ALL_DF}" ]] ; then
-            export TAB_MAIN_MENU="4"
-        else
-            export TAB_MAIN_MENU="5"
-        fi
     fi
 
     if [[ "$MIRROR" == "CLOUD" ]]
@@ -4754,7 +4734,7 @@ gui_userconf () {
     1> "${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb" 2>/dev/null &
 
     "${pw_yad}" --key=$KEY_USERCONF_GUI --paned \
-    --title="$(gettext "SETTINGS USER CONFIG")" \
+    --title="$(gettext "SETTINGS USER.CONF")" \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --gui-type="settings-paned" \
     --button="$(gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Cancel the current changes and return to the previous menu")":1 \
@@ -5094,11 +5074,6 @@ portwine_missing_shortcut () {
 
 # GUI WINETRICKS | GUI PREFIX MANAGER
 pw_prefix_manager () {
-    if [[ -z "${PW_ALL_DF}" ]] ; then
-        export TAB_MAIN_MENU="3"
-    else
-        export TAB_MAIN_MENU="4"
-    fi
     update_winetricks
     start_portwine
     if [ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ] ; then
@@ -5410,11 +5385,6 @@ portwine_start_debug () {
 }
 
 pw_create_prefix_backup () {
-    if [[ -z "${PW_ALL_DF}" ]] ; then
-        export TAB_MAIN_MENU="3"
-    else
-        export TAB_MAIN_MENU="4"
-    fi
     cd "$HOME"
     PW_PREFIX_TO_BACKUP=$("${pw_yad}" --file --directory --width=800 --height=500 \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "$(gettext "BACKUP PREFIX TO...")" \
@@ -5518,11 +5488,6 @@ run_desktop_b_click () {
 export -f run_desktop_b_click
 
 gui_clear_pfx () {
-    if [[ -z "${PW_ALL_DF}" ]] ; then
-        export TAB_MAIN_MENU="3"
-    else
-        export TAB_MAIN_MENU="4"
-    fi
     if yad_question "$(gettext "Do you want to clear prefix in PortProton?")" ; then
         pw_clear_pfx
         print_info "Restarting PP after clearing prefix..."
@@ -5545,11 +5510,6 @@ gui_rm_portproton () {
 export -f gui_rm_portproton
 
 gui_pw_update () {
-    if [[ -z "${PW_ALL_DF}" ]] ; then
-        export TAB_MAIN_MENU="4"
-    else
-        export TAB_MAIN_MENU="5"
-    fi
     try_remove_file "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     print_info "Restarting PP for check update..."
     unset SKIP_CHECK_UPDATES
@@ -5559,11 +5519,6 @@ gui_pw_update () {
 export -f gui_pw_update
 
 change_loc () {
-    if [[ -z "${PW_ALL_DF}" ]] ; then
-        export TAB_MAIN_MENU="4"
-    else
-        export TAB_MAIN_MENU="5"
-    fi
     try_remove_file "${PORT_WINE_TMP_PATH}/PortProton_loc"
     print_info "Restarting PP for change language..."
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
@@ -5690,11 +5645,6 @@ gui_edit_db_file () {
 }
 
 gui_open_scripts_from_backup () {
-    if [[ -z "${PW_ALL_DF}" ]] ; then
-        export TAB_MAIN_MENU="4"
-    else
-        export TAB_MAIN_MENU="5"
-    fi
     cd "${PORT_WINE_TMP_PATH}/scripts_backup/" || fatal
     PW_SCRIPT_FROM_BACKUP=$("${pw_yad}" --file --width=650 --height=500 \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "SCRIPTS FROM BACKUP" --file-filter="backup_scripts|scripts_v*.tar.gz" 2>/dev/null )
@@ -5714,11 +5664,6 @@ export -f gui_open_scripts_from_backup
 
 #GUI CREDITS AND ABOUT
 gui_credits () {
-    if [[ -z "${PW_ALL_DF}" ]] ; then
-        export TAB_MAIN_MENU="4"
-    else
-        export TAB_MAIN_MENU="5"
-    fi
     ########################################################################
     # grep ';subscription;' stat-subscriptions.csv | awk -F';' '{print $1}' | sort -u | sed "s/\"//g" > thanks
     ########################################################################
