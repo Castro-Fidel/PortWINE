@@ -4725,6 +4725,7 @@ gui_userconf () {
     --gui-type-text="${PANED_GUI_TYPE_TEXT_DOWN}" --gui-type-layout="${PANED_GUI_TYPE_LAYOUT_DOWN}" \
     --field="$(gettext "Choose a graphics card to run the game")!$(gettext "Select which video card will be used to run the game (used for all running games and programs in PortProton)") :CB" "$(combobox_fix --disabled "${GPU_VAR}" "${GET_GPU_NAMES}")" \
     --field="$(gettext "Choice wine audio driver")!$(gettext "Fixes sound popling if choice alsa") :CB" "$(combobox_fix --disabled "${SOUND_DRIVER_VAR}" "alsa!oss!pulse")" \
+    --field="$(gettext "Choice gui themes")!$(gettext "Allows you to select a theme for PortProton") :CB" "$(combobox_fix "${GUI_THEME}" "default!compact!classic")" \
     1> "${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb" 2>/dev/null &
 
     "${pw_yad}" --key=$KEY_USERCONF_GUI --paned \
@@ -4750,7 +4751,8 @@ gui_userconf () {
             PW_ADD_SETTINGS_UC=$(head -n 1 "${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb")
             PW_GPU_USE="$(echo ${PW_ADD_SETTINGS_UC} | awk -F"%" '{print $1}')"
             PW_SOUND_DRIVER_USE="$(echo ${PW_ADD_SETTINGS_UC} | awk -F"%" '{print $2}')"
-            edit_user_conf_from_gui PW_GPU_USE PW_SOUND_DRIVER_USE
+            GUI_THEME="$(echo ${PW_ADD_SETTINGS_UC} | awk -F"%" '{print $3}')"
+            edit_user_conf_from_gui PW_GPU_USE PW_SOUND_DRIVER_USE GUI_THEME
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
             ;;
