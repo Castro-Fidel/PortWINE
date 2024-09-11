@@ -4696,7 +4696,7 @@ gui_userconf () {
 
     KEY_USERCONF_GUI=$RANDOM
 
-    "${pw_yad}" --plug=$KEY_USERCONF_GUI --tabnum="1" --form --columns=2 --separator=" " --text-align=center --align-buttons --separator=";" --homogeneous-column \
+    "${pw_yad}" --plug=$KEY_USERCONF_GUI --tabnum="1" --form --columns=2 --separator=" " --text-align=center --align-buttons --homogeneous-column \
     --gui-type-text="${PANED_GUI_TYPE_TEXT_UP}" --gui-type-layout="${PANED_GUI_TYPE_LAYOUT_UP}" \
     --field="   $(gettext "Change mirror to") $NEW_MIRROR"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --userconf change_mirror"' \
     --field="   $(gettext "Change branch to") $NEW_BRANCH"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --userconf change_branch"' \
@@ -4761,7 +4761,6 @@ gui_userconf () {
             change_mirror
             ;;
         change_branch)
-            unset SKIP_CHECK_UPDATES
             change_branch
             ;;
         change_gui_start)
@@ -5546,14 +5545,22 @@ export -f change_mirror
 
 change_branch () {
     if [[ "$BRANCH" == "master" ]] ; then
-        sed -i 's/="master"/="devel"/g' "$USER_CONF"
-        export MIRROR="GITHUB"
-        yad_info "$(gettext "Branch changed to:")  <b>DEVEL</b>"
+        if yad_question "$(gettext "Do you actually want to change the scripts version to:") <b>DEVEL?</b>" ; then
+            sed -i 's/="master"/="devel"/g' "$USER_CONF"
+            export MIRROR="GITHUB"
+            pw_notify_send -i info \
+            "$(gettext "Branch changed to:")" "<b>DEVEL</b>"
+            unset SKIP_CHECK_UPDATES
+        fi
     else
-        sed -i 's/="devel"/="master"/g' "$USER_CONF"
-        echo "2024" > "${PORT_WINE_TMP_PATH}/scripts_ver"
-        export PW_CHANGE_BRANCH="1"
-        yad_info "$(gettext "Branch changed to:")  <b>STABLE</b>"
+        if yad_question "$(gettext "Do you actually want to change the scripts version to:") <b>STABLE?</b>" ; then
+            sed -i 's/="devel"/="master"/g' "$USER_CONF"
+            echo "2024" > "${PORT_WINE_TMP_PATH}/scripts_ver"
+            export PW_CHANGE_BRANCH="1"
+            pw_notify_send -i info \
+            "$(gettext "Branch changed to:")" "<b>STABLE</b>"
+            unset SKIP_CHECK_UPDATES
+        fi
     fi
     print_info "Restarting PP for change branch..."
     /usr/bin/env bash -c "${pw_full_command_line[0]} --gui_userconf" &
