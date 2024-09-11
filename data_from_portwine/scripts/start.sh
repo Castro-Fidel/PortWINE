@@ -403,6 +403,8 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     fi
 fi
 
+export SKIP_CHECK_UPDATES="1"
+
 [[ "$MISSING_DESKTOP_FILE" == 1 ]] && portwine_missing_shortcut
 
 if [[ ! -z $(basename "${portwine_exe}" | grep .ppack) ]] ; then
@@ -659,7 +661,6 @@ if [[ -f "${portwine_exe}" ]] ; then
                         unset PW_YAD_FORM_TAB
                     fi
                     unset PW_NO_RESTART_PPDB PW_DISABLED_CREATE_DB KEY_START portwine_exe
-                    export SKIP_CHECK_UPDATES=1
                     /usr/bin/env bash -c ${pw_full_command_line[*]} &
                     print_info "Restarting..."
                     exit 0

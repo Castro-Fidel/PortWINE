@@ -685,7 +685,7 @@ pw_reinstall_pp () {
     try_remove_file "${PORT_WINE_TMP_PATH}/scripts_ver"
     echo
     print_info "Restarting PP for reinstall files..."
-    export SKIP_CHECK_UPDATES="0"
+    unset SKIP_CHECK_UPDATES
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
@@ -1811,7 +1811,6 @@ pw_find_exe () {
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
         if [[ -z "${PW_SET_FIND_EXE}" ]] ; then
-            export SKIP_CHECK_UPDATES="1"
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             print_info "Restarting..."
         fi
@@ -1822,7 +1821,6 @@ pw_find_exe () {
     if [[ ! -z "${PW_SET_FIND_EXE}" ]] ; then
         portwine_exe="${PW_PATH_FOR_FIND}$(echo "${PW_SET_FIND_EXE}" | awk -F'|' '{print $1}')"
         portwine_create_shortcut silent
-        export SKIP_CHECK_UPDATES="1"
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     fi
@@ -3418,7 +3416,6 @@ open_changelog () {
         else
             export TAB_MAIN_MENU="5"
         fi
-        export SKIP_CHECK_UPDATES="1"
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         print_info "Restarting..."
         exit 0
@@ -3554,7 +3551,6 @@ gui_proton_downloader () {
 
     if [[ -z "${PROTON_PW_GIT}" ]] ; then
         yad_error "$(gettext "Error: check wine.")"
-        export SKIP_CHECK_UPDATES="1"
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     fi
@@ -3633,7 +3629,6 @@ gui_proton_downloader () {
         --button="$(gettext "OK")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":0 2>/dev/null
         YAD_WINE_STATUS="$?"
         if [[ "$YAD_WINE_STATUS" == "1" || "$YAD_WINE_STATUS" == "252" ]] ; then
-            export SKIP_CHECK_UPDATES="1"
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
         fi
@@ -3648,7 +3643,6 @@ gui_proton_downloader () {
         && [[ -z "${VERSION_INSTALLED_WINE}" ]]
         then
             print_info "Nothing to do."
-            export SKIP_CHECK_UPDATES="1"
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
         fi
@@ -3692,7 +3686,6 @@ gui_proton_downloader () {
             try_remove_dir "${PORT_WINE_PATH}/data/dist/${REMOVE_WINE}"
         done
         if [[ -z "${VERSION_WINE_GIT}" ]] ; then
-            export SKIP_CHECK_UPDATES="1"
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
         fi
@@ -3708,7 +3701,6 @@ gui_proton_downloader () {
             done
             pw_download_get_wine
         done
-        export SKIP_CHECK_UPDATES="1"
         edit_db_from_gui
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
@@ -3896,7 +3888,6 @@ A brief instruction:
     --button="$(gettext "OPEN THE SETTINGS FILE")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Open the <b>.ppdb</b> settings file in a system text editor to view and change variables manually")":150 \
     --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":0 2>/dev/null
     YAD_STATUS="$?"
-    export SKIP_CHECK_UPDATES="1"
 
     case "$YAD_STATUS" in
         1|252)
@@ -4072,7 +4063,6 @@ fi
     --button="$(gettext "DISABLE") VKBASALT"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Disable vkBasalt and go to the previous menu")":180 \
     --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":182 2>/dev/null
     YAD_VKBASALT_STATUS="$?"
-    export SKIP_CHECK_UPDATES="1"
 
     case "${YAD_VKBASALT_STATUS}" in
         1|252)
@@ -4241,7 +4231,6 @@ fi
         --button="$(gettext "DISABLE") MANGOHUD"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Disable MangoHud and go to the previous menu")":182 \
         --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":186  2>/dev/null
     YAD_MANGOHUD_STATUS="$?"
-    export SKIP_CHECK_UPDATES="1"
 
     case "${YAD_MANGOHUD_STATUS}" in
         1|252)
@@ -4446,7 +4435,6 @@ fi
     --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":166 \
     2>/dev/null
     YAD_DGV2_STATUS="$?"
-    export SKIP_CHECK_UPDATES="1"
 
     case "${YAD_DGV2_STATUS}" in
         1|252)
@@ -4645,7 +4633,6 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate."
     --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":166 \
     2>/dev/null
     YAD_GAMESCOPE_STATUS="$?"
-    export SKIP_CHECK_UPDATES="1"
 
     case "${YAD_GAMESCOPE_STATUS}" in
         1|252)
@@ -4775,7 +4762,6 @@ gui_userconf () {
     --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":166 \
     2>/dev/null
     YAD_USERCONF_STATUS="$?"
-    export SKIP_CHECK_UPDATES="1"
 
     case "$YAD_USERCONF_STATUS" in
         1|252)
@@ -4986,7 +4972,6 @@ portwine_create_shortcut () {
         if [[ "$PW_NO_RESTART_PPDB" != "1" ]] ; then
             print_info "Restarting PP..."
             unset PW_YAD_FORM_TAB
-            export SKIP_CHECK_UPDATES="1"
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
         fi
@@ -5436,7 +5421,7 @@ pw_create_prefix_backup () {
     --button="$(gettext "CANCEL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
     --button="$(gettext "OK")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
     YAD_STATUS="$?"
-    export SKIP_CHECK_UPDATES="1"
+
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
@@ -5527,7 +5512,6 @@ run_desktop_b_click () {
 
     print_info "Restarting PP after choose desktop file..."
     # stop_portwine
-    export SKIP_CHECK_UPDATES="1"
     /usr/bin/env bash -c "${PW_EXEC_FROM_DESKTOP}" &
     exit 0
 }
@@ -5542,7 +5526,6 @@ gui_clear_pfx () {
     if yad_question "$(gettext "Do you want to clear prefix in PortProton?")" ; then
         pw_clear_pfx
         print_info "Restarting PP after clearing prefix..."
-        export SKIP_CHECK_UPDATES="1"
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     fi
@@ -5569,7 +5552,7 @@ gui_pw_update () {
     fi
     try_remove_file "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     print_info "Restarting PP for check update..."
-    export SKIP_CHECK_UPDATES="0"
+    unset SKIP_CHECK_UPDATES
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
@@ -5583,7 +5566,6 @@ change_loc () {
     fi
     try_remove_file "${PORT_WINE_TMP_PATH}/PortProton_loc"
     print_info "Restarting PP for change language..."
-    export SKIP_CHECK_UPDATES="1"
     /usr/bin/env bash -c ${pw_full_command_line[*]} &
     exit 0
 }
@@ -5600,7 +5582,6 @@ change_mirror () {
         "$(gettext "Mirror changed to:")" "<b>https://cloud.linux-gaming.ru</b>"
     fi
     print_info "Restarting PP for change mirror..."
-    export SKIP_CHECK_UPDATES="1"
     /usr/bin/env bash -c "${pw_full_command_line[0]} --gui_userconf" &
     exit 0
 }
@@ -5634,7 +5615,6 @@ change_download_grid () {
         "$(gettext "Cover downloads are enabled")"
     fi
     print_info "Restarting PP for change cover download behavior..."
-    export SKIP_CHECK_UPDATES="1"
     /usr/bin/env bash -c "${pw_full_command_line[0]} --gui_userconf" &
     exit 0
 }
@@ -5651,7 +5631,6 @@ change_gui_start () {
         "$(gettext "Gui start changed to:")" "<b>NOTEBOOK</b>"
     fi
     print_info "Restarting PP for change gui start..."
-    export SKIP_CHECK_UPDATES="1"
     /usr/bin/env bash -c "${pw_full_command_line[0]} --gui_userconf" &
     exit 0
 }
@@ -5671,7 +5650,6 @@ gui_open_user_conf () {
     --button="$(gettext "SAVE")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":2 \
     --filename="${PORT_WINE_PATH}/data/user.conf" 2>/dev/null)"
     YAD_STATUS="$?"
-    export SKIP_CHECK_UPDATES="1"
 
     case "${YAD_STATUS}" in
         1|252)
@@ -5721,7 +5699,7 @@ gui_open_scripts_from_backup () {
     PW_SCRIPT_FROM_BACKUP=$("${pw_yad}" --file --width=650 --height=500 \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "SCRIPTS FROM BACKUP" --file-filter="backup_scripts|scripts_v*.tar.gz" 2>/dev/null )
     YAD_STATUS="$?"
-    export SKIP_CHECK_UPDATES="1"
+
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
