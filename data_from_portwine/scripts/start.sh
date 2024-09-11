@@ -601,7 +601,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             2>/dev/null &
 
             if [[ "${PW_YAD_FORM_TAB}" == "1" ]] \
-            && [[ ! -z "${TAB_START}" ]]
+            && [[ -n "${TAB_START}" ]]
             then
                 export TAB_START="2"
                 unset PW_YAD_FORM_TAB
@@ -655,7 +655,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             --button="$(gettext "LAUNCH")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Run file ...")":106 2>/dev/null
             PW_YAD_SET="$?"
         fi
-        [[ ! -z "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
+        [[ -n "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
             128)
                     if [[ "${PW_GUI_START}" == "NOTEBOOK" ]] ; then
                         unset PW_YAD_FORM_TAB
