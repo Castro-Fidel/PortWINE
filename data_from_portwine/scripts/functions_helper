@@ -5455,9 +5455,8 @@ pw_autoinstall_from_db () {
 }
 
 button_click () {
-    if [[ ! -z $(pidof -s yad) ]] || [[ ! -z $(pidof -s yad_gui_pp) ]] ; then
-        [[ ! -z "$2" ]] && echo "$2" > "${PW_TMPFS_PATH}/tmp_yad_form"
-        case "$1" in
+    if [[ -n $(pidof -s yad) ]] || [[ -n $(pidof -s yad_gui_pp) ]] ; then
+        [[ -n "$1" ]] && case "$1" in
             --normal)
                 kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \--notebook" | awk '{print $1}') > /dev/null 2>&1
                 ;;
@@ -5469,14 +5468,15 @@ button_click () {
                 kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_USERCONF_GUI}" | awk '{print $1}') > /dev/null 2>&1
                 ;;
         esac
+        [[ -n "$2" ]] && echo "$2" > "${PW_TMPFS_PATH}/tmp_yad_form"
     fi
 }
 export -f button_click
 
 run_desktop_b_click () {
-    [[ ! -z "$1" ]] && echo "$1" > "${PW_TMPFS_PATH}/tmp_yad_form"
+    [[ -n "$1" ]] && echo "$1" > "${PW_TMPFS_PATH}/tmp_yad_form"
 
-    if [[ ! -z $(pidof -s yad) ]] || [[ ! -z $(pidof -s yad_gui_pp) ]] ; then
+    if [[ -n $(pidof -s yad) ]] || [[ -n $(pidof -s yad_gui_pp) ]] ; then
         kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \--notebook" | awk '{print $1}') > /dev/null 2>&1
     fi
     if check_flatpak
