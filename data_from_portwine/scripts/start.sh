@@ -177,7 +177,7 @@ try_remove_file "${PW_TMPFS_PATH}/update_pfx_log"
 source "${USER_CONF}"
 
 # check PortProton theme
-if [[ ! -z "$GUI_THEME" ]] \
+if [[ -n "$GUI_THEME" ]] \
 && [[ -f "$PW_GUI_THEMES_PATH/$GUI_THEME.pptheme" ]]
 then
     # shellcheck source=/dev/null
@@ -247,7 +247,7 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
             export GAMESCOPE_INSTALLED="1"
         else
             print_error "gamescope - broken!"
-            if [[ -n $PW_DEBUG ]] ; then
+            if [[ -n "$PW_DEBUG" ]] ; then
                 debug_timer --start
                 timeout 5 gamescope --help
                 debug_timer --end "gamescope"
@@ -264,7 +264,7 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
             export VULKAN_DRIVER_NAME GET_GPU_NAMES
         else
             print_error "vulkaninfo - broken!"
-            if [[ -n $PW_DEBUG ]] ; then
+            if [[ -n "$PW_DEBUG" ]] ; then
                 debug_timer --start
                 timeout 5 vulkaninfo
                 debug_timer --end "vulkaninfo"
@@ -284,7 +284,7 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
             export LSPCI_VGA
         else
             print_error "lspci - broken!"
-            if [[ -n $PW_DEBUG ]] ; then
+            if [[ -n "$PW_DEBUG" ]] ; then
                 debug_timer --start
                 timeout 5 lspci -vv
                 debug_timer --end "lspci"
@@ -303,7 +303,7 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
             print_var PW_SCREEN_RESOLUTION PW_SCREEN_PRIMARY
         else
             print_error "xrandr - broken!"
-            if [[ -n $PW_DEBUG ]] ; then
+            if [[ -n "$PW_DEBUG" ]] ; then
                 debug_timer --start
                 timeout 5 xrandr --verbose
                 debug_timer --end "xrandr"
@@ -327,7 +327,7 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
             unset LOCALE_LIST
             for LOCALE in $GET_LOCALE_LIST ; do
                 if grep -e "$LOCALE" "${PW_TMPFS_PATH}/locale.tmp" &>/dev/null ; then
-                    if [[ ! -z "$LOCALE_LIST" ]]
+                    if [[ -n "$LOCALE_LIST" ]]
                     then LOCALE_LIST+="!$(grep -e "$LOCALE" "${PW_TMPFS_PATH}/locale.tmp")"
                     else LOCALE_LIST="$(grep -e "$LOCALE" "${PW_TMPFS_PATH}/locale.tmp")"
                     fi
@@ -336,7 +336,7 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
             export LOCALE_LIST
         else
             print_error "locale - broken!"
-            if [[ -n $PW_DEBUG ]] ; then
+            if [[ -n "$PW_DEBUG" ]] ; then
                 debug_timer --start
                 timeout 5 locale -a
                 debug_timer --end "locale"
@@ -407,7 +407,7 @@ export SKIP_CHECK_UPDATES="1"
 
 [[ "$MISSING_DESKTOP_FILE" == 1 ]] && portwine_missing_shortcut
 
-if [[ ! -z $(basename "${portwine_exe}" | grep .ppack) ]] ; then
+if [[ -n $(basename "${portwine_exe}" | grep .ppack) ]] ; then
     unset PW_SANDBOX_HOME_PATH
     pw_init_runtime
     if check_flatpak
@@ -540,8 +540,8 @@ case "${PW_VULKAN_USE}" in
     *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY!$SORT_G_ZINK!$SORT_G_NINE!$SORT_OPENGL!$SORT_VULKAN" ;;
 esac
 
-if [[ ! -z "${PW_COMMENT_DB}" ]] ; then :
-elif  [[ ! -z "${PORTPROTON_NAME}" ]] ; then
+if [[ -n "${PW_COMMENT_DB}" ]] ; then :
+elif  [[ -n "${PORTPROTON_NAME}" ]] ; then
     PW_COMMENT_DB="$(gettext "Launching") <b>${PORTPROTON_NAME}</b>"
 else
     PW_COMMENT_DB="$(gettext "Launching") <b>${PORTWINE_DB}</b>"
@@ -572,8 +572,7 @@ if [[ -f "${portwine_exe}" ]] ; then
     fi
     if [[ "${PW_GUI_DISABLED_CS}" != 1 ]] ; then
         pw_create_gui_png
-        grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop
-        if [[ "$?" != "0" ]] ; then
+        if ! grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop ; then
             PW_SHORTCUT="$(gettext "CREATE SHORTCUT")!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!$(gettext "Create shortcut for select file..."):100"
         else
             PW_SHORTCUT="$(gettext "DELETE SHORTCUT")!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!$(gettext "Delete shortcut for select file..."):98"
@@ -711,12 +710,12 @@ else
 
     IFS="%"
     "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[4]}" --form --columns="$MAIN_GUI_COLUMNS" --homogeneous-column \
-    --gui-type-layout=${MAIN_MENU_GUI_TYPE_LAYOUT} \
+    --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
     --align-buttons --scroll --separator=" " ${PW_GENERATE_BUTTONS} 2>/dev/null &
     IFS="$orig_IFS"
 
     "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[3]}" --form --columns=3 --align-buttons --separator=";" --homogeneous-column \
-    --gui-type-layout=${MAIN_MENU_GUI_TYPE_LAYOUT} \
+    --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
     --field="   $(gettext "Reinstall PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal gui_pw_reinstall_pp"' \
     --field="   $(gettext "Remove PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal gui_rm_portproton"' \
     --field="   $(gettext "Update PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal gui_pw_update"' \

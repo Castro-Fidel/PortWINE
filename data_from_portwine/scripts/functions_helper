@@ -197,34 +197,34 @@ try_copy_file_with_checksums () {
 export -f try_copy_file_with_checksums
 
 try_copy_dir () {
-    if [ ! -d "$1" ] ; then print_info "directory $1 not found for copy"
-    elif [ -z "$2" ] ; then print_error "no way to copy directory $1"
+    if [[ ! -d "$1" ]] ; then print_info "directory $1 not found for copy"
+    elif [[ -z "$2" ]] ; then print_error "no way to copy directory $1"
     else
         cp -fr "$1" "$2"
-        [ "$?" != 0 ] && print_error "failed to copy directory $1 to $2" || return 0
+        [[ "$?" != 0 ]] && print_error "failed to copy directory $1 to $2" || return 0
     fi
     return 1
 }
 export -f try_copy_dir
 
 try_remove_file () {
-    if [ -f "$1" ] || [ ! -e "$1" ] ; then
+    if [[ -f "$1" ]] || [[ ! -e "$1" ]] ; then
         rm -f "$1"
-        [ "$?" == 0 ] && return 0 || return 1
+        [[ "$?" == 0 ]] && return 0 || return 1
     fi
 }
 export -f try_remove_file
 
 try_remove_dir () {
-    if [ -d "$1" ] ; then
+    if [[ -d "$1" ]] ; then
         rm -fr "$1"
-        [ "$?" == 0 ] && return 0 || return 1
+        [[ "$?" == 0 ]] && return 0 || return 1
     fi
 }
 export -f try_remove_dir
 
 create_new_dir () {
-    if [ ! -d "$1" ] ; then
+    if [[ ! -d "$1" ]] ; then
         mkdir -p "$1"
     fi
     return 0
@@ -249,9 +249,9 @@ export -f try_force_link_file
 
 check_symlink () {
     CHK_SYMLINK_FILE="$(file "$1")"
-    if [[ ! -z "$(echo "$CHK_SYMLINK_FILE" | grep -v "broken" | grep "symbolic link to" | awk '{print $1}')" ]] ; then
+    if [[ -n "$(echo "$CHK_SYMLINK_FILE" | grep -v "broken" | grep "symbolic link to" | awk '{print $1}')" ]] ; then
         return 0
-    elif [[ ! -z "$(echo "$CHK_SYMLINK_FILE" | grep "broken symbolic link to" | awk '{print $1}')" ]] ; then
+    elif [[ -n "$(echo "$CHK_SYMLINK_FILE" | grep "broken symbolic link to" | awk '{print $1}')" ]] ; then
         print_error "remove broken symlink: $CHK_SYMLINK_FILE"
         rm -fr "$CHK_SYMLINK_FILE"
         return 1
@@ -262,18 +262,18 @@ check_symlink () {
 export -f check_symlink
 
 try_force_link_dir () {
-    if [ ! -d "$1" ] ; then print_info "directory $1 not found for link"
-    elif [ -z "$2" ] ; then print_error "no way to link directory $1"
+    if [[ ! -d "$1" ]] ; then print_info "directory $1 not found for link"
+    elif [[ -z "$2" ]] ; then print_error "no way to link directory $1"
     else
         ln -s -f -r "$1" "$2"
-        [ "$?" != 0 ] && print_error "failed to link directory $1 to $2" || return 0
+        [[ "$?" != 0 ]] && print_error "failed to link directory $1 to $2" || return 0
     fi
     return 1
 }
 export -f try_force_link_dir
 
 check_process () {
-    [ ! -n "$(ps cax | grep "$1" | awk '{print $1}')" ] && return 0 || return 1
+    [[ -z "$(ps cax | grep "$1" | awk '{print $1}')" ]] && return 0 || return 1
 }
 export -f check_process
 
@@ -330,7 +330,7 @@ try_download () {
     if check_gamescope_session ; then
         $PW_TERM curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
         -H 'Pragma: no-cache' -L ${FIRST_URL[@]} -o "$dest"
-        [ "$?" != 0 ] && return 1 || return 0
+        [[ "$?" != 0 ]] && return 1 || return 0
     fi
 
     # Normal download
@@ -487,7 +487,7 @@ check_start_from_steam () {
 }
 
 check_gamescope_session () {
-    if [[ ! -z "$GAMESCOPE_IN_USE" ]]
+    if [[ -n "$GAMESCOPE_IN_USE" ]]
     then [[ "$GAMESCOPE_IN_USE" == 1 ]] && return 0 || return 1
     fi
     if echo "${DESKTOP_SESSION}" | grep -i "gamescope" &>/dev/null ; then
@@ -500,7 +500,7 @@ check_gamescope_session () {
 }
 
 check_wayland_session () {
-    if [[ ! -z "$WAYLAND_IN_USE" ]]
+    if [[ -n "$WAYLAND_IN_USE" ]]
     then [[ "$WAYLAND_IN_USE" == 1 ]] && return 0 || return 1
     fi
     if echo "${XDG_SESSION_TYPE}" | grep -i "wayland" &>/dev/null ; then
@@ -514,7 +514,7 @@ check_wayland_session () {
 export -f check_wayland_session
 
 check_flatpak () {
-    if [[ ! -z "$FLATPAK_IN_USE" ]]
+    if [[ -n "$FLATPAK_IN_USE" ]]
     then [[ "$FLATPAK_IN_USE" == 1 ]] && return 0 || return 1
     fi
     if grep -i "flatpak" /etc/os-release &>/dev/null ; then
@@ -547,7 +547,7 @@ unpack () {
         pw_start_progress_bar_cover_block "${COVERS_PATH}/unpacking_${LANGUAGE_GIF}.gif"
         $command "$1" -C "$2" 2>/dev/null
         pw_stop_progress_bar_cover_block
-        [ "${PIPESTATUS[0]}" != 0 ] && print_error "File $1 unpacking error." && return 1 || return 0
+        [[ "${PIPESTATUS[0]}" != 0 ]] && print_error "File $1 unpacking error." && return 1 || return 0
     else
         $command "$1" -C "$2" && return 0 || return 1
     fi
@@ -701,7 +701,7 @@ init_wine_ver () {
     then export PW_WINE_USE="USE_SYSTEM_WINE"
     elif [[ "${PW_WINE_VER}" == "GET-OTHER-WINE" ]]
     then gui_proton_downloader
-    elif [[ ! -z "${PW_WINE_VER}" ]]
+    elif [[ -n "${PW_WINE_VER}" ]]
     then export PW_WINE_USE="$PW_WINE_VER"
     fi
     unset PW_WINE_VER
@@ -753,7 +753,7 @@ init_wine_ver () {
             done
             mv -f "${WINEDIR}/dist"/* "${WINEDIR}/"
             rm -fr "${WINEDIR}/dist"
-        elif [ -f "${WINEDIR}/proton_dist.tar" ] ; then
+        elif [[ -f "${WINEDIR}/proton_dist.tar" ]] ; then
             unpack "${WINEDIR}/proton_dist.tar" "${WINEDIR}/"
             for clear_dist_files in $(ls "${WINEDIR}" | sed -e "s/^bin$//g" | sed -e "s/^lib$//g" | sed -e "s/^lib64$//g" | sed -e "s/^share$//g" | sed -e "s/^version$//g") ; do
                 rm -fr "${WINEDIR}/$clear_dist_files"
@@ -849,12 +849,12 @@ ${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:\
 /overrides/lib/x86_64-linux-gnu:\
 /overrides/lib/i386-linux-gnu"
 
-    if [ ! -z "${PATH}" ]
+    if [[ -n "${PATH}" ]]
     then export PW_PATH="${PATH}:${PW_PLUGINS_PATH}/portable/bin"
     else export PW_PATH="${PW_PLUGINS_PATH}/portable/bin"
     fi
 
-    if [[ ! -z "${PW_SANDBOX_HOME_PATH}" && -d "${PW_SANDBOX_HOME_PATH}" ]] ; then
+    if [[ -n "${PW_SANDBOX_HOME_PATH}" && -d "${PW_SANDBOX_HOME_PATH}" ]] ; then
         export pw_runtime="${PW_WINELIB}/pressure-vessel/bin/pressure-vessel-unruntime \
         --unshare-home \
         --home=${PW_SANDBOX_HOME_PATH} \
@@ -892,13 +892,13 @@ ${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:\
 
     unset PRESSURE_VESSEL_FILESYSTEMS_RO PRESSURE_VESSEL_FILESYSTEMS_RW
     for PWRTMRO in ${PW_RT_MOUNT_RO[*]} ; do
-        if [ ! -z "${PRESSURE_VESSEL_FILESYSTEMS_RO}" ]
+        if [[ -n "${PRESSURE_VESSEL_FILESYSTEMS_RO}" ]]
         then export PRESSURE_VESSEL_FILESYSTEMS_RO="${PRESSURE_VESSEL_FILESYSTEMS_RO}:${PWRTMRO}"
         else export PRESSURE_VESSEL_FILESYSTEMS_RO="${PWRTMRO}"
         fi
     done
     for PWRTMRW in ${PW_RT_MOUNT_RW[*]} ; do
-        if [ ! -z "${PRESSURE_VESSEL_FILESYSTEMS_RW}" ]
+        if [[ -n "${PRESSURE_VESSEL_FILESYSTEMS_RW}" ]]
         then export PRESSURE_VESSEL_FILESYSTEMS_RW="${PRESSURE_VESSEL_FILESYSTEMS_RW}:${PWRTMRW}"
         else export PRESSURE_VESSEL_FILESYSTEMS_RW="${PWRTMRW}"
         fi
@@ -925,7 +925,7 @@ pw_mangohud_check () {
         if [[ "${PW_VULKAN_USE}" = "0" ]] ; then
             MANGOHUD_LIB_NAME="libMangoHud_dlsym.so:libMangoHud_opengl.so:${MANGOHUD_LIB_NAME}"
         fi
-        if [[ ! -z "${PW_LD_PRELOAD}" ]]
+        if [[ -n "${PW_LD_PRELOAD}" ]]
         then export PW_LD_PRELOAD="${PW_LD_PRELOAD}:${MANGOHUD_LIB_NAME}"
         else export PW_LD_PRELOAD="${MANGOHUD_LIB_NAME}"
         fi
@@ -950,7 +950,7 @@ pw_vkbasalt_check () {
         if ! grep "${PW_PLUGINS_PATH}/reshade" "${VKBASALT_CONFIG_FILE}" &>/dev/null
         then sed -ri "s|= .*/reshade|= \"${PW_PLUGINS_PATH}\"/reshade|g" "${VKBASALT_CONFIG_FILE}"
         fi
-        if [[ ! -z "${PW_VKBASALT_EFFECTS}" ]] && [[ ! -z "${PW_VKBASALT_FFX_CAS}" ]] ; then
+        if [[ -n "${PW_VKBASALT_EFFECTS}" ]] && [[ -n "${PW_VKBASALT_FFX_CAS}" ]] ; then
             sed -ri "s/effects = .*/effects = ${PW_VKBASALT_EFFECTS}/g" "${VKBASALT_CONFIG_FILE}"
             sed -ri "s/casSharpness .*/casSharpness = ${PW_VKBASALT_FFX_CAS}/g" "${VKBASALT_CONFIG_FILE}"
         fi
@@ -1026,7 +1026,7 @@ pw_kill_autostart () {
     sleep 5
     while true ; do
         if  [[ -z "$(ps aux | grep -m 1 -i "$1" | grep -v grep | awk '{print $2}')" ]] \
-        && [[ ! -z "$(ps aux | grep wrap | grep -v grep | grep -i "PortProton" | head -n 1)" ]]
+        && [[ -n "$(ps aux | grep wrap | grep -v grep | grep -i "PortProton" | head -n 1)" ]]
         then
             echo -e "PID $1 not found"
             sleep "${SWAIT}"
@@ -1040,7 +1040,7 @@ pw_kill_autostart () {
         fi
     done
 
-    if [[ ! -z "$(ls "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/ | grep -m 1 ".tmp")" ]] ; then
+    if [[ -n "$(ls "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/ | grep -m 1 ".tmp")" ]] ; then
         rm -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/*.tmp
     fi
 
@@ -1087,15 +1087,15 @@ stop_portwine () {
     try_remove_dir "${PW_WINELIB}/var"
     find "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/" -maxdepth 1 -type f -name "*.tmp" -delete
     if [[ "$XDG_SESSION_TYPE" == "tty" ]] ; then
-        if [ ! -z "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')" ] ; then
+        if [[ -n "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')" ]] ; then
             kill -s SIGUSR1 "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')"
         fi
     else
-        if [[ ! -z "$(pgrep -a tray_gui_pp)" ]] ; then
+        if [[ -n "$(pgrep -a tray_gui_pp)" ]] ; then
             kill -s SIGUSR1 $(pgrep -a tray_gui_pp) 2>/dev/null
         fi
     fi
-    if [[ ! -z "$(pgrep -a yad_gui_pp)" ]] ; then
+    if [[ -n "$(pgrep -a yad_gui_pp)" ]] ; then
         kill -s SIGUSR1 $(pgrep -a yad_gui_pp) 2>/dev/null
     fi
     pw_auto_create_shortcut
@@ -1151,7 +1151,7 @@ pw_check_and_download_wine () {
     elif [[ "$PW_WINE_USE" == WINE_*_LG ]] || [[ "$PW_WINE_USE" == WINE_LG ]]
     then export PW_WINE_USE="${PW_WINE_LG_VER}"
     fi
-    if [ ! -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ] ; then
+    if [[ ! -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ]] ; then
         print_info "Download and install ${PW_WINE_USE}..."
         if try_download "github.com/Castro-Fidel/wine_builds/releases/download/${PW_WINE_USE}/${PW_WINE_USE}.tar.xz" \
                         "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" ; then
@@ -1176,7 +1176,7 @@ pw_check_and_download_wine () {
 pw_check_and_download_dxvk_and_vkd3d () {
     # Download stable and git version DXVK
     for DXVK_VAR_VER in "${DXVK_STABLE_VER}" "${DXVK_GIT_VER}" "${DXVK_LEGACY_VER}" ; do
-        if [ ! -d "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}" ] ; then
+        if [[ ! -d "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}" ]] ; then
             print_info "Download and install DXVK v.${DXVK_VAR_VER}"
             if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/dxvk-${DXVK_VAR_VER}/dxvk-${DXVK_VAR_VER}.tar.xz" \
                                       "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}.tar.xz" ; then
@@ -1206,7 +1206,7 @@ pw_check_and_download_dxvk_and_vkd3d () {
 
     # Download stable and git version VKD3D
     for VKD3D_VAR_VER in "${VKD3D_STABLE_VER}" "${VKD3D_GIT_VER}" ; do
-        if [ ! -d "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}" ] ; then
+        if [[ ! -d "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}" ]] ; then
             print_info "Download and install VKD3D-PROTON v.${VKD3D_VAR_VER}"
             if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/vkd3d-proton-${VKD3D_VAR_VER}/vkd3d-proton-${VKD3D_VAR_VER}.tar.xz" \
                                       "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}.tar.xz" ; then
@@ -1235,7 +1235,7 @@ pw_check_and_download_dxvk_and_vkd3d () {
     done
 
     # Download DGVOODOO2
-    if [ ! -f "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}/dgVoodoo.conf" ] ; then
+    if [[ ! -f "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}/dgVoodoo.conf" ]] ; then
         print_info "Download and install DGVOODOO2 v.${DGV2_VER}"
         if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/dgvoodoo2-${DGV2_VER}/dgvoodoo2-${DGV2_VER}.tar.xz" \
         "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz"
@@ -1326,12 +1326,12 @@ check_dirs_and_files_in_pfx () {
         create_new_dir "${WINEPREFIX}/drive_c/tmp/.private/$USER/"
         create_new_dir "${WINEPREFIX}/drive_c/tmp/.private/steamuser/"
 
-        [ ! -d "${WINEPREFIX}/dosdevices/c:" ] && try_force_link_dir "${WINEPREFIX}/drive_c/" "${WINEPREFIX}/dosdevices/c:"
-        [ ! -d "${WINEPREFIX}/dosdevices/z:" ] && try_force_link_dir "/" "${WINEPREFIX}/dosdevices/z:"
-        [ ! -d "${WINEPREFIX}/dosdevices/h:" ] && try_force_link_dir "$HOME" "${WINEPREFIX}/dosdevices/h:"
+        [[ ! -d "${WINEPREFIX}/dosdevices/c:" ]] && try_force_link_dir "${WINEPREFIX}/drive_c/" "${WINEPREFIX}/dosdevices/c:"
+        [[ ! -d "${WINEPREFIX}/dosdevices/z:" ]] && try_force_link_dir "/" "${WINEPREFIX}/dosdevices/z:"
+        [[ ! -d "${WINEPREFIX}/dosdevices/h:" ]] && try_force_link_dir "$HOME" "${WINEPREFIX}/dosdevices/h:"
 
-        if [ ! -d "${WINEPREFIX}/dosdevices/s:" ] \
-        && [ -d "$HOME/.local/share/Steam/steamapps/common/" ]
+        if [[ ! -d "${WINEPREFIX}/dosdevices/s:" ]] \
+        && [[ -d "$HOME/.local/share/Steam/steamapps/common/" ]]
         then
             try_force_link_dir "$HOME/.local/share/Steam/steamapps/common/" "${WINEPREFIX}/dosdevices/s:"
         fi
@@ -1402,7 +1402,7 @@ check_dirs_and_files_in_pfx () {
     }
 
 check_nvidia_rtx () {
-    if [[ ! -z $(echo "$LSPCI_VGA" | grep -i "nvidia") ]]; then
+    if [[ -n $(echo "$LSPCI_VGA" | grep -i "nvidia") ]] ; then
         # Turing (without nvidia 16XX)
         [[ "$LSPCI_VGA" == *TU[0-9]* ]] && [[ "$LSPCI_VGA" != *TU11[6-7]* ]] && return 0
         # Ampere
@@ -1484,7 +1484,7 @@ pw_init_db () {
             print_info "Use $PORTWINE_DB_FILE db file."
         else
             if [[ "${PW_DISABLED_CREATE_DB}" != 1 ]] ; then
-                if [[ ! -z "${PORTWINE_DB}" ]] ; then
+                if [[ -n "${PORTWINE_DB}" ]] ; then
                     export PORTWINE_DB_FILE=$(grep -il "#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/*)
                     if [[ -z "${PORTWINE_DB_FILE}" ]] ; then
                         {
@@ -1495,7 +1495,7 @@ pw_init_db () {
                         } > "${portwine_exe}".ppdb
                         export PORTWINE_DB_FILE="${portwine_exe}".ppdb
                     fi
-                    if [[ ! -z $(echo "${portwine_exe}" | grep "/data/prefixes/") ]] && \
+                    if [[ -n $(echo "${portwine_exe}" | grep "/data/prefixes/") ]] && \
                         [[ -z $(echo "${portwine_exe}" | grep "/data/prefixes/DEFAULT/") ]]
                     then
                         PW_PREFIX_NAME=$(echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
@@ -1507,12 +1507,12 @@ pw_init_db () {
             fi
         fi
 
-        if [[ -z "${PATH_TO_GAME}" ]] || [[ ! -d "${PATH_TO_GAME}" ]]; then
+        if [[ -z "${PATH_TO_GAME}" ]] || [[ ! -d "${PATH_TO_GAME}" ]] ; then
             PATH_TO_GAME="$( cd "$( dirname "${portwine_exe}" )" >/dev/null 2>&1 && pwd )"
             export PATH_TO_GAME
         fi
 
-        if [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] && [[ ! -z "${WINE_CPU_TOPOLOGY}" ]] ; then
+        if [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] && [[ -n "${WINE_CPU_TOPOLOGY}" ]] ; then
             export PW_WINE_CPU_TOPOLOGY="${WINE_CPU_TOPOLOGY}"
         fi
         if ls "${PATH_TO_GAME}"/*_Data/Resources/ 2>/dev/null | grep "unity" &>/dev/null \
@@ -1549,7 +1549,7 @@ pw_port_update () {
             ;;
     esac
 
-    if [ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ] ; then
+    if [[ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ]] ; then
         echo "2024" > "${PORT_WINE_TMP_PATH}/scripts_ver"
     fi
     scripts_install_ver=$(head -n 1 "${PORT_WINE_TMP_PATH}/scripts_ver")
@@ -1575,7 +1575,7 @@ pw_port_update () {
         scripts_current_ver=$(grep "$BRANCH_VERSION_UPDATE" "${PORT_WINE_TMP_PATH}/curent_var_ver" | awk -F "=" '{print $2}')
         print_info "Scripts version in git = ${scripts_current_ver}"
         print_info "Scripts version local = ${scripts_install_ver}"
-        if [[ ! -z "${scripts_current_ver}" ]] &&  [[ "${scripts_current_ver}" -gt "${scripts_install_ver}" ]] ; then
+        if [[ -n "${scripts_current_ver}" ]] &&  [[ "${scripts_current_ver}" -gt "${scripts_install_ver}" ]] ; then
             if [[ -f "${PW_GUI_THEMES_PATH}/gui/yad_gui_pp" ]]
             then export pw_yad="${PW_GUI_THEMES_PATH}/gui/yad_gui_pp"
             elif command -v yad &>/dev/null
@@ -1649,8 +1649,8 @@ update_winetricks () {
     print_info "Version winetricks on server: ${W_TRX_EXT_VER}"
     W_TRX_INT_VER="$(grep -i 'WINETRICKS_VERSION=' "${PORT_WINE_TMP_PATH}/winetricks" | sed 's/WINETRICKS_VERSION=//')"
     print_info "Version winetricks in port: ${W_TRX_INT_VER}"
-    if [[ ! -f "${PORT_WINE_TMP_PATH}/winetricks" && ! -z "$W_TRX_EXT_VER" ]] \
-    || [[ "$W_TRX_INT_VER" != "$W_TRX_EXT_VER" && ! -z "$W_TRX_EXT_VER" ]]
+    if [[ ! -f "${PORT_WINE_TMP_PATH}/winetricks" && -n "$W_TRX_EXT_VER" ]] \
+    || [[ "$W_TRX_INT_VER" != "$W_TRX_EXT_VER" && -n "$W_TRX_EXT_VER" ]]
     then
         try_remove_file "${PORT_WINE_TMP_PATH}/winetricks"
         if try_download "${W_TRX_URL}" "${PORT_WINE_TMP_PATH}/winetricks" no_mirror ; then
@@ -1659,7 +1659,7 @@ update_winetricks () {
             chmod u+x "${PORT_WINE_TMP_PATH}/winetricks"
         fi
     fi
-    if  [ -f "${PORT_WINE_TMP_PATH}/winetricks" ] ; then
+    if  [[ -f "${PORT_WINE_TMP_PATH}/winetricks" ]] ; then
         sed -i 's/w_metadata vcrun2015 dlls \\/w_metadata !dont_use_2015! dlls \\/' "${PORT_WINE_TMP_PATH}/winetricks"
         sed -i 's/w_metadata vcrun2017 dlls \\/w_metadata !dont_use_2017! dlls \\/' "${PORT_WINE_TMP_PATH}/winetricks"
         sed -i 's/w_metadata vcrun2019 dlls \\/w_metadata !dont_use_2019! dlls \\/' "${PORT_WINE_TMP_PATH}/winetricks"
@@ -1674,7 +1674,7 @@ edit_db_from_gui () {
         return 0
     fi
     print_info "edit_db_from_gui PORTWINE_DB_FILE=$PORTWINE_DB_FILE"
-    if [[ ! -z "$PORTWINE_DB_FILE" ]] \
+    if [[ -n "$PORTWINE_DB_FILE" ]] \
     && [[ -f "$PORTWINE_DB_FILE" ]]
     then
         for mod_db in $@ ; do
@@ -1728,13 +1728,13 @@ pw_create_gui_png () {
     if [[ -z "$PORTPROTON_NAME" ]] \
     || [[ "$PW_NO_RESTART_PPDB" == "1" ]]
     then
-        if [[ ! -z "${PORTWINE_CREATE_SHORTCUT_NAME}" ]] ; then
+        if [[ -n "${PORTWINE_CREATE_SHORTCUT_NAME}" ]] ; then
             PORTPROTON_NAME="${PORTWINE_CREATE_SHORTCUT_NAME}"
         else
             if command -v exiftool &>/dev/null ; then
                 if ! PW_PRODUCTNAME=$(timeout 3 exiftool -ProductName "${portwine_exe}" 2>/dev/null | sed -n 's/^Product Name\s*:\s*//p') ; then
                     print_error "exiftool - broken!"
-                    if [[ ! -z $PW_DEBUG ]] ; then
+                    if [[ -n "$PW_DEBUG" ]] ; then
                         debug_timer --start
                         timeout 5 exiftool -ProductName "${portwine_exe}"
                         debug_timer --end "exiftool"
@@ -1751,7 +1751,7 @@ pw_create_gui_png () {
                 PW_PRODUCTNAME="$(echo "$PW_PRODUCTNAME" | sed 's/Launcher\|RU//g')"
             fi
 
-            if [[ ! -z "$PW_PRODUCTNAME" ]] \
+            if [[ -n "$PW_PRODUCTNAME" ]] \
             && [[ "$PW_PRODUCTNAME" != Bootstrap* ]]
             then
                 PORTPROTON_NAME="$PW_PRODUCTNAME"
@@ -1769,7 +1769,7 @@ pw_create_gui_png () {
 
     PORTPROTON_NAME_PNG="${PORTPROTON_NAME// /_}"
     if [[ -z "${PW_ICON_FOR_YAD}" ]] ; then
-        if [[ ! -z "$(file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME_PNG}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}")" ]] ; then
+        if [[ -n "$(file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME_PNG}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}")" ]] ; then
             export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME_PNG}.png"
         else
             export PW_ICON_FOR_YAD="${PW_GUI_ICON_PATH}/port_proton.png"
@@ -1813,7 +1813,7 @@ pw_find_exe () {
     fi
     IFS="$orig_IFS"
 
-    if [[ ! -z "${PW_SET_FIND_EXE}" ]] ; then
+    if [[ -n "${PW_SET_FIND_EXE}" ]] ; then
         portwine_exe="${PW_PATH_FOR_FIND}$(echo "${PW_SET_FIND_EXE}" | awk -F'|' '{print $1}')"
         portwine_create_shortcut silent
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
@@ -1826,11 +1826,11 @@ pw_create_unique_exe () {
     if [[ -d "$BASEDIR_GAME" ]] ; then
         pushd "$BASEDIR_GAME" || fatal
         BASENAME_GAME_EXE="$(basename "$portwine_exe")"
-        if [[ ! -z "$1" ]] ; then
+        if [[ -n "$1" ]] ; then
             BASENAME_GAME="$(basename "$1" .exe).exe"
             ln -sf "$BASENAME_GAME_EXE" "$BASENAME_GAME"
             export portwine_exe="$BASEDIR_GAME/$BASENAME_GAME"
-        elif [[ ! -z "$PORTWINE_CREATE_SHORTCUT_NAME" ]] ; then
+        elif [[ -n "$PORTWINE_CREATE_SHORTCUT_NAME" ]] ; then
             ln -sf "$BASENAME_GAME_EXE" "$PORTWINE_CREATE_SHORTCUT_NAME.exe"
             export portwine_exe="$BASEDIR_GAME/$PORTWINE_CREATE_SHORTCUT_NAME.exe"
         else
@@ -1841,7 +1841,7 @@ pw_create_unique_exe () {
 }
 
 start_portwine () {
-    if [[ "${PW_LOCALE_SELECT}" != "disabled" ]] && [[ ! -z "${PW_LOCALE_SELECT}" ]] ; then
+    if [[ "${PW_LOCALE_SELECT}" != "disabled" ]] && [[ -n "${PW_LOCALE_SELECT}" ]] ; then
         export LC_ALL="${PW_LOCALE_SELECT}"
         if [[ "${PW_USE_RUNTIME}" == "1" ]] && [[ "${HOST_LC_ALL}" != "${LC_ALL}" ]] ; then
             export HOST_LC_ALL="${LC_ALL}"
@@ -1933,7 +1933,7 @@ start_portwine () {
     check_variables VKBASALT_LOG_LEVEL none
     check_variables DXVK_NVAPI_LOG_LEVEL none
     if [[ "${PW_LOG}" == 1 ]] \
-    || [[ ! -z "$$PW_DEBUG" ]]
+    || [[ -n "$PW_DEBUG" ]]
     then
         export WINEDEBUG="fixme-all,err+loaddll,err+dll,err+file,err+reg"
         export WINE_MONO_TRACE="E:System.NotImplementedException"
@@ -2107,7 +2107,7 @@ start_portwine () {
         DXVK_ENABLE_NVAPI="1"
         try_remove_file "${WINEPREFIX}/drive_c/windows/system32/nvngx.ini"
         FIND_NVNGX="$(dirname $(find /usr/* -type f -name "nvngx.dll" 2>/dev/null | head -n 1 | awk '{print $1}'))"
-        if [[ ! -z "$FIND_NVNGX" ]] ; then
+        if [[ -n "$FIND_NVNGX" ]] ; then
             try_copy_file_with_checksums "${FIND_NVNGX}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
             try_copy_file_with_checksums "${FIND_NVNGX}/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll"
         else
@@ -2184,7 +2184,7 @@ start_portwine () {
     if check_gamescope_session ; then
         export PW_GAMEMODERUN_SLR=""
     elif [[ "$PW_USE_GAMEMODE" = "1" ]] \
-    && [[ ! -z "$DBUS_SESSION_BUS_ADDRESS"  ]]
+    && [[ -n "$DBUS_SESSION_BUS_ADDRESS"  ]]
     then
         if command -v gamemoded &>/dev/null ; then
             export GAMEMODERUN=1
@@ -2199,7 +2199,7 @@ start_portwine () {
             export GAMEMODERUN=1
             if ! pidof gamemoded &>/dev/null ; then
                 GAMEMODEAUTO_NAME="libgamemodeauto.so.0"
-                if [[ ! -z "${PW_LD_PRELOAD}" ]]
+                if [[ -n "${PW_LD_PRELOAD}" ]]
                 then export PW_LD_PRELOAD="${PW_LD_PRELOAD}:${GAMEMODEAUTO_NAME}"
                 else export PW_LD_PRELOAD="${GAMEMODEAUTO_NAME}"
                 fi
@@ -2531,8 +2531,8 @@ start_portwine () {
         fi
 
         [[ "${PW_DGV2_FPS_LIMIT}" != "disabled" ]] && sed -i "s/FPSLimit = 0/FPSLimit = ${PW_DGV2_FPS_LIMIT}/" "$DGV2CONF"
-        [[ "${PW_DGV2_BIT_DEPTH}" != "disabled" ]]  && sed -i "s/DesktopBitDepth =/DesktopBitDepth = ${PW_DGV2_BIT_DEPTH}/" "$DGV2CONF"
-        [[ "${PW_DGV2_CURSOR_SCALE}" != "0" ]]  && sed -i "s/CursorScaleFactor = 0/CursorScaleFactor = ${PW_DGV2_CURSOR_SCALE}/" "$DGV2CONF"
+        [[ "${PW_DGV2_BIT_DEPTH}" != "disabled" ]] && sed -i "s/DesktopBitDepth =/DesktopBitDepth = ${PW_DGV2_BIT_DEPTH}/" "$DGV2CONF"
+        [[ "${PW_DGV2_CURSOR_SCALE}" != "0" ]] && sed -i "s/CursorScaleFactor = 0/CursorScaleFactor = ${PW_DGV2_CURSOR_SCALE}/" "$DGV2CONF"
 
         if [[ "${PW_DGV2_RESAMPLING}" != "disabled" ]] ; then
             [[ "${PW_DGV2_RESAMPLING}" == "Point sampled" ]] && sed -i "s/Resampling = bilinear/Resampling = pointsampled/" "$DGV2CONF"
@@ -2602,7 +2602,7 @@ start_portwine () {
         try_force_link_file "${WINEDIR}/lib/wine/i386-windows/${copy_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${copy_wine_dll}.dll"
     done
 
-    if [[ ! -z "$CP_DXVK_FILES" ]] ; then
+    if [[ -n "$CP_DXVK_FILES" ]] ; then
         print_info "Try create symlink DXVK files..."
         for wine_dxvk_dll in $CP_DXVK_FILES ; do
             if [[ -f "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll"  ]] ; then
@@ -2622,7 +2622,7 @@ start_portwine () {
         try_force_link_file "${PATH_TO_DXVK_FILES}/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvapi64.dll"
     fi
 
-    if [[ ! -z "$CP_VKD3D_FILES" ]] ; then
+    if [[ -n "$CP_VKD3D_FILES" ]] ; then
         print_info "Try create symlink VKD3D files..."
         for wine_vkd3d_dll in $CP_VKD3D_FILES ; do
             if [[ -f "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" ]] ; then
@@ -2643,10 +2643,10 @@ start_portwine () {
         unset FIND_D3D_MODULE D3D_MODULE_PATH
         if ! check_flatpak ; then
             FIND_D3D_MODULE=$(dirname $(find /usr/ -maxdepth 4 -type f -name "d3dadapter9.so.*") 2>/dev/null)
-            if [[ ! -z "$FIND_D3D_MODULE" ]] ; then
+            if [[ -n "$FIND_D3D_MODULE" ]] ; then
                 IFS=$'\n'
                 for D3D_MP in $FIND_D3D_MODULE ; do
-                    if [[ ! -z "$D3D_MODULE_PATH" ]]
+                    if [[ -n "$D3D_MODULE_PATH" ]]
                     then export D3D_MODULE_PATH="$D3D_MODULE_PATH:/run/host${D3D_MP}"
                     else export D3D_MODULE_PATH="/run/host${D3D_MP}"
                     fi
@@ -2707,14 +2707,14 @@ start_portwine () {
     fi
 
     #run_winetricks_from_db
-    if [[ ! -z "${PW_MUST_HAVE_DLL}" ]]
+    if [[ -n "${PW_MUST_HAVE_DLL}" ]]
     then export PW_DLL_INSTALL="$(echo "${PW_MUST_HAVE_DLL} ${PW_DLL_INSTALL}" | awk '{ for(i=1;i<=NF;i++){a[$i]++} }END{ for(i in a){printf("%s ",i)} }' )"
     fi
 
-    if [[ ! -z "${PW_DLL_INSTALL}" ]] ; then
+    if [[ -n "${PW_DLL_INSTALL}" ]] ; then
         export PW_DLL_NEED_INSTALL=""
         export USE_WT_FROM_DB=0
-        if [ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ] ; then
+        if [[ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ]] ; then
             touch "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
         fi
         for need_install_dll_to_pfx in ${PW_DLL_INSTALL} ; do
@@ -2750,7 +2750,7 @@ start_portwine () {
     if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" ]] \
     && [[ -z $(grep "Windows $PW_WINDOWS_VER" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg") ]]
     then
-        if [[ ! -z "${PW_WINDOWS_VER}" ]] \
+        if [[ -n "${PW_WINDOWS_VER}" ]] \
         && [[ $(echo "$PW_WINDOWS_VER" | sed 's/.*/\L&/') == "xp" ]]
         then
             export PW_WINDOWS_VER="xp64"
@@ -2896,7 +2896,7 @@ start_portwine () {
                 grep -e '--backend' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null && PW_GS_BACKEND_SDL="1"
             fi
         fi
-        if [[ -d /sys/bus/pci/drivers/i915 ]]  ; then
+        if [[ -d /sys/bus/pci/drivers/i915 ]] ; then
             export INTEL_DEBUG="norbc"
         fi
     fi
@@ -2998,7 +2998,7 @@ start_portwine () {
 
 pw_run () {
     unset GDK_BACKEND
-    if [[ ! -z "${PATH_TO_GAME}" ]] \
+    if [[ -n "${PATH_TO_GAME}" ]] \
     && [[ -d "${PATH_TO_GAME}" ]]
     then
         cd "${PATH_TO_GAME}" || fatal
@@ -3105,7 +3105,7 @@ pw_run () {
 export -f pw_run
 
 pw_yad_set_form () {
-    if [[ $(<"${PW_TMPFS_PATH}/tmp_yad_form") != "" ]]; then
+    if [[ $(<"${PW_TMPFS_PATH}/tmp_yad_form") != "" ]] ; then
         PW_YAD_SET=$(head -n 1 "${PW_TMPFS_PATH}/tmp_yad_form" | awk '{print $1}')
         export PW_YAD_SET
     fi
@@ -3113,7 +3113,7 @@ pw_yad_set_form () {
 
 pw_yad_form_vulkan () {
     if [[ "$(<"${PW_TMPFS_PATH}/tmp_yad_form_vulkan")" != "" ]] ; then
-        if [[ ! -z "${KEY_START}" ]] ; then
+        if [[ -n "${KEY_START}" ]] ; then
             YAD_FORM_VULKAN=$(sed 's/$/\;/' "${PW_TMPFS_PATH}/tmp_yad_form_vulkan")
             VULKAN_MOD=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $1}')
             PW_WINE_VER=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $2}')
@@ -3125,7 +3125,7 @@ pw_yad_form_vulkan () {
             PW_WINE_VER=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $3}')
         fi
         if [[ -z "${PW_PREFIX_NAME}" ]] \
-        || [[ ! -z "$(echo "${PW_PREFIX_NAME}" | grep -E '^_.*' )" ]]
+        || [[ -n "$(echo "${PW_PREFIX_NAME}" | grep -E '^_.*' )" ]]
         then
             PW_PREFIX_NAME="DEFAULT"
         else
@@ -3307,9 +3307,9 @@ pw_update_pfx_cover_gui () {
         PW_GIF_SIZE_Y=$(file "${PW_GIF_FILE}" | awk '{print $9 + 65}')
         echo "UPDATE PREFIX..." > "${PW_TMPFS_PATH}/update_pfx_log"
         export PW_TIMER=0
-        while read -r line || [[ ! -z $(pgrep -a yad | grep "yad_gui_pp --notebook --key=$PW_KEY_PROGRESS_BAR_UP" | awk '{print $1}') ]] ; do
+        while read -r line || [[ -n $(pgrep -a yad | grep "yad_gui_pp --notebook --key=$PW_KEY_PROGRESS_BAR_UP" | awk '{print $1}') ]] ; do
                 sleep 0.005
-                if [[ ! -z "${line}" ]] && [[ -z "$(echo "${line}" | grep -i "gstreamer")" ]] \
+                if [[ -n "${line}" ]] && [[ -z "$(echo "${line}" | grep -i "gstreamer")" ]] \
                                         && [[ -z "$(echo "${line}" | grep -i "kerberos")" ]] \
                                         && [[ -z "$(echo "${line}" | grep -i "ntlm")" ]]
                 then
@@ -3416,11 +3416,11 @@ export -f open_changelog
 
 pw_tray_icon () {
     if [[ "$XDG_SESSION_TYPE" == "tty" ]] ; then
-        if [ ! -z "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')" ] ; then
+        if [[ -n "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')" ]] ; then
             kill -s SIGUSR1 "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')"
         fi
     else
-        if [[ ! -z "$(pgrep -a tray_gui_pp)" ]] ; then
+        if [[ -n "$(pgrep -a tray_gui_pp)" ]] ; then
             kill -s SIGUSR1 $(pgrep -a tray_gui_pp) 2>/dev/null
         fi
     fi
@@ -3477,7 +3477,7 @@ gui_proton_downloader () {
     then PW_WINE_USE="${PW_PROTON_LG_VER}"
     elif [[ "$PW_WINE_USE" == WINE_*_LG ]] || [[ "$PW_WINE_USE" == WINE_LG ]]
     then PW_WINE_USE="${PW_WINE_LG_VER}"
-    elif [[ "$1" == "silent" ]] && [[ ! -z "$2" ]]
+    elif [[ "$1" == "silent" ]] && [[ -n "$2" ]]
     then PW_WINE_USE="$2"
     fi
     export PW_WINE_USE
@@ -3491,7 +3491,7 @@ gui_proton_downloader () {
 
     # PROTON_GE
     export PROTON_GE_GIT=($(curl -s "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases" | grep "browser_download_url.*\.tar\.gz" | cut -d \" -f 4))
-    if [[ ! -z "${PROTON_GE_GIT}" ]] ; then
+    if [[ -n "${PROTON_GE_GIT}" ]] ; then
         for PGEGIT in ${PROTON_GE_GIT[@]} ; do
             echo ${PGEGIT} | awk -F/ '{print $NF}' | sed 's/.tar.gz//' >> "${PW_TMPFS_PATH}/tmp_proton_ge_git"
         done
@@ -3502,7 +3502,7 @@ gui_proton_downloader () {
 
     # WINE_KRON4EK
     export WINE_KRON4EK=($(curl -s "https://api.github.com/repos/Kron4ek/Wine-Builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4))
-    if [[ ! -z "${WINE_KRON4EK}" ]] ; then
+    if [[ -n "${WINE_KRON4EK}" ]] ; then
         for PGEGIT in ${WINE_KRON4EK[@]} ; do
             echo ${PGEGIT} | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
         done
@@ -3513,7 +3513,7 @@ gui_proton_downloader () {
 
     # WINE_GE_CUSTOM
     export WINE_GE_CUSTOM=($(curl -s "https://api.github.com/repos/GloriousEggroll/wine-ge-custom/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4))
-    if [[ ! -z "${WINE_GE_CUSTOM}" ]] ; then
+    if [[ -n "${WINE_GE_CUSTOM}" ]] ; then
         for PGEGIT in ${WINE_GE_CUSTOM[@]} ; do
             echo ${PGEGIT} | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git"
         done
@@ -3523,7 +3523,7 @@ gui_proton_downloader () {
 
     # PROTON_LG
     export PROTON_PW_GIT=($(curl -s "https://api.github.com/repos/Castro-Fidel/wine_builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4 | sort -r))
-    if [[ ! -z "${PROTON_PW_GIT}" ]] ; then
+    if [[ -n "${PROTON_PW_GIT}" ]] ; then
         for PPWGIT in ${PROTON_PW_GIT[@]} ; do
             echo ${PPWGIT} | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_proton_pw_git"
         done
@@ -3616,10 +3616,10 @@ gui_proton_downloader () {
             /usr/bin/env bash -c ${pw_full_command_line[*]} &
             exit 0
         fi
-        if [[ ! -z $(<"${PW_TMPFS_PATH}/tmp_set_wine") ]] ; then
+        if [[ -n $(<"${PW_TMPFS_PATH}/tmp_set_wine") ]] ; then
             VERSION_WINE_GIT="$(sed 's/TRUE//' "${PW_TMPFS_PATH}/tmp_set_wine")"
         fi
-        if [[ ! -z $(<"${PW_TMPFS_PATH}/tmp_installed_wine_set") ]] ; then
+        if [[ -n $(<"${PW_TMPFS_PATH}/tmp_installed_wine_set") ]] ; then
             VERSION_INSTALLED_WINE="$(sed 's/TRUE//' "${PW_TMPFS_PATH}/tmp_installed_wine_set")"
         fi
 
@@ -3631,7 +3631,7 @@ gui_proton_downloader () {
             exit 0
         fi
 
-    elif [[ "$1" == "silent" ]] && [[ ! -z "$2" ]] ; then
+    elif [[ "$1" == "silent" ]] && [[ -n "$2" ]] ; then
         VERSION_WINE_GIT="$2"
     fi
 
@@ -3641,7 +3641,7 @@ gui_proton_downloader () {
         if try_download "${URL_VERSION_PROTON_GIT}" "${PORT_WINE_PATH}/data/tmp/$FILENAME" ; then
             if unpack "${PORT_WINE_PATH}/data/tmp/${FILENAME}" "${PORT_WINE_PATH}/data/dist/" ; then
                 try_remove_file "${PORT_WINE_PATH}/data/tmp/${FILENAME}"
-                if [ ! -z "${portwine_exe}" ]; then
+                if [[ -n "${portwine_exe}" ]] ; then
                     PW_WINE_USE="$(echo "${VERSION_WINE_GIT}" | tr [[:lower:]] [[:upper:]])"
                     edit_db_from_gui PW_WINE_USE
                 fi
@@ -3665,7 +3665,7 @@ gui_proton_downloader () {
         fi
     }
 
-    if [[ ! -z "${VERSION_INSTALLED_WINE}" ]] ; then
+    if [[ -n "${VERSION_INSTALLED_WINE}" ]] ; then
         for REMOVE_WINE in ${VERSION_INSTALLED_WINE} ; do
             try_remove_dir "${PORT_WINE_PATH}/data/dist/${REMOVE_WINE}"
         done
@@ -3679,7 +3679,7 @@ gui_proton_downloader () {
     if [[ "$1" != "silent" ]] ; then
         for GIVE_ALL_WINE in ${VERSION_WINE_GIT} ; do
             for GIVE_WINE_URL in ${WINE_GE_CUSTOM[@]} ${PROTON_GE_GIT[@]} ${WINE_KRON4EK[@]} ${PROTON_PW_GIT[@]} ; do
-                if [ ! -z $(echo ${GIVE_WINE_URL} | grep -i "${GIVE_ALL_WINE}") ] ; then
+                if [[ -n $(echo ${GIVE_WINE_URL} | grep -i "${GIVE_ALL_WINE}") ]] ; then
                     export URL_VERSION_PROTON_GIT="${GIVE_WINE_URL}"
                 fi
             done
@@ -3692,7 +3692,7 @@ gui_proton_downloader () {
         # init_wine_ver
         print_error "$PW_WINE_USE"
         for GIVE_WINE_URL in ${WINE_GE_CUSTOM[@]} ${PROTON_GE_GIT[@]} ${WINE_KRON4EK[@]} ${PROTON_PW_GIT[@]} ; do
-            if [ ! -z $(echo ${GIVE_WINE_URL} | grep -i "${PW_WINE_USE}") ] ; then
+            if [[ -n $(echo ${GIVE_WINE_URL} | grep -i "${PW_WINE_USE}") ]] ; then
                 export URL_VERSION_PROTON_GIT="${GIVE_WINE_URL}"
             fi
         done
@@ -3805,7 +3805,7 @@ fi
 
     unset ADD_CHK_BOX_EDIT_DB
     for int_to_boole in ${PW_EDIT_DB_LIST} ; do
-        if [ "${!int_to_boole}" == "1" ]
+        if [[ "${!int_to_boole}" == "1" ]]
         then export ${int_to_boole}="TRUE"
         else export ${int_to_boole}="FALSE"
         fi
@@ -3855,7 +3855,7 @@ A brief instruction:
     --field="$(gettext "ADD ARGUMENTS FOR .EXE FILE")!$(gettext "Adding an argument after the <b>.exe</b> file, just like you would add an argument in a shortcut on a <b>WINDOWS </b> system") :CBE" "$(combobox_fix --empty "\\${LAUNCH_PARAMETERS[@]}" "-dx11 -skipintro 1")" \
     --field=":LBLH" "" \
     --field="$(gettext "Limit the use of processor cores")!$(gettext "Limiting the number of CPU cores is useful for Unity games (It is recommended to set the value equal to 8)") :CB" "$(combobox_fix --disabled "${CPU_LIMIT_VAR}" "${GET_LOGICAL_CORE}")" \
-    --field="$(gettext "Forcibly select the OpenGL version for the game")!$(gettext "You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)") :CBE" "$(combobox_fix --disabled "${PW_MESA_GL_VERSION_OVERRIDE}" "4.6COMPAT!4.6!4.5COMPAT!4.5!3.3COMPAT!3.3")" \
+    --field="$(gettext "Forcibly select the OpenGL version for the game")!$(gettext "You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)") :CB" "$(combobox_fix --disabled "${PW_MESA_GL_VERSION_OVERRIDE}" "4.6COMPAT!4.6!4.5COMPAT!4.5!3.3COMPAT!3.3")" \
     --field="$(gettext "Forcibly select the VKD3D feature level")!$(gettext "You can set a forced feature level VKD3D for games on DirectX12") :${VKD3D_CB}" "$(combobox_fix --disabled "${PW_VKD3D_FEATURE_LEVEL}" "12_2!12_1!12_0!11_1!11_0")" \
     --field="$(gettext "Force certain locale for an app:")!$(gettext "Fixes encoding issues in legacy software") :CB" "$(combobox_fix --disabled "${PW_LOCALE_SELECT}" "$LOCALE_LIST")" \
     1> "${PW_TMPFS_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
@@ -3892,7 +3892,7 @@ A brief instruction:
     bool_from_yad=0
     for boole_to_int in ${PW_EDIT_DB_LIST} ; do
         export ${boole_to_int}=${output_yad_edit_db[$bool_from_yad]}
-        if [ "${!boole_to_int}" == "TRUE" ]
+        if [[ "${!boole_to_int}" == "TRUE" ]]
         then export ${boole_to_int}="1"
         else export ${boole_to_int}="0"
         fi
@@ -3923,7 +3923,7 @@ A brief instruction:
         MONITOR_HEIGHT="$(echo "$PW_SCREEN_RESOLUTION" | awk -F'x' '{print $2}')"
         MH_FONT_SIZE="font_size=$(( MONITOR_HEIGHT / 45 ))"
 
-        if [[ ! -z "$MH_FONT_SIZE" ]]
+        if [[ -n "$MH_FONT_SIZE" ]]
         then MANGOHUD_CONFIG="$DEFAULT_MANGOHUD_CONFIG,$MH_FONT_SIZE"
         else MANGOHUD_CONFIG="$DEFAULT_MANGOHUD_CONFIG"
         fi
@@ -4014,7 +4014,7 @@ fi
             ADD_GUI_FX+="--field=${CHKBOX_SPACE}${add_list_fx}!${!PW_VKBASALT_GUI_HELP}:${THEME_CHKBOX}%FALSE%"
         fi
     done
-    if [[ ! -z "${PW_VKBASALT_FFX_CAS}" ]] ; then
+    if [[ -n "${PW_VKBASALT_FFX_CAS}" ]] ; then
         if [[ "$PW_VKBASALT_FFX_CAS" == "0" ]] \
         || [[ "$PW_VKBASALT_FFX_CAS" == "-1" ]]
         then export VKBASALT_FFX_CAS_GUI="0"
@@ -4168,13 +4168,13 @@ fi
 
     GET_REFRESH_RATE=(30 40 45 48 60 75 90 120 144 165 175 240)
 
-    if [ ! -z "$MANGOHUD_CONFIG" ]; then
+    if [[ -n "$MANGOHUD_CONFIG" ]] ; then
         PW_MANGOHUD_CONFIG=($(echo "$MANGOHUD_CONFIG" | tr ',' '\n' | grep -v '='))
     else
         PW_MANGOHUD_CONFIG=($(echo "$DEFAULT_MANGOHUD_CONFIG" | tr ',' '\n' | grep -v '='))
     fi
 
-    if [ ! -z "$FPS_LIMIT" ] ; then
+    if [[ -n "$FPS_LIMIT" ]] ; then
         PW_FPS_LIMIT_VAR=($(echo "$FPS_LIMIT" | tr '' '\n' | grep -v '='))
     fi
 
@@ -4238,7 +4238,7 @@ fi
     YAD_MH_FPS_LIMIT=$(<"${PW_TMPFS_PATH}/tmp_yad_mh_fps_limit")
 
     MONITOR_HEIGHT="$(echo $PW_SCREEN_RESOLUTION | awk -F'x' '{print $2}')"
-    if [[ ! -z "$MONITOR_HEIGHT" ]]
+    if [[ -n "$MONITOR_HEIGHT" ]]
     then MH_FONT_SIZE="font_size=$(( MONITOR_HEIGHT / 45 ))"
     fi
 
@@ -4259,7 +4259,7 @@ fi
     done
 
     GUI_MH_FPS_RESULT="${GUI_MH_FPS_RESULT}"
-    if [ "$(echo "${GUI_MH_FPS_RESULT}" | awk -F'+' '{print $2}')" ] ; then
+    if [[ "$(echo "${GUI_MH_FPS_RESULT}" | awk -F'+' '{print $2}')" ]] ; then
         export FPS_LIMIT="${GUI_MH_FPS_RESULT%+}"
         if [[ ! "${GUI_MH_RESULT}" =~ "show_fps_limit" ]] ; then
             GUI_MH_RESULT="${GUI_MH_RESULT}show_fps_limit,"
@@ -4268,12 +4268,12 @@ fi
         export FPS_LIMIT="${GUI_MH_FPS_RESULT%+}"
     fi
 
-    if [[ ! -z "$MH_FONT_SIZE" ]]
+    if [[ -n "$MH_FONT_SIZE" ]]
     then GUI_MH_RESULT="${GUI_MH_RESULT}${MH_FONT_SIZE}"
     else GUI_MH_RESULT="${GUI_MH_RESULT%,}"
     fi
 
-    if [[ ! -z "$FPS_LIMIT" ]] ; then
+    if [[ -n "$FPS_LIMIT" ]] ; then
         GUI_MH_RESULT="${GUI_MH_RESULT},fps_limit=$FPS_LIMIT"
     elif [[ "$FPS_LIMIT" == "disabled" ]] ; then
         GUI_MH_RESULT="${GUI_MH_RESULT},fps_limit=0"
@@ -4350,7 +4350,7 @@ fi
 
     unset ADD_CHK_BOX_DGV2
     for int_to_boole in ${PW_DGV2_LIST} ; do
-        if [ "${!int_to_boole}" == "1" ]
+        if [[ "${!int_to_boole}" == "1" ]]
         then export ${int_to_boole}="TRUE"
         else export ${int_to_boole}="FALSE"
         fi
@@ -4443,7 +4443,7 @@ fi
     bool_from_yad=0
     for boole_to_int in ${PW_DGV2_LIST} ; do
         export ${boole_to_int}=${output_yad_dgv2[$bool_from_yad]}
-        if [ "${!boole_to_int}" == "TRUE" ]
+        if [[ "${!boole_to_int}" == "TRUE" ]]
         then export ${boole_to_int}="1"
         else export ${boole_to_int}="0"
         fi
@@ -4528,7 +4528,7 @@ fi
         GAMESCOPE_NEED_INSTALL="$(gettext "Change settings gamescope for") <b>${PORTWINE_DB}</b>\n $(gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")"
         GS_CB="CB" && GS_CBE="CBE" && GS_NUM="NUM" && GS_NUMN="NUMN"
         for int_to_boole in ${PW_GS_LIST} ; do
-            if [ "${!int_to_boole}" == "1" ]
+            if [[ "${!int_to_boole}" == "1" ]]
             then export ${int_to_boole}="TRUE"
             else export ${int_to_boole}="FALSE"
             fi
@@ -4559,7 +4559,7 @@ fi
         PW_GS_ITM_SDR_NITS="0"
         PW_GS_ITM_TARGET_NITS="0"
         for int_to_boole in ${PW_GS_LIST} ; do
-            if [ "${!int_to_boole}" == "1" ]
+            if [[ "${!int_to_boole}" == "1" ]]
             then export ${int_to_boole}="TRUE"
             else export ${int_to_boole}="FALSE"
             fi
@@ -4636,7 +4636,7 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate."
     bool_from_yad=0
     for boole_to_int in ${PW_GS_LIST} ; do
         export ${boole_to_int}=${output_yad_gs[$bool_from_yad]}
-        if [ "${!boole_to_int}" == "TRUE" ]
+        if [[ "${!boole_to_int}" == "TRUE" ]]
         then export ${boole_to_int}="1"
         else export ${boole_to_int}="0"
         fi
@@ -4705,7 +4705,7 @@ gui_userconf () {
     --field="   $NEW_STEAM_BEHAVIOR $(gettext "steam covers download")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "If downloading steam covers is enabled, they will be downloaded and created. (Disablement is provided in cases where their downloading is unavailable for some reason)")":"FBTN" '@bash -c "button_click --userconf change_download_grid"' \
     2>/dev/null &
 
-    if [[ ! -z "${PW_SOUND_DRIVER_USE}" ]] \
+    if [[ -n "${PW_SOUND_DRIVER_USE}" ]] \
     && [[ "${PW_SOUND_DRIVER_USE}" != "disabled" ]]
     then
         SOUND_DRIVER_VAR="${PW_SOUND_DRIVER_USE}"
@@ -4713,7 +4713,7 @@ gui_userconf () {
         SOUND_DRIVER_VAR="disabled"
     fi
 
-    if [[ ! -z "${PW_GPU_USE}" ]] \
+    if [[ -n "${PW_GPU_USE}" ]] \
     && [[ "${PW_GPU_USE}" != "disabled" ]]
     then
         GPU_VAR="${PW_GPU_USE}"
@@ -4797,7 +4797,7 @@ resize_png () {
         && [[ "$ALPINE_FP" != "1" ]]
         then
             print_error "exe-thumbnailer - broken!"
-            if [[ ! -z $PW_DEBUG ]] ; then
+            if [[ -n "$PW_DEBUG" ]] ; then
                 debug_timer --start
                 timeout 5 exe-thumbnailer --force-resize -s "$RESIZE_TO" "$(readlink -f "${RESIZE_FILE}")" "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png"
                 debug_timer --end "exe-thumbnailer"
@@ -5000,7 +5000,7 @@ pw_auto_create_shortcut () {
                 link_cmd=$(sed -n 's/^Command Line Arguments\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
             else
                 print_error "exiftool - broken!"
-                if [[ ! -z $PW_DEBUG ]] ; then
+                if [[ -n "$PW_DEBUG" ]] ; then
                     debug_timer --start
                     timeout 5 exiftool "$link_file"
                     debug_timer --end "exiftool"
@@ -5070,7 +5070,7 @@ portwine_missing_shortcut () {
     --text "\n$(gettext "Could not find the file:")\n${portwine_exe}\n\n$(gettext "ATTENTION:\nIf you forgot to mount the disk with the running application, click CANCEL!")\n" \
     --button="$(gettext "DELETE SHORTCUT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 \
     --button="$(gettext "CANCEL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1
-    if [ $? -eq "0" ] ; then
+    if [[ $? -eq "0" ]] ; then
         portwine_delete_shortcut
     fi
     exit 0
@@ -5080,7 +5080,7 @@ portwine_missing_shortcut () {
 pw_prefix_manager () {
     update_winetricks
     start_portwine
-    if [ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ] ; then
+    if [[ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ]] ; then
         touch "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
     fi
 
@@ -5177,14 +5177,14 @@ pw_prefix_manager () {
 
         for STPFXMNG in $(<"${PW_TMPFS_PATH}/to_winetricks") ; do
             grep $(echo ${STPFXMNG} | awk -F'|' '{print $2}') "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" &>/dev/null
-            if [ "$?" == "1" ] ; then
-                [[ ! -z "${STPFXMNG}" ]] && SET_FROM_PFX_MANAGER+="$(echo "${STPFXMNG}" | awk -F'|' '{print $2}') "
+            if [[ "$?" == "1" ]] ; then
+                [[ -n "${STPFXMNG}" ]] && SET_FROM_PFX_MANAGER+="$(echo "${STPFXMNG}" | awk -F'|' '{print $2}') "
             fi
         done
         IFS="$orig_IFS"
         try_remove_file "${PW_TMPFS_PATH}/to_winetricks"
 
-        if [[ ! -z ${SET_FROM_PFX_MANAGER} ]] ; then
+        if [[ -n ${SET_FROM_PFX_MANAGER} ]] ; then
             pw_update_pfx_cover_gui "winetricks"
             echo "START WINETRICKS..." >> "${PW_TMPFS_PATH}/update_pfx_log"
             echo "Try to install DLL in prefix: ${SET_FROM_PFX_MANAGER}" >> "${PW_TMPFS_PATH}/update_pfx_log"
@@ -5225,13 +5225,13 @@ portwine_start_debug () {
     echo "-----------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     if check_flatpak ; then
         echo "FLATPAK in used" >> "${PORT_WINE_PATH}/PortProton.log"
-    elif [ "${PW_USE_RUNTIME}" = 0 ] ; then
+    elif [[ "${PW_USE_RUNTIME}" = 0 ]] ; then
         echo "RUNTIME is disabled" >> "${PORT_WINE_PATH}/PortProton.log"
     else
         echo "RUNTIME is enabled" >> "${PORT_WINE_PATH}/PortProton.log"
     fi
     echo "----------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    if [ ! -z "${portwine_exe}" ] ; then
+    if [[ -n "${portwine_exe}" ]] ; then
         echo "Debug for programm:" >> "${PORT_WINE_PATH}/PortProton.log"
         echo "${portwine_exe}" >> "${PORT_WINE_PATH}/PortProton.log"
         echo "---------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
@@ -5254,7 +5254,7 @@ portwine_start_debug () {
     echo "$PW_WINE_USE" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "-------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "Program bit depth:" >> "${PORT_WINE_PATH}/PortProton.log"
-    if [[ $(file "$portwine_exe") =~ x86-64 ]]; then
+    if [[ $(file "$portwine_exe") =~ x86-64 ]] ; then
         echo "64 bit" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "-----------------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     else
@@ -5320,7 +5320,7 @@ portwine_start_debug () {
     echo "Vulkan info device name:" >> "${PORT_WINE_PATH}/PortProton.log"
     grep -E '^GPU|deviceName|driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" >> "${PORT_WINE_PATH}/PortProton.log"
     "${PW_PLUGINS_PATH}/portable/bin/vkcube" --c 50
-    if [ $? -eq 0 ]; then
+    if [[ $? -eq 0 ]] ; then
         echo "Vulkan cube test passed successfully" >> "${PORT_WINE_PATH}/PortProton.log"
     else
         echo "Vulkan cube test completed with error" >> "${PORT_WINE_PATH}/PortProton.log"
@@ -5340,7 +5340,7 @@ portwine_start_debug () {
     echo "winetricks.log:" >> "${PORT_WINE_PATH}/PortProton.log"
     cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" | sed -e /"^d3dcomp*"/d -e /"^d3dx*"/d >> "${PORT_WINE_PATH}/PortProton.log"
     echo "-----------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    if [ ! -z "${PORTWINE_DB_FILE}" ]; then
+    if [[ -n "${PORTWINE_DB_FILE}" ]] ; then
         echo "Use ${PORTWINE_DB_FILE} db file:" >> "${PORT_WINE_PATH}/PortProton.log"
         cat "${PORTWINE_DB_FILE}" | sed '/##/d' >> "${PORT_WINE_PATH}/PortProton.log"
     else
@@ -5348,7 +5348,7 @@ portwine_start_debug () {
         cat "${PORT_SCRIPTS_PATH}/portwine_db/default" | sed '/##/d' >> "${PORT_WINE_PATH}/PortProton.log"
     fi
     echo "----------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    if [ -f "${USER_CONF}" ]; then
+    if [[ -f "${USER_CONF}" ]] ; then
         cat "${USER_CONF}" | sed '/bash/d' >> "${PORT_WINE_PATH}/PortProton.log"
     fi
     echo "---------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
@@ -5359,9 +5359,9 @@ portwine_start_debug () {
     sleep 3
     pw_stop_progress_bar_cover
     unset PW_TIMER
-    while read -r line || [[ ! -z $(pgrep -a yad | grep "yad_gui_pp --text-info --tail --button="STOP"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 --title="DEBUG"" | awk '{print $1}') ]] ; do
+    while read -r line || [[ -n $(pgrep -a yad | grep "yad_gui_pp --text-info --tail --button="STOP"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 --title="DEBUG"" | awk '{print $1}') ]] ; do
             sleep 0.005
-            if [[ ! -z "${line}" ]] && [[ -z "$(echo "${line}" | grep -i "kerberos")" ]] \
+            if [[ -n "${line}" ]] && [[ -z "$(echo "${line}" | grep -i "kerberos")" ]] \
                                     && [[ -z "$(echo "${line}" | grep -i "ntlm")" ]]
             then
                 echo "# ${line}"
@@ -5400,7 +5400,7 @@ pw_create_prefix_backup () {
         /usr/bin/env bash -c ${pw_full_command_line[*]} &
         exit 0
     fi
-    if [[ ! -z "$(grep "/${PW_PREFIX_NAME}/" "${PORT_WINE_PATH}"/*.desktop )" ]] ; then
+    if [[ -n "$(grep "/${PW_PREFIX_NAME}/" "${PORT_WINE_PATH}"/*.desktop )" ]] ; then
         try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut"
         grep "/${PW_PREFIX_NAME}/" "${PORT_WINE_PATH}"/*.desktop | awk -F"/${PW_PREFIX_NAME}/" '{print $2}' \
         | awk -F\" '{print $1}' > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut"
