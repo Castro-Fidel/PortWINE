@@ -663,9 +663,8 @@ if [[ -f "${portwine_exe}" ]] ; then
                         unset PW_YAD_FORM_TAB
                     fi
                     unset PW_NO_RESTART_PPDB PW_DISABLED_CREATE_DB KEY_START portwine_exe
-                    /usr/bin/env bash -c ${pw_full_command_line[*]} &
                     print_info "Restarting..."
-                    exit 0
+                    restart_pp
                     ;;
             1|252)
                     exit 0

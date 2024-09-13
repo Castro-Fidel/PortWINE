@@ -622,6 +622,21 @@ combobox_fix () {
     fi
 }
 
+restart_pp () {
+    if [[ -n "$1" ]] ; then
+        if [[ "$1" == "--userconf" ]] ; then
+            /usr/bin/env bash -c "${pw_full_command_line[0]} --gui_userconf" &
+            exit 0
+        elif [[ "$1" == "--edit_db" ]] ; then
+            /usr/bin/env bash -c "${pw_full_command_line[0]} --gui_edit_db" &
+            exit 0
+        fi
+    else
+        /usr/bin/env bash -c ${pw_full_command_line[@]} &
+        exit 0
+    fi
+}
+
 pw_clear_pfx () {
     rm -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/.dot*
     rm -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/.prog*
@@ -678,11 +693,10 @@ pw_reinstall_pp () {
     try_remove_file "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     try_remove_file "${PORT_WINE_PATH}/data/user.conf"
     try_remove_file "${PORT_WINE_TMP_PATH}/scripts_ver"
-    echo
-    print_info "Restarting PP for reinstall files..."
+    echo ""
     unset SKIP_CHECK_UPDATES
-    /usr/bin/env bash -c ${pw_full_command_line[*]} &
-    exit 0
+    print_info "Restarting PP for reinstall files..."
+    restart_pp
 }
 
 check_user_conf () {
@@ -1623,10 +1637,9 @@ pw_port_update () {
                             try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-${BRANCH}.tar.gz"
                             try_remove_dir "${PORT_WINE_TMP_PATH}/PortWINE-${BRANCH}/"
                             echo "${scripts_current_ver}" > "${PORT_WINE_TMP_PATH}/scripts_ver"
-                            echo "Restarting PP after update..."
                             unset SKIP_CHECK_UPDATES
-                            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-                            exit 0
+                            echo "Restarting PP after update..."
+                            restart_pp
                         fi
                     else
                         yad_error_download && pw_port_update || exit 1
@@ -1806,8 +1819,8 @@ pw_find_exe () {
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
         if [[ -z "${PW_SET_FIND_EXE}" ]] ; then
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
             print_info "Restarting..."
+            restart_pp
         fi
         exit 0
     fi
@@ -1816,8 +1829,7 @@ pw_find_exe () {
     if [[ -n "${PW_SET_FIND_EXE}" ]] ; then
         portwine_exe="${PW_PATH_FOR_FIND}$(echo "${PW_SET_FIND_EXE}" | awk -F'|' '{print $1}')"
         portwine_create_shortcut silent
-        /usr/bin/env bash -c ${pw_full_command_line[*]} &
-        exit 0
+        restart_pp
     fi
 }
 
@@ -3405,9 +3417,8 @@ open_changelog () {
     YAD_STATUS="$?"
 
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] && [[ -z "$WINEPREFIX" ]] ; then
-        /usr/bin/env bash -c ${pw_full_command_line[*]} &
         print_info "Restarting..."
-        exit 0
+        restart_pp
     else
         exit 0
     fi
@@ -3535,8 +3546,7 @@ gui_proton_downloader () {
 
     if [[ -z "${PROTON_PW_GIT}" ]] ; then
         yad_error "$(gettext "Error: check wine.")"
-        /usr/bin/env bash -c ${pw_full_command_line[*]} &
-        exit 0
+        restart_pp
     fi
 
     pushd "${PORT_WINE_PATH}/data/dist/" || fatal
@@ -3613,8 +3623,7 @@ gui_proton_downloader () {
         --button="$(gettext "OK")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":0 2>/dev/null
         YAD_WINE_STATUS="$?"
         if [[ "$YAD_WINE_STATUS" == "1" || "$YAD_WINE_STATUS" == "252" ]] ; then
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0
+            restart_pp
         fi
         if [[ -n $(<"${PW_TMPFS_PATH}/tmp_set_wine") ]] ; then
             VERSION_WINE_GIT="$(sed 's/TRUE//' "${PW_TMPFS_PATH}/tmp_set_wine")"
@@ -3627,8 +3636,7 @@ gui_proton_downloader () {
         && [[ -z "${VERSION_INSTALLED_WINE}" ]]
         then
             print_info "Nothing to do."
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0
+            restart_pp
         fi
 
     elif [[ "$1" == "silent" ]] && [[ -n "$2" ]] ; then
@@ -3670,8 +3678,7 @@ gui_proton_downloader () {
             try_remove_dir "${PORT_WINE_PATH}/data/dist/${REMOVE_WINE}"
         done
         if [[ -z "${VERSION_WINE_GIT}" ]] ; then
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0
+            restart_pp
         fi
     fi
 
@@ -3686,8 +3693,7 @@ gui_proton_downloader () {
             pw_download_get_wine
         done
         edit_db_from_gui
-        /usr/bin/env bash -c ${pw_full_command_line[*]} &
-        exit 0
+        restart_pp
     else
         # init_wine_ver
         print_error "$PW_WINE_USE"
@@ -3875,13 +3881,11 @@ A brief instruction:
 
     case "$YAD_STATUS" in
         1|252)
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0
+            restart_pp
             ;;
         2)
             try_remove_file "$portwine_exe".ppdb
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0
+            restart_pp
             ;;
         150)
             gui_edit_db_file
@@ -3933,8 +3937,7 @@ A brief instruction:
 
     if [[ "$YAD_STATUS" == "0" ]] ; then
         print_info "Restarting PP after update ppdb file..."
-        /usr/bin/env bash -c ${pw_full_command_line[*]} &
-        exit 0
+        restart_pp
     fi
 }
 
@@ -4050,16 +4053,18 @@ fi
 
     case "${YAD_VKBASALT_STATUS}" in
         1|252)
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0 ;;
+            restart_pp
+            ;;
         178)
             sed -i '/VKBASALT/d' "$portwine_exe".ppdb
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0 ;;
+            restart_pp
+            ;;
         180)
-            export PW_VKBASALT="0" ;;
+            export PW_VKBASALT="0"
+            ;;
         182)
-            export PW_VKBASALT="1" ;;
+            export PW_VKBASALT="1"
+            ;;
     esac
     YAD_BASALT_SET=$(<"${PW_TMPFS_PATH}/tmp_yad_basalt_set")
     YAD_CAS_SET=$(cat "${PW_TMPFS_PATH}/tmp_yad_cas_set" | sed s/" "//g)
@@ -4084,8 +4089,7 @@ fi
     fi
 
     edit_db_from_gui PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PW_VKBASALT
-    /usr/bin/env bash -c ${pw_full_command_line[*]} &
-    exit 0
+    restart_pp
 }
 
 # GUI MANGOHUD
@@ -4218,14 +4222,13 @@ fi
 
     case "${YAD_MANGOHUD_STATUS}" in
         1|252)
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0
+            restart_pp
             ;;
         180)
             sed -i '/FPS_LIMIT/d' "$portwine_exe".ppdb
             sed -i '/MANGOHUD/d' "$portwine_exe".ppdb
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0 ;;
+            restart_pp
+            ;;
         182)
             export PW_MANGOHUD="0"
             ;;
@@ -4300,8 +4303,7 @@ fi
         gui_mangohud
     fi
 
-    /usr/bin/env bash -c ${pw_full_command_line[*]} &
-    exit 0
+    restart_pp
 }
 
 # GUI DGVOODOO2
@@ -4422,14 +4424,12 @@ fi
 
     case "${YAD_DGV2_STATUS}" in
         1|252)
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0
+            restart_pp
             ;;
         162)
             sed -i '/PW_DGV2/d' "$portwine_exe".ppdb
             sed -i '/DGVOODOO2/d' "$portwine_exe".ppdb
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0
+            restart_pp
             ;;
         164)
             export PW_DGVOODOO2="0"
@@ -4470,8 +4470,7 @@ fi
     PW_DGV2_FPS_LIMIT PW_DGV2_BIT_DEPTH PW_DGV2_BRIGHTNESS PW_DGV2_COLOR PW_DGV2_CONTRAST PW_DGV2_VIDEOCARD PW_DGV2_DISPLAY_ROI \
     PW_DGV2_CURSOR_SCALE PW_DGV2_RESAMPLING
 
-    /usr/bin/env bash -c ${pw_full_command_line[*]} &
-    exit 0
+    restart_pp
 }
 
 # GUI GAMESCOPE
@@ -4615,14 +4614,12 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate."
 
     case "${YAD_GAMESCOPE_STATUS}" in
         1|252)
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0
+            restart_pp
             ;;
         162)
             sed -i '/PW_GS/d' "$portwine_exe".ppdb
             sed -i '/GAMESCOPE/d' "$portwine_exe".ppdb
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0
+            restart_pp
             ;;
         164)
             export PW_GAMESCOPE="0"
@@ -4663,8 +4660,7 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate."
     PW_GS_UPSCALE_SHARPNESS PW_GS_MAX_SCALE_FACTOR PW_GS_MOUSE_SENSITIVITY \
     PW_GS_SDR_CONTENT_NITS PW_GS_ITM_SDR_NITS PW_GS_ITM_TARGET_NITS
 
-    /usr/bin/env bash -c ${pw_full_command_line[*]} &
-    exit 0
+    restart_pp
 }
 
 # GUI USERCONF
@@ -4740,9 +4736,7 @@ gui_userconf () {
 
     case "$YAD_USERCONF_STATUS" in
         1|252)
-            echo ${pw_full_command_line[*]}
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0
+            restart_pp
             ;;
         164)
             gui_open_user_conf
@@ -4753,8 +4747,7 @@ gui_userconf () {
             PW_SOUND_DRIVER_USE="$(echo ${PW_ADD_SETTINGS_UC} | awk -F"%" '{print $2}')"
             GUI_THEME="$(echo ${PW_ADD_SETTINGS_UC} | awk -F"%" '{print $3}')"
             edit_user_conf_from_gui PW_GPU_USE PW_SOUND_DRIVER_USE GUI_THEME
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0
+            restart_pp
             ;;
     esac
 
@@ -4949,16 +4942,14 @@ portwine_create_shortcut () {
             if [[ "${PW_GUI_START}" == "NOTEBOOK" ]] ; then
                 unset PW_YAD_FORM_TAB
             fi
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0
+            restart_pp
         fi
     elif [[ "$PW_YAD_OUT" == "2" ]] ; then
         print_info "Restarting PP..."
         if [[ "${PW_GUI_START}" == "NOTEBOOK" ]] ; then
             unset PW_YAD_FORM_TAB
         fi
-        /usr/bin/env bash -c ${pw_full_command_line[*]} &
-        exit 0
+        restart_pp
     fi
 }
 
@@ -5164,8 +5155,7 @@ pw_prefix_manager () {
             1|252)
                 print_info "Nothing to do. Restarting PortProton..."
                 stop_portwine &
-                /usr/bin/env bash -c ${pw_full_command_line[*]} &
-                exit 0
+                restart_pp
                 ;;
             0)
                 WT_FORCE=""
@@ -5198,8 +5188,7 @@ pw_prefix_manager () {
         else
             print_info "Nothing to do. Restarting PortProton..."
             stop_portwine &
-            /usr/bin/env bash -c ${pw_full_command_line[*]} &
-            exit 0
+            restart_pp
         fi
     }
     gui_prefix_manager
@@ -5397,8 +5386,7 @@ pw_create_prefix_backup () {
     YAD_STATUS="$?"
 
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
-        /usr/bin/env bash -c ${pw_full_command_line[*]} &
-        exit 0
+        restart_pp
     fi
     if [[ -n "$(grep "/${PW_PREFIX_NAME}/" "${PORT_WINE_PATH}"/*.desktop )" ]] ; then
         try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut"
@@ -5431,8 +5419,7 @@ EOF
     else
         yad_error "$(gettext "An error occurred while backing up the prefix:") $PW_PREFIX_NAME"
     fi
-    /usr/bin/env bash -c ${pw_full_command_line[*]} &
-    exit 0
+    restart_pp
 }
 
 pw_autoinstall_from_db () {
@@ -5495,8 +5482,7 @@ gui_clear_pfx () {
     if yad_question "$(gettext "Do you want to clear prefix in PortProton?")" ; then
         pw_clear_pfx
         print_info "Restarting PP after clearing prefix..."
-        /usr/bin/env bash -c ${pw_full_command_line[*]} &
-        exit 0
+        restart_pp
     fi
 }
 export -f gui_clear_pfx
@@ -5517,16 +5503,14 @@ gui_pw_update () {
     try_remove_file "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     print_info "Restarting PP for check update..."
     unset SKIP_CHECK_UPDATES
-    /usr/bin/env bash -c ${pw_full_command_line[*]} &
-    exit 0
+    restart_pp
 }
 export -f gui_pw_update
 
 change_loc () {
     try_remove_file "${PORT_WINE_TMP_PATH}/PortProton_loc"
     print_info "Restarting PP for change language..."
-    /usr/bin/env bash -c ${pw_full_command_line[*]} &
-    exit 0
+    restart_pp
 }
 export -f change_loc
 
@@ -5541,8 +5525,7 @@ change_mirror () {
         "$(gettext "Mirror changed to:")" "<b>https://cloud.linux-gaming.ru</b>"
     fi
     print_info "Restarting PP for change mirror..."
-    /usr/bin/env bash -c "${pw_full_command_line[0]} --gui_userconf" &
-    exit 0
+    restart_pp --userconf
 }
 export -f change_mirror
 
@@ -5566,8 +5549,7 @@ change_branch () {
         fi
     fi
     print_info "Restarting PP for change branch..."
-    /usr/bin/env bash -c "${pw_full_command_line[0]} --gui_userconf" &
-    exit 0
+    restart_pp --userconf
 }
 export -f change_branch
 
@@ -5582,16 +5564,14 @@ change_download_grid () {
         "$(gettext "Cover downloads are enabled")"
     fi
     print_info "Restarting PP for change cover download behavior..."
-    /usr/bin/env bash -c "${pw_full_command_line[0]} --gui_userconf" &
-    exit 0
+    restart_pp --userconf
 }
 export -f change_download_grid
 
 open_game_folder () {
     xdg-open "${PATH_TO_GAME}"
-    /usr/bin/env bash -c ${pw_full_command_line[*]} &
     print_info "Restarting PP after open game folder..."
-    exit 0
+    restart_pp
 }
 export -f open_game_folder
 
@@ -5606,8 +5586,7 @@ change_gui_start () {
         "$(gettext "Gui start changed to:")" "<b>NOTEBOOK</b>"
     fi
     print_info "Restarting PP for change gui start..."
-    /usr/bin/env bash -c "${pw_full_command_line[0]} --gui_userconf" &
-    exit 0
+    restart_pp --userconf
 }
 export -f change_gui_start
 
@@ -5628,15 +5607,13 @@ gui_open_user_conf () {
 
     case "${YAD_STATUS}" in
         1|252)
-                /usr/bin/env bash -c "${pw_full_command_line[0]} --gui_userconf" &
                 print_info "Restarting..."
-                exit 0
+                restart_pp --userconf
                 ;;
             2)
                 echo "${PW_USERCONF_GUI}" > "${PORT_WINE_PATH}/data/user.conf"
-                /usr/bin/env bash -c "${pw_full_command_line[0]} --gui_userconf" &
                 print_info "Restarting..."
-                exit 0
+                restart_pp --userconf
                 ;;
     esac
 }
@@ -5653,13 +5630,11 @@ gui_edit_db_file () {
 
     case "$YAD_STATUS" in
         1|252)
-                /usr/bin/env bash -c "${pw_full_command_line[0]} --gui_edit_db" &
-                exit 0
+                restart_pp --edit_db
                 ;;
           2)
                 echo "${GUI_EDIT_DB_FILE}" > "${PORTWINE_DB_FILE}"
-                /usr/bin/env bash -c "${pw_full_command_line[0]} --gui_edit_db" &
-                exit 0
+                restart_pp --edit_db
                 ;;
     esac
 }
@@ -5671,14 +5646,12 @@ gui_open_scripts_from_backup () {
     YAD_STATUS="$?"
 
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
-        /usr/bin/env bash -c ${pw_full_command_line[*]} &
-        exit 0
+        restart_pp
     fi
     unpack "$PW_SCRIPT_FROM_BACKUP" "${PORT_WINE_PATH}/data/"
     echo "0" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     print_info "Restarting PP after backup..."
-    /usr/bin/env bash -c ${pw_full_command_line[*]} &
-    exit 0
+    restart_pp
 }
 export -f gui_open_scripts_from_backup
 
@@ -5771,6 +5744,5 @@ DGVOODOO2: https://dege.fw.hu/"
     --tab="$(gettext "SPONSORS")" --tab="$(gettext "JOIN")" --tab="$(gettext "THIRD PARTY LIBRARIES")"
 
     echo "Exit from credits"
-    /usr/bin/env bash -c "${pw_full_command_line[*]}" &
-    exit 0
+    restart_pp
 }
