@@ -566,9 +566,11 @@ fi
 
 if [[ -f "${portwine_exe}" ]] ; then
     unset TAB_MAIN_MENU
-    if [[ "$1" == "--gui_edit_db" ]] ; then
+    if [[ "$RESTART_PP_USED" == "edit_db" ]] ; then
+        unset RESTART_PP_USED
         gui_edit_db
-    elif [[ "$1" == "--gui_userconf" ]] ; then
+    elif [[ "$RESTART_PP_USED" == "userconf" ]] ; then
+        unset RESTART_PP_USED
         gui_userconf
     fi
     if [[ "${PW_GUI_DISABLED_CS}" != 1 ]] ; then
@@ -681,7 +683,8 @@ else
     then export PW_GUI_SORT_TABS=(1 2 3 4 5)
     else export PW_GUI_SORT_TABS=(2 3 4 5 1)
     fi
-    if [[ "$1" == "--gui_userconf" ]] ; then
+    if [[ "$RESTART_PP_USED" == "userconf" ]] ; then
+        unset RESTART_PP_USED
         gui_userconf
     fi
 
