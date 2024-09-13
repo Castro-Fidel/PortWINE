@@ -623,13 +623,10 @@ combobox_fix () {
 }
 
 restart_pp () {
-    if [[ -n "$1" ]] ; then
-        if [[ "$1" == "--userconf" ]] ; then
-            export RESTART_PP_USED="userconf"
-        elif [[ "$1" == "--edit_db" ]] ; then
-            export RESTART_PP_USED="edit_db"
-        fi
-    fi
+    case "$1" in
+        --userconf) export RESTART_PP_USED="userconf" ;;
+        --edit_db) export RESTART_PP_USED="edit_db" ;;
+    esac
     /usr/bin/env bash -c ${pw_full_command_line[@]} &
     exit 0
 }
@@ -4721,7 +4718,7 @@ gui_userconf () {
     --field="$(gettext "Choice gui themes")!$(gettext "Allows you to select a theme for PortProton") :CB" "$(combobox_fix "${GUI_THEME}" "default!compact!classic")" \
     1> "${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb" 2>/dev/null &
 
-    "${pw_yad}" --key=$KEY_USERCONF_GUI --paned \
+    "${pw_yad}" --key=$KEY_USERCONF_GUI --paned --sensitive \
     --title="$(gettext "SETTINGS USER.CONF")" \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --gui-type="settings-paned" \
@@ -5440,7 +5437,7 @@ pw_autoinstall_from_db () {
 
 button_click () {
     if [[ -n $(pidof -s yad) ]] || [[ -n $(pidof -s yad_gui_pp) ]] ; then
-        [[ -n "$1" ]] && case "$1" in
+        case "$1" in
             --normal)
                 kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \--notebook" | awk '{print $1}') > /dev/null 2>&1
                 ;;
