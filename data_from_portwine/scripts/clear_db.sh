@@ -9,7 +9,7 @@ IFS=$'\n'
 
 unset DUPLICATE
 DUPLICATE="$(cat "$SELF_PATH/portwine_db/"* | grep -E ".exe" | grep '#' | uniq -D | sort -u)"
-if [[ ! -z "$DUPLICATE" ]] ; then
+if [[ -n "$DUPLICATE" ]] ; then
     for duplicate_db in $DUPLICATE ; do
         echo -e "\nDuplicate:"
         grep -E "$duplicate_db" "$SELF_PATH/portwine_db/"* | awk -F"portwine_db/" '{print $2}'

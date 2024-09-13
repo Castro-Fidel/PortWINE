@@ -72,12 +72,12 @@ function setGameArt {
 		GAMEARTBASE="$( basename "$GAMEARTSOURCE" )"
 		GAMEARTDEST="${SGGRIDDIR}/${GAMEARTAPPID}${GAMEARTSUFFIX}.${GAMEARTBASE#*.}"  # path to filename in grid e.g. turns "/home/gaben/GamesArt/cs2_hero.png" into "~/.local/share/Steam/userdata/1234567/config/grid/4440654_hero.png"
 
-		if [ -n "$GAMEARTSOURCE" ]; then
-			if [ -f "$GAMEARTDEST" ]; then
+		if [[ -n "$GAMEARTSOURCE" ]] ; then
+			if [[ -f "$GAMEARTDEST" ]] ; then
 				rm "$GAMEARTDEST"
 			fi
 
-			if [ -f "$GAMEARTSOURCE" ]; then
+			if [[ -f "$GAMEARTSOURCE" ]] ; then
 				$GAMEARTCMD "$GAMEARTSOURCE" "$GAMEARTDEST"
 			fi
 		fi
@@ -143,12 +143,12 @@ function downloadArtFromSteamGridDB {
 
     SGDB_ENDPOINT_STR="${SEARCHENDPOINT}/$(echo "$SEARCHID" | awk '{print $1}' | paste -s -d, -)?"
 
-    [ -n "$SEARCHSTYLES" ] && SGDB_ENDPOINT_STR+="&styles=${SEARCHSTYLES}"
-    [ -n "$SEARCHDIMS" ] && SGDB_ENDPOINT_STR+="&dimensions=${SEARCHDIMS}"
-    [ -n "$SEARCHTYPES" ] && SGDB_ENDPOINT_STR+="&types=${SEARCHTYPES}"
-    [ -n "$SEARCHNSFW" ] && SGDB_ENDPOINT_STR+="&nsfw=${SEARCHNSFW}"
-    [ -n "$SEARCHHUMOR" ] && SGDB_ENDPOINT_STR+="&humor=${SEARCHHUMOR}"
-    [ -n "$SEARCHEPILEPSY" ] && SGDB_ENDPOINT_STR+="&epilepsy=${SEARCHEPILEPSY}"
+    [[ -n "$SEARCHSTYLES" ]] && SGDB_ENDPOINT_STR+="&styles=${SEARCHSTYLES}"
+    [[ -n "$SEARCHDIMS" ]] && SGDB_ENDPOINT_STR+="&dimensions=${SEARCHDIMS}"
+    [[ -n "$SEARCHTYPES" ]] && SGDB_ENDPOINT_STR+="&types=${SEARCHTYPES}"
+    [[ -n "$SEARCHNSFW" ]] && SGDB_ENDPOINT_STR+="&nsfw=${SEARCHNSFW}"
+    [[ -n "$SEARCHHUMOR" ]] && SGDB_ENDPOINT_STR+="&humor=${SEARCHHUMOR}"
+    [[ -n "$SEARCHEPILEPSY" ]] && SGDB_ENDPOINT_STR+="&epilepsy=${SEARCHEPILEPSY}"
 
     set -o pipefail
     RESPONSE=$(curl -H "Authorization: Bearer $SGDBAPIKEY" -s "$SGDB_ENDPOINT_STR" 2> >(grep -v "SSL_INIT"))
@@ -193,17 +193,17 @@ function downloadArtFromSteamGridDB {
             DLDST="${GRIDDLDIR}/${SGDBFILENAME}.${GRIDDLURL##*.}"
             STARTDL=1
 
-            if [ -f "$DLDST" ]; then
-                if [ "$SGDBHASFILE" == "backup" ]; then
+            if [[ -f "$DLDST" ]] ; then
+                if [[ "$SGDBHASFILE" == "backup" ]] ; then
                     BACKDIR="${GRIDDLDIR}/backup"
                     mkdir -p "$BACKDIR"
                     mv "$DLDST" "$BACKDIR"
-                elif [ "$SGDBHASFILE" == "replace" ]; then
+                elif [[ "$SGDBHASFILE" == "replace" ]] ; then
                     rm "$DLDST" 2>/dev/null
                 fi
             fi
 
-            if [ "$STARTDL" -eq 1 ]; then
+            if [[ "$STARTDL" -eq 1 ]] ; then
 				filename="$(basename "$DLDST")"
                 curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$DLSRC" -o "$DLDST" 2>&1 | \
                  tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
@@ -217,7 +217,7 @@ function downloadArtFromSteamGridDB {
     done
 }
 
-if [ -f "$SCPATH" ]; then
+if [[ -f "$SCPATH" ]] ; then
 	cp "$SCPATH" "${SCPATH//.vdf}_${PROGNAME}_backup.vdf" 2>/dev/null
 	truncate -s-2 "$SCPATH"
 	OLDSET="$(grep -aPo '\x00[0-9]\x00\x02appid' "$SCPATH" | tail -n1 | tr -dc '0-9')"
@@ -231,11 +231,11 @@ fi
 function getSGDBGameIDFromTitle {
 	SGDBSEARCHNAME="$1"
 
-	if [ -n "$SGDBSEARCHNAME" ]; then
+	if [[ -n "$SGDBSEARCHNAME" ]] ; then
 		SGDBSEARCHENDPOINT="${BASESTEAMGRIDDBAPI}/search/autocomplete/${SGDBSEARCHNAME}"
 		SGDBSEARCHNAMERESP="$(curl -H "Authorization: Bearer $SGDBAPIKEY" -s "$SGDBSEARCHENDPOINT" 2>  >(grep -v "SSL_INIT") )"
 		if jq -e '.success' 1> /dev/null <<< "$SGDBSEARCHNAMERESP"; then
-			if [ "$(jq '.data | length' <<< "$SGDBSEARCHNAMERESP" )" -gt 0 ]; then
+			if [[ "$(jq '.data | length' <<< "$SGDBSEARCHNAMERESP" )" -gt 0 ]] ; then
 				SGDBSEARCH_FOUNDNAME="$(jq '.data[0].name' <<< "$SGDBSEARCHNAMERESP" )"
 				SGDBSEARCH_FOUNDGAID="$(jq '.data[0].id' <<< "$SGDBSEARCHNAMERESP" )"
 
@@ -280,10 +280,10 @@ function commandlineGetSteamGridDBArtwork {
 	done
 
 	# If we pass a name to search on and we get a Game ID back from SteamGridDB, set this as the ID to search for artwork on
-	if [ -n "$GSGDBA_SEARCHNAME" ]; then
-		if [ -n "$GSGDBA_FILENAME" ]; then
+	if [[ -n "$GSGDBA_SEARCHNAME" ]] ; then
+		if [[ -n "$GSGDBA_FILENAME" ]] ; then
 			GSGDBA_FOUNDGAMEID="$( getSGDBGameIDFromTitle "$GSGDBA_SEARCHNAME" )"
-			if [ -n "$GSGDBA_FOUNDGAMEID" ]; then
+			if [[ -n "$GSGDBA_FOUNDGAMEID" ]] ; then
 				GSGDBA_APPID="$GSGDBA_FOUNDGAMEID"
 				SGDBENDPOINTTYPE="game"
 			fi
@@ -327,7 +327,7 @@ NOSTSEARCHID=""  # ID to search for the SteamGridDB artwork on (either Steam App
 NOSTSEARCHFLAG="--nonsteam"  # Whether to search using a Steam AppID or SteamGridDB Game ID (will be set to --steam if we get an AppID)
 
 # Only add NOSTAPPNAME as fallback if we don't have an ID to search on, because commandlineGetSteamGridDBArtwork will prefer name over ID, so if we have to fall back to Non-Steam Name (i.e. no entered custom name) then only do so if we don't have an ID given
-if [ -n "$NOSTAPPNAME" ]; then
+if [[ -n "$NOSTAPPNAME" ]] ; then
 	NOSTSEARCHNAME="$NOSTAPPNAME"
 	NOSTSEARCHNAME="${NOSTSEARCHNAME// /_}"
 fi
