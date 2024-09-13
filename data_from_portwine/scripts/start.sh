@@ -82,6 +82,21 @@ fi
 # shellcheck source=/dev/null
 source "${PORT_SCRIPTS_PATH}/functions_helper"
 
+if check_flatpak
+then
+    if [[ ! -d "${HOME}/PortProton" ]] ; then
+        ln -s "${PORT_WINE_PATH}" "${HOME}/PortProton"
+    fi
+else
+    if [[ -d "${HOME}/PortProton" ]] ; then
+        if [[ $(readlink "${HOME}/PortProton") == "${HOME}/.var/app/ru.linux_gaming.PortProton" ]] ; then
+            rm -f "${HOME}/PortProton"
+            portproton
+            exit 0
+        fi
+    fi
+fi
+
 create_new_dir "${HOME}/.local/share/applications"
 if [[ "${PW_SILENT_RESTART}" == 1 ]] \
 || [[ "${START_FROM_STEAM}" == 1 ]]
@@ -373,13 +388,6 @@ else pw_download_libs
 fi
 
 pw_init_db
-
-if [[ ! -d "${HOME}/PortProton" ]] \
-&& check_flatpak 
-then
-    ln -s "${PORT_WINE_PATH}" "${HOME}/PortProton"
-fi
-
 pw_check_and_download_dxvk_and_vkd3d
 # shellcheck source=/dev/null
 source "${USER_CONF}"
