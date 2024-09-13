@@ -825,11 +825,12 @@ pw_init_runtime () {
     then
         export PW_LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32"
         export PW_VK_LAYER_PATH="${PW_PLUGINS_PATH}/portable/share/vulkan/implicit_layer.d"
-        if check_flatpak \
-        && check_gamescope_session
-        then PW_TERM="xterm -fullscreen -bg black -fg white -e"
-        elif check_flatpak
-        then PW_TERM="xterm -bg black -fg white -e"
+        if check_flatpak
+        then
+            if check_gamescope_session
+            then PW_TERM="xterm -fullscreen -bg black -fg white -e"
+            else PW_TERM="xterm -bg black -fg white -e"
+            fi
         else PW_TERM="env LD_LIBRARY_PATH=\"${PW_LD_LIBRARY_PATH}\" ${PW_PLUGINS_PATH}/portable/bin/xterm -bg black -fg white -e"
         fi
         export PW_TERM
@@ -1389,7 +1390,7 @@ check_dirs_and_files_in_pfx () {
                         mount_name=$(lsblk -no pkname "$mount_point" 2>/dev/null)
 
                         if [[ ! -L "$drive_path" ]] ; then
-                            if [[ $(cat "/sys/class/block/$mount_name/removable") != "1" ]] 2>/dev/null ; then
+                            if [[ $(<"/sys/class/block/$mount_name/removable") != "1" ]] 2>/dev/null ; then
                                 if [[ ! $(echo "$mount_point" | grep "mmc") ]] 2>/dev/null ; then
                                     ln -sf "$drive_dir" "$drive_path"
                                     print_info "Mounted ${drive_dir} to ${drive_path}"
@@ -2897,7 +2898,7 @@ start_portwine () {
         if [[ -d /sys/bus/pci/drivers/amdgpu ]] ; then
             export RADV_DEBUG+="nodcc "
             export AMD_DEBUG="nodcc"
-            if [[ ! "$(cat "${PW_TMPFS_PATH}/vulkaninfo.tmp" | grep -i VK_EXT_image_drm_format_modifier)" ]] ; then
+            if [[ ! "$(grep -i VK_EXT_image_drm_format_modifier "${PW_TMPFS_PATH}/vulkaninfo.tmp")" ]] ; then
                 export R600_DEBUG="nodcc"
                 grep -e '--backend' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null && PW_GS_BACKEND_SDL="1"
             fi
@@ -2910,8 +2911,8 @@ start_portwine () {
     && ! check_gamescope_session
     then
         if [[ "${PW_GPU_USE}" != "disabled" ]] ; then
-            PW_vendorID="$(cat "${PW_TMPFS_PATH}/vulkaninfo.tmp" | grep -B3 "${PW_GPU_USE}" | grep vendorID | sort -u | awk -F'0x' '{print $2}')"
-            PW_deviceID="$(cat "${PW_TMPFS_PATH}/vulkaninfo.tmp" | grep -B3 "${PW_GPU_USE}" | grep deviceID | sort -u | awk -F'0x' '{print $2}')"
+            PW_vendorID="$(grep -B3 "${PW_GPU_USE}" "${PW_TMPFS_PATH}/vulkaninfo.tmp" | grep vendorID | sort -u | awk -F'0x' '{print $2}')"
+            PW_deviceID="$(grep -B3 "${PW_GPU_USE}" "${PW_TMPFS_PATH}/vulkaninfo.tmp" | grep deviceID | sort -u | awk -F'0x' '{print $2}')"
             PW_ID_VIDEO=" --prefer-vk-device ${PW_vendorID}:${PW_deviceID}"
         else
             PW_ID_VIDEO=""
@@ -4061,7 +4062,7 @@ fi
             ;;
     esac
     YAD_BASALT_SET=$(<"${PW_TMPFS_PATH}/tmp_yad_basalt_set")
-    YAD_CAS_SET=$(cat "${PW_TMPFS_PATH}/tmp_yad_cas_set" | sed s/" "//g)
+    YAD_CAS_SET=$(sed s/" "//g "${PW_TMPFS_PATH}/tmp_yad_cas_set")
 
     INT_COUNT_FX=0
     for read_list_fx in ${YAD_BASALT_SET} ; do
@@ -4531,7 +4532,7 @@ fi
         done
     else
         if check_flatpak ; then
-            GAMESCOPE_VERSION="$(cat /etc/os-release | grep 'VERSION_ID=')"
+            GAMESCOPE_VERSION="$(grep 'VERSION_ID=' /etc/os-release)"
             GAMESCOPE_VERSION="${GAMESCOPE_VERSION//VERSION_ID=/}"
             GAMESCOPE_NEED_INSTALL="$(eval_gettext "<b>Gamescope is not detected on the system, to install it, run the command in the terminal:\n flatpak install -y runtime/org.freedesktop.Platform.VulkanLayer.gamescope/x86_64/\${GAMESCOPE_VERSION}\n (Can be selected and copied)</b>")"
             YAD_TEXT_SELECTION="--selectable-labels"
