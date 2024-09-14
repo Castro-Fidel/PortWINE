@@ -1056,6 +1056,22 @@ pw_kill_autostart () {
 }
 export -f pw_kill_autostart
 
+pw_exit_tray () {
+    if [[ "$XDG_SESSION_TYPE" == "tty" ]] ; then
+        if [[ -n "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')" ]] ; then
+            kill -s SIGUSR1 "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')"
+        fi
+    else
+        if [[ -n "$(pgrep -a tray_gui_pp)" ]] ; then
+            kill -s SIGUSR1 $(pgrep -a tray_gui_pp) 2>/dev/null
+        fi
+    fi
+    if [[ -n "$(pgrep -a yad_gui_pp)" ]] ; then
+        kill -s SIGUSR1 $(pgrep -a yad_gui_pp) 2>/dev/null
+    fi
+}
+export -f pw_exit_tray
+
 stop_portwine () {
     [[ "$int_xneur" == "1"  ]] && xneur &
 
@@ -1094,18 +1110,7 @@ stop_portwine () {
     kill_portwine &&
     try_remove_dir "${PW_WINELIB}/var"
     find "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/" -maxdepth 1 -type f -name "*.tmp" -delete
-    if [[ "$XDG_SESSION_TYPE" == "tty" ]] ; then
-        if [[ -n "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')" ]] ; then
-            kill -s SIGUSR1 "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')"
-        fi
-    else
-        if [[ -n "$(pgrep -a tray_gui_pp)" ]] ; then
-            kill -s SIGUSR1 $(pgrep -a tray_gui_pp) 2>/dev/null
-        fi
-    fi
-    if [[ -n "$(pgrep -a yad_gui_pp)" ]] ; then
-        kill -s SIGUSR1 $(pgrep -a yad_gui_pp) 2>/dev/null
-    fi
+    pw_exit_tray
     pw_auto_create_shortcut
     add_in_stop_portwine
     unset SKIP_CHECK_UPDATES
@@ -1562,12 +1567,12 @@ pw_port_update () {
     fi
     scripts_install_ver=$(head -n 1 "${PORT_WINE_TMP_PATH}/scripts_ver")
     print_info "Check update..."
-    if curl -f -s --list-only --connect-timeout 3 "https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/raw/${BRANCH}/data_from_portwine/scripts/var" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+    if curl -f -s --list-only --connect-timeout 2 --retry 0 "https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/raw/${BRANCH}/data_from_portwine/scripts/var" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
     then
         URL_FOR_CHANGELOG="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/raw/${BRANCH}/data_from_portwine"
         URL_TO_PW_BRANCH="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/-/archive/${BRANCH}/PortWINE-${BRANCH}.tar.gz"
     else
-        if curl -f -s --list-only --connect-timeout 3 "https://raw.githubusercontent.com/Castro-Fidel/PortWINE/${BRANCH}/data_from_portwine/scripts/var" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+        if curl -f -s --list-only --connect-timeout 2 --retry 0 "https://raw.githubusercontent.com/Castro-Fidel/PortWINE/${BRANCH}/data_from_portwine/scripts/var" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
         then
             URL_FOR_CHANGELOG="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/${BRANCH}/data_from_portwine"
             URL_TO_PW_BRANCH="https://github.com/Castro-Fidel/PortWINE/archive/refs/heads/${BRANCH}.tar.gz"
@@ -4804,6 +4809,7 @@ resize_png () {
 portwine_create_shortcut () {
     export GDK_BACKEND="x11"
     pw_stop_progress_bar
+    pw_exit_tray
     [[ ! -e ${portwine_exe} ]] && return 1
     unset PORTPROTON_NAME name_desktop_png
     pw_create_gui_png
@@ -5433,6 +5439,7 @@ pw_autoinstall_from_db () {
     export PW_VKBASALT=0
     export PW_USE_D3D_EXTRAS=1
     . "${PORT_SCRIPTS_PATH}/pw_autoinstall/${PW_YAD_SET}"
+
 }
 
 button_click () {
