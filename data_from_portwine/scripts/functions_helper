@@ -4728,6 +4728,7 @@ gui_userconf () {
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --gui-type="settings-paned" \
     --button="$(gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Cancel the current changes and return to the previous menu")":1 \
+    --button="$(gettext "RESET") USER.CONF"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Restore default settings for") user.conf":2 \
     --button="$(gettext "OPEN THE SETTINGS FILE")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Open the <b>user.conf</b> settings file in a system text editor to view and change variables manually")":164 \
     --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":166 \
     2>/dev/null
@@ -4736,6 +4737,15 @@ gui_userconf () {
     case "$YAD_USERCONF_STATUS" in
         1|252)
             restart_pp
+            ;;
+        2)
+            if yad_question "$(gettext "Do you really want to reset settings for") <b>user.conf</b>?"
+            then
+                try_remove_file "$USER_CONF"
+                exit 0
+            else
+                restart_pp --userconf
+            fi
             ;;
         164)
             gui_open_user_conf
