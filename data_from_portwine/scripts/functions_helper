@@ -1567,8 +1567,7 @@ pw_port_update () {
     if [[ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ]] ; then
         echo "2024" > "${PORT_WINE_TMP_PATH}/scripts_ver"
     fi
-    scripts_install_ver=$(head -n 1 "${PORT_WINE_TMP_PATH}/scripts_ver")
-    print_info "Check update..."
+    scripts_install_ver=$(<"${PORT_WINE_TMP_PATH}/scripts_ver")
 
     URL_ETERFUND="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/raw/${BRANCH}/data_from_portwine/scripts/var"
     URL_GITHUB="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/${BRANCH}/data_from_portwine/scripts/var"
@@ -1623,13 +1622,13 @@ pw_port_update () {
     if [[ ! -f "${PORT_WINE_TMP_PATH}/update_skip_mirror" ]] ; then
         pw_check_update
     else
-        CHECK_UPDATE_MIRROR=$(head -n 1 "${PORT_WINE_TMP_PATH}/update_skip_mirror")
+        CHECK_UPDATE_MIRROR=$(<"${PORT_WINE_TMP_PATH}/update_skip_mirror")
         UPDATE_SKIP_DAYS="$(echo "${CHECK_UPDATE_MIRROR}" | awk -F" " '{print $1}')"
         UPDATE_DATE_MIRROR="$(echo "${CHECK_UPDATE_MIRROR}" | awk -F" " '{print $2}')"
         UPDATE_SKIP_DATE="$(echo "${CHECK_UPDATE_MIRROR}" | awk -F" " '{print $4}')"
         UPDATE_DAYS=$(date +%-j)
         UPDATE_MINUTES=$(($(date +%-H) * 60 + $(date +%-M)))
-        if (( $((UPDATE_DATE_MIRROR + 240)) <= UPDATE_MINUTES )) \
+        if (( $((UPDATE_DATE_MIRROR + 360)) <= UPDATE_MINUTES )) \
         || [[ "$UPDATE_SKIP_DAYS" != "$UPDATE_DAYS" ]] \
         || [[ "$PW_FORCE_UPDATE" == "1" ]]
         then
@@ -1637,8 +1636,10 @@ pw_port_update () {
         fi
     fi
 
-    if (( $((UPDATE_SKIP_DATE + $(((RANDOM%31)+30)) )) <= UPDATE_MINUTES )) \
+    if (( $((UPDATE_SKIP_DATE + $(((RANDOM%11)+25)) )) <= UPDATE_MINUTES )) \
     || [[ -n "$PW_UPDATE_ALL_LIST" ]] ; then
+        print_info "Check update..."
+        echo ""
         if [[ -z "$UPDATE_URL_MIRROR" ]] ; then
             UPDATE_URL_MIRROR="$(echo "${CHECK_UPDATE_MIRROR}" | awk -F" " '{print $3}')"
             sed -i 's/[0-9]*$/'"$UPDATE_MINUTES"'/' "${PORT_WINE_TMP_PATH}/update_skip_mirror"
@@ -3988,7 +3989,7 @@ A brief instruction:
         export bool_from_yad=$(( ${bool_from_yad} + 1 ))
     done
 
-    PW_ADD_SETTINGS=$(head -n 1 "${PW_TMPFS_PATH}/tmp_output_yad_fps_limit")
+    PW_ADD_SETTINGS=$(<"${PW_TMPFS_PATH}/tmp_output_yad_fps_limit")
 
     PW_WINDOWS_VER="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $1}')"
     PW_DLL_INSTALL="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $2}')"
@@ -4535,7 +4536,7 @@ fi
         export bool_from_yad=$(( ${bool_from_yad} + 1 ))
     done
 
-    PW_ADD_SETTINGS_DGV2=$(head -n 1 "${PW_TMPFS_PATH}/tmp_yad_dgv2_set_cb")
+    PW_ADD_SETTINGS_DGV2=$(<"${PW_TMPFS_PATH}/tmp_yad_dgv2_set_cb")
 
     PW_DGV2_RESOLUTION="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $1}')"
     PW_DGV2_FPS_LIMIT="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $2}')"
@@ -4725,7 +4726,7 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate."
         export bool_from_yad=$(( ${bool_from_yad} + 1 ))
     done
 
-    PW_ADD_SETTINGS_GS=$(head -n 1 "${PW_TMPFS_PATH}/tmp_yad_gs_set_cb")
+    PW_ADD_SETTINGS_GS=$(<"${PW_TMPFS_PATH}/tmp_yad_gs_set_cb")
 
     PW_GS_SHOW_RESOLUTION="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $1}')"
     PW_GS_INTERNAL_RESOLUTION="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $2}' | tr ',' '.')"
@@ -4827,7 +4828,7 @@ gui_userconf () {
             gui_open_user_conf
             ;;
         166)
-            PW_ADD_SETTINGS_UC=$(head -n 1 "${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb")
+            PW_ADD_SETTINGS_UC=$(<"${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb")
             PW_GPU_USE="$(echo ${PW_ADD_SETTINGS_UC} | awk -F"%" '{print $1}')"
             PW_SOUND_DRIVER_USE="$(echo ${PW_ADD_SETTINGS_UC} | awk -F"%" '{print $2}')"
             GUI_THEME="$(echo ${PW_ADD_SETTINGS_UC} | awk -F"%" '{print $3}')"

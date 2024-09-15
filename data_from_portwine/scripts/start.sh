@@ -162,7 +162,7 @@ export urlg="https://linux-gaming.ru/portproton/"
 export url_cloud="https://cloud.linux-gaming.ru/portproton"
 export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
 try_remove_dir "${PW_WINELIB}/var"
-install_ver="$(head -n 1 "${PORT_WINE_TMP_PATH}/PortProton_ver")"
+install_ver="$(<"${PORT_WINE_TMP_PATH}/PortProton_ver")"
 export install_ver
 export WINETRICKS_DOWNLOADER="curl"
 export USER_CONF="${PORT_WINE_PATH}/data/user.conf"
@@ -299,7 +299,6 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
             PW_SCREEN_RESOLUTION="$(<"${PW_TMPFS_PATH}/xrandr.tmp" sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
             PW_SCREEN_PRIMARY="$(grep -e 'primary' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}')"
             export PW_SCREEN_PRIMARY PW_SCREEN_RESOLUTION
-            echo ""
             print_var PW_SCREEN_RESOLUTION PW_SCREEN_PRIMARY
         else
             print_error "xrandr - broken!"
@@ -349,7 +348,7 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     PW_FILESYSTEM=$(stat -f -c %T "${PORT_WINE_PATH}")
     export PW_FILESYSTEM
 else
-    scripts_install_ver=$(head -n 1 "${PORT_WINE_TMP_PATH}/scripts_ver")
+    scripts_install_ver=$(<"${PORT_WINE_TMP_PATH}/scripts_ver")
     export scripts_install_ver
 fi
 
