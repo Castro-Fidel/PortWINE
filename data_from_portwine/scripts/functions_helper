@@ -560,7 +560,9 @@ debug_timer () {
         END=$(date +%s%N)
         DIFF=$((($END - $START)/1000000))
         if [[ -n "$2" ]] ; then
-            print_warning "It took $DIFF milliseconds for $2"
+            if [[ "$2" != "-s" ]] ; then
+                print_warning "It took $DIFF milliseconds for $2"
+            fi
         else
             print_warning "It took $DIFF milliseconds"
         fi
@@ -1566,22 +1568,107 @@ pw_port_update () {
     if [[ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ]] ; then
         echo "2024" > "${PORT_WINE_TMP_PATH}/scripts_ver"
     fi
-    scripts_install_ver=$(head -n 1 "${PORT_WINE_TMP_PATH}/scripts_ver")
-    print_info "Check update..."
-    if curl -f -s --list-only --max-time 3 "https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/raw/${BRANCH}/data_from_portwine/scripts/var" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
-    then
-        URL_FOR_CHANGELOG="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/raw/${BRANCH}/data_from_portwine"
-        URL_TO_PW_BRANCH="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/-/archive/${BRANCH}/PortWINE-${BRANCH}.tar.gz"
-    else
-        if curl -f -s --list-only --max-time 3 "https://raw.githubusercontent.com/Castro-Fidel/PortWINE/${BRANCH}/data_from_portwine/scripts/var" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+    scripts_install_ver=$(<"${PORT_WINE_TMP_PATH}/scripts_ver")
+
+    URL_ETERFUND="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/raw/${BRANCH}/data_from_portwine/scripts/var"
+    URL_GITHUB="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/${BRANCH}/data_from_portwine/scripts/var"
+
+    pw_check_update () {
+        debug_timer --start
+        if ! timeout 3 curl -f -s --list-only "$URL_ETERFUND" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
         then
-            URL_FOR_CHANGELOG="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/${BRANCH}/data_from_portwine"
-            URL_TO_PW_BRANCH="https://github.com/Castro-Fidel/PortWINE/archive/refs/heads/${BRANCH}.tar.gz"
-        else
+            print_warning "https://gitlab.eterfund.ru/ broken. Skip it..."
+            UPDATE_SKIP_ETERFUND="1"
+        fi
+        debug_timer --end -s
+        UPDATE_ETERFUND="$DIFF"
+
+        debug_timer --start
+        if ! timeout 3 curl -f -s --list-only "$URL_GITHUB" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+        then
+            print_warning "https://raw.githubusercontent.com/ broken. Skip it..."
+            UPDATE_SKIP_GITHUB="1"
+        fi
+        debug_timer --end -s
+        UPDATE_GITHUB="$DIFF"
+
+        if [[ "$UPDATE_SKIP_ETERFUND" == "1" ]] \
+        && [[ "$UPDATE_SKIP_GITHUB" == "1" ]] ; then
             print_error "Unable to determine the version on the server. Skip it..."
             return 1
         fi
+
+        PW_UPDATE_ALL_LIST=($UPDATE_ETERFUND $UPDATE_GITHUB)
+
+        UPDATE_MIN=${PW_UPDATE_ALL_LIST[0]}
+        for i in "${!PW_UPDATE_ALL_LIST[@]}"; do
+        if (( ${PW_UPDATE_ALL_LIST[$i]} < UPDATE_MIN )) ; then
+            UPDATE_MIN=${PW_UPDATE_ALL_LIST[$i]}
+        fi
+        done
+
+        UPDATE_DAYS=$(date +%-j)
+        UPDATE_MINUTES=$(($(date +%-H) * 60 + $(date +%-M)))
+        if [[ "$UPDATE_ETERFUND" == "$UPDATE_MIN" ]] ; then
+            print_info "Selected https://gitlab.eterfund.ru/"
+            echo "$UPDATE_DAYS $UPDATE_MINUTES UPDATE_ETERFUND $UPDATE_MINUTES" > "${PORT_WINE_TMP_PATH}/update_skip_mirror"
+            UPDATE_URL_MIRROR="UPDATE_ETERFUND"
+        elif [[ "$UPDATE_GITHUB" == "$UPDATE_MIN" ]] ; then
+            print_info "Selected https://raw.githubusercontent.com/"
+            echo "$UPDATE_DAYS $UPDATE_MINUTES UPDATE_GITHUB $UPDATE_MINUTES" > "${PORT_WINE_TMP_PATH}/update_skip_mirror"
+            UPDATE_URL_MIRROR="UPDATE_GITHUB"
+        fi
+    }
+
+    if [[ ! -f "${PORT_WINE_TMP_PATH}/update_skip_mirror" ]] ; then
+        pw_check_update
+    else
+        CHECK_UPDATE_MIRROR=$(<"${PORT_WINE_TMP_PATH}/update_skip_mirror")
+        UPDATE_SKIP_DAYS="$(echo "${CHECK_UPDATE_MIRROR}" | awk -F" " '{print $1}')"
+        UPDATE_DATE_MIRROR="$(echo "${CHECK_UPDATE_MIRROR}" | awk -F" " '{print $2}')"
+        UPDATE_SKIP_DATE="$(echo "${CHECK_UPDATE_MIRROR}" | awk -F" " '{print $4}')"
+        UPDATE_DAYS=$(date +%-j)
+        UPDATE_MINUTES=$(($(date +%-H) * 60 + $(date +%-M)))
+        if (( $((UPDATE_DATE_MIRROR + 360)) <= UPDATE_MINUTES )) \
+        || [[ "$UPDATE_SKIP_DAYS" != "$UPDATE_DAYS" ]] \
+        || [[ "$PW_FORCE_UPDATE" == "1" ]]
+        then
+            pw_check_update
+        fi
     fi
+
+    if (( $((UPDATE_SKIP_DATE + $(((RANDOM%11)+25)) )) <= UPDATE_MINUTES )) \
+    || [[ -n "$PW_UPDATE_ALL_LIST" ]] ; then
+        print_info "Check update..."
+        echo ""
+        if [[ -z "$UPDATE_URL_MIRROR" ]] ; then
+            UPDATE_URL_MIRROR="$(echo "${CHECK_UPDATE_MIRROR}" | awk -F" " '{print $3}')"
+            sed -i 's/[0-9]*$/'"$UPDATE_MINUTES"'/' "${PORT_WINE_TMP_PATH}/update_skip_mirror"
+        fi
+        case "$UPDATE_URL_MIRROR" in
+            UPDATE_ETERFUND)
+                    if [[ ! -f "${PORT_WINE_TMP_PATH}/curent_var_ver" ]] \
+                    && ! timeout 3 curl -f -s --list-only "$URL_ETERFUND" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+                    then
+                        pw_check_update
+                    fi
+                    URL_FOR_CHANGELOG="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/raw/${BRANCH}/data_from_portwine"
+                    URL_TO_PW_BRANCH="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/-/archive/${BRANCH}/PortWINE-${BRANCH}.tar.gz"
+                ;;
+            UPDATE_GITHUB)
+                    if [[ ! -f "${PORT_WINE_TMP_PATH}/curent_var_ver" ]] \
+                    && ! timeout 3 curl -f -s --list-only "$URL_GITHUB" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+                    then
+                        pw_check_update
+                    fi
+                    URL_FOR_CHANGELOG="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/${BRANCH}/data_from_portwine"
+                    URL_TO_PW_BRANCH="https://github.com/Castro-Fidel/PortWINE/archive/refs/heads/${BRANCH}.tar.gz"
+                ;;
+        esac
+    else
+        return 0
+    fi
+
     [[ "$LANGUAGE" == ru ]] && local PW_CHANGELOG_FILE="changelog_ru" || local PW_CHANGELOG_FILE="changelog_en"
     [[ ! -f "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ]] && echo "1" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     read "scripts_update_not" < "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
@@ -1612,7 +1699,7 @@ pw_port_update () {
                 YAD_STATUS="$?"
 
                 # --button="$(gettext "EXIT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":252 \
-                
+
                 case "${YAD_STATUS}" in
                     1|252) exit 0 ;;
                        16) xcsd="$(gettext "DO NOT REMIND ME")" ;;
@@ -3903,7 +3990,7 @@ A brief instruction:
         export bool_from_yad=$(( ${bool_from_yad} + 1 ))
     done
 
-    PW_ADD_SETTINGS=$(head -n 1 "${PW_TMPFS_PATH}/tmp_output_yad_fps_limit")
+    PW_ADD_SETTINGS=$(<"${PW_TMPFS_PATH}/tmp_output_yad_fps_limit")
 
     PW_WINDOWS_VER="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $1}')"
     PW_DLL_INSTALL="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $2}')"
@@ -4450,7 +4537,7 @@ fi
         export bool_from_yad=$(( ${bool_from_yad} + 1 ))
     done
 
-    PW_ADD_SETTINGS_DGV2=$(head -n 1 "${PW_TMPFS_PATH}/tmp_yad_dgv2_set_cb")
+    PW_ADD_SETTINGS_DGV2=$(<"${PW_TMPFS_PATH}/tmp_yad_dgv2_set_cb")
 
     PW_DGV2_RESOLUTION="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $1}')"
     PW_DGV2_FPS_LIMIT="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $2}')"
@@ -4640,7 +4727,7 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate."
         export bool_from_yad=$(( ${bool_from_yad} + 1 ))
     done
 
-    PW_ADD_SETTINGS_GS=$(head -n 1 "${PW_TMPFS_PATH}/tmp_yad_gs_set_cb")
+    PW_ADD_SETTINGS_GS=$(<"${PW_TMPFS_PATH}/tmp_yad_gs_set_cb")
 
     PW_GS_SHOW_RESOLUTION="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $1}')"
     PW_GS_INTERNAL_RESOLUTION="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $2}' | tr ',' '.')"
@@ -4742,7 +4829,7 @@ gui_userconf () {
             gui_open_user_conf
             ;;
         166)
-            PW_ADD_SETTINGS_UC=$(head -n 1 "${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb")
+            PW_ADD_SETTINGS_UC=$(<"${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb")
             PW_GPU_USE="$(echo ${PW_ADD_SETTINGS_UC} | awk -F"%" '{print $1}')"
             PW_SOUND_DRIVER_USE="$(echo ${PW_ADD_SETTINGS_UC} | awk -F"%" '{print $2}')"
             GUI_THEME="$(echo ${PW_ADD_SETTINGS_UC} | awk -F"%" '{print $3}')"
@@ -5502,6 +5589,7 @@ gui_rm_portproton () {
 export -f gui_rm_portproton
 
 gui_pw_update () {
+    export PW_FORCE_UPDATE="1"
     try_remove_file "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     print_info "Restarting PP for check update..."
     unset SKIP_CHECK_UPDATES
