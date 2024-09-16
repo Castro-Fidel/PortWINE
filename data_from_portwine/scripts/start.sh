@@ -98,7 +98,7 @@ unset CHK_SYMLINK_FILE PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PATH_T
 unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD PW_WINE_CPU_TOPOLOGY
 unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_ALL_DF PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
 unset MANGOHUD_CONFIG FPS_LIMIT PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME PORTWINE_CREATE_SHORTCUT_NAME MIRROR
-unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NOSTSTDIR RADV_DEBUG
+unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NOSTSTDIR RADV_DEBUG PW_NO_AUTO_CREATE_SHORTCUT
 
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 rm -f "$PORT_WINE_TMP_PATH"/*{exe,msi,tar}*
@@ -462,6 +462,9 @@ use: [--repair] [--reinstall] [--autoinstall]
 --debug                                             debug scripts for PortProton
                                                     (saved log in $PORT_WINE_PATH/scripts-debug.log)
 "
+        echo "
+--update                                            check update scripts for PortProton
+"
         exit 0 ;;
 
     '--reinstall' )
@@ -482,12 +485,16 @@ use: [--repair] [--reinstall] [--autoinstall]
         export PW_DEBUG="set -x"
         /usr/bin/env bash -c ${pw_full_command_line[*]} 2>&1 | tee "$PORT_WINE_PATH/scripts-debug.log" &
         exit 0 ;;
+
     '--server-file-access' )
         echo
         curl -s --list-only "https://cloud.linux-gaming.ru/log/$(date +20%y_%m)_file_access.log" | sort -V -k 2,2 \
         | sed 's/count=//g' | awk '{a=$1; $1=$2; $2=a} 1' | awk 'BEGIN {print "Count: Name:"} {print}' | column -t
         echo
         exit 0 ;;
+
+    '--update' )
+        gui_pw_update ;;
 esac
 
 ### GUI ###

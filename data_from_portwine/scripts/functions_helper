@@ -1575,7 +1575,7 @@ pw_port_update () {
 
     pw_check_update () {
         debug_timer --start
-        if ! timeout 3 curl -f -s --list-only "$URL_ETERFUND" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+        if ! timeout 2 curl -f -s --list-only "$URL_ETERFUND" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
         then
             print_warning "https://gitlab.eterfund.ru/ broken. Skip it..."
             UPDATE_SKIP_ETERFUND="1"
@@ -1584,7 +1584,7 @@ pw_port_update () {
         UPDATE_ETERFUND="$DIFF"
 
         debug_timer --start
-        if ! timeout 3 curl -f -s --list-only "$URL_GITHUB" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+        if ! timeout 2 curl -f -s --list-only "$URL_GITHUB" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
         then
             print_warning "https://raw.githubusercontent.com/ broken. Skip it..."
             UPDATE_SKIP_GITHUB="1"
@@ -1610,11 +1610,11 @@ pw_port_update () {
         UPDATE_DAYS=$(date +%-j)
         UPDATE_MINUTES=$(($(date +%-H) * 60 + $(date +%-M)))
         if [[ "$UPDATE_ETERFUND" == "$UPDATE_MIN" ]] ; then
-            print_info "Selected https://gitlab.eterfund.ru/"
+            # print_info "Selected https://gitlab.eterfund.ru/"
             echo "$UPDATE_DAYS $UPDATE_MINUTES UPDATE_ETERFUND $UPDATE_MINUTES" > "${PORT_WINE_TMP_PATH}/update_skip_mirror"
             UPDATE_URL_MIRROR="UPDATE_ETERFUND"
         elif [[ "$UPDATE_GITHUB" == "$UPDATE_MIN" ]] ; then
-            print_info "Selected https://raw.githubusercontent.com/"
+            # print_info "Selected https://raw.githubusercontent.com/"
             echo "$UPDATE_DAYS $UPDATE_MINUTES UPDATE_GITHUB $UPDATE_MINUTES" > "${PORT_WINE_TMP_PATH}/update_skip_mirror"
             UPDATE_URL_MIRROR="UPDATE_GITHUB"
         fi
@@ -1648,7 +1648,7 @@ pw_port_update () {
         case "$UPDATE_URL_MIRROR" in
             UPDATE_ETERFUND)
                     if [[ ! -f "${PORT_WINE_TMP_PATH}/curent_var_ver" ]] \
-                    && ! timeout 3 curl -f -s --list-only "$URL_ETERFUND" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+                    && ! timeout 2 curl -f -s --list-only "$URL_ETERFUND" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
                     then
                         pw_check_update
                     fi
@@ -1657,7 +1657,7 @@ pw_port_update () {
                 ;;
             UPDATE_GITHUB)
                     if [[ ! -f "${PORT_WINE_TMP_PATH}/curent_var_ver" ]] \
-                    && ! timeout 3 curl -f -s --list-only "$URL_GITHUB" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+                    && ! timeout 2 curl -f -s --list-only "$URL_GITHUB" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
                     then
                         pw_check_update
                     fi
@@ -5052,7 +5052,8 @@ portwine_create_shortcut () {
 }
 
 pw_auto_create_shortcut () {
-    if [[ "${PW_CHECK_AUTOINSTALL}" == 1 ]] \
+    if [[ "${PW_CHECK_AUTOINSTALL}" == "1" ]] \
+    || [[ "${PW_NO_AUTO_CREATE_SHORTCUT}" == "1" ]] \
     || [[ -z "${portwine_exe}" ]] \
     || echo "${portwine_exe}" | grep -i "gc_api.exe\|vkplay\|pulseonline" &>/dev/null
     then
