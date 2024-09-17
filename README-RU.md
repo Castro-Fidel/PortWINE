@@ -99,7 +99,8 @@ flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flat
 flatpak install flathub ru.linux_gaming.PortProton
 ```
 
-## Универсальный (ручной) метод установки
+
+<details><summary><b>Универсальный (ручной) метод установки  (устаревший вариант)</b></summary>
 
 **ВНИМАНИЕ** : при универсальном способе установки PortProton зависимости должны быть установлены вручную!
 
@@ -205,3 +206,4 @@ sudo xbps-install -Su void-repo-multilib
 sudo xbps-install -S bash wget icoutils yad bubblewrap zstd cabextract gzip tar xz openssl desktop-file-utils curl dbus freetype xdg-utils
 gdk-pixbuf noto-fonts-ttf nss xrandr lsof mesa-demos ImageMagick Vulkan-Tools libgcc alsa-plugins-32bit libX11-32bit freetype-32bit libglvnd-32bit libgpg-error-32bit nss-32bit openssl-32bit vulkan-loader vulkan-loader-32bit
 ```
+ </details>
