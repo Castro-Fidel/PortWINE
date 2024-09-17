@@ -172,10 +172,9 @@ unset translations
 # shellcheck source=/dev/null
 source "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
 
-if [[ "$TRANSLATIONS_VER" != "$scripts_install_ver" ]] ; then
+if [[ $TRANSLATIONS_VER != "$scripts_install_ver" ]] ; then
     try_remove_dir "${PORT_SCRIPTS_PATH}/translations"
     create_translations
-    unset translations
     # shellcheck source=/dev/null
     source "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
 fi

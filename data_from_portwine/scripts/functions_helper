@@ -103,9 +103,11 @@ generate_pot () {
 
     sed 's/{translations\[/(gettext \"/g' setup.sh > setup.sh_tmp
     sed -i 's/]}/")/g' setup.sh_tmp
-    #fixes когда присходит предупреждение: синтаксис $"..." запрещен по соображениям безопасности; используйте eval_gettext
+
+    #Когда присходит предупреждение: синтаксис $"..." запрещен по соображениям безопасности; используйте eval_gettext
     #удаляется строка без переводов и этим предупреждением (сейчас их всего 3)
     sed -i '/basename_portwine_exe/d' functions_helper_tmp
+
     for lang in $LANGUAGES_LIST
     do
         echo "${lang}"
@@ -146,40 +148,48 @@ TRANSLATIONS_VER=$scripts_install_ver
 declare -A translations=(
 EOF
     if [[ $LANGUAGE == "en" ]] ; then
-        po_file="${PORT_WINE_PATH}/data/locales/ru/LC_MESSAGES/PortProton.po"
+        po_file="${PORT_WINE_PATH}/data/locales/PortProton.pot"
     else
         po_file="${PORT_WINE_PATH}/data/locales/$LANGUAGE/LC_MESSAGES/PortProton.po"
     fi
 
     while IFS= read -r line ; do
-        while [[ "$line" =~ msgid ]] ; do
+        while [[ $line =~ msgid ]] ; do
                 unset msgid
                 msgid="$line"
                 read -r line
-            while [[ ! "$line" =~ msgstr ]] ; do
+            while [[ ! $line =~ msgstr ]] ; do
                 msgid+="$line"
                 read -r line
             done
-            if [[ "$line" =~ msgstr ]]; then
+            if [[ $line =~ msgstr ]]; then
                 if [[ $LANGUAGE == "en" ]] ; then
+                    if [[ $msgid == "msgid   \"\"" ]] ; then
+                        continue
+                    fi
                     msgstr="$msgid"
                 else
                     unset msgstr
                     msgstr="$line"
                     read -r line
-                    while [[ ! "$line" =~ msgid ]] ; do
-                        msgstr+="$line"
+                    while [[ ! $line =~ msgid ]] ; do
+                        msgstr+=$line
                         read -r line
+                        if [[ $line == "" ]] ; then
+                            break
+                        fi
                     done
                 fi
             fi
-        msgstr=${msgstr//"msgstr "/}
+        if [[ $LANGUAGE != "en" ]] ; then
+            msgstr=${msgstr//"msgstr "/}
+            msgid=${msgid//"msgid "/}
+        fi
         msgstr=${msgstr//" "/-_-}
         msgstr=${msgstr//"\n"\"\"/+_+}
         msgstr=${msgstr//\"\"/}
         msgstr=${msgstr//#*/}
         msgstr=${msgstr//"*"/#_#}
-        msgid=${msgid//"msgid "/}
         msgid=${msgid//" "/-_-}
         msgid=${msgid//"\n"\"\"/+_+}
         msgid=${msgid//\"\"/}
@@ -192,19 +202,17 @@ EOF
                 echo \["$msgid"\]="$msgid" >> "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
             fi
         fi
-        if [[ -z $msgid ]] && [[ -z $msgstr ]] ; then
-            echo ")" >> "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
-            sed -i 's/+_+/\n/g' "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
-            sed -i 's/#_#/\*/g' "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
-            sed -i 's/-_-/ /g' "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
-            if [[ $LANGUAGE == "en" ]] ; then
-                sed -i 's/msgid //g' "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
-            fi
-            return 0
-        fi
         done
     done < "$po_file"
+    IFS="$orig_IFS"
 
+    echo ")" >> "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
+    sed -i 's/+_+/\n/g' "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
+    sed -i 's/#_#/\*/g' "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
+    sed -i 's/-_-/ /g' "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
+    if [[ $LANGUAGE == "en" ]] ; then
+        sed -i 's/msgid   //g' "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
+    fi
 }
 export -f create_translations
 
