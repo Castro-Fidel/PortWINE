@@ -168,6 +168,11 @@ if [[ ! -f "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE" ]] ; then
     create_translations
 fi
 
+# для переводов нужно экспортировать переменные заранее
+DATE=$(date +'%Y')
+GAMESCOPE_VERSION="$(grep 'VERSION_ID=' /etc/os-release)"
+GAMESCOPE_VERSION="${GAMESCOPE_VERSION//VERSION_ID=/}"
+
 unset translations
 # shellcheck source=/dev/null
 source "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"

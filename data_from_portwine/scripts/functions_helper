@@ -196,11 +196,13 @@ EOF
         msgid=${msgid//#*/}
         msgid=${msgid//"*"/#_#}
         if [[ $msgid != "" ]] ; then
-            if [[ -n $msgstr ]] ; then
-                echo \["$msgid"\]="$msgstr" >> "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
-            else
-                echo \["$msgid"\]="$msgid" >> "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
+            if [[ -z $msgstr ]] ; then
+                msgstr="$msgid"
             fi
+            if [[ $msgid =~ "\$" ]] ; then
+                msgid=${msgid//"\$"/\\$}
+            fi
+            echo \["$msgid"\]="$msgstr" >> "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
         fi
         done
     done < "$po_file"
@@ -4698,9 +4700,7 @@ gui_gamescope () {
         done
     else
         if check_flatpak ; then
-            GAMESCOPE_VERSION="$(grep 'VERSION_ID=' /etc/os-release)"
-            GAMESCOPE_VERSION="${GAMESCOPE_VERSION//VERSION_ID=/}"
-            GAMESCOPE_NEED_INSTALL="<b>${translations[Gamescope is not detected on the system, to install it, run the command in the terminal:\\nflatpak install -y runtime/org.freedesktop.Platform.VulkanLayer.gamescope/x86_64/]}${GAMESCOPE_VERSION}\n${translations[(Can be selected and copied)]}</b>"
+            GAMESCOPE_NEED_INSTALL="${translations[<b>Gamescope is not detected on the system, to install it, run the command in the terminal:\\nflatpak install -y runtime/org.freedesktop.Platform.VulkanLayer.gamescope/x86_64/\${GAMESCOPE_VERSION}\\n(Can be selected and copied)</b>]}"
             YAD_TEXT_SELECTION="--selectable-labels"
         else
             GAMESCOPE_NEED_INSTALL="${translations[<b>Gamescope is not detected on the system, please contact the manufacturer of your distribution\\nor search the Internet for information on how to install gamescope on your system.</b>]}"
@@ -5836,7 +5836,6 @@ gui_credits () {
     # grep ';subscription;' stat-subscriptions.csv | awk -F';' '{print $1}' | sort -u | sed "s/\"//g" > thanks
     ########################################################################
     KEY_CREDITS=$RANDOM
-    DATE=$(date +'%Y')
 
     # shellcheck source=/dev/null
     source "${PORT_WINE_PATH}/data/scripts/thanks"
@@ -5845,7 +5844,7 @@ gui_credits () {
     --text-align=center --text="PortProton v. ${install_ver}
 ${translations[scripts]} v. ${scripts_install_ver}" --text-info <<< "https://linux-gaming.ru
 
-${translations[Copyright]} © $DATE Castro-Fidel (linux-gaming.ru)
+${translations[Copyright © \$DATE Castro-Fidel (linux-gaming.ru)]}
 
 ${translations[This program comes with absolutely no warranty.
 See the License for details.]}" 2>/dev/null &
@@ -5858,9 +5857,9 @@ $(credits_devel)" 2>/dev/null &
 
     "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=3 --text-info --scroll <<< "${translations[MIT License]}
 
-${translations[Copyright]} © $DATE Castro-Fidel (linux-gaming.ru)
+${translations[Copyright © \$DATE Castro-Fidel (linux-gaming.ru)
 
-${translations[Permission is hereby granted, free of charge, to any person obtaining a copy
+Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the \"Software\"), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
