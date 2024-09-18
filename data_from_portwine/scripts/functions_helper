@@ -840,14 +840,14 @@ pw_init_runtime () {
         return 0
     fi
 
-    if grep -i -E '(ROSA|RED OS)' "/etc/os-release" &>/dev/null ; then
-        export LOCPATH="/run/host/usr/share/locale/"
-    elif grep -i "altlinux" "/etc/os-release" &>/dev/null ; then
+    if grep -i "altlinux" "/etc/os-release" &>/dev/null ; then
         export LIBGL_DRIVERS_PATH="/usr/lib/X11/modules/dri:/usr/lib64/X11/modules/dri"
         if [[ -f "/usr/share/vulkan/icd.d/nvidia_icd.json" ]] ; then
             VK_ADD_DRIVER_FILES="$(realpath /usr/share/vulkan/icd.d/nvidia_icd.json)"
             export VK_ADD_DRIVER_FILES
         fi
+    elif grep -i -E '(ROSA|RED OS)' "/etc/os-release" &>/dev/null ; then
+        export LOCPATH="/run/host/usr/share/locale/"
     fi
 
     PW_PV_OVERRIDES="/usr/lib/pressure-vessel/overrides/lib"
