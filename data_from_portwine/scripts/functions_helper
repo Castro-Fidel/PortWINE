@@ -105,8 +105,8 @@ generate_pot () {
     sed -i 's/]}/")/g' setup.sh_tmp
 
     #Когда присходит предупреждение: синтаксис $"..." запрещен по соображениям безопасности; используйте eval_gettext
-    #удаляется строка без переводов и этим предупреждением (сейчас их всего 3)
-    sed -i '/basename_portwine_exe/d' functions_helper_tmp
+    #и ругается на строку в которой нет перевода, можно использовать sed -i '//d' и убрать эту строку
+    #либо отредактировать сам код, чтобы не было такой ошибки (к примеру вместо двойных ковычек использовать в таком месте одинарные)
 
     for lang in $LANGUAGES_LIST
     do
@@ -1907,15 +1907,15 @@ edit_user_conf_from_gui () {
 
 pw_create_gui_png () {
     basename_portwine_exe="$(basename "${portwine_exe}")"
-    if echo "$basename_portwine_exe" | grep -ie "setup\|install\|\.msi$" &>/dev/null ; then
+    if echo "$basename_portwine_exe" | grep -ie 'setup\|install\|\.msi$' &>/dev/null ; then
         export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/setup.png"
         export name_desktop_png="setup"
         return 0
-    elif echo "$basename_portwine_exe" | grep -ie "\.reg$" &>/dev/null ; then
+    elif echo "$basename_portwine_exe" | grep -ie '\.reg$' &>/dev/null ; then
         export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/reg.png"
         export name_desktop_png="reg"
         return 0
-    elif echo "$basename_portwine_exe"| grep -ie "\.bat$" &>/dev/null ; then
+    elif echo "$basename_portwine_exe"| grep -ie '\.bat$' &>/dev/null ; then
         export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/bat.png"
         export name_desktop_png="bat"
         return 0

@@ -169,7 +169,9 @@ if [[ ! -f "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE" ]] ; then
 fi
 
 # для переводов нужно экспортировать переменные заранее
-DATE=$(date +'%Y')
+# так же можно использовать сразу команду или функцию
+# по типу $(...), но тоже заранее функцию нужно экспортировать
+DATE=$(date +%Y)
 GAMESCOPE_VERSION="$(grep 'VERSION_ID=' /etc/os-release)"
 GAMESCOPE_VERSION="${GAMESCOPE_VERSION//VERSION_ID=/}"
 
