@@ -143,11 +143,11 @@ export -f generate_pot
 
 eval_translations () {
     # Для того чтобы раскрывать переменную уже после создания массива
-    # Вместо {translations[\$TEST text]} нужно (eval_translations "\${TEST} text" "TEST=test") в переводе переменная должна быть в {}
+    # Вместо {translations[\$TEST text]} нужно (eval_translations "\$%TEST% text" "TEST=test"), перевод должен быть с %% тоже
     # В остальных случаях можно использовать {translations[\$TEST text]} ,но переменную нужно обьявлять до создания массива
     # до source "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE" или можно использовать команды {translations[\$(cat file.txt) text]}
     # но тогда выполнение команды будет происходить во время создания массива всегда, а не там где это требуется
-    echo "${translations[$1]//\$*"}"/${2//*=/}}"
+    echo "${translations[$1]//\$*"%"/${2//*=/}}"
 }
 
 create_translations () {
@@ -213,7 +213,7 @@ EOF
             fi
             if [[ $msgid =~ "\$" ]] ; then
                 msgid=${msgid//"\$"/\\$}
-                if [[ $msgstr =~ "\${" ]] ; then
+                if [[ $msgstr =~ "\$%" ]] ; then
                     msgstr=${msgstr//"\$"/\\$}
                 fi
             fi
@@ -4716,7 +4716,7 @@ gui_gamescope () {
     else
         if check_flatpak ; then
             GAMESCOPE_VERSION="$(grep 'VERSION_ID=' /etc/os-release)"
-            GAMESCOPE_NEED_INSTALL=$(eval_translations "<b>Gamescope is not detected on the system, to install it, run the command in the terminal:\\nflatpak install -y runtime/org.freedesktop.Platform.VulkanLayer.gamescope/x86_64/\${GAMESCOPE_VERSION}\\n(Can be selected and copied)</b>" "GAMESCOPE_VERSION=${GAMESCOPE_VERSION//VERSION_ID=/}")
+            GAMESCOPE_NEED_INSTALL=$(eval_translations "<b>Gamescope is not detected on the system, to install it, run the command in the terminal:\\nflatpak install -y runtime/org.freedesktop.Platform.VulkanLayer.gamescope/x86_64/\$%{GAMESCOPE_VERSION}%\\n(Can be selected and copied)</b>" "GAMESCOPE_VERSION=${GAMESCOPE_VERSION//VERSION_ID=/}")
             YAD_TEXT_SELECTION="--selectable-labels"
         else
             GAMESCOPE_NEED_INSTALL="${translations[<b>Gamescope is not detected on the system, please contact the manufacturer of your distribution\\nor search the Internet for information on how to install gamescope on your system.</b>]}"
@@ -5857,10 +5857,10 @@ gui_credits () {
     source "${PORT_WINE_PATH}/data/scripts/thanks"
 
     "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=1 --show-uri --scroll \
-    --text-align=center --text="PortProton v. ${install_ver}
-${translations[scripts]} v. ${scripts_install_ver}" --text-info <<< "https://linux-gaming.ru
+    --text-align=center --text="${translations[PortProton v. \${install_ver}
+scripts v. \${scripts_install_ver}]}" --text-info <<< "https://linux-gaming.ru
 
-$(eval_translations "Copyright © \${DATE} Castro-Fidel (linux-gaming.ru)" "DATE=$(date +%Y)")
+$(eval_translations "Copyright © \$%DATE% Castro-Fidel (linux-gaming.ru)" "DATE=$(date +%Y)")
 
 ${translations[This program comes with absolutely no warranty.
 See the License for details.]}" 2>/dev/null &
@@ -5873,7 +5873,7 @@ $(credits_devel)" 2>/dev/null &
 
     "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=3 --text-info --scroll <<< "$(eval_translations "MIT License
 
-Copyright © \${DATE} Castro-Fidel (linux-gaming.ru)
+Copyright © \$%DATE% Castro-Fidel (linux-gaming.ru)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the \"Software\"), to deal

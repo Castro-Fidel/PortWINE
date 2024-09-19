@@ -161,30 +161,14 @@ export pw_yad="${PW_GUI_THEMES_PATH}/gui/yad_gui_pp"
 
 change_locale
 
-scripts_install_ver=$(<"${PORT_WINE_TMP_PATH}/scripts_ver")
-export scripts_install_ver
-
-if [[ ! -f "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE" ]] ; then
-    create_translations
-fi
-
-unset translations
-# shellcheck source=/dev/null
-source "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
-
-if [[ $TRANSLATIONS_VER != "$scripts_install_ver" ]] ; then
-    try_remove_dir "${PORT_SCRIPTS_PATH}/translations"
-    create_translations
-    # shellcheck source=/dev/null
-    source "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
-fi
-
 export urlg="https://linux-gaming.ru/portproton/"
 export url_cloud="https://cloud.linux-gaming.ru/portproton"
 export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
 try_remove_dir "${PW_WINELIB}/var"
 install_ver="$(<"${PORT_WINE_TMP_PATH}/PortProton_ver")"
 export install_ver
+scripts_install_ver=$(<"${PORT_WINE_TMP_PATH}/scripts_ver")
+export scripts_install_ver
 export WINETRICKS_DOWNLOADER="curl"
 export USER_CONF="${PORT_WINE_PATH}/data/user.conf"
 check_user_conf
@@ -368,6 +352,21 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
 
     PW_FILESYSTEM=$(stat -f -c %T "${PORT_WINE_PATH}")
     export PW_FILESYSTEM
+fi
+
+if [[ ! -f "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE" ]] ; then
+    create_translations
+fi
+
+unset translations
+# shellcheck source=/dev/null
+source "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
+
+if [[ $TRANSLATIONS_VER != "$scripts_install_ver" ]] ; then
+    try_remove_dir "${PORT_SCRIPTS_PATH}/translations"
+    create_translations
+    # shellcheck source=/dev/null
+    source "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
 fi
 
 # create lock file
