@@ -18,6 +18,27 @@ export -f print_ok
 print_var () { for vp in $@ ; do print_info "${vp}=${!vp}" ; done ;}
 export -f print_var
 
+print_wrapped () {
+    local text="$1"
+    local a="0"
+    local b="$2"
+    local c="$3"
+
+    if [[ -n "$c" ]] ; then
+        if (( ${#text} > b )); then
+            echo "${text:a:b}${c}"
+        else
+            echo "$text"
+        fi
+    else
+        while (( a < ${#text} )) ; do
+            echo "${text:a:b}"
+            ((a+=b))
+        done
+    fi
+}
+export -f print_wrapped
+
 check_variables () { [[ -z ${!1} ]] && export $1="$2" ;}
 
 add_to_var () {
@@ -5157,13 +5178,16 @@ portwine_missing_shortcut () {
     "${pw_yad}" --title="$(gettext "Error")" --form \
     --window-icon "$PW_GUI_ICON_PATH/portproton.svg" --fixed \
     --image "$PW_GUI_ICON_PATH/error.svg" \
-    --text "\n$(gettext "Could not find the file:")\n${portwine_exe}\n\n$(gettext "ATTENTION:\nIf you forgot to mount the disk with the running application, click CANCEL!")\n" \
+    --text "\n$(gettext "Could not find the file:")\n$(print_wrapped "${portwine_exe}" "50")\n\n$(gettext "ATTENTION:\nIf you forgot to mount the disk with the running application, click CANCEL!")\n" \
     --button="$(gettext "DELETE SHORTCUT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 \
     --button="$(gettext "CANCEL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1
     if [[ $? -eq "0" ]] ; then
         portwine_delete_shortcut
     fi
-    exit 0
+    if [[ -n "$TAB_MAIN_MENU" ]]
+    then restart_pp
+    else exit 0
+    fi
 }
 
 # GUI WINETRICKS | GUI PREFIX MANAGER

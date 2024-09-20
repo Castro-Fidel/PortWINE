@@ -52,7 +52,7 @@ then
 elif [[ "$1" == *.[Ee][Xx][Ee] || "$1" == *.[Bb][Aa][Tt] || "$1" == *.[Mm][Ss][Ii] || "$1" == *.[Rr][Ee][Gg] ]]
 then
     portwine_exe="$1"
-    MISSING_DESKTOP_FILE=1
+    MISSING_DESKTOP_FILE="1"
 fi
 export portwine_exe
 
@@ -404,7 +404,7 @@ fi
 
 export SKIP_CHECK_UPDATES="1"
 
-[[ "$MISSING_DESKTOP_FILE" == 1 ]] && portwine_missing_shortcut
+[[ "$MISSING_DESKTOP_FILE" == "1" ]] && portwine_missing_shortcut
 
 if [[ -n $(basename "${portwine_exe}" | grep .ppack) ]] ; then
     unset PW_SANDBOX_HOME_PATH
@@ -548,9 +548,9 @@ esac
 
 if [[ -z "${PW_COMMENT_DB}" ]] ; then
     if [[ -n "${PORTPROTON_NAME}" ]] ; then
-        PW_COMMENT_DB="$(gettext "Launching") <b>${PORTPROTON_NAME}</b>"
+        PW_COMMENT_DB="$(gettext "Launching") <b>$(print_wrapped "${PORTPROTON_NAME}" "50")</b>"
     else
-        PW_COMMENT_DB="$(gettext "Launching") <b>${PORTWINE_DB}</b>"
+        PW_COMMENT_DB="$(gettext "Launching") <b>$(print_wrapped "${PORTWINE_DB}" "50")</b>"
     fi
 fi
 
@@ -713,7 +713,7 @@ else
             resize_png "${PW_NAME_D_ICON}" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
             resize_png "${PW_NAME_D_ICON}" "${PW_NAME_D_ICON_128//"${PORT_WINE_PATH}/data/img/"/}" "128"
         fi
-        PW_GENERATE_BUTTONS+="--field=   ${PW_DESKTOP_FILES//".desktop"/""}!${PW_NAME_D_ICON_48}.png!:FBTN%@bash -c \"run_desktop_b_click "${PW_DESKTOP_FILES// /@_@}"\"%"
+        PW_GENERATE_BUTTONS+="--field=   $(print_wrapped "${PW_DESKTOP_FILES//".desktop"/""}" "20" "...")!${PW_NAME_D_ICON_48}.png!:FBTN%@bash -c \"run_desktop_b_click "${PW_DESKTOP_FILES// /@_@}"\"%"
     done
     IFS="$orig_IFS"
 
