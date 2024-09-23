@@ -99,6 +99,7 @@ unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME
 unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_ALL_DF PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
 unset MANGOHUD_CONFIG FPS_LIMIT PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME PORTWINE_CREATE_SHORTCUT_NAME MIRROR
 unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NOSTSTDIR RADV_DEBUG PW_NO_AUTO_CREATE_SHORTCUT
+unset PW_DESKTOP_FILES_REGEX
 
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 rm -f "$PORT_WINE_TMP_PATH"/*{exe,msi,tar}*
@@ -581,7 +582,7 @@ if [[ -f "${portwine_exe}" ]] ; then
     fi
     if [[ "${PW_GUI_DISABLED_CS}" != 1 ]] ; then
         pw_create_gui_png
-        if ! grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop ; then
+        if ! grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop &>/dev/null ; then
             PW_SHORTCUT="$(gettext "CREATE SHORTCUT")!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!$(gettext "Create shortcut for select file..."):100"
         else
             PW_SHORTCUT="$(gettext "DELETE SHORTCUT")!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!$(gettext "Delete shortcut for select file..."):98"
@@ -713,7 +714,32 @@ else
             resize_png "${PW_NAME_D_ICON}" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
             resize_png "${PW_NAME_D_ICON}" "${PW_NAME_D_ICON_128//"${PORT_WINE_PATH}/data/img/"/}" "128"
         fi
-        PW_GENERATE_BUTTONS+="--field=   $(print_wrapped "${PW_DESKTOP_FILES//".desktop"/""}" "20" "...")!${PW_NAME_D_ICON_48}.png!:FBTN%@bash -c \"run_desktop_b_click "${PW_DESKTOP_FILES// /@_@}"\"%"
+        if [[ $PW_DESKTOP_FILES =~ [\(\)\!\$\%\&\`\'\"\>\<\\\|\;] ]] ; then
+            export PW_DESKTOP_FILES_REGEX="1"
+            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES//\!/}"
+            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//\%/}"
+            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//\$/}"
+            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//\&/}"
+            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//\</}"
+
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\(/#+_1#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\)/#+_2#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\!/#+_3#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\$/#+_4#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\%/#+_5#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\&/#+_6#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\`/#+_7#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\'/#+_8#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\"/#+_9#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\>/#+_10#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\</#+_11#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\\/#+_12#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\|/#+_13#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\;/#+_14#}"
+        else
+            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES}"
+        fi
+        PW_GENERATE_BUTTONS+="--field=   $(print_wrapped "${PW_DESKTOP_FILES_SHOW//".desktop"/""}" "20" "...")!${PW_NAME_D_ICON_48}.png!:FBTN%@bash -c \"run_desktop_b_click "${PW_DESKTOP_FILES// /#@_@#}"\"%"
     done
     IFS="$orig_IFS"
 
