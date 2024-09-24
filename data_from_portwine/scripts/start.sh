@@ -695,7 +695,7 @@ else
         gui_userconf
     fi
 
-    export KEY="$RANDOM"
+    export KEY_MENU="$RANDOM"
 
     IFS=$'\n'
     PW_GENERATE_BUTTONS="--field=   $(gettext "Create shortcut...")!${PW_GUI_ICON_PATH}/find_48.svg!:FBTN%@bash -c \"button_click --normal pw_find_exe\"%"
@@ -739,17 +739,17 @@ else
         else
             PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES}"
         fi
-        PW_GENERATE_BUTTONS+="--field=   $(print_wrapped "${PW_DESKTOP_FILES_SHOW//".desktop"/""}" "20" "...")!${PW_NAME_D_ICON_48}.png!:FBTN%@bash -c \"run_desktop_b_click "${PW_DESKTOP_FILES// /#@_@#}"\"%"
+        PW_GENERATE_BUTTONS+="--field=   $(print_wrapped "${PW_DESKTOP_FILES_SHOW//".desktop"/""}" "20" "...")!${PW_NAME_D_ICON_48}.png!:FBTN%@bash -c \"button_click --desktop "${PW_DESKTOP_FILES// /#@_@#}"\"%"
     done
     IFS="$orig_IFS"
 
     IFS="%"
-    "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[4]}" --form --columns="$MAIN_GUI_COLUMNS" --homogeneous-column \
+    "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[4]}" --form --columns="$MAIN_GUI_COLUMNS" --homogeneous-column \
     --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
     --align-buttons --scroll --separator=" " ${PW_GENERATE_BUTTONS} 2>/dev/null &
     IFS="$orig_IFS"
 
-    "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[3]}" --form --columns=3 --align-buttons --separator=";" --homogeneous-column \
+    "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[3]}" --form --columns=3 --align-buttons --separator=";" --homogeneous-column \
     --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
     --field="   $(gettext "Reinstall PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal gui_pw_reinstall_pp"' \
     --field="   $(gettext "Remove PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal gui_rm_portproton"' \
@@ -762,7 +762,7 @@ else
     --field="   $(gettext "Credits")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal gui_credits"' \
     2>/dev/null &
 
-    "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[2]}" --form --columns=3 --align-buttons --separator=";" \
+    "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[2]}" --form --columns=3 --align-buttons --separator=";" \
     --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
     --field="   3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
     --field="   PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
@@ -777,7 +777,7 @@ else
     --field="   $(gettext "Command line")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Run wine cmd")":"FBTN" '@bash -c "button_click --normal WINECMD"' \
     --field="   $(gettext "Regedit")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Run wine regedit")":"FBTN" '@bash -c "button_click --normal WINEREG"' 1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
-    "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[1]}" --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll --homogeneous-column \
+    "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[1]}" --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll --homogeneous-column \
     --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
     --field="   Dolphin 5.0"!"$PW_GUI_ICON_PATH/dolphin.png"!"$(gettext "Emulator for Nintendo game consoles with high compatibility")":"FBTN" '@bash -c "button_click --normal PW_DOLPHIN"' \
     --field="   MAME"!"$PW_GUI_ICON_PATH/mame.png"!"$(gettext "Multi-arcade emulator that allows you to play old arcade games")":"FBTN" '@bash -c "button_click --normal PW_MAME"' \
@@ -794,7 +794,7 @@ else
     --field="   xemu"!"$PW_GUI_ICON_PATH/xemu.png"!"$(gettext "Emulator for the Xbox game console")":"FBTN" '@bash -c "button_click --normal PW_XEMU"' \
     --field="   Demul"!"$PW_GUI_ICON_PATH/demul.png"!"$(gettext "Emulator for the Sega Dreamcast game console")":"FBTN" '@bash -c "button_click --normal PW_DEMUL"' 2>/dev/null &
 
-    "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[0]}" --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll --homogeneous-column \
+    "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[0]}" --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll --homogeneous-column \
     --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
     --field="   Lesta Game Center"!"$PW_GUI_ICON_PATH/lgc.png"!"":"FBTN" '@bash -c "button_click --normal PW_LGC"' \
     --field="   vkPlay Games Center"!"$PW_GUI_ICON_PATH/mygames.png"!"":"FBTN" '@bash -c "button_click --normal PW_VKPLAY"' \
@@ -845,7 +845,7 @@ else
     fi
 
     if [[ -z "${PW_ALL_DF}" ]] ; then
-        "${pw_yad}" --key=$KEY --notebook --expand \
+        "${pw_yad}" --key=$KEY_MENU --notebook --expand \
         --gui-type="settings-notebook" --active-tab="${TAB_MAIN_MENU}" \
         --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
@@ -858,7 +858,7 @@ else
         --tab="$(gettext "INSTALLED")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" 2>/dev/null
         YAD_STATUS="$?"
     else
-        "${pw_yad}" --key=$KEY --notebook --expand \
+        "${pw_yad}" --key=$KEY_MENU --notebook --expand \
         --gui-type="settings-notebook" --active-tab="${TAB_MAIN_MENU}" \
         --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
@@ -950,7 +950,7 @@ esac
     pw_start_cont_xterm) pw_start_cont_xterm ;;
     pw_find_exe) pw_find_exe ;;
     PW_*) pw_autoinstall_from_db ;;
-    *.desktop) run_desktop_b_click ;;
+    *.desktop) button_click --desktop ;;
     1|252|*) exit 0 ;;
 esac
 

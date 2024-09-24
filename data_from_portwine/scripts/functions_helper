@@ -5566,58 +5566,50 @@ pw_autoinstall_from_db () {
 }
 
 button_click () {
-    if [[ -n $(pidof -s yad) ]] || [[ -n $(pidof -s yad_gui_pp) ]] ; then
-        case "$1" in
-            --normal)
-                kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \--notebook" | awk '{print $1}') > /dev/null 2>&1
-                ;;
-            --start)
-                kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_START} \--notebook" | awk '{print $1}') > /dev/null 2>&1 \
-                || kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_START} \--paned" | awk '{print $1}') > /dev/null 2>&1
-                ;;
-            --userconf)
-                kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_USERCONF_GUI}" | awk '{print $1}') > /dev/null 2>&1
-                ;;
-        esac
-        [[ -n "$2" ]] && echo "$2" > "${PW_TMPFS_PATH}/tmp_yad_form"
+    case "$1" in
+        --normal|--desktop)
+            kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_MENU}" | awk '{print $1}') > /dev/null 2>&1
+            ;;
+        --start)
+            kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_START}" | awk '{print $1}') > /dev/null 2>&1
+            ;;
+        --userconf)
+            kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_USERCONF_GUI}" | awk '{print $1}') > /dev/null 2>&1
+            ;;
+    esac
+
+    echo "$2" > "${PW_TMPFS_PATH}/tmp_yad_form"
+
+    if [[ "$1" == "--desktop" ]] ; then
+        PW_YAD_SET="${PORT_WINE_PATH}/${PW_YAD_SET//#@_@#/ }"
+        if [[ $PW_DESKTOP_FILES_REGEX == "1" ]] ; then
+            PW_YAD_SET="${PW_YAD_SET//#+_1#/\(}"
+            PW_YAD_SET="${PW_YAD_SET//#+_2#/\)}"
+            PW_YAD_SET="${PW_YAD_SET//#+_3#/\!}"
+            PW_YAD_SET="${PW_YAD_SET//#+_4#/\$}"
+            PW_YAD_SET="${PW_YAD_SET//#+_5#/\%}"
+            PW_YAD_SET="${PW_YAD_SET//#+_6#/\&}"
+            PW_YAD_SET="${PW_YAD_SET//#+_7#/\`}"
+            PW_YAD_SET="${PW_YAD_SET//#+_8#/\'}"
+            PW_YAD_SET="${PW_YAD_SET//#+_9#/\"}"
+            PW_YAD_SET="${PW_YAD_SET//#+_10#/\>}"
+            PW_YAD_SET="${PW_YAD_SET//#+_11#/\<}"
+            PW_YAD_SET="${PW_YAD_SET//#+_12#/\\}"
+            PW_YAD_SET="${PW_YAD_SET//#+_13#/\|}"
+            PW_YAD_SET="${PW_YAD_SET//#+_14#/\;}"
+        fi
+        if check_flatpak
+        then PW_EXEC_FROM_DESKTOP="$(grep Exec "$PW_YAD_SET" | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
+        else PW_EXEC_FROM_DESKTOP="$(grep Exec "$PW_YAD_SET" | head -n 1 | awk -F"=env " '{print $2}')"
+        fi
+
+        print_info "Restarting PP after choose desktop file..."
+        # stop_portwine
+        /usr/bin/env bash -c "${PW_EXEC_FROM_DESKTOP}" &
+        exit 0
     fi
 }
 export -f button_click
-
-run_desktop_b_click () {
-    [[ -n "$1" ]] && echo "$1" > "${PW_TMPFS_PATH}/tmp_yad_form"
-
-    if [[ -n $(pidof -s yad) ]] || [[ -n $(pidof -s yad_gui_pp) ]] ; then
-        kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \--notebook" | awk '{print $1}') > /dev/null 2>&1
-    fi
-    PW_YAD_SET="${PORT_WINE_PATH}/${PW_YAD_SET//#@_@#/ }"
-    if [[ $PW_DESKTOP_FILES_REGEX == "1" ]] ; then
-        PW_YAD_SET="${PW_YAD_SET//#+_1#/\(}"
-        PW_YAD_SET="${PW_YAD_SET//#+_2#/\)}"
-        PW_YAD_SET="${PW_YAD_SET//#+_3#/\!}"
-        PW_YAD_SET="${PW_YAD_SET//#+_4#/\$}"
-        PW_YAD_SET="${PW_YAD_SET//#+_5#/\%}"
-        PW_YAD_SET="${PW_YAD_SET//#+_6#/\&}"
-        PW_YAD_SET="${PW_YAD_SET//#+_7#/\`}"
-        PW_YAD_SET="${PW_YAD_SET//#+_8#/\'}"
-        PW_YAD_SET="${PW_YAD_SET//#+_9#/\"}"
-        PW_YAD_SET="${PW_YAD_SET//#+_10#/\>}"
-        PW_YAD_SET="${PW_YAD_SET//#+_11#/\<}"
-        PW_YAD_SET="${PW_YAD_SET//#+_12#/\\}"
-        PW_YAD_SET="${PW_YAD_SET//#+_13#/\|}"
-        PW_YAD_SET="${PW_YAD_SET//#+_14#/\;}"
-    fi
-    if check_flatpak
-    then PW_EXEC_FROM_DESKTOP="$(grep Exec "$PW_YAD_SET" | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
-    else PW_EXEC_FROM_DESKTOP="$(grep Exec "$PW_YAD_SET" | head -n 1 | awk -F"=env " '{print $2}')"
-    fi
-
-    print_info "Restarting PP after choose desktop file..."
-    # stop_portwine
-    /usr/bin/env bash -c "${PW_EXEC_FROM_DESKTOP}" &
-    exit 0
-}
-export -f run_desktop_b_click
 
 gui_clear_pfx () {
     if yad_question "$(gettext "Do you want to clear prefix in PortProton?")" ; then
