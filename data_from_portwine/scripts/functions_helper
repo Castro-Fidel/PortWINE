@@ -18,6 +18,27 @@ export -f print_ok
 print_var () { for vp in $@ ; do print_info "${vp}=${!vp}" ; done ;}
 export -f print_var
 
+print_wrapped () {
+    local text="$1"
+    local a="0"
+    local b="$2"
+    local c="$3"
+
+    if [[ -n "$c" ]] ; then
+        if (( ${#text} > b )); then
+            echo "${text:a:b}${c}"
+        else
+            echo "$text"
+        fi
+    else
+        while (( a < ${#text} )) ; do
+            echo "${text:a:b}"
+            ((a+=b))
+        done
+    fi
+}
+export -f print_wrapped
+
 check_variables () { [[ -z ${!1} ]] && export $1="$2" ;}
 
 add_to_var () {
@@ -68,7 +89,9 @@ change_locale () {
         else
             LANGUAGE=$(echo "$out" | cut -d '|' -f2)
             echo "${LANGUAGE}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
+            create_translations
         fi
+        restart_pp
     fi
     export LANGUAGE
 
@@ -88,22 +111,39 @@ change_locale () {
             export LANGUAGE_GIF="en"
             ;;
     esac
+
 }
 export -f change_locale
 
 generate_pot () {
+    sed 's/{translations\[/(gettext \"/g' functions_helper > functions_helper_tmp
+    sed -i 's/]}/")/g' functions_helper_tmp
+    sed -i 's/eval_translations/gettext/g' functions_helper_tmp
+
+    sed 's/{translations\[/(gettext \"/g' start.sh > start.sh_tmp
+    sed -i 's/]}/")/g' start.sh_tmp
+    sed -i 's/eval_translations/gettext/g' start.sh_tmp
+
+    sed 's/{translations\[/(gettext \"/g' setup.sh > setup.sh_tmp
+    sed -i 's/]}/")/g' setup.sh_tmp
+    sed -i 's/eval_translations/gettext/g' setup.sh_tmp
+
+    #Когда присходит предупреждение: синтаксис $"..." запрещен по соображениям безопасности; используйте eval_gettext
+    #и ругается на строку в которой нет перевода, можно использовать sed -i '//d' и убрать эту строку
+    #либо отредактировать сам код, чтобы не было такой ошибки (к примеру вместо двойных ковычек использовать в таком месте одинарные)
+
     for lang in $LANGUAGES_LIST
     do
         echo "${lang}"
         create_new_dir "${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/"
         LANG_PO="${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/PortProton.po"
-        LANG_MO="${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/PortProton.mo"
+        #LANG_MO="${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/PortProton.mo"
         TEMPLATE_POT="${PORT_WINE_PATH}/data/locales/PortProton.pot"
         pushd "${PORT_WINE_PATH}" 1>/dev/null || fatal
         xgettext --no-location --from-code=UTF-8 --language Shell -i \
-        "data/scripts/start.sh" \
-        "data/scripts/setup.sh" \
-        "data/scripts/functions_helper" \
+        "data/scripts/start.sh_tmp" \
+        "data/scripts/setup.sh_tmp" \
+        "data/scripts/functions_helper_tmp" \
         -o "$TEMPLATE_POT"
         popd 1>/dev/null || fatal
         if [[ -f "$LANG_PO" ]] ; then
@@ -113,14 +153,106 @@ generate_pot () {
             echo "create $LANG_PO file"
             msginit --input="$TEMPLATE_POT" --locale="${lang}" --output="$LANG_PO"
         fi
-        msgfmt --output-file="$LANG_MO" "$LANG_PO"
+        #msgfmt --output-file="$LANG_MO" "$LANG_PO"
     done
+    try_remove_file "${PORT_SCRIPTS_PATH}/start.sh_tmp"
+    try_remove_file "${PORT_SCRIPTS_PATH}/setup.sh_tmp"
+    try_remove_file "${PORT_SCRIPTS_PATH}/functions_helper_tmp"
+    try_remove_dir "${PORT_SCRIPTS_PATH}/translations"
 }
 export -f generate_pot
 
-eval_gettext () {
-  gettext "$1" | (export PATH `envsubst --variables "$1"`; envsubst "$1")
+eval_translations () {
+    # Для того чтобы раскрывать переменную уже после создания массива
+    # Вместо {translations[\$TEST text]} нужно (eval_translations "\$%TEST% text" "TEST=test"), перевод должен быть с %% тоже
+    # В остальных случаях можно использовать {translations[\$TEST text]} ,но переменную нужно обьявлять до создания массива
+    # до source "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE" или можно использовать команды {translations[\$(cat file.txt) text]}
+    # но тогда выполнение команды будет происходить во время создания массива всегда, а не там где это требуется
+    echo "${translations[$1]//\$*"%"/${2//*=/}}"
 }
+
+create_translations () {
+    if [[ ! -d "${PORT_SCRIPTS_PATH}/translations" ]] ; then
+        create_new_dir "${PORT_SCRIPTS_PATH}/translations"
+    fi
+    cat << EOF > "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
+#!/usr/bin/env bash
+TRANSLATIONS_VER=$scripts_install_ver
+declare -A translations=(
+EOF
+    if [[ $LANGUAGE == "en" ]] ; then
+        po_file="${PORT_WINE_PATH}/data/locales/PortProton.pot"
+    else
+        po_file="${PORT_WINE_PATH}/data/locales/$LANGUAGE/LC_MESSAGES/PortProton.po"
+    fi
+
+    while IFS= read -r line ; do
+        while [[ $line =~ msgid ]] ; do
+                unset msgid
+                msgid="$line"
+                read -r line
+            while [[ ! $line =~ msgstr ]] ; do
+                msgid+="$line"
+                read -r line
+            done
+            if [[ $line =~ msgstr ]]; then
+                if [[ $LANGUAGE == "en" ]] ; then
+                    if [[ $msgid == "msgid   \"\"" ]] ; then
+                        continue
+                    fi
+                    msgstr="$msgid"
+                else
+                    unset msgstr
+                    msgstr="$line"
+                    read -r line
+                    while [[ ! $line =~ msgid ]] ; do
+                        msgstr+=$line
+                        read -r line
+                        if [[ $line == "" ]] ; then
+                            break
+                        fi
+                    done
+                fi
+            fi
+        if [[ $LANGUAGE != "en" ]] ; then
+            msgstr=${msgstr//"msgstr "/}
+            msgid=${msgid//"msgid "/}
+        fi
+        msgstr=${msgstr//" "/-_-}
+        msgstr=${msgstr//"\n"\"\"/+_+}
+        msgstr=${msgstr//\"\"/}
+        msgstr=${msgstr//#*/}
+        msgstr=${msgstr//"*"/#_#}
+        msgid=${msgid//" "/-_-}
+        msgid=${msgid//"\n"\"\"/+_+}
+        msgid=${msgid//\"\"/}
+        msgid=${msgid//#*/}
+        msgid=${msgid//"*"/#_#}
+        if [[ $msgid != "" ]] ; then
+            if [[ -z $msgstr ]] ; then
+                msgstr="$msgid"
+            fi
+            if [[ $msgid =~ "\$" ]] ; then
+                msgid=${msgid//"\$"/\\$}
+                if [[ $msgstr =~ "\$%" ]] ; then
+                    msgstr=${msgstr//"\$"/\\$}
+                fi
+            fi
+            echo \["$msgid"\]="$msgstr" >> "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
+        fi
+        done
+    done < "$po_file"
+    IFS="$orig_IFS"
+
+    echo ")" >> "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
+    sed -i 's/+_+/\n/g' "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
+    sed -i 's/#_#/\*/g' "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
+    sed -i 's/-_-/ /g' "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
+    if [[ $LANGUAGE == "en" ]] ; then
+        sed -i 's/msgid   //g' "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
+    fi
+}
+export -f create_translations
 
 try_copy_file () {
     if [[ ! -f "$1" ]] ; then print_info "file $1 not found for copy" && return 1
@@ -343,7 +475,7 @@ try_download () {
         curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
         -H 'Pragma: no-cache' -L ${FIRST_URL[@]} -o "$dest" 2>&1 | \
         tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
-        "$pw_yad" --progress --text="$(gettext "Downloading") $filename" --auto-close --no-escape \
+        "$pw_yad" --progress --text="${translations[Downloading]} $filename" --auto-close --no-escape \
         --auto-kill --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders="$PROGRESS_BAR_BORDERS_SIZE"
     fi
@@ -354,7 +486,7 @@ try_download () {
             curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
             -H 'Pragma: no-cache' -L ${SECOND_URL[@]} -o "$dest" 2>&1 | \
             tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
-            "$pw_yad" --progress --text="$(gettext "Downloading") $filename" --auto-close --no-escape \
+            "$pw_yad" --progress --text="${translations[Downloading]} $filename" --auto-close --no-escape \
             --auto-kill --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders="$PROGRESS_BAR_BORDERS_SIZE"
         fi
@@ -679,7 +811,7 @@ pw_reinstall_pp () {
             echo ""
             exit 1
         fi
-    elif ! yad_question "$(gettext "Do you really want to reinstall PortProton?\nFor this, an internet connection will be required.")"
+    elif ! yad_question "${translations[Do you really want to reinstall PortProton?\\nFor this, an internet connection will be required.]}"
     then exit 1
     fi
     pw_clear_pfx
@@ -1307,7 +1439,7 @@ pw_check_and_download_plugins () {
             fi
         else
             pw_notify_send -i info \
-            "$(gettext "Please wait for update PortProton")"
+            "${translations[Please wait for update PortProton]}"
             if try_download "github.com/Castro-Fidel/wine_builds/releases/download/plugins${PW_PLUGINS_VER}/plugins${PW_PLUGINS_VER}.tar.xz" \
                                    "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" silent ; then
                 if unpack "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}" ; then
@@ -1323,7 +1455,7 @@ pw_check_and_download_plugins () {
                 else
                     print_error "Failed updating PortProton!"
                     pw_notify_send -i error \
-                    "$(gettext "Failed updating PortProton!")"
+                    "${translations[Failed updating PortProton!]}"
                 fi
             fi
         fi
@@ -1463,7 +1595,7 @@ pw_init_db () {
                     fi
                 done
                 PORTWINE_DB_FILE="${PORT_SCRIPTS_PATH}/portwine_db"/$("${pw_yad}" --text-align=center \
-                --text "$(gettext "More than one DB file found for the application being launched.\nSelect the required one, or delete the extra DB file before the next run.\n")" --borders="${YAD_BORDERS}" --form \
+                --text "${translations[More than one DB file found for the application being launched.\\nSelect the required one, or delete the extra DB file before the next run.\\n]}" --borders="${YAD_BORDERS}" --form \
                 --title "Database file selection..." --window-icon="$PW_GUI_ICON_PATH/portproton.svg"  --form --separator="" \
                 --field="DB FILE: :CB" "${ADD_CB_DBFILE}" 2>/dev/null)
                 if [[ "$?" == "1" || "$?" == "252" ]] ; then exit 0 ; fi
@@ -1685,30 +1817,30 @@ pw_port_update () {
             fi
             if [[ "${pw_yad}" == "not_found" ]] \
             || [[ "$PW_CHANGE_BRANCH" == "1" ]] ; then
-                xcsd="$(gettext "UPDATING NOW")"
+                xcsd="${translations[UPDATING NOW]}"
                 unset PW_CHANGE_BRANCH
             else
                 curl -s --list-only "${URL_FOR_CHANGELOG}/${PW_CHANGELOG_FILE}" | tee "${PORT_WINE_TMP_PATH}/curent_var_ver"
                 CHANGLOG_NEWS=$(sed "/Scripts version ${scripts_install_ver}/,$ d" "${PORT_WINE_TMP_PATH}/curent_var_ver" | sed '1,/---/ d' )
-                xcsd=$("${pw_yad}" --title "$(gettext "Update scripts:") v.(${scripts_install_ver}${BRANCH_VERSION})" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+                xcsd=$("${pw_yad}" --title "${translations[Update scripts:]} v.(${scripts_install_ver}${BRANCH_VERSION})" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
                 --form --separator='%%%' --width=1000 --height=500 \
                 --field=":TXT" "${CHANGLOG_NEWS}" \
-                --button="$(gettext "DO NOT REMIND ME")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":16 \
-                --button="$(gettext "REMIND ME LATER")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":18 \
-                --button="$(gettext "UPDATING NOW")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":20 2>/dev/null)
+                --button="${translations[DO NOT REMIND ME]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":16 \
+                --button="${translations[REMIND ME LATER]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":18 \
+                --button="${translations[UPDATING NOW]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":20 2>/dev/null)
                 YAD_STATUS="$?"
 
-                # --button="$(gettext "EXIT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":252 \
+                # --button="${translations[EXIT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":252 \
 
                 case "${YAD_STATUS}" in
                     1|252) exit 0 ;;
-                       16) xcsd="$(gettext "DO NOT REMIND ME")" ;;
-                       18) xcsd="$(gettext "REMIND ME LATER")" ;;
-                       20) xcsd="$(gettext "UPDATING NOW")" ;;
+                       16) xcsd="${translations[DO NOT REMIND ME]}" ;;
+                       18) xcsd="${translations[REMIND ME LATER]}" ;;
+                       20) xcsd="${translations[UPDATING NOW]}" ;;
                 esac
             fi
             case $xcsd in
-                "$(gettext "UPDATING NOW")")
+                "${translations[UPDATING NOW]}")
                     echo "######################################################"
                     print_info "Update scripts..."
                     try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-${BRANCH}.tar.gz"
@@ -1731,9 +1863,9 @@ pw_port_update () {
                     else
                         yad_error_download && pw_port_update || exit 1
                     fi ;;
-                "$(gettext "REMIND ME LATER")")
+                "${translations[REMIND ME LATER]}")
                     echo " " ;;
-                "$(gettext "DO NOT REMIND ME")")
+                "${translations[DO NOT REMIND ME]}")
                     echo "0" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ;;
             esac
         fi
@@ -1811,15 +1943,15 @@ edit_user_conf_from_gui () {
 
 pw_create_gui_png () {
     basename_portwine_exe="$(basename "${portwine_exe}")"
-    if echo "$basename_portwine_exe" | grep -ie "setup\|install\|\.msi$" &>/dev/null ; then
+    if echo "$basename_portwine_exe" | grep -ie 'setup\|install\|\.msi$' &>/dev/null ; then
         export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/setup.png"
         export name_desktop_png="setup"
         return 0
-    elif echo "$basename_portwine_exe" | grep -ie "\.reg$" &>/dev/null ; then
+    elif echo "$basename_portwine_exe" | grep -ie '\.reg$' &>/dev/null ; then
         export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/reg.png"
         export name_desktop_png="reg"
         return 0
-    elif echo "$basename_portwine_exe"| grep -ie "\.bat$" &>/dev/null ; then
+    elif echo "$basename_portwine_exe"| grep -ie '\.bat$' &>/dev/null ; then
         export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/bat.png"
         export name_desktop_png="bat"
         return 0
@@ -1886,7 +2018,7 @@ pw_find_exe () {
     PW_EXCLUDE_EXE_FIND='(windows|explorer|anticheat|programdata|redist|setup|.ppdb|unin|error|crash|handler|install|/jre/|steam|uploader|eac|netframe)'
     PW_PATH_FOR_FIND="${PORT_WINE_PATH}/data/prefixes/"
 
-    pw_start_progress_bar_block "$(gettext "Searching for .exe files... Please wait.")"
+    pw_start_progress_bar_block "${translations[Searching for .exe files... Please wait.]}"
     find "${PW_PATH_FOR_FIND}" -type f -name '*.exe' ${PW_FIND_TIME} | grep -viE ${PW_EXCLUDE_EXE_FIND} | \
     awk -F"/prefixes/" '{print $2}' > "${PW_TMPFS_PATH}/tmp_yad_find_exe"
     pw_stop_progress_bar
@@ -1898,11 +2030,11 @@ pw_find_exe () {
 
     IFS="%"
     PW_SET_FIND_EXE="$("${pw_yad}" --height="500" --width="800" --list --text-align=center \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "$(gettext "Create shortcut for...")" \
-    --text="\n$(gettext "Choose the .exe file for which you need to create a shortcut and click OK.\n")" \
-    --column="$(gettext "Choose path to .exe file:")" ${FIND_TO_GUI} \
-    --button="$(gettext "CANCEL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
-    --button="$(gettext "OK")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)"
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "${translations[Create shortcut for...]}" \
+    --text="\n${translations[Choose the .exe file for which you need to create a shortcut and click OK.\\n]}" \
+    --column="${translations[Choose path to .exe file:]}" ${FIND_TO_GUI} \
+    --button="${translations[CANCEL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
+    --button="${translations[OK]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)"
     YAD_STATUS="$?"
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
         if [[ -z "${PW_SET_FIND_EXE}" ]] ; then
@@ -2084,7 +2216,7 @@ start_portwine () {
             pw_update_pfx_cover_gui
             unpack "${PW_PLUGINS_PATH}/blank_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
             pw_wineboot -i
-        elif yad_question "$(gettext "Do you want to installing recommended libraries in the new prefix:") ${PW_PREFIX_NAME}" ; then
+        elif yad_question "${translations[Do you want to installing recommended libraries in the new prefix:]} ${PW_PREFIX_NAME}" ; then
             pw_update_pfx_cover_gui
             unpack "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
             pw_wineboot -r
@@ -2754,7 +2886,7 @@ start_portwine () {
                 print_info "D3D_MODULE_PATH=${D3D_MODULE_PATH}"
             else
                 pw_stop_progress_bar
-                yad_error "$(gettext "d3dadapter9.so.1.0.0 - Not found in the system.\nInstall the missing package: <b>d3dadapter9</b>")"
+                yad_error "${translations[d3dadapter9.so.1.0.0 - Not found in the system.\\nInstall the missing package: <b>d3dadapter9</b>]}"
                 stop_portwine
             fi
         else
@@ -3310,7 +3442,7 @@ yad_info () {
     --gui-type-layout="${YAD_INFO_GUI_TYPE_LAYOUT}" \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/info.svg" \
     --text-align=center --fixed \
-    --button="$(gettext "OK")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
+    --button="${translations[OK]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
 }
 export -f yad_info
 
@@ -3325,7 +3457,7 @@ yad_error () {
     --gui-type-layout="${YAD_INFO_GUI_TYPE_LAYOUT}" \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/error.svg" \
     --text-align=center --fixed \
-    --button="$(gettext "EXIT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
+    --button="${translations[EXIT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
 }
 export -f yad_error
 
@@ -3334,13 +3466,13 @@ yad_error_download () {
         local pw_yad="yad"
         command -v "${pw_yad}" &>/dev/null || fatal "yad not found"
     fi
-    "${pw_yad}" --text "$(gettext "You will need to check internet connection,and\npress Repeat for repeat download")" \
-    --width=400 --borders=15 --title "$(gettext "Error")" \
+    "${pw_yad}" --text "${translations[You will need to check internet connection,and\\npress Repeat for repeat download]}" \
+    --width=400 --borders=15 --title "${translations[Error]}" \
     --gui-type-layout="${YAD_INFO_GUI_TYPE_LAYOUT}" \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/download.svg" \
     --no-wrap --text-align=center \
-    --button="$(gettext "SKIP")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
-    --button="$(gettext "REPEAT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null
+    --button="${translations[SKIP]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
+    --button="${translations[REPEAT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null
     [[ "$?" != 0 ]] && return 1 || return 0
 }
 
@@ -3350,12 +3482,12 @@ yad_question () {
         local pw_yad="yad"
         command -v "${pw_yad}" &>/dev/null || fatal "yad not found"
     fi
-    "${pw_yad}" --text "${1}" --width=400 --height=150 --borders=15 --title "$(gettext "Choices")" \
+    "${pw_yad}" --text "${1}" --width=400 --height=150 --borders=15 --title "${translations[Choices]}" \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/question.svg" \
     --gui-type-layout="${YAD_INFO_GUI_TYPE_LAYOUT}" \
     --no-wrap --text-align=center --fixed \
-    --button="$(gettext "CANCEL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
-    --button="$(gettext "OK")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null
+    --button="${translations[CANCEL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
+    --button="${translations[OK]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null
     [[ "$?" != 0 ]] && return 1 || return 0
 }
 
@@ -3386,12 +3518,12 @@ pw_start_progress_bar_cover_block () {
 
 pw_update_pfx_cover_gui () {
     if [[ "$1" == "winetricks" ]] ; then
-        TAB_PLACE="--tab=$(gettext "TERMINAL")!$PW_GUI_ICON_PATH/$TAB_SIZE.png --tab=$(gettext "LOGO")!$PW_GUI_ICON_PATH/$TAB_SIZE.png"
+        TAB_PLACE="--tab=${translations[TERMINAL]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png --tab=${translations[LOGO]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png"
         TAB_N1=2
         TAB_N2=1
         YAD_UNDECORATED=""
     else
-        TAB_PLACE="--tab=$(gettext "LOGO")!$PW_GUI_ICON_PATH/$TAB_SIZE.png --tab=$(gettext "TERMINAL")!$PW_GUI_ICON_PATH/$TAB_SIZE.png"
+        TAB_PLACE="--tab=${translations[LOGO]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png --tab=${translations[TERMINAL]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png"
         TAB_N1=1
         TAB_N2=2
         YAD_UNDECORATED="--undecorated"
@@ -3458,7 +3590,7 @@ pw_start_progress_bar_block () {
 
 pw_start_progress_bar_install_game () {
     if ! check_start_from_steam ; then
-        "${pw_yad}" --progress-old --text="$(gettext "Please wait. Installing the") $@
+        "${pw_yad}" --progress-old --text="${translations[Please wait. Installing the]} $@
         " --pulsate --hide-text --borders="$PROGRESS_BAR_BORDERS_SIZE" \
         --no-buttons --undecorated --skip-taskbar \
         --no-escape --text-align="center" --height=90 --fixed \
@@ -3497,7 +3629,7 @@ export -f pw_stop_progress_bar_cover_block
 
 open_changelog () {
     [[ "$LANGUAGE" == ru ]] && local PW_CHANGELOG_FILE="changelog_ru" || local PW_CHANGELOG_FILE="changelog_en"
-    "${pw_yad}" --title="$(gettext "CHANGELOG")" --no-buttons \
+    "${pw_yad}" --title="${translations[CHANGELOG]}" --no-buttons \
     --text-info --show-uri --wrap --width=1200 --height=700 --uri-color=red \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --filename="${PORT_WINE_PATH}/data/${PW_CHANGELOG_FILE}" &>/dev/null
@@ -3549,10 +3681,10 @@ pw_tray_icon () {
         --command="bash -c tray_icon_click" \
         --tooltip="PortProton" \
         --icon-size=32 --menu="| \
-        $(gettext "WINEFILE")!bash -c pw_tray_winefile!"$PW_GUI_ICON_PATH/wine_file.svg"|| \
-        $(gettext "TASKMGR")!bash -c pw_tray_taskmgr!"$PW_GUI_ICON_PATH/wine_system.svg"|| \
-        $(gettext "CHANGELOG")!bash -c open_changelog!"$PW_GUI_ICON_PATH/history.svg"|| \
-        $(gettext "FORCE EXIT")!bash -c tray_icon_click_exit!"$PW_GUI_ICON_PATH/close.svg"||" 2>/dev/null &
+        ${translations[WINEFILE]}!bash -c pw_tray_winefile!"$PW_GUI_ICON_PATH/wine_file.svg"|| \
+        ${translations[TASKMGR]}!bash -c pw_tray_taskmgr!"$PW_GUI_ICON_PATH/wine_system.svg"|| \
+        ${translations[CHANGELOG]}!bash -c open_changelog!"$PW_GUI_ICON_PATH/history.svg"|| \
+        ${translations[FORCE EXIT]}!bash -c tray_icon_click_exit!"$PW_GUI_ICON_PATH/close.svg"||" 2>/dev/null &
     else
         PW_GUI_TRAY_PATH="${PW_GUI_THEMES_PATH}/tray"
         env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${PW_GUI_TRAY_PATH}/tray_gui_pp" &
@@ -3585,7 +3717,7 @@ gui_proton_downloader () {
         return 0
     fi
 
-    pw_start_progress_bar_block "$(gettext "Check new version WINE...")"
+    pw_start_progress_bar_block "${translations[Check new version WINE...]}"
 
     # PROTON_GE
     export PROTON_GE_GIT=($(curl -s "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases" | grep "browser_download_url.*\.tar\.gz" | cut -d \" -f 4))
@@ -3632,7 +3764,7 @@ gui_proton_downloader () {
     pw_stop_progress_bar
 
     if [[ -z "${PROTON_PW_GIT}" ]] ; then
-        yad_error "$(gettext "Error: check wine.")"
+        yad_error "${translations[Error: check wine.]}"
         restart_pp
     fi
 
@@ -3659,55 +3791,55 @@ gui_proton_downloader () {
 
         "${pw_yad}" --plug=$KEY_WINE --tabnum=1 --list --checklist --separator="" \
         --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" \
-        --column "$(gettext "Set")" \
-        --column "$(gettext "Select WINE for download:")" \
+        --column "${translations[Set]}" \
+        --column "${translations[Select WINE for download:]}" \
         $TMP_PROTON_PW_GIT \
         1>> "${PW_TMPFS_PATH}/tmp_set_wine" \
         2>/dev/null &
 
         "${pw_yad}" --plug=$KEY_WINE --tabnum=2 --list --checklist --separator="" \
         --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" \
-        --column "$(gettext "Set")" \
-        --column "$(gettext "Select WINE for download:")" \
+        --column "${translations[Set]}" \
+        --column "${translations[Select WINE for download:]}" \
         $TMP_PROTON_KR_GIT \
         1>> "${PW_TMPFS_PATH}/tmp_set_wine" \
         2>/dev/null &
 
         "${pw_yad}" --plug=$KEY_WINE --tabnum=3 --list --checklist --separator="" \
         --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" \
-        --column "$(gettext "Set")" \
-        --column "$(gettext "Select WINE for download:")" \
+        --column "${translations[Set]}" \
+        --column "${translations[Select WINE for download:]}" \
         $TMP_PROTON_GE_GIT \
         1>> "${PW_TMPFS_PATH}/tmp_set_wine" \
         2>/dev/null &
 
         "${pw_yad}" --plug=$KEY_WINE --tabnum=4 --list --checklist --separator="" \
         --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" \
-        --column "$(gettext "Set")" \
-        --column "$(gettext "Select WINE for download:")" \
+        --column "${translations[Set]}" \
+        --column "${translations[Select WINE for download:]}" \
         $TMP_PROTON_CU_GIT \
         1>> "${PW_TMPFS_PATH}/tmp_set_wine" \
         2>/dev/null &
 
         "${pw_yad}" --plug=$KEY_WINE --tabnum=5 --list --checklist --separator="" \
         --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" \
-        --column "$(gettext "Set")" \
-        --column "$(gettext "Select installed WINE for delete:")" \
+        --column "${translations[Set]}" \
+        --column "${translations[Select installed WINE for delete:]}" \
         $TMP_INSTALLED_WINE \
         1> "${PW_TMPFS_PATH}/tmp_installed_wine_set" \
         2>/dev/null &
 
         "${pw_yad}" --key=$KEY_WINE --notebook --width=500 --height=600 --text-align=center \
         --gui-type="settings-notebook" \
-        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "$(gettext "WINE MANAGER")" --separator="" --expand \
+        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "${translations[WINE MANAGER]}" --separator="" --expand \
         --tab-pos="top" \
         --tab="PROTON-LG"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
         --tab="WINE-KRON4EK"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
         --tab="PROTON-GE"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
         --tab="WINE-GE-CUSTOM"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="$(gettext "INSTALLED")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --button="$(gettext "CANCEL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":1 \
-        --button="$(gettext "OK")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":0 2>/dev/null
+        --tab="${translations[INSTALLED]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+        --button="${translations[CANCEL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":1 \
+        --button="${translations[OK]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":0 2>/dev/null
         YAD_WINE_STATUS="$?"
         if [[ "$YAD_WINE_STATUS" == "1" || "$YAD_WINE_STATUS" == "252" ]] ; then
             restart_pp
@@ -3818,46 +3950,45 @@ gui_edit_db () {
 
     # PW_FORCE_USE_VSYNC PW_HEAP_DELAY_FREE
 
-if [[ "${SKIP_EDIT_DB_TEXT_INFO}" != "1" ]] ; then
-    export PW_DGVOODOO2_INFO=$(gettext 'Enable dgVoodoo2. Forced use all dgVoodoo2 libs (Glide 2.11-3.1, DirectDraw 1-7, Direct3D 2-9) on all 3D API. For WineD3D OpenGL need use WineLG (For Gallium Nine and Zink use too)')
-    export PW_DINPUT_PROTOCOL_INFO=$(gettext 'Force use DirectInput protocol instead of XInput')
-    export PW_USE_NATIVE_WAYLAND_INFO=$(gettext 'Enable experemental native Wayland support (need special wine build to work)')
-    export PW_VKBASALT_INFO=$(gettext 'Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)')
-    export PW_NO_ESYNC_INFO=$(gettext 'Do not use in-process synchronization primitives based on eventfd. (It is recommended not to change the value.)')
-    export PW_NO_FSYNC_INFO=$(gettext 'Do not use futex-based in-process synchronization primitives. (Automatically disabled on systems without FUTEX_WAIT_MULTIPLE support) (It is recommended not to change the value)')
-    export PW_USE_RAY_TRACING_INFO=$(gettext 'Enable vkd3d support - Ray Tracing')
-    export PW_FIX_VIDEO_IN_GAME_INFO=$(gettext 'Required for video playback in some games so that it is not distorted (usually colored pink)')
-    export PW_VULKAN_NO_ASYNC_INFO=$(gettext 'Disable asynchronous calls for VULKAN and DXVK modes')
-    export PW_USE_NVAPI_AND_DLSS_INFO=$(gettext 'Enable DLSS on supported NVIDIA graphics cards')
-    export PW_OLD_GL_STRING_INFO=$(gettext 'Forced use of older versions of OpenGL')
-    export PW_HIDE_NVIDIA_GPU_INFO=$(gettext 'Disguise all features used for NVIDIA graphics cards')
-    export PW_FORCE_USE_VSYNC_INFO=$(gettext 'Forced activation of vertical sync')
-    export PW_VIRTUAL_DESKTOP_INFO=$(gettext 'Enable the application to run in the WINE virtual desktop')
-    export PW_USE_TERMINAL_INFO=$(gettext 'Run the application in the terminal')
-    export PW_HEAP_DELAY_FREE_INFO=$(gettext 'Include a delay in releasing some memory to bypass errors associated with using the application after the memory is released')
-    export PW_NO_WRITE_WATCH_INFO=$(gettext 'A very dangerous way to hack the memory write timer in ntdll. This improves the performance of some very specific games. (It is recommended not to change the value.)')
-    export PW_GUI_DISABLED_CS_INFO=$(gettext 'Disable the window for selecting startup modes and WINE versions')
-    export PW_USE_GSTREAMER_INFO=$(gettext 'Use Gstreamer to output clips in games (WMF support)')
-    export PW_FORCE_LARGE_ADDRESS_AWARE_INFO=$(gettext 'Increases RAM usage limits for 32-bit applications from two to four gigabytes')
-    export PW_USE_RUNTIME_INFO=$(gettext 'Use container launch mode (It is recommended not to change the value)')
-    export PW_MANGOHUD_INFO=$(gettext 'Using FPS and system load monitoring (Turns on and off by the key combination - right Shift + F12)')
-    export PW_USE_GAMEMODE_INFO=$(gettext 'Using automatic system optimization to improve performance in games (provided the gamemode package is installed on the system)')
-    export PW_USE_WINE_DXGI_INFO=$(gettext 'Forced use of built-in DXGI library (in rare cases it solves problems with DX12 games)')
-    export PW_MANGOHUD_USER_CONF_INFO=$(gettext 'Forced use of MANGOHUD system settings (GOverlay, etc.)')
-    export PW_VKBASALT_USER_CONF_INFO=$(gettext 'Forced use of VKBASALT system settings (GOverlay, etc.)')
-    export PW_USE_D3D_EXTRAS_INFO=$(gettext 'Enable forced use of third-party DirectX libraries')
-    export PW_USE_WINDOWS_7_INFO=$(gettext 'Change the version of WINDOWS 10 to WINDOWS 7 in the prefix')
-    export PW_USE_SHADER_CACHE_INFO=$(gettext 'Use WINE shader caching (disable only if there are microfreezes in the game)')
-    export PW_WINE_FULLSCREEN_FSR_INFO=$(gettext 'Works while using any version of ProtonGE in full screen mode at a resolution below the standard screen')
-    export PW_USE_FAKE_DLSS_INFO=$(gettext 'Enable DLSS translator in FSR 2 in DirectX 12 games (CyberFSR2)')
-    export PW_USE_EAC_AND_BE_INFO=$(gettext 'Enable Easy Anti-Cheat and BattlEye Anti-Cheat runtimes (required if game used this anti-cheats)')
-    export PW_REDUCE_PULSE_LATENCY_INFO=$(gettext 'Reduce pulseaudio latency to fix intermittent sound')
-    export PW_USE_US_LAYOUT_INFO=$(gettext 'Forced use of the us layout (useful for games in which the control works correctly only on the us layout)')
-    export PW_RESTORE_RESOLUTION_INFO=$(gettext 'Remember the screen resolution when starting the game and return it when closing (useful for games that change the screen resolution when closing)')
-    export PW_USE_SYSTEM_VK_LAYERS_INFO=$(gettext 'Use system mangohud, vkBasalt, obs-vkcapture and other applications using vulkan layers')
-    export PW_USE_OBS_VKCAPTURE_INFO=$(gettext 'Enable the ability to write to OBS Studio using obs-vkcapture (ATTENTION: the forced use of system mangohud, vkBasalt, obs-vkcapture and other applications using vulkan layers will be enabled)')
-    export PW_DISABLE_COMPOSITING_INFO=$(gettext 'Disable desktop compositing (effects). It often improves performance.')
-    export PW_GAMESCOPE_INFO=$(gettext '<b>Super + F :</b> Toggle fullscreen
+    PW_DGVOODOO2_INFO=${translations[Enable dgVoodoo2. Forced use all dgVoodoo2 libs (Glide 2.11-3.1, DirectDraw 1-7, Direct3D 2-9) on all 3D API. For WineD3D OpenGL need use WineLG (For Gallium Nine and Zink use too)]}
+    PW_DINPUT_PROTOCOL_INFO=${translations[Force use DirectInput protocol instead of XInput]}
+    PW_USE_NATIVE_WAYLAND_INFO=${translations[Enable experemental native Wayland support (need special wine build to work)]}
+    PW_VKBASALT_INFO=${translations[Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)]}
+    PW_NO_ESYNC_INFO=${translations[Do not use in-process synchronization primitives based on eventfd. (It is recommended not to change the value.)]}
+    PW_NO_FSYNC_INFO=${translations[Do not use futex-based in-process synchronization primitives. (Automatically disabled on systems without FUTEX_WAIT_MULTIPLE support) (It is recommended not to change the value)]}
+    PW_USE_RAY_TRACING_INFO=${translations[Enable vkd3d support - Ray Tracing]}
+    PW_FIX_VIDEO_IN_GAME_INFO=${translations[Required for video playback in some games so that it is not distorted (usually colored pink)]}
+    PW_VULKAN_NO_ASYNC_INFO=${translations[Disable asynchronous calls for VULKAN and DXVK modes]}
+    PW_USE_NVAPI_AND_DLSS_INFO=${translations[Enable DLSS on supported NVIDIA graphics cards]}
+    PW_OLD_GL_STRING_INFO=${translations[Forced use of older versions of OpenGL]}
+    PW_HIDE_NVIDIA_GPU_INFO=${translations[Disguise all features used for NVIDIA graphics cards]}
+    PW_FORCE_USE_VSYNC_INFO=${translations[Forced activation of vertical sync]}
+    PW_VIRTUAL_DESKTOP_INFO=${translations[Enable the application to run in the WINE virtual desktop]}
+    PW_USE_TERMINAL_INFO=${translations[Run the application in the terminal]}
+    PW_HEAP_DELAY_FREE_INFO=${translations[Include a delay in releasing some memory to bypass errors associated with using the application after the memory is released]}
+    PW_NO_WRITE_WATCH_INFO=${translations[A very dangerous way to hack the memory write timer in ntdll. This improves the performance of some very specific games. (It is recommended not to change the value.)]}
+    PW_GUI_DISABLED_CS_INFO=${translations[Disable the window for selecting startup modes and WINE versions]}
+    PW_USE_GSTREAMER_INFO=${translations[Use Gstreamer to output clips in games (WMF support)]}
+    PW_FORCE_LARGE_ADDRESS_AWARE_INFO=${translations[Increases RAM usage limits for 32-bit applications from two to four gigabytes]}
+    PW_USE_RUNTIME_INFO=${translations[Use container launch mode (It is recommended not to change the value)]}
+    PW_MANGOHUD_INFO=${translations[Using FPS and system load monitoring (Turns on and off by the key combination - right Shift + F12)]}
+    PW_USE_GAMEMODE_INFO=${translations[Using automatic system optimization to improve performance in games (provided the gamemode package is installed on the system)]}
+    PW_USE_WINE_DXGI_INFO=${translations[Forced use of built-in DXGI library (in rare cases it solves problems with DX12 games)]}
+    PW_MANGOHUD_USER_CONF_INFO=${translations[Forced use of MANGOHUD system settings (GOverlay, etc.)]}
+    PW_VKBASALT_USER_CONF_INFO=${translations[Forced use of VKBASALT system settings (GOverlay, etc.)]}
+    PW_USE_D3D_EXTRAS_INFO=${translations[Enable forced use of third-party DirectX libraries]}
+    PW_USE_WINDOWS_7_INFO=${translations[Change the version of WINDOWS 10 to WINDOWS 7 in the prefix]}
+    PW_USE_SHADER_CACHE_INFO=${translations[Use WINE shader caching (disable only if there are microfreezes in the game)]}
+    PW_WINE_FULLSCREEN_FSR_INFO=${translations[Works while using any version of ProtonGE in full screen mode at a resolution below the standard screen]}
+    PW_USE_FAKE_DLSS_INFO=${translations[Enable DLSS translator in FSR 2 in DirectX 12 games (CyberFSR2)]}
+    PW_USE_EAC_AND_BE_INFO=${translations[Enable Easy Anti-Cheat and BattlEye Anti-Cheat runtimes (required if game used this anti-cheats)]}
+    PW_REDUCE_PULSE_LATENCY_INFO=${translations[Reduce pulseaudio latency to fix intermittent sound]}
+    PW_USE_US_LAYOUT_INFO=${translations[Forced use of the us layout (useful for games in which the control works correctly only on the us layout)]}
+    PW_RESTORE_RESOLUTION_INFO=${translations[Remember the screen resolution when starting the game and return it when closing (useful for games that change the screen resolution when closing)]}
+    PW_USE_SYSTEM_VK_LAYERS_INFO=${translations[Use system mangohud, vkBasalt, obs-vkcapture and other applications using vulkan layers]}
+    PW_USE_OBS_VKCAPTURE_INFO=${translations[Enable the ability to write to OBS Studio using obs-vkcapture (ATTENTION: the forced use of system mangohud, vkBasalt, obs-vkcapture and other applications using vulkan layers will be enabled)]}
+    PW_DISABLE_COMPOSITING_INFO=${translations[Disable desktop compositing (effects). It often improves performance.]}
+    PW_GAMESCOPE_INFO=${translations[<b>Super + F :</b> Toggle fullscreen
 <b>Super + N :</b> Toggle nearest neighbour filtering
 <b>Super + U :</b> Toggle FSR upscaling
 <b>Super + Y :</b> Toggle NIS upscaling
@@ -3865,10 +3996,7 @@ if [[ "${SKIP_EDIT_DB_TEXT_INFO}" != "1" ]] ; then
 <b>Super + O :</b> Decrease FSR sharpness by 1
 <b>Super + S :</b> Take screenshot (currently goes to /tmp/gamescope_DATE.png)
 <b>Super + G :</b> Toggle keyboard grab
-<b>Super + C :</b> Update clipboard')
-
-    export SKIP_EDIT_DB_TEXT_INFO="1"
-fi
+<b>Super + C :</b> Update clipboard]}
 
     case "${PW_VULKAN_USE}" in
         0)
@@ -3932,9 +4060,9 @@ fi
     fi
 
     "${pw_yad}" --plug=$KEY_EDIT_DB_GUI --tabnum="2" --form --separator="%" --columns=1 \
-    --field="$(gettext "Change the version of <b>WINDOWS</b> emulation")!$(gettext "Changing the <b>WINDOWS</b> emulation version may be required to run older games. <b>WINDOWS</b> versions below 10 do not support new games with DirectX 12") :CB" "${ADD_WINVER_EDIT_DB}" \
-    --field="$(gettext "AUTOINSTALL WITH <b>WINETRICKS</b>")!$(gettext "Automatically install with <b>WINETRICKS</b> additional libraries required to run the game/program. List of libraries separated by spaces") :CBE" "$(combobox_fix --empty "${PW_DLL_INSTALL}" "vcrun2019 corefonts lucida")" \
-    --field="$(gettext "Forced to use/disable libraries")!$(gettext "Forced to use/disable the library only for the given application. (There are examples in the drop-down list)
+    --field="${translations[Change the version of <b>WINDOWS</b> emulation]}!${translations[Changing the <b>WINDOWS</b> emulation version may be required to run older games. <b>WINDOWS</b> versions below 10 do not support new games with DirectX 12]} :CB" "${ADD_WINVER_EDIT_DB}" \
+    --field="${translations[AUTOINSTALL WITH <b>WINETRICKS</b>]}!${translations[Automatically install with <b>WINETRICKS</b> additional libraries required to run the game/program. List of libraries separated by spaces]} :CBE" "$(combobox_fix --empty "${PW_DLL_INSTALL}" "vcrun2019 corefonts lucida")" \
+    --field="${translations[Forced to use/disable libraries]}!${translations[Forced to use/disable the library only for the given application. (There are examples in the drop-down list)
 
 A brief instruction:
     * libraries are written <b>WITHOUT</b> the .dll file extension
@@ -3943,27 +4071,27 @@ A brief instruction:
     * library=b - use <b>WINE</b> (built-in) library
     * library=n,b - use <b>WINDOWS</b> library and then <b>WINE</b>
     * library=b,n - use <b>WINE</b> library and then <b>WINDOWS</b>
-    * library= - disable the use of this library") :CBE" "$(combobox_fix --empty "${WINEDLLOVERRIDES}" "libglesv2=!d3dx9_36,d3dx9_42=n,b;mfc120=b,n")" \
+    * library= - disable the use of this library]} :CBE" "$(combobox_fix --empty "${WINEDLLOVERRIDES}" "libglesv2=!d3dx9_36,d3dx9_42=n,b;mfc120=b,n")" \
     --field=":LBLH" "" \
-    --field="$(gettext "ADD ARGUMENTS FOR .EXE FILE")!$(gettext "Adding an argument after the <b>.exe</b> file, just like you would add an argument in a shortcut on a <b>WINDOWS </b> system") :CBE" "$(combobox_fix --empty "\\${LAUNCH_PARAMETERS[@]}" "-dx11 -skipintro 1")" \
+    --field="${translations[ADD ARGUMENTS FOR .EXE FILE]}!${translations[Adding an argument after the <b>.exe</b> file, just like you would add an argument in a shortcut on a <b>WINDOWS </b> system]} :CBE" "$(combobox_fix --empty "\\${LAUNCH_PARAMETERS[@]}" "-dx11 -skipintro 1")" \
     --field=":LBLH" "" \
-    --field="$(gettext "Limit the use of processor cores")!$(gettext "Limiting the number of CPU cores is useful for Unity games (It is recommended to set the value equal to 8)") :CB" "$(combobox_fix --disabled "${CPU_LIMIT_VAR}" "${GET_LOGICAL_CORE}")" \
-    --field="$(gettext "Forcibly select the OpenGL version for the game")!$(gettext "You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)") :CB" "$(combobox_fix --disabled "${PW_MESA_GL_VERSION_OVERRIDE}" "4.6COMPAT!4.6!4.5COMPAT!4.5!3.3COMPAT!3.3")" \
-    --field="$(gettext "Forcibly select the VKD3D feature level")!$(gettext "You can set a forced feature level VKD3D for games on DirectX12") :${VKD3D_CB}" "$(combobox_fix --disabled "${PW_VKD3D_FEATURE_LEVEL}" "12_2!12_1!12_0!11_1!11_0")" \
-    --field="$(gettext "Force certain locale for an app:")!$(gettext "Fixes encoding issues in legacy software") :CB" "$(combobox_fix --disabled "${PW_LOCALE_SELECT}" "$LOCALE_LIST")" \
-    1> "${PW_TMPFS_PATH}/tmp_output_yad_fps_limit" 2>/dev/null &
+    --field="${translations[Limit the use of processor cores]}!${translations[Limiting the number of CPU cores is useful for Unity games (It is recommended to set the value equal to 8)]} :CB" "$(combobox_fix --disabled "${CPU_LIMIT_VAR}" "${GET_LOGICAL_CORE}")" \
+    --field="${translations[Forcibly select the OpenGL version for the game]}!${translations[You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)]} :CB" "$(combobox_fix --disabled "${PW_MESA_GL_VERSION_OVERRIDE}" "4.6COMPAT!4.6!4.5COMPAT!4.5!3.3COMPAT!3.3")" \
+    --field="${translations[Forcibly select the VKD3D feature level]}!${translations[You can set a forced feature level VKD3D for games on DirectX12]} :${VKD3D_CB}" "$(combobox_fix --disabled "${PW_VKD3D_FEATURE_LEVEL}" "12_2!12_1!12_0!11_1!11_0")" \
+    --field="${translations[Force certain locale for an app:]}!${translations[Fixes encoding issues in legacy software]} :CB" "$(combobox_fix --disabled "${PW_LOCALE_SELECT}" "$LOCALE_LIST")" \
+    1> "$PW_TMPFS_PATH/tmp_output_yad_fps_limit" 2>/dev/null &
 
-    "${pw_yad}" --notebook --key="$KEY_EDIT_DB_GUI" --title "$(gettext "EDIT DB")" --text-align=center \
-    --text "$(gettext "Change settings in database file for") <b>${PORTWINE_DB}</b>\n $(gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" \
+    "${pw_yad}" --notebook --key="$KEY_EDIT_DB_GUI" --title "${translations[EDIT DB]}" --text-align=center \
+    --text "${translations[Change settings in database file for]} <b>${PORTWINE_DB}</b>\n ${translations[<b>NOTE:</b> To display help for each item, simply hover your mouse over the text]}" \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand \
     --gui-type="settings-base" \
     --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" \
-    --tab="$(gettext "MAIN")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-    --tab="$(gettext "ADVANCED")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-    --button="$(gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Cancel the current changes and return to the previous menu")":1 \
-    --button="$(gettext "RESET SETTINGS")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Restore default settings")":2 \
-    --button="$(gettext "OPEN THE SETTINGS FILE")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Open the <b>.ppdb</b> settings file in a system text editor to view and change variables manually")":150 \
-    --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":0 2>/dev/null
+    --tab="${translations[MAIN]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+    --tab="${translations[ADVANCED]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+    --button="${translations[CANCEL THE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Cancel the current changes and return to the previous menu]}":1 \
+    --button="${translations[RESET SETTINGS]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Restore default settings]}":2 \
+    --button="${translations[OPEN THE SETTINGS FILE]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Open the <b>.ppdb</b> settings file in a system text editor to view and change variables manually]}":150 \
+    --button="${translations[SAVE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Save the current changes, and go to the previous menu]}":0 2>/dev/null
     YAD_STATUS="$?"
 
     case "$YAD_STATUS" in
@@ -4035,65 +4163,61 @@ gui_vkbasalt () {
     LIST_FX=($(grep -E '.fx$|.fxh$' "${FILE_VKBASALT_CONF}" | awk '{print $1}'))
     GET_FX_IN_FILE=($(echo ${PW_VKBASALT_EFFECTS} | sed s/"cas:"// | sed s/":"/" "/g))
 
-if [[ "${SKIP_VKBASALT_TEXT_INFO}" != "1" ]] ; then
-    export PW_3DFX_INFO=$(gettext 'Simulation of an old 3dfx graphics accelerator (adds horizontal stripes)')
-    export PW_AdaptiveSharpen_INFO=$(gettext 'Sharpness increase, can be used with CAS')
-    export PW_Bloom_INFO=$(gettext 'Adds glow from bright light sources in the game')
-    export PW_Border_INFO=$(gettext 'Cropping the image from the top and bottom (like in a movie =)')
-    export PW_Cartoon_INFO=$(gettext 'Strong sharpening of texture edges')
-    export PW_ChromaticAberration_INFO=$(gettext 'Adds chromatic aberration to an image')
-    export PW_Clarity_INFO=$(gettext 'Sharpening textures with slight modifications of image contrast (similar in effect to CAS)')
-    export PW_ColorMatrix_INFO=$(gettext 'Adding cool colors')
-    export PW_Colourfulness_INFO=$(gettext 'Increasing color saturation')
-    export PW_FakeHDR_INFO=$(gettext 'Add fake HDR')
-    export PW_FilmGrain2_INFO=$(gettext 'Adding the film grain effect')
-    export PW_Curves_INFO=$(gettext 'Increases the contrast of the image without affecting the bright and dark areas, so that the detail in shadows and sky is not lost')
-    export PW_Denoise_INFO=$(gettext 'Reducing noise by blurring the image')
-    export PW_Emphasize_INFO=$(gettext 'Reducing the bit depth of color')
-    export PW_FakeMotionBlur_INFO=$(gettext 'Strong blurring of objects in motion')
-    export PW_FilmicAnamorphSharpen_INFO=$(gettext 'Sharpening (recommended for cartoon games)')
-    export PW_FilmicPass_INFO=$(gettext 'Adding cold colors')
-    export PW_SMAA_INFO=$(gettext 'Alternative antialiasing option (less effect, but with less consumption of GPU resources, relative to the standard SMAA)')
-    export PW_GaussianBlur_INFO=$(gettext 'Slight blur effect on bright objects (such as flames)')
-    export PW_Glitch_INFO=$(gettext 'Glitch effect')
-    export PW_HighPassSharpen_INFO=$(gettext 'Another method of sharpening using highpass frequencies')
-    export PW_HQ4X_INFO=$(gettext 'Smoothing of nearby pixels with the drawing of missing parts (in normal games the picture is blurred)')
-    export PW_HSLShift_INFO=$(gettext 'Advanced HSL shift (for each shade)')
-    export PW_Layer_INFO=$(gettext "Image overlay on the game")
-    export PW_Levels_INFO=$(gettext 'Increases contrast, but some detail in shadows or highlights may be lost')
-    export PW_LevelsPlus_INFO=$(gettext 'Same as Levels, but with less loss of detail')
-    export PW_LiftGammaGain_INFO=$(gettext 'Gamma correction by individual color channels: red, green and blue')
-    export PW_LightDoF_INFO=$(gettext 'Increases depth of field (greatly affects FPS)')
-    export PW_LumaSharpen_INFO=$(gettext 'Enhances image sharpness for improved detail')
-    export PW_LUT_INFO=$(gettext 'Image color correction')
-    export PW_MagicBloom_INFO=$(gettext 'Same as Bloom, but more natural')
-    export PW_Monochrome_INFO=$(gettext 'Converts the image into monochrome')
-    export PW_MultiLUT_INFO=$(gettext 'Extended version of the LUT (Hollywood loot is pre-installed)')
-    export PW_MXAO_INFO=$(gettext 'SSAO algorithm (Greatly affects FPS)')
-    export PW_NightVision_INFO=$(gettext 'Night vision effect')
-    export PW_Nostalgia_INFO=$(gettext 'Makes the picture look like old photos')
-    export PW_PerfectPerspective_INFO=$(gettext 'Fisheye effect (suitable for VR)')
-    export PW_PPFX_Godrays_INFO=$(gettext 'Add God rays (also called 3D light rays) effect')
-    export PW_Prism_INFO=$(gettext 'The prismatic lens effect')
-    export PW_ReflectiveBumpMapping_INFO=$(gettext 'Creates the illusion of depth in textures')
-    export PW_Sepia_INFO=$(gettext 'Adds a sepia effect like in old photos')
-    export PW_Splitscreen_INFO=$(gettext 'Splits the image into raw and processed output for comparison')
-    export PW_SurfaceBlur_INFO=$(gettext 'Reducing object detail without blurring contrast contours')
-    export PW_Technicolor_INFO=$(gettext 'Makes the picture look like films from the 1930s')
-    export PW_Technicolor2_INFO=$(gettext 'The updated version of Technicolor, gives a different picture by changing colors more aggressively')
-    export PW_TiltShift_INFO=$(gettext 'Blur on the edges of the screen to create a Tilt Shift effect')
-    export PW_Tonemap_INFO=$(gettext 'Changes the saturation of the picture')
-    export PW_TriDither_INFO=$(gettext 'Reduces the amount of noise')
-    export PW_UIDetect_INFO=$(gettext 'Automatically switches effects depending on the visibility of the UI')
-    export PW_Vibrance_INFO=$(gettext 'Saturates faded colors without touching the bright ones')
-    export PW_Vignette_INFO=$(gettext 'Adds a vignette to the image')
-    export PW_AspectRatio_INFO=$(gettext 'An effect for adjusting the aspect ratio (for games that do not support widescreen monitors)')
-    export PW_UIMask_INFO=$(gettext 'Part of the overall ReShade shader . It uses a mask with gradients from black to white to determine where the effects will be applied')
-    export PW_StageDepth_INFO=$(gettext 'Allows you to add new elements to the 3d space inside the game and apply custom textures')
-    export PW_PPFX_Bloom_INFO=$(gettext 'Adds a Bloom effect')
-
-    export SKIP_VKBASALT_TEXT_INFO="1"
-fi
+    PW_3DFX_INFO=${translations[Simulation of an old 3dfx graphics accelerator (adds horizontal stripes)]}
+    PW_AdaptiveSharpen_INFO=${translations[Sharpness increase, can be used with CAS]}
+    PW_Bloom_INFO=${translations[Adds glow from bright light sources in the game]}
+    PW_Border_INFO=${translations[Cropping the image from the top and bottom (like in a movie =)]}
+    PW_Cartoon_INFO=${translations[Strong sharpening of texture edges]}
+    PW_ChromaticAberration_INFO=${translations[Adds chromatic aberration to an image]}
+    PW_Clarity_INFO=${translations[Sharpening textures with slight modifications of image contrast (similar in effect to CAS)]}
+    PW_ColorMatrix_INFO=${translations[Adding cool colors]}
+    PW_Colourfulness_INFO=${translations[Increasing color saturation]}
+    PW_FakeHDR_INFO=${translations[Add fake HDR]}
+    PW_FilmGrain2_INFO=${translations[Adding the film grain effect]}
+    PW_Curves_INFO=${translations[Increases the contrast of the image without affecting the bright and dark areas, so that the detail in shadows and sky is not lost]}
+    PW_Denoise_INFO=${translations[Reducing noise by blurring the image]}
+    PW_Emphasize_INFO=${translations[Reducing the bit depth of color]}
+    PW_FakeMotionBlur_INFO=${translations[Strong blurring of objects in motion]}
+    PW_FilmicAnamorphSharpen_INFO=${translations[Sharpening (recommended for cartoon games)]}
+    PW_FilmicPass_INFO=${translations[Adding cold colors]}
+    PW_SMAA_INFO=${translations[Alternative antialiasing option (less effect, but with less consumption of GPU resources, relative to the standard SMAA)]}
+    PW_GaussianBlur_INFO=${translations[Slight blur effect on bright objects (such as flames)]}
+    PW_Glitch_INFO=${translations[Glitch effect]}
+    PW_HighPassSharpen_INFO=${translations[Another method of sharpening using highpass frequencies]}
+    PW_HQ4X_INFO=${translations[Smoothing of nearby pixels with the drawing of missing parts (in normal games the picture is blurred)]}
+    PW_HSLShift_INFO=${translations[Advanced HSL shift (for each shade)]}
+    PW_Layer_INFO=${translations[Image overlay on the game]}
+    PW_Levels_INFO=${translations[Increases contrast, but some detail in shadows or highlights may be lost]}
+    PW_LevelsPlus_INFO=${translations[Same as Levels, but with less loss of detail]}
+    PW_LiftGammaGain_INFO=${translations[Gamma correction by individual color channels: red, green and blue]}
+    PW_LightDoF_INFO=${translations[Increases depth of field (greatly affects FPS)]}
+    PW_LumaSharpen_INFO=${translations[Enhances image sharpness for improved detail]}
+    PW_LUT_INFO=${translations[Image color correction]}
+    PW_MagicBloom_INFO=${translations[Same as Bloom, but more natural]}
+    PW_Monochrome_INFO=${translations[Converts the image into monochrome]}
+    PW_MultiLUT_INFO=${translations[Extended version of the LUT (Hollywood loot is pre-installed)]}
+    PW_MXAO_INFO=${translations[SSAO algorithm (Greatly affects FPS)]}
+    PW_NightVision_INFO=${translations[Night vision effect]}
+    PW_Nostalgia_INFO=${translations[Makes the picture look like old photos]}
+    PW_PerfectPerspective_INFO=${translations[Fisheye effect (suitable for VR)]}
+    PW_PPFX_Godrays_INFO=${translations[Add God rays (also called 3D light rays) effect]}
+    PW_Prism_INFO=${translations[The prismatic lens effect]}
+    PW_ReflectiveBumpMapping_INFO=${translations[Creates the illusion of depth in textures]}
+    PW_Sepia_INFO=${translations[Adds a sepia effect like in old photos]}
+    PW_Splitscreen_INFO=${translations[Splits the image into raw and processed output for comparison]}
+    PW_SurfaceBlur_INFO=${translations[Reducing object detail without blurring contrast contours]}
+    PW_Technicolor_INFO=${translations[Makes the picture look like films from the 1930s]}
+    PW_Technicolor2_INFO=${translations[The updated version of Technicolor, gives a different picture by changing colors more aggressively]}
+    PW_TiltShift_INFO=${translations[Blur on the edges of the screen to create a Tilt Shift effect]}
+    PW_Tonemap_INFO=${translations[Changes the saturation of the picture]}
+    PW_TriDither_INFO=${translations[Reduces the amount of noise]}
+    PW_UIDetect_INFO=${translations[Automatically switches effects depending on the visibility of the UI]}
+    PW_Vibrance_INFO=${translations[Saturates faded colors without touching the bright ones]}
+    PW_Vignette_INFO=${translations[Adds a vignette to the image]}
+    PW_AspectRatio_INFO=${translations[An effect for adjusting the aspect ratio (for games that do not support widescreen monitors)]}
+    PW_UIMask_INFO=${translations[Part of the overall ReShade shader . It uses a mask with gradients from black to white to determine where the effects will be applied]}
+    PW_StageDepth_INFO=${translations[Allows you to add new elements to the 3d space inside the game and apply custom textures]}
+    PW_PPFX_Bloom_INFO=${translations[Adds a Bloom effect]}
 
     unset ADD_GUI_FX GUI_FX_RESULT
     for add_list_fx in ${LIST_FX[@]} ; do
@@ -4119,23 +4243,23 @@ fi
     fi
     IFS="%"
     "${pw_yad}" --plug=$KEY_FX_GUI --tabnum="1" --form --columns=4 --separator=" " \
-    --text-align=center --text="$(gettext "VkBasalt settings for adding effects to games running under Vulkan. (The <b>HOME</b> key disables vkbasalt)\n<b>NOTE:</b> To display help for each item, simply hover over the text")" \
+    --text-align=center --text="${translations[VkBasalt settings for adding effects to games running under Vulkan. (The <b>HOME</b> key disables vkbasalt)\\n<b>NOTE:</b> To display help for each item, simply hover over the text]}" \
     --gui-type-text="${PANED_GUI_TYPE_TEXT_UP}" --gui-type-layout="${PANED_GUI_TYPE_LAYOUT_UP}" \
     ${ADD_GUI_FX} 1> "${PW_TMPFS_PATH}/tmp_yad_basalt_set" 2>/dev/null &
     IFS="$orig_IFS"
 
     "${pw_yad}" --plug=$KEY_FX_GUI --tabnum="2" --separator=" " --form \
     --gui-type-layout="${PANED_GUI_TYPE_LAYOUT_DOWN}" \
-    --field="AMD FidelityFX - Contrast Adaptive Sharpening"!"$(gettext "AMD FidelityFX - CAS is designed to dramatically improve texture sharpness without additional modification settings for games, with minimal loss of performance. (For older games it is recommended to set value = 100)")":SCL "${VKBASALT_FFX_CAS_GUI}" \
+    --field="AMD FidelityFX - Contrast Adaptive Sharpening"!"${translations[AMD FidelityFX - CAS is designed to dramatically improve texture sharpness without additional modification settings for games, with minimal loss of performance. (For older games it is recommended to set value = 100)]}":SCL "${VKBASALT_FFX_CAS_GUI}" \
     1> "${PW_TMPFS_PATH}/tmp_yad_cas_set" 2>/dev/null &
 
     "${pw_yad}" --paned --key="$KEY_FX_GUI" --sensitive --title="vkBasalt" \
     --gui-type="settings-paned" \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-    --button="$(gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Cancel the current changes and return to the previous menu")":1 \
-    --button="$(gettext "RESET") VKBASALT"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Restore default settings for") vkBasalt":178 \
-    --button="$(gettext "DISABLE") VKBASALT"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Disable vkBasalt and go to the previous menu")":180 \
-    --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":182 2>/dev/null
+    --button="${translations[CANCEL THE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Cancel the current changes and return to the previous menu]}":1 \
+    --button="${translations[RESET]} VKBASALT"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Restore default settings for]} vkBasalt":178 \
+    --button="${translations[DISABLE]} VKBASALT"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Disable vkBasalt and go to the previous menu]}":180 \
+    --button="${translations[SAVE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Save the current changes, and go to the previous menu]}":182 2>/dev/null
     YAD_VKBASALT_STATUS="$?"
 
     case "${YAD_VKBASALT_STATUS}" in
@@ -4194,64 +4318,60 @@ gui_mangohud () {
         time version vkbasalt vram vulkan_driver wine
     )
 
-if [[ "${SKIP_MANGOHUD_TEXT_INFO}" != "1" ]] ; then
-    export PW_MH_arch_INFO=$(gettext 'Show if the application is 32- or 64-bit')
-    export PW_MH_battery_INFO=$(gettext 'Display current battery percent and energy consumption')
-    export PW_MH_battery_icon_INFO=$(gettext 'Display battery icon instead of percent')
-    export PW_MH_battery_time_INFO=$(gettext 'Display remaining time for battery option')
-    export PW_MH_battery_watt_INFO=$(gettext 'Display wattage for the battery option')
-    export PW_MH_core_bars_INFO=$(gettext 'Change the display of core_load from numbers to vertical bars')
-    export PW_MH_core_load_INFO=$(gettext 'Display load & frequency per core')
-    export PW_MH_cpu_mhz_INFO=$(gettext 'Show the CPUs current MHz')
-    export PW_MH_cpu_power_INFO=$(gettext 'Display CPU draw in watts')
-    export PW_MH_cpu_temp_INFO=$(gettext 'Display current CPU temperature')
-    export PW_MH_device_battery_icon_INFO=$(gettext 'Display wirless device battery icon.')
-    export PW_MH_engine_short_names_INFO=$(gettext 'Display a short version of the used engine (e.g. OGL instead of OpenGL)')
-    export PW_MH_engine_version_INFO=$(gettext 'Display OpenGL or vulkan and vulkan-based render engines version')
-    export PW_MH_exec_name_INFO=$(gettext 'Display current exec name')
-    export PW_MH_fcat_INFO=$(gettext 'Enables frame capture analysis')
-    export PW_MH_fps_metrics_INFO=$(gettext 'Takes a list of decimal values or the value avg, e.g avg,0.001')
-    export PW_MH_frame_count_INFO=$(gettext 'Display frame count')
-    export PW_MH_full_INFO=$(gettext 'Enable most of the toggleable parameters (currently excludes histogram)')
-    export PW_MH_gamemode_INFO=$(gettext 'Show if GameMode is on')
-    export PW_MH_gpu_core_clock_INFO=$(gettext 'Display GPU core frequency')
-    export PW_MH_gpu_fan_INFO=$(gettext 'GPU fan in rpm on AMD, FAN in percent on NVIDIA')
-    export PW_MH_gpu_junction_temp_INFO=$(gettext 'Display current GPU temperature')
-    export PW_MH_gpu_mem_clock_INFO=$(gettext 'Display GPU memory frequency')
-    export PW_MH_gpu_mem_temp_INFO=$(gettext 'Display current GPU temperature')
-    export PW_MH_gpu_name_INFO=$(gettext 'Display GPU name from pci.ids')
-    export PW_MH_gpu_power_INFO=$(gettext 'Display GPU draw in watts')
-    export PW_MH_gpu_temp_INFO=$(gettext 'Display current GPU temperature')
-    export PW_MH_gpu_voltage_INFO=$(gettext 'Display GPU voltage (only works on AMD GPUs)')
-    export PW_MH_histogram_INFO=$(gettext 'Change FPS graph to histogram')
-    export PW_MH_horizontal_INFO=$(gettext 'Display Mangohud in a horizontal position')
-    export PW_MH_horizontal_stretch_INFO=$(gettext 'Stretches the background to the screens width in horizontal mode')
-    export PW_MH_hud_compact_INFO=$(gettext 'Display compact version of MangoHud')
-    export PW_MH_hud_no_margin_INFO=$(gettext 'Remove margins around MangoHud')
-    export PW_MH_io_read_INFO=$(gettext 'Show non-cached IO read, in MiB/s')
-    export PW_MH_io_write_INFO=$(gettext 'Show non-cached IO write, in MiB/s')
-    export PW_MH_no_display_INFO=$(gettext 'Hide the HUD by default')
-    export PW_MH_no_small_font_INFO=$(gettext 'Use primary font size for smaller text like units')
-    export PW_MH_procmem_INFO=$(gettext 'Displays process memory usage: resident procmem (resident) also toggles others off if disabled')
-    export PW_MH_procmem_shared_INFO=$(gettext 'Displays process memory usage: shared')
-    export PW_MH_procmem_virt_INFO=$(gettext 'Displays process memory usage: virtual')
-    export PW_MH_ram_INFO=$(gettext 'Display system RAM usage')
-    export PW_MH_resolution_INFO=$(gettext 'Display the current resolution')
-    export PW_MH_show_fps_limit_INFO=$(gettext 'Display the current FPS limit')
-    export PW_MH_swap_INFO=$(gettext 'Display swap space usage next to system RAM usage')
-    export PW_MH_temp_fahrenheit_INFO=$(gettext 'Show temperature in Fahrenheit')
-    export PW_MH_throttling_status_INFO=$(gettext 'Show if GPU is throttling based on Power, current, temp or "other" (Only shows if throttling is currently happening). Currently disabled by default for Nvidia as it causes lag on 3000 series')
-    export PW_MH_throttling_status_graph_INFO=$(gettext 'Same as throttling_status but displays throttling in the frametime graph and only power and temp throttling')
-    export PW_MH_time_INFO=$(gettext 'Display time')
-    export PW_MH_version_INFO=$(gettext 'Show current MangoHud version')
-    export PW_MH_vkbasalt_INFO=$(gettext 'Show if vkBasalt is on')
-    export PW_MH_vram_INFO=$(gettext 'Display system VRAM usage')
-    export PW_MH_vulkan_driver_INFO=$(gettext 'Display used Vulkan driver (radv/amdgpu-pro/amdvlk)')
-    export PW_MH_frametime_INFO=$(gettext 'Display frametime next to FPS text')
-    export PW_MH_wine_INFO=$(gettext 'Show current Wine or Proton version in use')
-
-    export SKIP_MANGOHUD_TEXT_INFO="1"
-fi
+    PW_MH_arch_INFO=${translations[Show if the application is 32- or 64-bit]}
+    PW_MH_battery_INFO=${translations[Display current battery percent and energy consumption]}
+    PW_MH_battery_icon_INFO=${translations[Display battery icon instead of percent]}
+    PW_MH_battery_time_INFO=${translations[Display remaining time for battery option]}
+    PW_MH_battery_watt_INFO=${translations[Display wattage for the battery option]}
+    PW_MH_core_bars_INFO=${translations[Change the display of core_load from numbers to vertical bars]}
+    PW_MH_core_load_INFO=${translations[Display load & frequency per core]}
+    PW_MH_cpu_mhz_INFO=${translations[Show the CPUs current MHz]}
+    PW_MH_cpu_power_INFO=${translations[Display CPU draw in watts]}
+    PW_MH_cpu_temp_INFO=${translations[Display current CPU temperature]}
+    PW_MH_device_battery_icon_INFO=${translations[Display wirless device battery icon.]}
+    PW_MH_engine_short_names_INFO=${translations[Display a short version of the used engine (e.g. OGL instead of OpenGL)]}
+    PW_MH_engine_version_INFO=${translations[Display OpenGL or vulkan and vulkan-based render engines version]}
+    PW_MH_exec_name_INFO=${translations[Display current exec name]}
+    PW_MH_fcat_INFO=${translations[Enables frame capture analysis]}
+    PW_MH_fps_metrics_INFO=${translations[Takes a list of decimal values or the value avg, e.g avg,0.001]}
+    PW_MH_frame_count_INFO=${translations[Display frame count]}
+    PW_MH_full_INFO=${translations[Enable most of the toggleable parameters (currently excludes histogram)]}
+    PW_MH_gamemode_INFO=${translations[Show if GameMode is on]}
+    PW_MH_gpu_core_clock_INFO=${translations[Display GPU core frequency]}
+    PW_MH_gpu_fan_INFO=${translations[GPU fan in rpm on AMD, FAN in percent on NVIDIA]}
+    PW_MH_gpu_junction_temp_INFO=${translations[Display current GPU temperature]}
+    PW_MH_gpu_mem_clock_INFO=${translations[Display GPU memory frequency]}
+    PW_MH_gpu_mem_temp_INFO=${translations[Display current GPU temperature]}
+    PW_MH_gpu_name_INFO=${translations[Display GPU name from pci.ids]}
+    PW_MH_gpu_power_INFO=${translations[Display GPU draw in watts]}
+    PW_MH_gpu_temp_INFO=${translations[Display current GPU temperature]}
+    PW_MH_gpu_voltage_INFO=${translations[Display GPU voltage (only works on AMD GPUs)]}
+    PW_MH_histogram_INFO=${translations[Change FPS graph to histogram]}
+    PW_MH_horizontal_INFO=${translations[Display Mangohud in a horizontal position]}
+    PW_MH_horizontal_stretch_INFO=${translations[Stretches the background to the screens width in horizontal mode]}
+    PW_MH_hud_compact_INFO=${translations[Display compact version of MangoHud]}
+    PW_MH_hud_no_margin_INFO=${translations[Remove margins around MangoHud]}
+    PW_MH_io_read_INFO=${translations[Show non-cached IO read, in MiB/s]}
+    PW_MH_io_write_INFO=${translations[Show non-cached IO write, in MiB/s]}
+    PW_MH_no_display_INFO=${translations[Hide the HUD by default]}
+    PW_MH_no_small_font_INFO=${translations[Use primary font size for smaller text like units]}
+    PW_MH_procmem_INFO=${translations[Displays process memory usage: resident procmem (resident) also toggles others off if disabled]}
+    PW_MH_procmem_shared_INFO=${translations[Displays process memory usage: shared]}
+    PW_MH_procmem_virt_INFO=${translations[Displays process memory usage: virtual]}
+    PW_MH_ram_INFO=${translations[Display system RAM usage]}
+    PW_MH_resolution_INFO=${translations[Display the current resolution]}
+    PW_MH_show_fps_limit_INFO=${translations[Display the current FPS limit]}
+    PW_MH_swap_INFO=${translations[Display swap space usage next to system RAM usage]}
+    PW_MH_temp_fahrenheit_INFO=${translations[Show temperature in Fahrenheit]}
+    PW_MH_throttling_status_INFO=${translations[Show if GPU is throttling based on Power, current, temp or "other" (Only shows if throttling is currently happening). Currently disabled by default for Nvidia as it causes lag on 3000 series]}
+    PW_MH_throttling_status_graph_INFO=${translations[Same as throttling_status but displays throttling in the frametime graph and only power and temp throttling]}
+    PW_MH_time_INFO=${translations[Display time]}
+    PW_MH_version_INFO=${translations[Show current MangoHud version]}
+    PW_MH_vkbasalt_INFO=${translations[Show if vkBasalt is on]}
+    PW_MH_vram_INFO=${translations[Display system VRAM usage]}
+    PW_MH_vulkan_driver_INFO=${translations[Display used Vulkan driver (radv/amdgpu-pro/amdvlk)]}
+    PW_MH_frametime_INFO=${translations[Display frametime next to FPS text]}
+    PW_MH_wine_INFO=${translations[Show current Wine or Proton version in use]}
 
     unset ADD_GUI_MH GUI_MH_RESULT ADD_GUI_MH_FPS GUI_MH_FPS_RESULT PW_FPS_LIMIT_VAR PW_MANGOHUD_CONFIG
     try_remove_file "${PW_TMPFS_PATH}/tmp_yad_mh_set"
@@ -4288,11 +4408,11 @@ fi
 
     IFS="%"
     "${pw_yad}" --plug=$KEY_MH_GUI --tabnum="1" --form --columns=5 --separator=" " --text-align=center \
-        --text="$(gettext "MangoHud settings (Keys <b>R_SHIFT + F12</b> disable MangoHud)\n<b>note:</b> To display help for each item, just hover the mouse cursor over the text.")" \
+        --text="${translations[MangoHud settings (Keys <b>R_SHIFT + F12</b> disable MangoHud)\\n<b>note:</b> To display help for each item, just hover the mouse cursor over the text.]}" \
         --gui-type-text="${PANED_GUI_TYPE_TEXT_UP}" --gui-type-layout="${PANED_GUI_TYPE_LAYOUT_UP}" \
         ${ADD_GUI_MH} 1> "${PW_TMPFS_PATH}/tmp_yad_mh_set" 2>/dev/null &
     "${pw_yad}" --plug=$KEY_MH_GUI --tabnum="2" --form --columns=10 --separator=" " --text-align=center \
-        --text="$(gettext "Enabling fps limitation with MANGOHUD tools built into PortProton (Keys <b>L_SHIFT + F1</b> Toggles fps limitation)")" \
+        --text="${translations[Enabling fps limitation with MANGOHUD tools built into PortProton (Keys <b>L_SHIFT + F1</b> Toggles fps limitation)]}" \
         --gui-type-text="${PANED_GUI_TYPE_TEXT_DOWN}" --gui-type-layout="${PANED_GUI_TYPE_LAYOUT_DOWN}" \
         ${ADD_GUI_MH_FPS} 1> "${PW_TMPFS_PATH}/tmp_yad_mh_fps_limit" 2>/dev/null &
     IFS="$orig_IFS"
@@ -4300,11 +4420,11 @@ fi
     "${pw_yad}" --paned --key="$KEY_MH_GUI" --title="MangoHud" \
         --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --sensitive \
         --gui-type="settings-paned" \
-        --button="$(gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Cancel the current changes and return to the previous menu")":1 \
-        --button="$(gettext "RESET") MANGOHUD"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Restore default settings for") MangoHud":180 \
-        --button="$(gettext "PREVIEW CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Start vkcube for preview changes")":184 \
-        --button="$(gettext "DISABLE") MANGOHUD"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Disable MangoHud and go to the previous menu")":182 \
-        --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":186  2>/dev/null
+        --button="${translations[CANCEL THE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Cancel the current changes and return to the previous menu]}":1 \
+        --button="${translations[RESET]} MANGOHUD"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Restore default settings for]} MangoHud":180 \
+        --button="${translations[PREVIEW CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Start vkcube for preview changes]}":184 \
+        --button="${translations[DISABLE]} MANGOHUD"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Disable MangoHud and go to the previous menu]}":182 \
+        --button="${translations[SAVE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Save the current changes, and go to the previous menu]}":186  2>/dev/null
     YAD_MANGOHUD_STATUS="$?"
 
     case "${YAD_MANGOHUD_STATUS}" in
@@ -4402,29 +4522,25 @@ gui_dgvoodoo2 () {
     PW_DGV2_INACTIVE_APP_STATE
     "
 
-if [[ "${SKIP_DGVOODOO2_TEXT_INFO}" != "1" ]] ; then
-    export PW_DGV2_USE_DX12_INFO=$(gettext 'Use DirectX12 for dgVoodoo2. Doesnt always work better. (Working only on newest and stable dxvk/vkd3d) (Direct3D and Glide settings)')
-    export PW_DGV2_FORCE_VSYNC_INFO=$(gettext 'Force the vertical sync to avoid tearing or prevent the GPU from rendering at crazy high speed. Keep in mind that some application need unforced vSync because of synchronization reasons. (Direct3D settings)')
-    export PW_DGV2_DGVOODOO_WATERMARK_INFO=$(gettext 'Shows the dgVoodoo watermark in-game when enabled. (Direct3D settings)')
-    export PW_DGV2_ENABLE_CRT_INFO=$(gettext 'CRT-like blurred appearance. (Direct3D and Glide settings)')
-    export PW_DGV2_DISABLE_MIPMAPPING_INFO=$(gettext 'Disabling mipmapping can be used to make textured surfaces sharper. (Direct3D and Glide settings)')
-    export PW_DGV2_FREE_MOUSE_INFO=$(gettext 'If enabled then physical mouse is free to move inside the game window when using emulated scaling and/or application and forced resolution differs. Can be useful when a game relies and the physical window size. (Direct3D and Glide settings)')
-    export PW_DGV2_DISABLE_D3D_INFO=$(gettext 'Do not use d3d8 and d3d9 dgVoodoo2 libraries. For some old games, using the example of Space Rangers, a bug with a black screen is corrected. (Direct3D settings)')
-    export PW_DGV2_FILTER_POINT_SAMPLED_INFO=$(gettext 'if enabled then forced filtering affects only non-point sampled textures. (Direct3D settings)')
-    export PW_DGV2_FASTMEMORY_INFO=$(gettext 'Enable fast memory access. (Enable if games have poor performance, using Unreal 2 as an example) (Direct3D settings)')
-    export PW_DGV2_PHONG_SHADING_INFO=$(gettext 'If this option is enabled then Phong shading is applied in place of Gouraud when it is possible. It works only when an application uses the fixed function vertex/pixel pipline and pushes all the work of the vertex transforming and lighting to Direct3D when rendering primitives. Keep in mind that it requires much more GPU power than default shading. (Direct3D settings)')
-    export PW_DGV2_BLIT_STRETCH_INFO=$(gettext 'If this options enabled then linear filtering is applied for stretched copying between 2D surfaces (DirectDraw only). Early hardware did not support or apply point sampled blitting which can end up very pixelated results. Linear filtering is much nicer in general but can cause artifacts especially with colorkeyed blitting. (Direct3D settings)')
-    export PW_DGV2_GLIDE_NAPALM_INFO=$(gettext 'Use 3dfx glide napalm, uses antialiasing provided by the application. (Disables antialiasing setting) (Glide settings)')
-    export PW_DGV2_GLIDE_GAMMA_RAMP_INFO=$(gettext 'Enable gamma ramp coming for Glide. (Glide settings)')
-    export PW_DGV2_ONBOARD_RAM_INFO=$(gettext 'Increases memory for videocard Voodoo Graphics, Voodoo Rush, Voodoo 2, Voodoo Banshee. You can set the game resolution higher. (Glide settings)')
-    export PW_DGV2_EMULATING_PCI_ACCESS_INFO=$(gettext 'When enabled, the virtual 3Dfx card will have PCI bus speeds emulated as closely as possible. Emulation of true PCI access should theoretically never be disabled but there can be possible degradation of performance when left enabled. Only some games require accurate emulation of the PCI bus, so in most cases PCI bus emulation should be left disabled. (Glide settings)')
-    export PW_DGV2_16_BIT_DEPTH_BUFFER_INFO=$(gettext 'Enabling 16-bit depth buffers can prevent Z-fighting in games, but also has the disadvantage of possibly causing artifacting. (Glide settings)')
-    export PW_DGV2_3DFX_WATERMARK_INFO=$(gettext 'Shows the 3Dfx watermark in-game when enabled. (Glide settings)')
-    export PW_DGV2_3DFX_SPLASH_SCREEN_INFO=$(gettext 'The 3Dfx splash screen is seen when an application starts, disabling this option prevents this animation from playing. (Glide settings)')
-    export PW_DGV2_INACTIVE_APP_STATE_INFO=$(gettext 'Enabling inactive state prevents the application from detecting losing the application focus. Most of the Glide applications close or deactivate themself when losing focus, so this can be used to let the application run in the background. (Glide settings)')
-
-    export SKIP_DGVOODOO2_TEXT_INFO="1"
-fi
+    PW_DGV2_USE_DX12_INFO=${translations[Use DirectX12 for dgVoodoo2. Doesnt always work better. (Working only on newest and stable dxvk/vkd3d) (Direct3D and Glide settings)]}
+    PW_DGV2_FORCE_VSYNC_INFO=${translations[Force the vertical sync to avoid tearing or prevent the GPU from rendering at crazy high speed. Keep in mind that some application need unforced vSync because of synchronization reasons. (Direct3D settings)]}
+    PW_DGV2_DGVOODOO_WATERMARK_INFO=${translations[Shows the dgVoodoo watermark in-game when enabled. (Direct3D settings)]}
+    PW_DGV2_ENABLE_CRT_INFO=${translations[CRT-like blurred appearance. (Direct3D and Glide settings)]}
+    PW_DGV2_DISABLE_MIPMAPPING_INFO=${translations[Disabling mipmapping can be used to make textured surfaces sharper. (Direct3D and Glide settings)]}
+    PW_DGV2_FREE_MOUSE_INFO=${translations[If enabled then physical mouse is free to move inside the game window when using emulated scaling and/or application and forced resolution differs. Can be useful when a game relies and the physical window size. (Direct3D and Glide settings)]}
+    PW_DGV2_DISABLE_D3D_INFO=${translations[Do not use d3d8 and d3d9 dgVoodoo2 libraries. For some old games, using the example of Space Rangers, a bug with a black screen is corrected. (Direct3D settings)]}
+    PW_DGV2_FILTER_POINT_SAMPLED_INFO=${translations[if enabled then forced filtering affects only non-point sampled textures. (Direct3D settings)]}
+    PW_DGV2_FASTMEMORY_INFO=${translations[Enable fast memory access. (Enable if games have poor performance, using Unreal 2 as an example) (Direct3D settings)]}
+    PW_DGV2_PHONG_SHADING_INFO=${translations[If this option is enabled then Phong shading is applied in place of Gouraud when it is possible. It works only when an application uses the fixed function vertex/pixel pipline and pushes all the work of the vertex transforming and lighting to Direct3D when rendering primitives. Keep in mind that it requires much more GPU power than default shading. (Direct3D settings)]}
+    PW_DGV2_BLIT_STRETCH_INFO=${translations[If this options enabled then linear filtering is applied for stretched copying between 2D surfaces (DirectDraw only). Early hardware did not support or apply point sampled blitting which can end up very pixelated results. Linear filtering is much nicer in general but can cause artifacts especially with colorkeyed blitting. (Direct3D settings)]}
+    PW_DGV2_GLIDE_NAPALM_INFO=${translations[Use 3dfx glide napalm, uses antialiasing provided by the application. (Disables antialiasing setting) (Glide settings)]}
+    PW_DGV2_GLIDE_GAMMA_RAMP_INFO=${translations[Enable gamma ramp coming for Glide. (Glide settings)]}
+    PW_DGV2_ONBOARD_RAM_INFO=${translations[Increases memory for videocard Voodoo Graphics, Voodoo Rush, Voodoo 2, Voodoo Banshee. You can set the game resolution higher. (Glide settings)]}
+    PW_DGV2_EMULATING_PCI_ACCESS_INFO=${translations[When enabled, the virtual 3Dfx card will have PCI bus speeds emulated as closely as possible. Emulation of true PCI access should theoretically never be disabled but there can be possible degradation of performance when left enabled. Only some games require accurate emulation of the PCI bus, so in most cases PCI bus emulation should be left disabled. (Glide settings)]}
+    PW_DGV2_16_BIT_DEPTH_BUFFER_INFO=${translations[Enabling 16-bit depth buffers can prevent Z-fighting in games, but also has the disadvantage of possibly causing artifacting. (Glide settings)]}
+    PW_DGV2_3DFX_WATERMARK_INFO=${translations[Shows the 3Dfx watermark in-game when enabled. (Glide settings)]}
+    PW_DGV2_3DFX_SPLASH_SCREEN_INFO=${translations[The 3Dfx splash screen is seen when an application starts, disabling this option prevents this animation from playing. (Glide settings)]}
+    PW_DGV2_INACTIVE_APP_STATE_INFO=${translations[Enabling inactive state prevents the application from detecting losing the application focus. Most of the Glide applications close or deactivate themself when losing focus, so this can be used to let the application run in the background. (Glide settings)]}
 
     # fix
     [[ "${PW_DGV2_FILTERING}" == "0" ]] && export PW_DGV2_FILTERING="disabled" && edit_db_from_gui PW_DGV2_FILTERING
@@ -4454,7 +4570,7 @@ fi
 
     IFS="%"
     "${pw_yad}" --plug=$KEY_DGV2_GUI --tabnum="1" --form --separator=" " --columns=4 ${ADD_CHK_BOX_DGV2} --text-align=center \
-    --text="$(gettext "dgVoodoo2 settings\n<b>NOTE:</b> To display help for each item, simply hover over the text")" \
+    --text=${translations[dgVoodoo2 settings\\n<b>NOTE:</b> To display help for each item, simply hover over the text]} \
     --gui-type-text="${PANED_GUI_TYPE_TEXT_UP}" --gui-type-layout="${PANED_GUI_TYPE_LAYOUT_UP}" \
     1> "${PW_TMPFS_PATH}/tmp_yad_dgv2_set" 2>/dev/null &
     IFS="$orig_IFS"
@@ -4472,40 +4588,40 @@ fi
 
     "${pw_yad}" --plug=$KEY_DGV2_GUI --tabnum="2" --form --columns=3 --separator="%" \
     --gui-type-layout="${PANED_GUI_TYPE_LAYOUT_DOWN}" \
-    --field="${CHKBOX_SPACE}RESOLUTION!$(gettext "Set the resolution used. (Direct3D and Glide settings)") :CBE" "$(combobox_fix --disabled "${PW_DGV2_RESOLUTION}" "4x app resolution!3x app resolution!2x app resolution!${DGVOODOO2_XRANDR_NEW::-1}")" \
-    --field="${CHKBOX_SPACE}FPS LIMIT!$(gettext "You can configure fps limit. (Direct3D and Glide settings)") :CBE" "$(combobox_fix --disabled "${PW_DGV2_FPS_LIMIT}" "30!40!45!48!60!75!90!120!144!165!175!240")" \
-    --field="${CHKBOX_SPACE}FILTERING!$(gettext "You can select from various texture filtering modes here. Forcing other than the app default can result in glitches or break some rendering effects. (Glide have max filtering bilinear) (Direct3D and Glide settings)") :CB" "$(combobox_fix --disabled "${PW_DGV2_FILTERING}" "${DGVOODOO2_FILTERING}")" \
-    --field="${CHKBOX_SPACE}ANTIALIASING!$(gettext "Forcing antialiasing. This can cause artifacts. (Direct3D and Glide settings)") :CB" "$(combobox_fix --disabled "${PW_DGV2_ANTIALIASING}" "2x!4x!8x")" \
-    --field="${CHKBOX_SPACE}BIT DEPTH!$(gettext "You can define what screen bit depth should be reported through dgVoodoo. (For game MOTO need 16 bit depth) (Direct3D and Glide settings)") :CB" "$(combobox_fix --disabled "${PW_DGV2_BIT_DEPTH}" "8!16!32")" \
-    --field="${CHKBOX_SPACE}VIDEOCARD!$(gettext "You can select a virtual video card. (For game Quake 2 need Voodoo Graphics or Voodoo Rush card) (Direct3D and Glide settings)") :CB" "$(combobox_fix "${PW_DGV2_VIDEOCARD}" "${DGVOODOO2_VIDEOCARD}")" \
-    --field="${CHKBOX_SPACE}VRAM!$(gettext "Increase the amount of vram for dgVoodoo2. (Direct3D settings)
+    --field="${CHKBOX_SPACE}RESOLUTION!${translations[Set the resolution used. (Direct3D and Glide settings)]} :CBE" "$(combobox_fix --disabled "${PW_DGV2_RESOLUTION}" "4x app resolution!3x app resolution!2x app resolution!${DGVOODOO2_XRANDR_NEW::-1}")" \
+    --field="${CHKBOX_SPACE}FPS LIMIT!${translations[You can configure fps limit. (Direct3D and Glide settings)]} :CBE" "$(combobox_fix --disabled "${PW_DGV2_FPS_LIMIT}" "30!40!45!48!60!75!90!120!144!165!175!240")" \
+    --field="${CHKBOX_SPACE}FILTERING!${translations[You can select from various texture filtering modes here. Forcing other than the app default can result in glitches or break some rendering effects. (Glide have max filtering bilinear) (Direct3D and Glide settings)]} :CB" "$(combobox_fix --disabled "${PW_DGV2_FILTERING}" "${DGVOODOO2_FILTERING}")" \
+    --field="${CHKBOX_SPACE}ANTIALIASING!${translations[Forcing antialiasing. This can cause artifacts. (Direct3D and Glide settings)]} :CB" "$(combobox_fix --disabled "${PW_DGV2_ANTIALIASING}" "2x!4x!8x")" \
+    --field="${CHKBOX_SPACE}BIT DEPTH!${translations[You can define what screen bit depth should be reported through dgVoodoo. (For game MOTO need 16 bit depth) (Direct3D and Glide settings)]} :CB" "$(combobox_fix --disabled "${PW_DGV2_BIT_DEPTH}" "8!16!32")" \
+    --field="${CHKBOX_SPACE}VIDEOCARD!${translations[You can select a virtual video card. (For game Quake 2 need Voodoo Graphics or Voodoo Rush card) (Direct3D and Glide settings)]} :CB" "$(combobox_fix "${PW_DGV2_VIDEOCARD}" "${DGVOODOO2_VIDEOCARD}")" \
+    --field="${CHKBOX_SPACE}VRAM!${translations[Increase the amount of vram for dgVoodoo2. (Direct3D settings)
 - dgVoodoo2 SVGA 3D: 16 - 128
 - dgVoodoo2 Virtual 3D: 16 - 4096
 - Geforce 4 Ti 4800: 64 - 256
 - ATI Radeon 8500: 64 - 256
 - Matrox Parhelia-512: 128 - 256
 - GeForce FX 5700 Ultra: 64 - 256
-- GeForce 9800 GT: 512 - 1024") :CB" "$(combobox_fix "${PW_DGV2_VRAM}" "16!32!64!128!256!512!1024!2048!4096")" \
-    --field="${CHKBOX_SPACE}BRIGHTNESS!$(gettext "Brightness can be finetuned here. (Direct3D and Glide settings)") :NUM" "${PW_DGV2_BRIGHTNESS}:!0..400" \
-    --field="${CHKBOX_SPACE}COLOR!$(gettext "Color intensity. Finetued it to make colors or less vital compared to the application default, or even Black and White, according to your taste. (Direct3D and Glide settings)") :NUM" "${PW_DGV2_COLOR}:!0..400" \
-    --field="${CHKBOX_SPACE}CONTRAST!$(gettext "Contrast is the intensity difference between dark and bright regions. Only static contrast is implemented and you can finetune it here. (Direct3D and Glide settings)") :NUM" "${PW_DGV2_CONTRAST}:!0..400" \
-    --field="${CHKBOX_SPACE}DISPLAY ROI!$(gettext "Useful for applications rendering into a widescreen subrectangle inside a 4:3 resolution - the widescreen subrectangle can be defined as display ROI, the input of the scaling process. (Direct3D and Glide settings)") :CBE" "$(combobox_fix --disabled "${PW_DGV2_DISPLAY_ROI}" "3_2!4_3!5_4!16_9!16_10!21_9")" \
-    --field="${CHKBOX_SPACE}RESAMPLING!$(gettext "If scaling is done by the dgVoodoo than you can choose which resampling method to use. The more complex filter the more computationally expensive. Available ones in order of complexty. (Direct3D and Glide settings)
+- GeForce 9800 GT: 512 - 1024]} :CB" "$(combobox_fix "${PW_DGV2_VRAM}" "16!32!64!128!256!512!1024!2048!4096")" \
+    --field="${CHKBOX_SPACE}BRIGHTNESS!${translations[Brightness can be finetuned here. (Direct3D and Glide settings)]} :NUM" "${PW_DGV2_BRIGHTNESS}:!0..400" \
+    --field="${CHKBOX_SPACE}COLOR!${translations[Color intensity. Finetued it to make colors or less vital compared to the application default, or even Black and White, according to your taste. (Direct3D and Glide settings)]} :NUM" "${PW_DGV2_COLOR}:!0..400" \
+    --field="${CHKBOX_SPACE}CONTRAST!${translations[Contrast is the intensity difference between dark and bright regions. Only static contrast is implemented and you can finetune it here. (Direct3D and Glide settings)]} :NUM" "${PW_DGV2_CONTRAST}:!0..400" \
+    --field="${CHKBOX_SPACE}DISPLAY ROI!${translations[Useful for applications rendering into a widescreen subrectangle inside a 4:3 resolution - the widescreen subrectangle can be defined as display ROI, the input of the scaling process. (Direct3D and Glide settings)]} :CBE" "$(combobox_fix --disabled "${PW_DGV2_DISPLAY_ROI}" "3_2!4_3!5_4!16_9!16_10!21_9")" \
+    --field="${CHKBOX_SPACE}RESAMPLING!${translations[If scaling is done by the dgVoodoo than you can choose which resampling method to use. The more complex filter the more computationally expensive. Available ones in order of complexty. (Direct3D and Glide settings)
 - Point sampled (unblurred pixels)
 - Bilinear (smoothed)
 - Lanczos-2 (smoothed but sharper)
 - Bicubic (smoothed but sharper)
-- Lanczos-3 (smoothed, sharpest)") :CB" "$(combobox_fix --disabled "${PW_DGV2_RESAMPLING}" "${DGVOODOO2_RESAMPLING}")" \
-    --field="${CHKBOX_SPACE}CURSOR SCALE!$(gettext "Integer scale factor of the emulated hardware mouse cursor. 0: calculated from the application and forced resolution. (Direct3D and Glide settings)") :NUM" "${PW_DGV2_CURSOR_SCALE}:!0..5" \
+- Lanczos-3 (smoothed, sharpest)]} :CB" "$(combobox_fix --disabled "${PW_DGV2_RESAMPLING}" "${DGVOODOO2_RESAMPLING}")" \
+    --field="${CHKBOX_SPACE}CURSOR SCALE!${translations[Integer scale factor of the emulated hardware mouse cursor. 0: calculated from the application and forced resolution. (Direct3D and Glide settings)]} :NUM" "${PW_DGV2_CURSOR_SCALE}:!0..5" \
     1> "${PW_TMPFS_PATH}/tmp_yad_dgv2_set_cb" 2>/dev/null &
 
     "${pw_yad}" --paned --key=$KEY_DGV2_GUI --height="350" --title="dgVoodoo2" \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --gui-type="settings-paned" \
-    --button="$(gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Cancel the current changes and return to the previous menu")":1 \
-    --button="$(gettext "RESET") DGVOODOO2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Restore default settings for") dgVoodoo2":162 \
-    --button="$(gettext "DISABLE") DGVOODOO2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Disable dgVoodoo2 and go to the previous menu")":164 \
-    --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":166 \
+    --button="${translations[CANCEL THE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Cancel the current changes and return to the previous menu]}":1 \
+    --button="${translations[RESET]} DGVOODOO2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Restore default settings for]} dgVoodoo2":162 \
+    --button="${translations[DISABLE]} DGVOODOO2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Disable dgVoodoo2 and go to the previous menu]}":164 \
+    --button="${translations[SAVE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Save the current changes, and go to the previous menu]}":166 \
     2>/dev/null
     YAD_DGV2_STATUS="$?"
 
@@ -4586,32 +4702,28 @@ gui_gamescope () {
         rm_from_var PW_GS_LIST "PW_GS_FORCE_GRAB_KEYBOARD"
     fi
 
-if [[ "${SKIP_GAMESCOPE_TEXT_INFO}" != "1" ]] ; then
-    export PW_GS_FULLSCREEN_INFO=$(gettext 'Make the window fullscreen')
-    export PW_GS_FORCE_FULLSCREEN_INFO=$(gettext 'Force windows inside of gamescope to be the size of the nested display (fullscreen)')
-    export PW_GS_BORDERLESS_WINDOW_INFO=$(gettext 'Make the window borderless. Working only with backend sdl or X11 session.')
-    export PW_GS_FORCE_GRAB_KEYBOARD_INFO=$(gettext 'Grab the keyboard')
-    export PW_GS_FORCE_GRAB_CURSOR_INFO=$(gettext 'Always use relative mouse mode instead of flipping dependent on cursor visibility.')
-    export PW_GS_HDR_ENABLE_INFO=$(gettext 'Enable HDR output (needs Gamescope WSI layer enabled for support from clients). If this is not set, and there is a HDR client, it will be tonemapped SDR'.)
-    export PW_GS_ENABLE_GAMESCOPE_WSI_INFO=$(gettext 'This can be useful for some HDR options and for some DXVK v2.3 vsync optimisations')
-    export PW_GS_SDR_GAMMUT_WIDENESS_INFO=$(gettext "Set the 'wideness' of the gamut for SDR comment. 0 - 1.")
-    export PW_GS_HDR_ITM_ENABLE_INFO=$(gettext 'Enable SDR->HDR inverse tone mapping. only works for SDR input.')
-    export PW_GS_FORCE_COMPOSITION_INFO=$(gettext 'Disables direct scan-out')
-    export PW_GS_HDR_FORCE_SUPPORT_INFO=$(gettext 'Forces support for HDR and associated opptions even if the current display does not support it')
-    export PW_GS_HDR_FORCE_OUTPUT_INFO=$(gettext "Forces support and output to HDR10 PQ even if the output does not support it (will look very wrong if it doesn't)")
-    export PW_GS_HDR_FORCE_HEATMAP_INFO=$(gettext 'Displays a heatmap-style debug view of HDR luminence across the scene in nits.')
-    export PW_GS_EXPOSE_WAYLAND_INFO=$(gettext 'Expose Wayland clients using xdg-shell')
-    export PW_GS_REALTIME_SCHEDULING_INFO=$(gettext 'Enable GameScope realtime scheduling')
-    export PW_GS_MANGOAPP_INFO=$(gettext 'Launch with the mangoapp (mangohud) performance overlay enabled. You should use this instead of using mangohud on the game or gamescope.')
-    export PW_GS_BACKEND_SDL_INFO=$(gettext 'Use sdl backend. (by default wayland backend is used).')
-    export PW_GS_SDL_VIDEODRIVER_X11_INFO=$(gettext 'Force use sdl videodriver x11, works with BACKEND SDL. (Default is wayland)')
-
-    export SKIP_GAMESCOPE_TEXT_INFO="1"
-fi
+    PW_GS_FULLSCREEN_INFO=${translations[Make the window fullscreen]}
+    PW_GS_FORCE_FULLSCREEN_INFO=${translations[Force windows inside of gamescope to be the size of the nested display (fullscreen)]}
+    PW_GS_BORDERLESS_WINDOW_INFO=${translations[Make the window borderless. Working only with backend sdl or X11 session.]}
+    PW_GS_FORCE_GRAB_KEYBOARD_INFO=${translations[Grab the keyboard]}
+    PW_GS_FORCE_GRAB_CURSOR_INFO=${translations[Always use relative mouse mode instead of flipping dependent on cursor visibility.]}
+    PW_GS_HDR_ENABLE_INFO=${translations[Enable HDR output (needs Gamescope WSI layer enabled for support from clients). If this is not set, and there is a HDR client, it will be tonemapped SDR.]}
+    PW_GS_ENABLE_GAMESCOPE_WSI_INFO=${translations[This can be useful for some HDR options and for some DXVK v2.3 vsync optimisations]}
+    PW_GS_SDR_GAMMUT_WIDENESS_INFO=${translations[Set the \'wideness\' of the gamut for SDR comment. 0 - 1.]}
+    PW_GS_HDR_ITM_ENABLE_INFO=${translations[Enable SDR->HDR inverse tone mapping. only works for SDR input.]}
+    PW_GS_FORCE_COMPOSITION_INFO=${translations[Disables direct scan-out]}
+    PW_GS_HDR_FORCE_SUPPORT_INFO=${translations[Forces support for HDR and associated opptions even if the current display does not support it]}
+    PW_GS_HDR_FORCE_OUTPUT_INFO=${translations[Forces support and output to HDR10 PQ even if the output does not support it (will look very wrong if it doesn\'t)]}
+    PW_GS_HDR_FORCE_HEATMAP_INFO=${translations[Displays a heatmap-style debug view of HDR luminence across the scene in nits.]}
+    PW_GS_EXPOSE_WAYLAND_INFO=${translations[Expose Wayland clients using xdg-shell]}
+    PW_GS_REALTIME_SCHEDULING_INFO=${translations[Enable GameScope realtime scheduling]}
+    PW_GS_MANGOAPP_INFO=${translations[Launch with the mangoapp (mangohud) performance overlay enabled. You should use this instead of using mangohud on the game or gamescope.]}
+    PW_GS_BACKEND_SDL_INFO=${translations[Use sdl backend. (by default wayland backend is used).]}
+    PW_GS_SDL_VIDEODRIVER_X11_INFO=${translations[Force use sdl videodriver x11, works with BACKEND SDL. (Default is wayland)]}
 
     unset ADD_CHK_BOX_GS
     if [[ "${GAMESCOPE_INSTALLED}" == 1 ]] ; then
-        GAMESCOPE_NEED_INSTALL="$(gettext "Change settings gamescope for") <b>${PORTWINE_DB}</b>\n $(gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")"
+        GAMESCOPE_NEED_INSTALL="${translations[Change settings gamescope for]} <b>${PORTWINE_DB}</b>\n ${translations[<b>NOTE:</b> To display help for each item, simply hover your mouse over the text]}"
         GS_CB="CB" && GS_CBE="CBE" && GS_NUM="NUM" && GS_NUMN="NUMN"
         for int_to_boole in ${PW_GS_LIST} ; do
             if [[ "${!int_to_boole}" == "1" ]]
@@ -4625,11 +4737,10 @@ fi
     else
         if check_flatpak ; then
             GAMESCOPE_VERSION="$(grep 'VERSION_ID=' /etc/os-release)"
-            GAMESCOPE_VERSION="${GAMESCOPE_VERSION//VERSION_ID=/}"
-            GAMESCOPE_NEED_INSTALL="$(eval_gettext "<b>Gamescope is not detected on the system, to install it, run the command in the terminal:\n flatpak install -y runtime/org.freedesktop.Platform.VulkanLayer.gamescope/x86_64/\${GAMESCOPE_VERSION}\n (Can be selected and copied)</b>")"
+            GAMESCOPE_NEED_INSTALL=$(eval_translations "<b>Gamescope is not detected on the system, to install it, run the command in the terminal:\\nflatpak install -y runtime/org.freedesktop.Platform.VulkanLayer.gamescope/x86_64/\$%{GAMESCOPE_VERSION}%\\n(Can be selected and copied)</b>" "GAMESCOPE_VERSION=${GAMESCOPE_VERSION//VERSION_ID=/}")
             YAD_TEXT_SELECTION="--selectable-labels"
         else
-            GAMESCOPE_NEED_INSTALL="$(gettext "<b>Gamescope is not detected on the system, please contact the manufacturer of your distribution\n or search the Internet for information on how to install gamescope on your system.</b>")"
+            GAMESCOPE_NEED_INSTALL="${translations[<b>Gamescope is not detected on the system, please contact the manufacturer of your distribution\\nor search the Internet for information on how to install gamescope on your system.</b>]}"
         fi
         GS_CB="DCB" && GS_CBE="DCBE" && GS_NUM="DNUM" && GS_NUMN="DNUMN"
         PW_GS_SHOW_RESOLUTION="disabled"
@@ -4671,31 +4782,31 @@ fi
 
     "${pw_yad}" --plug=$KEY_GS_GUI --tabnum="2" --form --columns=2 --separator="%" --homogeneous-row \
     --gui-type-text="${PANED_GUI_TYPE_TEXT_DOWN}" --gui-type-layout="${PANED_GUI_TYPE_LAYOUT_DOWN}" \
-    --field="${CHKBOX_SPACE}$(gettext "Show resolution")!$(gettext "Set the resolution used by gamescope. Resizing the gamescope window will update these settings. Defaults to 1280x720.") :${GS_CBE}" "$(combobox_fix --disabled "${PW_GS_SHOW_RESOLUTION}" "${GAMESCOPE_XRANDR_NEW::-1}")" \
-    --field="${CHKBOX_SPACE}$(gettext "Internal resolution")!$(gettext "Scale internal resolution (0.0 is unused)") :${GS_NUMN}" "${PW_GS_INTERNAL_RESOLUTION}:!0..2" \
-    --field="${CHKBOX_SPACE}$(gettext "Frame limit")!$(gettext "Set a framerate limit. Specified in frames per second") :${GS_CBE}" "$(combobox_fix --disabled "${PW_GS_FRAME_LIMIT}" "30!40!45!48!60!75!90!120!144!165!175!240")" \
-    --field="${CHKBOX_SPACE}$(gettext "Mesa vulkan WSI")!$(gettext "Overrides the WSI present mode:
+    --field="${CHKBOX_SPACE}${translations[Show resolution]}!${translations[Set the resolution used by gamescope. Resizing the gamescope window will update these settings. Defaults to 1280x720.]} :${GS_CBE}" "$(combobox_fix --disabled "${PW_GS_SHOW_RESOLUTION}" "${GAMESCOPE_XRANDR_NEW::-1}")" \
+    --field="${CHKBOX_SPACE}${translations[Internal resolution]}!${translations[Scale internal resolution (0.0 is unused)]} :${GS_NUMN}" "${PW_GS_INTERNAL_RESOLUTION}:!0..2" \
+    --field="${CHKBOX_SPACE}${translations[Frame limit]}!${translations[Set a framerate limit. Specified in frames per second]} :${GS_CBE}" "$(combobox_fix --disabled "${PW_GS_FRAME_LIMIT}" "30!40!45!48!60!75!90!120!144!165!175!240")" \
+    --field="${CHKBOX_SPACE}${translations[Mesa vulkan WSI]}!${translations[Overrides the WSI present mode:
 fifo - First in, first out. Limits the frame rate + no tearing. (VSync)
 immediate - Unlimited frame rate + tearing.
 mailbox - Triple buffering. Unlimited frame rate + no tearing.
-relaxed - Same as fifo but allows tearing when below the monitors refresh rate.") :${GS_CB}" "$(combobox_fix --disabled "${PW_GS_MESA_VK_WSI_PRESENT_MODE}" "fifo!immediate!mailbox!relaxed")" \
-    --field="${CHKBOX_SPACE}$(gettext "Scaler mode")!$(gettext "Specify how to scale the GameScope window content") :${GS_CB}" "$(combobox_fix --disabled "${PW_GS_SCALER_MODE}" "auto!integer!fit!fill!stretch")" \
-    --field="${CHKBOX_SPACE}$(gettext "Filter mode")!$(gettext "Use a filter such as AMD FidelityFX SuperResolution 1.0 (FSR) or NVIDIA Image Scaling v1.0.3 (NIS)") :${GS_CB}" "$(combobox_fix --disabled "${PW_GS_FILTER_MODE}" "${GS_FILTER_CB}")" \
-    --field="${CHKBOX_SPACE}$(gettext "Upscale sharpness")!$(gettext "Sharpening value for FidelityFX SuperResolution 1.0 (FSR) and NVIDIA Image Scaling v1.0.3 (NIS). 0 is max sharpening, 20 is min sharpening.") :${GS_NUM}" "${PW_GS_UPSCALE_SHARPNESS}:!0..20" \
-    --field="${CHKBOX_SPACE}$(gettext "Max scale factor")!$(gettext "Maximum Scale Factor. Working only on X11 or backend sdl (0.0 is unused)") :${GS_NUMN}" "${PW_GS_MAX_SCALE_FACTOR}:!0..100" \
-    --field="${CHKBOX_SPACE}$(gettext "Mouse sensitivity")!$(gettext "Configurable mouse sensitivity, multiply mouse movement by specified decimal number amount") :${GS_NUMN}" "${PW_GS_MOUSE_SENSITIVITY}:!0..100" \
-    --field="${CHKBOX_SPACE}$(gettext "HDR SDR nits")!$(gettext "Set the luminance of SDR content in nits. Default: 400 nits.") :${GS_NUM}" "${PW_GS_SDR_CONTENT_NITS}:!0..10000" \
-    --field="${CHKBOX_SPACE}$(gettext "HDR inverse SDR")!$(gettext "Set the luminance of SDR content in nets used as the input for the inverse tone mapping process - Maximum is 1000 nits") :${GS_NUM}" "${PW_GS_ITM_SDR_NITS}:!0..1000" \
-    --field="${CHKBOX_SPACE}$(gettext "HDR inverse target")!$(gettext "Set the target luninance of the inverse tone mapping process - Max is 10000 nits") :${GS_NUM}" "${PW_GS_ITM_TARGET_NITS}:!0..10000" \
+relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]} :${GS_CB}" "$(combobox_fix --disabled "${PW_GS_MESA_VK_WSI_PRESENT_MODE}" "fifo!immediate!mailbox!relaxed")" \
+    --field="${CHKBOX_SPACE}${translations[Scaler mode]}!${translations[Specify how to scale the GameScope window content]} :${GS_CB}" "$(combobox_fix --disabled "${PW_GS_SCALER_MODE}" "auto!integer!fit!fill!stretch")" \
+    --field="${CHKBOX_SPACE}${translations[Filter mode]}!${translations[Use a filter such as AMD FidelityFX SuperResolution 1.0 (FSR) or NVIDIA Image Scaling v1.0.3 (NIS)]} :${GS_CB}" "$(combobox_fix --disabled "${PW_GS_FILTER_MODE}" "${GS_FILTER_CB}")" \
+    --field="${CHKBOX_SPACE}${translations[Upscale sharpness]}!${translations[Sharpening value for FidelityFX SuperResolution 1.0 (FSR) and NVIDIA Image Scaling v1.0.3 (NIS). 0 is max sharpening, 20 is min sharpening.]} :${GS_NUM}" "${PW_GS_UPSCALE_SHARPNESS}:!0..20" \
+    --field="${CHKBOX_SPACE}${translations[Max scale factor]}!${translations[Maximum Scale Factor. Working only on X11 or backend sdl (0.0 is unused)]} :${GS_NUMN}" "${PW_GS_MAX_SCALE_FACTOR}:!0..100" \
+    --field="${CHKBOX_SPACE}${translations[Mouse sensitivity]}!${translations[Configurable mouse sensitivity, multiply mouse movement by specified decimal number amount]} :${GS_NUMN}" "${PW_GS_MOUSE_SENSITIVITY}:!0..100" \
+    --field="${CHKBOX_SPACE}${translations[HDR SDR nits]}!${translations[Set the luminance of SDR content in nits. Default: 400 nits.]} :${GS_NUM}" "${PW_GS_SDR_CONTENT_NITS}:!0..10000" \
+    --field="${CHKBOX_SPACE}${translations[HDR inverse SDR]}!${translations[Set the luminance of SDR content in nets used as the input for the inverse tone mapping process - Maximum is 1000 nits]} :${GS_NUM}" "${PW_GS_ITM_SDR_NITS}:!0..1000" \
+    --field="${CHKBOX_SPACE}${translations[HDR inverse target]}!${translations[Set the target luninance of the inverse tone mapping process - Max is 10000 nits]} :${GS_NUM}" "${PW_GS_ITM_TARGET_NITS}:!0..10000" \
     1> "${PW_TMPFS_PATH}/tmp_yad_gs_set_cb" 2>/dev/null &
 
     "${pw_yad}" --paned --key="$KEY_GS_GUI" --title="GameScope" \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --gui-type="settings-paned" \
-    --button="$(gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Cancel the current changes and return to the previous menu")":1 \
-    --button="$(gettext "RESET") GAMESCOPE"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Restore default settings for") GameScope":162 \
-    --button="$(gettext "DISABLE") GAMESCOPE"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Disable GameScope and go to the previous menu")":164 \
-    --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":166 \
+    --button="${translations[CANCEL THE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Cancel the current changes and return to the previous menu]}":1 \
+    --button="${translations[RESET]} GAMESCOPE"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Restore default settings for]} GameScope":162 \
+    --button="${translations[DISABLE]} GAMESCOPE"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Disable GameScope and go to the previous menu]}":164 \
+    --button="${translations[SAVE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Save the current changes, and go to the previous menu]}":166 \
     2>/dev/null
     YAD_GAMESCOPE_STATUS="$?"
 
@@ -4768,8 +4879,8 @@ gui_userconf () {
     fi
 
     if [[ "$DOWNLOAD_STEAM_GRID" == "1" ]]
-    then NEW_STEAM_BEHAVIOR="$(gettext "Disable")"
-    else NEW_STEAM_BEHAVIOR="$(gettext "Enable")"
+    then NEW_STEAM_BEHAVIOR="${translations[Disable]}"
+    else NEW_STEAM_BEHAVIOR="${translations[Enable]}"
     fi
 
     if [[ "$PW_GUI_START" == "NOTEBOOK" ]]
@@ -4780,12 +4891,12 @@ gui_userconf () {
     KEY_USERCONF_GUI=$RANDOM
 
     "${pw_yad}" --plug=$KEY_USERCONF_GUI --tabnum="1" --form --columns=2 --separator=" " --text-align=center \
-    --text "$(gettext "Change settings for") <b>user.conf</b>\n $(gettext "<b>NOTE:</b> To display help for each item, simply hover your mouse over the text")" \
+    --text "${translations[Change settings for]} <b>user.conf</b>\n ${translations[<b>NOTE:</b> To display help for each item, simply hover your mouse over the text]}" \
     --align-buttons --homogeneous-column --gui-type-text="${PANED_GUI_TYPE_TEXT_UP}" --gui-type-layout="${PANED_GUI_TYPE_LAYOUT_UP}" \
-    --field="   $(gettext "Change mirror to") $NEW_MIRROR"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Depending on which mirror is selected, updates will be downloaded from there.")":"FBTN" '@bash -c "button_click --userconf change_mirror"' \
-    --field="   $(gettext "Change branch to") $NEW_BRANCH"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Depending on the version of the scripts, PortProton will receive the latest changes first (the DEVEL branch), the STABLE branch is updated later and is stable.")":"FBTN" '@bash -c "button_click --userconf change_branch"' \
-    --field="   $(gettext "Change start gui to") $NEW_START_GUI"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "When using PANED in the game start menu, additional buttons are located on one large page; if NOTEBOOK, then they are divided into several.")":"FBTN" '@bash -c "button_click --userconf change_gui_start"' \
-    --field="   $NEW_STEAM_BEHAVIOR $(gettext "steam covers download")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "If downloading steam covers is enabled, they will be downloaded and created. (Disablement is provided in cases where their downloading is unavailable for some reason)")":"FBTN" '@bash -c "button_click --userconf change_download_grid"' \
+    --field="   ${translations[Change mirror to]} $NEW_MIRROR"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Depending on which mirror is selected, updates will be downloaded from there.]}":"FBTN" '@bash -c "button_click --userconf change_mirror"' \
+    --field="   ${translations[Change branch to]} $NEW_BRANCH"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Depending on the version of the scripts, PortProton will receive the latest changes first (the DEVEL branch), the STABLE branch is updated later and is stable.]}":"FBTN" '@bash -c "button_click --userconf change_branch"' \
+    --field="   ${translations[Change start gui to]} $NEW_START_GUI"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[When using PANED in the game start menu, additional buttons are located on one large page; if NOTEBOOK, then they are divided into several.]}":"FBTN" '@bash -c "button_click --userconf change_gui_start"' \
+    --field="   $NEW_STEAM_BEHAVIOR ${translations[steam covers download]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[If downloading steam covers is enabled, they will be downloaded and created. (Disablement is provided in cases where their downloading is unavailable for some reason)]}":"FBTN" '@bash -c "button_click --userconf change_download_grid"' \
     2>/dev/null &
 
     if [[ -n "${PW_SOUND_DRIVER_USE}" ]] \
@@ -4806,19 +4917,19 @@ gui_userconf () {
 
     "${pw_yad}" --plug=$KEY_USERCONF_GUI --tabnum="2" --form --columns=1 --separator="%" --homogeneous-row \
     --gui-type-text="${PANED_GUI_TYPE_TEXT_DOWN}" --gui-type-layout="${PANED_GUI_TYPE_LAYOUT_DOWN}" \
-    --field="$(gettext "Choose a graphics card to run the game")!$(gettext "Select which video card will be used to run the game (used for all running games and programs in PortProton)") :CB" "$(combobox_fix --disabled "${GPU_VAR}" "${GET_GPU_NAMES}")" \
-    --field="$(gettext "Choice wine audio driver")!$(gettext "Fixes sound popling if choice alsa") :CB" "$(combobox_fix --disabled "${SOUND_DRIVER_VAR}" "alsa!oss!pulse")" \
-    --field="$(gettext "Choice gui themes")!$(gettext "Allows you to select a theme for PortProton") :CB" "$(combobox_fix "${GUI_THEME}" "default!compact!classic")" \
+    --field="${translations[Choose a graphics card to run the game]}!${translations[Select which video card will be used to run the game (used for all running games and programs in PortProton)]} :CB" "$(combobox_fix --disabled "${GPU_VAR}" "${GET_GPU_NAMES}")" \
+    --field="${translations[Choice wine audio driver]}!${translations[Fixes sound popling if choice alsa]} :CB" "$(combobox_fix --disabled "${SOUND_DRIVER_VAR}" "alsa!oss!pulse")" \
+    --field="${translations[Choice gui themes]}!${translations[Allows you to select a theme for PortProton]} :CB" "$(combobox_fix "${GUI_THEME}" "default!compact!classic")" \
     1> "${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb" 2>/dev/null &
 
     "${pw_yad}" --key=$KEY_USERCONF_GUI --paned --sensitive \
-    --title="$(gettext "SETTINGS USER.CONF")" \
+    --title="${translations[SETTINGS USER.CONF]}" \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --gui-type="settings-paned" \
-    --button="$(gettext "CANCEL THE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Cancel the current changes and return to the previous menu")":1 \
-    --button="$(gettext "RESET") USER.CONF"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Restore default settings for") user.conf":2 \
-    --button="$(gettext "OPEN THE SETTINGS FILE")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Open the <b>user.conf</b> settings file in a system text editor to view and change variables manually")":164 \
-    --button="$(gettext "SAVE CHANGES")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Save the current changes, and go to the previous menu")":166 \
+    --button="${translations[CANCEL THE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Cancel the current changes and return to the previous menu]}":1 \
+    --button="${translations[RESET]} USER.CONF"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Restore default settings for]} user.conf":2 \
+    --button="${translations[OPEN THE SETTINGS FILE]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Open the <b>user.conf</b> settings file in a system text editor to view and change variables manually]}":164 \
+    --button="${translations[SAVE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Save the current changes, and go to the previous menu]}":166 \
     2>/dev/null
     YAD_USERCONF_STATUS="$?"
 
@@ -4827,7 +4938,7 @@ gui_userconf () {
             restart_pp
             ;;
         2)
-            if yad_question "$(gettext "Do you really want to reset settings for") <b>user.conf</b>?"
+            if yad_question "${translations[Do you really want to reset settings for]} <b>user.conf</b>?"
             then
                 try_remove_file "$USER_CONF"
                 exit 0
@@ -4875,7 +4986,7 @@ resize_png () {
         local RESIZE_NAME_PNG="${2// /_}"
         local RESIZE_TO="$3"
     fi
-    
+
     [[ -f "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png" ]] && return 0
 
     try_remove_file "${PORT_WINE_PATH}/data/img/launcher.png"
@@ -4925,34 +5036,34 @@ portwine_create_shortcut () {
     [[ -z "${name_desktop_png}" ]] && name_desktop_png="${PORTPROTON_NAME// /_}"
 
     if [[ "$1" == "block_name" ]] ; then
-        OUTPUT=$("${pw_yad}" --title="$(gettext "Choices")" --form \
+        OUTPUT=$("${pw_yad}" --title="${translations[Choices]}" --form \
         --gui-type="settings-shortcut" \
         --gui-type-box="${NOTEBOOK_GUI_TYPE_BOX}" --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" \
         --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" --gui-type-images="${NOTEBOOK_GUI_TYPE_IMAGE}" \
         --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
         --image "${PORT_WINE_PATH}/data/img/${name_desktop_png}.png" \
-        --text-align="center" --text "$(gettext "The shortcut will be created in the PortProton directory.")" \
+        --text-align="center" --text "${translations[The shortcut will be created in the PortProton directory.]}" \
         --field="  ${name_desktop}":LBL "" \
-        --field="  $(gettext "Add shortcut to MENU -> GAMES")":CHK "$PW_SHORTCUT_MENU" \
-        --field="  $(gettext "Add shortcut to Desktop")":CHK "$PW_SHORTCUT_DESKTOP" \
-        --field="  $(gettext "Add shortcut to STEAM library")":CHK "$PW_SHORTCUT_STEAM" \
-        --button="$(gettext "CANCEL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":2 \
-        --button="$(gettext "CREATE SHORTCUT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
+        --field="  ${translations[Add shortcut to MENU -> GAMES]}":CHK "$PW_SHORTCUT_MENU" \
+        --field="  ${translations[Add shortcut to Desktop]}":CHK "$PW_SHORTCUT_DESKTOP" \
+        --field="  ${translations[Add shortcut to STEAM library]}":CHK "$PW_SHORTCUT_STEAM" \
+        --button="${translations[CANCEL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":2 \
+        --button="${translations[CREATE SHORTCUT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
         PW_YAD_OUT=$?
     else
-        OUTPUT=$("${pw_yad}" --title="$(gettext "Choices")" --form \
+        OUTPUT=$("${pw_yad}" --title="${translations[Choices]}" --form \
         --gui-type="settings-shortcut" \
         --gui-type-box="${NOTEBOOK_GUI_TYPE_BOX}" --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" \
         --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" --gui-type-images="${NOTEBOOK_GUI_TYPE_IMAGE}" \
         --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
         --image "${PORT_WINE_PATH}/data/img/${name_desktop_png}.png" \
-        --text-align="center" --text "$(gettext "The shortcut will be created in the PortProton directory.")" \
-        --field="$(gettext "Name")" "${name_desktop}" \
-        --field="  $(gettext "Add shortcut to MENU -> GAMES")":CHK "$PW_SHORTCUT_MENU" \
-        --field="  $(gettext "Add shortcut to Desktop")":CHK "$PW_SHORTCUT_DESKTOP" \
-        --field="  $(gettext "Add shortcut to STEAM library")":CHK "$PW_SHORTCUT_STEAM" \
-        --button="$(gettext "CANCEL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":2 \
-        --button="$(gettext "CREATE SHORTCUT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
+        --text-align="center" --text "${translations[The shortcut will be created in the PortProton directory.]}" \
+        --field="${translations[Name]}" "${name_desktop}" \
+        --field="  ${translations[Add shortcut to MENU -> GAMES]}":CHK "$PW_SHORTCUT_MENU" \
+        --field="  ${translations[Add shortcut to Desktop]}":CHK "$PW_SHORTCUT_DESKTOP" \
+        --field="  ${translations[Add shortcut to STEAM library]}":CHK "$PW_SHORTCUT_STEAM" \
+        --button="${translations[CANCEL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":2 \
+        --button="${translations[CREATE SHORTCUT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
         PW_YAD_OUT=$?
     fi
 
@@ -5020,8 +5131,8 @@ portwine_create_shortcut () {
                 "${PORT_SCRIPTS_PATH}/add_in_steam.sh"
             done
             if [[ "${PW_SKIP_RESTART_STEAM}" != 1 ]] && pgrep -i steam &>/dev/null ; then
-                if yad_question "$(gettext "For adding shortcut to STEAM, needed restart.\n\nRestart STEAM now?")" ; then
-                    pw_start_progress_bar_block "$(gettext "Restarting STEAM... Please wait.")"
+                if yad_question "${translations[For adding shortcut to STEAM, needed restart.\\n\\nRestart STEAM now?]}" ; then
+                    pw_start_progress_bar_block "${translations[Restarting STEAM... Please wait.]}"
                     kill -s SIGTERM $(pgrep -a steam) &>/dev/null
                     while pgrep -i steam &>/dev/null ; do
                         sleep 0.5
@@ -5111,7 +5222,7 @@ pw_auto_create_shortcut () {
             link_name=$(sed -n 's/^File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|\.lnk||')
             link_cmd=$(sed -n 's/^Command Line Arguments\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
         fi
-        
+
         try_remove_file "$link_file"
 
         if ! exe_path="$(realpath "${link_path}" 2>/dev/null)" ; then
@@ -5154,16 +5265,19 @@ portwine_delete_shortcut () {
 }
 
 portwine_missing_shortcut () {
-    "${pw_yad}" --title="$(gettext "Error")" --form \
+    "${pw_yad}" --title="${translations[Error]}" --form \
     --window-icon "$PW_GUI_ICON_PATH/portproton.svg" --fixed \
     --image "$PW_GUI_ICON_PATH/error.svg" \
-    --text "\n$(gettext "Could not find the file:")\n${portwine_exe}\n\n$(gettext "ATTENTION:\nIf you forgot to mount the disk with the running application, click CANCEL!")\n" \
-    --button="$(gettext "DELETE SHORTCUT")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 \
-    --button="$(gettext "CANCEL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1
+    --text "\n${translations[Could not find the file:]}\n$(print_wrapped "${portwine_exe}" "50")\n\n${translations[ATTENTION:\\nIf you forgot to mount the disk with the running application, click CANCEL!]}\n" \
+    --button="${translations[DELETE SHORTCUT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 \
+    --button="${translations[CANCEL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1
     if [[ $? -eq "0" ]] ; then
         portwine_delete_shortcut
     fi
-    exit 0
+    if [[ -n "$TAB_MAIN_MENU" ]]
+    then restart_pp
+    else exit 0
+    fi
 }
 
 # GUI WINETRICKS | GUI PREFIX MANAGER
@@ -5174,7 +5288,7 @@ pw_prefix_manager () {
         touch "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
     fi
 
-    pw_start_progress_bar_block "$(gettext "Starting prefix manager:") $PW_PREFIX_NAME"
+    pw_start_progress_bar_block "${translations[Starting prefix manager:]} $PW_PREFIX_NAME"
     "${PORT_WINE_TMP_PATH}/winetricks" dlls list | awk -F'(' '{print $1}' 1> "${PW_TMPFS_PATH}/dll_list"
     "${PORT_WINE_TMP_PATH}/winetricks" fonts list | awk -F'(' '{print $1}' 1> "${PW_TMPFS_PATH}/fonts_list"
     "${PORT_WINE_TMP_PATH}/winetricks" settings list | awk -F'(' '{print $1}' 1> "${PW_TMPFS_PATH}/settings_list"
@@ -5217,33 +5331,33 @@ pw_prefix_manager () {
         KEY_EDIT_MANAGER_GUI=$RANDOM
         "${pw_yad}" --plug=$KEY_EDIT_MANAGER_GUI --tabnum=1 --list --checklist \
         --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" \
-        --text="$(gettext 'Select components to install in prefix:') <b>\"${PW_PREFIX_NAME}\"</b>, $(gettext 'using wine:') <b>\"${PW_WINE_USE}\"</b>" \
-        --column="$(gettext "Set")" --column="$(gettext "Libraries")" \
-        --column="$(gettext "Information")" < "${PW_TMPFS_PATH}/dll_list_tmp" 1>> "${PW_TMPFS_PATH}/to_winetricks" 2>/dev/null &
+        --text="${translations[Select components to install in prefix:]} <b>\"${PW_PREFIX_NAME}\"</b>, ${translations[using wine:]} <b>\"${PW_WINE_USE}\"</b>" \
+        --column="${translations[Set]}" --column="${translations[Libraries]}" \
+        --column="${translations[Information]}" < "${PW_TMPFS_PATH}/dll_list_tmp" 1>> "${PW_TMPFS_PATH}/to_winetricks" 2>/dev/null &
 
         "${pw_yad}" --plug=$KEY_EDIT_MANAGER_GUI --tabnum=2 --list --checklist \
         --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" \
-        --text="$(gettext 'Select fonts to install in prefix:') <b>\"${PW_PREFIX_NAME}\"</b>, $(gettext 'using wine:') <b>\"${PW_WINE_USE}\"</b>" \
-        --column="$(gettext "Set")" --column="$(gettext "Libraries")" \
-        --column="$(gettext "Information")" < "${PW_TMPFS_PATH}/fonts_list_tmp" 1>> "${PW_TMPFS_PATH}/to_winetricks" 2>/dev/null &
+        --text="${translations[Select fonts to install in prefix:]} <b>\"${PW_PREFIX_NAME}\"</b>, ${translations[using wine:]} <b>\"${PW_WINE_USE}\"</b>" \
+        --column="${translations[Set]}" --column="${translations[Libraries]}" \
+        --column="${translations[Information]}" < "${PW_TMPFS_PATH}/fonts_list_tmp" 1>> "${PW_TMPFS_PATH}/to_winetricks" 2>/dev/null &
 
         "${pw_yad}" --plug=$KEY_EDIT_MANAGER_GUI --tabnum=3 --list --checklist \
         --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" \
-        --text="$(gettext 'Change config for prefix:') <b>\"${PW_PREFIX_NAME}\"</b>" \
-        --column="$(gettext "Set")" --column="$(gettext "Libraries")" \
-        --column="$(gettext "Information")" < "${PW_TMPFS_PATH}/settings_list_tmp" 1>> "${PW_TMPFS_PATH}/to_winetricks" 2>/dev/null &
+        --text="${translations[Change config for prefix:]} <b>\"${PW_PREFIX_NAME}\"</b>" \
+        --column="${translations[Set]}" --column="${translations[Libraries]}" \
+        --column="${translations[Information]}" < "${PW_TMPFS_PATH}/settings_list_tmp" 1>> "${PW_TMPFS_PATH}/to_winetricks" 2>/dev/null &
 
         "${pw_yad}" --key=$KEY_EDIT_MANAGER_GUI --notebook \
         --width=700 --height=700 --expand \
         --gui-type="settings-notebook" \
-        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "$(gettext 'PREFIX MANAGER')" \
-        --button="$(gettext "CANCEL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":1 \
-        --button="$(gettext "FORCE INSTALL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Installation with forced redownload of libraries")":2 \
-        --button="$(gettext "INSTALL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Standard installation.")":0 \
+        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "${translations[PREFIX MANAGER]}" \
+        --button="${translations[CANCEL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":1 \
+        --button="${translations[FORCE INSTALL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Installation with forced redownload of libraries]}":2 \
+        --button="${translations[INSTALL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Standard installation.]}":0 \
         --tab-pos="top" \
-        --tab="$(gettext 'DLLS')"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="$(gettext 'FONTS')"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="$(gettext 'SETTINGS')"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" 2>/dev/null
+        --tab="${translations[DLLS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+        --tab="${translations[FONTS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+        --tab="${translations[SETTINGS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" 2>/dev/null
         YAD_STATUS="$?"
 
         try_remove_file  "${PW_TMPFS_PATH}/dll_list_tmp"
@@ -5298,11 +5412,11 @@ portwine_start_debug () {
     export PW_LOG=1
     if [[ -z "$VULKAN_DRIVER_NAME" ]] || [[ "$VULKAN_DRIVER_NAME" == "llvmpipe" ]] ; then
     pw_notify_send -i warning \
-    "$(gettext "Attention working version of vulkan not detected!")" \
-    "$(gettext "It is recommended to run games in OpenGL (low performance possible)!")"
+    "${translations[Attention working version of vulkan not detected!]}" \
+    "${translations[It is recommended to run games in OpenGL (low performance possible)!]}"
     fi
-    echo "$(gettext "PortProton was launched in creation mode PortProton.log and it is successfully stored in the root directory of the port")" > "${PORT_WINE_PATH}/PortProton.log"
-    echo "$(gettext "To diagnose the problem, copy ALL of the log to discord server: https://discord.gg/FTaheP99wE")" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "${translations[PortProton was launched in creation mode PortProton.log and it is successfully stored in the root directory of the port]}" > "${PORT_WINE_PATH}/PortProton.log"
+    echo "${translations[To diagnose the problem, copy ALL of the log to discord server: https://discord.gg/FTaheP99wE]}" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "-------------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "PortWINE version:" >> "${PORT_WINE_PATH}/PortProton.log"
     read install_ver < "${PORT_WINE_TMP_PATH}/PortProton_ver"
@@ -5459,7 +5573,7 @@ portwine_start_debug () {
                 PW_TIMER=1
             fi
     done < "${PORT_WINE_PATH}/PortProton.log" | "${pw_yad}" --text-info --tail --button="STOP"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 --title="DEBUG" \
-    --skip-taskbar --width=800 --height=400 --text "$(gettext "Please wait! After finishing the PortProton, click STOP.")" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" 2>/dev/null &&
+    --skip-taskbar --width=800 --height=400 --text "${translations[Please wait! After finishing the PortProton, click STOP.]}" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" 2>/dev/null &&
     kill_portwine
     sed -i '/.fx$/d' "${PORT_WINE_PATH}/PortProton.log"
     sed -i '/HACK_does_openvr_work/d' "${PORT_WINE_PATH}/PortProton.log"
@@ -5479,9 +5593,9 @@ portwine_start_debug () {
 pw_create_prefix_backup () {
     cd "$HOME"
     PW_PREFIX_TO_BACKUP=$("${pw_yad}" --file --directory --width=800 --height=500 \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "$(gettext "BACKUP PREFIX TO...")" \
-    --button="$(gettext "CANCEL")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
-    --button="$(gettext "OK")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "${translations[BACKUP PREFIX TO...]}" \
+    --button="${translations[CANCEL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
+    --button="${translations[OK]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
     YAD_STATUS="$?"
 
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
@@ -5510,13 +5624,13 @@ EOF
     try_remove_file "${PORT_WINE_TMP_PATH}"/pp_pfx_backup.sh
     if [[ -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" ]] ; then
         mv -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack"
-        yad_info "$(gettext "Backup has been successfully created for prefix:") $PW_PREFIX_NAME"
+        yad_info "${translations[Backup has been successfully created for prefix:]} $PW_PREFIX_NAME"
         if [[ ! -f "${PORT_WINE_TMP_PATH}/pfx_backup_info" ]] ; then
-            yad_info "$(gettext "Attention! Do not pass the resev copy to third parties, there is a risk of losing accounts!")"
+            yad_info "${translations[Attention! Do not pass the resev copy to third parties, there is a risk of losing accounts!]}"
             echo "1" > "${PORT_WINE_TMP_PATH}/pfx_backup_info"
         fi
     else
-        yad_error "$(gettext "An error occurred while backing up the prefix:") $PW_PREFIX_NAME"
+        yad_error "${translations[An error occurred while backing up the prefix:]} $PW_PREFIX_NAME"
     fi
     restart_pp
 }
@@ -5542,44 +5656,53 @@ pw_autoinstall_from_db () {
 }
 
 button_click () {
-    if [[ -n $(pidof -s yad) ]] || [[ -n $(pidof -s yad_gui_pp) ]] ; then
-        case "$1" in
-            --normal)
-                kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \--notebook" | awk '{print $1}') > /dev/null 2>&1
-                ;;
-            --start)
-                kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_START} \--notebook" | awk '{print $1}') > /dev/null 2>&1 \
-                || kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_START} \--paned" | awk '{print $1}') > /dev/null 2>&1
-                ;;
-            --userconf)
-                kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_USERCONF_GUI}" | awk '{print $1}') > /dev/null 2>&1
-                ;;
-        esac
-        [[ -n "$2" ]] && echo "$2" > "${PW_TMPFS_PATH}/tmp_yad_form"
+    case "$1" in
+        --normal|--desktop)
+            kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_MENU}" | awk '{print $1}') > /dev/null 2>&1
+            ;;
+        --start)
+            kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_START}" | awk '{print $1}') > /dev/null 2>&1
+            ;;
+        --userconf)
+            kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_USERCONF_GUI}" | awk '{print $1}') > /dev/null 2>&1
+            ;;
+    esac
+
+    echo "$2" > "${PW_TMPFS_PATH}/tmp_yad_form"
+
+    if [[ "$1" == "--desktop" ]] ; then
+        PW_YAD_SET="${PORT_WINE_PATH}/${PW_YAD_SET//#@_@#/ }"
+        if [[ $PW_DESKTOP_FILES_REGEX == "1" ]] ; then
+            PW_YAD_SET="${PW_YAD_SET//#+_1#/\(}"
+            PW_YAD_SET="${PW_YAD_SET//#+_2#/\)}"
+            PW_YAD_SET="${PW_YAD_SET//#+_3#/\!}"
+            PW_YAD_SET="${PW_YAD_SET//#+_4#/\$}"
+            PW_YAD_SET="${PW_YAD_SET//#+_5#/\%}"
+            PW_YAD_SET="${PW_YAD_SET//#+_6#/\&}"
+            PW_YAD_SET="${PW_YAD_SET//#+_7#/\`}"
+            PW_YAD_SET="${PW_YAD_SET//#+_8#/\'}"
+            PW_YAD_SET="${PW_YAD_SET//#+_9#/\"}"
+            PW_YAD_SET="${PW_YAD_SET//#+_10#/\>}"
+            PW_YAD_SET="${PW_YAD_SET//#+_11#/\<}"
+            PW_YAD_SET="${PW_YAD_SET//#+_12#/\\}"
+            PW_YAD_SET="${PW_YAD_SET//#+_13#/\|}"
+            PW_YAD_SET="${PW_YAD_SET//#+_14#/\;}"
+        fi
+        if check_flatpak
+        then PW_EXEC_FROM_DESKTOP="$(grep Exec "$PW_YAD_SET" | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
+        else PW_EXEC_FROM_DESKTOP="$(grep Exec "$PW_YAD_SET" | head -n 1 | awk -F"=env " '{print $2}')"
+        fi
+
+        print_info "Restarting PP after choose desktop file..."
+        # stop_portwine
+        /usr/bin/env bash -c "${PW_EXEC_FROM_DESKTOP}" &
+        exit 0
     fi
 }
 export -f button_click
 
-run_desktop_b_click () {
-    [[ -n "$1" ]] && echo "$1" > "${PW_TMPFS_PATH}/tmp_yad_form"
-
-    if [[ -n $(pidof -s yad) ]] || [[ -n $(pidof -s yad_gui_pp) ]] ; then
-        kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY} \--notebook" | awk '{print $1}') > /dev/null 2>&1
-    fi
-    if check_flatpak
-    then PW_EXEC_FROM_DESKTOP="$(grep Exec "${PORT_WINE_PATH}/${PW_YAD_SET//@_@/ }" | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
-    else PW_EXEC_FROM_DESKTOP="$(grep Exec "${PORT_WINE_PATH}/${PW_YAD_SET//@_@/ }" | head -n 1 | awk -F"=env " '{print $2}')"
-    fi
-
-    print_info "Restarting PP after choose desktop file..."
-    # stop_portwine
-    /usr/bin/env bash -c "${PW_EXEC_FROM_DESKTOP}" &
-    exit 0
-}
-export -f run_desktop_b_click
-
 gui_clear_pfx () {
-    if yad_question "$(gettext "Do you want to clear prefix in PortProton?")" ; then
+    if yad_question "${translations[Do you want to clear prefix in PortProton?]}" ; then
         pw_clear_pfx
         print_info "Restarting PP after clearing prefix..."
         restart_pp
@@ -5588,7 +5711,7 @@ gui_clear_pfx () {
 export -f gui_clear_pfx
 
 gui_rm_portproton () {
-    if yad_question "$(gettext "Do you really want to remove PortProton?")" ; then
+    if yad_question "${translations[Do you really want to remove PortProton?]}" ; then
         rm -fr "${PORT_WINE_PATH}"
         rm -fr "${PORT_WINE_TMP_PATH}"
         rm -fr "${HOME}/PortWINE"
@@ -5619,11 +5742,11 @@ change_mirror () {
     if [[ "$MIRROR" == "CLOUD" ]] ; then
         sed -i 's/="CLOUD"/="GITHUB"/g' "$USER_CONF"
         pw_notify_send -i info \
-        "$(gettext "Mirror changed to:")" "<b>https://github.com/Castro-Fidel</b>"
+        "${translations[Mirror changed to:]}" "<b>https://github.com/Castro-Fidel</b>"
     else
         sed -i 's/="GITHUB"/="CLOUD"/g' "$USER_CONF"
         pw_notify_send -i info \
-        "$(gettext "Mirror changed to:")" "<b>https://cloud.linux-gaming.ru</b>"
+        "${translations[Mirror changed to:]}" "<b>https://cloud.linux-gaming.ru</b>"
     fi
     print_info "Restarting PP for change mirror..."
     restart_pp --userconf
@@ -5632,20 +5755,20 @@ export -f change_mirror
 
 change_branch () {
     if [[ "$BRANCH" == "master" ]] ; then
-        if yad_question "$(gettext "Do you actually want to change the scripts version to:") <b>DEVEL?</b>" ; then
+        if yad_question "${translations[Do you actually want to change the scripts version to:]} <b>DEVEL?</b>" ; then
             sed -i 's/="master"/="devel"/g' "$USER_CONF"
             export MIRROR="GITHUB"
             pw_notify_send -i info \
-            "$(gettext "Branch changed to:")" "<b>DEVEL</b>"
+            "${translations[Branch changed to:]}" "<b>DEVEL</b>"
             unset SKIP_CHECK_UPDATES
         fi
     else
-        if yad_question "$(gettext "Do you actually want to change the scripts version to:") <b>STABLE?</b>" ; then
+        if yad_question "${translations[Do you actually want to change the scripts version to:]} <b>STABLE?</b>" ; then
             sed -i 's/="devel"/="master"/g' "$USER_CONF"
             echo "2024" > "${PORT_WINE_TMP_PATH}/scripts_ver"
             export PW_CHANGE_BRANCH="1"
             pw_notify_send -i info \
-            "$(gettext "Branch changed to:")" "<b>STABLE</b>"
+            "${translations[Branch changed to:]}" "<b>STABLE</b>"
             unset SKIP_CHECK_UPDATES
         fi
     fi
@@ -5658,11 +5781,11 @@ change_download_grid () {
     if [[ "$DOWNLOAD_STEAM_GRID" == "1" ]] ; then
         sed -i 's/DOWNLOAD_STEAM_GRID=.*/DOWNLOAD_STEAM_GRID="0"/' "$USER_CONF"
         pw_notify_send -i info \
-        "$(gettext "Cover downloads are disabled")"
+        "${translations[Cover downloads are disabled]}"
     else
         sed -i 's/DOWNLOAD_STEAM_GRID=.*/DOWNLOAD_STEAM_GRID="1"/' "$USER_CONF"
         pw_notify_send -i info \
-        "$(gettext "Cover downloads are enabled")"
+        "${translations[Cover downloads are enabled]}"
     fi
     print_info "Restarting PP for change cover download behavior..."
     restart_pp --userconf
@@ -5680,11 +5803,11 @@ change_gui_start () {
     if [[ "$PW_GUI_START" == "NOTEBOOK" ]] ; then
         sed -i 's/="NOTEBOOK"/="PANED"/g' "$USER_CONF"
         pw_notify_send -i info \
-        "$(gettext "Gui start changed to:")" "<b>PANED</b>"
+        "${translations[Gui start changed to:]}" "<b>PANED</b>"
     else
         sed -i 's/="PANED"/="NOTEBOOK"/g' "$USER_CONF"
         pw_notify_send -i info \
-        "$(gettext "Gui start changed to:")" "<b>NOTEBOOK</b>"
+        "${translations[Gui start changed to:]}" "<b>NOTEBOOK</b>"
     fi
     print_info "Restarting PP for change gui start..."
     restart_pp --userconf
@@ -5698,11 +5821,11 @@ gui_wine_uninstaller () {
 export -f gui_wine_uninstaller
 
 gui_open_user_conf () {
-    PW_USERCONF_GUI="$("${pw_yad}" --title="$(gettext "EDIT USER CONFIG")" \
+    PW_USERCONF_GUI="$("${pw_yad}" --title="${translations[EDIT USER CONFIG]}" \
     --text-info --editable --width=800 --height=600 \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-    --button="$(gettext "BACK")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":1 \
-    --button="$(gettext "SAVE")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":2 \
+    --button="${translations[BACK]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":1 \
+    --button="${translations[SAVE]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":2 \
     --filename="${PORT_WINE_PATH}/data/user.conf" 2>/dev/null)"
     YAD_STATUS="$?"
 
@@ -5721,11 +5844,11 @@ gui_open_user_conf () {
 export -f gui_open_user_conf
 
 gui_edit_db_file () {
-    GUI_EDIT_DB_FILE="$("${pw_yad}" --title="$(gettext "EDIT DB")" \
+    GUI_EDIT_DB_FILE="$("${pw_yad}" --title="${translations[EDIT DB]}" \
     --text-info --editable --width=800 --height=600 \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-    --button="$(gettext "BACK")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":1 \
-    --button="$(gettext "SAVE")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":2 \
+    --button="${translations[BACK]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":1 \
+    --button="${translations[SAVE]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":2 \
     --filename="${PORTWINE_DB_FILE}" 2>/dev/null)"
     YAD_STATUS="$?"
 
@@ -5762,30 +5885,28 @@ gui_credits () {
     # grep ';subscription;' stat-subscriptions.csv | awk -F';' '{print $1}' | sort -u | sed "s/\"//g" > thanks
     ########################################################################
     KEY_CREDITS=$RANDOM
-    DATE=$(date +'%Y')
 
-    . "${PORT_WINE_PATH}/data/scripts/thanks"
+    # shellcheck source=/dev/null
+    source "${PORT_WINE_PATH}/data/scripts/thanks"
 
     "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=1 --show-uri --scroll \
-    --text-align=center --text="$(eval_gettext "PortProton v. \${install_ver}
-    scripts v. \${scripts_install_ver}")" --text-info <<< "$(eval_gettext "https://linux-gaming.ru
+    --text-align=center --text="${translations[PortProton v. \${install_ver}
+scripts v. \${scripts_install_ver}]}" --text-info <<< "https://linux-gaming.ru
 
-Copyright © \$DATE Castro-Fidel (linux-gaming.ru)
+$(eval_translations "Copyright © \$%DATE% Castro-Fidel (linux-gaming.ru)" "DATE=$(date +%Y)")
 
-This program comes with absolutely no warranty.
-See the License for details.
-")" 2>/dev/null &
+${translations[This program comes with absolutely no warranty.
+See the License for details.]}" 2>/dev/null &
 
     "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=2 --scroll \
-    --text-info <<< "$(gettext "Author:   Casro-Fidel (Mikhail Tergoev)
+    --text-info <<< "${translations[Author:   Casro-Fidel (Mikhail Tergoev)
 
-Developer assistants and testers:")
-$(credits_devel)
-" 2>/dev/null &
+Developer assistants and testers:]}
+$(credits_devel)" 2>/dev/null &
 
-    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=3 --text-info --scroll <<< "$(eval_gettext "MIT License
+    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=3 --text-info --scroll <<< "$(eval_translations "MIT License
 
-Copyright © \$DATE Castro-Fidel (linux-gaming.ru)
+Copyright © \$%DATE% Castro-Fidel (linux-gaming.ru)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the \"Software\"), to deal
@@ -5803,32 +5924,30 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-")" 2>/dev/null &
+SOFTWARE." "DATE=$(date +%Y)")" 2>/dev/null &
 
     "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=4 \
     --text-info --show-uri --scroll \
-    <<< "$(gettext "The project was supported:
-https://boosty.to/portwine-linux.ru")
+    <<< "${translations[The project was supported:
+https://boosty.to/portwine-linux.ru]}
 $(credits_boosty)
 
-$(gettext "The list will be updated...
-")" 2>/dev/null &
+${translations[The list will be updated...]}" 2>/dev/null &
 
     "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=5 \
-    --text="$(gettext "Do you want to join and help in the development of the project:")" \
+    --text="${translations[Do you want to join and help in the development of the project:]}" \
     --image-path="$PW_GUI_ICON_PATH" --image="port_proton" \
-    --uri-color=red --show-uri --text-info --scroll <<< "$(gettext "Website:  http://linux-gaming.ru
+    --uri-color=red --show-uri --text-info --scroll <<< "${translations[Website:  http://linux-gaming.ru
 Discord:  http://discord.gg/yJSEFjF
 VK:       https://vk.com/linuxgamingru
 -------------------------------------------
 Become a paid subscriber:
 boosty:  https://boosty.to/portwine-linux.ru
 Yandex wallet:   410012267513818
--------------------------------------------")" 2>/dev/null &
+-------------------------------------------]}" 2>/dev/null &
 
     "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=6 --show-uri --title="THIRD PARTY LIBRARIES" \
-    --text-info <<< "$(gettext "                               Third-party libraries that are used in PortProton
+    --text-info <<< "${translations[                               Third-party libraries that are used in PortProton
 
             PortProton is built on the basis of the following free software libraries:
 
@@ -5836,14 +5955,12 @@ WINE-PROTON: https://github.com/ValveSoftware/Proton
 WINE-PROTON-GE: https://github.com/GloriousEggroll/proton-ge-custom/
 Kron4ek/Wine: https://github.com/Kron4ek/Wine-Builds
 YAD: https://github.com/v1cont/yad
-DGVOODOO2: https://dege.fw.hu/"
-)" 2>/dev/null &
+DGVOODOO2: https://dege.fw.hu/]}" 2>/dev/null &
 
-    "${pw_yad}" --title "$(gettext "ABOUT US")" --key="${KEY_CREDITS}" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+    "${pw_yad}" --title "${translations[ABOUT US]}" --key="${KEY_CREDITS}" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --notebook --no-buttons  --tab-pos=bottom --expand --width=750 --height=400 \
-    --tab="$(gettext "ABOUT PORTPROTON")" --tab="$(gettext "AUTORS")" --tab="$(gettext "LICENSE")" \
-    --tab="$(gettext "SPONSORS")" --tab="$(gettext "JOIN")" --tab="$(gettext "THIRD PARTY LIBRARIES")"
+    --tab="${translations[ABOUT PORTPROTON]}" --tab="${translations[AUTORS]}" --tab="${translations[LICENSE]}" \
+    --tab="${translations[SPONSORS]}" --tab="${translations[JOIN]}" --tab="${translations[THIRD PARTY LIBRARIES]}"
 
-    echo "Exit from credits"
     restart_pp
 }
