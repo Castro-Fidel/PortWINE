@@ -158,7 +158,7 @@ generate_pot () {
     try_remove_file "${PORT_SCRIPTS_PATH}/start.sh_tmp"
     try_remove_file "${PORT_SCRIPTS_PATH}/setup.sh_tmp"
     try_remove_file "${PORT_SCRIPTS_PATH}/functions_helper_tmp"
-    try_remove_dir "${PORT_SCRIPTS_PATH}/translations"
+    try_remove_dir "${PW_CACHE_LANG_PATH}"
 }
 export -f generate_pot
 
@@ -166,16 +166,16 @@ eval_translations () {
     # Для того чтобы раскрывать переменную уже после создания массива
     # Вместо {translations[\$TEST text]} нужно (eval_translations "\$%TEST% text" "TEST=test"), перевод должен быть с %% тоже
     # В остальных случаях можно использовать {translations[\$TEST text]} ,но переменную нужно обьявлять до создания массива
-    # до source "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE" или можно использовать команды {translations[\$(cat file.txt) text]}
+    # до source "${PW_CACHE_LANG_PATH}/$LANGUAGE" или можно использовать команды {translations[\$(cat file.txt) text]}
     # но тогда выполнение команды будет происходить во время создания массива всегда, а не там где это требуется
     echo "${translations[$1]//\$*"%"/${2//*=/}}"
 }
 
 create_translations () {
-    if [[ ! -d "${PORT_SCRIPTS_PATH}/translations" ]] ; then
-        create_new_dir "${PORT_SCRIPTS_PATH}/translations"
+    if [[ ! -d "${PW_CACHE_LANG_PATH}" ]] ; then
+        create_new_dir "${PW_CACHE_LANG_PATH}"
     fi
-    cat << EOF > "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
+    cat << EOF > "${PW_CACHE_LANG_PATH}/$LANGUAGE"
 #!/usr/bin/env bash
 TRANSLATIONS_VER=$scripts_install_ver
 declare -A translations=(
@@ -238,18 +238,18 @@ EOF
                     msgstr=${msgstr//"\$"/\\$}
                 fi
             fi
-            echo \["$msgid"\]="$msgstr" >> "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
+            echo \["$msgid"\]="$msgstr" >> "${PW_CACHE_LANG_PATH}/$LANGUAGE"
         fi
         done
     done < "$po_file"
     IFS="$orig_IFS"
 
-    echo ")" >> "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
-    sed -i 's/+_+/\n/g' "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
-    sed -i 's/#_#/\*/g' "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
-    sed -i 's/-_-/ /g' "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
+    echo ")" >> "${PW_CACHE_LANG_PATH}/$LANGUAGE"
+    sed -i 's/+_+/\n/g' "${PW_CACHE_LANG_PATH}/$LANGUAGE"
+    sed -i 's/#_#/\*/g' "${PW_CACHE_LANG_PATH}/$LANGUAGE"
+    sed -i 's/-_-/ /g' "${PW_CACHE_LANG_PATH}/$LANGUAGE"
     if [[ $LANGUAGE == "en" ]] ; then
-        sed -i 's/msgid   //g' "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
+        sed -i 's/msgid   //g' "${PW_CACHE_LANG_PATH}/$LANGUAGE"
     fi
 }
 export -f create_translations
@@ -5656,8 +5656,10 @@ pw_autoinstall_from_db () {
 }
 
 button_click () {
+    echo "$2" > "${PW_TMPFS_PATH}/tmp_yad_form"
+
     case "$1" in
-        --normal|--desktop)
+        --normal)
             kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_MENU}" | awk '{print $1}') > /dev/null 2>&1
             ;;
         --start)
@@ -5666,38 +5668,36 @@ button_click () {
         --userconf)
             kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_USERCONF_GUI}" | awk '{print $1}') > /dev/null 2>&1
             ;;
+        --desktop)
+            kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_MENU}" | awk '{print $1}') > /dev/null 2>&1
+            PW_YAD_SET="${PORT_WINE_PATH}/${PW_YAD_SET//#@_@#/ }"
+            if [[ $PW_DESKTOP_FILES_REGEX == "1" ]] ; then
+                PW_YAD_SET="${PW_YAD_SET//#+_1#/\(}"
+                PW_YAD_SET="${PW_YAD_SET//#+_2#/\)}"
+                PW_YAD_SET="${PW_YAD_SET//#+_3#/\!}"
+                PW_YAD_SET="${PW_YAD_SET//#+_4#/\$}"
+                PW_YAD_SET="${PW_YAD_SET//#+_5#/\%}"
+                PW_YAD_SET="${PW_YAD_SET//#+_6#/\&}"
+                PW_YAD_SET="${PW_YAD_SET//#+_7#/\`}"
+                PW_YAD_SET="${PW_YAD_SET//#+_8#/\'}"
+                PW_YAD_SET="${PW_YAD_SET//#+_9#/\"}"
+                PW_YAD_SET="${PW_YAD_SET//#+_10#/\>}"
+                PW_YAD_SET="${PW_YAD_SET//#+_11#/\<}"
+                PW_YAD_SET="${PW_YAD_SET//#+_12#/\\}"
+                PW_YAD_SET="${PW_YAD_SET//#+_13#/\|}"
+                PW_YAD_SET="${PW_YAD_SET//#+_14#/\;}"
+            fi
+            if check_flatpak
+            then PW_EXEC_FROM_DESKTOP="$(grep Exec "$PW_YAD_SET" | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
+            else PW_EXEC_FROM_DESKTOP="$(grep Exec "$PW_YAD_SET" | head -n 1 | awk -F"=env " '{print $2}')"
+            fi
+
+            print_info "Restarting PP after choose desktop file..."
+            # stop_portwine
+            /usr/bin/env bash -c "${PW_EXEC_FROM_DESKTOP}" &
+            exit 0
+            ;;
     esac
-
-    echo "$2" > "${PW_TMPFS_PATH}/tmp_yad_form"
-
-    if [[ "$1" == "--desktop" ]] ; then
-        PW_YAD_SET="${PORT_WINE_PATH}/${PW_YAD_SET//#@_@#/ }"
-        if [[ $PW_DESKTOP_FILES_REGEX == "1" ]] ; then
-            PW_YAD_SET="${PW_YAD_SET//#+_1#/\(}"
-            PW_YAD_SET="${PW_YAD_SET//#+_2#/\)}"
-            PW_YAD_SET="${PW_YAD_SET//#+_3#/\!}"
-            PW_YAD_SET="${PW_YAD_SET//#+_4#/\$}"
-            PW_YAD_SET="${PW_YAD_SET//#+_5#/\%}"
-            PW_YAD_SET="${PW_YAD_SET//#+_6#/\&}"
-            PW_YAD_SET="${PW_YAD_SET//#+_7#/\`}"
-            PW_YAD_SET="${PW_YAD_SET//#+_8#/\'}"
-            PW_YAD_SET="${PW_YAD_SET//#+_9#/\"}"
-            PW_YAD_SET="${PW_YAD_SET//#+_10#/\>}"
-            PW_YAD_SET="${PW_YAD_SET//#+_11#/\<}"
-            PW_YAD_SET="${PW_YAD_SET//#+_12#/\\}"
-            PW_YAD_SET="${PW_YAD_SET//#+_13#/\|}"
-            PW_YAD_SET="${PW_YAD_SET//#+_14#/\;}"
-        fi
-        if check_flatpak
-        then PW_EXEC_FROM_DESKTOP="$(grep Exec "$PW_YAD_SET" | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
-        else PW_EXEC_FROM_DESKTOP="$(grep Exec "$PW_YAD_SET" | head -n 1 | awk -F"=env " '{print $2}')"
-        fi
-
-        print_info "Restarting PP after choose desktop file..."
-        # stop_portwine
-        /usr/bin/env bash -c "${PW_EXEC_FROM_DESKTOP}" &
-        exit 0
-    fi
 }
 export -f button_click
 

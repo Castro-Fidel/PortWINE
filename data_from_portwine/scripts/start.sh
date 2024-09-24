@@ -156,6 +156,7 @@ source "${PORT_SCRIPTS_PATH}/var"
 
 export STEAM_SCRIPTS="${PORT_WINE_PATH}/steam_scripts"
 export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
+export PW_CACHE_LANG_PATH="${PORT_WINE_TMP_PATH}/cache_lang/"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
 export PW_GUI_THEMES_PATH="${PORT_WINE_PATH}/data/themes"
 export pw_yad="${PW_GUI_THEMES_PATH}/gui/yad_gui_pp"
@@ -181,6 +182,21 @@ try_remove_file "${PW_TMPFS_PATH}/update_pfx_log"
 
 # shellcheck source=/dev/null
 source "${USER_CONF}"
+
+if [[ ! -f "${PW_CACHE_LANG_PATH}/$LANGUAGE" ]] ; then
+    create_translations
+fi
+
+unset translations
+# shellcheck source=/dev/null
+source "${PW_CACHE_LANG_PATH}/$LANGUAGE"
+
+if [[ $TRANSLATIONS_VER != "$scripts_install_ver" ]] ; then
+    try_remove_dir "${PW_CACHE_LANG_PATH}"
+    create_translations
+    # shellcheck source=/dev/null
+    source "${PW_CACHE_LANG_PATH}/$LANGUAGE"
+fi
 
 # check PortProton theme
 if [[ -n "$GUI_THEME" ]] \
@@ -353,21 +369,6 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
 
     PW_FILESYSTEM=$(stat -f -c %T "${PORT_WINE_PATH}")
     export PW_FILESYSTEM
-fi
-
-if [[ ! -f "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE" ]] ; then
-    create_translations
-fi
-
-unset translations
-# shellcheck source=/dev/null
-source "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
-
-if [[ $TRANSLATIONS_VER != "$scripts_install_ver" ]] ; then
-    try_remove_dir "${PORT_SCRIPTS_PATH}/translations"
-    create_translations
-    # shellcheck source=/dev/null
-    source "${PORT_SCRIPTS_PATH}/translations/$LANGUAGE"
 fi
 
 # create lock file
@@ -756,7 +757,7 @@ else
         else
             PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES}"
         fi
-        PW_GENERATE_BUTTONS+="--field=   $(print_wrapped "${PW_DESKTOP_FILES_SHOW//".desktop"/""}" "20" "...")!${PW_NAME_D_ICON_48}.png!:FBTN%@bash -c \"button_click --desktop "${PW_DESKTOP_FILES// /#@_@#}"\"%"
+        PW_GENERATE_BUTTONS+="--field=   $(print_wrapped "${PW_DESKTOP_FILES_SHOW//".desktop"/""}" "25" "...")!${PW_NAME_D_ICON_48}.png!:FBTN%@bash -c \"button_click --desktop "${PW_DESKTOP_FILES// /#@_@#}"\"%"
     done
     IFS="$orig_IFS"
 
