@@ -4,7 +4,7 @@
 export LAUNCH_PARAMETERS=("/VERYSILENT")
 export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/crossout.exe"
 export PORTWINE_CREATE_SHORTCUT_NAME="Crossout"
-# export PW_PREFIX_NAME=DOTNET
+export PW_PREFIX_NAME="CROSSOUT"
 
 start_portwine
 if try_download "https://yupmaster.gaijinent.com/launcher/current.php?id=CrossoutLauncher" "${PW_AUTOINSTALL_EXE}" no_mirror
@@ -13,6 +13,7 @@ then
     pw_kill_autostart launcher.exe 3 &
     pw_run "${PW_AUTOINSTALL_EXE}"
     portwine_exe="${WINEPREFIX}/drive_c/users/$USER/AppData/Local/Crossout/launcher.exe"
+    pw_run reg add "HKEY_CURRENT_USER\Software\Wine\X11 Driver" /v "Decorated" /t REG_SZ /d "N" /f
     pw_create_unique_exe "crossout_launcher_pp"
     try_remove_file "${PW_AUTOINSTALL_EXE}"
     try_remove_file "${portwine_exe}.ppdb"
