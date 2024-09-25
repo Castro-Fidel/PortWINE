@@ -3146,7 +3146,7 @@ start_portwine () {
         if [[ -d /sys/bus/pci/drivers/amdgpu ]] ; then
             export RADV_DEBUG+="nodcc "
             export AMD_DEBUG="nodcc"
-            if [[ ! "$(grep -i VK_EXT_image_drm_format_modifier "${PW_TMPFS_PATH}/vulkaninfo.tmp")" ]] ; then
+            if ! grep -q VK_EXT_image_drm_format_modifier "${PW_TMPFS_PATH}/vulkaninfo.tmp" ; then
                 export R600_DEBUG="nodcc"
                 grep -e '--backend' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null && PW_GS_BACKEND_SDL="1"
             fi
@@ -3209,8 +3209,8 @@ start_portwine () {
             if [[ "${PW_GS_INTERNAL_RESOLUTION}" != "0.0" ]] ; then
                 GS_RES_W=${PW_GS_SHOW_RESOLUTION:0:4}
                 GS_RES_H=${PW_GS_SHOW_RESOLUTION:5:8}
-                PWGSRESIW=$(echo ${GS_RES_W} ${PW_GS_INTERNAL_RESOLUTION} | awk '{print $1*$2}')
-                PWGSRESIH=$(echo ${GS_RES_H} ${PW_GS_INTERNAL_RESOLUTION} | awk '{print $1*$2}')
+                PWGSRESIW=$(echo "${GS_RES_W}" "${PW_GS_INTERNAL_RESOLUTION}" | awk '{print $1*$2}')
+                PWGSRESIH=$(echo "${GS_RES_H}" "${PW_GS_INTERNAL_RESOLUTION}" | awk '{print $1*$2}')
                 PW_GAMESCOPE_ARGS_NEW+=" -w ${PWGSRESIW} -h ${PWGSRESIH}"
             fi
         fi
@@ -3954,23 +3954,23 @@ export -f gui_proton_downloader
 # GUI EDIT_DB
 gui_edit_db () {
     KEY_EDIT_DB_GUI=$RANDOM
-    PW_EDIT_DB_LIST="PW_MANGOHUD PW_MANGOHUD_USER_CONF PW_VKBASALT PW_VKBASALT_USER_CONF PW_DGVOODOO2 PW_GAMESCOPE
+    PW_EDIT_DB_LIST=(PW_MANGOHUD PW_MANGOHUD_USER_CONF PW_VKBASALT PW_VKBASALT_USER_CONF PW_DGVOODOO2 PW_GAMESCOPE
     PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_WINE_FULLSCREEN_FSR
     PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS
     PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE
     PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE
     PW_DISABLE_COMPOSITING PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_NATIVE_WAYLAND
-    "
+    )
     # PW_USE_FAKE_DLSS_3
 
     if check_wayland_session ; then
-        rm_from_var PW_EDIT_DB_LIST "PW_USE_US_LAYOUT"
+        unset 'PW_EDIT_DB_LIST[20]' # "PW_USE_US_LAYOUT"
     else
-        rm_from_var PW_EDIT_DB_LIST "PW_USE_NATIVE_WAYLAND"
+        unset 'PW_EDIT_DB_LIST[31]' # "PW_USE_NATIVE_WAYLAND"
     fi
 
     if check_flatpak ; then
-        rm_from_var PW_EDIT_DB_LIST "PW_USE_RUNTIME"
+        unset 'PW_EDIT_DB_LIST[29]' # "PW_USE_RUNTIME"
     fi
 
     # PW_FORCE_USE_VSYNC PW_HEAP_DELAY_FREE
@@ -4050,15 +4050,16 @@ gui_edit_db () {
     esac
 
     unset ADD_CHK_BOX_EDIT_DB
-    for int_to_boole in ${PW_EDIT_DB_LIST} ; do
+    for int_to_boole in ${PW_EDIT_DB_LIST[@]} ; do
         if [[ "${!int_to_boole}" == "1" ]]
-        then export ${int_to_boole}="TRUE"
-        else export ${int_to_boole}="FALSE"
+        then export "${int_to_boole}"="TRUE"
+        else export "${int_to_boole}"="FALSE"
         fi
         TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
-        int_to_boole_non_pw="$(echo ${int_to_boole//PW_/} | sed 's/_/ /g')"
-        if [[ ! "${PW_VULKAN_USE}" == "1" ]] && [[ ! "${PW_VULKAN_USE}" == "2" ]] \
-        && grep -wo "${int_to_boole}" <<<"${DISABLE_EDIT_DB_LIST}" &>/dev/null
+        int_to_boole_non_pw="${int_to_boole//PW_/}"
+        int_to_boole_non_pw="${int_to_boole_non_pw//"_"/" "}"
+        if [[ ! "${PW_VULKAN_USE}" == [12] ]] \
+        && [[ "${DISABLE_EDIT_DB_LIST}" =~ ${int_to_boole} ]]
         then ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:D${THEME_CHKBOX}%${!int_to_boole}%"
         else ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
         fi
@@ -4079,7 +4080,7 @@ gui_edit_db () {
     if [[ "${PW_WINE_CPU_TOPOLOGY}" == *[0-9]:* ]] \
     && [[ "${PW_WINE_CPU_TOPOLOGY}" != "disabled" ]]
     then
-        CPU_LIMIT_VAR="$(echo ${PW_WINE_CPU_TOPOLOGY%%:*})"
+        CPU_LIMIT_VAR="${PW_WINE_CPU_TOPOLOGY%%:*}"
     else
         CPU_LIMIT_VAR="disabled"
     fi
@@ -4133,34 +4134,35 @@ A brief instruction:
     esac
 
     output_yad_edit_db=($(<"${PW_TMPFS_PATH}/tmp_output_yad_edit_db"))
-    bool_from_yad=0
-    for boole_to_int in ${PW_EDIT_DB_LIST} ; do
-        export ${boole_to_int}=${output_yad_edit_db[$bool_from_yad]}
+    bool_from_yad="0"
+    for boole_to_int in ${PW_EDIT_DB_LIST[@]} ; do
+        export "${boole_to_int}"="${output_yad_edit_db[$bool_from_yad]}"
         if [[ "${!boole_to_int}" == "TRUE" ]]
-        then export ${boole_to_int}="1"
-        else export ${boole_to_int}="0"
+        then export "${boole_to_int}"="1"
+        else export "${boole_to_int}"="0"
         fi
-        export bool_from_yad=$(( ${bool_from_yad} + 1 ))
+        export bool_from_yad=$(( bool_from_yad + 1 ))
     done
 
     PW_ADD_SETTINGS=$(<"${PW_TMPFS_PATH}/tmp_output_yad_fps_limit")
 
-    PW_WINDOWS_VER="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $1}')"
-    PW_DLL_INSTALL="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $2}')"
-    WINEDLLOVERRIDES="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $3}')"
-    LAUNCH_PARAMETERS="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $5}')"
-    CPU_LIMIT="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $7}')"
-    PW_MESA_GL_VERSION_OVERRIDE="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $8}')"
-    PW_VKD3D_FEATURE_LEVEL="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $9}')"
-    PW_LOCALE_SELECT="$(echo ${PW_ADD_SETTINGS} | awk -F"%" '{print $10}')"
+    PW_WINDOWS_VER="$(echo "${PW_ADD_SETTINGS}" | awk -F"%" '{print $1}')"
+    PW_DLL_INSTALL="$(echo "${PW_ADD_SETTINGS}" | awk -F"%" '{print $2}')"
+    WINEDLLOVERRIDES="$(echo "${PW_ADD_SETTINGS}" | awk -F"%" '{print $3}')"
+    LAUNCH_PARAMETERS="$(echo "${PW_ADD_SETTINGS}" | awk -F"%" '{print $5}')"
+    CPU_LIMIT="$(echo "${PW_ADD_SETTINGS}" | awk -F"%" '{print $7}')"
+    PW_MESA_GL_VERSION_OVERRIDE="$(echo "${PW_ADD_SETTINGS}" | awk -F"%" '{print $8}')"
+    PW_VKD3D_FEATURE_LEVEL="$(echo "${PW_ADD_SETTINGS}" | awk -F"%" '{print $9}')"
+    PW_LOCALE_SELECT="$(echo "${PW_ADD_SETTINGS}" | awk -F"%" '{print $10}')"
 
     if [[ "${CPU_LIMIT}" != "disabled" ]] ; then
-        export PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $((${CPU_LIMIT} - 1)))"
+        PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $(( CPU_LIMIT - 1 )))"
     else
-        export PW_WINE_CPU_TOPOLOGY="disabled"
+        PW_WINE_CPU_TOPOLOGY="disabled"
     fi
+    export PW_WINE_CPU_TOPOLOGY
 
-    edit_db_from_gui ${PW_EDIT_DB_LIST} LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY \
+    edit_db_from_gui ${PW_EDIT_DB_LIST[@]} LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY \
     PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PW_LOCALE_SELECT
 
     if [[ -z "$MANGOHUD_CONFIG" ]] ; then
@@ -4247,12 +4249,13 @@ gui_vkbasalt () {
     unset ADD_GUI_FX GUI_FX_RESULT
     for add_list_fx in ${LIST_FX[@]} ; do
         PW_VKBASALT_GUI_HELP="PW_${add_list_fx}_INFO"
-        if echo " ${GET_FX_IN_FILE[@]} " | grep " ${add_list_fx} " &>/dev/null ; then
+        if [[ ${GET_FX_IN_FILE[*]} =~ ${add_list_fx} ]]; then
             ADD_GUI_FX+="--field=${CHKBOX_SPACE}${add_list_fx}!${!PW_VKBASALT_GUI_HELP}:${THEME_CHKBOX}%TRUE%"
         else
             ADD_GUI_FX+="--field=${CHKBOX_SPACE}${add_list_fx}!${!PW_VKBASALT_GUI_HELP}:${THEME_CHKBOX}%FALSE%"
         fi
     done
+
     if [[ -n "${PW_VKBASALT_FFX_CAS}" ]] ; then
         if [[ "$PW_VKBASALT_FFX_CAS" == "0" ]] \
         || [[ "$PW_VKBASALT_FFX_CAS" == "-1" ]]
@@ -4260,9 +4263,10 @@ gui_vkbasalt () {
         elif [[ "$PW_VKBASALT_FFX_CAS" == "1" ]]
         then export VKBASALT_FFX_CAS_GUI="100"
         elif [[ "$PW_VKBASALT_FFX_CAS" == 0.0* ]]
-        then export VKBASALT_FFX_CAS_GUI="$(echo "$PW_VKBASALT_FFX_CAS" | awk -F'0.0' '{print $2}')"
-        else export VKBASALT_FFX_CAS_GUI="$(echo "$PW_VKBASALT_FFX_CAS" | awk -F'0.' '{print $2}')"
+        then VKBASALT_FFX_CAS_GUI="$(echo "$PW_VKBASALT_FFX_CAS" | awk -F'0.0' '{print $2}')"
+        else VKBASALT_FFX_CAS_GUI="$(echo "$PW_VKBASALT_FFX_CAS" | awk -F'0.' '{print $2}')"
         fi
+        export VKBASALT_FFX_CAS_GUI
     else
         VKBASALT_FFX_CAS_GUI=66
     fi
@@ -4332,71 +4336,71 @@ gui_vkbasalt () {
 gui_mangohud () {
     KEY_MH_GUI=$RANDOM
     LIST_MH=(
-        arch battery battery_icon battery_time battery_watt core_bars core_load
-        cpu_mhz cpu_power cpu_temp device_battery_icon engine_short_names
-        engine_version exec_name fcat fps_metrics frame_count frametime full
-        gamemode gpu_core_clock gpu_fan gpu_junction_temp gpu_mem_clock
-        gpu_mem_temp gpu_name gpu_power gpu_temp gpu_voltage histogram horizontal
-        horizontal_stretch hud_compact hud_no_margin io_read io_write no_display
-        no_small_font procmem procmem_shared procmem_virt ram resolution
-        show_fps_limit swap temp_fahrenheit throttling_status throttling_status_graph
-        time version vkbasalt vram vulkan_driver wine
+        ARCH BATTERY BATTERY_ICON BATTERY_TIME BATTERY_WATT CORE_BARS CORE_LOAD
+        CPU_MHZ CPU_POWER CPU_TEMP DEVICE_BATTERY_ICON ENGINE_SHORT_NAMES
+        ENGINE_VERSION EXEC_NAME FCAT FPS_METRICS FRAME_COUNT FRAMETIME FULL
+        GAMEMODE GPU_CORE_CLOCK GPU_FAN GPU_JUNCTION_TEMP GPU_MEM_CLOCK
+        GPU_MEM_TEMP GPU_NAME GPU_POWER GPU_TEMP GPU_VOLTAGE HISTOGRAM HORIZONTAL
+        HORIZONTAL_STRETCH HUD_COMPACT HUD_NO_MARGIN IO_READ IO_WRITE NO_DISPLAY
+        NO_SMALL_FONT PROCMEM PROCMEM_SHARED PROCMEM_VIRT RAM RESOLUTION
+        SHOW_FPS_LIMIT SWAP TEMP_FAHRENHEIT THROTTLING_STATUS THROTTLING_STATUS_GRAPH
+        TIME VERSION VKBASALT VRAM VULKAN_DRIVER WINE
     )
 
-    PW_MH_arch_INFO=${translations[Show if the application is 32- or 64-bit]}
-    PW_MH_battery_INFO=${translations[Display current battery percent and energy consumption]}
-    PW_MH_battery_icon_INFO=${translations[Display battery icon instead of percent]}
-    PW_MH_battery_time_INFO=${translations[Display remaining time for battery option]}
-    PW_MH_battery_watt_INFO=${translations[Display wattage for the battery option]}
-    PW_MH_core_bars_INFO=${translations[Change the display of core_load from numbers to vertical bars]}
-    PW_MH_core_load_INFO=${translations[Display load & frequency per core]}
-    PW_MH_cpu_mhz_INFO=${translations[Show the CPUs current MHz]}
-    PW_MH_cpu_power_INFO=${translations[Display CPU draw in watts]}
-    PW_MH_cpu_temp_INFO=${translations[Display current CPU temperature]}
-    PW_MH_device_battery_icon_INFO=${translations[Display wirless device battery icon.]}
-    PW_MH_engine_short_names_INFO=${translations[Display a short version of the used engine (e.g. OGL instead of OpenGL)]}
-    PW_MH_engine_version_INFO=${translations[Display OpenGL or vulkan and vulkan-based render engines version]}
-    PW_MH_exec_name_INFO=${translations[Display current exec name]}
-    PW_MH_fcat_INFO=${translations[Enables frame capture analysis]}
-    PW_MH_fps_metrics_INFO=${translations[Takes a list of decimal values or the value avg, e.g avg,0.001]}
-    PW_MH_frame_count_INFO=${translations[Display frame count]}
-    PW_MH_full_INFO=${translations[Enable most of the toggleable parameters (currently excludes histogram)]}
-    PW_MH_gamemode_INFO=${translations[Show if GameMode is on]}
-    PW_MH_gpu_core_clock_INFO=${translations[Display GPU core frequency]}
-    PW_MH_gpu_fan_INFO=${translations[GPU fan in rpm on AMD, FAN in percent on NVIDIA]}
-    PW_MH_gpu_junction_temp_INFO=${translations[Display current GPU temperature]}
-    PW_MH_gpu_mem_clock_INFO=${translations[Display GPU memory frequency]}
-    PW_MH_gpu_mem_temp_INFO=${translations[Display current GPU temperature]}
-    PW_MH_gpu_name_INFO=${translations[Display GPU name from pci.ids]}
-    PW_MH_gpu_power_INFO=${translations[Display GPU draw in watts]}
-    PW_MH_gpu_temp_INFO=${translations[Display current GPU temperature]}
-    PW_MH_gpu_voltage_INFO=${translations[Display GPU voltage (only works on AMD GPUs)]}
-    PW_MH_histogram_INFO=${translations[Change FPS graph to histogram]}
-    PW_MH_horizontal_INFO=${translations[Display Mangohud in a horizontal position]}
-    PW_MH_horizontal_stretch_INFO=${translations[Stretches the background to the screens width in horizontal mode]}
-    PW_MH_hud_compact_INFO=${translations[Display compact version of MangoHud]}
-    PW_MH_hud_no_margin_INFO=${translations[Remove margins around MangoHud]}
-    PW_MH_io_read_INFO=${translations[Show non-cached IO read, in MiB/s]}
-    PW_MH_io_write_INFO=${translations[Show non-cached IO write, in MiB/s]}
-    PW_MH_no_display_INFO=${translations[Hide the HUD by default]}
-    PW_MH_no_small_font_INFO=${translations[Use primary font size for smaller text like units]}
-    PW_MH_procmem_INFO=${translations[Displays process memory usage: resident procmem (resident) also toggles others off if disabled]}
-    PW_MH_procmem_shared_INFO=${translations[Displays process memory usage: shared]}
-    PW_MH_procmem_virt_INFO=${translations[Displays process memory usage: virtual]}
-    PW_MH_ram_INFO=${translations[Display system RAM usage]}
-    PW_MH_resolution_INFO=${translations[Display the current resolution]}
-    PW_MH_show_fps_limit_INFO=${translations[Display the current FPS limit]}
-    PW_MH_swap_INFO=${translations[Display swap space usage next to system RAM usage]}
-    PW_MH_temp_fahrenheit_INFO=${translations[Show temperature in Fahrenheit]}
-    PW_MH_throttling_status_INFO=${translations[Show if GPU is throttling based on Power, current, temp or "other" (Only shows if throttling is currently happening). Currently disabled by default for Nvidia as it causes lag on 3000 series]}
-    PW_MH_throttling_status_graph_INFO=${translations[Same as throttling_status but displays throttling in the frametime graph and only power and temp throttling]}
-    PW_MH_time_INFO=${translations[Display time]}
-    PW_MH_version_INFO=${translations[Show current MangoHud version]}
-    PW_MH_vkbasalt_INFO=${translations[Show if vkBasalt is on]}
-    PW_MH_vram_INFO=${translations[Display system VRAM usage]}
-    PW_MH_vulkan_driver_INFO=${translations[Display used Vulkan driver (radv/amdgpu-pro/amdvlk)]}
-    PW_MH_frametime_INFO=${translations[Display frametime next to FPS text]}
-    PW_MH_wine_INFO=${translations[Show current Wine or Proton version in use]}
+    PW_MH_ARCH_INFO=${translations[Show if the application is 32- or 64-bit]}
+    PW_MH_BATTERY_INFO=${translations[Display current battery percent and energy consumption]}
+    PW_MH_BATTERY_ICON_INFO=${translations[Display battery icon instead of percent]}
+    PW_MH_BATTERY_TIME_INFO=${translations[Display remaining time for battery option]}
+    PW_MH_BATTERY_WATT_INFO=${translations[Display wattage for the battery option]}
+    PW_MH_CORE_BARS_INFO=${translations[Change the display of core_load from numbers to vertical bars]}
+    PW_MH_CORE_LOAD_INFO=${translations[Display load & frequency per core]}
+    PW_MH_CPU_MHZ_INFO=${translations[Show the CPUs current MHz]}
+    PW_MH_CPU_POWER_INFO=${translations[Display CPU draw in watts]}
+    PW_MH_CPU_TEMP_INFO=${translations[Display current CPU temperature]}
+    PW_MH_DEVICE_BATTERY_ICON_INFO=${translations[Display wirless device battery icon.]}
+    PW_MH_ENGINE_SHORT_NAMES_INFO=${translations[Display a short version of the used engine (e.g. OGL instead of OpenGL)]}
+    PW_MH_ENGINE_VERSION_INFO=${translations[Display OpenGL or vulkan and vulkan-based render engines version]}
+    PW_MH_EXEC_NAME_INFO=${translations[Display current exec name]}
+    PW_MH_FCAT_INFO=${translations[Enables frame capture analysis]}
+    PW_MH_FPS_METRICS_INFO=${translations[Takes a list of decimal values or the value avg, e.g avg,0.001]}
+    PW_MH_FRAME_COUNT_INFO=${translations[Display frame count]}
+    PW_MH_FRAMETIME_INFO=${translations[Display frametime next to FPS text]}
+    PW_MH_FULL_INFO=${translations[Enable most of the toggleable parameters (currently excludes histogram)]}
+    PW_MH_GAMEMODE_INFO=${translations[Show if GameMode is on]}
+    PW_MH_GPU_CORE_CLOCK_INFO=${translations[Display GPU core frequency]}
+    PW_MH_GPU_FAN_INFO=${translations[GPU fan in rpm on AMD, FAN in percent on NVIDIA]}
+    PW_MH_GPU_JUNCTION_TEMP_INFO=${translations[Display current GPU temperature]}
+    PW_MH_GPU_MEM_CLOCK_INFO=${translations[Display GPU memory frequency]}
+    PW_MH_GPU_MEM_TEMP_INFO=${translations[Display current GPU temperature]}
+    PW_MH_GPU_NAME_INFO=${translations[Display GPU name from pci.ids]}
+    PW_MH_GPU_POWER_INFO=${translations[Display GPU draw in watts]}
+    PW_MH_GPU_TEMP_INFO=${translations[Display current GPU temperature]}
+    PW_MH_GPU_VOLTAGE_INFO=${translations[Display GPU voltage (only works on AMD GPUs)]}
+    PW_MH_HISTOGRAM_INFO=${translations[Change FPS graph to histogram]}
+    PW_MH_HORIZONTAL_INFO=${translations[Display Mangohud in a horizontal position]}
+    PW_MH_HORIZONTAL_STRETCH_INFO=${translations[Stretches the background to the screens width in horizontal mode]}
+    PW_MH_HUD_COMPACT_INFO=${translations[Display compact version of MangoHud]}
+    PW_MH_HUD_NO_MARGIN_INFO=${translations[Remove margins around MangoHud]}
+    PW_MH_IO_READ_INFO=${translations[Show non-cached IO read, in MiB/s]}
+    PW_MH_IO_WRITE_INFO=${translations[Show non-cached IO write, in MiB/s]}
+    PW_MH_NO_DISPLAY_INFO=${translations[Hide the HUD by default]}
+    PW_MH_NO_SMALL_FONT_INFO=${translations[Use primary font size for smaller text like units]}
+    PW_MH_PROCMEM_INFO=${translations[Displays process memory usage: resident procmem (resident) also toggles others off if disabled]}
+    PW_MH_PROCMEM_SHARED_INFO=${translations[Displays process memory usage: shared]}
+    PW_MH_PROCMEM_VIRT_INFO=${translations[Displays process memory usage: virtual]}
+    PW_MH_RAM_INFO=${translations[Display system RAM usage]}
+    PW_MH_RESOLUTION_INFO=${translations[Display the current resolution]}
+    PW_MH_SHOW_FPS_LIMIT_INFO=${translations[Display the current FPS limit]}
+    PW_MH_SWAP_INFO=${translations[Display swap space usage next to system RAM usage]}
+    PW_MH_TEMP_FAHRENHEIT_INFO=${translations[Show temperature in Fahrenheit]}
+    PW_MH_THROTTLING_STATUS_INFO=${translations[Show if GPU is throttling based on Power, current, temp or "other" (Only shows if throttling is currently happening). Currently disabled by default for Nvidia as it causes lag on 3000 series]}
+    PW_MH_THROTTLING_STATUS_GRAPH_INFO=${translations[Same as throttling_status but displays throttling in the frametime graph and only power and temp throttling]}
+    PW_MH_TIME_INFO=${translations[Display time]}
+    PW_MH_VERSION_INFO=${translations[Show current MangoHud version]}
+    PW_MH_VKBASALT_INFO=${translations[Show if vkBasalt is on]}
+    PW_MH_VRAM_INFO=${translations[Display system VRAM usage]}
+    PW_MH_VULKAN_DRIVER_INFO=${translations[Display used Vulkan driver (radv/amdgpu-pro/amdvlk)]}
+    PW_MH_WINE_INFO=${translations[Show current Wine or Proton version in use]}
 
     unset ADD_GUI_MH GUI_MH_RESULT ADD_GUI_MH_FPS GUI_MH_FPS_RESULT PW_FPS_LIMIT_VAR PW_MANGOHUD_CONFIG
     try_remove_file "${PW_TMPFS_PATH}/tmp_yad_mh_set"
@@ -4405,9 +4409,9 @@ gui_mangohud () {
     GET_REFRESH_RATE=(30 40 45 48 60 75 90 120 144 165 175 240)
 
     if [[ -n "$MANGOHUD_CONFIG" ]] ; then
-        PW_MANGOHUD_CONFIG=($(echo "$MANGOHUD_CONFIG" | tr ',' '\n' | grep -v '='))
+        PW_MANGOHUD_CONFIG=($(echo "$MANGOHUD_CONFIG" | tr ',' '\n' | grep -v '=' | tr [[:lower:]] [[:upper:]]))
     else
-        PW_MANGOHUD_CONFIG=($(echo "$DEFAULT_MANGOHUD_CONFIG" | tr ',' '\n' | grep -v '='))
+        PW_MANGOHUD_CONFIG=($(echo "$DEFAULT_MANGOHUD_CONFIG" | tr ',' '\n' | grep -v '=' | tr [[:lower:]] [[:upper:]]))
     fi
 
     if [[ -n "$FPS_LIMIT" ]] ; then
@@ -4416,15 +4420,15 @@ gui_mangohud () {
 
     for add_list_mh in "${LIST_MH[@]}"; do
         PW_MH_GUI_HELP="PW_MH_${add_list_mh}_INFO"
-        if grep -wo "$add_list_mh" <<<"${PW_MANGOHUD_CONFIG[@]}" &>/dev/null ; then
-            ADD_GUI_MH+="--field=${CHKBOX_SPACE}$(echo ${add_list_mh} | sed 's/_/ /g' | tr [[:lower:]] [[:upper:]])!${!PW_MH_GUI_HELP}:${THEME_CHKBOX}%TRUE%"
+        if [[ ${PW_MANGOHUD_CONFIG[*]} =~ $add_list_mh ]]; then
+            ADD_GUI_MH+="--field=${CHKBOX_SPACE}${add_list_mh//"_"/" "}!${!PW_MH_GUI_HELP}:${THEME_CHKBOX}%TRUE%"
         else
-            ADD_GUI_MH+="--field=${CHKBOX_SPACE}$(echo ${add_list_mh} | sed 's/_/ /g' | tr [[:lower:]] [[:upper:]])!${!PW_MH_GUI_HELP}:${THEME_CHKBOX}%FALSE%"
+            ADD_GUI_MH+="--field=${CHKBOX_SPACE}${add_list_mh//"_"/" "}!${!PW_MH_GUI_HELP}:${THEME_CHKBOX}%FALSE%"
         fi
     done
 
     for add_list_mh_fps in "${GET_REFRESH_RATE[@]}"; do
-        if grep -wo "$add_list_mh_fps" <<<"${PW_FPS_LIMIT_VAR[@]}" &>/dev/null ; then
+        if [[ ${PW_FPS_LIMIT_VAR[*]} =~ $add_list_mh_fps ]]; then
             ADD_GUI_MH_FPS+="--field=${CHKBOX_SPACE}$add_list_mh_fps:${THEME_CHKBOX}%TRUE%"
         else
             ADD_GUI_MH_FPS+="--field=${CHKBOX_SPACE}$add_list_mh_fps:${THEME_CHKBOX}%FALSE%"
@@ -4472,28 +4476,28 @@ gui_mangohud () {
     YAD_MH_SET=$(<"${PW_TMPFS_PATH}/tmp_yad_mh_set")
     YAD_MH_FPS_LIMIT=$(<"${PW_TMPFS_PATH}/tmp_yad_mh_fps_limit")
 
-    MONITOR_HEIGHT="$(echo $PW_SCREEN_RESOLUTION | awk -F'x' '{print $2}')"
+    MONITOR_HEIGHT="$(echo "$PW_SCREEN_RESOLUTION" | awk -F'x' '{print $2}')"
     if [[ -n "$MONITOR_HEIGHT" ]]
     then MH_FONT_SIZE="font_size=$(( MONITOR_HEIGHT / 45 ))"
     fi
 
-    local INT_COUNT_MH=0
+    INT_COUNT_MH="0"
     for read_list_mh in ${YAD_MH_SET} ; do
         if [[ "$read_list_mh" == "TRUE" ]]
-        then local GUI_MH_RESULT+="$(echo "${LIST_MH[$INT_COUNT_MH]}," | sed 's/ /_/g' | tr [[:upper:]] [[:lower:]] )"
+        then GUI_MH_RESULT+="${LIST_MH[$INT_COUNT_MH]},"
         fi
         ((INT_COUNT_MH++))
     done
+    GUI_MH_RESULT=$(echo "$GUI_MH_RESULT" | sed 's/ /_/g' | tr '[:upper:]' '[:lower:]')
 
-    local INT_COUNT_MH_FPS=0
+    INT_COUNT_MH_FPS="0"
     for read_list_mh_fps in ${YAD_MH_FPS_LIMIT} ; do
         if [[ "$read_list_mh_fps" == "TRUE" ]]
-        then local GUI_MH_FPS_RESULT+="${GET_REFRESH_RATE[$INT_COUNT_MH_FPS]}+"
+        then GUI_MH_FPS_RESULT+="${GET_REFRESH_RATE[$INT_COUNT_MH_FPS]}+"
         fi
         ((INT_COUNT_MH_FPS++))
     done
 
-    GUI_MH_FPS_RESULT="${GUI_MH_FPS_RESULT}"
     if [[ "$(echo "${GUI_MH_FPS_RESULT}" | awk -F'+' '{print $2}')" ]] ; then
         export FPS_LIMIT="${GUI_MH_FPS_RESULT%+}"
         if [[ ! "${GUI_MH_RESULT}" =~ "show_fps_limit" ]] ; then
@@ -4541,11 +4545,11 @@ gui_mangohud () {
 # GUI DGVOODOO2
 gui_dgvoodoo2 () {
     KEY_DGV2_GUI=$RANDOM
-    PW_DGV2_LIST="PW_DGV2_USE_DX12 PW_DGV2_DISABLE_MIPMAPPING PW_DGV2_FREE_MOUSE PW_DGV2_ENABLE_CRT PW_DGV2_DISABLE_D3D PW_DGV2_FILTER_POINT_SAMPLED
+    PW_DGV2_LIST=(PW_DGV2_USE_DX12 PW_DGV2_DISABLE_MIPMAPPING PW_DGV2_FREE_MOUSE PW_DGV2_ENABLE_CRT PW_DGV2_DISABLE_D3D PW_DGV2_FILTER_POINT_SAMPLED
     PW_DGV2_BLIT_STRETCH PW_DGV2_FORCE_VSYNC PW_DGV2_FASTMEMORY PW_DGV2_PHONG_SHADING PW_DGV2_DGVOODOO_WATERMARK PW_DGV2_GLIDE_NAPALM PW_DGV2_ONBOARD_RAM
     PW_DGV2_GLIDE_GAMMA_RAMP PW_DGV2_EMULATING_PCI_ACCESS PW_DGV2_16_BIT_DEPTH_BUFFER PW_DGV2_3DFX_WATERMARK PW_DGV2_3DFX_SPLASH_SCREEN
     PW_DGV2_INACTIVE_APP_STATE
-    "
+    )
 
     PW_DGV2_USE_DX12_INFO=${translations[Use DirectX12 for dgVoodoo2. Doesnt always work better. (Working only on newest and stable dxvk/vkd3d) (Direct3D and Glide settings)]}
     PW_DGV2_FORCE_VSYNC_INFO=${translations[Force the vertical sync to avoid tearing or prevent the GPU from rendering at crazy high speed. Keep in mind that some application need unforced vSync because of synchronization reasons. (Direct3D settings)]}
@@ -4579,15 +4583,16 @@ gui_dgvoodoo2 () {
     esac
 
     unset ADD_CHK_BOX_DGV2
-    for int_to_boole in ${PW_DGV2_LIST} ; do
+    for int_to_boole in ${PW_DGV2_LIST[@]} ; do
         if [[ "${!int_to_boole}" == "1" ]]
-        then export ${int_to_boole}="TRUE"
-        else export ${int_to_boole}="FALSE"
+        then export "${int_to_boole}"="TRUE"
+        else export "${int_to_boole}"="FALSE"
         fi
         TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
-        int_to_boole_non_pw="$(echo ${int_to_boole//PW_DGV2/} | sed 's/_/ /g' )"
-        if [[ ! "${PW_VULKAN_USE}" == "1" ]] && [[ ! "${PW_VULKAN_USE}" == "2" ]] \
-        && grep -wo "${int_to_boole}" <<<"${DISABLE_DGV2_LIST}" &>/dev/null
+        int_to_boole_non_pw="${int_to_boole//PW_DGV2/}"
+        int_to_boole_non_pw="${int_to_boole_non_pw//"_"/" "}"
+        if [[ ! "${PW_VULKAN_USE}" == [12] ]] \
+        && [[ "${DISABLE_DGV2_LIST}" =~ ${int_to_boole} ]]
         then ADD_CHK_BOX_DGV2+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:D${THEME_CHKBOX}%${!int_to_boole}%"
         else ADD_CHK_BOX_DGV2+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
         fi
@@ -4595,7 +4600,7 @@ gui_dgvoodoo2 () {
 
     IFS="%"
     "${pw_yad}" --plug=$KEY_DGV2_GUI --tabnum="1" --form --separator=" " --columns=4 ${ADD_CHK_BOX_DGV2} --text-align=center \
-    --text=${translations[dgVoodoo2 settings\\n<b>NOTE:</b> To display help for each item, simply hover over the text]} \
+    --text="${translations[dgVoodoo2 settings\\n<b>NOTE:</b> To display help for each item, simply hover over the text]}" \
     --gui-type-text="${PANED_GUI_TYPE_TEXT_UP}" --gui-type-layout="${PANED_GUI_TYPE_LAYOUT_UP}" \
     1> "${PW_TMPFS_PATH}/tmp_yad_dgv2_set" 2>/dev/null &
     IFS="$orig_IFS"
@@ -4669,32 +4674,32 @@ gui_dgvoodoo2 () {
 
     output_yad_dgv2=($(<"${PW_TMPFS_PATH}/tmp_yad_dgv2_set"))
     bool_from_yad=0
-    for boole_to_int in ${PW_DGV2_LIST} ; do
-        export ${boole_to_int}=${output_yad_dgv2[$bool_from_yad]}
+    for boole_to_int in ${PW_DGV2_LIST[@]} ; do
+        export "${boole_to_int}"="${output_yad_dgv2[$bool_from_yad]}"
         if [[ "${!boole_to_int}" == "TRUE" ]]
-        then export ${boole_to_int}="1"
-        else export ${boole_to_int}="0"
+        then export "${boole_to_int}"="1"
+        else export "${boole_to_int}"="0"
         fi
-        export bool_from_yad=$(( ${bool_from_yad} + 1 ))
+        export bool_from_yad=$(( bool_from_yad + 1 ))
     done
 
     PW_ADD_SETTINGS_DGV2=$(<"${PW_TMPFS_PATH}/tmp_yad_dgv2_set_cb")
 
-    PW_DGV2_RESOLUTION="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $1}')"
-    PW_DGV2_FPS_LIMIT="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $2}')"
-    PW_DGV2_FILTERING="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $3}')"
-    PW_DGV2_ANTIALIASING="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $4}')"
-    PW_DGV2_BIT_DEPTH="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $5}')"
-    PW_DGV2_VIDEOCARD="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $6}')"
-    PW_DGV2_VRAM="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $7}')"
-    PW_DGV2_BRIGHTNESS="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $8}')"
-    PW_DGV2_COLOR="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $9}')"
-    PW_DGV2_CONTRAST="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $10}')"
-    PW_DGV2_DISPLAY_ROI="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $11}')"
-    PW_DGV2_RESAMPLING="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $12}')"
-    PW_DGV2_CURSOR_SCALE="$(echo ${PW_ADD_SETTINGS_DGV2} | awk -F"%" '{print $13}')"
+    PW_DGV2_RESOLUTION="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $1}')"
+    PW_DGV2_FPS_LIMIT="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $2}')"
+    PW_DGV2_FILTERING="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $3}')"
+    PW_DGV2_ANTIALIASING="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $4}')"
+    PW_DGV2_BIT_DEPTH="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $5}')"
+    PW_DGV2_VIDEOCARD="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $6}')"
+    PW_DGV2_VRAM="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $7}')"
+    PW_DGV2_BRIGHTNESS="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $8}')"
+    PW_DGV2_COLOR="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $9}')"
+    PW_DGV2_CONTRAST="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $10}')"
+    PW_DGV2_DISPLAY_ROI="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $11}')"
+    PW_DGV2_RESAMPLING="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $12}')"
+    PW_DGV2_CURSOR_SCALE="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $13}')"
 
-    edit_db_from_gui ${PW_DGV2_LIST} PW_DGVOODOO2 PW_DGV2_FILTERING PW_DGV2_ANTIALIASING PW_DGV2_VRAM PW_DGV2_RESOLUTION \
+    edit_db_from_gui ${PW_DGV2_LIST[@]} PW_DGVOODOO2 PW_DGV2_FILTERING PW_DGV2_ANTIALIASING PW_DGV2_VRAM PW_DGV2_RESOLUTION \
     PW_DGV2_FPS_LIMIT PW_DGV2_BIT_DEPTH PW_DGV2_BRIGHTNESS PW_DGV2_COLOR PW_DGV2_CONTRAST PW_DGV2_VIDEOCARD PW_DGV2_DISPLAY_ROI \
     PW_DGV2_CURSOR_SCALE PW_DGV2_RESAMPLING
 
@@ -4704,27 +4709,26 @@ gui_dgvoodoo2 () {
 # GUI GAMESCOPE
 gui_gamescope () {
     KEY_GS_GUI=$RANDOM
-    PW_GS_LIST="PW_GS_FULLSCREEN PW_GS_FORCE_FULLSCREEN PW_GS_BORDERLESS_WINDOW PW_GS_FORCE_GRAB_CURSOR
+    PW_GS_LIST=(PW_GS_FULLSCREEN PW_GS_FORCE_FULLSCREEN PW_GS_BORDERLESS_WINDOW PW_GS_FORCE_GRAB_CURSOR
     PW_GS_FORCE_GRAB_KEYBOARD PW_GS_HDR_ENABLE PW_GS_ENABLE_GAMESCOPE_WSI PW_GS_HDR_ITM_ENABLE PW_GS_SDR_GAMMUT_WIDENESS
     PW_GS_FORCE_COMPOSITION PW_GS_HDR_FORCE_SUPPORT PW_GS_HDR_FORCE_OUTPUT PW_GS_HDR_FORCE_HEATMAP
     PW_GS_EXPOSE_WAYLAND PW_GS_REALTIME_SCHEDULING
-    "
+    )
 
-    grep -e '--mangoapp' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null && add_to_var PW_GS_LIST "PW_GS_MANGOAPP"
+    grep -e '--mangoapp' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null && PW_GS_LIST+=(PW_GS_MANGOAPP)
     grep -e '--backend' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null \
-    && add_to_var PW_GS_LIST "PW_GS_BACKEND_SDL" && add_to_var PW_GS_LIST "PW_GS_SDL_VIDEODRIVER_X11"
+    && PW_GS_LIST+=(PW_GS_BACKEND_SDL) && PW_GS_LIST+=(PW_GS_SDL_VIDEODRIVER_X11)
 
     GS_FILTER_CB="linear!nearest!fsr!nis!pixel"
     #debian bookworm fix
     if grep -e '-U, --fsr-upscaling' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null ; then
         GS_FILTER_CB="fsr!nis"
         export PW_GS_FILTER_MODE_OLD="true"
-        rm_from_var PW_GS_LIST "PW_GS_HDR_ENABLE"
-        rm_from_var PW_GS_LIST "PW_GS_HDR_FORCE_SUPPORT"
-        rm_from_var PW_GS_LIST "PW_GS_HDR_FORCE_OUTPUT"
-        rm_from_var PW_GS_LIST "PW_GS_HDR_FORCE_SUPPORT"
-        rm_from_var PW_GS_LIST "PW_GS_FORCE_GRAB_CURSOR"
-        rm_from_var PW_GS_LIST "PW_GS_FORCE_GRAB_KEYBOARD"
+        unset PW_GS_LIST[3] # "PW_GS_FORCE_GRAB_CURSOR"
+        unset PW_GS_LIST[4] # "PW_GS_FORCE_GRAB_KEYBOARD"
+        unset PW_GS_LIST[5] # "PW_GS_HDR_ENABLE"
+        unset PW_GS_LIST[10] # "PW_GS_HDR_FORCE_SUPPORT"
+        unset PW_GS_LIST[11] # "PW_GS_HDR_FORCE_OUTPUT"
     fi
 
     PW_GS_FULLSCREEN_INFO=${translations[Make the window fullscreen]}
@@ -4750,13 +4754,14 @@ gui_gamescope () {
     if [[ "${GAMESCOPE_INSTALLED}" == 1 ]] ; then
         GAMESCOPE_NEED_INSTALL="${translations[Change settings gamescope for]} <b>${PORTWINE_DB}</b>\n ${translations[<b>NOTE:</b> To display help for each item, simply hover your mouse over the text]}"
         GS_CB="CB" && GS_CBE="CBE" && GS_NUM="NUM" && GS_NUMN="NUMN"
-        for int_to_boole in ${PW_GS_LIST} ; do
+        for int_to_boole in ${PW_GS_LIST[@]} ; do
             if [[ "${!int_to_boole}" == "1" ]]
-            then export ${int_to_boole}="TRUE"
-            else export ${int_to_boole}="FALSE"
+            then export "${int_to_boole}"="TRUE"
+            else export "${int_to_boole}"="FALSE"
             fi
             TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
-            int_to_boole_non_pw="$(echo ${int_to_boole//PW_GS/} | sed 's/_/ /g' )"
+            int_to_boole_non_pw="${int_to_boole//PW_GS/}"
+            int_to_boole_non_pw="${int_to_boole_non_pw//"_"/" "}"
             ADD_CHK_BOX_GS+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
         done
     else
@@ -4780,13 +4785,14 @@ gui_gamescope () {
         PW_GS_SDR_CONTENT_NITS="0"
         PW_GS_ITM_SDR_NITS="0"
         PW_GS_ITM_TARGET_NITS="0"
-        for int_to_boole in ${PW_GS_LIST} ; do
+        for int_to_boole in ${PW_GS_LIST[@]} ; do
             if [[ "${!int_to_boole}" == "1" ]]
-            then export ${int_to_boole}="TRUE"
-            else export ${int_to_boole}="FALSE"
+            then export "${int_to_boole}"="TRUE"
+            else export "${int_to_boole}"="FALSE"
             fi
             TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
-            int_to_boole_non_pw="$(echo ${int_to_boole//PW_GS/} | sed 's/_/ /g' )"
+            int_to_boole_non_pw="${int_to_boole//PW_GS/}"
+            int_to_boole_non_pw="${int_to_boole_non_pw//"_"/" "}"
             ADD_CHK_BOX_GS+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:D${THEME_CHKBOX}%${!int_to_boole}%"
         done
     fi
@@ -4853,32 +4859,32 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
     esac
 
     output_yad_gs=($(<"${PW_TMPFS_PATH}/tmp_yad_gs_set"))
-    bool_from_yad=0
-    for boole_to_int in ${PW_GS_LIST} ; do
-        export ${boole_to_int}=${output_yad_gs[$bool_from_yad]}
+    bool_from_yad="0"
+    for boole_to_int in ${PW_GS_LIST[@]} ; do
+        export "${boole_to_int}"="${output_yad_gs[$bool_from_yad]}"
         if [[ "${!boole_to_int}" == "TRUE" ]]
-        then export ${boole_to_int}="1"
-        else export ${boole_to_int}="0"
+        then export "${boole_to_int}"="1"
+        else export "${boole_to_int}"="0"
         fi
-        export bool_from_yad=$(( ${bool_from_yad} + 1 ))
+        export bool_from_yad=$(( bool_from_yad + 1 ))
     done
 
     PW_ADD_SETTINGS_GS=$(<"${PW_TMPFS_PATH}/tmp_yad_gs_set_cb")
 
-    PW_GS_SHOW_RESOLUTION="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $1}')"
-    PW_GS_INTERNAL_RESOLUTION="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $2}' | tr ',' '.')"
-    PW_GS_FRAME_LIMIT="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $3}')"
-    PW_GS_MESA_VK_WSI_PRESENT_MODE="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $4}')"
-    PW_GS_SCALER_MODE="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $5}')"
-    PW_GS_FILTER_MODE="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $6}')"
-    PW_GS_UPSCALE_SHARPNESS="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $7}')"
-    PW_GS_MAX_SCALE_FACTOR="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $8}' | tr ',' '.')"
-    PW_GS_MOUSE_SENSITIVITY="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $9}' | tr ',' '.')"
-    PW_GS_SDR_CONTENT_NITS="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $10}')"
-    PW_GS_ITM_SDR_NITS="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $11}')"
-    PW_GS_ITM_TARGET_NITS="$(echo ${PW_ADD_SETTINGS_GS} | awk -F"%" '{print $12}')"
+    PW_GS_SHOW_RESOLUTION="$(echo "${PW_ADD_SETTINGS_GS}" | awk -F"%" '{print $1}')"
+    PW_GS_INTERNAL_RESOLUTION="$(echo "${PW_ADD_SETTINGS_GS}" | awk -F"%" '{print $2}' | tr ',' '.')"
+    PW_GS_FRAME_LIMIT="$(echo "${PW_ADD_SETTINGS_GS}" | awk -F"%" '{print $3}')"
+    PW_GS_MESA_VK_WSI_PRESENT_MODE="$(echo "${PW_ADD_SETTINGS_GS}" | awk -F"%" '{print $4}')"
+    PW_GS_SCALER_MODE="$(echo "${PW_ADD_SETTINGS_GS}"| awk -F"%" '{print $5}')"
+    PW_GS_FILTER_MODE="$(echo "${PW_ADD_SETTINGS_GS}" | awk -F"%" '{print $6}')"
+    PW_GS_UPSCALE_SHARPNESS="$(echo "${PW_ADD_SETTINGS_GS}" | awk -F"%" '{print $7}')"
+    PW_GS_MAX_SCALE_FACTOR="$(echo "${PW_ADD_SETTINGS_GS}" | awk -F"%" '{print $8}' | tr ',' '.')"
+    PW_GS_MOUSE_SENSITIVITY="$(echo "${PW_ADD_SETTINGS_GS}" | awk -F"%" '{print $9}' | tr ',' '.')"
+    PW_GS_SDR_CONTENT_NITS="$(echo "${PW_ADD_SETTINGS_GS}" | awk -F"%" '{print $10}')"
+    PW_GS_ITM_SDR_NITS="$(echo "${PW_ADD_SETTINGS_GS}" | awk -F"%" '{print $11}')"
+    PW_GS_ITM_TARGET_NITS="$(echo "${PW_ADD_SETTINGS_GS}" | awk -F"%" '{print $12}')"
 
-    edit_db_from_gui ${PW_GS_LIST} PW_GAMESCOPE PW_GS_SHOW_RESOLUTION PW_GS_INTERNAL_RESOLUTION \
+    edit_db_from_gui ${PW_GS_LIST[@]} PW_GAMESCOPE PW_GS_SHOW_RESOLUTION PW_GS_INTERNAL_RESOLUTION \
     PW_GS_FRAME_LIMIT PW_GS_MESA_VK_WSI_PRESENT_MODE PW_GS_SCALER_MODE  PW_GS_FILTER_MODE \
     PW_GS_UPSCALE_SHARPNESS PW_GS_MAX_SCALE_FACTOR PW_GS_MOUSE_SENSITIVITY \
     PW_GS_SDR_CONTENT_NITS PW_GS_ITM_SDR_NITS PW_GS_ITM_TARGET_NITS
@@ -4976,9 +4982,9 @@ gui_userconf () {
             ;;
         166)
             PW_ADD_SETTINGS_UC=$(<"${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb")
-            PW_GPU_USE="$(echo ${PW_ADD_SETTINGS_UC} | awk -F"%" '{print $1}')"
-            PW_SOUND_DRIVER_USE="$(echo ${PW_ADD_SETTINGS_UC} | awk -F"%" '{print $2}')"
-            GUI_THEME="$(echo ${PW_ADD_SETTINGS_UC} | awk -F"%" '{print $3}')"
+            PW_GPU_USE="$(echo "${PW_ADD_SETTINGS_UC}" | awk -F"%" '{print $1}')"
+            PW_SOUND_DRIVER_USE="$(echo "${PW_ADD_SETTINGS_UC}" | awk -F"%" '{print $2}')"
+            GUI_THEME="$(echo "${PW_ADD_SETTINGS_UC}" | awk -F"%" '{print $3}')"
             edit_user_conf_from_gui PW_GPU_USE PW_SOUND_DRIVER_USE GUI_THEME
             restart_pp
             ;;
