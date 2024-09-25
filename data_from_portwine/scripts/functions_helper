@@ -4144,16 +4144,16 @@ A brief instruction:
         export bool_from_yad=$(( bool_from_yad + 1 ))
     done
 
-    PW_ADD_SETTINGS=$(<"${PW_TMPFS_PATH}/tmp_output_yad_fps_limit")
-
-    PW_WINDOWS_VER="$(echo "${PW_ADD_SETTINGS}" | awk -F"%" '{print $1}')"
-    PW_DLL_INSTALL="$(echo "${PW_ADD_SETTINGS}" | awk -F"%" '{print $2}')"
-    WINEDLLOVERRIDES="$(echo "${PW_ADD_SETTINGS}" | awk -F"%" '{print $3}')"
-    LAUNCH_PARAMETERS="$(echo "${PW_ADD_SETTINGS}" | awk -F"%" '{print $5}')"
-    CPU_LIMIT="$(echo "${PW_ADD_SETTINGS}" | awk -F"%" '{print $7}')"
-    PW_MESA_GL_VERSION_OVERRIDE="$(echo "${PW_ADD_SETTINGS}" | awk -F"%" '{print $8}')"
-    PW_VKD3D_FEATURE_LEVEL="$(echo "${PW_ADD_SETTINGS}" | awk -F"%" '{print $9}')"
-    PW_LOCALE_SELECT="$(echo "${PW_ADD_SETTINGS}" | awk -F"%" '{print $10}')"
+    IFS='%' read -r -a PW_ADD_SETTINGS <"${PW_TMPFS_PATH}/tmp_output_yad_fps_limit"
+    IFS="$orig_IFS"
+    PW_WINDOWS_VER="${PW_ADD_SETTINGS[0]}"
+    PW_DLL_INSTALL="${PW_ADD_SETTINGS[1]}"
+    WINEDLLOVERRIDES="${PW_ADD_SETTINGS[2]}"
+    LAUNCH_PARAMETERS="${PW_ADD_SETTINGS[4]}"
+    CPU_LIMIT="${PW_ADD_SETTINGS[6]}"
+    PW_MESA_GL_VERSION_OVERRIDE="${PW_ADD_SETTINGS[7]}"
+    PW_VKD3D_FEATURE_LEVEL="${PW_ADD_SETTINGS[8]}"
+    PW_LOCALE_SELECT="${PW_ADD_SETTINGS[9]}"
 
     if [[ "${CPU_LIMIT}" != "disabled" ]] ; then
         PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $(( CPU_LIMIT - 1 )))"
@@ -4683,21 +4683,21 @@ gui_dgvoodoo2 () {
         export bool_from_yad=$(( bool_from_yad + 1 ))
     done
 
-    PW_ADD_SETTINGS_DGV2=$(<"${PW_TMPFS_PATH}/tmp_yad_dgv2_set_cb")
-
-    PW_DGV2_RESOLUTION="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $1}')"
-    PW_DGV2_FPS_LIMIT="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $2}')"
-    PW_DGV2_FILTERING="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $3}')"
-    PW_DGV2_ANTIALIASING="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $4}')"
-    PW_DGV2_BIT_DEPTH="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $5}')"
-    PW_DGV2_VIDEOCARD="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $6}')"
-    PW_DGV2_VRAM="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $7}')"
-    PW_DGV2_BRIGHTNESS="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $8}')"
-    PW_DGV2_COLOR="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $9}')"
-    PW_DGV2_CONTRAST="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $10}')"
-    PW_DGV2_DISPLAY_ROI="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $11}')"
-    PW_DGV2_RESAMPLING="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $12}')"
-    PW_DGV2_CURSOR_SCALE="$(echo "${PW_ADD_SETTINGS_DGV2}" | awk -F"%" '{print $13}')"
+    IFS='%' read -r -a PW_ADD_SETTINGS_DGV2 <"${PW_TMPFS_PATH}/tmp_yad_dgv2_set_cb"
+    IFS="$orig_IFS"
+    PW_DGV2_RESOLUTION="${PW_ADD_SETTINGS_DGV2[0]}"
+    PW_DGV2_FPS_LIMIT="${PW_ADD_SETTINGS_DGV2[1]}"
+    PW_DGV2_FILTERING="${PW_ADD_SETTINGS_DGV2[2]}"
+    PW_DGV2_ANTIALIASING="${PW_ADD_SETTINGS_DGV2[3]}"
+    PW_DGV2_BIT_DEPTH="${PW_ADD_SETTINGS_DGV2[4]}"
+    PW_DGV2_VIDEOCARD="${PW_ADD_SETTINGS_DGV2[5]}"
+    PW_DGV2_VRAM="${PW_ADD_SETTINGS_DGV2[6]}"
+    PW_DGV2_BRIGHTNESS="${PW_ADD_SETTINGS_DGV2[7]}"
+    PW_DGV2_COLOR="${PW_ADD_SETTINGS_DGV2[8]}"
+    PW_DGV2_CONTRAST="${PW_ADD_SETTINGS_DGV2[9]}"
+    PW_DGV2_DISPLAY_ROI="${PW_ADD_SETTINGS_DGV2[10]}"
+    PW_DGV2_RESAMPLING="${PW_ADD_SETTINGS_DGV2[11]}"
+    PW_DGV2_CURSOR_SCALE="${PW_ADD_SETTINGS_DGV2[12]}"
 
     edit_db_from_gui ${PW_DGV2_LIST[@]} PW_DGVOODOO2 PW_DGV2_FILTERING PW_DGV2_ANTIALIASING PW_DGV2_VRAM PW_DGV2_RESOLUTION \
     PW_DGV2_FPS_LIMIT PW_DGV2_BIT_DEPTH PW_DGV2_BRIGHTNESS PW_DGV2_COLOR PW_DGV2_CONTRAST PW_DGV2_VIDEOCARD PW_DGV2_DISPLAY_ROI \
@@ -4724,11 +4724,11 @@ gui_gamescope () {
     if grep -e '-U, --fsr-upscaling' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null ; then
         GS_FILTER_CB="fsr!nis"
         export PW_GS_FILTER_MODE_OLD="true"
-        unset PW_GS_LIST[3] # "PW_GS_FORCE_GRAB_CURSOR"
-        unset PW_GS_LIST[4] # "PW_GS_FORCE_GRAB_KEYBOARD"
-        unset PW_GS_LIST[5] # "PW_GS_HDR_ENABLE"
-        unset PW_GS_LIST[10] # "PW_GS_HDR_FORCE_SUPPORT"
-        unset PW_GS_LIST[11] # "PW_GS_HDR_FORCE_OUTPUT"
+        unset 'PW_GS_LIST[3]' # "PW_GS_FORCE_GRAB_CURSOR"
+        unset 'PW_GS_LIST[4]' # "PW_GS_FORCE_GRAB_KEYBOARD"
+        unset 'PW_GS_LIST[5]' # "PW_GS_HDR_ENABLE"
+        unset 'PW_GS_LIST[10]' # "PW_GS_HDR_FORCE_SUPPORT"
+        unset 'PW_GS_LIST[11]' # "PW_GS_HDR_FORCE_OUTPUT"
     fi
 
     PW_GS_FULLSCREEN_INFO=${translations[Make the window fullscreen]}
@@ -4869,20 +4869,20 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
         export bool_from_yad=$(( bool_from_yad + 1 ))
     done
 
-    PW_ADD_SETTINGS_GS=$(<"${PW_TMPFS_PATH}/tmp_yad_gs_set_cb")
-
-    PW_GS_SHOW_RESOLUTION="$(echo "${PW_ADD_SETTINGS_GS}" | awk -F"%" '{print $1}')"
-    PW_GS_INTERNAL_RESOLUTION="$(echo "${PW_ADD_SETTINGS_GS}" | awk -F"%" '{print $2}' | tr ',' '.')"
-    PW_GS_FRAME_LIMIT="$(echo "${PW_ADD_SETTINGS_GS}" | awk -F"%" '{print $3}')"
-    PW_GS_MESA_VK_WSI_PRESENT_MODE="$(echo "${PW_ADD_SETTINGS_GS}" | awk -F"%" '{print $4}')"
-    PW_GS_SCALER_MODE="$(echo "${PW_ADD_SETTINGS_GS}"| awk -F"%" '{print $5}')"
-    PW_GS_FILTER_MODE="$(echo "${PW_ADD_SETTINGS_GS}" | awk -F"%" '{print $6}')"
-    PW_GS_UPSCALE_SHARPNESS="$(echo "${PW_ADD_SETTINGS_GS}" | awk -F"%" '{print $7}')"
-    PW_GS_MAX_SCALE_FACTOR="$(echo "${PW_ADD_SETTINGS_GS}" | awk -F"%" '{print $8}' | tr ',' '.')"
-    PW_GS_MOUSE_SENSITIVITY="$(echo "${PW_ADD_SETTINGS_GS}" | awk -F"%" '{print $9}' | tr ',' '.')"
-    PW_GS_SDR_CONTENT_NITS="$(echo "${PW_ADD_SETTINGS_GS}" | awk -F"%" '{print $10}')"
-    PW_GS_ITM_SDR_NITS="$(echo "${PW_ADD_SETTINGS_GS}" | awk -F"%" '{print $11}')"
-    PW_GS_ITM_TARGET_NITS="$(echo "${PW_ADD_SETTINGS_GS}" | awk -F"%" '{print $12}')"
+    IFS='%' read -r -a PW_ADD_SETTINGS_GS <"${PW_TMPFS_PATH}/tmp_yad_gs_set_cb"
+    IFS="$orig_IFS"
+    PW_GS_SHOW_RESOLUTION="${PW_ADD_SETTINGS_GS[0]}"
+    PW_GS_INTERNAL_RESOLUTION="${PW_ADD_SETTINGS_GS[1]//','/'.'}"
+    PW_GS_FRAME_LIMIT="${PW_ADD_SETTINGS_GS[2]}"
+    PW_GS_MESA_VK_WSI_PRESENT_MODE="${PW_ADD_SETTINGS_GS[3]}"
+    PW_GS_SCALER_MODE="${PW_ADD_SETTINGS_GS[4]}"
+    PW_GS_FILTER_MODE="${PW_ADD_SETTINGS_GS[5]}"
+    PW_GS_UPSCALE_SHARPNESS="${PW_ADD_SETTINGS_GS[6]}"
+    PW_GS_MAX_SCALE_FACTOR="${PW_ADD_SETTINGS_GS[7]//','/'.'}"
+    PW_GS_MOUSE_SENSITIVITY="${PW_ADD_SETTINGS_GS[8]//','/'.'}"
+    PW_GS_SDR_CONTENT_NITS="${PW_ADD_SETTINGS_GS[9]}"
+    PW_GS_ITM_SDR_NITS="${PW_ADD_SETTINGS_GS[10]}"
+    PW_GS_ITM_TARGET_NITS="${PW_ADD_SETTINGS_GS[11]}"
 
     edit_db_from_gui ${PW_GS_LIST[@]} PW_GAMESCOPE PW_GS_SHOW_RESOLUTION PW_GS_INTERNAL_RESOLUTION \
     PW_GS_FRAME_LIMIT PW_GS_MESA_VK_WSI_PRESENT_MODE PW_GS_SCALER_MODE  PW_GS_FILTER_MODE \
