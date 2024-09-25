@@ -1933,17 +1933,9 @@ edit_db_from_gui () {
     if [[ -n "$PORTWINE_DB_FILE" ]] \
     && [[ -f "$PORTWINE_DB_FILE" ]]
     then
-        for mod_db in $@ ; do
-            if ! grep "export ${mod_db}=" "${PORTWINE_DB_FILE}" &>/dev/null
-            then echo "export ${mod_db}=\"${!mod_db}\"" >> "${PORTWINE_DB_FILE}"
-            elif grep "export ${mod_db}=" "${PORTWINE_DB_FILE}" | grep -v "#" &>/dev/null
-            then
-                if [[ "$(grep "export ${mod_db}=" "${PORTWINE_DB_FILE}" | grep -v "#")" != "export ${mod_db}=\"${!mod_db}\"" ]]
-                then sed -ri "s|^export ${mod_db}=.*|export ${mod_db}=\"${!mod_db}\"|" "${PORTWINE_DB_FILE}"
-                fi
-            elif [[ "$(grep "export ${mod_db}=" "${PORTWINE_DB_FILE}")" != "export ${mod_db}=${!mod_db}" ]]
-            then sed -ri "s|.*export ${mod_db}=.*|export ${mod_db}=\"${!mod_db}\"|g" "${PORTWINE_DB_FILE}"
-            fi
+        for mod_db in "$@" ; do
+            grep -q "export ${mod_db}=" "${PORTWINE_DB_FILE}" || echo "export ${mod_db}=\"${!mod_db}\"" >> "${PORTWINE_DB_FILE}"
+            sed -i "s|^export ${mod_db}=.*|export ${mod_db}=\"${!mod_db}\"|" "${PORTWINE_DB_FILE}"
         done
     fi
     return 0
