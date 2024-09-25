@@ -22,11 +22,10 @@ print_wrapped () {
     local text="$1"
     local a="0"
     local b="$2"
-    local c="$3"
 
-    if [[ -n "$c" ]] ; then
+    if [[ -n "$3" ]] ; then
         if (( ${#text} > b )); then
-            echo "${text:a:b}${c}"
+            echo "${text:a:b}${3}"
         else
             echo "$text"
         fi
@@ -1702,7 +1701,6 @@ pw_port_update () {
     if [[ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ]] ; then
         echo "2024" > "${PORT_WINE_TMP_PATH}/scripts_ver"
     fi
-    scripts_install_ver=$(<"${PORT_WINE_TMP_PATH}/scripts_ver")
 
     URL_ETERFUND="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/raw/${BRANCH}/data_from_portwine/scripts/var"
     URL_GITHUB="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/${BRANCH}/data_from_portwine/scripts/var"
@@ -1752,7 +1750,11 @@ pw_port_update () {
             echo "$UPDATE_DAYS $UPDATE_MINUTES UPDATE_GITHUB $UPDATE_MINUTES" > "${PORT_WINE_TMP_PATH}/update_skip_mirror"
             UPDATE_URL_MIRROR="UPDATE_GITHUB"
         fi
+        PW_FORCE_UPDATE="1"
     }
+
+    [[ ! -f "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ]] && echo "1" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
+    scripts_update_not=$(<"${PORT_WINE_TMP_PATH}/scripts_update_notifier")
 
     if [[ ! -f "${PORT_WINE_TMP_PATH}/update_skip_mirror" ]] ; then
         pw_check_update
@@ -1763,16 +1765,27 @@ pw_port_update () {
         UPDATE_SKIP_DATE="$(echo "${CHECK_UPDATE_MIRROR}" | awk -F" " '{print $4}')"
         UPDATE_DAYS=$(date +%-j)
         UPDATE_MINUTES=$(($(date +%-H) * 60 + $(date +%-M)))
-        if (( $((UPDATE_DATE_MIRROR + 360)) <= UPDATE_MINUTES )) \
-        || [[ "$UPDATE_SKIP_DAYS" != "$UPDATE_DAYS" ]] \
-        || [[ "$PW_FORCE_UPDATE" == "1" ]]
-        then
-            pw_check_update
+        if [[ "${scripts_update_not}" != "0" ]] ; then
+            if (( $((UPDATE_DATE_MIRROR + 360)) <= UPDATE_MINUTES )) \
+            || [[ "$UPDATE_SKIP_DAYS" != "$UPDATE_DAYS" ]] \
+            || [[ "$PW_FORCE_UPDATE" == "1" ]] ; then
+                pw_check_update
+            fi
+        else
+            if [[ "$UPDATE_SKIP_DAYS" != "$UPDATE_DAYS" ]] ; then
+                pw_check_update
+            else
+                return 0
+            fi
         fi
     fi
 
     if (( $((UPDATE_SKIP_DATE + $(((RANDOM%11)+25)) )) <= UPDATE_MINUTES )) \
-    || [[ -n "$PW_UPDATE_ALL_LIST" ]] ; then
+    || [[ "$PW_FORCE_UPDATE" == "1" ]] \
+    || [[ "${scripts_update_not}" == "2" ]] ; then
+        if [[ "${scripts_update_not}" == "2" ]] ; then
+            echo "1" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
+        fi
         print_info "Check update..."
         echo ""
         if [[ -z "$UPDATE_URL_MIRROR" ]] ; then
@@ -1781,33 +1794,42 @@ pw_port_update () {
         fi
         case "$UPDATE_URL_MIRROR" in
             UPDATE_ETERFUND)
-                    if [[ ! -f "${PORT_WINE_TMP_PATH}/curent_var_ver" ]] \
-                    && ! timeout 2 curl -f -s --list-only "$URL_ETERFUND" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
-                    then
-                        pw_check_update
-                    fi
-                    URL_FOR_CHANGELOG="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/raw/${BRANCH}/data_from_portwine"
-                    URL_TO_PW_BRANCH="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/-/archive/${BRANCH}/PortWINE-${BRANCH}.tar.gz"
+                if [[ ! -f "${PORT_WINE_TMP_PATH}/curent_var_ver" ]] \
+                && ! timeout 2 curl -f -s --list-only "$URL_ETERFUND" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+                then
+                    pw_check_update
+                fi
+                URL_FOR_CHANGELOG="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/raw/${BRANCH}/data_from_portwine"
+                URL_TO_PW_BRANCH="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/-/archive/${BRANCH}/PortWINE-${BRANCH}.tar.gz"
                 ;;
             UPDATE_GITHUB)
-                    if [[ ! -f "${PORT_WINE_TMP_PATH}/curent_var_ver" ]] \
-                    && ! timeout 2 curl -f -s --list-only "$URL_GITHUB" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
-                    then
-                        pw_check_update
-                    fi
-                    URL_FOR_CHANGELOG="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/${BRANCH}/data_from_portwine"
-                    URL_TO_PW_BRANCH="https://github.com/Castro-Fidel/PortWINE/archive/refs/heads/${BRANCH}.tar.gz"
+                if [[ ! -f "${PORT_WINE_TMP_PATH}/curent_var_ver" ]] \
+                && ! timeout 2 curl -f -s --list-only "$URL_GITHUB" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+                then
+                    pw_check_update
+                fi
+                URL_FOR_CHANGELOG="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/${BRANCH}/data_from_portwine"
+                URL_TO_PW_BRANCH="https://github.com/Castro-Fidel/PortWINE/archive/refs/heads/${BRANCH}.tar.gz"
                 ;;
         esac
     else
         return 0
     fi
 
-    [[ "$LANGUAGE" == ru ]] && local PW_CHANGELOG_FILE="changelog_ru" || local PW_CHANGELOG_FILE="changelog_en"
-    [[ ! -f "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ]] && echo "1" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
-    read "scripts_update_not" < "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
-    if [[ "${scripts_update_not}" == "1" ]] ; then
-        scripts_current_ver=$(grep "$BRANCH_VERSION_UPDATE" "${PORT_WINE_TMP_PATH}/curent_var_ver" | awk -F "=" '{print $2}')
+    scripts_current_ver=$(grep "$BRANCH_VERSION_UPDATE" "${PORT_WINE_TMP_PATH}/curent_var_ver" | awk -F "=" '{print $2}')
+    if [[ ! -f "${PORT_WINE_TMP_PATH}/update_remind_later" ]] ; then
+        echo "$scripts_current_ver" > "${PORT_WINE_TMP_PATH}/update_remind_later"
+    else
+        PW_REMIND_LATER=$(<"${PORT_WINE_TMP_PATH}/update_remind_later")
+        if [[ $PW_REMIND_LATER != "$scripts_current_ver" ]] ; then
+            echo "2" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
+            echo "$scripts_current_ver" > "${PORT_WINE_TMP_PATH}/update_remind_later"
+            scripts_update_not=$(<"${PORT_WINE_TMP_PATH}/scripts_update_notifier")
+        fi
+    fi
+
+    if [[ "${scripts_update_not}" == [12] ]] ; then
+        [[ "$LANGUAGE" == ru ]] && local PW_CHANGELOG_FILE="changelog_ru" || local PW_CHANGELOG_FILE="changelog_en"
         print_info "Scripts version in git = ${scripts_current_ver}"
         print_info "Scripts version local = ${scripts_install_ver}"
         if [[ -n "${scripts_current_ver}" ]] &&  [[ "${scripts_current_ver}" -gt "${scripts_install_ver}" ]] ; then
@@ -1834,8 +1856,10 @@ pw_port_update () {
 
                 # --button="${translations[EXIT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":252 \
 
-                case "${YAD_STATUS}" in
-                    1|252) exit 0 ;;
+                try_remove_file "${PORT_WINE_TMP_PATH}/curent_var_ver"
+
+                case ${YAD_STATUS} in
+                    1|252) echo "2" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier" && exit 0 ;;
                        16) xcsd="${translations[DO NOT REMIND ME]}" ;;
                        18) xcsd="${translations[REMIND ME LATER]}" ;;
                        20) xcsd="${translations[UPDATING NOW]}" ;;
@@ -1866,14 +1890,12 @@ pw_port_update () {
                         yad_error_download && pw_port_update || exit 1
                     fi ;;
                 "${translations[REMIND ME LATER]}")
-                    echo " " ;;
+                    echo "2" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ;;
                 "${translations[DO NOT REMIND ME]}")
                     echo "0" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ;;
             esac
         fi
     fi
-    export scripts_install_ver
-    try_remove_file "${PORT_WINE_TMP_PATH}/curent_var_ver"
     return 0
 }
 
@@ -5764,6 +5786,7 @@ change_branch () {
             pw_notify_send -i info \
             "${translations[Branch changed to:]}" "<b>DEVEL</b>"
             unset SKIP_CHECK_UPDATES
+            export PW_FORCE_UPDATE="1"
         fi
     else
         if yad_question "${translations[Do you actually want to change the scripts version to:]} <b>STABLE?</b>" ; then
@@ -5773,6 +5796,7 @@ change_branch () {
             pw_notify_send -i info \
             "${translations[Branch changed to:]}" "<b>STABLE</b>"
             unset SKIP_CHECK_UPDATES
+            export PW_FORCE_UPDATE="1"
         fi
     fi
     print_info "Restarting PP for change branch..."
