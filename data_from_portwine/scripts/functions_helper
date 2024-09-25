@@ -1929,13 +1929,16 @@ edit_db_from_gui () {
         print_warning "Skipped edit_db_from_gui"
         return 0
     fi
+
     print_info "edit_db_from_gui PORTWINE_DB_FILE=$PORTWINE_DB_FILE"
     if [[ -n "$PORTWINE_DB_FILE" ]] \
     && [[ -f "$PORTWINE_DB_FILE" ]]
     then
         for mod_db in "$@" ; do
-            grep -q "export ${mod_db}=" "${PORTWINE_DB_FILE}" || echo "export ${mod_db}=\"${!mod_db}\"" >> "${PORTWINE_DB_FILE}"
-            sed -i "s|^export ${mod_db}=.*|export ${mod_db}=\"${!mod_db}\"|" "${PORTWINE_DB_FILE}"
+            if [[ "$(<"${PORTWINE_DB_FILE}")" =~ "export ${mod_db}=" ]]
+            then sed -i "s|export ${mod_db}=.*|export ${mod_db}=\"${!mod_db}\"|g" "${PORTWINE_DB_FILE}"
+            else echo "export ${mod_db}=\"${!mod_db}\"" >> "${PORTWINE_DB_FILE}"
+            fi            
         done
     fi
     return 0
