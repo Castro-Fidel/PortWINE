@@ -347,10 +347,10 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
             GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
             unset LOCALE_LIST
             for LOCALE in $GET_LOCALE_LIST ; do
-                if grep -e "$LOCALE" "${PW_TMPFS_PATH}/locale.tmp" &>/dev/null ; then
+                if [[ $(<"${PW_TMPFS_PATH}/locale.tmp") =~ $LOCALE ]] ; then
                     if [[ -n "$LOCALE_LIST" ]]
-                    then LOCALE_LIST+="!$(grep -e "$LOCALE" "${PW_TMPFS_PATH}/locale.tmp")"
-                    else LOCALE_LIST="$(grep -e "$LOCALE" "${PW_TMPFS_PATH}/locale.tmp")"
+                    then LOCALE_LIST+="!$LOCALE"
+                    else LOCALE_LIST="$LOCALE"
                     fi
                 fi
             done
