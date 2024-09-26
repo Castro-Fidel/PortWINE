@@ -689,7 +689,7 @@ debug_timer () {
         START=$(date +%s%N)
     elif [[ "$1" == "--end" ]] ; then
         END=$(date +%s%N)
-        DIFF=$((($END - $START)/1000000))
+        DIFF=$((( END - START )/1000000))
         if [[ -n "$2" ]] ; then
             if [[ "$2" != "-s" ]] ; then
                 print_warning "It took $DIFF milliseconds for $2"
@@ -733,7 +733,7 @@ combobox_fix () {
         name3="${name3//\!\!/\!}"
         name4="${name3//*\!/}"
         if [[ ${name1} == "${name4}" ]] || [[ ${name1} == "\\${name4}" ]]
-        then name3="${name3%\!${name1}}"
+        then name3="${name3%\!"${name1}"}"
         fi
         if [[ "$1" == "--disabled" ]] ; then
             if [[ ${name1} != "disabled" ]]
@@ -850,9 +850,11 @@ init_wine_ver () {
     if [[ "${PW_WINE_USE}" == "USE_SYSTEM_WINE" ]] \
     && command -v wine &>/dev/null ; then
         export WINEDIR="$RT_PREFIX/usr"
-        export WINE="$RT_PREFIX$(command -v wine)"
+        WINE="$RT_PREFIX$(command -v wine)"
+        export WINE
         export WINELOADER="$WINE"
-        export WINESERVER="$RT_PREFIX$(command -v wineserver)"
+        WINESERVER="$RT_PREFIX$(command -v wineserver)"
+        export WINESERVER
         export PW_NO_FSYNC=1
         unset WINEDLLPATH
     else
@@ -1531,7 +1533,7 @@ check_dirs_and_files_in_pfx () {
 
                         if [[ ! -L "$drive_path" ]] ; then
                             if [[ $(<"/sys/class/block/$mount_name/removable") != "1" ]] 2>/dev/null ; then
-                                if [[ ! $(echo "$mount_point" | grep "mmc") ]] 2>/dev/null ; then
+                                if [[ ! "$mount_point" =~ "mmc" ]] ; then
                                     ln -sf "$drive_dir" "$drive_path"
                                     print_info "Mounted ${drive_dir} to ${drive_path}"
                                     break
@@ -1634,7 +1636,8 @@ pw_init_db () {
         else
             if [[ "${PW_DISABLED_CREATE_DB}" != 1 ]] ; then
                 if [[ -n "${PORTWINE_DB}" ]] ; then
-                    export PORTWINE_DB_FILE=$(grep -il "#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/*)
+                    PORTWINE_DB_FILE=$(grep -il "#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/*)
+                    export PORTWINE_DB_FILE
                     if [[ -z "${PORTWINE_DB_FILE}" ]] ; then
                         {
                             echo "#!/usr/bin/env bash"
@@ -1644,8 +1647,8 @@ pw_init_db () {
                         } > "${portwine_exe}".ppdb
                         export PORTWINE_DB_FILE="${portwine_exe}".ppdb
                     fi
-                    if [[ -n $(echo "${portwine_exe}" | grep "/data/prefixes/") ]] && \
-                        [[ -z $(echo "${portwine_exe}" | grep "/data/prefixes/DEFAULT/") ]]
+                    if [[ "${portwine_exe}" =~ "/data/prefixes/" ]] && \
+                    [[ ! "${portwine_exe}" =~ "/data/prefixes/DEFAULT/" ]]
                     then
                         PW_PREFIX_NAME=$(echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
                     fi
@@ -1759,10 +1762,10 @@ pw_port_update () {
     if [[ ! -f "${PORT_WINE_TMP_PATH}/update_skip_mirror" ]] ; then
         pw_check_update
     else
-        CHECK_UPDATE_MIRROR=$(<"${PORT_WINE_TMP_PATH}/update_skip_mirror")
-        UPDATE_SKIP_DAYS="$(echo "${CHECK_UPDATE_MIRROR}" | awk -F" " '{print $1}')"
-        UPDATE_DATE_MIRROR="$(echo "${CHECK_UPDATE_MIRROR}" | awk -F" " '{print $2}')"
-        UPDATE_SKIP_DATE="$(echo "${CHECK_UPDATE_MIRROR}" | awk -F" " '{print $4}')"
+        read -r -a CHECK_UPDATE_MIRROR <"${PORT_WINE_TMP_PATH}/update_skip_mirror"
+        UPDATE_SKIP_DAYS="${CHECK_UPDATE_MIRROR[0]}"
+        UPDATE_DATE_MIRROR="${CHECK_UPDATE_MIRROR[1]}"
+        UPDATE_SKIP_DATE="${CHECK_UPDATE_MIRROR[3]}"
         UPDATE_DAYS=$(date +%-j)
         UPDATE_MINUTES=$(($(date +%-H) * 60 + $(date +%-M)))
         if [[ "${scripts_update_not}" != "0" ]] ; then
@@ -1789,7 +1792,7 @@ pw_port_update () {
         print_info "Check update..."
         echo ""
         if [[ -z "$UPDATE_URL_MIRROR" ]] ; then
-            UPDATE_URL_MIRROR="$(echo "${CHECK_UPDATE_MIRROR}" | awk -F" " '{print $3}')"
+            UPDATE_URL_MIRROR="${CHECK_UPDATE_MIRROR[2]}"
             sed -i 's/[0-9]*$/'"$UPDATE_MINUTES"'/' "${PORT_WINE_TMP_PATH}/update_skip_mirror"
         fi
         case "$UPDATE_URL_MIRROR" in
@@ -1934,8 +1937,8 @@ edit_db_from_gui () {
     if [[ -n "$PORTWINE_DB_FILE" ]] \
     && [[ -f "$PORTWINE_DB_FILE" ]]
     then
-        for mod_db in "$@" ; do
-            if [[ "$(<"${PORTWINE_DB_FILE}")" =~ "export ${mod_db}=" ]]
+        for mod_db in $@ ; do
+            if [[ $(<"${PORTWINE_DB_FILE}") =~ export\ ${mod_db}= ]]
             then sed -i "s|export ${mod_db}=.*|export ${mod_db}=\"${!mod_db}\"|g" "${PORTWINE_DB_FILE}"
             else echo "export ${mod_db}=\"${!mod_db}\"" >> "${PORTWINE_DB_FILE}"
             fi            
@@ -3141,7 +3144,7 @@ start_portwine () {
         if [[ -d /sys/bus/pci/drivers/amdgpu ]] ; then
             export RADV_DEBUG+="nodcc "
             export AMD_DEBUG="nodcc"
-            if ! grep -q VK_EXT_image_drm_format_modifier "${PW_TMPFS_PATH}/vulkaninfo.tmp" ; then
+            if [[ ! $(<"${PW_TMPFS_PATH}/vulkaninfo.tmp") =~ VK_EXT_image_drm_format_modifier ]] ; then
                 export R600_DEBUG="nodcc"
                 grep -e '--backend' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null && PW_GS_BACKEND_SDL="1"
             fi
@@ -3921,7 +3924,6 @@ gui_proton_downloader () {
         fi
     fi
 
-    VERSION_WINE_GIT=$(echo ${VERSION_WINE_GIT})
     if [[ "$1" != "silent" ]] ; then
         for GIVE_ALL_WINE in ${VERSION_WINE_GIT} ; do
             for GIVE_WINE_URL in ${WINE_GE_CUSTOM[@]} ${PROTON_GE_GIT[@]} ${WINE_KRON4EK[@]} ${PROTON_PW_GIT[@]} ; do
@@ -4976,10 +4978,11 @@ gui_userconf () {
             gui_open_user_conf
             ;;
         166)
-            PW_ADD_SETTINGS_UC=$(<"${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb")
-            PW_GPU_USE="$(echo "${PW_ADD_SETTINGS_UC}" | awk -F"%" '{print $1}')"
-            PW_SOUND_DRIVER_USE="$(echo "${PW_ADD_SETTINGS_UC}" | awk -F"%" '{print $2}')"
-            GUI_THEME="$(echo "${PW_ADD_SETTINGS_UC}" | awk -F"%" '{print $3}')"
+            IFS='%' read -r -a PW_ADD_SETTINGS_UC <"${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb"
+            IFS="$orig_IFS"
+            PW_GPU_USE="${PW_ADD_SETTINGS_UC[0]}"
+            PW_SOUND_DRIVER_USE="${PW_ADD_SETTINGS_UC[1]}"
+            GUI_THEME="${PW_ADD_SETTINGS_UC[2]}"
             edit_user_conf_from_gui PW_GPU_USE PW_SOUND_DRIVER_USE GUI_THEME
             restart_pp
             ;;
