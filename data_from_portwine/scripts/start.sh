@@ -852,6 +852,7 @@ else
     --field="   W3D Hub Launcher"!"$PW_GUI_ICON_PATH/w3dhub.png"!"":"FBTN" '@bash -c "button_click --normal PW_W3D_HUB"' \
     --field="   Anomaly Zone"!"$PW_GUI_ICON_PATH/anomalyzone.png"!"":"FBTN" '@bash -c "button_click --normal PW_ANOMALY_ZONE"' \
     --field="   Farlight 84"!"$PW_GUI_ICON_PATH/farlight84.png"!"":"FBTN" '@bash -c "button_click --normal PW_FARLIGHT84"' \
+    --field="   Star Conflict"!"$PW_GUI_ICON_PATH/starconflict.png"!"":"FBTN" '@bash -c "button_click --normal PW_STARCONFLICT"' \
     2>/dev/null &
 
     # --field="   Secret World Legends (ENG)"!"$PW_GUI_ICON_PATH/swl.png"!"":"FBTN" '@bash -c "button_click --normal PW_SWL"'
