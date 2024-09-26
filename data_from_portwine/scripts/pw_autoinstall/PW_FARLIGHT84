@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Author: chal55rus
+########################################################################
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/Farlight84_setup_1.3.0.1_238.exe"
+export PORTWINE_CREATE_SHORTCUT_NAME="Farlight 84"
+
+start_portwine
+if try_download "https://static-gl.lilithgame.com/p/pcsdk/launcher/10060/prodef4621e968ad6b383b8754148b63/0/launcher/res/release/Farlight84_setup_1.3.0.1_238.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
+then
+    pw_start_progress_bar_block "Farlight 84."
+    create_new_dir "$WINEPREFIX/drive_c/Program Files (x86)/Farlight84"
+    "$pw_7z" x -y "${PW_AUTOINSTALL_EXE}" -o"$WINEPREFIX/drive_c/Program Files (x86)/Farlight84"
+    "$pw_7z" x -y "$WINEPREFIX/drive_c/Program Files (x86)/Farlight84/launcher.7z" -o"$WINEPREFIX/drive_c/Program Files (x86)/Farlight84"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/Farlight84/Farlight84Launcher.exe"
+    try_remove_file "$WINEPREFIX/drive_c/Program Files (x86)/Farlight84/launcher.7z"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    pw_stop_progress_bar
+    portwine_create_shortcut
+fi
+stop_portwine
