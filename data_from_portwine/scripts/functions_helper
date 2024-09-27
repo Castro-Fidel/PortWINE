@@ -1896,46 +1896,39 @@ pw_port_update () {
     return 0
 }
 
-pw_skip_update () {
-    if command -v gamescope &>/dev/null ; then
-        if ! timeout 3 gamescope --help &> "${PW_TMPFS_PATH}/gamescope.tmp" ; then
-            print_error "gamescope - broken!"
-        fi
-    else
-        print_warning "gamescope - not found!"
-    fi
+pw_check_command () {
+    local S_CMD="${1//" "*/}"
+    local F_CMD="$1"
 
-    if command -v vulkaninfo &>/dev/null ; then
-        if ! timeout 3 vulkaninfo &> "${PW_TMPFS_PATH}/vulkaninfo.tmp" ; then
-            print_error "vulkaninfo - broken!"
+    [[ -z "$TIMEOUT_CMD" ]] && TIMEOUT_CMD="3"
+    
+    if command -v "$S_CMD" &>/dev/null ; then
+        if ! timeout "$TIMEOUT_CMD" $F_CMD &> "${PW_TMPFS_PATH}/$S_CMD.tmp" ; then
+            print_error "$S_CMD - broken!"
+            unset TIMEOUT_CMD
+            return 1
+        else
+            print_info "$S_CMD - found"
+            unset TIMEOUT_CMD
+            return 0
         fi
     else
+        print_warning "$S_CMD - not found!"
+        unset TIMEOUT_CMD
+        return 1
+    fi
+}
+export -f pw_check_command
+
+pw_skip_update () {
+    for f_cmd in "gamescope --help" "lspci -k" "xrandr --current" "locale -a"
+    do pw_check_command "$f_cmd"
+    done
+
+    TIMEOUT_CMD="5"
+    if ! pw_check_command vulkaninfo ; then
         print_warning "use portable vulkaninfo"
         "$PW_PLUGINS_PATH"/portable/bin/x86_64-linux-gnu-vulkaninfo &> "${PW_TMPFS_PATH}/vulkaninfo.tmp"
-    fi
-
-    if command -v lspci &>/dev/null ; then
-        if ! timeout 3 lspci -k &> "${PW_TMPFS_PATH}/lspci.tmp" ; then
-            print_error "lspci - broken!"
-        fi
-    else
-        print_warning "lspci - not found!"
-    fi
-
-    if command -v xrandr &>/dev/null ; then
-        if ! timeout 3 xrandr --current &> "${PW_TMPFS_PATH}/xrandr.tmp" ; then
-            print_error "xrandr - broken!"
-        fi
-    else
-        print_warning "xrandr - not found!"
-    fi
-
-    if command -v locale &>/dev/null ; then
-        if ! timeout 3 locale -a &> "${PW_TMPFS_PATH}/locale.tmp" ; then
-            print_error "locale - broken!"
-        fi
-    else
-        print_warning "locale - not found!"
     fi
 }
 
