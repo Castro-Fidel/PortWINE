@@ -279,43 +279,6 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
         print_warning "gamescope - not found!"
     fi
 
-    if command -v vulkaninfo &>/dev/null ; then
-        if timeout 3 vulkaninfo &> "${PW_TMPFS_PATH}/vulkaninfo.tmp" ; then
-            VULKAN_DRIVER_NAME="$(grep -e 'driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | awk '{print$3}' | head -1)"
-            GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
-            export VULKAN_DRIVER_NAME GET_GPU_NAMES
-        else
-            print_error "vulkaninfo - broken!"
-            if [[ -n "$PW_DEBUG" ]] ; then
-                debug_timer --start
-                timeout 5 vulkaninfo
-                debug_timer --end "vulkaninfo"
-            fi
-        fi
-    else
-        print_warning "use portable vulkaninfo"
-        "$PW_PLUGINS_PATH"/portable/bin/x86_64-linux-gnu-vulkaninfo &> "${PW_TMPFS_PATH}/vulkaninfo.tmp"
-        VULKAN_DRIVER_NAME="$(grep -e 'driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | awk '{print$3}' | head -1)"
-        GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
-        export VULKAN_DRIVER_NAME GET_GPU_NAMES
-    fi
-
-    if command -v lspci &>/dev/null ; then
-        if timeout 3 lspci -k &> "${PW_TMPFS_PATH}/lspci.tmp" ; then
-            LSPCI_VGA="$(grep -e 'VGA|3D' "${PW_TMPFS_PATH}/lspci.tmp" | tr -d '\n')"
-            export LSPCI_VGA
-        else
-            print_error "lspci - broken!"
-            if [[ -n "$PW_DEBUG" ]] ; then
-                debug_timer --start
-                timeout 5 lspci -vv
-                debug_timer --end "lspci"
-            fi
-        fi
-    else
-        print_warning "lspci - not found!"
-    fi
-
     if command -v xrandr &>/dev/null ; then
         if timeout 3 xrandr --current &> "${PW_TMPFS_PATH}/xrandr.tmp" ; then
             PW_SCREEN_RESOLUTION="$(<"${PW_TMPFS_PATH}/xrandr.tmp" sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
@@ -369,6 +332,68 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
 
     PW_FILESYSTEM=$(stat -f -c %T "${PORT_WINE_PATH}")
     export PW_FILESYSTEM
+
+    UPTIME_SKIP=$(uptime -s)
+    if [[ ! -f "${PORT_WINE_TMP_PATH}/uptime_skip" ]] ; then
+        touch "${PORT_WINE_TMP_PATH}/uptime_skip"
+    fi
+    if [[ $UPTIME_SKIP != $(<"${PORT_WINE_TMP_PATH}/uptime_skip") ]] ; then
+        echo $UPTIME_SKIP > "${PORT_WINE_TMP_PATH}/uptime_skip"
+
+        vulkanfinfo_function () {
+            VULKAN_DRIVER_NAME="$(grep -e 'driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | awk '{print$3}' | head -1)"
+            GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
+            if [[ $(<"${PW_TMPFS_PATH}/vulkaninfo.tmp") =~ VK_EXT_image_drm_format_modifier ]] ; then
+                VK_EXT_IMAGE_DRM_FORMAT="1"
+            else
+                VK_EXT_IMAGE_DRM_FORMAT="0"
+            fi
+            export VULKAN_DRIVER_NAME GET_GPU_NAMES VK_EXT_IMAGE_DRM_FORMAT
+            echo "$VULKAN_DRIVER_NAME%$GET_GPU_NAMES%$VK_EXT_IMAGE_DRM_FORMAT" > "${PORT_WINE_TMP_PATH}/vulkaninfo"
+        }
+
+        if command -v vulkaninfo &>/dev/null ; then
+            if timeout 3 vulkaninfo &> "${PW_TMPFS_PATH}/vulkaninfo.tmp" ; then
+                vulkanfinfo_function
+            else
+                print_error "vulkaninfo - broken!"
+                if [[ -n "$PW_DEBUG" ]] ; then
+                    debug_timer --start
+                    timeout 5 vulkaninfo
+                    debug_timer --end "vulkaninfo"
+                fi
+            fi
+        else
+            print_warning "use portable vulkaninfo"
+            "$PW_PLUGINS_PATH"/portable/bin/x86_64-linux-gnu-vulkaninfo &> "${PW_TMPFS_PATH}/vulkaninfo.tmp"
+            vulkanfinfo_function
+        fi
+
+        if command -v lspci &>/dev/null ; then
+            if timeout 3 lspci -k &> "${PW_TMPFS_PATH}/lspci.tmp" ; then
+                LSPCI_VGA="$(grep -e 'VGA|3D' "${PW_TMPFS_PATH}/lspci.tmp" | tr -d '\n')"
+                export LSPCI_VGA
+                echo "$LSPCI_VGA" > "${PORT_WINE_TMP_PATH}/lspci"
+            else
+                print_error "lspci - broken!"
+                if [[ -n "$PW_DEBUG" ]] ; then
+                    debug_timer --start
+                    timeout 5 lspci -vv
+                    debug_timer --end "lspci"
+                fi
+            fi
+        else
+            print_warning "lspci - not found!"
+        fi
+    else
+        IFS='%' read -r -a PW_VULKANINFO <"${PORT_WINE_TMP_PATH}/vulkaninfo"
+        IFS="$orig_IFS"
+        VULKAN_DRIVER_NAME="${PW_VULKANINFO[0]}"
+        GET_GPU_NAMES="${PW_VULKANINFO[1]}"
+        VK_EXT_IMAGE_DRM_FORMAT="${PW_VULKANINFO[2]}"
+        LSPCI_VGA=$(<"${PORT_WINE_TMP_PATH}/lspci")
+        export VULKAN_DRIVER_NAME GET_GPU_NAMES VK_EXT_IMAGE_DRM_FORMAT LSPCI_VGA
+    fi
 fi
 
 # create lock file
