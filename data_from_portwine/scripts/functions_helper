@@ -1671,14 +1671,8 @@ pw_init_db () {
         && [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] \
         && [[ $(grep -c "^processor" /proc/cpuinfo) -gt "8" ]]
         then
-                export PW_WINE_CPU_TOPOLOGY="8:0,1,2,3,4,5,6,7"
-                print_info "Automatic added fix for unity games: WINE_CPU_TOPOLOGY=8:0,1,2,3,4,5,6,7"
-        fi
-
-        if check_nvidia_rtx ; then
-            check_variables PW_USE_NVAPI_AND_DLSS "1"
-            check_variables PW_USE_FAKE_DLSS "0"
-            check_variables PW_USE_RAY_TRACING "1"
+            export PW_WINE_CPU_TOPOLOGY="8:0,1,2,3,4,5,6,7"
+            print_info "Automatic added fix for unity games: WINE_CPU_TOPOLOGY=8:0,1,2,3,4,5,6,7"
         fi
     fi
 
@@ -1900,6 +1894,110 @@ pw_port_update () {
         fi
     fi
     return 0
+}
+
+pw_skip_update () {
+    if command -v gamescope &>/dev/null ; then
+        if ! timeout 3 gamescope --help &> "${PW_TMPFS_PATH}/gamescope.tmp" ; then
+            print_error "gamescope - broken!"
+        fi
+    else
+        print_warning "gamescope - not found!"
+    fi
+
+    if command -v vulkaninfo &>/dev/null ; then
+        if ! timeout 3 vulkaninfo &> "${PW_TMPFS_PATH}/vulkaninfo.tmp" ; then
+            print_error "vulkaninfo - broken!"
+        fi
+    else
+        print_warning "use portable vulkaninfo"
+        "$PW_PLUGINS_PATH"/portable/bin/x86_64-linux-gnu-vulkaninfo &> "${PW_TMPFS_PATH}/vulkaninfo.tmp"
+    fi
+
+    if command -v lspci &>/dev/null ; then
+        if ! timeout 3 lspci -k &> "${PW_TMPFS_PATH}/lspci.tmp" ; then
+            print_error "lspci - broken!"
+        fi
+    else
+        print_warning "lspci - not found!"
+    fi
+
+    if command -v xrandr &>/dev/null ; then
+        if ! timeout 3 xrandr --current &> "${PW_TMPFS_PATH}/xrandr.tmp" ; then
+            print_error "xrandr - broken!"
+        fi
+    else
+        print_warning "xrandr - not found!"
+    fi
+
+    if command -v locale &>/dev/null ; then
+        if ! timeout 3 locale -a &> "${PW_TMPFS_PATH}/locale.tmp" ; then
+            print_error "locale - broken!"
+        fi
+    else
+        print_warning "locale - not found!"
+    fi
+}
+
+pw_skip_update_new () {
+    if [[ "${SKIP_CHECK_UPDATES_NEW}" != "1" ]] ; then
+        while true ; do
+            if [[ ! $(jobs -p) =~ $PID_SKIP_UPDATE ]] ; then
+                break
+            fi
+        done
+
+        if [[ -f "${PW_TMPFS_PATH}/gamescope.tmp" ]] ; then
+            export GAMESCOPE_INSTALLED="1"
+        fi
+
+        if [[ -f "${PW_TMPFS_PATH}/vulkaninfo.tmp" ]] ; then
+            VULKAN_DRIVER_NAME="$(grep -e 'driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | awk '{print$3}' | head -1)"
+            GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
+            export VULKAN_DRIVER_NAME GET_GPU_NAMES
+        fi
+
+        if [[ -f "${PW_TMPFS_PATH}/lspci.tmp" ]] ; then
+            LSPCI_VGA="$(grep -e 'VGA|3D' "${PW_TMPFS_PATH}/lspci.tmp" | tr -d '\n')"
+            export LSPCI_VGA
+        fi
+
+        if check_nvidia_rtx ; then
+            check_variables PW_USE_NVAPI_AND_DLSS "1"
+            check_variables PW_USE_FAKE_DLSS "0"
+            check_variables PW_USE_RAY_TRACING "1"
+        fi
+
+        if [[ -f "${PW_TMPFS_PATH}/xrandr.tmp" ]] ; then
+            PW_SCREEN_RESOLUTION="$(<"${PW_TMPFS_PATH}/xrandr.tmp" sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
+            PW_SCREEN_PRIMARY="$(grep -e 'primary' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}')"
+            export PW_SCREEN_PRIMARY PW_SCREEN_RESOLUTION
+        fi
+
+        if [[ -f "${PW_TMPFS_PATH}/locale.tmp" ]] ; then
+            GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
+            unset LOCALE_LIST
+            for LOCALE in $GET_LOCALE_LIST ; do
+                if [[ $(<"${PW_TMPFS_PATH}/locale.tmp") =~ $LOCALE ]] ; then
+                    if [[ -n "$LOCALE_LIST" ]]
+                    then LOCALE_LIST+="!$LOCALE"
+                    else LOCALE_LIST="$LOCALE"
+                    fi
+                fi
+            done
+            export LOCALE_LIST
+        fi
+
+        logical_cores=$(grep -c "^processor" /proc/cpuinfo)
+        if [[ "${logical_cores}" -le "4" ]] ; then
+            GET_LOGICAL_CORE="1!$(seq -s! 1 $(( logical_cores - 1 )))"
+        else
+            GET_LOGICAL_CORE="1!2!$(seq -s! 4 4 $(( logical_cores - 1 )))"
+        fi
+        export GET_LOGICAL_CORE
+
+        export SKIP_CHECK_UPDATES_NEW="1"
+    fi
 }
 
 update_winetricks () {
@@ -3359,6 +3457,7 @@ export -f pw_run
 
 pw_yad_set_form () {
     if [[ $(<"${PW_TMPFS_PATH}/tmp_yad_form") != "" ]] ; then
+        pw_skip_update_new
         PW_YAD_SET=$(head -n 1 "${PW_TMPFS_PATH}/tmp_yad_form" | awk '{print $1}')
         export PW_YAD_SET
     fi
@@ -3389,6 +3488,7 @@ pw_yad_form_vulkan () {
 }
 
 portwine_launch () {
+    pw_skip_update_new
     start_portwine
     unset PW_VD_TMP
     if [[ "${PW_VIRTUAL_DESKTOP}" == "1" ]] ; then
@@ -5437,6 +5537,7 @@ pw_prefix_manager () {
 }
 
 portwine_start_debug () {
+    pw_skip_update_new
     kill_portwine
     export PW_LOG=1
     if [[ -z "$VULKAN_DRIVER_NAME" ]] || [[ "$VULKAN_DRIVER_NAME" == "llvmpipe" ]] ; then
