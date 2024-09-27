@@ -86,10 +86,10 @@ fi
 source "${PORT_SCRIPTS_PATH}/functions_helper"
 
 create_new_dir "${HOME}/.local/share/applications"
-if [[ "${PW_SILENT_RESTART}" == 1 ]] \
-|| [[ "${START_FROM_STEAM}" == 1 ]]
+if [[ "${PW_SILENT_RESTART}" == "1" ]] \
+|| [[ "${START_FROM_STEAM}" == "1" ]]
 then
-    export PW_GUI_DISABLED_CS=1
+    export PW_GUI_DISABLED_CS="1"
     unset PW_SILENT_RESTART
 else
     unset PW_GUI_DISABLED_CS
@@ -264,111 +264,12 @@ pw_check_and_download_plugins
 if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     pw_port_update
 
-    if command -v gamescope &>/dev/null ; then
-        if timeout 3 gamescope --help &> "${PW_TMPFS_PATH}/gamescope.tmp" ; then
-            export GAMESCOPE_INSTALLED="1"
-        else
-            print_error "gamescope - broken!"
-            if [[ -n "$PW_DEBUG" ]] ; then
-                debug_timer --start
-                timeout 5 gamescope --help
-                debug_timer --end "gamescope"
-            fi
-        fi
-    else
-        print_warning "gamescope - not found!"
-    fi
-
-    if command -v vulkaninfo &>/dev/null ; then
-        if timeout 3 vulkaninfo &> "${PW_TMPFS_PATH}/vulkaninfo.tmp" ; then
-            VULKAN_DRIVER_NAME="$(grep -e 'driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | awk '{print$3}' | head -1)"
-            GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
-            export VULKAN_DRIVER_NAME GET_GPU_NAMES
-        else
-            print_error "vulkaninfo - broken!"
-            if [[ -n "$PW_DEBUG" ]] ; then
-                debug_timer --start
-                timeout 5 vulkaninfo
-                debug_timer --end "vulkaninfo"
-            fi
-        fi
-    else
-        print_warning "use portable vulkaninfo"
-        "$PW_PLUGINS_PATH"/portable/bin/x86_64-linux-gnu-vulkaninfo &> "${PW_TMPFS_PATH}/vulkaninfo.tmp"
-        VULKAN_DRIVER_NAME="$(grep -e 'driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | awk '{print$3}' | head -1)"
-        GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
-        export VULKAN_DRIVER_NAME GET_GPU_NAMES
-    fi
-
-    if command -v lspci &>/dev/null ; then
-        if timeout 3 lspci -k &> "${PW_TMPFS_PATH}/lspci.tmp" ; then
-            LSPCI_VGA="$(grep -e 'VGA|3D' "${PW_TMPFS_PATH}/lspci.tmp" | tr -d '\n')"
-            export LSPCI_VGA
-        else
-            print_error "lspci - broken!"
-            if [[ -n "$PW_DEBUG" ]] ; then
-                debug_timer --start
-                timeout 5 lspci -vv
-                debug_timer --end "lspci"
-            fi
-        fi
-    else
-        print_warning "lspci - not found!"
-    fi
-
-    if command -v xrandr &>/dev/null ; then
-        if timeout 3 xrandr --current &> "${PW_TMPFS_PATH}/xrandr.tmp" ; then
-            PW_SCREEN_RESOLUTION="$(<"${PW_TMPFS_PATH}/xrandr.tmp" sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
-            PW_SCREEN_PRIMARY="$(grep -e 'primary' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}')"
-            export PW_SCREEN_PRIMARY PW_SCREEN_RESOLUTION
-            print_var PW_SCREEN_RESOLUTION PW_SCREEN_PRIMARY
-        else
-            print_error "xrandr - broken!"
-            if [[ -n "$PW_DEBUG" ]] ; then
-                debug_timer --start
-                timeout 5 xrandr --verbose
-                debug_timer --end "xrandr"
-            fi
-        fi
-    else
-        print_warning "xrandr - not found!"
-    fi
-
-    logical_cores=$(grep -c "^processor" /proc/cpuinfo)
-    if [[ "${logical_cores}" -le "4" ]] ; then
-        GET_LOGICAL_CORE="1!$(seq -s! 1 $(( logical_cores - 1 )))"
-    else
-        GET_LOGICAL_CORE="1!2!$(seq -s! 4 4 $(( logical_cores - 1 )))"
-    fi
-    export GET_LOGICAL_CORE
-
-    if command -v locale &>/dev/null ; then
-        if timeout 3 locale -a &> "${PW_TMPFS_PATH}/locale.tmp" ; then
-            GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
-            unset LOCALE_LIST
-            for LOCALE in $GET_LOCALE_LIST ; do
-                if [[ $(<"${PW_TMPFS_PATH}/locale.tmp") =~ $LOCALE ]] ; then
-                    if [[ -n "$LOCALE_LIST" ]]
-                    then LOCALE_LIST+="!$LOCALE"
-                    else LOCALE_LIST="$LOCALE"
-                    fi
-                fi
-            done
-            export LOCALE_LIST
-        else
-            print_error "locale - broken!"
-            if [[ -n "$PW_DEBUG" ]] ; then
-                debug_timer --start
-                timeout 5 locale -a
-                debug_timer --end "locale"
-            fi
-        fi
-    else
-        print_warning "locale - not found!"
-    fi
-
     PW_FILESYSTEM=$(stat -f -c %T "${PORT_WINE_PATH}")
     export PW_FILESYSTEM
+
+    pw_skip_update &
+    PID_SKIP_UPDATE=$(jobs -p)
+    export PID_SKIP_UPDATE="${PID_SKIP_UPDATE//*[[:space:]]/}"
 fi
 
 # create lock file
