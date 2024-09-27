@@ -3,14 +3,14 @@
 ########################################################################## 
 export LAUNCH_PARAMETERS=("--silent")
 export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/itch-setup.exe"
+
 start_portwine
 if try_download "https://itch.io/app/download?platform=windows" "${PW_AUTOINSTALL_EXE}" no_mirror
 then
     pw_start_progress_bar_install_game "ITCH.IO."
     pw_kill_autostart itch.exe &
     pw_run "${PW_AUTOINSTALL_EXE}"
-    portwine_exe=`find "$WINEPREFIX/drive_c/users" -type f -name "itch.exe"`
-    # portwine_exe="$WINEPREFIX/drive_c/users/steamuser/AppData/Local/itch/app-25.5.1/itch.exe"
+    portwine_exe=$(find "$WINEPREFIX/drive_c/users" -type f -name "itch.exe")
     try_remove_file "${PW_AUTOINSTALL_EXE}"
     try_remove_file "${portwine_exe}.ppdb"
     kill_portwine

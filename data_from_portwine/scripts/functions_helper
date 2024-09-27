@@ -419,6 +419,10 @@ check_process () {
 export -f check_process
 
 try_check_sha256sum () {
+    if [[ "$no_mirror" == true ]] ; then
+        print_ok "Used no_mirror downloading. Skipping check sha256sum."
+        return 0
+    fi
     SHA256SUM_EXT=$(curl --silent -L "${1//.tar*/}.sha256sum" | awk '{print $1}')
     if [[ ${#SHA256SUM_EXT} == 64 ]] ; then
         SHA256SUM_INT=$(sha256sum "$dest" | awk '{print $1}')
@@ -438,7 +442,7 @@ try_check_sha256sum () {
 try_download () {
     export dest="$2"
     local silent="false"
-    local no_mirror="false"
+    export no_mirror="false"
  
     case "$3" in
            silent)
@@ -3991,7 +3995,11 @@ gui_proton_downloader () {
     pw_download_get_wine () {
         print_info "Download and install ${VERSION_WINE_GIT}..."
         FILENAME="$(basename "${URL_VERSION_PROTON_GIT}")"
-        if try_download "${URL_VERSION_PROTON_GIT}" "${PORT_WINE_PATH}/data/tmp/$FILENAME" ; then
+        if [[ "${URL_VERSION_PROTON_GIT}" =~ _LG ]]
+        then USE_MIRROR=""
+        else USE_MIRROR="no_mirror"
+        fi
+        if try_download "${URL_VERSION_PROTON_GIT}" "${PORT_WINE_PATH}/data/tmp/$FILENAME" "$USE_MIRROR" ; then
             if unpack "${PORT_WINE_PATH}/data/tmp/${FILENAME}" "${PORT_WINE_PATH}/data/dist/" ; then
                 try_remove_file "${PORT_WINE_PATH}/data/tmp/${FILENAME}"
                 if [[ -n "${portwine_exe}" ]] ; then
@@ -4039,7 +4047,6 @@ gui_proton_downloader () {
         edit_db_from_gui
         restart_pp
     else
-        # init_wine_ver
         print_error "$PW_WINE_USE"
         for GIVE_WINE_URL in ${WINE_GE_CUSTOM[@]} ${PROTON_GE_GIT[@]} ${WINE_KRON4EK[@]} ${PROTON_PW_GIT[@]} ; do
             if [[ -n $(echo ${GIVE_WINE_URL} | grep -i "${PW_WINE_USE}") ]] ; then
