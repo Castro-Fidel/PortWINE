@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
 # Author: linux-gaming.ru
 ########################################################################
-export PW_URL_CEMU=($(curl -s "https://cemu.info" | grep "zip" | cut -d \" -f 2))
-export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/`echo ${PW_URL_CEMU} | awk -F/ '{print $5}'`"
+export PW_URL_CEMU=$(curl -s "https://api.github.com/repos/cemu-project/Cemu/releases" | grep -iEo 'https.*download.*' | grep "windows" | head -n1)
+export PW_CEMU_NAME=Cemu_$(echo "$PW_URL_CEMU" | awk -F"-" '{print $3}')
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/${PW_CEMU_NAME}.zip"
+
 start_portwine
-if try_download "${PW_URL_CEMU}" "${PW_AUTOINSTALL_EXE}" no_mirror
+if try_download "${PW_URL_CEMU//\"/}" "${PW_AUTOINSTALL_EXE}" no_mirror
 then
     pw_start_progress_bar_install_game "Cemu."
-    "$pw_7z" x -y "${PW_AUTOINSTALL_EXE}" -o"$WINEPREFIX/drive_c/Program Files (x86)"
-    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/`echo ${PW_URL_CEMU} | awk -F/ '{print $5}' | sed 's/.zip//'`/Cemu.exe"
+    "$pw_7z" x -y "${PW_AUTOINSTALL_EXE}" -o"${WINEPREFIX}/drive_c/Program Files (x86)/"
+    portwine_exe="${WINEPREFIX}/drive_c/Program Files (x86)/${PW_CEMU_NAME}/Cemu.exe"
     try_remove_file "${PW_AUTOINSTALL_EXE}"
     try_remove_file "${portwine_exe}.ppdb"
     kill_portwine
     pw_stop_progress_bar
-    export PORTWINE_CREATE_SHORTCUT_NAME="Cemu"
+    export PORTWINE_CREATE_SHORTCUT_NAME="${PW_CEMU_NAME}"
     portwine_create_shortcut
 fi
 stop_portwine

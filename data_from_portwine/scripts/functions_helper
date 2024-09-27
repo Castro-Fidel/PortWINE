@@ -60,6 +60,7 @@ fatal () {
 change_locale () {
     if [[ -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]] ; then
         LANGUAGE=$(<"${PORT_WINE_TMP_PATH}/PortProton_loc")
+
         # TODO: drop legacy check language after 01.01.2025
         if [[ "$LANGUAGE" == "RUS" ]] ; then
             LANGUAGE="ru"
@@ -68,8 +69,12 @@ change_locale () {
             LANGUAGE="en"
             echo "en" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
         fi
-    else
-        [[ ! -f "${pw_yad}" ]] && pw_yad="yad"
+    fi
+
+    [[ ! -f "${pw_yad}" ]] && pw_yad="yad"
+
+    if [[ -z "$LANGUAGE" ]] \
+    || [[ "${PW_FORCE_CHANGE_LOC}" == "1" ]] ; then
         SET_LANG=(
             "${pw_yad}" --list
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg"
@@ -83,13 +88,17 @@ change_locale () {
         )
 
         out=$("${SET_LANG[@]}")
-        if [[ -z $out ]] ; then
-            fatal "Language is not set!"
+        if [[ -z $out ]] \
+        && [[ -n "$LANGUAGE" ]] ; then
+            echo "${LANGUAGE}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
+        elif [[ -z $out ]] ; then
+            echo "en" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
         else
             LANGUAGE=$(echo "$out" | cut -d '|' -f2)
             echo "${LANGUAGE}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
             create_translations
         fi
+        unset PW_FORCE_CHANGE_LOC
         restart_pp
     fi
     export LANGUAGE
@@ -108,6 +117,7 @@ change_locale () {
          *)
             export FULL_LN="english"
             export LANGUAGE_GIF="en"
+            export LANGUAGE="en"
             ;;
     esac
 
@@ -1901,7 +1911,7 @@ pw_check_command () {
     local F_CMD="$1"
 
     [[ -z "$TIMEOUT_CMD" ]] && TIMEOUT_CMD="3"
-    
+
     if command -v "$S_CMD" &>/dev/null ; then
         if ! timeout "$TIMEOUT_CMD" $F_CMD &> "${PW_TMPFS_PATH}/$S_CMD.tmp" ; then
             print_error "$S_CMD - broken!"
@@ -5855,7 +5865,7 @@ gui_pw_update () {
 export -f gui_pw_update
 
 change_loc () {
-    try_remove_file "${PORT_WINE_TMP_PATH}/PortProton_loc"
+    export PW_FORCE_CHANGE_LOC="1"
     print_info "Restarting PP for change language..."
     restart_pp
 }
