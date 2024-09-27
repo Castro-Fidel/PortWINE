@@ -702,7 +702,6 @@ else
     --field="   MAME"!"$PW_GUI_ICON_PATH/mame.png"!"${translations[Multi-arcade emulator that allows you to play old arcade games]}":"FBTN" '@bash -c "button_click --normal PW_MAME"' \
     --field="   RetroArch"!"$PW_GUI_ICON_PATH/retroarch.png"!"${translations[Multi-platform frontend for emulators with extensive settings]}":"FBTN" '@bash -c "button_click --normal PW_RETROARCH"' \
     --field="   PPSSPP Windows"!"$PW_GUI_ICON_PATH/ppsspp.png"!"${translations[Emulator for the PlayStation Portable (PSP) game console]}":"FBTN" '@bash -c "button_click --normal PW_PPSSPP"' \
-    --field="   Citra"!"$PW_GUI_ICON_PATH/citra.png"!"${translations[Emulator for the Nintendo 3DS game console]}":"FBTN" '@bash -c "button_click --normal PW_CITRA"' \
     --field="   Cemu"!"$PW_GUI_ICON_PATH/cemu.png"!"${translations[Emulator for the Wii U game console]}":"FBTN" '@bash -c "button_click --normal PW_CEMU"' \
     --field="   ePSXe"!"$PW_GUI_ICON_PATH/epsxe.png"!"${translations[Emulator for the PlayStation 1 game console with high compatibility]}":"FBTN" '@bash -c "button_click --normal PW_EPSXE"' \
     --field="   Project64"!"$PW_GUI_ICON_PATH/project64.png"!"${translations[Emulator for the Nintendo 64 game console]}":"FBTN" '@bash -c "button_click --normal PW_PROJECT64"' \
@@ -756,8 +755,6 @@ else
     2>/dev/null &
 
     # --field="   Secret World Legends (ENG)"!"$PW_GUI_ICON_PATH/swl.png"!"":"FBTN" '@bash -c "button_click --normal PW_SWL"'
-    # --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click --normal PW_BETHESDA"'
-    # --field="   League of Legends"!"$PW_GUI_ICON_PATH/lol.png"!"":"FBTN" '@bash -c "button_click --normal PW_LOL"'
 
     export START_FROM_PP_GUI="1"
     if [[ -z ${TAB_MAIN_MENU} ]] ; then
