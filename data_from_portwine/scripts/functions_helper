@@ -1290,10 +1290,12 @@ stop_portwine () {
     pw_exit_tray
     pw_auto_create_shortcut
     add_in_stop_portwine
-    unset SKIP_CHECK_UPDATES
     case "$1" in
-        --restart) restart_pp ;;
-        *) exit 0 ;;
+        --restart)
+            restart_pp ;;
+        *) 
+            unset SKIP_CHECK_UPDATES
+            exit 0 ;;
     esac
 }
 export -f stop_portwine
@@ -1826,7 +1828,6 @@ pw_port_update () {
             echo "1" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
         fi
         print_info "Check update..."
-        echo ""
         if [[ -z "$UPDATE_URL_MIRROR" ]] ; then
             UPDATE_URL_MIRROR="${CHECK_UPDATE_MIRROR[2]}"
             sed -i 's/[0-9]*$/'"$UPDATE_MINUTES"'/' "${PORT_WINE_TMP_PATH}/update_skip_mirror"
@@ -1870,7 +1871,7 @@ pw_port_update () {
     if [[ "${scripts_update_not}" == [12] ]] ; then
         [[ "$LANGUAGE" == ru ]] && local PW_CHANGELOG_FILE="changelog_ru" || local PW_CHANGELOG_FILE="changelog_en"
         print_info "Scripts version in git = ${scripts_current_ver}"
-        print_info "Scripts version local = ${scripts_install_ver}"
+        print_info "Scripts version local = ${scripts_install_ver}\n"
         if [[ -n "${scripts_current_ver}" ]] &&  [[ "${scripts_current_ver}" -gt "${scripts_install_ver}" ]] ; then
             if [[ -f "${PW_GUI_THEMES_PATH}/gui/yad_gui_pp" ]]
             then export pw_yad="${PW_GUI_THEMES_PATH}/gui/yad_gui_pp"

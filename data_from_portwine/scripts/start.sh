@@ -71,16 +71,6 @@ if PORT_SCRIPTS_PATH="$(readlink -f "${0%/*}")" ; then
 else
     fatal
 fi
-# export TEXTDOMAIN="PortProton"
-# export TEXTDOMAINDIR="${PORT_WINE_PATH}/data/locales"
-#
-# if ! command -v gettext &>/dev/null
-# then
-#     gettext() { echo "$1"; }
-# fi
-# eval_gettext () {
-#   gettext "$1" | (export PATH `envsubst --variables "$1"`; envsubst "$1")
-# }
 
 # shellcheck source=/dev/null
 source "${PORT_SCRIPTS_PATH}/functions_helper"
