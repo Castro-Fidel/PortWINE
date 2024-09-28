@@ -257,7 +257,11 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     PW_FILESYSTEM=$(stat -f -c %T "${PORT_WINE_PATH}")
     export PW_FILESYSTEM
 
-    background_pid --start "pw_get_tmp_files" "1"
+    if [[ "$START_FROM_STEAM" == 1 ]] ; then
+        pw_get_tmp_files
+    else
+        background_pid --start "pw_get_tmp_files" "1"
+    fi
 fi
 
 # create lock file
