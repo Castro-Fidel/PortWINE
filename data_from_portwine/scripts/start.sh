@@ -257,11 +257,7 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     PW_FILESYSTEM=$(stat -f -c %T "${PORT_WINE_PATH}")
     export PW_FILESYSTEM
 
-    if [[ "$START_FROM_STEAM" == 1 ]] ; then
-        pw_get_tmp_files
-    else
-        background_pid --start "pw_get_tmp_files" "1"
-    fi
+    background_pid --start "pw_get_tmp_files" "1"
 fi
 
 # create lock file
@@ -802,7 +798,7 @@ fi
 
 [[ -n "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
     gui_pw_reinstall_pp|open_changelog|\
-    128|gui_pw_update|\
+    128|gui_pw_update|gui_rm_portproton|\
     change_loc|gui_open_scripts_from_backup|\
     gui_credits|pw_start_cont_xterm)
         if [[ -z "${PW_ALL_DF}" ]] ; then
@@ -814,7 +810,7 @@ fi
     gui_proton_downloader|WINETRICKS|\
     116|pw_create_prefix_backup|\
     gui_clear_pfx|WINEREG|WINECMD|\
-    WINEFILE|WINECFG)
+    WINEFILE|WINECFG|gui_wine_uninstaller)
         if [[ -z "${PW_ALL_DF}" ]] ; then
             export TAB_MAIN_MENU="3"
         else
