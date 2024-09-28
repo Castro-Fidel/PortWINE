@@ -1291,11 +1291,10 @@ stop_portwine () {
     pw_auto_create_shortcut
     add_in_stop_portwine
     unset SKIP_CHECK_UPDATES
-    if [[ "$PW_STOP_PORTWINE_RESTART" == 1 ]] ; then
-        restart_pp
-    else
-        exit 0
-    fi
+    case "$1" in
+        --restart) restart_pp ;;
+        *) exit 0 ;;
+    esac
 }
 export -f stop_portwine
 
@@ -1963,7 +1962,7 @@ pw_check_command () {
 }
 export -f pw_check_command
 
-pw_skip_update () {
+pw_get_tmp_files () {
     for f_cmd in "gamescope --help" "lspci -k" "xrandr --current" "locale -a"
     do pw_check_command "$f_cmd"
     done
@@ -1975,9 +1974,9 @@ pw_skip_update () {
     fi
 }
 
-pw_skip_update_new () {
+pw_skip_get_info () {
     if [[ "${SKIP_CHECK_UPDATES_NEW}" != "1" ]] ; then
-        background_pid --end "pw_skip_update" "1"
+        background_pid --end "pw_get_tmp_files" "1"
 
         if [[ -f "${PW_TMPFS_PATH}/gamescope.tmp" ]] ; then
             export GAMESCOPE_INSTALLED="1"
@@ -2224,7 +2223,7 @@ pw_create_unique_exe () {
 }
 
 start_portwine () {
-    pw_skip_update_new
+    pw_skip_get_info
     if [[ "${PW_LOCALE_SELECT}" != "disabled" ]] && [[ -n "${PW_LOCALE_SELECT}" ]] ; then
         export LC_ALL="${PW_LOCALE_SELECT}"
         if [[ "${PW_USE_RUNTIME}" == "1" ]] && [[ "${HOST_LC_ALL}" != "${LC_ALL}" ]] ; then
@@ -3490,7 +3489,7 @@ export -f pw_run
 
 pw_yad_set_form () {
     if [[ $(<"${PW_TMPFS_PATH}/tmp_yad_form") != "" ]] ; then
-        pw_skip_update_new
+        pw_skip_get_info
         PW_YAD_SET=$(head -n 1 "${PW_TMPFS_PATH}/tmp_yad_form" | awk '{print $1}')
         export PW_YAD_SET
     fi
@@ -3551,15 +3550,13 @@ pw_winecfg () {
     start_portwine
     export GST_PLUGIN_SYSTEM_PATH_1_0=""
     pw_run winecfg
-    export PW_STOP_PORTWINE_RESTART=1
-    stop_portwine
+    stop_portwine --restart
 }
 
 pw_winefile () {
     start_portwine
     pw_run winefile
-    export PW_STOP_PORTWINE_RESTART=1
-    stop_portwine
+    stop_portwine --restart
 }
 
 pw_winecmd () {
@@ -3567,16 +3564,14 @@ pw_winecmd () {
     start_portwine
     cd "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c" || fatal
     pw_run cmd
-    export PW_STOP_PORTWINE_RESTART=1
-    stop_portwine
+    stop_portwine --restart
 }
 
 pw_winereg () {
     start_portwine
     export GST_PLUGIN_SYSTEM_PATH_1_0=""
     pw_run regedit
-    export PW_STOP_PORTWINE_RESTART=1
-    stop_portwine
+    stop_portwine --restart
 }
 
 pw_start_cont_xterm () {
@@ -5580,7 +5575,7 @@ pw_prefix_manager () {
 }
 
 portwine_start_debug () {
-    pw_skip_update_new
+    pw_skip_get_info
     kill_portwine
     export PW_LOG=1
     if [[ -z "$VULKAN_DRIVER_NAME" ]] || [[ "$VULKAN_DRIVER_NAME" == "llvmpipe" ]] ; then
