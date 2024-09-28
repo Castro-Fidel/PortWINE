@@ -102,7 +102,7 @@ unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME
 unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_ALL_DF PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
 unset MANGOHUD_CONFIG FPS_LIMIT PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME PORTWINE_CREATE_SHORTCUT_NAME MIRROR
 unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NOSTSTDIR RADV_DEBUG PW_NO_AUTO_CREATE_SHORTCUT
-unset PW_DESKTOP_FILES_REGEX
+unset PW_DESKTOP_FILES_REGEX PW_STOP_PORTWINE_RESTART
 
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 rm -f "$PORT_WINE_TMP_PATH"/*{exe,msi,tar}*
@@ -267,9 +267,7 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     PW_FILESYSTEM=$(stat -f -c %T "${PORT_WINE_PATH}")
     export PW_FILESYSTEM
 
-    pw_skip_update &
-    PID_SKIP_UPDATE=$(jobs -p)
-    export PID_SKIP_UPDATE="${PID_SKIP_UPDATE//*[[:space:]]/}"
+    background_pid --start "pw_skip_update" "1"
 fi
 
 # create lock file
@@ -660,7 +658,6 @@ else
         fi
         PW_GENERATE_BUTTONS+="--field=   $(print_wrapped "${PW_DESKTOP_FILES_SHOW//".desktop"/""}" "25" "...")!${PW_NAME_D_ICON_48}.png!:FBTN%@bash -c \"button_click --desktop "${PW_DESKTOP_FILES// /#@_@#}"\"%"
     done
-    IFS="$orig_IFS"
 
     IFS="%"
     "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[4]}" --form --columns="$MAIN_GUI_COLUMNS" --homogeneous-column \
@@ -813,7 +810,7 @@ fi
     gui_pw_reinstall_pp|open_changelog|\
     128|gui_pw_update|\
     change_loc|gui_open_scripts_from_backup|\
-    gui_credits)
+    gui_credits|pw_start_cont_xterm)
         if [[ -z "${PW_ALL_DF}" ]] ; then
             export TAB_MAIN_MENU="4"
         else
@@ -822,7 +819,8 @@ fi
         ;;
     gui_proton_downloader|WINETRICKS|\
     116|pw_create_prefix_backup|\
-    gui_clear_pfx)
+    gui_clear_pfx|WINEREG|WINECMD|\
+    WINEFILE|WINECFG)
         if [[ -z "${PW_ALL_DF}" ]] ; then
             export TAB_MAIN_MENU="3"
         else
