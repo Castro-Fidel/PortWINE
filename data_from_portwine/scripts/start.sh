@@ -267,9 +267,7 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     PW_FILESYSTEM=$(stat -f -c %T "${PORT_WINE_PATH}")
     export PW_FILESYSTEM
 
-    pw_skip_update &
-    PID_SKIP_UPDATE=$(jobs -p)
-    export PID_SKIP_UPDATE="${PID_SKIP_UPDATE//*[[:space:]]/}"
+    background_pid --start "pw_skip_update" "1"
 fi
 
 # create lock file
