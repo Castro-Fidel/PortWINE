@@ -679,23 +679,27 @@ background_pid () {
     local arg1=$1 # --start или --end
     local arg2=$2 # Название команды
     local arg3=$3 # Номер процесса (1,2,3..)
-    get_bg_pid () {
-        eval "echo \${$1}"
-    }
 
-    if [[ "$arg1" == --start ]] ; then
-        eval "$arg2 &"
-        PID=$!
-        export bg_pid"${arg3}"="$PID"
-    elif [[ "$arg1" == --end ]] ; then
-        PID=$(get_bg_pid bg_pid"${arg3}")
-        [[ $PID == "" ]] && return 1
-        while true ; do
-            if [[ ! $(jobs -p) =~ $PID ]] ; then
-                return 0
-            fi
-            sleep 0.005
-        done
+    if [[ "$START_FROM_STEAM" == 1 ]] \
+    || [[ -n "$PW_DEBUG" ]] ; then
+        case $arg1 in
+            --start) eval "$arg2" ;;
+            --end) : ;;
+        esac
+    else
+        get_bg_pid () {
+            eval "echo \${$1}"
+        }
+        case $arg1 in
+            --start)
+                eval "$arg2 &"
+                PID=$!
+                export bg_pid"${arg3}"="$PID" ;;
+            --end)
+                PID=$(get_bg_pid bg_pid"${arg3}")
+                [[ $PID == "" ]] && return 1
+                wait "$PID" && return 0 ;;
+        esac
     fi
 }
 export -f background_pid
@@ -849,19 +853,18 @@ pw_reinstall_pp () {
             echo ""
             exit 1
         fi
-    elif ! yad_question "${translations[Do you really want to reinstall PortProton?\\nFor this, an internet connection will be required.]}"
-    then exit 1
+    elif yad_question "${translations[Do you really want to reinstall PortProton?\\nFor this, an internet connection will be required.]}" ; then
+        pw_clear_pfx
+        try_remove_dir "${PORT_WINE_PATH}/data/dist"
+        create_new_dir "${PORT_WINE_PATH}/data/dist"
+        try_remove_dir "${PORT_WINE_TMP_PATH}/VULKAN"
+        try_remove_file "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
+        try_remove_file "${PORT_WINE_PATH}/data/user.conf"
+        try_remove_file "${PORT_WINE_TMP_PATH}/scripts_ver"
+        echo ""
+        unset SKIP_CHECK_UPDATES
+        print_info "Restarting PP for reinstall files..."
     fi
-    pw_clear_pfx
-    try_remove_dir "${PORT_WINE_PATH}/data/dist"
-    create_new_dir "${PORT_WINE_PATH}/data/dist"
-    try_remove_dir "${PORT_WINE_TMP_PATH}/VULKAN"
-    try_remove_file "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
-    try_remove_file "${PORT_WINE_PATH}/data/user.conf"
-    try_remove_file "${PORT_WINE_TMP_PATH}/scripts_ver"
-    echo ""
-    unset SKIP_CHECK_UPDATES
-    print_info "Restarting PP for reinstall files..."
     restart_pp
 }
 
@@ -5874,8 +5877,8 @@ gui_clear_pfx () {
     if yad_question "${translations[Do you want to clear prefix in PortProton?]}" ; then
         pw_clear_pfx
         print_info "Restarting PP after clearing prefix..."
-        restart_pp
     fi
+    restart_pp
 }
 export -f gui_clear_pfx
 
@@ -5886,8 +5889,9 @@ gui_rm_portproton () {
         rm -fr "${HOME}/PortWINE"
         rm -f "$(grep -il PortProton "${HOME}/.local/share/applications"/*.desktop)"
         update-desktop-database -q "${HOME}/.local/share/applications"
+        exit 0
     fi
-    exit 0
+    restart_pp
 }
 export -f gui_rm_portproton
 
@@ -5988,6 +5992,7 @@ export -f change_gui_start
 gui_wine_uninstaller () {
     start_portwine
     pw_run uninstaller
+    stop_portwine --restart
 }
 export -f gui_wine_uninstaller
 
