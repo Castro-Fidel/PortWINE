@@ -30,25 +30,26 @@ export orig_IFS="$IFS"
 MISSING_DESKTOP_FILE="0"
 
 unset PW_NO_RESTART_PPDB PW_DISABLED_CREATE_DB
+
 if [[ "$1" == *.[Pp][Pp][Aa][Cc][Kk] ]] ; then
     export PW_NO_RESTART_PPDB="1"
     export PW_DISABLED_CREATE_DB="1"
     portwine_exe="$1"
 elif [[ -f "$1" ]] ; then
-    portwine_exe="$(realpath "$1")"
+    portwine_exe="$(realpath -s "$1")"
 elif [[ -f "$OLDPWD/$1" ]] \
 && [[ "$1" == *.[Ee][Xx][Ee] || "$1" == *.[Bb][Aa][Tt] || "$1" == *.[Rr][Ee][Gg] || "$1" == *.[Mm][Ss][Ii] ]]
 then
-    portwine_exe="$(realpath "$OLDPWD/$1")"
+    portwine_exe="$(realpath -s "$OLDPWD/$1")"
 elif [[ "$1" == "--debug" ]] \
 && [[ -f "$2" ]]
 then
-    portwine_exe="$(realpath "$2")"
+    portwine_exe="$(realpath -s "$2")"
 elif [[ "$1" == "--debug" ]] \
 && [[ -f "$OLDPWD/$2" ]] \
 && [[ "$2" == *.[Ee][Xx][Ee] || "$2" == *.[Bb][Aa][Tt] || "$2" == *.[Rr][Ee][Gg] || "$2" == *.[Mm][Ss][Ii] ]]
 then
-    portwine_exe="$(realpath "$OLDPWD/$2")"
+    portwine_exe="$(realpath -s "$OLDPWD/$2")"
 elif [[ "$1" == *.[Ee][Xx][Ee] || "$1" == *.[Bb][Aa][Tt] || "$1" == *.[Mm][Ss][Ii] || "$1" == *.[Rr][Ee][Gg] ]]
 then
     portwine_exe="$1"
@@ -714,7 +715,7 @@ else
     --field="   EVE Online Launcher"!"$PW_GUI_ICON_PATH/eve.png"!"":"FBTN" '@bash -c "button_click --normal PW_EVE"' \
     --field="   Rockstar Games Launcher"!"$PW_GUI_ICON_PATH/Rockstar.png"!"":"FBTN" '@bash -c "button_click --normal PW_ROCKSTAR"' \
     --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png"!"":"FBTN" '@bash -c "button_click --normal  PW_GAMEFORGE"' \
-    --field="   World of Sea Battle (x64)"!"$PW_GUI_ICON_PATH/wosb.png"!"":"FBTN" '@bash -c "button_click --normal PW_WOSB"' \
+    --field="   World of Sea Battle"!"$PW_GUI_ICON_PATH/wosb.png"!"":"FBTN" '@bash -c "button_click --normal PW_WORLD_OF_SEA_BATTLE"' \
     --field="   CALIBER"!"$PW_GUI_ICON_PATH/caliber.png"!"":"FBTN" '@bash -c "button_click --normal PW_CALIBER"' \
     --field="   Crossout"!"$PW_GUI_ICON_PATH/crossout.png"!"":"FBTN" '@bash -c "button_click --normal PW_CROSSOUT"' \
     --field="   Warframe"!"$PW_GUI_ICON_PATH/warframe.png"!"":"FBTN" '@bash -c "button_click --normal PW_WARFRAME"' \
