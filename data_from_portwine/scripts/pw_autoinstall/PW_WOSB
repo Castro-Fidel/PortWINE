@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Author: Cefeiko
 ########################################################################
+LAUNCH_PARAMETERS=("/S")
 export PW_PREFIX_NAME="DOTNET"
 export PW_DLL_INSTALL="faudio dotnet48"
 export PW_VULKAN_USE=1
-export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/wos_client.exe"
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/installer.exe"
 
 WOSB_VERSION="$(curl -s --list-only --connect-timeout 3 https://www.worldofseabattle.com/download2 2>/dev/null | grep 'installer.exe' | awk -F'xsolla-launcher-update/' '{print $2}' | awk -F'/' '{print $1}')"
 [[ -n "$WOSB_VERSION" ]] && print_info "Found version: $WOSB_VERSION" || yad_error "Error while get version of WOSB INSTALLER."
@@ -13,11 +14,10 @@ start_portwine
 if try_download "https://installer.launcher.xsolla.com/xlauncher-builds/xsolla-launcher-update/${WOSB_VERSION}/bin/installer.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
 then
     pw_start_progress_bar_block "Installing World of Sea Battle."
-    create_new_dir "$WINEPREFIX/drive_c/WoSB"
-    "$pw_7z" x -y "${PW_AUTOINSTALL_EXE}" -o"$WINEPREFIX/drive_c/WoSB"
+    pw_run "${PW_AUTOINSTALL_EXE}"
     try_remove_file "${PW_AUTOINSTALL_EXE}"
     try_remove_file "${portwine_exe}.ppdb"
-    portwine_exe="$WINEPREFIX/drive_c/WoSB/launcher.exe"
+    portwine_exe="$WINEPREFIX/drive_c/users/steamuser/AppData/Local/Wosb Launcher/launcher.exe"
     pw_stop_progress_bar
 
     export PW_NO_RESTART_PPDB="1"
@@ -34,23 +34,5 @@ then
     try_remove_file "${portwine_exe}.ppdb"
     portwine_create_shortcut block_name
 
-fi
-stop_portwine
-
-
-
-
-start_portwine
-if try_download "${PW_URL_CEMU}" "${PW_AUTOINSTALL_EXE}" no_mirror
-then
-    pw_start_progress_bar_install_game "Cemu."
-    
-    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/`echo ${PW_URL_CEMU} | awk -F/ '{print $5}' | sed 's/.zip//'`/Cemu.exe"
-    try_remove_file "${PW_AUTOINSTALL_EXE}"
-    try_remove_file "${portwine_exe}.ppdb"
-    kill_portwine
-    pw_stop_progress_bar
-    export PORTWINE_CREATE_SHORTCUT_NAME="Cemu"
-    portwine_create_shortcut
 fi
 stop_portwine
