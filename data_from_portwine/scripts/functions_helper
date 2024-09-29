@@ -473,7 +473,7 @@ try_download () {
 
     # If gamescope session is active, use PW_TERM for downloading
     if check_gamescope_session ; then
-        $PW_TERM "echo ; echo ; echo \"Download $filename from ${FIRST_URL[0]}. Please wait...\" \
+        $PW_TERM "echo ; echo ; echo \"Downloading: $filename. Please wait...\" \
         ; curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
         -H 'Pragma: no-cache' -L ${FIRST_URL[@]} -o \"$dest\""
         [[ "$?" != 0 ]] && return 1 || return 0
@@ -721,7 +721,8 @@ unpack () {
 
     # If gamescope session is active, use PW_TERM for unpack
     if check_gamescope_session ; then
-        $PW_TERM "echo ; echo ; echo \"Unpacking file: $1. Please wait...\" ; $command -v \"$1\" -C \"$2\""
+        yad_info "We wont unpack $1"
+        $PW_TERM "echo ; echo ; echo \"Unpacking file: $1. Please wait...\" ; $command \"$1\" -C \"$2\""
         [[ "$?" != 0 ]] && return 1 || return 0
     elif [[ "$silent" != "true" ]] ; then
         set -o pipefail

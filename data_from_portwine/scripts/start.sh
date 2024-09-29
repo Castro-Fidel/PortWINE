@@ -252,7 +252,9 @@ esac
 pw_check_and_download_plugins
 
 # check skip update
-if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
+if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] \
+|| check_gamescope_session
+then
     pw_port_update
 
     PW_FILESYSTEM=$(stat -f -c %T "${PORT_WINE_PATH}")
