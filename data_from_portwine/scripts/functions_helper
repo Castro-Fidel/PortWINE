@@ -996,22 +996,14 @@ init_wine_ver () {
 }
 
 pw_init_runtime () {
-    check_flatpak && export PW_USE_RUNTIME="0"
-
     if [[ "$PW_USE_RUNTIME" != "1" ]] \
     || [[ "$PW_WINE_USE" == "USE_SYSTEM_WINE" ]]
     then
         export PW_LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32"
         export PW_VK_LAYER_PATH="${PW_PLUGINS_PATH}/portable/share/vulkan/implicit_layer.d"
-        if check_flatpak
-        then
-            if check_gamescope_session
-            then PW_TERM="xterm -fullscreen -bg black -fg white -e"
-            else PW_TERM="xterm -bg black -fg white -e"
-            fi
-        else PW_TERM="env LD_LIBRARY_PATH=\"${PW_LD_LIBRARY_PATH}\" ${PW_PLUGINS_PATH}/portable/bin/xterm -bg black -fg white -e"
+        if [[ -z "$PW_TERM" ]] ; then
+            export PW_TERM="env LD_LIBRARY_PATH=\"${PW_LD_LIBRARY_PATH}\" ${PW_PLUGINS_PATH}/portable/bin/xterm -bg black -fg white -e"
         fi
-        export PW_TERM
         export pw_runtime="env"
         return 0
     fi

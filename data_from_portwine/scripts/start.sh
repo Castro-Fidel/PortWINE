@@ -93,7 +93,7 @@ unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME
 unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_ALL_DF PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
 unset MANGOHUD_CONFIG FPS_LIMIT PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME PORTWINE_CREATE_SHORTCUT_NAME MIRROR
 unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NOSTSTDIR RADV_DEBUG PW_NO_AUTO_CREATE_SHORTCUT
-unset PW_DESKTOP_FILES_REGEX
+unset PW_DESKTOP_FILES_REGEX PW_TERM
 
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 rm -f "$PORT_WINE_TMP_PATH"/*{exe,msi,tar}*
@@ -263,20 +263,25 @@ fi
 
 # create lock file
 if ! check_flatpak ; then
-if [[ -f "${PW_TMPFS_PATH}/portproton.lock" ]] ; then
-    print_warning "Found lock file: ${PW_TMPFS_PATH}/portproton.lock"
-    yad_question "${translations[A running PortProton session was detected.\\nDo you want to end the previous session?]}" || exit 0
-fi
-touch "${PW_TMPFS_PATH}/portproton.lock"
-rm_lock_file () {
-    echo "Removing the lock file..."
-    rm -fv "${PW_TMPFS_PATH}/portproton.lock" && echo "OK"
-}
-trap "rm_lock_file" EXIT
+    if [[ -f "${PW_TMPFS_PATH}/portproton.lock" ]] ; then
+        print_warning "Found lock file: ${PW_TMPFS_PATH}/portproton.lock"
+        yad_question "${translations[A running PortProton session was detected.\\nDo you want to end the previous session?]}" || exit 0
+    fi
+    touch "${PW_TMPFS_PATH}/portproton.lock"
+    rm_lock_file () {
+        echo "Removing the lock file..."
+        rm -fv "${PW_TMPFS_PATH}/portproton.lock" && echo "OK"
+    }
+    trap "rm_lock_file" EXIT
 fi
 
-if check_flatpak
-then try_remove_dir "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
+if check_flatpak ; then
+    try_remove_dir "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
+    export PW_USE_RUNTIME="0"
+    if check_gamescope_session
+    then PW_TERM="xterm -fullscreen -bg black -fg white -e"
+    else PW_TERM="xterm -bg black -fg white -e"
+    fi
 else pw_download_libs
 fi
 
