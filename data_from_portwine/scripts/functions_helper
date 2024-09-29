@@ -71,39 +71,44 @@ change_locale () {
         fi
     fi
 
-    [[ ! -f "${pw_yad}" ]] && pw_yad="yad"
+    local GAME_LANGUAGE="$LANGUAGE"
 
-    if [[ -z "$LANGUAGE" ]] \
-    || [[ "${PW_FORCE_CHANGE_LOC}" == "1" ]] ; then
-        SET_LANG=(
-            "${pw_yad}" --list
-            --window-icon="$PW_GUI_ICON_PATH/portproton.svg"
-            --title="Select language for PortProton"
-            --column="Language" --column=""
-            --width=400 --height=200
+    if check_gamescope_session ; then
+        LANGUAGE="en"
+    else
+        [[ ! -f "${pw_yad}" ]] && pw_yad="yad"
+        if [[ -z "$LANGUAGE" ]] \
+        || [[ "${PW_FORCE_CHANGE_LOC}" == "1" ]] ; then
+            SET_LANG=(
+                "${pw_yad}" --list
+                --window-icon="$PW_GUI_ICON_PATH/portproton.svg"
+                --title="Select language for PortProton"
+                --column="Language" --column=""
+                --width=400 --height=200
 
-            "Russian (Русский)"                     ru
-            "English"                               en
-            "Spanish (Español・Española)"            es
-        )
+                "Russian (Русский)"                     ru
+                "English"                               en
+                "Spanish (Español・Española)"            es
+            )
 
-        out=$("${SET_LANG[@]}")
-        if [[ -z $out ]] \
-        && [[ -n "$LANGUAGE" ]] ; then
-            echo "${LANGUAGE}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
-        elif [[ -z $out ]] ; then
-            echo "en" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
-        else
-            LANGUAGE=$(echo "$out" | cut -d '|' -f2)
-            echo "${LANGUAGE}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
-            create_translations
+            out=$("${SET_LANG[@]}")
+            if [[ -z $out ]] \
+            && [[ -n "$LANGUAGE" ]] ; then
+                echo "${LANGUAGE}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
+            elif [[ -z $out ]] ; then
+                echo "en" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
+            else
+                LANGUAGE=$(echo "$out" | cut -d '|' -f2)
+                echo "${LANGUAGE}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
+                create_translations
+            fi
+            unset PW_FORCE_CHANGE_LOC
+            restart_pp
         fi
-        unset PW_FORCE_CHANGE_LOC
-        restart_pp
     fi
     export LANGUAGE
 
-    case "$LANGUAGE" in
+    case "$GAME_LANGUAGE" in
         ru)
             check_start_from_steam && export LC_ALL=ru_RU.UTF-8
             export FULL_LN="russian"
@@ -721,7 +726,6 @@ unpack () {
 
     # If gamescope session is active, use PW_TERM for unpack
     if check_gamescope_session ; then
-        yad_info "We wont unpack $1"
         $PW_TERM "echo ; echo ; echo \"Unpacking file: $1. Please wait...\" ; $command \"$1\" -C \"$2\""
         [[ "$?" != 0 ]] && return 1 || return 0
     elif [[ "$silent" != "true" ]] ; then
