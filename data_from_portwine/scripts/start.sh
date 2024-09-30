@@ -284,7 +284,6 @@ fi
 
 if check_flatpak ; then
     try_remove_dir "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
-    export PW_USE_RUNTIME="0"
 else pw_download_libs
 fi
 
@@ -830,6 +829,14 @@ fi
         else
             export TAB_MAIN_MENU="4"
         fi
+        ;;
+    pw_find_exe)
+        if [[ -z "${PW_ALL_DF}" ]] ; then
+            export TAB_MAIN_MENU="5"
+        else
+            export TAB_MAIN_MENU="1"
+        fi
+        ;;
 esac
 
 [[ -n "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
