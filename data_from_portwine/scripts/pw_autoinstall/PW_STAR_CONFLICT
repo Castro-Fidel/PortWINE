@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Author: chal55rus
+########################################################################
+export PW_PREFIX_NAME="STAR_CONFLICT"
+export LAUNCH_PARAMETERS=("/VERYSILENT")
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/starconf_installer.exe"
+export PORTWINE_CREATE_SHORTCUT_NAME="Star Conflict"
+
+start_portwine
+if try_download "https://yupmaster.gaijinent.com/launcher/current.php?id=StarConflictLauncher" "${PW_AUTOINSTALL_EXE}" no_mirror
+then
+    pw_start_progress_bar_install_game "Star Conflict."
+    pw_kill_autostart launcher.exe &
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="${WINEPREFIX}/drive_c/users/steamuser/AppData/Local/StarConflict/launcher.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    kill_portwine
+    pw_stop_progress_bar
+
+    portwine_create_shortcut
+fi
+stop_portwine

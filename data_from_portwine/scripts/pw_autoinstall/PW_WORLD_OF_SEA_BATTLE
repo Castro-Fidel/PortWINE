@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Author: Cefeiko
+########################################################################
+export LAUNCH_PARAMETERS=("/S")
+export PW_PREFIX_NAME="WORLD_OF_SEA_BATTLE"
+export PW_VULKAN_USE="2"
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/installer.exe"
+export PORTWINE_CREATE_SHORTCUT_NAME="World of Sea Battle"
+
+WOSB_VERSION="$(curl -s --list-only --connect-timeout 3 https://www.worldofseabattle.com/download2 2>/dev/null | grep 'installer.exe' | awk -F'xsolla-launcher-update/' '{print $2}' | awk -F'/' '{print $1}')"
+[[ -n "$WOSB_VERSION" ]] && print_info "Found version: $WOSB_VERSION" || yad_error "Error while get version of WOSB INSTALLER."
+
+start_portwine
+if try_download "https://installer.launcher.xsolla.com/xlauncher-builds/xsolla-launcher-update/${WOSB_VERSION}/bin/installer.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
+then
+    pw_start_progress_bar_install_game "World of Sea Battle."
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    export portwine_exe="$WINEPREFIX/drive_c/users/steamuser/AppData/Local/Wosb Launcher/launcher.exe"
+    pw_create_unique_exe "wosb_launcher_pp"
+    kill_portwine
+    pw_stop_progress_bar
+    portwine_create_shortcut
+fi
+stop_portwine

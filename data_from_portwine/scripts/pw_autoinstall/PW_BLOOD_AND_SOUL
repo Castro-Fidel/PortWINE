@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Author: chal55rus (Sergey P.)
+########################################################################
+export PW_PREFIX_NAME="BLOOD_AND_SOUL"
+export LAUNCH_PARAMETERS=("/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-")
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/bs-install.exe"
+export PORTWINE_CREATE_SHORTCUT_NAME="Blood and Soul"
+
+start_portwine
+if try_download "https://bsclassic.com/files/bs-install.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
+then
+    pw_start_progress_bar_install_game "Blood and Soul."
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/Blood and Soul Classic/launcher.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    kill_portwine
+    pw_stop_progress_bar
+
+    portwine_create_shortcut
+fi
+stop_portwine

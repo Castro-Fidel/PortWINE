@@ -30,25 +30,26 @@ export orig_IFS="$IFS"
 MISSING_DESKTOP_FILE="0"
 
 unset PW_NO_RESTART_PPDB PW_DISABLED_CREATE_DB
+
 if [[ "$1" == *.[Pp][Pp][Aa][Cc][Kk] ]] ; then
     export PW_NO_RESTART_PPDB="1"
     export PW_DISABLED_CREATE_DB="1"
     portwine_exe="$1"
 elif [[ -f "$1" ]] ; then
-    portwine_exe="$(realpath "$1")"
+    portwine_exe="$(realpath -s "$1")"
 elif [[ -f "$OLDPWD/$1" ]] \
 && [[ "$1" == *.[Ee][Xx][Ee] || "$1" == *.[Bb][Aa][Tt] || "$1" == *.[Rr][Ee][Gg] || "$1" == *.[Mm][Ss][Ii] ]]
 then
-    portwine_exe="$(realpath "$OLDPWD/$1")"
+    portwine_exe="$(realpath -s "$OLDPWD/$1")"
 elif [[ "$1" == "--debug" ]] \
 && [[ -f "$2" ]]
 then
-    portwine_exe="$(realpath "$2")"
+    portwine_exe="$(realpath -s "$2")"
 elif [[ "$1" == "--debug" ]] \
 && [[ -f "$OLDPWD/$2" ]] \
 && [[ "$2" == *.[Ee][Xx][Ee] || "$2" == *.[Bb][Aa][Tt] || "$2" == *.[Rr][Ee][Gg] || "$2" == *.[Mm][Ss][Ii] ]]
 then
-    portwine_exe="$(realpath "$OLDPWD/$2")"
+    portwine_exe="$(realpath -s "$OLDPWD/$2")"
 elif [[ "$1" == *.[Ee][Xx][Ee] || "$1" == *.[Bb][Aa][Tt] || "$1" == *.[Mm][Ss][Ii] || "$1" == *.[Rr][Ee][Gg] ]]
 then
     portwine_exe="$1"
@@ -92,7 +93,7 @@ unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME
 unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_ALL_DF PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
 unset MANGOHUD_CONFIG FPS_LIMIT PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME PORTWINE_CREATE_SHORTCUT_NAME MIRROR
 unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NOSTSTDIR RADV_DEBUG PW_NO_AUTO_CREATE_SHORTCUT
-unset PW_DESKTOP_FILES_REGEX
+unset PW_DESKTOP_FILES_REGEX PW_TERM
 
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 rm -f "$PORT_WINE_TMP_PATH"/*{exe,msi,tar}*
@@ -248,6 +249,13 @@ case "$PW_GUI_START" in
               ;;
 esac
 
+if check_flatpak ; then
+    if check_gamescope_session
+    then PW_TERM="xterm -fullscreen -bg black -fg white -e"
+    else PW_TERM="xterm -bg black -fg white -e"
+    fi
+fi
+
 pw_check_and_download_plugins
 
 # check skip update
@@ -257,29 +265,26 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     PW_FILESYSTEM=$(stat -f -c %T "${PORT_WINE_PATH}")
     export PW_FILESYSTEM
 
-    if [[ "$START_FROM_STEAM" == 1 ]] ; then
-        pw_get_tmp_files
-    else
-        background_pid --start "pw_get_tmp_files" "1"
-    fi
+    background_pid --start "pw_get_tmp_files" "1"
 fi
 
 # create lock file
 if ! check_flatpak ; then
-if [[ -f "${PW_TMPFS_PATH}/portproton.lock" ]] ; then
-    print_warning "Found lock file: ${PW_TMPFS_PATH}/portproton.lock"
-    yad_question "${translations[A running PortProton session was detected.\\nDo you want to end the previous session?]}" || exit 0
-fi
-touch "${PW_TMPFS_PATH}/portproton.lock"
-rm_lock_file () {
-    echo "Removing the lock file..."
-    rm -fv "${PW_TMPFS_PATH}/portproton.lock" && echo "OK"
-}
-trap "rm_lock_file" EXIT
+    if [[ -f "${PW_TMPFS_PATH}/portproton.lock" ]] ; then
+        print_warning "Found lock file: ${PW_TMPFS_PATH}/portproton.lock"
+        yad_question "${translations[A running PortProton session was detected.\\nDo you want to end the previous session?]}" || exit 0
+    fi
+    touch "${PW_TMPFS_PATH}/portproton.lock"
+    rm_lock_file () {
+        echo "Removing the lock file..."
+        rm -fv "${PW_TMPFS_PATH}/portproton.lock" && echo "OK"
+    }
+    trap "rm_lock_file" EXIT
 fi
 
-if check_flatpak
-then try_remove_dir "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
+if check_flatpak ; then
+    try_remove_dir "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
+    export PW_USE_RUNTIME="0"
 else pw_download_libs
 fi
 
@@ -292,6 +297,7 @@ then
 fi
 
 pw_check_and_download_dxvk_and_vkd3d
+
 # shellcheck source=/dev/null
 source "${USER_CONF}"
 
@@ -714,7 +720,7 @@ else
     --field="   EVE Online Launcher"!"$PW_GUI_ICON_PATH/eve.png"!"":"FBTN" '@bash -c "button_click --normal PW_EVE"' \
     --field="   Rockstar Games Launcher"!"$PW_GUI_ICON_PATH/Rockstar.png"!"":"FBTN" '@bash -c "button_click --normal PW_ROCKSTAR"' \
     --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png"!"":"FBTN" '@bash -c "button_click --normal  PW_GAMEFORGE"' \
-    --field="   World of Sea Battle (x64)"!"$PW_GUI_ICON_PATH/wosb.png"!"":"FBTN" '@bash -c "button_click --normal PW_WOSB"' \
+    --field="   World of Sea Battle"!"$PW_GUI_ICON_PATH/wosb.png"!"":"FBTN" '@bash -c "button_click --normal PW_WORLD_OF_SEA_BATTLE"' \
     --field="   CALIBER"!"$PW_GUI_ICON_PATH/caliber.png"!"":"FBTN" '@bash -c "button_click --normal PW_CALIBER"' \
     --field="   Crossout"!"$PW_GUI_ICON_PATH/crossout.png"!"":"FBTN" '@bash -c "button_click --normal PW_CROSSOUT"' \
     --field="   Warframe"!"$PW_GUI_ICON_PATH/warframe.png"!"":"FBTN" '@bash -c "button_click --normal PW_WARFRAME"' \
@@ -744,6 +750,10 @@ else
     --field="   Anomaly Zone"!"$PW_GUI_ICON_PATH/anomalyzone.png"!"":"FBTN" '@bash -c "button_click --normal PW_ANOMALY_ZONE"' \
     --field="   Farlight 84"!"$PW_GUI_ICON_PATH/farlight84.png"!"":"FBTN" '@bash -c "button_click --normal PW_FARLIGHT84"' \
     --field="   Secret World Legends (ENG)"!"$PW_GUI_ICON_PATH/swl.png"!"":"FBTN" '@bash -c "button_click --normal PW_SWL"' \
+    --field="   Blood and Soul"!"$PW_GUI_ICON_PATH/bloodandsoul.png"!"":"FBTN" '@bash -c "button_click --normal PW_BLOOD_AND_SOUL"' \
+    --field="   Star Conflict"!"$PW_GUI_ICON_PATH/starconflict.png"!"":"FBTN" '@bash -c "button_click --normal PW_STAR_CONFLICT"' \
+    --field="   GameXP"!"$PW_GUI_ICON_PATH/gamexp.png"!"":"FBTN" '@bash -c "button_click --normal PW_GAME_XP"' \
+    --field="   Lost Light"!"$PW_GUI_ICON_PATH/lostlight.png"!"":"FBTN" '@bash -c "button_click --normal PW_LOST_LIGHT"' \
     2>/dev/null &
 
     export START_FROM_PP_GUI="1"
@@ -802,7 +812,7 @@ fi
 
 [[ -n "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
     gui_pw_reinstall_pp|open_changelog|\
-    128|gui_pw_update|\
+    128|gui_pw_update|gui_rm_portproton|\
     change_loc|gui_open_scripts_from_backup|\
     gui_credits|pw_start_cont_xterm)
         if [[ -z "${PW_ALL_DF}" ]] ; then
@@ -814,7 +824,7 @@ fi
     gui_proton_downloader|WINETRICKS|\
     116|pw_create_prefix_backup|\
     gui_clear_pfx|WINEREG|WINECMD|\
-    WINEFILE|WINECFG)
+    WINEFILE|WINECFG|gui_wine_uninstaller)
         if [[ -z "${PW_ALL_DF}" ]] ; then
             export TAB_MAIN_MENU="3"
         else

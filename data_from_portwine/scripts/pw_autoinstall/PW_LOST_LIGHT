@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Author: chal55rus
+########################################################################
+export PW_PREFIX_NAME="LOST_LIGHT"
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/LostLight_installer.exe"
+export PORTWINE_CREATE_SHORTCUT_NAME="Lost Light"
+
+URL_LOST_LIGHT="$(curl -s --list-only "https://adl.easebar.com/d/g/yhtj/c/lostlightcspc" | grep 'var pc_link =' | awk -F\" '{print $2}')"
+
+start_portwine
+if try_download "${URL_LOST_LIGHT}" "${PW_AUTOINSTALL_EXE}" no_mirror
+then
+    pw_start_progress_bar_install_game "LostLight."
+    "$pw_7z" x -y "${PW_AUTOINSTALL_EXE}" -o"$WINEPREFIX/drive_c/Program Files (x86)/LostLight"
+    export portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/LostLight/launcher.exe"
+    pw_create_unique_exe "lostlight_launcher_pp"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    kill_portwine
+    pw_stop_progress_bar
+    portwine_create_shortcut
+fi
+stop_portwine

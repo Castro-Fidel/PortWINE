@@ -71,39 +71,44 @@ change_locale () {
         fi
     fi
 
-    [[ ! -f "${pw_yad}" ]] && pw_yad="yad"
+    local GAME_LANGUAGE="$LANGUAGE"
 
-    if [[ -z "$LANGUAGE" ]] \
-    || [[ "${PW_FORCE_CHANGE_LOC}" == "1" ]] ; then
-        SET_LANG=(
-            "${pw_yad}" --list
-            --window-icon="$PW_GUI_ICON_PATH/portproton.svg"
-            --title="Select language for PortProton"
-            --column="Language" --column=""
-            --width=400 --height=200
+    if check_gamescope_session ; then
+        LANGUAGE="en"
+    else
+        [[ ! -f "${pw_yad}" ]] && pw_yad="yad"
+        if [[ -z "$LANGUAGE" ]] \
+        || [[ "${PW_FORCE_CHANGE_LOC}" == "1" ]] ; then
+            SET_LANG=(
+                "${pw_yad}" --list
+                --window-icon="$PW_GUI_ICON_PATH/portproton.svg"
+                --title="Select language for PortProton"
+                --column="Language" --column=""
+                --width=400 --height=200
 
-            "Russian (Русский)"                     ru
-            "English"                               en
-            "Spanish (Español・Española)"            es
-        )
+                "Russian (Русский)"                     ru
+                "English"                               en
+                "Spanish (Español・Española)"            es
+            )
 
-        out=$("${SET_LANG[@]}")
-        if [[ -z $out ]] \
-        && [[ -n "$LANGUAGE" ]] ; then
-            echo "${LANGUAGE}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
-        elif [[ -z $out ]] ; then
-            echo "en" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
-        else
-            LANGUAGE=$(echo "$out" | cut -d '|' -f2)
-            echo "${LANGUAGE}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
-            create_translations
+            out=$("${SET_LANG[@]}")
+            if [[ -z $out ]] \
+            && [[ -n "$LANGUAGE" ]] ; then
+                echo "${LANGUAGE}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
+            elif [[ -z $out ]] ; then
+                echo "en" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
+            else
+                LANGUAGE=$(echo "$out" | cut -d '|' -f2)
+                echo "${LANGUAGE}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
+                create_translations
+            fi
+            unset PW_FORCE_CHANGE_LOC
+            restart_pp
         fi
-        unset PW_FORCE_CHANGE_LOC
-        restart_pp
     fi
     export LANGUAGE
 
-    case "$LANGUAGE" in
+    case "$GAME_LANGUAGE" in
         ru)
             check_start_from_steam && export LC_ALL=ru_RU.UTF-8
             export FULL_LN="russian"
@@ -473,8 +478,9 @@ try_download () {
 
     # If gamescope session is active, use PW_TERM for downloading
     if check_gamescope_session ; then
-        $PW_TERM curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
-        -H 'Pragma: no-cache' -L ${FIRST_URL[@]} -o "$dest"
+        $PW_TERM "echo ; echo ; echo \"Downloading: $filename. Please wait...\" \
+        ; curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
+        -H 'Pragma: no-cache' -L ${FIRST_URL[@]} -o \"$dest\""
         [[ "$?" != 0 ]] && return 1 || return 0
     fi
 
@@ -679,23 +685,28 @@ background_pid () {
     local arg1=$1 # --start или --end
     local arg2=$2 # Название команды
     local arg3=$3 # Номер процесса (1,2,3..)
-    get_bg_pid () {
-        eval "echo \${$1}"
-    }
 
-    if [[ "$arg1" == --start ]] ; then
-        eval "$arg2 &"
-        PID=$!
-        export bg_pid"${arg3}"="$PID"
-    elif [[ "$arg1" == --end ]] ; then
-        PID=$(get_bg_pid bg_pid"${arg3}")
-        [[ $PID == "" ]] && return 1
-        while true ; do
-            if [[ ! $(jobs -p) =~ $PID ]] ; then
-                return 0
-            fi
-            sleep 0.005
-        done
+    if [[ "$START_FROM_STEAM" == 1 ]] \
+    || [[ "$PW_GUI_DISABLED_CS" == 1 ]] \
+    || [[ -n "$PW_DEBUG" ]] ; then
+        case $arg1 in
+            --start) eval "$arg2" ;;
+            --end) : ;;
+        esac
+    else
+        get_bg_pid () {
+            eval "echo \${$1}"
+        }
+        case $arg1 in
+            --start)
+                eval "$arg2 &"
+                PID=$!
+                export bg_pid"${arg3}"="$PID" ;;
+            --end)
+                PID=$(get_bg_pid bg_pid"${arg3}")
+                [[ $PID == "" ]] && return 1
+                wait "$PID" && return 0 ;;
+        esac
     fi
 }
 export -f background_pid
@@ -712,7 +723,12 @@ unpack () {
         silent) local silent=true ;;
     esac
 
-    if [[ "$silent" != "true" ]] ; then
+
+    # If gamescope session is active, use PW_TERM for unpack
+    if check_gamescope_session ; then
+        $PW_TERM "echo ; echo ; echo \"Unpacking file: $1. Please wait...\" ; $command \"$1\" -C \"$2\""
+        [[ "$?" != 0 ]] && return 1 || return 0
+    elif [[ "$silent" != "true" ]] ; then
         set -o pipefail
         pw_start_progress_bar_cover_block "${COVERS_PATH}/unpacking_${LANGUAGE_GIF}.gif"
         $command "$1" -C "$2" 2>/dev/null
@@ -849,19 +865,18 @@ pw_reinstall_pp () {
             echo ""
             exit 1
         fi
-    elif ! yad_question "${translations[Do you really want to reinstall PortProton?\\nFor this, an internet connection will be required.]}"
-    then exit 1
+    elif yad_question "${translations[Do you really want to reinstall PortProton?\\nFor this, an internet connection will be required.]}" ; then
+        pw_clear_pfx
+        try_remove_dir "${PORT_WINE_PATH}/data/dist"
+        create_new_dir "${PORT_WINE_PATH}/data/dist"
+        try_remove_dir "${PORT_WINE_TMP_PATH}/VULKAN"
+        try_remove_file "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
+        try_remove_file "${PORT_WINE_PATH}/data/user.conf"
+        try_remove_file "${PORT_WINE_TMP_PATH}/scripts_ver"
+        echo ""
+        unset SKIP_CHECK_UPDATES
+        print_info "Restarting PP for reinstall files..."
     fi
-    pw_clear_pfx
-    try_remove_dir "${PORT_WINE_PATH}/data/dist"
-    create_new_dir "${PORT_WINE_PATH}/data/dist"
-    try_remove_dir "${PORT_WINE_TMP_PATH}/VULKAN"
-    try_remove_file "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
-    try_remove_file "${PORT_WINE_PATH}/data/user.conf"
-    try_remove_file "${PORT_WINE_TMP_PATH}/scripts_ver"
-    echo ""
-    unset SKIP_CHECK_UPDATES
-    print_info "Restarting PP for reinstall files..."
     restart_pp
 }
 
@@ -992,22 +1007,14 @@ init_wine_ver () {
 }
 
 pw_init_runtime () {
-    check_flatpak && export PW_USE_RUNTIME="0"
-
     if [[ "$PW_USE_RUNTIME" != "1" ]] \
     || [[ "$PW_WINE_USE" == "USE_SYSTEM_WINE" ]]
     then
         export PW_LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32"
         export PW_VK_LAYER_PATH="${PW_PLUGINS_PATH}/portable/share/vulkan/implicit_layer.d"
-        if check_flatpak
-        then
-            if check_gamescope_session
-            then PW_TERM="xterm -fullscreen -bg black -fg white -e"
-            else PW_TERM="xterm -bg black -fg white -e"
-            fi
-        else PW_TERM="env LD_LIBRARY_PATH=\"${PW_LD_LIBRARY_PATH}\" ${PW_PLUGINS_PATH}/portable/bin/xterm -bg black -fg white -e"
+        if [[ -z "$PW_TERM" ]] ; then
+            export PW_TERM="env LD_LIBRARY_PATH=\"${PW_LD_LIBRARY_PATH}\" ${PW_PLUGINS_PATH}/portable/bin/xterm -bg black -fg white -e"
         fi
-        export PW_TERM
         export pw_runtime="env"
         return 0
     fi
@@ -1884,14 +1891,14 @@ pw_port_update () {
                 xcsd="${translations[UPDATING NOW]}"
                 unset PW_CHANGE_BRANCH
             else
-                curl -s --list-only "${URL_FOR_CHANGELOG}/${PW_CHANGELOG_FILE}" | tee "${PORT_WINE_TMP_PATH}/curent_var_ver"
-                CHANGLOG_NEWS=$(sed "/Scripts version ${scripts_install_ver}/,$ d" "${PORT_WINE_TMP_PATH}/curent_var_ver" | sed '1,/---/ d' )
-                xcsd=$("${pw_yad}" --title "${translations[Update scripts:]} v.(${scripts_install_ver}${BRANCH_VERSION})" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-                --form --separator='%%%' --width=1000 --height=500 \
-                --field=":TXT" "${CHANGLOG_NEWS}" \
+                curl -s --list-only "${URL_FOR_CHANGELOG}/${PW_CHANGELOG_FILE}" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+                sed -i "/Scripts version ${scripts_install_ver}/,$ d" "${PORT_WINE_TMP_PATH}/curent_var_ver"
+
+                "${pw_yad}" --title "${translations[Update scripts:]} v.(${scripts_install_ver}${BRANCH_VERSION})" \
+                --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --width=1280 --height=720 --text-info --wrap --scroll \
                 --button="${translations[DO NOT REMIND ME]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":16 \
                 --button="${translations[REMIND ME LATER]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":18 \
-                --button="${translations[UPDATING NOW]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":20 2>/dev/null)
+                --button="${translations[UPDATING NOW]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":20 < "${PORT_WINE_TMP_PATH}/curent_var_ver" 2>/dev/null
                 YAD_STATUS="$?"
 
                 # --button="${translations[EXIT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":252 \
@@ -5874,8 +5881,8 @@ gui_clear_pfx () {
     if yad_question "${translations[Do you want to clear prefix in PortProton?]}" ; then
         pw_clear_pfx
         print_info "Restarting PP after clearing prefix..."
-        restart_pp
     fi
+    restart_pp
 }
 export -f gui_clear_pfx
 
@@ -5886,8 +5893,9 @@ gui_rm_portproton () {
         rm -fr "${HOME}/PortWINE"
         rm -f "$(grep -il PortProton "${HOME}/.local/share/applications"/*.desktop)"
         update-desktop-database -q "${HOME}/.local/share/applications"
+        exit 0
     fi
-    exit 0
+    restart_pp
 }
 export -f gui_rm_portproton
 
@@ -5988,6 +5996,7 @@ export -f change_gui_start
 gui_wine_uninstaller () {
     start_portwine
     pw_run uninstaller
+    stop_portwine --restart
 }
 export -f gui_wine_uninstaller
 
