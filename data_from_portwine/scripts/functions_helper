@@ -1891,14 +1891,14 @@ pw_port_update () {
                 xcsd="${translations[UPDATING NOW]}"
                 unset PW_CHANGE_BRANCH
             else
-                curl -s --list-only "${URL_FOR_CHANGELOG}/${PW_CHANGELOG_FILE}" | tee "${PORT_WINE_TMP_PATH}/curent_var_ver"
-                CHANGLOG_NEWS=$(sed "/Scripts version ${scripts_install_ver}/,$ d" "${PORT_WINE_TMP_PATH}/curent_var_ver" | sed '1,/---/ d' )
-                "${pw_yad}" --title "${translations[Update scripts:]} v.(${scripts_install_ver}${BRANCH_VERSION})" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-                --form --separator='%%%' --width=1000 --height=500 \
-                --field=":TXT" "${CHANGLOG_NEWS}" \
+                curl -s --list-only "${URL_FOR_CHANGELOG}/${PW_CHANGELOG_FILE}" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+                sed -i "/Scripts version ${scripts_install_ver}/,$ d" "${PORT_WINE_TMP_PATH}/curent_var_ver"
+
+                "${pw_yad}" --title "${translations[Update scripts:]} v.(${scripts_install_ver}${BRANCH_VERSION})" \
+                --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --width=1280 --height=720 --text-info --wrap --scroll \
                 --button="${translations[DO NOT REMIND ME]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":16 \
                 --button="${translations[REMIND ME LATER]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":18 \
-                --button="${translations[UPDATING NOW]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":20 2>/dev/null
+                --button="${translations[UPDATING NOW]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":20 < "${PORT_WINE_TMP_PATH}/curent_var_ver" 2>/dev/null
                 YAD_STATUS="$?"
 
                 # --button="${translations[EXIT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":252 \
