@@ -251,6 +251,13 @@ esac
 
 pw_check_and_download_plugins
 
+if check_flatpak ; then
+    if check_gamescope_session
+    then PW_TERM="xterm -fullscreen -bg black -fg white -e"
+    else PW_TERM="xterm -bg black -fg white -e"
+    fi
+fi
+
 # check skip update
 if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     pw_port_update
@@ -278,10 +285,6 @@ fi
 if check_flatpak ; then
     try_remove_dir "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
     export PW_USE_RUNTIME="0"
-    if check_gamescope_session
-    then PW_TERM="xterm -fullscreen -bg black -fg white -e"
-    else PW_TERM="xterm -bg black -fg white -e"
-    fi
 else pw_download_libs
 fi
 
@@ -294,6 +297,7 @@ then
 fi
 
 pw_check_and_download_dxvk_and_vkd3d
+
 # shellcheck source=/dev/null
 source "${USER_CONF}"
 

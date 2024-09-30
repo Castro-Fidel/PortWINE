@@ -1893,12 +1893,12 @@ pw_port_update () {
             else
                 curl -s --list-only "${URL_FOR_CHANGELOG}/${PW_CHANGELOG_FILE}" | tee "${PORT_WINE_TMP_PATH}/curent_var_ver"
                 CHANGLOG_NEWS=$(sed "/Scripts version ${scripts_install_ver}/,$ d" "${PORT_WINE_TMP_PATH}/curent_var_ver" | sed '1,/---/ d' )
-                xcsd=$("${pw_yad}" --title "${translations[Update scripts:]} v.(${scripts_install_ver}${BRANCH_VERSION})" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+                "${pw_yad}" --title "${translations[Update scripts:]} v.(${scripts_install_ver}${BRANCH_VERSION})" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
                 --form --separator='%%%' --width=1000 --height=500 \
-                --field=":TXT" "${CHANGLOG_NEWS}" \
+                --field=":TXT" "$(print_wrapped "${CHANGLOG_NEWS}" 100)" \
                 --button="${translations[DO NOT REMIND ME]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":16 \
                 --button="${translations[REMIND ME LATER]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":18 \
-                --button="${translations[UPDATING NOW]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":20 2>/dev/null)
+                --button="${translations[UPDATING NOW]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":20 2>/dev/null
                 YAD_STATUS="$?"
 
                 # --button="${translations[EXIT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":252 \
