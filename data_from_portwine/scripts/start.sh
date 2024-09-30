@@ -284,7 +284,6 @@ fi
 
 if check_flatpak ; then
     try_remove_dir "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
-    export PW_USE_RUNTIME="0"
 else pw_download_libs
 fi
 
