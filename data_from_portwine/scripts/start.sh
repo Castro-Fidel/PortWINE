@@ -752,6 +752,8 @@ else
     --field="   Secret World Legends (ENG)"!"$PW_GUI_ICON_PATH/swl.png"!"":"FBTN" '@bash -c "button_click --normal PW_SWL"' \
     --field="   Blood and Soul"!"$PW_GUI_ICON_PATH/bloodandsoul.png"!"":"FBTN" '@bash -c "button_click --normal PW_BLOOD_AND_SOUL"' \
     --field="   Star Conflict"!"$PW_GUI_ICON_PATH/starconflict.png"!"":"FBTN" '@bash -c "button_click --normal PW_STAR_CONFLICT"' \
+    --field="   GameXP"!"$PW_GUI_ICON_PATH/gamexp.png"!"":"FBTN" '@bash -c "button_click --normal PW_GAME_XP"' \
+    --field="   Lost Light"!"$PW_GUI_ICON_PATH/lostlight.png"!"":"FBTN" '@bash -c "button_click --normal PW_LOST_LIGHT"' \
     2>/dev/null &
 
     export START_FROM_PP_GUI="1"
