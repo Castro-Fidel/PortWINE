@@ -830,6 +830,14 @@ fi
         else
             export TAB_MAIN_MENU="4"
         fi
+        ;;
+    pw_find_exe)
+        if [[ -z "${PW_ALL_DF}" ]] ; then
+            export TAB_MAIN_MENU="5"
+        else
+            export TAB_MAIN_MENU="1"
+        fi
+        ;;
 esac
 
 [[ -n "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
