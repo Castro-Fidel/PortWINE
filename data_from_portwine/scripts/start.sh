@@ -249,14 +249,14 @@ case "$PW_GUI_START" in
               ;;
 esac
 
-pw_check_and_download_plugins
-
 if check_flatpak ; then
     if check_gamescope_session
     then PW_TERM="xterm -fullscreen -bg black -fg white -e"
     else PW_TERM="xterm -bg black -fg white -e"
     fi
 fi
+
+pw_check_and_download_plugins
 
 # check skip update
 if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
