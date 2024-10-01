@@ -156,6 +156,7 @@ change_locale
 
 export urlg="https://linux-gaming.ru/portproton/"
 export url_cloud="https://cloud.linux-gaming.ru/portproton"
+export url_git="https://git.linux-gaming.ru/CastroFidel/PortWINE"
 export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
 try_remove_dir "${PW_WINELIB}/var"
 install_ver="$(<"${PORT_WINE_TMP_PATH}/PortProton_ver")"
