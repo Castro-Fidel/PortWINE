@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Author: chal55rus
+########################################################################
+export PW_PREFIX_NAME="RISE_OF_FLIGHT"
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/ROF_UE.zip"
+export LAUNCH_PARAMETERS=("/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-")
+export PORTWINE_CREATE_SHORTCUT_NAME="Rise of Flight"
+
+start_portwine
+if try_download "https://il2bosrd1.cdnvideo.ru/ROF/ROF_UE.zip" "${PW_AUTOINSTALL_EXE}" no_mirror
+then
+    pw_start_progress_bar_install_game "Rise of Flight. \n Wait for it. It takes a long time."
+    "$pw_7z" x -y "${PW_AUTOINSTALL_EXE}" -o"$WINEPREFIX/drive_c/Program Files (x86)/1C-777/Rise of Flight"
+    pw_run "$WINEPREFIX/drive_c/Program Files (x86)/1C-777/Rise of Flight/ROF_UE/setup.exe"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/1C-777/Rise of Flight/bin_game/release/rof_updater.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    pw_stop_progress_bar
+    portwine_create_shortcut
+fi
+stop_portwine
