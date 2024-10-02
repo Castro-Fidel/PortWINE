@@ -754,7 +754,7 @@ else
     --field="   Star Conflict"!"$PW_GUI_ICON_PATH/starconflict.png"!"":"FBTN" '@bash -c "button_click --normal PW_STAR_CONFLICT"' \
     --field="   GameXP"!"$PW_GUI_ICON_PATH/gamexp.png"!"":"FBTN" '@bash -c "button_click --normal PW_GAME_XP"' \
     --field="   Lost Light"!"$PW_GUI_ICON_PATH/lostlight.png"!"":"FBTN" '@bash -c "button_click --normal PW_LOST_LIGHT"' \
-    --field="   Arizona Games Launchert"!"$PW_GUI_ICON_PATH/arizonagameslauncher.png"!"":"FBTN" '@bash -c "button_click --normal PW_ARIZONA_GAMES_LAUNCHER"' \
+    --field="   Arizona Games Launcher"!"$PW_GUI_ICON_PATH/arizonagameslauncher.png"!"":"FBTN" '@bash -c "button_click --normal PW_ARIZONA_GAMES_LAUNCHER"' \
     --field="   Rise of Flight"!"$PW_GUI_ICON_PATH/riseofflight.png"!"":"FBTN" '@bash -c "button_click --normal PW_RISE_OF_FLIGHT"' \
     2>/dev/null &
 
