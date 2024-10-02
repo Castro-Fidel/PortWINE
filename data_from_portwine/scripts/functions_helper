@@ -1880,7 +1880,8 @@ pw_port_update () {
         [[ "$LANGUAGE" == ru ]] && local PW_CHANGELOG_FILE="changelog_ru" || local PW_CHANGELOG_FILE="changelog_en"
         print_info "Scripts version in git = ${scripts_current_ver}"
         print_info "Scripts version local = ${scripts_install_ver}\n"
-        if [[ -n "${scripts_current_ver}" ]] &&  [[ "${scripts_current_ver}" -gt "${scripts_install_ver}" ]] ; then
+        if [[ -n "${scripts_current_ver}" ]] && [[ "${scripts_current_ver}" -gt "${scripts_install_ver}" ]] ; then
+            echo "2" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
             if [[ -f "${PW_GUI_THEMES_PATH}/gui/yad_gui_pp" ]]
             then export pw_yad="${PW_GUI_THEMES_PATH}/gui/yad_gui_pp"
             elif command -v yad &>/dev/null
@@ -1889,7 +1890,7 @@ pw_port_update () {
             fi
             if [[ "${pw_yad}" == "not_found" ]] \
             || [[ "$PW_CHANGE_BRANCH" == "1" ]] ; then
-                xcsd="${translations[UPDATING NOW]}"
+                YAD_STATUS=20
                 unset PW_CHANGE_BRANCH
             else
                 curl -s --list-only "${URL_FOR_CHANGELOG}/${PW_CHANGELOG_FILE}" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
@@ -1903,18 +1904,16 @@ pw_port_update () {
                 YAD_STATUS="$?"
 
                 # --button="${translations[EXIT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":252 \
-
-                try_remove_file "${PORT_WINE_TMP_PATH}/curent_var_ver"
-
-                case ${YAD_STATUS} in
-                    1|252) echo "2" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier" && exit 0 ;;
-                       16) xcsd="${translations[DO NOT REMIND ME]}" ;;
-                       18) xcsd="${translations[REMIND ME LATER]}" ;;
-                       20) xcsd="${translations[UPDATING NOW]}" ;;
-                esac
             fi
-            case $xcsd in
-                "${translations[UPDATING NOW]}")
+            try_remove_file "${PORT_WINE_TMP_PATH}/curent_var_ver"
+            case $YAD_STATUS in
+                1|252)
+                    exit 0 ;;
+                16)
+                    echo "0" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ;;
+                18)
+                    : ;;
+                20)
                     echo "######################################################"
                     print_info "Update scripts..."
                     try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-${BRANCH}.tar.gz"
@@ -1937,10 +1936,6 @@ pw_port_update () {
                     else
                         yad_error_download && pw_port_update || exit 1
                     fi ;;
-                "${translations[REMIND ME LATER]}")
-                    echo "2" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ;;
-                "${translations[DO NOT REMIND ME]}")
-                    echo "0" > "${PORT_WINE_TMP_PATH}/scripts_update_notifier" ;;
             esac
         fi
     fi
