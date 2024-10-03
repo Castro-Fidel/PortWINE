@@ -664,6 +664,7 @@ else
     --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
     --align-buttons --scroll --separator=" " ${PW_GENERATE_BUTTONS} 2>/dev/null &
     IFS="$orig_IFS"
+    unset PW_GENERATE_BUTTONS
 
     "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[3]}" --form --columns=3 --align-buttons --separator=";" --homogeneous-column \
     --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
@@ -693,70 +694,44 @@ else
     --field="   ${translations[Command line]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run wine cmd]}":"FBTN" '@bash -c "button_click --normal WINECMD"' \
     --field="   ${translations[Regedit]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run wine regedit]}":"FBTN" '@bash -c "button_click --normal WINEREG"' 1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
-    "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[1]}" --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll --homogeneous-column \
-    --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
-    --field="   Dolphin 5.0"!"$PW_GUI_ICON_PATH/dolphin.png"!"${translations[Emulator for Nintendo game consoles with high compatibility]}":"FBTN" '@bash -c "button_click --normal PW_DOLPHIN"' \
-    --field="   MAME"!"$PW_GUI_ICON_PATH/mame.png"!"${translations[Multi-arcade emulator that allows you to play old arcade games]}":"FBTN" '@bash -c "button_click --normal PW_MAME"' \
-    --field="   RetroArch"!"$PW_GUI_ICON_PATH/retroarch.png"!"${translations[Multi-platform frontend for emulators with extensive settings]}":"FBTN" '@bash -c "button_click --normal PW_RETROARCH"' \
-    --field="   PPSSPP Windows"!"$PW_GUI_ICON_PATH/ppsspp.png"!"${translations[Emulator for the PlayStation Portable (PSP) game console]}":"FBTN" '@bash -c "button_click --normal PW_PPSSPP"' \
-    --field="   Cemu"!"$PW_GUI_ICON_PATH/cemu.png"!"${translations[Emulator for the Wii U game console]}":"FBTN" '@bash -c "button_click --normal PW_CEMU"' \
-    --field="   ePSXe"!"$PW_GUI_ICON_PATH/epsxe.png"!"${translations[Emulator for the PlayStation 1 game console with high compatibility]}":"FBTN" '@bash -c "button_click --normal PW_EPSXE"' \
-    --field="   Project64"!"$PW_GUI_ICON_PATH/project64.png"!"${translations[Emulator for the Nintendo 64 game console]}":"FBTN" '@bash -c "button_click --normal PW_PROJECT64"' \
-    --field="   VBA-M"!"$PW_GUI_ICON_PATH/vba-m.png"!"${translations[Emulator for the Game Boy Advance game console]}":"FBTN" '@bash -c "button_click --normal PW_VBA-M"' \
-    --field="   Yabause"!"$PW_GUI_ICON_PATH/yabause.png"!"${translations[Emulator for the Sega Saturn game console]}":"FBTN" '@bash -c "button_click --normal PW_YABAUSE"' \
-    --field="   Xenia"!"$PW_GUI_ICON_PATH/xenia.png"!"${translations[Emulator for the Xbox 360 game console]}":"FBTN" '@bash -c "button_click --normal PW_XENIA"' \
-    --field="   FCEUX"!"$PW_GUI_ICON_PATH/fceux.png"!"${translations[Emulator for the Nintendo Entertainment System (NES or Dendy) game console]}":"FBTN" '@bash -c "button_click --normal PW_FCEUX"' \
-    --field="   xemu"!"$PW_GUI_ICON_PATH/xemu.png"!"${translations[Emulator for the Xbox game console]}":"FBTN" '@bash -c "button_click --normal PW_XEMU"' \
-    --field="   Demul"!"$PW_GUI_ICON_PATH/demul.png"!"${translations[Emulator for the Sega Dreamcast game console]}":"FBTN" '@bash -c "button_click --normal PW_DEMUL"' 2>/dev/null &
+    AI_AMOUNT_GAMES="0"
+    AI_AMOUNT_EMULS="0"
+    for ai_file in "$PORT_SCRIPTS_PATH"/pw_autoinstall/* ; do
+        AI_FILE="${ai_file//"$PORT_SCRIPTS_PATH/pw_autoinstall/"/}"
+        while IFS= read -r line ; do
+            [[ $line =~ "##########" ]] && break
+            [[ $line =~ "# type: " ]] && AI_TYPE="${line//"# type: "/}"
+            [[ $line =~ "# name: " ]] && AI_NAME="${line//"# name: "/}"
+            [[ $line =~ "# image: " ]] && AI_IMAGE="${line//"# image: "/}"
+            if [[ "$LANGUAGE" == ru ]] ; then
+                [[ $line =~ "# info_ru: " ]] && AI_INFO="${line//"# info_ru: "/}"
+            else
+                [[ $line =~ "# info_en: " ]] && AI_INFO="${line//"# info_en: "/}"
+            fi
+        done < "$ai_file"
 
+        IFS=$'\n'
+        case "$AI_TYPE" in
+            games) 
+                PW_GENERATE_BUTTONS_GAMES+="--field=   $AI_NAME!${PW_GUI_ICON_PATH}/${AI_IMAGE}.png!$AI_INFO:FBTNR%@bash -c \"button_click --normal ${AI_FILE}\"%"
+                (( AI_AMOUNT_GAMES++ ))
+                ;;
+            emulators) 
+                PW_GENERATE_BUTTONS_EMUL+="--field=   $AI_NAME!${PW_GUI_ICON_PATH}/${AI_IMAGE}.png!$AI_INFO:FBTNR%@bash -c \"button_click --normal ${AI_FILE}\"%"
+                (( AI_AMOUNT_EMULS++ ))
+                ;;
+        esac
+        unset AI_FILE AI_TYPE AI_NAME AI_IMAGE AI_INFO
+    done
+    export MAIN_GUI_COLUMNS_ROWS="$(( $AI_AMOUNT_GAMES / $MAIN_GUI_COLUMNS ))"
+    
+    IFS="%"
+    "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[1]}" --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll --homogeneous-column \
+    --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" --separator=" " ${PW_GENERATE_BUTTONS_EMUL} 2>/dev/null &
     "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[0]}" --form --columns="$MAIN_GUI_COLUMNS_ROWS" --align-buttons --scroll --homogeneous-column \
-    --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
-    --field="   Battle.net Launcher"!"$PW_GUI_ICON_PATH/battle_net.png"!"":"FBTNR" '@bash -c "button_click --normal PW_BATTLE_NET"' \
-    --field="   Epic Games Launcher"!"$PW_GUI_ICON_PATH/epicgames.png"!"":"FBTNR" '@bash -c "button_click --normal PW_EPIC"' \
-    --field="   EA App (TEST)"!"$PW_GUI_ICON_PATH/eaapp.png"!"":"FBTNR" '@bash -c "button_click --normal PW_EAAPP"' \
-    --field="   GoG Galaxy Launcher"!"$PW_GUI_ICON_PATH/gog.png"!"":"FBTNR" '@bash -c "button_click --normal PW_GOG"' \
-    --field="   Rockstar Games Launcher"!"$PW_GUI_ICON_PATH/Rockstar.png"!"":"FBTNR" '@bash -c "button_click --normal PW_ROCKSTAR"' \
-    --field="   Ubisoft Game Launcher"!"$PW_GUI_ICON_PATH/ubc.png"!"":"FBTNR" '@bash -c "button_click --normal PW_UBISOFT"' \
-    --field="   vkPlay Games Center"!"$PW_GUI_ICON_PATH/mygames.png"!"":"FBTNR" '@bash -c "button_click --normal PW_VKPLAY"' \
-    --field="   Ankama Launcher"!"$PW_GUI_ICON_PATH/ankama.png"!"":"FBTNR" '@bash -c "button_click --normal PW_ANKAMA"' \
-    --field="   Anomaly Zone"!"$PW_GUI_ICON_PATH/anomalyzone.png"!"":"FBTNR" '@bash -c "button_click --normal PW_ANOMALY_ZONE"' \
-    --field="   Arizona Games Launcher"!"$PW_GUI_ICON_PATH/arizonagameslauncher.png"!"":"FBTNR" '@bash -c "button_click --normal PW_ARIZONA_GAMES_LAUNCHER"' \
-    --field="   Battle Of Space Raiders"!"$PW_GUI_ICON_PATH/bsr.png"!"":"FBTNR" '@bash -c "button_click --normal PW_BSR"' \
-    --field="   Black Desert Online (RU)"!"$PW_GUI_ICON_PATH/bdo.png"!"":"FBTNR" '@bash -c "button_click --normal PW_BDO"' \
-    --field="   Blood and Soul"!"$PW_GUI_ICON_PATH/bloodandsoul.png"!"":"FBTNR" '@bash -c "button_click --normal PW_BLOOD_AND_SOUL"' \
-    --field="   CALIBER"!"$PW_GUI_ICON_PATH/caliber.png"!"":"FBTNR" '@bash -c "button_click --normal PW_CALIBER"' \
-    --field="   CatsLauncher (Front Edge)"!"$PW_GUI_ICON_PATH/catslauncher.png"!"":"FBTNR" '@bash -c "button_click --normal PW_CATSLAUNCHER"' \
-    --field="   CONTRACT WARS"!"$PW_GUI_ICON_PATH/cwc.png"!"":"FBTNR" '@bash -c "button_click --normal PW_CWC"' \
-    --field="   Crossout"!"$PW_GUI_ICON_PATH/crossout.png"!"":"FBTNR" '@bash -c "button_click --normal PW_CROSSOUT"' \
-    --field="   EVE Online Launcher"!"$PW_GUI_ICON_PATH/eve.png"!"":"FBTNR" '@bash -c "button_click --normal PW_EVE"' \
-    --field="   Farlight 84"!"$PW_GUI_ICON_PATH/farlight84.png"!"":"FBTNR" '@bash -c "button_click --normal PW_FARLIGHT84"' \
-    --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png"!"":"FBTNR" '@bash -c "button_click --normal  PW_GAMEFORGE"' \
-    --field="   GameXP"!"$PW_GUI_ICON_PATH/gamexp.png"!"":"FBTNR" '@bash -c "button_click --normal PW_GAME_XP"' \
-    --field="   Guild Wars 2"!"$PW_GUI_ICON_PATH/gw2.png"!"":"FBTNR" '@bash -c "button_click --normal PW_GUILD_WARS_2"' \
-    --field="   HoYoPlay"!"$PW_GUI_ICON_PATH/hoyoplay.png"!"":"FBTNR" '@bash -c "button_click --normal PW_HO_YO_PLAY"' \
-    --field="   Indiegala Client"!"$PW_GUI_ICON_PATH/igclient.png"!"":"FBTNR" '@bash -c "button_click --normal PW_IGCLIENT"' \
-    --field="   ITCH.IO"!"$PW_GUI_ICON_PATH/itch.png"!"":"FBTNR" '@bash -c "button_click --normal PW_ITCH"' \
-    --field="   Lesta Game Center"!"$PW_GUI_ICON_PATH/lgc.png"!"":"FBTNR" '@bash -c "button_click --normal PW_LGC"' \
-    --field="   Lost Light"!"$PW_GUI_ICON_PATH/lostlight.png"!"":"FBTNR" '@bash -c "button_click --normal PW_LOST_LIGHT"' \
-    --field="   Metal War Online"!"$PW_GUI_ICON_PATH/mwo.png"!"":"FBTNR" '@bash -c "button_click --normal PW_MWO"' \
-    --field="   Modern Warships"!"$PW_GUI_ICON_PATH/mw.png"!"":"FBTNR" '@bash -c "button_click --normal PW_MW"' \
-    --field="   OSU"!"$PW_GUI_ICON_PATH/osu.png"!"":"FBTNR" '@bash -c "button_click --normal PW_OSU"' \
-    --field="   Panzar"!"$PW_GUI_ICON_PATH/panzar.png"!"":"FBTNR" '@bash -c "button_click --normal PW_PANZAR"' \
-    --field="   Path of Exile"!"$PW_GUI_ICON_PATH/poe.png"!"":"FBTNR" '@bash -c "button_click --normal PW_POE"' \
-    --field="   Plarium Play"!"$PW_GUI_ICON_PATH/plariumplay.png"!"":"FBTNR" '@bash -c "button_click --normal PW_PLARIUM_PLAY"' \
-    --field="   Pulse Online"!"$PW_GUI_ICON_PATH/pulseonline.png"!"":"FBTNR" '@bash -c "button_click --normal PW_PULSE_ONLINE"' \
-    --field="   Rise of Flight"!"$PW_GUI_ICON_PATH/riseofflight.png"!"":"FBTNR" '@bash -c "button_click --normal PW_RISE_OF_FLIGHT"' \
-    --field="   Russian Fishing 4"!"$PW_GUI_ICON_PATH/rf4launcher.png"!"":"FBTNR" '@bash -c "button_click --normal PW_RUSSIAN_FISHING"' \
-    --field="   Secret World Legends (ENG)"!"$PW_GUI_ICON_PATH/swl.png"!"":"FBTNR" '@bash -c "button_click --normal PW_SWL"' \
-    --field="   STALCRAFT"!"$PW_GUI_ICON_PATH/stalcraft.png"!"":"FBTNR" '@bash -c "button_click --normal PW_STALCRAFT"' \
-    --field="   Stalker Online"!"$PW_GUI_ICON_PATH/so.png"!"":"FBTNR" '@bash -c "button_click --normal PW_SO"' \
-    --field="   Star Conflict"!"$PW_GUI_ICON_PATH/starconflict.png"!"":"FBTNR" '@bash -c "button_click --normal PW_STAR_CONFLICT"' \
-    --field="   Steam (unstable)"!"$PW_GUI_ICON_PATH/steam.png"!"":"FBTNR" '@bash -c "button_click --normal PW_STEAM"' \
-    --field="   W3D Hub Launcher"!"$PW_GUI_ICON_PATH/w3dhub.png"!"":"FBTNR" '@bash -c "button_click --normal PW_W3D_HUB"' \
-    --field="   Warframe"!"$PW_GUI_ICON_PATH/warframe.png"!"":"FBTNR" '@bash -c "button_click --normal PW_WARFRAME"' \
-    --field="   Wargaming Game Center"!"$PW_GUI_ICON_PATH/wgc.png"!"":"FBTNR" '@bash -c "button_click --normal PW_WGC"' \
-    --field="   World of Sea Battle"!"$PW_GUI_ICON_PATH/wosb.png"!"":"FBTNR" '@bash -c "button_click --normal PW_WORLD_OF_SEA_BATTLE"' \
-    2>/dev/null &
+    --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" --separator=" " ${PW_GENERATE_BUTTONS_GAMES} 2>/dev/null &
+    IFS="$orig_IFS"
+    unset PW_GENERATE_BUTTONS_GAMES PW_GENERATE_BUTTONS_EMUL
 
     export START_FROM_PP_GUI="1"
     if [[ -z ${TAB_MAIN_MENU} ]] ; then
