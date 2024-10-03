@@ -3236,9 +3236,10 @@ start_portwine () {
     if ! check_start_from_steam ; then
         pw_tray_icon
         sleep 0.5
-        if [[ "${PW_CHECK_AUTOINSTALL}" != "1" ]] ; then
+    fi
+
+    if [[ "${PW_CHECK_AUTOINSTALL}" != "1" ]] ; then
             pw_start_progress_bar_cover "${COVERS_PATH}/loading_${LANGUAGE_GIF}.gif"
-        fi
     fi
     add_in_start_portwine
 
@@ -3653,15 +3654,19 @@ yad_question () {
 }
 
 pw_start_progress_bar_cover () {
-    if ! check_start_from_steam ; then
+    if check_gamescope_session ; then
+        PW_GIF_FILE="${COVERS_PATH}/loading_deck.gif"
+        "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated --fullscreen --skip-taskbar > /dev/null 2>&1 &
+        export PW_YAD_PID_PROGRESS_BAR_COVER="$!"
+    elif ! check_start_from_steam ; then
         PW_GIF_FILE="$1"
         PW_GIF_SIZE_X=$(file "${PW_GIF_FILE}" | awk '{print $7 + 8}')
         PW_GIF_SIZE_Y=$(file "${PW_GIF_FILE}" | awk '{print $9 + 15}')
         "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated \
         --skip-taskbar --width="$PW_GIF_SIZE_X" --height="$PW_GIF_SIZE_Y" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" > /dev/null 2>&1 &
         export PW_YAD_PID_PROGRESS_BAR_COVER="$!"
-        return 0
     fi
+    return 0
 }
 
 pw_start_progress_bar_cover_block () {
@@ -3678,7 +3683,10 @@ pw_start_progress_bar_cover_block () {
 }
 
 pw_update_pfx_cover_gui () {
-    if [[ "$1" == "winetricks" ]] ; then
+    if check_gamescope_session ; then
+        pw_start_progress_bar_cover
+        return 0
+    elif [[ "$1" == "winetricks" ]] ; then
         TAB_PLACE="--tab=${translations[TERMINAL]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png --tab=${translations[LOGO]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png"
         TAB_N1=2
         TAB_N2=1
