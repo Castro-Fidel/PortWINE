@@ -21,6 +21,16 @@ if [[ $(id -u) = 0 ]] ; then
     exit 1
 fi
 
+if PORT_SCRIPTS_PATH=$(readlink -f "${0%/*}") ; then
+    export PORT_SCRIPTS_PATH
+    export PORT_WINE_PATH=${PORT_SCRIPTS_PATH%/*/*}
+else
+    fatal
+fi
+
+# shellcheck source=/dev/null
+source "$PORT_SCRIPTS_PATH/functions_helper"
+
 export PW_START_PID="$$"
 export NO_AT_BRIDGE="1"
 export GDK_BACKEND="x11"
@@ -65,16 +75,6 @@ then
     export portwine_exe
     MISSING_DESKTOP_FILE="0"
 fi
-
-if PORT_SCRIPTS_PATH="$(readlink -f "${0%/*}")" ; then
-    export PORT_SCRIPTS_PATH
-    export PORT_WINE_PATH="${PORT_SCRIPTS_PATH%/*/*}"
-else
-    fatal
-fi
-
-# shellcheck source=/dev/null
-source "${PORT_SCRIPTS_PATH}/functions_helper"
 
 create_new_dir "${HOME}/.local/share/applications"
 if [[ "${PW_SILENT_RESTART}" == "1" ]] \
@@ -709,53 +709,53 @@ else
     --field="   xemu"!"$PW_GUI_ICON_PATH/xemu.png"!"${translations[Emulator for the Xbox game console]}":"FBTN" '@bash -c "button_click --normal PW_XEMU"' \
     --field="   Demul"!"$PW_GUI_ICON_PATH/demul.png"!"${translations[Emulator for the Sega Dreamcast game console]}":"FBTN" '@bash -c "button_click --normal PW_DEMUL"' 2>/dev/null &
 
-    "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[0]}" --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll --homogeneous-column \
+    "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[0]}" --form --columns="$MAIN_GUI_COLUMNS_ROWS" --align-buttons --scroll --homogeneous-column \
     --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
-    --field="   Lesta Game Center"!"$PW_GUI_ICON_PATH/lgc.png"!"":"FBTN" '@bash -c "button_click --normal PW_LGC"' \
-    --field="   vkPlay Games Center"!"$PW_GUI_ICON_PATH/mygames.png"!"":"FBTN" '@bash -c "button_click --normal PW_VKPLAY"' \
-    --field="   Battle.net Launcher"!"$PW_GUI_ICON_PATH/battle_net.png"!"":"FBTN" '@bash -c "button_click --normal PW_BATTLE_NET"' \
-    --field="   Epic Games Launcher"!"$PW_GUI_ICON_PATH/epicgames.png"!"":"FBTN" '@bash -c "button_click --normal PW_EPIC"' \
-    --field="   GoG Galaxy Launcher"!"$PW_GUI_ICON_PATH/gog.png"!"":"FBTN" '@bash -c "button_click --normal PW_GOG"' \
-    --field="   Ubisoft Game Launcher"!"$PW_GUI_ICON_PATH/ubc.png"!"":"FBTN" '@bash -c "button_click --normal PW_UBISOFT"' \
-    --field="   EVE Online Launcher"!"$PW_GUI_ICON_PATH/eve.png"!"":"FBTN" '@bash -c "button_click --normal PW_EVE"' \
-    --field="   Rockstar Games Launcher"!"$PW_GUI_ICON_PATH/Rockstar.png"!"":"FBTN" '@bash -c "button_click --normal PW_ROCKSTAR"' \
-    --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png"!"":"FBTN" '@bash -c "button_click --normal  PW_GAMEFORGE"' \
-    --field="   World of Sea Battle"!"$PW_GUI_ICON_PATH/wosb.png"!"":"FBTN" '@bash -c "button_click --normal PW_WORLD_OF_SEA_BATTLE"' \
-    --field="   CALIBER"!"$PW_GUI_ICON_PATH/caliber.png"!"":"FBTN" '@bash -c "button_click --normal PW_CALIBER"' \
-    --field="   Crossout"!"$PW_GUI_ICON_PATH/crossout.png"!"":"FBTN" '@bash -c "button_click --normal PW_CROSSOUT"' \
-    --field="   Warframe"!"$PW_GUI_ICON_PATH/warframe.png"!"":"FBTN" '@bash -c "button_click --normal PW_WARFRAME"' \
-    --field="   Panzar"!"$PW_GUI_ICON_PATH/panzar.png"!"":"FBTN" '@bash -c "button_click --normal PW_PANZAR"' \
-    --field="   STALCRAFT"!"$PW_GUI_ICON_PATH/stalcraft.png"!"":"FBTN" '@bash -c "button_click --normal PW_STALCRAFT"' \
-    --field="   CONTRACT WARS"!"$PW_GUI_ICON_PATH/cwc.png"!"":"FBTN" '@bash -c "button_click --normal PW_CWC"' \
-    --field="   Stalker Online"!"$PW_GUI_ICON_PATH/so.png"!"":"FBTN" '@bash -c "button_click --normal PW_SO"' \
-    --field="   Modern Warships"!"$PW_GUI_ICON_PATH/mw.png"!"":"FBTN" '@bash -c "button_click --normal PW_MW"' \
-    --field="   Metal War Online"!"$PW_GUI_ICON_PATH/mwo.png"!"":"FBTN" '@bash -c "button_click --normal PW_MWO"' \
-    --field="   Ankama Launcher"!"$PW_GUI_ICON_PATH/ankama.png"!"":"FBTN" '@bash -c "button_click --normal PW_ANKAMA"' \
-    --field="   Indiegala Client"!"$PW_GUI_ICON_PATH/igclient.png"!"":"FBTN" '@bash -c "button_click --normal PW_IGCLIENT"' \
-    --field="   Plarium Play"!"$PW_GUI_ICON_PATH/plariumplay.png"!"":"FBTN" '@bash -c "button_click --normal PW_PLARIUM_PLAY"' \
-    --field="   Wargaming Game Center"!"$PW_GUI_ICON_PATH/wgc.png"!"":"FBTN" '@bash -c "button_click --normal PW_WGC"' \
-    --field="   OSU"!"$PW_GUI_ICON_PATH/osu.png"!"":"FBTN" '@bash -c "button_click --normal PW_OSU"' \
-    --field="   ITCH.IO"!"$PW_GUI_ICON_PATH/itch.png"!"":"FBTN" '@bash -c "button_click --normal PW_ITCH"' \
-    --field="   Steam (unstable)"!"$PW_GUI_ICON_PATH/steam.png"!"":"FBTN" '@bash -c "button_click --normal PW_STEAM"' \
-    --field="   Path of Exile"!"$PW_GUI_ICON_PATH/poe.png"!"":"FBTN" '@bash -c "button_click --normal PW_POE"' \
-    --field="   Guild Wars 2"!"$PW_GUI_ICON_PATH/gw2.png"!"":"FBTN" '@bash -c "button_click --normal PW_GUILD_WARS_2"' \
-    --field="   HoYoPlay"!"$PW_GUI_ICON_PATH/hoyoplay.png"!"":"FBTN" '@bash -c "button_click --normal PW_HO_YO_PLAY"' \
-    --field="   EA App (TEST)"!"$PW_GUI_ICON_PATH/eaapp.png"!"":"FBTN" '@bash -c "button_click --normal PW_EAAPP"' \
-    --field="   Battle Of Space Raiders"!"$PW_GUI_ICON_PATH/bsr.png"!"":"FBTN" '@bash -c "button_click --normal PW_BSR"' \
-    --field="   Black Desert Online (RU)"!"$PW_GUI_ICON_PATH/bdo.png"!"":"FBTN" '@bash -c "button_click --normal PW_BDO"' \
-    --field="   Pulse Online"!"$PW_GUI_ICON_PATH/pulseonline.png"!"":"FBTN" '@bash -c "button_click --normal PW_PULSE_ONLINE"' \
-    --field="   CatsLauncher (Front Edge)"!"$PW_GUI_ICON_PATH/catslauncher.png"!"":"FBTN" '@bash -c "button_click --normal PW_CATSLAUNCHER"' \
-    --field="   Russian Fishing 4"!"$PW_GUI_ICON_PATH/rf4launcher.png"!"":"FBTN" '@bash -c "button_click --normal PW_RUSSIAN_FISHING"' \
-    --field="   W3D Hub Launcher"!"$PW_GUI_ICON_PATH/w3dhub.png"!"":"FBTN" '@bash -c "button_click --normal PW_W3D_HUB"' \
-    --field="   Anomaly Zone"!"$PW_GUI_ICON_PATH/anomalyzone.png"!"":"FBTN" '@bash -c "button_click --normal PW_ANOMALY_ZONE"' \
-    --field="   Farlight 84"!"$PW_GUI_ICON_PATH/farlight84.png"!"":"FBTN" '@bash -c "button_click --normal PW_FARLIGHT84"' \
-    --field="   Secret World Legends (ENG)"!"$PW_GUI_ICON_PATH/swl.png"!"":"FBTN" '@bash -c "button_click --normal PW_SWL"' \
-    --field="   Blood and Soul"!"$PW_GUI_ICON_PATH/bloodandsoul.png"!"":"FBTN" '@bash -c "button_click --normal PW_BLOOD_AND_SOUL"' \
-    --field="   Star Conflict"!"$PW_GUI_ICON_PATH/starconflict.png"!"":"FBTN" '@bash -c "button_click --normal PW_STAR_CONFLICT"' \
-    --field="   GameXP"!"$PW_GUI_ICON_PATH/gamexp.png"!"":"FBTN" '@bash -c "button_click --normal PW_GAME_XP"' \
-    --field="   Lost Light"!"$PW_GUI_ICON_PATH/lostlight.png"!"":"FBTN" '@bash -c "button_click --normal PW_LOST_LIGHT"' \
-    --field="   Arizona Games Launcher"!"$PW_GUI_ICON_PATH/arizonagameslauncher.png"!"":"FBTN" '@bash -c "button_click --normal PW_ARIZONA_GAMES_LAUNCHER"' \
-    --field="   Rise of Flight"!"$PW_GUI_ICON_PATH/riseofflight.png"!"":"FBTN" '@bash -c "button_click --normal PW_RISE_OF_FLIGHT"' \
+    --field="   Lesta Game Center"!"$PW_GUI_ICON_PATH/lgc.png"!"":"FBTNR" '@bash -c "button_click --normal PW_LGC"' \
+    --field="   vkPlay Games Center"!"$PW_GUI_ICON_PATH/mygames.png"!"":"FBTNR" '@bash -c "button_click --normal PW_VKPLAY"' \
+    --field="   Battle.net Launcher"!"$PW_GUI_ICON_PATH/battle_net.png"!"":"FBTNR" '@bash -c "button_click --normal PW_BATTLE_NET"' \
+    --field="   Epic Games Launcher"!"$PW_GUI_ICON_PATH/epicgames.png"!"":"FBTNR" '@bash -c "button_click --normal PW_EPIC"' \
+    --field="   GoG Galaxy Launcher"!"$PW_GUI_ICON_PATH/gog.png"!"":"FBTNR" '@bash -c "button_click --normal PW_GOG"' \
+    --field="   Ubisoft Game Launcher"!"$PW_GUI_ICON_PATH/ubc.png"!"":"FBTNR" '@bash -c "button_click --normal PW_UBISOFT"' \
+    --field="   EVE Online Launcher"!"$PW_GUI_ICON_PATH/eve.png"!"":"FBTNR" '@bash -c "button_click --normal PW_EVE"' \
+    --field="   Rockstar Games Launcher"!"$PW_GUI_ICON_PATH/Rockstar.png"!"":"FBTNR" '@bash -c "button_click --normal PW_ROCKSTAR"' \
+    --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png"!"":"FBTNR" '@bash -c "button_click --normal  PW_GAMEFORGE"' \
+    --field="   World of Sea Battle"!"$PW_GUI_ICON_PATH/wosb.png"!"":"FBTNR" '@bash -c "button_click --normal PW_WORLD_OF_SEA_BATTLE"' \
+    --field="   CALIBER"!"$PW_GUI_ICON_PATH/caliber.png"!"":"FBTNR" '@bash -c "button_click --normal PW_CALIBER"' \
+    --field="   Crossout"!"$PW_GUI_ICON_PATH/crossout.png"!"":"FBTNR" '@bash -c "button_click --normal PW_CROSSOUT"' \
+    --field="   Warframe"!"$PW_GUI_ICON_PATH/warframe.png"!"":"FBTNR" '@bash -c "button_click --normal PW_WARFRAME"' \
+    --field="   Panzar"!"$PW_GUI_ICON_PATH/panzar.png"!"":"FBTNR" '@bash -c "button_click --normal PW_PANZAR"' \
+    --field="   STALCRAFT"!"$PW_GUI_ICON_PATH/stalcraft.png"!"":"FBTNR" '@bash -c "button_click --normal PW_STALCRAFT"' \
+    --field="   CONTRACT WARS"!"$PW_GUI_ICON_PATH/cwc.png"!"":"FBTNR" '@bash -c "button_click --normal PW_CWC"' \
+    --field="   Stalker Online"!"$PW_GUI_ICON_PATH/so.png"!"":"FBTNR" '@bash -c "button_click --normal PW_SO"' \
+    --field="   Modern Warships"!"$PW_GUI_ICON_PATH/mw.png"!"":"FBTNR" '@bash -c "button_click --normal PW_MW"' \
+    --field="   Metal War Online"!"$PW_GUI_ICON_PATH/mwo.png"!"":"FBTNR" '@bash -c "button_click --normal PW_MWO"' \
+    --field="   Ankama Launcher"!"$PW_GUI_ICON_PATH/ankama.png"!"":"FBTNR" '@bash -c "button_click --normal PW_ANKAMA"' \
+    --field="   Indiegala Client"!"$PW_GUI_ICON_PATH/igclient.png"!"":"FBTNR" '@bash -c "button_click --normal PW_IGCLIENT"' \
+    --field="   Plarium Play"!"$PW_GUI_ICON_PATH/plariumplay.png"!"":"FBTNR" '@bash -c "button_click --normal PW_PLARIUM_PLAY"' \
+    --field="   Wargaming Game Center"!"$PW_GUI_ICON_PATH/wgc.png"!"":"FBTNR" '@bash -c "button_click --normal PW_WGC"' \
+    --field="   OSU"!"$PW_GUI_ICON_PATH/osu.png"!"":"FBTNR" '@bash -c "button_click --normal PW_OSU"' \
+    --field="   ITCH.IO"!"$PW_GUI_ICON_PATH/itch.png"!"":"FBTNR" '@bash -c "button_click --normal PW_ITCH"' \
+    --field="   Steam (unstable)"!"$PW_GUI_ICON_PATH/steam.png"!"":"FBTNR" '@bash -c "button_click --normal PW_STEAM"' \
+    --field="   Path of Exile"!"$PW_GUI_ICON_PATH/poe.png"!"":"FBTNR" '@bash -c "button_click --normal PW_POE"' \
+    --field="   Guild Wars 2"!"$PW_GUI_ICON_PATH/gw2.png"!"":"FBTNR" '@bash -c "button_click --normal PW_GUILD_WARS_2"' \
+    --field="   HoYoPlay"!"$PW_GUI_ICON_PATH/hoyoplay.png"!"":"FBTNR" '@bash -c "button_click --normal PW_HO_YO_PLAY"' \
+    --field="   EA App (TEST)"!"$PW_GUI_ICON_PATH/eaapp.png"!"":"FBTNR" '@bash -c "button_click --normal PW_EAAPP"' \
+    --field="   Battle Of Space Raiders"!"$PW_GUI_ICON_PATH/bsr.png"!"":"FBTNR" '@bash -c "button_click --normal PW_BSR"' \
+    --field="   Black Desert Online (RU)"!"$PW_GUI_ICON_PATH/bdo.png"!"":"FBTNR" '@bash -c "button_click --normal PW_BDO"' \
+    --field="   Pulse Online"!"$PW_GUI_ICON_PATH/pulseonline.png"!"":"FBTNR" '@bash -c "button_click --normal PW_PULSE_ONLINE"' \
+    --field="   CatsLauncher (Front Edge)"!"$PW_GUI_ICON_PATH/catslauncher.png"!"":"FBTNR" '@bash -c "button_click --normal PW_CATSLAUNCHER"' \
+    --field="   Russian Fishing 4"!"$PW_GUI_ICON_PATH/rf4launcher.png"!"":"FBTNR" '@bash -c "button_click --normal PW_RUSSIAN_FISHING"' \
+    --field="   W3D Hub Launcher"!"$PW_GUI_ICON_PATH/w3dhub.png"!"":"FBTNR" '@bash -c "button_click --normal PW_W3D_HUB"' \
+    --field="   Anomaly Zone"!"$PW_GUI_ICON_PATH/anomalyzone.png"!"":"FBTNR" '@bash -c "button_click --normal PW_ANOMALY_ZONE"' \
+    --field="   Farlight 84"!"$PW_GUI_ICON_PATH/farlight84.png"!"":"FBTNR" '@bash -c "button_click --normal PW_FARLIGHT84"' \
+    --field="   Secret World Legends (ENG)"!"$PW_GUI_ICON_PATH/swl.png"!"":"FBTNR" '@bash -c "button_click --normal PW_SWL"' \
+    --field="   Blood and Soul"!"$PW_GUI_ICON_PATH/bloodandsoul.png"!"":"FBTNR" '@bash -c "button_click --normal PW_BLOOD_AND_SOUL"' \
+    --field="   Star Conflict"!"$PW_GUI_ICON_PATH/starconflict.png"!"":"FBTNR" '@bash -c "button_click --normal PW_STAR_CONFLICT"' \
+    --field="   GameXP"!"$PW_GUI_ICON_PATH/gamexp.png"!"":"FBTNR" '@bash -c "button_click --normal PW_GAME_XP"' \
+    --field="   Lost Light"!"$PW_GUI_ICON_PATH/lostlight.png"!"":"FBTNR" '@bash -c "button_click --normal PW_LOST_LIGHT"' \
+    --field="   Arizona Games Launcher"!"$PW_GUI_ICON_PATH/arizonagameslauncher.png"!"":"FBTNR" '@bash -c "button_click --normal PW_ARIZONA_GAMES_LAUNCHER"' \
+    --field="   Rise of Flight"!"$PW_GUI_ICON_PATH/riseofflight.png"!"":"FBTNR" '@bash -c "button_click --normal PW_RISE_OF_FLIGHT"' \
     2>/dev/null &
 
     export START_FROM_PP_GUI="1"
