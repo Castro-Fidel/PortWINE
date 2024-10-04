@@ -697,65 +697,66 @@ else
     --field="   ${translations[Command line]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run wine cmd]}":"FBTN" '@bash -c "button_click --normal WINECMD"' \
     --field="   ${translations[Regedit]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run wine regedit]}":"FBTN" '@bash -c "button_click --normal WINEREG"' 1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
-    AI_AMOUNT_GAMES="0" && AI_AMOUNT_EMULS="0" && AI_AMOUNT_ARRAY="0"
-    AI_TOP_GAMES="PW_LGC PW_VKPLAY PW_EPIC PW_BATTLE_NET"
-    for ai_file in "$PORT_SCRIPTS_PATH"/pw_autoinstall/* ; do
-        while IFS= read -r line ; do
-            [[ $line =~ "##########" ]] && break
-            [[ $line =~ "# type: " ]] && AI_TYPE["$AI_AMOUNT_ARRAY"]="${line//# type: /}"
-            [[ $line =~ "# name: " ]] && AI_NAME["$AI_AMOUNT_ARRAY"]="${line//# name: /}"
-            [[ $line =~ "# image: " ]] && AI_IMAGE["$AI_AMOUNT_ARRAY"]="${line//# image: /}"
-            if [[ "$LANGUAGE" == ru ]] ; then
-                [[ $line =~ "# info_ru: " ]] && AI_INFO["$AI_AMOUNT_ARRAY"]="${line//# info_ru: /}"
+    if [[ $AI_SKIP != 1 ]] ; then
+        AI_AMOUNT_GAMES="0" && AI_AMOUNT_EMULS="0" && AI_AMOUNT_ARRAY="0"
+        AI_TOP_GAMES="PW_LGC PW_VKPLAY PW_EPIC PW_BATTLE_NET"
+        for ai_file in "$PORT_SCRIPTS_PATH"/pw_autoinstall/* ; do
+            while IFS= read -r line ; do
+                [[ $line =~ "##########" ]] && break
+                [[ $line =~ "# type: " ]] && AI_TYPE["$AI_AMOUNT_ARRAY"]="${line//# type: /}"
+                [[ $line =~ "# name: " ]] && AI_NAME["$AI_AMOUNT_ARRAY"]="${line//# name: /}"
+                [[ $line =~ "# image: " ]] && AI_IMAGE["$AI_AMOUNT_ARRAY"]="${line//# image: /}"
+                if [[ "$LANGUAGE" == ru ]] ; then
+                    [[ $line =~ "# info_ru: " ]] && AI_INFO["$AI_AMOUNT_ARRAY"]="${line//# info_ru: /}"
+                else
+                    [[ $line =~ "# info_en: " ]] && AI_INFO["$AI_AMOUNT_ARRAY"]="${line//# info_en: /}"
+                fi
+            done < "$ai_file"
+            AI_FILE="${ai_file//"$PORT_SCRIPTS_PATH/pw_autoinstall/"/}"
+            AI_FILE_CHECK="$AI_FILE=$AI_AMOUNT_ARRAY"
+            AI_FILE_ARRAY+=($AI_FILE)
+            if [[ $AI_TOP_GAMES =~ ${AI_FILE_CHECK//=*/} ]] ; then
+                AI_TRUE_FILE+=($AI_FILE_CHECK)
             else
-                [[ $line =~ "# info_en: " ]] && AI_INFO["$AI_AMOUNT_ARRAY"]="${line//# info_en: /}"
+                AI_FILE_UNSORTED+=($AI_AMOUNT_ARRAY)
             fi
-        done < "$ai_file"
-        AI_FILE="${ai_file//"$PORT_SCRIPTS_PATH/pw_autoinstall/"/}"
-        AI_FILE_CHECK="$AI_FILE=$AI_AMOUNT_ARRAY"
-        AI_FILE_ARRAY+=($AI_FILE)
-        if [[ $AI_TOP_GAMES =~ ${AI_FILE_CHECK//=*/} ]] ; then
-            AI_TRUE_FILE+=($AI_FILE_CHECK)
-        else
-            AI_FILE_UNSORTED+=($AI_AMOUNT_ARRAY)
-        fi
-        (( AI_AMOUNT_ARRAY++ ))
-    done
+            (( AI_AMOUNT_ARRAY++ ))
+        done
 
-    unset AI_FILE_SORTED
-    for ai_sort in $AI_TOP_GAMES ; do
-        if [[ ${AI_TRUE_FILE[*]} =~ $ai_sort ]] ; then
-            AI_TRUE_FILE_NEW=(${AI_TRUE_FILE[@]//$ai_sort=/})
-            AI_FILE_SORTED+=(${AI_TRUE_FILE_NEW[@]//*=*/})
-        fi
-    done
+        for ai_sort in $AI_TOP_GAMES ; do
+            if [[ ${AI_TRUE_FILE[*]} =~ $ai_sort ]] ; then
+                AI_TRUE_FILE_NEW=(${AI_TRUE_FILE[@]//$ai_sort=/})
+                AI_FILE_SORTED+=(${AI_TRUE_FILE_NEW[@]//*=*/})
+            fi
+        done
 
-    IFS=$'\n'
-    for ai in "${AI_FILE_SORTED[@]}" "${AI_FILE_UNSORTED[@]}" ; do
-        case ${AI_TYPE[$ai]} in
-            games)
-                PW_GENERATE_BUTTONS_GAMES+="--field=   ${AI_NAME[$ai]}!$PW_GUI_ICON_PATH/${AI_IMAGE[$ai]}.png!${AI_INFO[$ai]}:FBTNR%@bash -c \"button_click --normal ${AI_FILE_ARRAY[$ai]}\"%"
-                (( AI_AMOUNT_GAMES++ ))
-                ;;
-            emulators)
-                PW_GENERATE_BUTTONS_EMULS+="--field=   ${AI_NAME[$ai]}!$PW_GUI_ICON_PATH/${AI_IMAGE[$ai]}.png!${AI_INFO[$ai]}:FBTNR%@bash -c \"button_click --normal ${AI_FILE_ARRAY[$ai]}\"%"
-                (( AI_AMOUNT_EMULS++ ))
-                ;;
+        IFS=$'\n'
+        for ai in "${AI_FILE_SORTED[@]}" "${AI_FILE_UNSORTED[@]}" ; do
+            case ${AI_TYPE[$ai]} in
+                games)
+                    export PW_GENERATE_BUTTONS_GAMES+="--field=   ${AI_NAME[$ai]}!$PW_GUI_ICON_PATH/${AI_IMAGE[$ai]}.png!${AI_INFO[$ai]}:FBTNR%@bash -c \"button_click --normal ${AI_FILE_ARRAY[$ai]}\"%"
+                    (( AI_AMOUNT_GAMES++ ))
+                    ;;
+                emulators)
+                    export PW_GENERATE_BUTTONS_EMULS+="--field=   ${AI_NAME[$ai]}!$PW_GUI_ICON_PATH/${AI_IMAGE[$ai]}.png!${AI_INFO[$ai]}:FBTNR%@bash -c \"button_click --normal ${AI_FILE_ARRAY[$ai]}\"%"
+                    (( AI_AMOUNT_EMULS++ ))
+                    ;;
                 *)
-                yad_error "Line: \"type\" not found in file ${AI_FILE_ARRAY[$ai]} or misspelled."
-                ;;
-        esac
-    done
-    unset AI_FILE_ARRAY AI_TYPE AI_NAME AI_IMAGE AI_INFO
-    MAIN_GUI_ROWS_GAMES="$(( AI_AMOUNT_GAMES / MAIN_GUI_COLUMNS + 1 ))"
-    MAIN_GUI_ROWS_EMULS="$(( AI_AMOUNT_EMULS / MAIN_GUI_COLUMNS + 1 ))"
+                    yad_error "Line: \"type\" not found in file ${AI_FILE_ARRAY[$ai]} or misspelled."
+                    ;;
+            esac
+        done
+        export MAIN_GUI_ROWS_GAMES="$(( AI_AMOUNT_GAMES / MAIN_GUI_COLUMNS + 1 ))"
+        export MAIN_GUI_ROWS_EMULS="$(( AI_AMOUNT_EMULS / MAIN_GUI_COLUMNS + 1 ))"
+
+        export AI_SKIP="1"
+    fi
 
     IFS="%"
     "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[1]}" --form --columns="$MAIN_GUI_ROWS_EMULS" --align-buttons --scroll --homogeneous-column \
     --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" --separator=" " ${PW_GENERATE_BUTTONS_EMULS} 2>/dev/null &
     "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[0]}" --form --columns="$MAIN_GUI_ROWS_GAMES" --align-buttons --scroll --homogeneous-column \
     --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" --separator=" " ${PW_GENERATE_BUTTONS_GAMES} 2>/dev/null &
-    unset PW_GENERATE_BUTTONS_GAMES PW_GENERATE_BUTTONS_EMULS
     IFS="$orig_IFS"
 
     export START_FROM_PP_GUI="1"
