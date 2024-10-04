@@ -700,38 +700,39 @@ else
         AI_FILE="${ai_file//"$PORT_SCRIPTS_PATH/pw_autoinstall/"/}"
         while IFS= read -r line ; do
             [[ $line =~ "##########" ]] && break
-            [[ $line =~ "# type: " ]] && AI_TYPE="${line//"# type: "/}"
-            [[ $line =~ "# name: " ]] && AI_NAME="${line//"# name: "/}"
-            [[ $line =~ "# image: " ]] && AI_IMAGE="${line//"# image: "/}"
+            [[ $line =~ "# type: " ]] && AI_TYPE="${line//# type: /}"
+            [[ $line =~ "# name: " ]] && AI_NAME="${line//# name: /}"
+            [[ $line =~ "# image: " ]] && AI_IMAGE="${line//# image: /}"
             if [[ "$LANGUAGE" == ru ]] ; then
-                [[ $line =~ "# info_ru: " ]] && AI_INFO="${line//"# info_ru: "/}"
+                [[ $line =~ "# info_ru: " ]] && AI_INFO="${line//# info_ru: /}"
             else
-                [[ $line =~ "# info_en: " ]] && AI_INFO="${line//"# info_en: "/}"
+                [[ $line =~ "# info_en: " ]] && AI_INFO="${line//# info_en: /}"
             fi
         done < "$ai_file"
 
         IFS=$'\n'
-        case "$AI_TYPE" in
+        case $AI_TYPE in
             games) 
-                PW_GENERATE_BUTTONS_GAMES+="--field=   $AI_NAME!${PW_GUI_ICON_PATH}/${AI_IMAGE}.png!$AI_INFO:FBTNR%@bash -c \"button_click --normal ${AI_FILE}\"%"
+                PW_GENERATE_BUTTONS_GAMES+="--field=   $AI_NAME!$PW_GUI_ICON_PATH/$AI_IMAGE.png!$AI_INFO:FBTNR%@bash -c \"button_click --normal $AI_FILE\"%"
                 (( AI_AMOUNT_GAMES++ ))
                 ;;
             emulators) 
-                PW_GENERATE_BUTTONS_EMUL+="--field=   $AI_NAME!${PW_GUI_ICON_PATH}/${AI_IMAGE}.png!$AI_INFO:FBTNR%@bash -c \"button_click --normal ${AI_FILE}\"%"
+                PW_GENERATE_BUTTONS_EMULS+="--field=   $AI_NAME!$PW_GUI_ICON_PATH/$AI_IMAGE.png!$AI_INFO:FBTNR%@bash -c \"button_click --normal $AI_FILE\"%"
                 (( AI_AMOUNT_EMULS++ ))
                 ;;
         esac
-        unset AI_FILE AI_TYPE AI_NAME AI_IMAGE AI_INFO
+        [[ -z $PW_DEBUG ]] && unset AI_FILE AI_TYPE AI_NAME AI_IMAGE AI_INFO
     done
-    export MAIN_GUI_COLUMNS_ROWS="$(( $AI_AMOUNT_GAMES / $MAIN_GUI_COLUMNS ))"
-    
+    MAIN_GUI_ROWS_GAMES="$(( $AI_AMOUNT_GAMES / $MAIN_GUI_COLUMNS + 1 ))"
+    MAIN_GUI_ROWS_EMULS="$(( $AI_AMOUNT_EMULS / $MAIN_GUI_COLUMNS + 1 ))"
+
     IFS="%"
-    "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[1]}" --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll --homogeneous-column \
-    --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" --separator=" " ${PW_GENERATE_BUTTONS_EMUL} 2>/dev/null &
-    "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[0]}" --form --columns="$MAIN_GUI_COLUMNS_ROWS" --align-buttons --scroll --homogeneous-column \
+    "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[1]}" --form --columns="$MAIN_GUI_ROWS_EMULS" --align-buttons --scroll --homogeneous-column \
+    --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" --separator=" " ${PW_GENERATE_BUTTONS_EMULS} 2>/dev/null &
+    "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[0]}" --form --columns="$MAIN_GUI_ROWS_GAMES" --align-buttons --scroll --homogeneous-column \
     --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" --separator=" " ${PW_GENERATE_BUTTONS_GAMES} 2>/dev/null &
+    unset PW_GENERATE_BUTTONS_GAMES PW_GENERATE_BUTTONS_EMULS
     IFS="$orig_IFS"
-    unset PW_GENERATE_BUTTONS_GAMES PW_GENERATE_BUTTONS_EMUL
 
     export START_FROM_PP_GUI="1"
     if [[ -z ${TAB_MAIN_MENU} ]] ; then
