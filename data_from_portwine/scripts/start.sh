@@ -639,30 +639,21 @@ else
             resize_png "${PW_NAME_D_ICON_NEW}" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
             resize_png "${PW_NAME_D_ICON_NEW}" "${PW_NAME_D_ICON_128//"${PORT_WINE_PATH}/data/img/"/}" "128"
         fi
-        if [[ $PW_DESKTOP_FILES =~ [\(\)\!\$\%\&\`\'\"\>\<\\\|\;] ]] ; then
-            export PW_DESKTOP_FILES_REGEX="1"
-            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES//\!/}"
-            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//\%/}"
-            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//\$/}"
-            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//\&/}"
-            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//\</}"
 
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\(/#+_1#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\)/#+_2#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\!/#+_3#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\$/#+_4#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\%/#+_5#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\&/#+_6#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\`/#+_7#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\'/#+_8#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\"/#+_9#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\>/#+_10#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\</#+_11#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\\/#+_12#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\|/#+_13#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\;/#+_14#}"
-        else
-            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES}"
+        PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES}"
+        if [[ $PW_DESKTOP_FILES =~ [\(\)\!\$\%\&\`\'\"\>\<\\\|\;] ]] ; then
+            PW_DESKTOP_FILES_SHOW_REGEX=(\! % \$ \& \<)
+            PW_DESKTOP_FILES_REGEX=(\( \) \! \$ % \& \` \' \" \> \< \\ \| \;)
+
+            for i in ${PW_DESKTOP_FILES_SHOW_REGEX[@]} ; do
+                PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//$i/}"
+            done
+
+            count=1
+            for j in ${PW_DESKTOP_FILES_REGEX[@]} ; do
+                PW_DESKTOP_FILES="${PW_DESKTOP_FILES//$j/#+_$count#}"
+                (( count++ ))
+            done
         fi
         PW_GENERATE_BUTTONS+="--field=   $(print_wrapped "${PW_DESKTOP_FILES_SHOW//".desktop"/""}" "25" "...")!${PW_NAME_D_ICON_48}.png!:FBTNR%@bash -c \"button_click --desktop "${PW_DESKTOP_FILES// /#@_@#}"\"%"
     done
