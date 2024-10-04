@@ -602,35 +602,42 @@ if [[ -f "${portwine_exe}" ]] ; then
         portwine_launch
     fi
 else
-    PW_ALL_DF="$(ls "${PORT_WINE_PATH}"/ | grep .desktop | grep -vE '(PortProton|readme)')"
-    if [[ -z "${PW_ALL_DF}" ]]
-    then export PW_GUI_SORT_TABS=(1 2 3 4 5)
-    else export PW_GUI_SORT_TABS=(2 3 4 5 1)
-    fi
     if [[ "$RESTART_PP_USED" == "userconf" ]] ; then
         unset RESTART_PP_USED
         gui_userconf
     fi
 
-    export KEY_MENU="$RANDOM"
+    AMOUNT_GENERATE_BUTTONS="0"
+    for desktop_file in "${PORT_WINE_PATH}"/* ; do
+        if [[ $desktop_file =~ .desktop ]] ; then
+            if [[ ! $desktop_file =~ (/PortProton|/readme) ]] ; then
+                while IFS= read -r line ; do
+                    [[ $line =~ ^Exec= ]] && PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]="${line//Exec=/}"
+                    [[ $line =~ ^Icon= ]] && PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]="${line//Icon=/}"
+                done < "$desktop_file"
+                desktop_file="${desktop_file//"${PORT_WINE_PATH}"\//}"
+                PW_ALL_DF["$AMOUNT_GENERATE_BUTTONS"]="${desktop_file}"
+                DESKTOP_FILE_ARRAY+=($AMOUNT_GENERATE_BUTTONS)
+                (( AMOUNT_GENERATE_BUTTONS++ ))
+            fi
+        fi
+    done
 
     IFS=$'\n'
-    AMOUNT_GENERATE_BUTTONS="1"
     PW_GENERATE_BUTTONS="--field=   ${translations[Create shortcut...]}!${PW_GUI_ICON_PATH}/find_48.svg!:FBTNR%@bash -c \"button_click --normal pw_find_exe\"%"
-    for PW_DESKTOP_FILES in ${PW_ALL_DF} ; do
-        if check_flatpak ; then
-            PW_NAME_D_ICON="$(grep Exec "${PORT_WINE_PATH}/${PW_DESKTOP_FILES}" | awk -F'=' '{print $2}' |
-            sed -e 's|flatpak run ru.linux_gaming.PortProton||' -e 's|"||g' -e 's|^[ \t]*||')"
-        else
-            PW_NAME_D_ICON="$(grep Exec "${PORT_WINE_PATH}/${PW_DESKTOP_FILES}" | awk -F"=env " '{print $2}' |
-            sed -e "s|${PORT_SCRIPTS_PATH}/start.sh||" -e 's|"||g' -e 's|^[ \t]*||')"
-        fi
-        PW_ICON_PATH="$(grep Icon "${PORT_WINE_PATH}/${PW_DESKTOP_FILES}" | awk -F= '{print $2}')"
-        PW_NAME_D_ICON_48="${PW_ICON_PATH%.png}_48"
-        PW_NAME_D_ICON_128="${PW_ICON_PATH%.png}"
-        if [[ -f "${PW_NAME_D_ICON}" ]] ; then
-            resize_png "${PW_NAME_D_ICON}" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
-            resize_png "${PW_NAME_D_ICON}" "${PW_NAME_D_ICON_128//"${PORT_WINE_PATH}/data/img/"/}" "128"
+    for df in "${DESKTOP_FILE_ARRAY[@]}" ; do
+        PW_DESKTOP_FILES="${PW_ALL_DF[$df]}"
+        if [[ -n ${PW_NAME_D_ICON[$df]} ]] ; then
+            PW_NAME_D_ICON_48="${PW_ICON_PATH[$df]%.png}_48"
+            PW_NAME_D_ICON_128="${PW_ICON_PATH[$df]%.png}"
+            if check_flatpak ; then
+                PW_NAME_D_ICON_NEW=${PW_NAME_D_ICON[$df]//flatpak run ru.linux_gaming.PortProton /}
+            else
+                PW_NAME_D_ICON_NEW=${PW_NAME_D_ICON[$df]//"${PORT_SCRIPTS_PATH}/start.sh" /}
+            fi
+            PW_NAME_D_ICON_NEW="${PW_NAME_D_ICON_NEW//\"/}"
+            resize_png "${PW_NAME_D_ICON_NEW}" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
+            resize_png "${PW_NAME_D_ICON_NEW}" "${PW_NAME_D_ICON_128//"${PORT_WINE_PATH}/data/img/"/}" "128"
         fi
         if [[ $PW_DESKTOP_FILES =~ [\(\)\!\$\%\&\`\'\"\>\<\\\|\;] ]] ; then
             export PW_DESKTOP_FILES_REGEX="1"
@@ -658,9 +665,15 @@ else
             PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES}"
         fi
         PW_GENERATE_BUTTONS+="--field=   $(print_wrapped "${PW_DESKTOP_FILES_SHOW//".desktop"/""}" "25" "...")!${PW_NAME_D_ICON_48}.png!:FBTNR%@bash -c \"button_click --desktop "${PW_DESKTOP_FILES// /#@_@#}"\"%"
-        (( AMOUNT_GENERATE_BUTTONS++ ))
     done
-    MAIN_GUI_ROWS="$(( AMOUNT_GENERATE_BUTTONS / MAIN_GUI_COLUMNS + 1 ))"
+    MAIN_GUI_ROWS="$(( ( AMOUNT_GENERATE_BUTTONS + 1 ) / MAIN_GUI_COLUMNS + 1 ))"
+
+    if [[ -z "${PW_ALL_DF[0]}" ]]
+    then export PW_GUI_SORT_TABS=(1 2 3 4 5)
+    else export PW_GUI_SORT_TABS=(2 3 4 5 1)
+    fi
+
+    KEY_MENU="$RANDOM"
 
     IFS="%"
     "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[4]}" --form --columns="$MAIN_GUI_ROWS" --homogeneous-column \
