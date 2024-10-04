@@ -615,7 +615,8 @@ else
     export KEY_MENU="$RANDOM"
 
     IFS=$'\n'
-    PW_GENERATE_BUTTONS="--field=   ${translations[Create shortcut...]}!${PW_GUI_ICON_PATH}/find_48.svg!:FBTN%@bash -c \"button_click --normal pw_find_exe\"%"
+    AMOUNT_GENERATE_BUTTONS="1"
+    PW_GENERATE_BUTTONS="--field=   ${translations[Create shortcut...]}!${PW_GUI_ICON_PATH}/find_48.svg!:FBTNR%@bash -c \"button_click --normal pw_find_exe\"%"
     for PW_DESKTOP_FILES in ${PW_ALL_DF} ; do
         if check_flatpak ; then
             PW_NAME_D_ICON="$(grep Exec "${PORT_WINE_PATH}/${PW_DESKTOP_FILES}" | awk -F'=' '{print $2}' |
@@ -656,11 +657,13 @@ else
         else
             PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES}"
         fi
-        PW_GENERATE_BUTTONS+="--field=   $(print_wrapped "${PW_DESKTOP_FILES_SHOW//".desktop"/""}" "25" "...")!${PW_NAME_D_ICON_48}.png!:FBTN%@bash -c \"button_click --desktop "${PW_DESKTOP_FILES// /#@_@#}"\"%"
+        PW_GENERATE_BUTTONS+="--field=   $(print_wrapped "${PW_DESKTOP_FILES_SHOW//".desktop"/""}" "25" "...")!${PW_NAME_D_ICON_48}.png!:FBTNR%@bash -c \"button_click --desktop "${PW_DESKTOP_FILES// /#@_@#}"\"%"
+        (( AMOUNT_GENERATE_BUTTONS++ ))
     done
+    MAIN_GUI_ROWS="$(( AMOUNT_GENERATE_BUTTONS / MAIN_GUI_COLUMNS + 1 ))"
 
     IFS="%"
-    "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[4]}" --form --columns="$MAIN_GUI_COLUMNS" --homogeneous-column \
+    "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[4]}" --form --columns="$MAIN_GUI_ROWS" --homogeneous-column \
     --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
     --align-buttons --scroll --separator=" " ${PW_GENERATE_BUTTONS} 2>/dev/null &
     IFS="$orig_IFS"
@@ -723,8 +726,8 @@ else
         esac
         [[ -z $PW_DEBUG ]] && unset AI_FILE AI_TYPE AI_NAME AI_IMAGE AI_INFO
     done
-    MAIN_GUI_ROWS_GAMES="$(( $AI_AMOUNT_GAMES / $MAIN_GUI_COLUMNS + 1 ))"
-    MAIN_GUI_ROWS_EMULS="$(( $AI_AMOUNT_EMULS / $MAIN_GUI_COLUMNS + 1 ))"
+    MAIN_GUI_ROWS_GAMES="$(( AI_AMOUNT_GAMES / MAIN_GUI_COLUMNS + 1 ))"
+    MAIN_GUI_ROWS_EMULS="$(( AI_AMOUNT_EMULS / MAIN_GUI_COLUMNS + 1 ))"
 
     IFS="%"
     "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[1]}" --form --columns="$MAIN_GUI_ROWS_EMULS" --align-buttons --scroll --homogeneous-column \
