@@ -714,6 +714,7 @@ else
         done < "$ai_file"
 
         IFS=$'\n'
+        [[ -z "$AI_NAME" ]] && yad_error "Line: \"name\" not found in file $AI_FILE."
         case $AI_TYPE in
             games) 
                 PW_GENERATE_BUTTONS_GAMES+="--field=   $AI_NAME!$PW_GUI_ICON_PATH/$AI_IMAGE.png!$AI_INFO:FBTNR%@bash -c \"button_click --normal $AI_FILE\"%"
@@ -722,6 +723,9 @@ else
             emulators) 
                 PW_GENERATE_BUTTONS_EMULS+="--field=   $AI_NAME!$PW_GUI_ICON_PATH/$AI_IMAGE.png!$AI_INFO:FBTNR%@bash -c \"button_click --normal $AI_FILE\"%"
                 (( AI_AMOUNT_EMULS++ ))
+                ;;
+            *)
+                yad_error "Line: \"type\" not found in file $AI_FILE or misspelled."
                 ;;
         esac
         [[ -z $PW_DEBUG ]] && unset AI_FILE AI_TYPE AI_NAME AI_IMAGE AI_INFO
