@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Author: Castro-Fidel (linux-gaming.ru)
+# type: games
+# name: Epic Games Launcher
+# image: epicgames
+# info_en:
+# info_ru:
+########################################################################
+export LAUNCH_PARAMETERS=("/q" )
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/EpicGamesLauncherInstaller.msi"
+export PW_USE_D3D_EXTRAS=1
+export PORTWINE_CREATE_SHORTCUT_NAME="Epic Games Launcher"
+# sed -i '/Epic Games/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/*.reg >/dev/null
+try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
+
+start_portwine
+if try_download "https://launcher-public-service-prod06.ol.epicgames.com/launcher/api/installer/download/EpicGamesLauncherInstaller.msi" "${PW_AUTOINSTALL_EXE}" no_mirror
+then
+    pw_start_progress_bar_install_game "Epic Games Launcher."
+    # try_remove_dir "${WINEPREFIX}/drive_c/Program Files (x86)/Epic Games/Epic Online Services/"
+    # try_remove_dir "${WINEPREFIX}/drive_c/Program Files (x86)/Epic Games/Launcher/"
+    # try_remove_dir "${WINEPREFIX}/drive_c/ProgramData/Epic"
+    pw_run msiexec /i "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="${WINEPREFIX}/drive_c/Program Files (x86)/Epic Games/Launcher/Portal/Binaries/Win32/EpicGamesLauncher.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    kill_portwine
+    pw_stop_progress_bar
+    portwine_create_shortcut
+fi
+stop_portwine

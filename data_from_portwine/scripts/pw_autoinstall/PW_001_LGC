@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Author: chal55rus
+# type: games
+# name: Lesta Game Center
+# image: lgc
+# info_en:
+# info_ru:
+########################################################################
+export LAUNCH_PARAMETERS=("/VERYSILENT")
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/Lesta_Game_Center_Install_RU.exe"
+export PW_PREFIX_NAME="LGC"
+
+start_portwine
+
+if try_download "https://redirect.lesta.ru/LGC/Lesta_Game_Center_Install_RU.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
+then
+    pw_start_progress_bar_install_game "Lesta Game Center"
+    pw_kill_autostart lgc.exe &
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/ProgramData/Lesta/GameCenter/api/lgc_api.exe"
+    export PORTWINE_CREATE_SHORTCUT_NAME="Lesta Game Center"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    kill_portwine
+    portwine_create_shortcut
+fi
+
+stop_portwine
