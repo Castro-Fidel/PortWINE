@@ -697,39 +697,56 @@ else
     --field="   ${translations[Command line]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run wine cmd]}":"FBTN" '@bash -c "button_click --normal WINECMD"' \
     --field="   ${translations[Regedit]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run wine regedit]}":"FBTN" '@bash -c "button_click --normal WINEREG"' 1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
-    AI_AMOUNT_GAMES="0"
-    AI_AMOUNT_EMULS="0"
+    AI_AMOUNT_GAMES="0" && AI_AMOUNT_EMULS="0" && AI_AMOUNT_ARRAY="0"
+    AI_TOP_GAMES="PW_LGC PW_VKPLAY PW_EPIC PW_BATTLE_NET"
     for ai_file in "$PORT_SCRIPTS_PATH"/pw_autoinstall/* ; do
-        AI_FILE="${ai_file//"$PORT_SCRIPTS_PATH/pw_autoinstall/"/}"
         while IFS= read -r line ; do
             [[ $line =~ "##########" ]] && break
-            [[ $line =~ "# type: " ]] && AI_TYPE="${line//# type: /}"
-            [[ $line =~ "# name: " ]] && AI_NAME="${line//# name: /}"
-            [[ $line =~ "# image: " ]] && AI_IMAGE="${line//# image: /}"
+            [[ $line =~ "# type: " ]] && AI_TYPE["$AI_AMOUNT_ARRAY"]="${line//# type: /}"
+            [[ $line =~ "# name: " ]] && AI_NAME["$AI_AMOUNT_ARRAY"]="${line//# name: /}"
+            [[ $line =~ "# image: " ]] && AI_IMAGE["$AI_AMOUNT_ARRAY"]="${line//# image: /}"
             if [[ "$LANGUAGE" == ru ]] ; then
-                [[ $line =~ "# info_ru: " ]] && AI_INFO="${line//# info_ru: /}"
+                [[ $line =~ "# info_ru: " ]] && AI_INFO["$AI_AMOUNT_ARRAY"]="${line//# info_ru: /}"
             else
-                [[ $line =~ "# info_en: " ]] && AI_INFO="${line//# info_en: /}"
+                [[ $line =~ "# info_en: " ]] && AI_INFO["$AI_AMOUNT_ARRAY"]="${line//# info_en: /}"
             fi
         done < "$ai_file"
+        AI_FILE="${ai_file//"$PORT_SCRIPTS_PATH/pw_autoinstall/"/}"
+        AI_FILE_CHECK="$AI_FILE=$AI_AMOUNT_ARRAY"
+        AI_FILE_ARRAY+=($AI_FILE)
+        if [[ $AI_TOP_GAMES =~ ${AI_FILE_CHECK//=*/} ]] ; then
+            AI_TRUE_FILE+=($AI_FILE_CHECK)
+        else
+            AI_FILE_UNSORTED+=($AI_AMOUNT_ARRAY)
+        fi
+        (( AI_AMOUNT_ARRAY++ ))
+    done
 
-        IFS=$'\n'
-        [[ -z "$AI_NAME" ]] && yad_error "Line: \"name\" not found in file $AI_FILE."
-        case $AI_TYPE in
-            games) 
-                PW_GENERATE_BUTTONS_GAMES+="--field=   $AI_NAME!$PW_GUI_ICON_PATH/$AI_IMAGE.png!$AI_INFO:FBTNR%@bash -c \"button_click --normal $AI_FILE\"%"
+    unset AI_FILE_SORTED
+    for ai_sort in $AI_TOP_GAMES ; do
+        if [[ ${AI_TRUE_FILE[*]} =~ $ai_sort ]] ; then
+            AI_TRUE_FILE_NEW=(${AI_TRUE_FILE[@]//$ai_sort=/})
+            AI_FILE_SORTED+=(${AI_TRUE_FILE_NEW[@]//*=*/})
+        fi
+    done
+
+    IFS=$'\n'
+    for ai in "${AI_FILE_SORTED[@]}" "${AI_FILE_UNSORTED[@]}" ; do
+        case ${AI_TYPE[$ai]} in
+            games)
+                PW_GENERATE_BUTTONS_GAMES+="--field=   ${AI_NAME[$ai]}!$PW_GUI_ICON_PATH/${AI_IMAGE[$ai]}.png!${AI_INFO[$ai]}:FBTNR%@bash -c \"button_click --normal ${AI_FILE_ARRAY[$ai]}\"%"
                 (( AI_AMOUNT_GAMES++ ))
                 ;;
-            emulators) 
-                PW_GENERATE_BUTTONS_EMULS+="--field=   $AI_NAME!$PW_GUI_ICON_PATH/$AI_IMAGE.png!$AI_INFO:FBTNR%@bash -c \"button_click --normal $AI_FILE\"%"
+            emulators)
+                PW_GENERATE_BUTTONS_EMULS+="--field=   ${AI_NAME[$ai]}!$PW_GUI_ICON_PATH/${AI_IMAGE[$ai]}.png!${AI_INFO[$ai]}:FBTNR%@bash -c \"button_click --normal ${AI_FILE_ARRAY[$ai]}\"%"
                 (( AI_AMOUNT_EMULS++ ))
                 ;;
-            *)
-                yad_error "Line: \"type\" not found in file $AI_FILE or misspelled."
+                *)
+                yad_error "Line: \"type\" not found in file ${AI_FILE_ARRAY[$ai]} or misspelled."
                 ;;
         esac
-        [[ -z $PW_DEBUG ]] && unset AI_FILE AI_TYPE AI_NAME AI_IMAGE AI_INFO
     done
+    unset AI_FILE_ARRAY AI_TYPE AI_NAME AI_IMAGE AI_INFO
     MAIN_GUI_ROWS_GAMES="$(( AI_AMOUNT_GAMES / MAIN_GUI_COLUMNS + 1 ))"
     MAIN_GUI_ROWS_EMULS="$(( AI_AMOUNT_EMULS / MAIN_GUI_COLUMNS + 1 ))"
 
