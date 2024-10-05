@@ -610,14 +610,14 @@ else
     debug_timer --start
     AMOUNT_GENERATE_BUTTONS="0"
     for desktop_file in "${PORT_WINE_PATH}"/* ; do
-
         if [[ $desktop_file =~ .desktop ]] ; then
             if [[ ! $desktop_file =~ (/PortProton|/readme) ]] ; then
                 while IFS= read -r line ; do
                     [[ $line =~ ^Exec= ]] && PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]="${line//Exec=/}"
                     [[ $line =~ ^Icon= ]] && PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]="${line//Icon=/}"
                     if [[ $line =~ ^Time= ]] ; then
-                        PW_GAME_TIME["${line//Time=/}"]="${desktop_file//"${PORT_WINE_PATH}"\//}"
+                        PW_ALL_DF_WITH_TIME["$AMOUNT_GENERATE_BUTTONS"]="${desktop_file//"${PORT_WINE_PATH}"\//}"
+                        PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]="${line//Time=/}"
                         WITH_TIME="1"
                     fi
                 done < "$desktop_file"
@@ -630,9 +630,22 @@ else
         fi
     done
 
+    for i in "${!PW_GAME_TIME[@]}" ; do
+        for j in "${!PW_GAME_TIME[@]}" ; do
+            if [[ ${PW_GAME_TIME[$i]} -gt ${PW_GAME_TIME[$j]} ]]; then
+                tmp=${PW_GAME_TIME[$i]}
+                tmp_new=${PW_ALL_DF_WITH_TIME[$i]}
+                PW_GAME_TIME[$i]=${PW_GAME_TIME[$j]}
+                PW_ALL_DF_WITH_TIME[$i]=${PW_ALL_DF_WITH_TIME[$j]}
+                PW_GAME_TIME[$j]=$tmp
+                PW_ALL_DF_WITH_TIME[$j]=$tmp_new
+            fi
+        done
+    done
+
     IFS=$'\n'
     PW_GENERATE_BUTTONS="--field=   ${translations[Create shortcut...]}!${PW_GUI_ICON_PATH}/find_48.svg!:FBTNR%@bash -c \"button_click --normal pw_find_exe\"%"
-    for PW_DESKTOP_FILES in "${PW_GAME_TIME[@]}" "${PW_ALL_DF[@]}" ; do
+    for PW_DESKTOP_FILES in "${PW_ALL_DF_WITH_TIME[@]}" "${PW_ALL_DF[@]}" ; do
         if [[ -n ${PW_NAME_D_ICON} ]] ; then
             PW_NAME_D_ICON_48="${PW_ICON_PATH%.png}_48"
             PW_NAME_D_ICON_128="${PW_ICON_PATH%.png}"
