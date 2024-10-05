@@ -90,7 +90,7 @@ unset MANGOHUD MANGOHUD_DLSYM PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERR
 unset PW_CHECK_AUTOINSTALL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PORTWINE_DB_FILE RADV_PERFTEST
 unset CHK_SYMLINK_FILE PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME PW_PATH
 unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD PW_WINE_CPU_TOPOLOGY
-unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_ALL_DF PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
+unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
 unset MANGOHUD_CONFIG FPS_LIMIT PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME PORTWINE_CREATE_SHORTCUT_NAME MIRROR
 unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NOSTSTDIR RADV_DEBUG PW_NO_AUTO_CREATE_SHORTCUT
 unset PW_DESKTOP_FILES_REGEX PW_TERM
@@ -616,11 +616,15 @@ else
                 while IFS= read -r line ; do
                     [[ $line =~ ^Exec= ]] && PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]="${line//Exec=/}"
                     [[ $line =~ ^Icon= ]] && PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]="${line//Icon=/}"
-                    [[ $line =~ ^Time= ]] && PW_GAME_TIME["${line//Time=/}"]="${desktop_file//"${PORT_WINE_PATH}"\//}"
+                    if [[ $line =~ ^Time= ]] ; then
+                        PW_GAME_TIME["${line//Time=/}"]="${desktop_file//"${PORT_WINE_PATH}"\//}"
+                        WITH_TIME="1"
+                    fi
                 done < "$desktop_file"
-                if [[ -z ${PW_GAME_TIME["${line//Time=/}"]} ]] ; then
+                if [[ $WITH_TIME != 1 ]] ; then
                     PW_ALL_DF["$AMOUNT_GENERATE_BUTTONS"]="${desktop_file//"${PORT_WINE_PATH}"\//}"
                 fi
+                unset WITH_TIME
                 (( AMOUNT_GENERATE_BUTTONS++ ))
             fi
         fi
@@ -662,7 +666,7 @@ else
 
     MAIN_GUI_ROWS="$(( ( AMOUNT_GENERATE_BUTTONS + 1 ) / MAIN_GUI_COLUMNS + 1 ))"
 
-    if [[ -z "${PW_ALL_DF[0]}" ]]
+    if [[ -z $PW_DESKTOP_FILES ]]
     then export PW_GUI_SORT_TABS=(1 2 3 4 5)
     else export PW_GUI_SORT_TABS=(2 3 4 5 1)
     fi
@@ -772,7 +776,7 @@ else
         export TAB_MAIN_MENU="1"
     fi
 
-    if [[ -z "${PW_ALL_DF}" ]] ; then
+    if [[ -z $PW_DESKTOP_FILES ]] ; then
         "${pw_yad}" --key=$KEY_MENU --notebook --expand \
         --gui-type="settings-notebook" --active-tab="${TAB_MAIN_MENU}" \
         --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
@@ -826,7 +830,7 @@ fi
     128|gui_pw_update|gui_rm_portproton|\
     change_loc|gui_open_scripts_from_backup|\
     gui_credits|pw_start_cont_xterm)
-        if [[ -z "${PW_ALL_DF}" ]] ; then
+        if [[ -z $PW_DESKTOP_FILES ]] ; then
             export TAB_MAIN_MENU="4"
         else
             export TAB_MAIN_MENU="5"
@@ -836,14 +840,14 @@ fi
     116|pw_create_prefix_backup|\
     gui_clear_pfx|WINEREG|WINECMD|\
     WINEFILE|WINECFG|gui_wine_uninstaller)
-        if [[ -z "${PW_ALL_DF}" ]] ; then
+        if [[ -z $PW_DESKTOP_FILES ]] ; then
             export TAB_MAIN_MENU="3"
         else
             export TAB_MAIN_MENU="4"
         fi
         ;;
     pw_find_exe)
-        if [[ -z "${PW_ALL_DF}" ]] ; then
+        if [[ -z $PW_DESKTOP_FILES ]] ; then
             export TAB_MAIN_MENU="5"
         else
             export TAB_MAIN_MENU="1"
