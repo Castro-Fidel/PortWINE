@@ -607,7 +607,9 @@ else
         gui_userconf
     fi
 
-    debug_timer --start
+    debug_timer --start # дропнуть и debug_timer --end ниже тоже
+
+    # Поиск .desktop файлов
     AMOUNT_GENERATE_BUTTONS="0"
     for desktop_file in "${PORT_WINE_PATH}"/* ; do
         if [[ $desktop_file =~ .desktop ]] ; then
@@ -632,6 +634,7 @@ else
         fi
     done
 
+    # Переопределение массивов в зависимости от PW_GAME_TIME, от большего значения к меньшему.
     for i in "${!PW_GAME_TIME[@]}" ; do
         for j in "${!PW_GAME_TIME[@]}" ; do
             if [[ ${PW_GAME_TIME[$i]} -gt ${PW_GAME_TIME[$j]} ]]; then
@@ -653,6 +656,7 @@ else
         done
     done
 
+    # Генерация .desktop баттанов для меню
     IFS=$'\n'
     PW_GENERATE_BUTTONS="--field=   ${translations[Create shortcut...]}!${PW_GUI_ICON_PATH}/find_48.svg!:FBTNR%@bash -c \"button_click --normal pw_find_exe\"%"
     for dp in "${PW_ALL_DF_ARRAY[@]}" ; do
@@ -733,8 +737,9 @@ else
     --field="   ${translations[Regedit]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run wine regedit]}":"FBTN" '@bash -c "button_click --normal WINEREG"' 1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
     if [[ $AI_SKIP != 1 ]] ; then
-        AI_AMOUNT_GAMES="0" && AI_AMOUNT_EMULS="0" && AI_AMOUNT_ARRAY="0"
+        # AI_TOP_GAMES используется для сортировки автоинсталлов (работает на эмуляторы тоже)
         AI_TOP_GAMES="PW_LGC PW_VKPLAY PW_EPIC PW_BATTLE_NET"
+        AI_AMOUNT_GAMES="0" && AI_AMOUNT_EMULS="0" && AI_AMOUNT_ARRAY="0"
         for ai_file in "$PORT_SCRIPTS_PATH"/pw_autoinstall/* ; do
             while IFS= read -r line ; do
                 [[ $line =~ "##########" ]] && break
