@@ -742,11 +742,29 @@ unpack () {
 debug_timer () {
     if [[ "$1" == "--start" ]] ; then
         START=$(date +%s%N)
+        if [[ "$2" == "-s" ]] ; then
+            case $3 in
+                PW_TIME_IN_GAME)
+                    START_PW_TIME_IN_GAME=$START ;;
+                UPDATE_ETERFUND)
+                    START_UPDATE_ETERFUND=$START ;;
+                UPDATE_GITHUB)
+                    START_UPDATE_GITHUB=$START ;;
+            esac
+        fi
     elif [[ "$1" == "--end" ]] ; then
         END=$(date +%s%N)
         if [[ -n "$2" ]] ; then
             if [[ "$2" == "-s" ]] ; then
-                export "$3"=$((( END - START )/1000000 ))
+                case $3 in
+                    PW_TIME_IN_GAME)
+                        START=$START_PW_TIME_IN_GAME ;;
+                    UPDATE_ETERFUND)
+                        START=$START_UPDATE_ETERFUND ;;
+                    UPDATE_GITHUB)
+                        START=$START_UPDATE_GITHUB ;;
+                esac
+                export "$3"="$((( END - START )/1000000 ))"
             else
                 DIFF=$((( END - START )/1000000 ))
                 print_warning "It took $DIFF milliseconds for $2"
@@ -1301,6 +1319,23 @@ stop_portwine () {
     pw_exit_tray
     pw_auto_create_shortcut
     add_in_stop_portwine
+
+    debug_timer --end -s "PW_TIME_IN_GAME"
+    while IFS= read -r line ; do
+        if [[ $line =~ ^Time= ]] ; then
+            export SKIP_GAME_TIME="1"
+            TIME_CURRENT=${line//Time=/}
+            TIME_TOTAL=$(( TIME_CURRENT + PW_TIME_IN_GAME ))
+        fi
+    done < "$LAST_DESKTOP_FILE"
+    IFS="$orig_IFS"
+    if [[ $SKIP_GAME_TIME != 1 ]] ; then
+        echo "Time=$PW_TIME_IN_GAME" >> "$LAST_DESKTOP_FILE"
+    else
+        sed -i '/^Time=/d' "$LAST_DESKTOP_FILE"
+        echo "Time=$TIME_TOTAL" >> "$LAST_DESKTOP_FILE"
+    fi
+
     case "$1" in
         --restart)
             restart_pp ;;
@@ -1758,7 +1793,7 @@ pw_port_update () {
     URL_GITHUB="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/${BRANCH}/data_from_portwine/scripts/var"
 
     pw_check_update () {
-        debug_timer --start
+        debug_timer --start -s "UPDATE_ETERFUND"
         if ! timeout 2 curl -f -s --list-only "$URL_ETERFUND" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
         then
             print_warning "https://gitlab.eterfund.ru/ broken. Skip it..."
@@ -1766,7 +1801,7 @@ pw_port_update () {
         fi
         debug_timer --end -s "UPDATE_ETERFUND"
 
-        debug_timer --start
+        debug_timer --start -s "UPDATE_GITHUB"
         if ! timeout 2 curl -f -s --list-only "$URL_GITHUB" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
         then
             print_warning "https://raw.githubusercontent.com/ broken. Skip it..."
@@ -3532,6 +3567,7 @@ portwine_launch () {
         PW_VD_TMP=(explorer "/desktop=PortProton,${PW_SCREEN_RESOLUTION}")
     fi
 
+    debug_timer --start -s "PW_TIME_IN_GAME"
     case "$portwine_exe" in
         *.[Ee][Xx][Ee])
             pw_run ${PW_VD_TMP[@]} ${WINE_WIN_START} "$portwine_exe"
@@ -5859,6 +5895,7 @@ button_click () {
                     (( count++ ))
                 done
             fi
+            export LAST_DESKTOP_FILE="$PW_YAD_SET"
             if check_flatpak
             then PW_EXEC_FROM_DESKTOP="$(grep Exec "$PW_YAD_SET" | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
             else PW_EXEC_FROM_DESKTOP="$(grep Exec "$PW_YAD_SET" | head -n 1 | awk -F"=env " '{print $2}')"

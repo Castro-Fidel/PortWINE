@@ -607,17 +607,20 @@ else
         gui_userconf
     fi
 
+    debug_timer --start
     AMOUNT_GENERATE_BUTTONS="0"
     for desktop_file in "${PORT_WINE_PATH}"/* ; do
+
         if [[ $desktop_file =~ .desktop ]] ; then
             if [[ ! $desktop_file =~ (/PortProton|/readme) ]] ; then
                 while IFS= read -r line ; do
                     [[ $line =~ ^Exec= ]] && PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]="${line//Exec=/}"
                     [[ $line =~ ^Icon= ]] && PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]="${line//Icon=/}"
+                    [[ $line =~ ^Time= ]] && PW_GAME_TIME["${line//Time=/}"]="${desktop_file//"${PORT_WINE_PATH}"\//}"
                 done < "$desktop_file"
-                desktop_file="${desktop_file//"${PORT_WINE_PATH}"\//}"
-                PW_ALL_DF["$AMOUNT_GENERATE_BUTTONS"]="${desktop_file}"
-                DESKTOP_FILE_ARRAY+=($AMOUNT_GENERATE_BUTTONS)
+                if [[ -z ${PW_GAME_TIME["${line//Time=/}"]} ]] ; then
+                    PW_ALL_DF["$AMOUNT_GENERATE_BUTTONS"]="${desktop_file//"${PORT_WINE_PATH}"\//}"
+                fi
                 (( AMOUNT_GENERATE_BUTTONS++ ))
             fi
         fi
@@ -625,15 +628,14 @@ else
 
     IFS=$'\n'
     PW_GENERATE_BUTTONS="--field=   ${translations[Create shortcut...]}!${PW_GUI_ICON_PATH}/find_48.svg!:FBTNR%@bash -c \"button_click --normal pw_find_exe\"%"
-    for df in "${DESKTOP_FILE_ARRAY[@]}" ; do
-        PW_DESKTOP_FILES="${PW_ALL_DF[$df]}"
-        if [[ -n ${PW_NAME_D_ICON[$df]} ]] ; then
-            PW_NAME_D_ICON_48="${PW_ICON_PATH[$df]%.png}_48"
-            PW_NAME_D_ICON_128="${PW_ICON_PATH[$df]%.png}"
+    for PW_DESKTOP_FILES in "${PW_GAME_TIME[@]}" "${PW_ALL_DF[@]}" ; do
+        if [[ -n ${PW_NAME_D_ICON} ]] ; then
+            PW_NAME_D_ICON_48="${PW_ICON_PATH%.png}_48"
+            PW_NAME_D_ICON_128="${PW_ICON_PATH%.png}"
             if check_flatpak ; then
-                PW_NAME_D_ICON_NEW=${PW_NAME_D_ICON[$df]//flatpak run ru.linux_gaming.PortProton /}
+                PW_NAME_D_ICON_NEW=${PW_NAME_D_ICON//flatpak run ru.linux_gaming.PortProton /}
             else
-                PW_NAME_D_ICON_NEW=${PW_NAME_D_ICON[$df]//"${PORT_SCRIPTS_PATH}/start.sh" /}
+                PW_NAME_D_ICON_NEW=${PW_NAME_D_ICON//"${PORT_SCRIPTS_PATH}/start.sh" /}
             fi
             PW_NAME_D_ICON_NEW="${PW_NAME_D_ICON_NEW//\"/}"
             resize_png "${PW_NAME_D_ICON_NEW}" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
@@ -657,6 +659,7 @@ else
         fi
         PW_GENERATE_BUTTONS+="--field=   $(print_wrapped "${PW_DESKTOP_FILES_SHOW//".desktop"/""}" "25" "...")!${PW_NAME_D_ICON_48}.png!:FBTNR%@bash -c \"button_click --desktop "${PW_DESKTOP_FILES// /#@_@#}"\"%"
     done
+
     MAIN_GUI_ROWS="$(( ( AMOUNT_GENERATE_BUTTONS + 1 ) / MAIN_GUI_COLUMNS + 1 ))"
 
     if [[ -z "${PW_ALL_DF[0]}" ]]
@@ -755,6 +758,7 @@ else
 
         export AI_SKIP="1"
     fi
+    debug_timer --end
 
     IFS="%"
     "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[1]}" --form --columns="$MAIN_GUI_ROWS_EMULS" --align-buttons --scroll --homogeneous-column \
