@@ -1321,22 +1321,17 @@ stop_portwine () {
     add_in_stop_portwine
 
     debug_timer --end -s "PW_TIME_IN_GAME"
-    #PW_TIME_IN_GAME=$(( (PW_TIME_IN_GAME / 60000) % 60 )) так в минутах
-    PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 ))
+    #PW_TIME_IN_GAME=$(( (PW_TIME_IN_GAME / 60000) % 60 )) # в минутах
+    PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 )) # в секундах
     while IFS= read -r line ; do
         if [[ $line =~ ^Time= ]] ; then
-            export SKIP_GAME_TIME="1"
             TIME_CURRENT=${line//Time=/}
             TIME_TOTAL=$(( TIME_CURRENT + PW_TIME_IN_GAME ))
         fi
     done < "$LAST_DESKTOP_FILE"
     IFS="$orig_IFS"
-    if [[ $SKIP_GAME_TIME != 1 ]] ; then
-        echo "Time=$PW_TIME_IN_GAME" >> "$LAST_DESKTOP_FILE"
-    else
-        sed -i '/^Time=/d' "$LAST_DESKTOP_FILE"
-        echo "Time=$TIME_TOTAL" >> "$LAST_DESKTOP_FILE"
-    fi
+    sed -i '/^Time=/d' "$LAST_DESKTOP_FILE"
+    echo "Time=$TIME_TOTAL" >> "$LAST_DESKTOP_FILE"
 
     case "$1" in
         --restart)

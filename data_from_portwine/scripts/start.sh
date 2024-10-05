@@ -616,15 +616,17 @@ else
                     [[ $line =~ ^Exec= ]] && PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]="${line//Exec=/}"
                     [[ $line =~ ^Icon= ]] && PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]="${line//Icon=/}"
                     if [[ $line =~ ^Time= ]] ; then
-                        PW_ALL_DF_WITH_TIME["$AMOUNT_GENERATE_BUTTONS"]="${desktop_file//"${PORT_WINE_PATH}"\//}"
                         PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]="${line//Time=/}"
                         WITH_TIME="1"
                     fi
                 done < "$desktop_file"
+                PW_ALL_DF["$AMOUNT_GENERATE_BUTTONS"]="${desktop_file//"${PORT_WINE_PATH}"\//}"
                 if [[ $WITH_TIME != 1 ]] ; then
-                    PW_ALL_DF["$AMOUNT_GENERATE_BUTTONS"]="${desktop_file//"${PORT_WINE_PATH}"\//}"
+                    echo "Time=0" >> "$desktop_file"
+                    PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]="0"
                 fi
                 unset WITH_TIME
+                PW_ALL_DF_ARRAY+=($AMOUNT_GENERATE_BUTTONS)
                 (( AMOUNT_GENERATE_BUTTONS++ ))
             fi
         fi
@@ -633,26 +635,35 @@ else
     for i in "${!PW_GAME_TIME[@]}" ; do
         for j in "${!PW_GAME_TIME[@]}" ; do
             if [[ ${PW_GAME_TIME[$i]} -gt ${PW_GAME_TIME[$j]} ]]; then
-                tmp=${PW_GAME_TIME[$i]}
-                tmp_new=${PW_ALL_DF_WITH_TIME[$i]}
+                tmp_0=${PW_GAME_TIME[$i]}
+                tmp_1=${PW_ALL_DF[$i]}
+                tmp_2=${PW_NAME_D_ICON[$i]}
+                tmp_4=${PW_ICON_PATH[$i]}
+
                 PW_GAME_TIME[$i]=${PW_GAME_TIME[$j]}
-                PW_ALL_DF_WITH_TIME[$i]=${PW_ALL_DF_WITH_TIME[$j]}
-                PW_GAME_TIME[$j]=$tmp
-                PW_ALL_DF_WITH_TIME[$j]=$tmp_new
+                PW_ALL_DF[$i]=${PW_ALL_DF[$j]}
+                PW_NAME_D_ICON[$i]=${PW_NAME_D_ICON[$j]}
+                PW_ICON_PATH[$i]=${PW_ICON_PATH[$j]}
+
+                PW_GAME_TIME[$j]=$tmp_0
+                PW_ALL_DF[$j]=$tmp_1
+                PW_NAME_D_ICON[$j]=$tmp_2
+                PW_ICON_PATH[$j]=$tmp_4
             fi
         done
     done
 
     IFS=$'\n'
     PW_GENERATE_BUTTONS="--field=   ${translations[Create shortcut...]}!${PW_GUI_ICON_PATH}/find_48.svg!:FBTNR%@bash -c \"button_click --normal pw_find_exe\"%"
-    for PW_DESKTOP_FILES in "${PW_ALL_DF_WITH_TIME[@]}" "${PW_ALL_DF[@]}" ; do
-        if [[ -n ${PW_NAME_D_ICON} ]] ; then
-            PW_NAME_D_ICON_48="${PW_ICON_PATH%.png}_48"
-            PW_NAME_D_ICON_128="${PW_ICON_PATH%.png}"
+    for dp in "${PW_ALL_DF_ARRAY[@]}" ; do
+        PW_DESKTOP_FILES="${PW_ALL_DF[$dp]}"
+        if [[ -n ${PW_NAME_D_ICON[dp]} ]] ; then
+            PW_NAME_D_ICON_48="${PW_ICON_PATH[dp]%.png}_48"
+            PW_NAME_D_ICON_128="${PW_ICON_PATH[dp]%.png}"
             if check_flatpak ; then
-                PW_NAME_D_ICON_NEW=${PW_NAME_D_ICON//flatpak run ru.linux_gaming.PortProton /}
+                PW_NAME_D_ICON_NEW=${PW_NAME_D_ICON[dp]//flatpak run ru.linux_gaming.PortProton /}
             else
-                PW_NAME_D_ICON_NEW=${PW_NAME_D_ICON//"${PORT_SCRIPTS_PATH}/start.sh" /}
+                PW_NAME_D_ICON_NEW=${PW_NAME_D_ICON[dp]//env \"${PORT_SCRIPTS_PATH}\/start.sh\" /}
             fi
             PW_NAME_D_ICON_NEW="${PW_NAME_D_ICON_NEW//\"/}"
             resize_png "${PW_NAME_D_ICON_NEW}" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
