@@ -1323,21 +1323,23 @@ stop_portwine () {
     debug_timer --end -s "PW_TIME_IN_GAME"
     #PW_TIME_IN_GAME=$(( (PW_TIME_IN_GAME / 60000) % 60 )) # в минутах
     PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 )) # в секундах
+
+    if [[ -z "${PORTPROTON_NAME}" ]] ; then
+        name_desktop="$(basename "$portwine_exe")"
+    else
+        name_desktop="${PORTPROTON_NAME}"
+    fi
+
     while IFS= read -r line ; do
         if [[ $line =~ ^Time= ]] ; then
-            SKIP_GAME_TIME="1"
             TIME_CURRENT=${line//Time=/}
             TIME_TOTAL=$(( TIME_CURRENT + PW_TIME_IN_GAME ))
         fi
-    done < "$LAST_DESKTOP_FILE"
+    done < "${PORT_WINE_PATH}/${name_desktop}.desktop"
     IFS="$orig_IFS"
 
-    if [[ $SKIP_GAME_TIME != 1 ]] ; then
-        echo "Time=$PW_TIME_IN_GAME" >> "$LAST_DESKTOP_FILE"
-    else
-        sed -i '/^Time=/d' "$LAST_DESKTOP_FILE"
-        echo "Time=$TIME_TOTAL" >> "$LAST_DESKTOP_FILE"
-    fi
+    sed -i '/^Time=/d' "${PORT_WINE_PATH}/${name_desktop}.desktop"
+    echo "Time=$TIME_TOTAL" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 
     case "$1" in
         --restart)
@@ -5312,6 +5314,7 @@ portwine_create_shortcut () {
             echo "StartupNotify=true"
             echo "Path=${PORT_SCRIPTS_PATH}/"
             echo "Icon=${PORT_WINE_PATH}/data/img/${name_desktop_png}.png"
+            echo "Time=0"
         } >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
         chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 
@@ -5898,7 +5901,6 @@ button_click () {
                     (( count++ ))
                 done
             fi
-            export LAST_DESKTOP_FILE="$PW_YAD_SET"
             if check_flatpak
             then PW_EXEC_FROM_DESKTOP="$(grep Exec "$PW_YAD_SET" | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
             else PW_EXEC_FROM_DESKTOP="$(grep Exec "$PW_YAD_SET" | head -n 1 | awk -F"=env " '{print $2}')"
