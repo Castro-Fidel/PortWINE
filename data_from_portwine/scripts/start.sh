@@ -623,12 +623,14 @@ else
                     fi
                 done < "$desktop_file"
                 PW_ALL_DF["$AMOUNT_GENERATE_BUTTONS"]="${desktop_file//"${PORT_WINE_PATH}"\//}"
+                # Чтобы новый ярлык показало первым при первом запуске, потом уже по времени
                 if [[ $WITH_TIME != 1 ]] ; then
                     echo "Time=0" >> "$desktop_file"
-                    PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]="9999999999999999999999"
+                    PW_AMOUNT_NO_TIME+=($AMOUNT_GENERATE_BUTTONS)
+                else
+                    PW_AMOUNT_WITH_TIME+=($AMOUNT_GENERATE_BUTTONS)
                 fi
                 unset WITH_TIME
-                PW_ALL_DF_ARRAY+=($AMOUNT_GENERATE_BUTTONS)
                 (( AMOUNT_GENERATE_BUTTONS++ ))
             fi
         fi
@@ -637,7 +639,7 @@ else
     # Переопределение массивов в зависимости от PW_GAME_TIME, от большего значения к меньшему.
     for i in "${!PW_GAME_TIME[@]}" ; do
         for j in "${!PW_GAME_TIME[@]}" ; do
-            if [[ ${PW_GAME_TIME[$i]} -gt ${PW_GAME_TIME[$j]} ]]; then
+            if [[ ${PW_GAME_TIME[$i]} -gt ${PW_GAME_TIME[$j]} ]] ; then
                 tmp_0=${PW_GAME_TIME[$i]}
                 tmp_1=${PW_ALL_DF[$i]}
                 tmp_2=${PW_NAME_D_ICON[$i]}
@@ -659,7 +661,7 @@ else
     # Генерация .desktop баттанов для меню
     IFS=$'\n'
     PW_GENERATE_BUTTONS="--field=   ${translations[Create shortcut...]}!${PW_GUI_ICON_PATH}/find_48.svg!:FBTNR%@bash -c \"button_click --normal pw_find_exe\"%"
-    for dp in "${PW_ALL_DF_ARRAY[@]}" ; do
+    for dp in "${PW_AMOUNT_NO_TIME[@]}" "${PW_AMOUNT_WITH_TIME[@]}" ; do
         PW_DESKTOP_FILES="${PW_ALL_DF[$dp]}"
         if [[ -n ${PW_NAME_D_ICON[dp]} ]] ; then
             PW_NAME_D_ICON_48="${PW_ICON_PATH[dp]%.png}_48"
