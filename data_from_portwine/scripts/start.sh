@@ -616,14 +616,14 @@ else
                     [[ $line =~ ^Exec= ]] && PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]="${line//Exec=/}"
                     [[ $line =~ ^Icon= ]] && PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]="${line//Icon=/}"
                     if [[ $line =~ ^Time= ]] ; then
-                        PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]="${line//Time=/}"
                         WITH_TIME="1"
+                        PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]="${line//Time=/}"
                     fi
                 done < "$desktop_file"
                 PW_ALL_DF["$AMOUNT_GENERATE_BUTTONS"]="${desktop_file//"${PORT_WINE_PATH}"\//}"
                 if [[ $WITH_TIME != 1 ]] ; then
                     echo "Time=0" >> "$desktop_file"
-                    PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]="0"
+                    PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]="9999999999999999999999"
                 fi
                 unset WITH_TIME
                 PW_ALL_DF_ARRAY+=($AMOUNT_GENERATE_BUTTONS)

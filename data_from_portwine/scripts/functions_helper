@@ -1324,22 +1324,36 @@ stop_portwine () {
     #PW_TIME_IN_GAME=$(( (PW_TIME_IN_GAME / 60000) % 60 )) # в минутах
     PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 )) # в секундах
 
-    if [[ -z "${PORTPROTON_NAME}" ]] ; then
-        name_desktop="$(basename "$portwine_exe")"
-    else
-        name_desktop="${PORTPROTON_NAME}"
-    fi
-
-    while IFS= read -r line ; do
-        if [[ $line =~ ^Time= ]] ; then
-            TIME_CURRENT=${line//Time=/}
-            TIME_TOTAL=$(( TIME_CURRENT + PW_TIME_IN_GAME ))
+    for desktop_file in "${PORT_WINE_PATH}"/* ; do
+        if [[ $desktop_file =~ .desktop ]] ; then
+            if [[ ! $desktop_file =~ (/PortProton|/readme) ]] ; then
+                while IFS= read -r line ; do
+                    if [[ $line =~ ^Exec= ]] ; then
+                        if check_flatpak ; then
+                            EXEC_DESKTOP=${line//Exec=flatpak run ru.linux_gaming.PortProton /}
+                        else
+                            EXEC_DESKTOP=${line//Exec=env \"${PORT_SCRIPTS_PATH}\/start.sh\" /}
+                        fi
+                        EXEC_DESKTOP_NEW="${EXEC_DESKTOP//\"/}"
+                    fi
+                    if [[ $line =~ ^Time= ]] ; then
+                        WITH_TIME="1"
+                        TIME_CURRENT=${line//Time=/}
+                        TIME_TOTAL=$(( TIME_CURRENT + PW_TIME_IN_GAME ))
+                    fi
+                done < "$desktop_file"
+                if [[ $WITH_TIME != 1 ]] ; then
+                    echo "Time=0" >> "$desktop_file"
+                fi
+                unset WITH_TIME
+                if [[ $portwine_exe == "$EXEC_DESKTOP_NEW" ]] ; then
+                    sed -i '/^Time=/d' "$desktop_file"
+                    echo "Time=$TIME_TOTAL" >> "$desktop_file"
+                fi
+            fi
         fi
-    done < "${PORT_WINE_PATH}/${name_desktop}.desktop"
+    done
     IFS="$orig_IFS"
-
-    sed -i '/^Time=/d' "${PORT_WINE_PATH}/${name_desktop}.desktop"
-    echo "Time=$TIME_TOTAL" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
 
     case "$1" in
         --restart)
@@ -5314,7 +5328,6 @@ portwine_create_shortcut () {
             echo "StartupNotify=true"
             echo "Path=${PORT_SCRIPTS_PATH}/"
             echo "Icon=${PORT_WINE_PATH}/data/img/${name_desktop_png}.png"
-            echo "Time=0"
         } >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
         chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 
