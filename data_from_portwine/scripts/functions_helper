@@ -744,12 +744,15 @@ debug_timer () {
         START=$(date +%s%N)
     elif [[ "$1" == "--end" ]] ; then
         END=$(date +%s%N)
-        DIFF=$((( END - START )/1000000))
         if [[ -n "$2" ]] ; then
-            if [[ "$2" != "-s" ]] ; then
+            if [[ "$2" == "-s" ]] ; then
+                export "$3"=$((( END - START )/1000000 ))
+            else
+                DIFF=$((( END - START )/1000000 ))
                 print_warning "It took $DIFF milliseconds for $2"
             fi
         else
+            DIFF=$((( END - START )/1000000 ))
             print_warning "It took $DIFF milliseconds"
         fi
     fi
@@ -1761,8 +1764,7 @@ pw_port_update () {
             print_warning "https://gitlab.eterfund.ru/ broken. Skip it..."
             UPDATE_SKIP_ETERFUND="1"
         fi
-        debug_timer --end -s
-        UPDATE_ETERFUND="$DIFF"
+        debug_timer --end -s "UPDATE_ETERFUND"
 
         debug_timer --start
         if ! timeout 2 curl -f -s --list-only "$URL_GITHUB" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
@@ -1770,8 +1772,7 @@ pw_port_update () {
             print_warning "https://raw.githubusercontent.com/ broken. Skip it..."
             UPDATE_SKIP_GITHUB="1"
         fi
-        debug_timer --end -s
-        UPDATE_GITHUB="$DIFF"
+        debug_timer --end -s "UPDATE_GITHUB"
 
         if [[ "$UPDATE_SKIP_ETERFUND" == "1" ]] \
         && [[ "$UPDATE_SKIP_GITHUB" == "1" ]] ; then
