@@ -617,15 +617,15 @@ else
                 while IFS= read -r line ; do
                     [[ $line =~ ^Exec= ]] && PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]="${line//Exec=/}"
                     [[ $line =~ ^Icon= ]] && PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]="${line//Icon=/}"
-                    if [[ $line =~ ^Time= ]] ; then
+                    if [[ $line =~ ^#Time= ]] ; then
                         WITH_TIME="1"
-                        PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]="${line//Time=/}"
+                        PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]="${line//#Time=/}"
                     fi
                 done < "$desktop_file"
                 PW_ALL_DF["$AMOUNT_GENERATE_BUTTONS"]="${desktop_file//"${PORT_WINE_PATH}"\//}"
                 # Чтобы новый ярлык показало первым при первом запуске, потом уже по времени
                 if [[ $WITH_TIME != 1 ]] ; then
-                    echo "Time=0" >> "$desktop_file"
+                    echo "#Time=0" >> "$desktop_file"
                     PW_AMOUNT_NO_TIME+=($AMOUNT_GENERATE_BUTTONS)
                 else
                     PW_AMOUNT_WITH_TIME+=($AMOUNT_GENERATE_BUTTONS)

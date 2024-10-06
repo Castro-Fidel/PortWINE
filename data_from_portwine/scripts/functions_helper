@@ -1337,19 +1337,19 @@ stop_portwine () {
                         fi
                         EXEC_DESKTOP_NEW="${EXEC_DESKTOP//\"/}"
                     fi
-                    if [[ $line =~ ^Time= ]] ; then
+                    if [[ $line =~ ^#Time= ]] ; then
                         WITH_TIME="1"
-                        TIME_CURRENT=${line//Time=/}
+                        TIME_CURRENT=${line//#Time=/}
                         TIME_TOTAL=$(( TIME_CURRENT + PW_TIME_IN_GAME ))
                     fi
                 done < "$desktop_file"
                 if [[ $WITH_TIME != 1 ]] ; then
-                    echo "Time=0" >> "$desktop_file"
+                    echo "#Time=0" >> "$desktop_file"
                 fi
                 unset WITH_TIME
                 if [[ $portwine_exe == "$EXEC_DESKTOP_NEW" ]] ; then
-                    sed -i '/^Time=/d' "$desktop_file"
-                    echo "Time=$TIME_TOTAL" >> "$desktop_file"
+                    sed -i '/^#Time=/d' "$desktop_file"
+                    echo "#Time=$TIME_TOTAL" >> "$desktop_file"
                 fi
             fi
         fi
