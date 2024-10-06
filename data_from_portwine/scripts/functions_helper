@@ -1321,13 +1321,15 @@ stop_portwine () {
     add_in_stop_portwine
 
     debug_timer --end -s "PW_TIME_IN_GAME"
-    #PW_TIME_IN_GAME=$(( (PW_TIME_IN_GAME / 60000) )) # в минутах
     PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 )) # в секундах
+    # В году 31536000 секунд.
+    # Bash у меня ещё работает с таким числом 999999999999999999999999999999999999999999999999
 
     # Поиск нужного .desktop файла по $portwine_exe, чтобы внести изменения в него.
     for desktop_file in "${PORT_WINE_PATH}"/* ; do
-        if [[ $desktop_file =~ .desktop ]] ; then
-            if [[ ! $desktop_file =~ (/PortProton|/readme) ]] ; then
+        desktop_file_new="${desktop_file//"${PORT_WINE_PATH}/"/}"
+        if [[ $desktop_file_new =~ .desktop ]] ; then
+            if [[ ! $desktop_file_new =~ (PortProton|readme) ]] ; then
                 while IFS= read -r line ; do
                     if [[ $line =~ ^Exec= ]] ; then
                         if check_flatpak ; then

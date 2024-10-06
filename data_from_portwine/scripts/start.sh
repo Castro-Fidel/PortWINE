@@ -612,8 +612,9 @@ else
     # Поиск .desktop файлов
     AMOUNT_GENERATE_BUTTONS="0"
     for desktop_file in "${PORT_WINE_PATH}"/* ; do
-        if [[ $desktop_file =~ .desktop ]] ; then
-            if [[ ! $desktop_file =~ (/PortProton|/readme) ]] ; then
+        desktop_file_new="${desktop_file//"${PORT_WINE_PATH}/"/}"
+        if [[ $desktop_file_new =~ .desktop ]] ; then
+            if [[ ! $desktop_file_new =~ (PortProton|readme) ]] ; then
                 while IFS= read -r line ; do
                     [[ $line =~ ^Exec= ]] && PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]="${line//Exec=/}"
                     [[ $line =~ ^Icon= ]] && PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]="${line//Icon=/}"
@@ -622,12 +623,17 @@ else
                         PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]="${line//#Time=/}"
                     fi
                 done < "$desktop_file"
-                PW_ALL_DF["$AMOUNT_GENERATE_BUTTONS"]="${desktop_file//"${PORT_WINE_PATH}"\//}"
+                PW_ALL_DF["$AMOUNT_GENERATE_BUTTONS"]="$desktop_file_new"
                 # Чтобы новый ярлык показало первым при первом запуске, потом уже по времени
                 if [[ $WITH_TIME != 1 ]] ; then
                     echo "#Time=0" >> "$desktop_file"
                     PW_AMOUNT_NO_TIME+=($AMOUNT_GENERATE_BUTTONS)
                 else
+                    if [[ ! ${PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]} =~ [0-9]+ ]] ; then
+                        sed -i '/^#Time=/d' "$desktop_file"
+                        echo "#Time=0" >> "$desktop_file"
+                        PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]="0"
+                    fi
                     PW_AMOUNT_WITH_TIME+=($AMOUNT_GENERATE_BUTTONS)
                 fi
                 unset WITH_TIME
@@ -636,7 +642,7 @@ else
         fi
     done
 
-    # Переопределение массивов в зависимости от PW_GAME_TIME, от большего значения к меньшему.
+    # Переопределение элементов в массивах в зависимости от PW_GAME_TIME, от большего значения к меньшему.
     # 10 миллисекунд на 40 .desktop файлов, работает быстро
     for i in "${!PW_GAME_TIME[@]}" ; do
         for j in "${!PW_GAME_TIME[@]}" ; do
