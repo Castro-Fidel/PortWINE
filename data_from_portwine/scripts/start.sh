@@ -616,8 +616,16 @@ else
         if [[ $desktop_file_new =~ .desktop ]] ; then
             if [[ ! $desktop_file_new =~ (PortProton|readme) ]] ; then
                 while IFS= read -r line ; do
-                    [[ $line =~ ^Exec= ]] && PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]="${line//Exec=/}"
-                    [[ $line =~ ^Icon= ]] && PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]="${line//Icon=/}"
+                    if [[ $line =~ ^Exec= ]] ; then
+                        if check_flatpak ; then
+                            PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${line//Exec=flatpak run ru.linux_gaming.PortProton /}
+                        else
+                            PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${line//Exec=env \"${PORT_SCRIPTS_PATH}\/start.sh\" /}
+                        fi
+                    fi
+                    if [[ $line =~ ^Icon= ]] ; then
+                        PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]="${line//Icon=/}"
+                    fi
                     if [[ $line =~ ^#Time= ]] ; then
                         WITH_TIME="1"
                         PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]="${line//#Time=/}"
@@ -669,21 +677,14 @@ else
     IFS=$'\n'
     PW_GENERATE_BUTTONS="--field=   ${translations[Create shortcut...]}!${PW_GUI_ICON_PATH}/find_48.svg!:FBTNR%@bash -c \"button_click --normal pw_find_exe\"%"
     for dp in "${PW_AMOUNT_NO_TIME[@]}" "${PW_AMOUNT_WITH_TIME[@]}" ; do
-        PW_DESKTOP_FILES="${PW_ALL_DF[$dp]}"
-        if [[ -n ${PW_NAME_D_ICON[dp]} ]] ; then
-            PW_NAME_D_ICON_48="${PW_ICON_PATH[dp]%.png}_48"
-            PW_NAME_D_ICON_128="${PW_ICON_PATH[dp]%.png}"
-            if check_flatpak ; then
-                PW_NAME_D_ICON_NEW=${PW_NAME_D_ICON[dp]//flatpak run ru.linux_gaming.PortProton /}
-            else
-                PW_NAME_D_ICON_NEW=${PW_NAME_D_ICON[dp]//env \"${PORT_SCRIPTS_PATH}\/start.sh\" /}
-            fi
-            PW_NAME_D_ICON_NEW="${PW_NAME_D_ICON_NEW//\"/}"
-            resize_png "${PW_NAME_D_ICON_NEW}" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
-            resize_png "${PW_NAME_D_ICON_NEW}" "${PW_NAME_D_ICON_128//"${PORT_WINE_PATH}/data/img/"/}" "128"
-        fi
+        PW_NAME_D_ICON_48="${PW_ICON_PATH[dp]%.png}_48"
+        PW_NAME_D_ICON_128="${PW_ICON_PATH[dp]%.png}"
+        PW_NAME_D_ICON_NEW="${PW_NAME_D_ICON[dp]//\"/}"
+        resize_png "$PW_NAME_D_ICON_NEW" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
+        resize_png "$PW_NAME_D_ICON_NEW" "${PW_NAME_D_ICON_128//"${PORT_WINE_PATH}/data/img/"/}" "128"
 
-        PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES}"
+        PW_DESKTOP_FILES="${PW_ALL_DF[$dp]}"
+        PW_DESKTOP_FILES_SHOW="$PW_DESKTOP_FILES"
         if [[ $PW_DESKTOP_FILES =~ [\(\)\!\$\%\&\`\'\"\>\<\\\|\;] ]] ; then
             PW_DESKTOP_FILES_SHOW_REGEX=(\! % \$ \& \<)
             PW_DESKTOP_FILES_REGEX=(\( \) \! \$ % \& \` \' \" \> \< \\ \| \;)
