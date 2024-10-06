@@ -637,28 +637,29 @@ else
     done
 
     # Переопределение массивов в зависимости от PW_GAME_TIME, от большего значения к меньшему.
+    # 10 миллисекунд на 40 .desktop файлов, работает быстро
     for i in "${!PW_GAME_TIME[@]}" ; do
         for j in "${!PW_GAME_TIME[@]}" ; do
-            if [[ ${PW_GAME_TIME[$i]} -gt ${PW_GAME_TIME[$j]} ]] ; then
+            if (( ${PW_GAME_TIME[$i]} > ${PW_GAME_TIME[$j]} )) ; then
                 tmp_0=${PW_GAME_TIME[$i]}
                 tmp_1=${PW_ALL_DF[$i]}
                 tmp_2=${PW_NAME_D_ICON[$i]}
                 tmp_4=${PW_ICON_PATH[$i]}
 
-                PW_GAME_TIME[$i]=${PW_GAME_TIME[$j]}
-                PW_ALL_DF[$i]=${PW_ALL_DF[$j]}
-                PW_NAME_D_ICON[$i]=${PW_NAME_D_ICON[$j]}
-                PW_ICON_PATH[$i]=${PW_ICON_PATH[$j]}
+                PW_GAME_TIME[i]=${PW_GAME_TIME[$j]}
+                PW_ALL_DF[i]=${PW_ALL_DF[$j]}
+                PW_NAME_D_ICON[i]=${PW_NAME_D_ICON[$j]}
+                PW_ICON_PATH[i]=${PW_ICON_PATH[$j]}
 
-                PW_GAME_TIME[$j]=$tmp_0
-                PW_ALL_DF[$j]=$tmp_1
-                PW_NAME_D_ICON[$j]=$tmp_2
-                PW_ICON_PATH[$j]=$tmp_4
+                PW_GAME_TIME[j]=$tmp_0
+                PW_ALL_DF[j]=$tmp_1
+                PW_NAME_D_ICON[j]=$tmp_2
+                PW_ICON_PATH[j]=$tmp_4
             fi
         done
     done
 
-    # Генерация .desktop баттанов для меню
+    # Генерация .desktop баттанов для главного меню
     IFS=$'\n'
     PW_GENERATE_BUTTONS="--field=   ${translations[Create shortcut...]}!${PW_GUI_ICON_PATH}/find_48.svg!:FBTNR%@bash -c \"button_click --normal pw_find_exe\"%"
     for dp in "${PW_AMOUNT_NO_TIME[@]}" "${PW_AMOUNT_WITH_TIME[@]}" ; do
