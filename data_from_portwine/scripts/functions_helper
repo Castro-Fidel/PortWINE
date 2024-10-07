@@ -776,10 +776,10 @@ debug_timer () {
     fi
 }
 
+# Поиск нужного .desktop файла по $portwine_exe
 search_desktop_file () {
-    # Поиск нужного .desktop файла по $portwine_exe, чтобы внести изменения в него.
-    for desktop_file in "${PORT_WINE_PATH}"/* ; do
-        desktop_file_new="${desktop_file//"${PORT_WINE_PATH}/"/}"
+    for desktop_file in "$PORT_WINE_PATH"/* ; do
+        desktop_file_new="${desktop_file//"$PORT_WINE_PATH/"/}"
         if [[ $desktop_file_new =~ .desktop ]] ; then
             if [[ ! $desktop_file_new =~ (PortProton|readme) ]] ; then
                 while IFS= read -r line ; do
@@ -787,7 +787,7 @@ search_desktop_file () {
                         if check_flatpak ; then
                             EXEC_DESKTOP=${line//Exec=flatpak run ru.linux_gaming.PortProton /}
                         else
-                            EXEC_DESKTOP=${line//Exec=env \"${PORT_SCRIPTS_PATH}\/start.sh\" /}
+                            EXEC_DESKTOP=${line//Exec=env \"$PORT_SCRIPTS_PATH\/start.sh\" /}
                         fi
                         EXEC_DESKTOP_NEW="${EXEC_DESKTOP//\"/}"
                     fi
@@ -816,19 +816,17 @@ search_desktop_file () {
     IFS="$orig_IFS"
 }
 
+# Конвертация секунд в дни, часы, минуты
 seconds_to_time () {
     [[ -z $1 ]] && return 0
     local seconds=$1
 
-    # Calculate days
     local days=$((seconds / (60 * 60 * 24)))
     local seconds=$((seconds % (60 * 60 * 24)))
 
-    # Calculate hours
     local hours=$((seconds / (60 * 60)))
     local seconds=$((seconds % (60 * 60)))
 
-    # Calculate minutes
     local minutes=$((seconds / 60))
     local seconds=$((seconds % 60))
 
@@ -889,27 +887,27 @@ combobox_fix () {
                 echo "disabled"
                 return 0
             fi
-            name1="$2"
-            name2="$3"
+            local name1="$2"
+            local name2="$3"
         elif [[ "$1" == "--empty" ]] ; then
             if [[ -z "$3" ]] ; then
                 echo ""
                 return 0
             fi
-            name1="$2"
-            name2="$3"
+            local name1="$2"
+            local name2="$3"
         else
-            name1="$1"
+            local name1="$1"
             if [[ -z "$2" ]] ; then
                 echo "${name1}"
                 return 0
             fi
-            name2="$2"
+            local name2="$2"
         fi
-        name3="${name2//\!${name1}\!/\!}"
-        name3="!${name3//${name1}\!/\!}"
-        name3="${name3//\!\!/\!}"
-        name4="${name3//*\!/}"
+        local name3="${name2//\!${name1}\!/\!}"
+        local name3="!${name3//${name1}\!/\!}"
+        local name3="${name3//\!\!/\!}"
+        local name4="${name3//*\!/}"
         if [[ ${name1} == "${name4}" ]] || [[ ${name1} == "\\${name4}" ]]
         then name3="${name3%\!"${name1}"}"
         fi
@@ -5280,8 +5278,8 @@ gui_userconf () {
         166)
             IFS='%' read -r -a PW_ADD_SETTINGS_UC <"${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb"
             IFS="$orig_IFS"
-            PW_GPU_USE=${PW_ADD_SETTINGS_UC[0]}
-            PW_SOUND_DRIVER_USE=${PW_ADD_SETTINGS_UC[1]}
+            PW_GPU_USE="${PW_ADD_SETTINGS_UC[0]}"
+            PW_SOUND_DRIVER_USE="${PW_ADD_SETTINGS_UC[1]}"
             GUI_THEME="${PW_ADD_SETTINGS_UC[2]}"
             DESKTOP_WITH_TIME="${PW_ADD_SETTINGS_UC[3]}"
             SORT_WITH_TIME="${PW_ADD_SETTINGS_UC[4]}"

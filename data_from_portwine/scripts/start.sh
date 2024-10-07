@@ -497,9 +497,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             PW_SHORTCUT="${translations[DELETE SHORTCUT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Delete shortcut for select file...]}:98"
         fi
 
-        if [[ $DESKTOP_WITH_TIME == enabled ]] ; then
-            search_desktop_file
-        fi
+        [[ $DESKTOP_WITH_TIME == enabled ]] && search_desktop_file
         if [[ -z "${PW_COMMENT_DB}" ]] ; then
             if [[ -n "${PORTPROTON_NAME}" ]] ; then
                 PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTPROTON_NAME}" "50")$(seconds_to_time "$TIME_CURRENT")</b>"
@@ -590,9 +588,7 @@ if [[ -f "${portwine_exe}" ]] ; then
         fi
         case $PW_YAD_SET in
             128)
-                if [[ "${PW_GUI_START}" == "NOTEBOOK" ]] ; then
-                    unset PW_YAD_FORM_TAB
-                fi
+                [[ "$PW_GUI_START" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
                 unset portwine_exe KEY_START $(sed -n '/export/p' "${PORTWINE_DB_FILE}" | sed 's/\(export\|=.*\| \)//g')
                 print_info "Restarting..."
                 restart_pp
@@ -603,7 +599,7 @@ if [[ -f "${portwine_exe}" ]] ; then
         esac
         pw_yad_set_form
         pw_yad_form_vulkan
-    elif [[ -f "${PORTWINE_DB_FILE}" ]] ; then
+    elif [[ -f "$PORTWINE_DB_FILE" ]] ; then
         portwine_launch
     fi
 else
@@ -614,8 +610,8 @@ else
 
     # Поиск .desktop файлов
     AMOUNT_GENERATE_BUTTONS="0"
-    for desktop_file in "${PORT_WINE_PATH}"/* ; do
-        desktop_file_new="${desktop_file//"${PORT_WINE_PATH}/"/}"
+    for desktop_file in "$PORT_WINE_PATH"/* ; do
+        desktop_file_new="${desktop_file//"$PORT_WINE_PATH/"/}"
         if [[ $desktop_file_new =~ .desktop ]] ; then
             if [[ ! $desktop_file_new =~ (PortProton|readme) ]] ; then
                 while IFS= read -r line ; do
@@ -623,7 +619,7 @@ else
                         if check_flatpak ; then
                             PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${line//Exec=flatpak run ru.linux_gaming.PortProton /}
                         else
-                            PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${line//Exec=env \"${PORT_SCRIPTS_PATH}\/start.sh\" /}
+                            PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${line//Exec=env \"$PORT_SCRIPTS_PATH\/start.sh\" /}
                         fi
                     fi
                     if [[ $line =~ ^Icon= ]] ; then
