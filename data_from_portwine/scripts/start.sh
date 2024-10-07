@@ -25,7 +25,8 @@ if PORT_SCRIPTS_PATH=$(readlink -f "${0%/*}") ; then
     export PORT_SCRIPTS_PATH
     export PORT_WINE_PATH=${PORT_SCRIPTS_PATH%/*/*}
 else
-    fatal
+    echo "The PORT_SCRIPTS_PATH directory was not found!"
+    exit 1
 fi
 
 # shellcheck source=/dev/null
@@ -90,10 +91,11 @@ unset MANGOHUD MANGOHUD_DLSYM PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERR
 unset PW_CHECK_AUTOINSTALL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PORTWINE_DB_FILE RADV_PERFTEST
 unset CHK_SYMLINK_FILE PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME PW_PATH
 unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD PW_WINE_CPU_TOPOLOGY
-unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
 unset MANGOHUD_CONFIG FPS_LIMIT PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME PORTWINE_CREATE_SHORTCUT_NAME MIRROR
 unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NOSTSTDIR RADV_DEBUG PW_NO_AUTO_CREATE_SHORTCUT
-unset PW_DESKTOP_FILES_REGEX PW_TERM
+unset PW_NAME_D_ICON PW_ICON_PATH PW_GAME_TIME PW_ALL_DF PW_AMOUNT_NEW_DESKTOP PW_AMOUNT_OLD_DESKTOP PW_DESKTOP_FILES
+unset AI_TYPE AI_NAME AI_IMAGE AI_INFO AI_FILE_ARRAY AI_TRUE_FILE AI_FILE_UNSORTED AI_FILE_SORTED PW_GENERATE_BUTTONS
+unset PW_DESKTOP_FILES_REGEX PW_TERM PW_EXEC_FROM_DESKTOP
 
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 rm -f "$PORT_WINE_TMP_PATH"/*{exe,msi,tar}*
@@ -324,7 +326,7 @@ export SKIP_CHECK_UPDATES="1"
 
 [[ "$MISSING_DESKTOP_FILE" == "1" ]] && portwine_missing_shortcut
 
-if [[ -n $(basename "${portwine_exe}" | grep .ppack) ]] ; then
+if [[ $(basename "${portwine_exe}") =~ .ppack$ ]] ; then
     unset PW_SANDBOX_HOME_PATH
     pw_init_runtime
     if check_flatpak
@@ -500,9 +502,9 @@ if [[ -f "${portwine_exe}" ]] ; then
         [[ $DESKTOP_WITH_TIME == enabled ]] && search_desktop_file
         if [[ -z "${PW_COMMENT_DB}" ]] ; then
             if [[ -n "${PORTPROTON_NAME}" ]] ; then
-                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTPROTON_NAME}" "50")$(seconds_to_time "$TIME_CURRENT")</b>"
+                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTPROTON_NAME}" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
             else
-                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTWINE_DB}" "50")$(seconds_to_time "$TIME_CURRENT")</b>"
+                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTWINE_DB}" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
             fi
         else
             PW_COMMENT_DB="$PW_COMMENT_DB$(seconds_to_time "$TIME_CURRENT")"
@@ -586,10 +588,14 @@ if [[ -f "${portwine_exe}" ]] ; then
             --button="${translations[LAUNCH]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Run file ...]}":106 2>/dev/null
             PW_YAD_SET="$?"
         fi
-        case $PW_YAD_SET in
+        case "$PW_YAD_SET" in
             128)
                 [[ "$PW_GUI_START" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
-                unset portwine_exe KEY_START $(sed -n '/export/p' "${PORTWINE_DB_FILE}" | sed 's/\(export\|=.*\| \)//g')
+                PORTWINE_DB_FOR_UNSET=$(sed -n '/export/p' "${PORTWINE_DB_FILE}" | sed 's/\(export\|=.*\| \)//g')
+                for db_unset in $PORTWINE_DB_FOR_UNSET ; do
+                    unset "$db_unset"
+                done
+                unset portwine_exe KEY_START
                 print_info "Restarting..."
                 restart_pp
                 ;;
@@ -622,32 +628,25 @@ else
                             PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${line//Exec=env \"$PORT_SCRIPTS_PATH\/start.sh\" /}
                         fi
                     fi
-                    if [[ $line =~ ^Icon= ]] ; then
-                        PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]="${line//Icon=/}"
-                    fi
-                    if [[ $line =~ ^#Time= ]] ; then
-                        WITH_TIME="1"
-                        PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]="${line//#Time=/}"
-                    fi
+                    [[ $line =~ ^Icon= ]] && PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]="${line//Icon=/}"
+                    [[ $line =~ ^#Time= ]] && PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]="${line//#Time=/}"
+                    [[ $line =~ ^#NEW_DESKTOP ]] && NEW_DESKTOP=1
                 done < "$desktop_file"
                 PW_ALL_DF["$AMOUNT_GENERATE_BUTTONS"]="$desktop_file_new"
-                # Чтобы новый ярлык показало первым при первом запуске, потом уже по времени
-                if [[ $WITH_TIME != 1 ]] ; then
-                    echo "#Time=0" >> "$desktop_file"
-                    if [[ $SORT_WITH_TIME == enabled ]] ; then
-                        PW_AMOUNT_NO_TIME+=($AMOUNT_GENERATE_BUTTONS)
-                    else
-                        PW_AMOUNT_WITH_TIME+=($AMOUNT_GENERATE_BUTTONS)
-                    fi
+                if [[ $NEW_DESKTOP == 1 ]] && [[ $SORT_WITH_TIME == enabled ]] ; then
+                    unset NEW_DESKTOP
+                    sed -i '/^#NEW_DESKTOP/d' "$desktop_file"
+                    PW_AMOUNT_NEW_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
                 else
-                    if [[ ! ${PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]} =~ [0-9]+ ]] ; then
-                        sed -i '/^#Time=/d' "$desktop_file"
-                        echo "#Time=0" >> "$desktop_file"
-                        PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]="0"
-                    fi
-                    PW_AMOUNT_WITH_TIME+=($AMOUNT_GENERATE_BUTTONS)
+                    PW_AMOUNT_OLD_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
                 fi
-                unset WITH_TIME
+                # Для фикса битых #Time=
+                if [[ ! ${PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]} =~ [0-9]+ ]] ; then
+                    portwine_exe=${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]//\"/}
+                    search_desktop_file
+                    unset portwine_exe
+                    PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=${TIME_CURRENT_ARRAY[0]}
+                fi
                 (( AMOUNT_GENERATE_BUTTONS++ ))
             fi
         fi
@@ -681,7 +680,7 @@ else
     # Генерация .desktop баттанов для главного меню
     IFS=$'\n'
     PW_GENERATE_BUTTONS="--field=   ${translations[Create shortcut...]}!${PW_GUI_ICON_PATH}/find_48.svg!:FBTNR%@bash -c \"button_click --normal pw_find_exe\"%"
-    for dp in "${PW_AMOUNT_NO_TIME[@]}" "${PW_AMOUNT_WITH_TIME[@]}" ; do
+    for dp in ${PW_AMOUNT_NEW_DESKTOP[@]} ${PW_AMOUNT_OLD_DESKTOP[@]} ; do
         PW_NAME_D_ICON_48="${PW_ICON_PATH[dp]%.png}_48"
         PW_NAME_D_ICON_128="${PW_ICON_PATH[dp]%.png}"
         PW_NAME_D_ICON_NEW="${PW_NAME_D_ICON[dp]//\"/}"
@@ -694,12 +693,12 @@ else
             PW_DESKTOP_FILES_SHOW_REGEX=(\! % \$ \& \<)
             PW_DESKTOP_FILES_REGEX=(\( \) \! \$ % \& \` \' \" \> \< \\ \| \;)
 
-            for i in ${PW_DESKTOP_FILES_SHOW_REGEX[@]} ; do
+            for i in "${PW_DESKTOP_FILES_SHOW_REGEX[@]}" ; do
                 PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//$i/}"
             done
 
             count=1
-            for j in ${PW_DESKTOP_FILES_REGEX[@]} ; do
+            for j in "${PW_DESKTOP_FILES_REGEX[@]}" ; do
                 PW_DESKTOP_FILES="${PW_DESKTOP_FILES//$j/#+_$count#}"
                 (( count++ ))
             done
@@ -868,7 +867,7 @@ if [[ -f "${PORTWINE_DB_FILE}" ]] ; then
     edit_db_from_gui PW_VULKAN_USE PW_WINE_USE PW_PREFIX_NAME
 fi
 
-case $PW_YAD_SET in
+case "$PW_YAD_SET" in
     gui_pw_reinstall_pp|open_changelog|\
     128|gui_pw_update|gui_rm_portproton|\
     change_loc|gui_open_scripts_from_backup|\
@@ -898,7 +897,7 @@ case $PW_YAD_SET in
         ;;
 esac
 
-case $PW_YAD_SET in
+case "$PW_YAD_SET" in
     98) portwine_delete_shortcut ;;
     100) portwine_create_shortcut ;;
     DEBUG|102) portwine_start_debug ;;
