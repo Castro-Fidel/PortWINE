@@ -774,7 +774,61 @@ debug_timer () {
             print_warning "It took $DIFF milliseconds"
         fi
     fi
-    return 0
+}
+
+search_desktop_file () {
+    # Поиск нужного .desktop файла по $portwine_exe, чтобы внести изменения в него.
+    for desktop_file in "${PORT_WINE_PATH}"/* ; do
+        if [[ $desktop_file =~ .desktop ]] ; then
+            if [[ ! $desktop_file =~ (/PortProton|/readme) ]] ; then
+                while IFS= read -r line ; do
+                    if [[ $line =~ ^Exec= ]] ; then
+                        if check_flatpak ; then
+                            EXEC_DESKTOP=${line//Exec=flatpak run ru.linux_gaming.PortProton /}
+                        else
+                            EXEC_DESKTOP=${line//Exec=env \"${PORT_SCRIPTS_PATH}\/start.sh\" /}
+                        fi
+                        EXEC_DESKTOP_NEW="${EXEC_DESKTOP//\"/}"
+                    fi
+
+                    if [[ $line =~ ^#Time= ]] ; then
+                        if [[ $portwine_exe == "$EXEC_DESKTOP_NEW" ]] ; then
+                            TIME_CURRENT=${line//#Time=/}
+                            if [[ ! $TIME_CURRENT =~ [0-9]+ ]] ; then
+                                TIME_CURRENT="0"
+                                sed -i '/^#Time=/d' "$desktop_file"
+                                echo "#Time=0" >> "$desktop_file"
+                            fi
+                        fi
+                    fi
+                done < "$desktop_file"
+                if [[ -n $PW_TIME_IN_GAME ]] ; then
+                    TIME_TOTAL=$(( TIME_CURRENT + PW_TIME_IN_GAME ))
+                    sed -i '/^#Time=/d' "$desktop_file"
+                    echo "#Time=$TIME_TOTAL" >> "$desktop_file"
+                fi
+            fi
+        fi
+    done
+    IFS="$orig_IFS"
+}
+
+seconds_to_time () {
+    [[ -z $1 ]] && return 1
+    local seconds=$1
+
+    local minutes=$((seconds / 60))
+    local hours=$((minutes / 60))
+    local days=$((hours / 24))
+
+    local remaining_minutes=$((minutes % 60))
+    local remaining_hours=$((hours % 24))
+
+    if [[ "$LANGUAGE" == ru ]] ; then
+        echo "\n$days дней, $remaining_hours часов и $remaining_minutes минут"
+    else
+        echo "\n$days days, $remaining_hours hours and $remaining_minutes minutes"
+    fi
 }
 
 combobox_fix () {
@@ -1320,43 +1374,14 @@ stop_portwine () {
     pw_auto_create_shortcut
     add_in_stop_portwine
 
+    # То что новый трей ругается на debug_timer и search_desktop_file, так и должно быть.
     debug_timer --end -s "PW_TIME_IN_GAME"
-    PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 )) # в секундах
+
     # В году 31536000 секунд.
     # Bash у меня ещё работает с таким числом 999999999999999999999999999999999999999999999999
+    PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 )) # в секундах
 
-    # Поиск нужного .desktop файла по $portwine_exe, чтобы внести изменения в него.
-    for desktop_file in "${PORT_WINE_PATH}"/* ; do
-        desktop_file_new="${desktop_file//"${PORT_WINE_PATH}/"/}"
-        if [[ $desktop_file_new =~ .desktop ]] ; then
-            if [[ ! $desktop_file_new =~ (PortProton|readme) ]] ; then
-                while IFS= read -r line ; do
-                    if [[ $line =~ ^Exec= ]] ; then
-                        if check_flatpak ; then
-                            EXEC_DESKTOP=${line//Exec=flatpak run ru.linux_gaming.PortProton /}
-                        else
-                            EXEC_DESKTOP=${line//Exec=env \"${PORT_SCRIPTS_PATH}\/start.sh\" /}
-                        fi
-                        EXEC_DESKTOP_NEW="${EXEC_DESKTOP//\"/}"
-                    fi
-                    if [[ $line =~ ^#Time= ]] ; then
-                        WITH_TIME="1"
-                        TIME_CURRENT=${line//#Time=/}
-                        TIME_TOTAL=$(( TIME_CURRENT + PW_TIME_IN_GAME ))
-                    fi
-                done < "$desktop_file"
-                if [[ $WITH_TIME != 1 ]] ; then
-                    echo "#Time=0" >> "$desktop_file"
-                fi
-                unset WITH_TIME
-                if [[ $portwine_exe == "$EXEC_DESKTOP_NEW" ]] ; then
-                    sed -i '/^#Time=/d' "$desktop_file"
-                    echo "#Time=$TIME_TOTAL" >> "$desktop_file"
-                fi
-            fi
-        fi
-    done
-    IFS="$orig_IFS"
+    search_desktop_file
 
     case "$1" in
         --restart)
@@ -5152,11 +5177,20 @@ gui_userconf () {
         GPU_VAR="disabled"
     fi
 
+    if [[ -n "${DESKTOPS_WITH_TIME}" ]] \
+    && [[ "${DESKTOPS_WITH_TIME}" != "disabled" ]]
+    then
+        DESKTOPS_WITH_TIME="${DESKTOPS_WITH_TIME}"
+    else
+        DESKTOPS_WITH_TIME="disabled"
+    fi
+
     "${pw_yad}" --plug=$KEY_USERCONF_GUI --tabnum="2" --form --columns=1 --separator="%" --homogeneous-row \
-    --gui-type-text="${PANED_GUI_TYPE_TEXT_DOWN}" --gui-type-layout="${PANED_GUI_TYPE_LAYOUT_DOWN}" \
-    --field="${translations[Choose a graphics card to run the game]}!${translations[Select which video card will be used to run the game (used for all running games and programs in PortProton)]} :CB" "$(combobox_fix --disabled "${GPU_VAR}" "${GET_GPU_NAMES}")" \
-    --field="${translations[Choice wine audio driver]}!${translations[Fixes sound popling if choice alsa]} :CB" "$(combobox_fix --disabled "${SOUND_DRIVER_VAR}" "alsa!oss!pulse")" \
-    --field="${translations[Choice gui themes]}!${translations[Allows you to select a theme for PortProton]} :CB" "$(combobox_fix "${GUI_THEME}" "default!compact!classic")" \
+    --gui-type-text="$PANED_GUI_TYPE_TEXT_DOWN" --gui-type-layout="$PANED_GUI_TYPE_LAYOUT_DOWN" \
+    --field="${translations[Choose a graphics card to run the game]}!${translations[Select which video card will be used to run the game (used for all running games and programs in PortProton)]} :CB" "$(combobox_fix --disabled "$GPU_VAR" "$GET_GPU_NAMES")" \
+    --field="${translations[Choice wine audio driver]}!${translations[Fixes sound popling if choice alsa]} :CB" "$(combobox_fix --disabled "$SOUND_DRIVER_VAR" "alsa!oss!pulse")" \
+    --field="${translations[Choice gui themes]}!${translations[Allows you to select a theme for PortProton]} :CB" "$(combobox_fix "$GUI_THEME" "default!compact!classic")" \
+    --field="${translations[Time display]}!${translations[Displays time spent in an application or game]} :CB" "$(combobox_fix "$DESKTOPS_WITH_TIME" "enabled!disabled")" \
     1> "${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb" 2>/dev/null &
 
     "${pw_yad}" --key=$KEY_USERCONF_GUI --paned --sensitive \
@@ -5192,7 +5226,8 @@ gui_userconf () {
             PW_GPU_USE="${PW_ADD_SETTINGS_UC[0]}"
             PW_SOUND_DRIVER_USE="${PW_ADD_SETTINGS_UC[1]}"
             GUI_THEME="${PW_ADD_SETTINGS_UC[2]}"
-            edit_user_conf_from_gui PW_GPU_USE PW_SOUND_DRIVER_USE GUI_THEME
+            DESKTOPS_WITH_TIME="${PW_ADD_SETTINGS_UC[3]}"
+            edit_user_conf_from_gui PW_GPU_USE PW_SOUND_DRIVER_USE GUI_THEME DESKTOPS_WITH_TIME
             restart_pp
             ;;
     esac

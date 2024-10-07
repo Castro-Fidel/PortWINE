@@ -464,14 +464,6 @@ case "${PW_VULKAN_USE}" in
     *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY!$SORT_G_ZINK!$SORT_G_NINE!$SORT_OPENGL!$SORT_VULKAN" ;;
 esac
 
-if [[ -z "${PW_COMMENT_DB}" ]] ; then
-    if [[ -n "${PORTPROTON_NAME}" ]] ; then
-        PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTPROTON_NAME}" "50")</b>"
-    else
-        PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTWINE_DB}" "50")</b>"
-    fi
-fi
-
 if [[ $PW_WINE_USE == PROTON_LG ]] ; then
     PW_WINE_USE="${PW_PROTON_LG_VER}"
     PW_DEFAULT_WINE_USE="${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
@@ -503,6 +495,17 @@ if [[ -f "${portwine_exe}" ]] ; then
             PW_SHORTCUT="${translations[CREATE SHORTCUT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Create shortcut for select file...]}:100"
         else
             PW_SHORTCUT="${translations[DELETE SHORTCUT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Delete shortcut for select file...]}:98"
+        fi
+
+        if [[ $DESKTOPS_WITH_TIME == enabled ]] ; then
+            search_desktop_file
+        fi
+        if [[ -z "${PW_COMMENT_DB}" ]] ; then
+            if [[ -n "${PORTPROTON_NAME}" ]] ; then
+                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTPROTON_NAME}" "50")$(seconds_to_time $TIME_CURRENT)</b>"
+            else
+                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTWINE_DB}" "50")$(seconds_to_time $TIME_CURRENT)</b>"
+            fi
         fi
 
         export KEY_START="$RANDOM"
@@ -583,18 +586,18 @@ if [[ -f "${portwine_exe}" ]] ; then
             --button="${translations[LAUNCH]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Run file ...]}":106 2>/dev/null
             PW_YAD_SET="$?"
         fi
-        [[ -n "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
+        case $PW_YAD_SET in
             128)
-                    if [[ "${PW_GUI_START}" == "NOTEBOOK" ]] ; then
-                        unset PW_YAD_FORM_TAB
-                    fi
-                    unset portwine_exe KEY_START $(sed -n '/export/p' "${PORTWINE_DB_FILE}" | sed 's/\(export\|=.*\| \)//g')
-                    print_info "Restarting..."
-                    restart_pp
-                    ;;
+                if [[ "${PW_GUI_START}" == "NOTEBOOK" ]] ; then
+                    unset PW_YAD_FORM_TAB
+                fi
+                unset portwine_exe KEY_START $(sed -n '/export/p' "${PORTWINE_DB_FILE}" | sed 's/\(export\|=.*\| \)//g')
+                print_info "Restarting..."
+                restart_pp
+                ;;
             1|252)
-                    exit 0
-                    ;;
+                exit 0
+                ;;
         esac
         pw_yad_set_form
         pw_yad_form_vulkan
@@ -864,7 +867,7 @@ if [[ -f "${PORTWINE_DB_FILE}" ]] ; then
     edit_db_from_gui PW_VULKAN_USE PW_WINE_USE PW_PREFIX_NAME
 fi
 
-[[ -n "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
+case $PW_YAD_SET in
     gui_pw_reinstall_pp|open_changelog|\
     128|gui_pw_update|gui_rm_portproton|\
     change_loc|gui_open_scripts_from_backup|\
@@ -894,7 +897,7 @@ fi
         ;;
 esac
 
-[[ -n "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
+case $PW_YAD_SET in
     98) portwine_delete_shortcut ;;
     100) portwine_create_shortcut ;;
     DEBUG|102) portwine_start_debug ;;
