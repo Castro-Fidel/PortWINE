@@ -820,15 +820,45 @@ seconds_to_time () {
     local minutes=$((seconds / 60))
     local hours=$((minutes / 60))
     local days=$((hours / 24))
-
     local remaining_minutes=$((minutes % 60))
     local remaining_hours=$((hours % 24))
 
-    if [[ "$LANGUAGE" == ru ]] ; then
-        echo "\n$days дней, $remaining_hours часов и $remaining_minutes минут"
+    if [[ $days =~ ^0$ ]] ; then
+        local remaining_days=
+    elif [[ $days =~ ^1$ ]] ; then
+        local remaining_days="$days ${translations[day]}, "
+    elif [[ $days =~ ^([2-9]1|[1-9][0-9]+1)$ ]] && [[ $LANGUAGE = ru ]] ; then
+        local remaining_days="$days ${translations[day]}, "
+    elif [[ $days =~ ^(2|3|4|[2-9]2|[2-9]3|[2-9]4|[1-9][0-9]+2|[1-9][0-9]+3|[1-9][0-9]+4)$ ]] \
+    && [[ $LANGUAGE = ru ]] ; then
+        local remaining_days="$days дня, "
     else
-        echo "\n$days days, $remaining_hours hours and $remaining_minutes minutes"
+        local remaining_days="$days ${translations[days]}, "
     fi
+
+    if [[ $remaining_hours =~ ^0$ ]] ; then
+        local remaining_hours=
+    elif [[ $remaining_hours =~ ^1$ ]] ; then
+        local remaining_hours="$hours ${translations[hour]} ${translations[and]} "
+    elif [[ $remaining_hours =~ ^(2|3|4|22|23|24)$ ]] && [[ $LANGUAGE = ru ]] ; then
+        local remaining_hours="$hours часа ${translations[and]} "
+    elif [[ $remaining_hours =~ ^21$ ]] && [[ $LANGUAGE = ru ]] ; then
+        local remaining_hours="$hours час ${translations[and]} "
+    else
+        local remaining_hours="$hours ${translations[hours]} ${translations[and]} "
+    fi
+
+    if [[ $remaining_minutes =~ ^1$ ]] ; then
+        local remaining_minutes="$remaining_minutes ${translations[minute]}"
+    elif [[ $remaining_minutes =~ ^[2-5]1$ ]] && [[ $LANGUAGE = ru ]] ; then
+        local remaining_minutes="$remaining_minutes ${translations[minute]}"
+    elif [[ $remaining_minutes =~ ^(2|3|4|[2-5]2|[2-5]3|[2-5]4)$ ]] && [[ $LANGUAGE = ru ]] ; then
+        local remaining_minutes="$remaining_minutes минуты"
+    else
+        local remaining_minutes="$remaining_minutes ${translations[minutes]}"
+    fi
+
+    echo "\n${translations[Time spent]}: $remaining_days$remaining_hours$remaining_minutes"
 }
 
 combobox_fix () {

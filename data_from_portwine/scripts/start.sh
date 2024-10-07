@@ -506,6 +506,8 @@ if [[ -f "${portwine_exe}" ]] ; then
             else
                 PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTWINE_DB}" "50")$(seconds_to_time $TIME_CURRENT)</b>"
             fi
+        else
+            PW_COMMENT_DB="$PW_COMMENT_DB$(seconds_to_time $TIME_CURRENT)"
         fi
 
         export KEY_START="$RANDOM"
