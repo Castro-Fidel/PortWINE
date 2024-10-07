@@ -836,10 +836,10 @@ seconds_to_time () {
         local days=
     elif [[ $days =~ ^1$ ]] ; then
         local days="$days ${translations[day]}, "
-    elif [[ $days =~ ^([2-9]1|[1-9][0-9]+1)$ ]] && [[ $LANGUAGE = ru ]] ; then
+    elif [[ $days =~ ^([2-9]1|[1-9][0-9]+1)$ ]] && [[ $LANGUAGE == ru ]] ; then
         local days="$days ${translations[day]}, "
     elif [[ $days =~ ^([2-4]|[2-9][2-4]|[1-9][0-9]+[2-4])$ ]] \
-    && [[ $LANGUAGE = ru ]] ; then
+    && [[ $LANGUAGE == ru ]] ; then
         local days="$days дня, "
     else
         local days="$days ${translations[days]}, "
@@ -849,19 +849,28 @@ seconds_to_time () {
         local hours=
     elif [[ $hours =~ ^1$ ]] ; then
         local hours="$hours ${translations[hour]} ${translations[and]} "
-    elif [[ $hours =~ ^([2-4]|2[2-4])$ ]] && [[ $LANGUAGE = ru ]] ; then
+    elif [[ $hours =~ ^([2-4]|2[2-4])$ ]] && [[ $LANGUAGE == ru ]] ; then
         local hours="$hours часа ${translations[and]} "
-    elif [[ $hours =~ ^21$ ]] && [[ $LANGUAGE = ru ]] ; then
+    elif [[ $hours =~ ^21$ ]] && [[ $LANGUAGE == ru ]] ; then
         local hours="$hours ${translations[hour]} ${translations[and]} "
     else
         local hours="$hours ${translations[hours]} ${translations[and]} "
     fi
 
-    if [[ $minutes =~ ^1$ ]] ; then
+    if [[ $minutes =~ ^0$ ]] ; then
+        local hours=${hours//" ${translations[and]} "/}
+        local minutes=
+        if [[ $days == "" ]] || [[ $hours == "" ]] ; then
+            local days=${days//","/}
+        fi
+        if [[ $days == "" ]] && [[ $hours == "" ]] ; then
+            local minutes="${translations[not known yet]}"
+        fi
+    elif [[ $minutes =~ ^1$ ]] ; then
         local minutes="$minutes ${translations[minute]}"
-    elif [[ $minutes =~ ^[2-5]1$ ]] && [[ $LANGUAGE = ru ]] ; then
+    elif [[ $minutes =~ ^[2-5]1$ ]] && [[ $LANGUAGE == ru ]] ; then
         local minutes="$minutes ${translations[minute]}"
-    elif [[ $minutes =~ ^([2-4]|[2-5][2-4])$ ]] && [[ $LANGUAGE = ru ]] ; then
+    elif [[ $minutes =~ ^([2-4]|[2-5][2-4])$ ]] && [[ $LANGUAGE == ru ]] ; then
         local minutes="$minutes минуты"
     else
         local minutes="$minutes ${translations[minutes]}"
