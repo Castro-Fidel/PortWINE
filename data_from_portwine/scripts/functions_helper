@@ -779,8 +779,9 @@ debug_timer () {
 search_desktop_file () {
     # Поиск нужного .desktop файла по $portwine_exe, чтобы внести изменения в него.
     for desktop_file in "${PORT_WINE_PATH}"/* ; do
-        if [[ $desktop_file =~ .desktop ]] ; then
-            if [[ ! $desktop_file =~ (/PortProton|/readme) ]] ; then
+        desktop_file_new="${desktop_file//"${PORT_WINE_PATH}/"/}"
+        if [[ $desktop_file_new =~ .desktop ]] ; then
+            if [[ ! $desktop_file_new =~ (PortProton|readme) ]] ; then
                 while IFS= read -r line ; do
                     if [[ $line =~ ^Exec= ]] ; then
                         if check_flatpak ; then
@@ -794,18 +795,20 @@ search_desktop_file () {
                     if [[ $line =~ ^#Time= ]] ; then
                         if [[ $portwine_exe == "$EXEC_DESKTOP_NEW" ]] ; then
                             TIME_CURRENT=${line//#Time=/}
-                            if [[ ! $TIME_CURRENT =~ [0-9]+ ]] ; then
-                                TIME_CURRENT="0"
-                                sed -i '/^#Time=/d' "$desktop_file"
-                                echo "#Time=0" >> "$desktop_file"
-                            fi
                         fi
                     fi
                 done < "$desktop_file"
-                if [[ -n $PW_TIME_IN_GAME ]] ; then
-                    TIME_TOTAL=$(( TIME_CURRENT + PW_TIME_IN_GAME ))
-                    sed -i '/^#Time=/d' "$desktop_file"
-                    echo "#Time=$TIME_TOTAL" >> "$desktop_file"
+                if [[ $portwine_exe == "$EXEC_DESKTOP_NEW" ]] ; then
+                    if [[ ! $TIME_CURRENT =~ [0-9]+ ]] ; then
+                        TIME_CURRENT="0"
+                        sed -i '/^#Time=/d' "$desktop_file"
+                        echo "#Time=0" >> "$desktop_file"
+                    fi
+                    if [[ -n $PW_TIME_IN_GAME ]] ; then
+                        TIME_TOTAL=$(( TIME_CURRENT + PW_TIME_IN_GAME ))
+                        sed -i '/^#Time=/d' "$desktop_file"
+                        echo "#Time=$TIME_TOTAL" >> "$desktop_file"
+                    fi
                 fi
             fi
         fi
@@ -814,51 +817,57 @@ search_desktop_file () {
 }
 
 seconds_to_time () {
-    [[ -z $1 ]] && return 1
+    [[ -z $1 ]] && return 0
     local seconds=$1
 
+    # Calculate days
+    local days=$((seconds / (60 * 60 * 24)))
+    local seconds=$((seconds % (60 * 60 * 24)))
+
+    # Calculate hours
+    local hours=$((seconds / (60 * 60)))
+    local seconds=$((seconds % (60 * 60)))
+
+    # Calculate minutes
     local minutes=$((seconds / 60))
-    local hours=$((minutes / 60))
-    local days=$((hours / 24))
-    local remaining_minutes=$((minutes % 60))
-    local remaining_hours=$((hours % 24))
+    local seconds=$((seconds % 60))
 
     if [[ $days =~ ^0$ ]] ; then
-        local remaining_days=
+        local days=
     elif [[ $days =~ ^1$ ]] ; then
-        local remaining_days="$days ${translations[day]}, "
+        local days="$days ${translations[day]}, "
     elif [[ $days =~ ^([2-9]1|[1-9][0-9]+1)$ ]] && [[ $LANGUAGE = ru ]] ; then
-        local remaining_days="$days ${translations[day]}, "
-    elif [[ $days =~ ^(2|3|4|[2-9]2|[2-9]3|[2-9]4|[1-9][0-9]+2|[1-9][0-9]+3|[1-9][0-9]+4)$ ]] \
+        local days="$days ${translations[day]}, "
+    elif [[ $days =~ ^([2-4]|[2-9][2-4]|[1-9][0-9]+[2-4])$ ]] \
     && [[ $LANGUAGE = ru ]] ; then
-        local remaining_days="$days дня, "
+        local days="$days дня, "
     else
-        local remaining_days="$days ${translations[days]}, "
+        local days="$days ${translations[days]}, "
     fi
 
-    if [[ $remaining_hours =~ ^0$ ]] ; then
-        local remaining_hours=
-    elif [[ $remaining_hours =~ ^1$ ]] ; then
-        local remaining_hours="$hours ${translations[hour]} ${translations[and]} "
-    elif [[ $remaining_hours =~ ^(2|3|4|22|23|24)$ ]] && [[ $LANGUAGE = ru ]] ; then
-        local remaining_hours="$hours часа ${translations[and]} "
-    elif [[ $remaining_hours =~ ^21$ ]] && [[ $LANGUAGE = ru ]] ; then
-        local remaining_hours="$hours час ${translations[and]} "
+    if [[ $hours =~ ^0$ ]] ; then
+        local hours=
+    elif [[ $hours =~ ^1$ ]] ; then
+        local hours="$hours ${translations[hour]} ${translations[and]} "
+    elif [[ $hours =~ ^([2-4]|2[2-4])$ ]] && [[ $LANGUAGE = ru ]] ; then
+        local hours="$hours часа ${translations[and]} "
+    elif [[ $hours =~ ^21$ ]] && [[ $LANGUAGE = ru ]] ; then
+        local hours="$hours ${translations[hour]} ${translations[and]} "
     else
-        local remaining_hours="$hours ${translations[hours]} ${translations[and]} "
+        local hours="$hours ${translations[hours]} ${translations[and]} "
     fi
 
-    if [[ $remaining_minutes =~ ^1$ ]] ; then
-        local remaining_minutes="$remaining_minutes ${translations[minute]}"
-    elif [[ $remaining_minutes =~ ^[2-5]1$ ]] && [[ $LANGUAGE = ru ]] ; then
-        local remaining_minutes="$remaining_minutes ${translations[minute]}"
-    elif [[ $remaining_minutes =~ ^(2|3|4|[2-5]2|[2-5]3|[2-5]4)$ ]] && [[ $LANGUAGE = ru ]] ; then
-        local remaining_minutes="$remaining_minutes минуты"
+    if [[ $minutes =~ ^1$ ]] ; then
+        local minutes="$minutes ${translations[minute]}"
+    elif [[ $minutes =~ ^[2-5]1$ ]] && [[ $LANGUAGE = ru ]] ; then
+        local minutes="$minutes ${translations[minute]}"
+    elif [[ $minutes =~ ^([2-4]|[2-5][2-4])$ ]] && [[ $LANGUAGE = ru ]] ; then
+        local minutes="$minutes минуты"
     else
-        local remaining_minutes="$remaining_minutes ${translations[minutes]}"
+        local minutes="$minutes ${translations[minutes]}"
     fi
 
-    echo "\n${translations[Time spent]}: $remaining_days$remaining_hours$remaining_minutes"
+    echo -e "<b>\n${translations[Time spent]}: $days$hours$minutes</b>"
 }
 
 combobox_fix () {

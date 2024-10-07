@@ -502,12 +502,12 @@ if [[ -f "${portwine_exe}" ]] ; then
         fi
         if [[ -z "${PW_COMMENT_DB}" ]] ; then
             if [[ -n "${PORTPROTON_NAME}" ]] ; then
-                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTPROTON_NAME}" "50")$(seconds_to_time $TIME_CURRENT)</b>"
+                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTPROTON_NAME}" "50")$(seconds_to_time "$TIME_CURRENT")</b>"
             else
-                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTWINE_DB}" "50")$(seconds_to_time $TIME_CURRENT)</b>"
+                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTWINE_DB}" "50")$(seconds_to_time "$TIME_CURRENT")</b>"
             fi
         else
-            PW_COMMENT_DB="$PW_COMMENT_DB$(seconds_to_time $TIME_CURRENT)"
+            PW_COMMENT_DB="$PW_COMMENT_DB$(seconds_to_time "$TIME_CURRENT")"
         fi
 
         export KEY_START="$RANDOM"
@@ -611,8 +611,6 @@ else
         unset RESTART_PP_USED
         gui_userconf
     fi
-
-    debug_timer --start # дропнуть и debug_timer --end ниже тоже
 
     # Поиск .desktop файлов
     AMOUNT_GENERATE_BUTTONS="0"
@@ -806,7 +804,6 @@ else
 
         export AI_SKIP="1"
     fi
-    debug_timer --end
 
     IFS="%"
     "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[1]}" --form --columns="$MAIN_GUI_ROWS_EMULS" --align-buttons --scroll --homogeneous-column \
