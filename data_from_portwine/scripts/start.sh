@@ -497,7 +497,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             PW_SHORTCUT="${translations[DELETE SHORTCUT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Delete shortcut for select file...]}:98"
         fi
 
-        if [[ $DESKTOPS_WITH_TIME == enabled ]] ; then
+        if [[ $DESKTOP_WITH_TIME == enabled ]] ; then
             search_desktop_file
         fi
         if [[ -z "${PW_COMMENT_DB}" ]] ; then
@@ -638,7 +638,11 @@ else
                 # Чтобы новый ярлык показало первым при первом запуске, потом уже по времени
                 if [[ $WITH_TIME != 1 ]] ; then
                     echo "#Time=0" >> "$desktop_file"
-                    PW_AMOUNT_NO_TIME+=($AMOUNT_GENERATE_BUTTONS)
+                    if [[ $SORT_WITH_TIME == enabled ]] ; then
+                        PW_AMOUNT_NO_TIME+=($AMOUNT_GENERATE_BUTTONS)
+                    else
+                        PW_AMOUNT_WITH_TIME+=($AMOUNT_GENERATE_BUTTONS)
+                    fi
                 else
                     if [[ ! ${PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]} =~ [0-9]+ ]] ; then
                         sed -i '/^#Time=/d' "$desktop_file"
@@ -655,26 +659,28 @@ else
 
     # Переопределение элементов в массивах в зависимости от PW_GAME_TIME, от большего значения к меньшему.
     # 10 миллисекунд на 40 .desktop файлов, работает быстро
-    for i in "${!PW_GAME_TIME[@]}" ; do
-        for j in "${!PW_GAME_TIME[@]}" ; do
-            if (( ${PW_GAME_TIME[$i]} > ${PW_GAME_TIME[$j]} )) ; then
-                tmp_0=${PW_GAME_TIME[$i]}
-                tmp_1=${PW_ALL_DF[$i]}
-                tmp_2=${PW_NAME_D_ICON[$i]}
-                tmp_4=${PW_ICON_PATH[$i]}
+    if [[ $SORT_WITH_TIME == enabled ]] ; then
+        for i in "${!PW_GAME_TIME[@]}" ; do
+            for j in "${!PW_GAME_TIME[@]}" ; do
+                if (( ${PW_GAME_TIME[$i]} > ${PW_GAME_TIME[$j]} )) ; then
+                    tmp_0=${PW_GAME_TIME[$i]}
+                    tmp_1=${PW_ALL_DF[$i]}
+                    tmp_2=${PW_NAME_D_ICON[$i]}
+                    tmp_4=${PW_ICON_PATH[$i]}
 
-                PW_GAME_TIME[i]=${PW_GAME_TIME[$j]}
-                PW_ALL_DF[i]=${PW_ALL_DF[$j]}
-                PW_NAME_D_ICON[i]=${PW_NAME_D_ICON[$j]}
-                PW_ICON_PATH[i]=${PW_ICON_PATH[$j]}
+                    PW_GAME_TIME[i]=${PW_GAME_TIME[$j]}
+                    PW_ALL_DF[i]=${PW_ALL_DF[$j]}
+                    PW_NAME_D_ICON[i]=${PW_NAME_D_ICON[$j]}
+                    PW_ICON_PATH[i]=${PW_ICON_PATH[$j]}
 
-                PW_GAME_TIME[j]=$tmp_0
-                PW_ALL_DF[j]=$tmp_1
-                PW_NAME_D_ICON[j]=$tmp_2
-                PW_ICON_PATH[j]=$tmp_4
-            fi
+                    PW_GAME_TIME[j]=$tmp_0
+                    PW_ALL_DF[j]=$tmp_1
+                    PW_NAME_D_ICON[j]=$tmp_2
+                    PW_ICON_PATH[j]=$tmp_4
+                fi
+            done
         done
-    done
+    fi
 
     # Генерация .desktop баттанов для главного меню
     IFS=$'\n'

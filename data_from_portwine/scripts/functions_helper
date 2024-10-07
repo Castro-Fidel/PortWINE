@@ -5225,12 +5225,20 @@ gui_userconf () {
         GPU_VAR="disabled"
     fi
 
-    if [[ -n "${DESKTOPS_WITH_TIME}" ]] \
-    && [[ "${DESKTOPS_WITH_TIME}" != "disabled" ]]
+    if [[ -n "${DESKTOP_WITH_TIME}" ]] \
+    && [[ "${DESKTOP_WITH_TIME}" != "disabled" ]]
     then
-        DESKTOPS_WITH_TIME="${DESKTOPS_WITH_TIME}"
+        DESKTOP_WITH_TIME="enabled"
     else
-        DESKTOPS_WITH_TIME="disabled"
+        DESKTOP_WITH_TIME="disabled"
+    fi
+
+    if [[ -n "${SORT_WITH_TIME}" ]] \
+    && [[ "${SORT_WITH_TIME}" == "disabled" ]]
+    then
+        SORT_WITH_TIME="disabled"
+    else
+        SORT_WITH_TIME="enabled"
     fi
 
     "${pw_yad}" --plug=$KEY_USERCONF_GUI --tabnum="2" --form --columns=1 --separator="%" --homogeneous-row \
@@ -5238,7 +5246,8 @@ gui_userconf () {
     --field="${translations[Choose a graphics card to run the game]}!${translations[Select which video card will be used to run the game (used for all running games and programs in PortProton)]} :CB" "$(combobox_fix --disabled "$GPU_VAR" "$GET_GPU_NAMES")" \
     --field="${translations[Choice wine audio driver]}!${translations[Fixes sound popling if choice alsa]} :CB" "$(combobox_fix --disabled "$SOUND_DRIVER_VAR" "alsa!oss!pulse")" \
     --field="${translations[Choice gui themes]}!${translations[Allows you to select a theme for PortProton]} :CB" "$(combobox_fix "$GUI_THEME" "default!compact!classic")" \
-    --field="${translations[Time display]}!${translations[Displays time spent in an application or game]} :CB" "$(combobox_fix "$DESKTOPS_WITH_TIME" "enabled!disabled")" \
+    --field="${translations[Time display]}!${translations[Displays time spent in an application or game]} :CB" "$(combobox_fix "$DESKTOP_WITH_TIME" "enabled!disabled")" \
+    --field="${translations[Sort shortcuts by time]}!${translations[This setting sorts the shortcuts in the main menu depending on the time spent in the application or game]} :CB" "$(combobox_fix "$SORT_WITH_TIME" "enabled!disabled")" \
     1> "${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb" 2>/dev/null &
 
     "${pw_yad}" --key=$KEY_USERCONF_GUI --paned --sensitive \
@@ -5271,11 +5280,12 @@ gui_userconf () {
         166)
             IFS='%' read -r -a PW_ADD_SETTINGS_UC <"${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb"
             IFS="$orig_IFS"
-            PW_GPU_USE="${PW_ADD_SETTINGS_UC[0]}"
-            PW_SOUND_DRIVER_USE="${PW_ADD_SETTINGS_UC[1]}"
+            PW_GPU_USE=${PW_ADD_SETTINGS_UC[0]}
+            PW_SOUND_DRIVER_USE=${PW_ADD_SETTINGS_UC[1]}
             GUI_THEME="${PW_ADD_SETTINGS_UC[2]}"
-            DESKTOPS_WITH_TIME="${PW_ADD_SETTINGS_UC[3]}"
-            edit_user_conf_from_gui PW_GPU_USE PW_SOUND_DRIVER_USE GUI_THEME DESKTOPS_WITH_TIME
+            DESKTOP_WITH_TIME="${PW_ADD_SETTINGS_UC[3]}"
+            SORT_WITH_TIME="${PW_ADD_SETTINGS_UC[4]}"
+            edit_user_conf_from_gui PW_GPU_USE PW_SOUND_DRIVER_USE GUI_THEME DESKTOP_WITH_TIME SORT_WITH_TIME
             restart_pp
             ;;
     esac
@@ -5349,10 +5359,11 @@ portwine_create_shortcut () {
     [[ -z "${PW_SHORTCUT_STEAM}" ]] && PW_SHORTCUT_STEAM="FALSE"
 
     if [[ -z "${PORTPROTON_NAME}" ]] ; then
-        export name_desktop="$(basename "$portwine_exe")"
+        name_desktop="$(basename "$portwine_exe")"
     else
-        export name_desktop="${PORTPROTON_NAME}"
+        name_desktop="${PORTPROTON_NAME}"
     fi
+    export name_desktop
 
     [[ -z "${name_desktop_png}" ]] && name_desktop_png="${PORTPROTON_NAME// /_}"
 
@@ -5503,8 +5514,12 @@ pw_auto_create_shortcut () {
             continue
         fi
     done
-    [[ -z "$LINKS" ]] && return 0
-    SORTED_LINKS=($(echo ${LINKS[@]} | tr ' ' '\n' | sort -u))
+    [[ -z "${LINKS[0]}" ]] && return 0
+    SORTED_LINKS=()
+    while IFS= read -r line ; do
+        SORTED_LINKS+=("$line");
+    done < <(echo ${LINKS[@]} | tr ' ' '\n' | sort -u) 
+    IFS="$orig_IFS"
 
     for link_file in "${SORTED_LINKS[@]//@_@/ }" ; do
         if command -v exiftool &>/dev/null ; then
