@@ -326,7 +326,7 @@ export SKIP_CHECK_UPDATES="1"
 
 [[ "$MISSING_DESKTOP_FILE" == "1" ]] && portwine_missing_shortcut
 
-if [[ $(basename "${portwine_exe}") =~ .ppack$ ]] ; then
+if [[ $(basename "${portwine_exe}") =~ .[Pp][Pp][Aa][Cc][Kk]$ ]] ; then
     unset PW_SANDBOX_HOME_PATH
     pw_init_runtime
     if check_flatpak
