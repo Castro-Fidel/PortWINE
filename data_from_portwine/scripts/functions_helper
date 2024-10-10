@@ -785,7 +785,7 @@ search_desktop_file () {
     count=0
     for desktop_file in "$PORT_WINE_PATH"/* ; do
         desktop_file_new="${desktop_file//"$PORT_WINE_PATH/"/}"
-        if [[ $desktop_file_new =~ .desktop ]] ; then
+        if [[ $desktop_file_new =~ .desktop$ ]] ; then
             if [[ ! $desktop_file_new =~ (PortProton|readme) ]] ; then
                 while IFS= read -r line ; do
                     if [[ $line =~ ^Exec= ]] ; then
@@ -1414,7 +1414,7 @@ pw_exit_tray () {
 export -f pw_exit_tray
 
 stop_portwine () {
-    [[ "$int_xneur" == "1"  ]] && xneur &
+    [[ "$int_xneur" == "1" ]] && xneur &
 
     if [[ "$PW_USE_US_LAYOUT" == "1" ]] \
     && ! check_wayland_session \
@@ -1448,20 +1448,15 @@ stop_portwine () {
     pw_stop_progress_bar
     try_remove_file "${PORT_SCRIPTS_PATH}/0"
     try_remove_file "${PORT_SCRIPTS_PATH}/1"
-    kill_portwine &&
+    kill_portwine
     try_remove_dir "${PW_WINELIB}/var"
     find "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/" -maxdepth 1 -type f -name "*.tmp" -delete
     pw_exit_tray
     pw_auto_create_shortcut
     add_in_stop_portwine
 
-    # То что новый трей ругается на debug_timer и search_desktop_file, так и должно быть.
     debug_timer --end -s "PW_TIME_IN_GAME"
-
-    # В году 31536000 секунд.
-    # Bash у меня ещё работает с таким числом 999999999999999999999999999999999999999999999999
     PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 )) # в секундах
-
     search_desktop_file
 
     case "$1" in
@@ -2733,7 +2728,7 @@ start_portwine () {
     if check_gamescope_session ; then
         export PW_GAMEMODERUN_SLR=""
     elif [[ "$PW_USE_GAMEMODE" = "1" ]] \
-    && [[ -n "$DBUS_SESSION_BUS_ADDRESS"  ]]
+    && [[ -n "$DBUS_SESSION_BUS_ADDRESS" ]]
     then
         if command -v gamemoded &>/dev/null ; then
             export GAMEMODERUN=1
@@ -3154,7 +3149,7 @@ start_portwine () {
     if [[ -n "$CP_DXVK_FILES" ]] ; then
         print_info "Try create symlink DXVK files..."
         for wine_dxvk_dll in $CP_DXVK_FILES ; do
-            if [[ -f "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll"  ]] ; then
+            if [[ -f "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" ]] ; then
                 try_force_link_file "${PATH_TO_DXVK_FILES}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
                 try_force_link_file "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
                 var_winedlloverride_update "${wine_dxvk_dll}=n"
@@ -4837,7 +4832,7 @@ gui_mangohud () {
     export PW_MANGOHUD FPS_LIMIT
     edit_db_from_gui MANGOHUD_CONFIG PW_MANGOHUD FPS_LIMIT
 
-    if [[  "${YAD_MANGOHUD_STATUS}" == "184" ]] ; then
+    if [[ "${YAD_MANGOHUD_STATUS}" == "184" ]] ; then
         PW_MANGOHUD="1"
         pw_init_runtime
         pw_mangohud_check
@@ -5517,8 +5512,8 @@ portwine_create_shortcut () {
     elif [[ "$PW_YAD_OUT" == "2" ]] ; then
         print_info "Restarting PP..."
         [[ -n $KEY_MENU ]] && unset portwine_exe
-        [[ "${PW_GUI_START}" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
-        restart_pp
+        [[ "$PW_GUI_START" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
+        [[ -z $LINKS ]] && restart_pp
     fi
 }
 
@@ -5535,19 +5530,12 @@ pw_auto_create_shortcut () {
     unset LINKS
     for link_file in "${PORT_WINE_PATH}"/data/prefixes/*/drive_c/users/*/Desktop/*.lnk
     do
-        if ! echo "$link_file" | grep "\*.lnk" &>/dev/null ; then
-            link_file=$(readlink -f "${link_file}")
-            LINKS+=("${link_file// /@_@}")
-        else
-            continue
-        fi
+        link_file=$(readlink -f "${link_file}")
+        LINKS+=(${link_file// /@_@})
     done
+
     [[ -z "${LINKS[0]}" ]] && return 0
-    SORTED_LINKS=()
-    while IFS= read -r line ; do
-        SORTED_LINKS+=("$line")
-    done < <(echo ${LINKS[@]} | tr ' ' '\n' | sort -u) 
-    IFS="$orig_IFS"
+    read -r -a SORTED_LINKS < <(echo ${LINKS[@]} | tr ' ' '\n' | sort -u | tr '\n' ' ')
 
     for link_file in "${SORTED_LINKS[@]//@_@/ }" ; do
         if command -v exiftool &>/dev/null ; then
@@ -5587,10 +5575,8 @@ pw_auto_create_shortcut () {
             link_cmd=$(sed -n 's/^Command Line Arguments\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
         fi
 
-        try_remove_file "$link_file"
-
         if ! exe_path="$(realpath "${link_path}" 2>/dev/null)" ; then
-            print_warning "Removed broken link for: $link_name"
+            print_warning "Link broken for: $link_name"
         else
             print_info "Created link for: $link_name"
             PORTPROTON_NAME="$link_name"

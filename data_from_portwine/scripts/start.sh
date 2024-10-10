@@ -326,7 +326,7 @@ export SKIP_CHECK_UPDATES="1"
 
 [[ "$MISSING_DESKTOP_FILE" == "1" ]] && portwine_missing_shortcut
 
-if [[ $(basename "${portwine_exe}") =~ .ppack$ ]] ; then
+if [[ $(basename "${portwine_exe}") =~ .[Pp][Pp][Aa][Cc][Kk]$ ]] ; then
     unset PW_SANDBOX_HOME_PATH
     pw_init_runtime
     if check_flatpak
@@ -618,7 +618,7 @@ else
     AMOUNT_GENERATE_BUTTONS="0"
     for desktop_file in "$PORT_WINE_PATH"/* ; do
         desktop_file_new="${desktop_file//"$PORT_WINE_PATH/"/}"
-        if [[ $desktop_file_new =~ .desktop ]] ; then
+        if [[ $desktop_file_new =~ .desktop$ ]] ; then
             if [[ ! $desktop_file_new =~ (PortProton|readme) ]] ; then
                 while IFS= read -r line ; do
                     if [[ $line =~ ^Exec= ]] ; then
