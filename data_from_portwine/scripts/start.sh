@@ -25,7 +25,8 @@ if PORT_SCRIPTS_PATH=$(readlink -f "${0%/*}") ; then
     export PORT_SCRIPTS_PATH
     export PORT_WINE_PATH=${PORT_SCRIPTS_PATH%/*/*}
 else
-    fatal
+    echo "The PORT_SCRIPTS_PATH directory was not found!"
+    exit 1
 fi
 
 # shellcheck source=/dev/null
@@ -90,10 +91,11 @@ unset MANGOHUD MANGOHUD_DLSYM PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERR
 unset PW_CHECK_AUTOINSTALL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PORTWINE_DB_FILE RADV_PERFTEST
 unset CHK_SYMLINK_FILE PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME PW_PATH
 unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD PW_WINE_CPU_TOPOLOGY
-unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_ALL_DF PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
 unset MANGOHUD_CONFIG FPS_LIMIT PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME PORTWINE_CREATE_SHORTCUT_NAME MIRROR
 unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NOSTSTDIR RADV_DEBUG PW_NO_AUTO_CREATE_SHORTCUT
-unset PW_DESKTOP_FILES_REGEX PW_TERM
+unset PW_NAME_D_ICON PW_ICON_PATH PW_GAME_TIME PW_ALL_DF PW_AMOUNT_NEW_DESKTOP PW_AMOUNT_OLD_DESKTOP PW_DESKTOP_FILES
+unset AI_TYPE AI_NAME AI_IMAGE AI_INFO AI_FILE_ARRAY AI_TRUE_FILE AI_FILE_UNSORTED AI_FILE_SORTED PW_GENERATE_BUTTONS
+unset PW_DESKTOP_FILES_REGEX PW_TERM PW_EXEC_FROM_DESKTOP
 
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 rm -f "$PORT_WINE_TMP_PATH"/*{exe,msi,tar}*
@@ -324,7 +326,7 @@ export SKIP_CHECK_UPDATES="1"
 
 [[ "$MISSING_DESKTOP_FILE" == "1" ]] && portwine_missing_shortcut
 
-if [[ -n $(basename "${portwine_exe}" | grep .ppack) ]] ; then
+if [[ $(basename "${portwine_exe}") =~ .[Pp][Pp][Aa][Cc][Kk]$ ]] ; then
     unset PW_SANDBOX_HOME_PATH
     pw_init_runtime
     if check_flatpak
@@ -464,14 +466,6 @@ case "${PW_VULKAN_USE}" in
     *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY!$SORT_G_ZINK!$SORT_G_NINE!$SORT_OPENGL!$SORT_VULKAN" ;;
 esac
 
-if [[ -z "${PW_COMMENT_DB}" ]] ; then
-    if [[ -n "${PORTPROTON_NAME}" ]] ; then
-        PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTPROTON_NAME}" "50")</b>"
-    else
-        PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTWINE_DB}" "50")</b>"
-    fi
-fi
-
 if [[ $PW_WINE_USE == PROTON_LG ]] ; then
     PW_WINE_USE="${PW_PROTON_LG_VER}"
     PW_DEFAULT_WINE_USE="${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
@@ -503,6 +497,17 @@ if [[ -f "${portwine_exe}" ]] ; then
             PW_SHORTCUT="${translations[CREATE SHORTCUT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Create shortcut for select file...]}:100"
         else
             PW_SHORTCUT="${translations[DELETE SHORTCUT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Delete shortcut for select file...]}:98"
+        fi
+
+        [[ $DESKTOP_WITH_TIME == enabled ]] && search_desktop_file
+        if [[ -z "${PW_COMMENT_DB}" ]] ; then
+            if [[ -n "${PORTPROTON_NAME}" ]] ; then
+                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTPROTON_NAME}" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
+            else
+                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTWINE_DB}" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
+            fi
+        else
+            PW_COMMENT_DB="$PW_COMMENT_DB$(seconds_to_time "$TIME_CURRENT")"
         fi
 
         export KEY_START="$RANDOM"
@@ -583,84 +588,132 @@ if [[ -f "${portwine_exe}" ]] ; then
             --button="${translations[LAUNCH]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Run file ...]}":106 2>/dev/null
             PW_YAD_SET="$?"
         fi
-        [[ -n "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
+        case "$PW_YAD_SET" in
             128)
-                    if [[ "${PW_GUI_START}" == "NOTEBOOK" ]] ; then
-                        unset PW_YAD_FORM_TAB
-                    fi
-                    unset portwine_exe KEY_START $(sed -n '/export/p' "${PORTWINE_DB_FILE}" | sed 's/\(export\|=.*\| \)//g')
-                    print_info "Restarting..."
-                    restart_pp
-                    ;;
+                [[ "$PW_GUI_START" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
+                PORTWINE_DB_FOR_UNSET=$(sed -n '/export/p' "${PORTWINE_DB_FILE}" | sed 's/\(export\|=.*\| \)//g')
+                for db_unset in $PORTWINE_DB_FOR_UNSET ; do
+                    unset "$db_unset"
+                done
+                unset portwine_exe KEY_START
+                print_info "Restarting..."
+                restart_pp
+                ;;
             1|252)
-                    exit 0
-                    ;;
+                exit 0
+                ;;
         esac
         pw_yad_set_form
         pw_yad_form_vulkan
-    elif [[ -f "${PORTWINE_DB_FILE}" ]] ; then
+    elif [[ -f "$PORTWINE_DB_FILE" ]] ; then
         portwine_launch
     fi
 else
-    PW_ALL_DF="$(ls "${PORT_WINE_PATH}"/ | grep .desktop | grep -vE '(PortProton|readme)')"
-    if [[ -z "${PW_ALL_DF}" ]]
-    then export PW_GUI_SORT_TABS=(1 2 3 4 5)
-    else export PW_GUI_SORT_TABS=(2 3 4 5 1)
-    fi
     if [[ "$RESTART_PP_USED" == "userconf" ]] ; then
         unset RESTART_PP_USED
         gui_userconf
     fi
 
-    export KEY_MENU="$RANDOM"
+    # Поиск .desktop файлов
+    AMOUNT_GENERATE_BUTTONS="0"
+    for desktop_file in "$PORT_WINE_PATH"/* ; do
+        desktop_file_new="${desktop_file//"$PORT_WINE_PATH/"/}"
+        if [[ $desktop_file_new =~ .desktop$ ]] ; then
+            if [[ ! $desktop_file_new =~ (PortProton|readme) ]] ; then
+                while IFS= read -r line ; do
+                    if [[ $line =~ ^Exec= ]] ; then
+                        if check_flatpak ; then
+                            PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${line//Exec=flatpak run ru.linux_gaming.PortProton /}
+                        else
+                            PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${line//Exec=env \"$PORT_SCRIPTS_PATH\/start.sh\" /}
+                        fi
+                    fi
+                    [[ $line =~ ^Icon= ]] && PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]="${line//Icon=/}"
+                    [[ $line =~ ^#Time= ]] && PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]="${line//#Time=/}"
+                    [[ $line =~ ^#NEW_DESKTOP ]] && NEW_DESKTOP=1
+                done < "$desktop_file"
+                PW_ALL_DF["$AMOUNT_GENERATE_BUTTONS"]="$desktop_file_new"
+                if [[ $NEW_DESKTOP == 1 ]] && [[ $SORT_WITH_TIME == enabled ]] ; then
+                    unset NEW_DESKTOP
+                    sed -i '/^#NEW_DESKTOP/d' "$desktop_file"
+                    PW_AMOUNT_NEW_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
+                else
+                    PW_AMOUNT_OLD_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
+                fi
+                # Для фикса битых #Time=
+                if [[ ! ${PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]} =~ [0-9]+ ]] ; then
+                    portwine_exe=${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]//\"/}
+                    search_desktop_file
+                    unset portwine_exe
+                    PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=${TIME_CURRENT_ARRAY[0]}
+                fi
+                (( AMOUNT_GENERATE_BUTTONS++ ))
+            fi
+        fi
+    done
 
+    # Переопределение элементов в массивах в зависимости от PW_GAME_TIME, от большего значения к меньшему.
+    # 10 миллисекунд на 40 .desktop файлов, работает быстро
+    if [[ $SORT_WITH_TIME == enabled ]] ; then
+        for i in "${!PW_GAME_TIME[@]}" ; do
+            for j in "${!PW_GAME_TIME[@]}" ; do
+                if (( ${PW_GAME_TIME[$i]} > ${PW_GAME_TIME[$j]} )) ; then
+                    tmp_0=${PW_GAME_TIME[$i]}
+                    tmp_1=${PW_ALL_DF[$i]}
+                    tmp_2=${PW_NAME_D_ICON[$i]}
+                    tmp_4=${PW_ICON_PATH[$i]}
+
+                    PW_GAME_TIME[i]=${PW_GAME_TIME[$j]}
+                    PW_ALL_DF[i]=${PW_ALL_DF[$j]}
+                    PW_NAME_D_ICON[i]=${PW_NAME_D_ICON[$j]}
+                    PW_ICON_PATH[i]=${PW_ICON_PATH[$j]}
+
+                    PW_GAME_TIME[j]=$tmp_0
+                    PW_ALL_DF[j]=$tmp_1
+                    PW_NAME_D_ICON[j]=$tmp_2
+                    PW_ICON_PATH[j]=$tmp_4
+                fi
+            done
+        done
+    fi
+
+    # Генерация .desktop баттанов для главного меню
     IFS=$'\n'
-    AMOUNT_GENERATE_BUTTONS="1"
     PW_GENERATE_BUTTONS="--field=   ${translations[Create shortcut...]}!${PW_GUI_ICON_PATH}/find_48.svg!:FBTNR%@bash -c \"button_click --normal pw_find_exe\"%"
-    for PW_DESKTOP_FILES in ${PW_ALL_DF} ; do
-        if check_flatpak ; then
-            PW_NAME_D_ICON="$(grep Exec "${PORT_WINE_PATH}/${PW_DESKTOP_FILES}" | awk -F'=' '{print $2}' |
-            sed -e 's|flatpak run ru.linux_gaming.PortProton||' -e 's|"||g' -e 's|^[ \t]*||')"
-        else
-            PW_NAME_D_ICON="$(grep Exec "${PORT_WINE_PATH}/${PW_DESKTOP_FILES}" | awk -F"=env " '{print $2}' |
-            sed -e "s|${PORT_SCRIPTS_PATH}/start.sh||" -e 's|"||g' -e 's|^[ \t]*||')"
-        fi
-        PW_ICON_PATH="$(grep Icon "${PORT_WINE_PATH}/${PW_DESKTOP_FILES}" | awk -F= '{print $2}')"
-        PW_NAME_D_ICON_48="${PW_ICON_PATH%.png}_48"
-        PW_NAME_D_ICON_128="${PW_ICON_PATH%.png}"
-        if [[ -f "${PW_NAME_D_ICON}" ]] ; then
-            resize_png "${PW_NAME_D_ICON}" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
-            resize_png "${PW_NAME_D_ICON}" "${PW_NAME_D_ICON_128//"${PORT_WINE_PATH}/data/img/"/}" "128"
-        fi
-        if [[ $PW_DESKTOP_FILES =~ [\(\)\!\$\%\&\`\'\"\>\<\\\|\;] ]] ; then
-            export PW_DESKTOP_FILES_REGEX="1"
-            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES//\!/}"
-            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//\%/}"
-            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//\$/}"
-            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//\&/}"
-            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//\</}"
+    for dp in ${PW_AMOUNT_NEW_DESKTOP[@]} ${PW_AMOUNT_OLD_DESKTOP[@]} ; do
+        PW_NAME_D_ICON_48="${PW_ICON_PATH[dp]%.png}_48"
+        PW_NAME_D_ICON_128="${PW_ICON_PATH[dp]%.png}"
+        PW_NAME_D_ICON_NEW="${PW_NAME_D_ICON[dp]//\"/}"
+        resize_png "$PW_NAME_D_ICON_NEW" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
+        resize_png "$PW_NAME_D_ICON_NEW" "${PW_NAME_D_ICON_128//"${PORT_WINE_PATH}/data/img/"/}" "128"
 
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\(/#+_1#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\)/#+_2#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\!/#+_3#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\$/#+_4#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\%/#+_5#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\&/#+_6#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\`/#+_7#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\'/#+_8#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\"/#+_9#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\>/#+_10#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\</#+_11#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\\/#+_12#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\|/#+_13#}"
-            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\;/#+_14#}"
-        else
-            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES}"
+        PW_DESKTOP_FILES="${PW_ALL_DF[$dp]}"
+        PW_DESKTOP_FILES_SHOW="$PW_DESKTOP_FILES"
+        if [[ $PW_DESKTOP_FILES =~ [\(\)\!\$\%\&\`\'\"\>\<\\\|\;] ]] ; then
+            PW_DESKTOP_FILES_SHOW_REGEX=(\! % \$ \& \<)
+            PW_DESKTOP_FILES_REGEX=(\( \) \! \$ % \& \` \' \" \> \< \\ \| \;)
+
+            for i in "${PW_DESKTOP_FILES_SHOW_REGEX[@]}" ; do
+                PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//$i/}"
+            done
+
+            count=1
+            for j in "${PW_DESKTOP_FILES_REGEX[@]}" ; do
+                PW_DESKTOP_FILES="${PW_DESKTOP_FILES//$j/#+_$count#}"
+                (( count++ ))
+            done
         fi
         PW_GENERATE_BUTTONS+="--field=   $(print_wrapped "${PW_DESKTOP_FILES_SHOW//".desktop"/""}" "25" "...")!${PW_NAME_D_ICON_48}.png!:FBTNR%@bash -c \"button_click --desktop "${PW_DESKTOP_FILES// /#@_@#}"\"%"
-        (( AMOUNT_GENERATE_BUTTONS++ ))
     done
-    MAIN_GUI_ROWS="$(( AMOUNT_GENERATE_BUTTONS / MAIN_GUI_COLUMNS + 1 ))"
+
+    MAIN_GUI_ROWS="$(( ( AMOUNT_GENERATE_BUTTONS + 1 ) / MAIN_GUI_COLUMNS + 1 ))"
+
+    if [[ -z $PW_DESKTOP_FILES ]]
+    then export PW_GUI_SORT_TABS=(1 2 3 4 5)
+    else export PW_GUI_SORT_TABS=(2 3 4 5 1)
+    fi
+
+    KEY_MENU="$RANDOM"
 
     IFS="%"
     "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[4]}" --form --columns="$MAIN_GUI_ROWS" --homogeneous-column \
@@ -697,48 +750,67 @@ else
     --field="   ${translations[Command line]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run wine cmd]}":"FBTN" '@bash -c "button_click --normal WINECMD"' \
     --field="   ${translations[Regedit]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run wine regedit]}":"FBTN" '@bash -c "button_click --normal WINEREG"' 1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
-    AI_AMOUNT_GAMES="0"
-    AI_AMOUNT_EMULS="0"
-    for ai_file in "$PORT_SCRIPTS_PATH"/pw_autoinstall/* ; do
-        AI_FILE="${ai_file//"$PORT_SCRIPTS_PATH/pw_autoinstall/"/}"
-        while IFS= read -r line ; do
-            [[ $line =~ "##########" ]] && break
-            [[ $line =~ "# type: " ]] && AI_TYPE="${line//# type: /}"
-            [[ $line =~ "# name: " ]] && AI_NAME="${line//# name: /}"
-            [[ $line =~ "# image: " ]] && AI_IMAGE="${line//# image: /}"
-            if [[ "$LANGUAGE" == ru ]] ; then
-                [[ $line =~ "# info_ru: " ]] && AI_INFO="${line//# info_ru: /}"
+    if [[ $AI_SKIP != 1 ]] ; then
+        # AI_TOP_GAMES используется для сортировки автоинсталлов (работает на эмуляторы тоже)
+        AI_TOP_GAMES="PW_LGC PW_VKPLAY PW_EPIC PW_BATTLE_NET"
+        AI_AMOUNT_GAMES="0" && AI_AMOUNT_EMULS="0" && AI_AMOUNT_ARRAY="0"
+        for ai_file in "$PORT_SCRIPTS_PATH"/pw_autoinstall/* ; do
+            while IFS= read -r line ; do
+                [[ $line =~ "##########" ]] && break
+                [[ $line =~ "# type: " ]] && AI_TYPE["$AI_AMOUNT_ARRAY"]="${line//# type: /}"
+                [[ $line =~ "# name: " ]] && AI_NAME["$AI_AMOUNT_ARRAY"]="${line//# name: /}"
+                [[ $line =~ "# image: " ]] && AI_IMAGE["$AI_AMOUNT_ARRAY"]="${line//# image: /}"
+                if [[ "$LANGUAGE" == ru ]] ; then
+                    [[ $line =~ "# info_ru: " ]] && AI_INFO["$AI_AMOUNT_ARRAY"]="${line//# info_ru: /}"
+                else
+                    [[ $line =~ "# info_en: " ]] && AI_INFO["$AI_AMOUNT_ARRAY"]="${line//# info_en: /}"
+                fi
+            done < "$ai_file"
+            AI_FILE="${ai_file//"$PORT_SCRIPTS_PATH/pw_autoinstall/"/}"
+            AI_FILE_CHECK="$AI_FILE=$AI_AMOUNT_ARRAY"
+            AI_FILE_ARRAY+=($AI_FILE)
+            if [[ $AI_TOP_GAMES =~ ${AI_FILE_CHECK//=*/} ]] ; then
+                AI_TRUE_FILE+=($AI_FILE_CHECK)
             else
-                [[ $line =~ "# info_en: " ]] && AI_INFO="${line//# info_en: /}"
+                AI_FILE_UNSORTED+=($AI_AMOUNT_ARRAY)
             fi
-        done < "$ai_file"
+            (( AI_AMOUNT_ARRAY++ ))
+        done
+
+        for ai_sort in $AI_TOP_GAMES ; do
+            if [[ ${AI_TRUE_FILE[*]} =~ $ai_sort ]] ; then
+                AI_TRUE_FILE_NEW=(${AI_TRUE_FILE[@]//$ai_sort=/})
+                AI_FILE_SORTED+=(${AI_TRUE_FILE_NEW[@]//*=*/})
+            fi
+        done
 
         IFS=$'\n'
-        [[ -z "$AI_NAME" ]] && yad_error "Line: \"name\" not found in file $AI_FILE."
-        case $AI_TYPE in
-            games) 
-                PW_GENERATE_BUTTONS_GAMES+="--field=   $AI_NAME!$PW_GUI_ICON_PATH/$AI_IMAGE.png!$AI_INFO:FBTNR%@bash -c \"button_click --normal $AI_FILE\"%"
-                (( AI_AMOUNT_GAMES++ ))
-                ;;
-            emulators) 
-                PW_GENERATE_BUTTONS_EMULS+="--field=   $AI_NAME!$PW_GUI_ICON_PATH/$AI_IMAGE.png!$AI_INFO:FBTNR%@bash -c \"button_click --normal $AI_FILE\"%"
-                (( AI_AMOUNT_EMULS++ ))
-                ;;
-            *)
-                yad_error "Line: \"type\" not found in file $AI_FILE or misspelled."
-                ;;
-        esac
-        [[ -z $PW_DEBUG ]] && unset AI_FILE AI_TYPE AI_NAME AI_IMAGE AI_INFO
-    done
-    MAIN_GUI_ROWS_GAMES="$(( AI_AMOUNT_GAMES / MAIN_GUI_COLUMNS + 1 ))"
-    MAIN_GUI_ROWS_EMULS="$(( AI_AMOUNT_EMULS / MAIN_GUI_COLUMNS + 1 ))"
+        for ai in "${AI_FILE_SORTED[@]}" "${AI_FILE_UNSORTED[@]}" ; do
+            case ${AI_TYPE[$ai]} in
+                games)
+                    export PW_GENERATE_BUTTONS_GAMES+="--field=   ${AI_NAME[$ai]}!$PW_GUI_ICON_PATH/${AI_IMAGE[$ai]}.png!${AI_INFO[$ai]}:FBTNR%@bash -c \"button_click --normal ${AI_FILE_ARRAY[$ai]}\"%"
+                    (( AI_AMOUNT_GAMES++ ))
+                    ;;
+                emulators)
+                    export PW_GENERATE_BUTTONS_EMULS+="--field=   ${AI_NAME[$ai]}!$PW_GUI_ICON_PATH/${AI_IMAGE[$ai]}.png!${AI_INFO[$ai]}:FBTNR%@bash -c \"button_click --normal ${AI_FILE_ARRAY[$ai]}\"%"
+                    (( AI_AMOUNT_EMULS++ ))
+                    ;;
+                *)
+                    yad_error "Line: \"type\" not found in file ${AI_FILE_ARRAY[$ai]} or misspelled."
+                    ;;
+            esac
+        done
+        export MAIN_GUI_ROWS_GAMES="$(( AI_AMOUNT_GAMES / MAIN_GUI_COLUMNS + 1 ))"
+        export MAIN_GUI_ROWS_EMULS="$(( AI_AMOUNT_EMULS / MAIN_GUI_COLUMNS + 1 ))"
+
+        export AI_SKIP="1"
+    fi
 
     IFS="%"
     "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[1]}" --form --columns="$MAIN_GUI_ROWS_EMULS" --align-buttons --scroll --homogeneous-column \
     --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" --separator=" " ${PW_GENERATE_BUTTONS_EMULS} 2>/dev/null &
     "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[0]}" --form --columns="$MAIN_GUI_ROWS_GAMES" --align-buttons --scroll --homogeneous-column \
     --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" --separator=" " ${PW_GENERATE_BUTTONS_GAMES} 2>/dev/null &
-    unset PW_GENERATE_BUTTONS_GAMES PW_GENERATE_BUTTONS_EMULS
     IFS="$orig_IFS"
 
     export START_FROM_PP_GUI="1"
@@ -746,7 +818,7 @@ else
         export TAB_MAIN_MENU="1"
     fi
 
-    if [[ -z "${PW_ALL_DF}" ]] ; then
+    if [[ -z $PW_DESKTOP_FILES ]] ; then
         "${pw_yad}" --key=$KEY_MENU --notebook --expand \
         --gui-type="settings-notebook" --active-tab="${TAB_MAIN_MENU}" \
         --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
@@ -795,12 +867,12 @@ if [[ -f "${PORTWINE_DB_FILE}" ]] ; then
     edit_db_from_gui PW_VULKAN_USE PW_WINE_USE PW_PREFIX_NAME
 fi
 
-[[ -n "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
+case "$PW_YAD_SET" in
     gui_pw_reinstall_pp|open_changelog|\
     128|gui_pw_update|gui_rm_portproton|\
     change_loc|gui_open_scripts_from_backup|\
     gui_credits|pw_start_cont_xterm)
-        if [[ -z "${PW_ALL_DF}" ]] ; then
+        if [[ -z $PW_DESKTOP_FILES ]] ; then
             export TAB_MAIN_MENU="4"
         else
             export TAB_MAIN_MENU="5"
@@ -810,14 +882,14 @@ fi
     116|pw_create_prefix_backup|\
     gui_clear_pfx|WINEREG|WINECMD|\
     WINEFILE|WINECFG|gui_wine_uninstaller)
-        if [[ -z "${PW_ALL_DF}" ]] ; then
+        if [[ -z $PW_DESKTOP_FILES ]] ; then
             export TAB_MAIN_MENU="3"
         else
             export TAB_MAIN_MENU="4"
         fi
         ;;
     pw_find_exe)
-        if [[ -z "${PW_ALL_DF}" ]] ; then
+        if [[ -z $PW_DESKTOP_FILES ]] ; then
             export TAB_MAIN_MENU="5"
         else
             export TAB_MAIN_MENU="1"
@@ -825,7 +897,7 @@ fi
         ;;
 esac
 
-[[ -n "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
+case "$PW_YAD_SET" in
     98) portwine_delete_shortcut ;;
     100) portwine_create_shortcut ;;
     DEBUG|102) portwine_start_debug ;;

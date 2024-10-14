@@ -186,6 +186,7 @@ eval_translations () {
 }
 
 create_translations () {
+    local po_file msgid msgstr
     if [[ ! -d "${PW_CACHE_LANG_PATH}" ]] ; then
         create_new_dir "${PW_CACHE_LANG_PATH}"
     fi
@@ -456,12 +457,13 @@ try_download () {
                 no_mirror=true
     esac
 
+    local filename
     if [[ -n "${PW_AUTOINSTALL_EXE}" ]] \
     && [[ "$no_mirror" == "true" ]]
     then
-        local filename="$(basename "${PW_AUTOINSTALL_EXE}")"
+        filename="$(basename "${PW_AUTOINSTALL_EXE}")"
     else
-        local filename="$(basename "$1")"
+        filename="$(basename "$1")"
     fi
 
     if [[ "${MIRROR}" == CLOUD ]] \
@@ -742,18 +744,170 @@ unpack () {
 debug_timer () {
     if [[ "$1" == "--start" ]] ; then
         START=$(date +%s%N)
+        if [[ "$2" == "-s" ]] ; then
+            case $3 in
+                PW_TIME_IN_GAME)
+                    START_PW_TIME_IN_GAME=$START ;;
+                UPDATE_ETERFUND)
+                    START_UPDATE_ETERFUND=$START ;;
+                UPDATE_GITHUB)
+                    START_UPDATE_GITHUB=$START ;;
+            esac
+        fi
     elif [[ "$1" == "--end" ]] ; then
         END=$(date +%s%N)
-        DIFF=$((( END - START )/1000000))
         if [[ -n "$2" ]] ; then
-            if [[ "$2" != "-s" ]] ; then
+            if [[ "$2" == "-s" ]] ; then
+                case $3 in
+                    PW_TIME_IN_GAME)
+                        START=$START_PW_TIME_IN_GAME ;;
+                    UPDATE_ETERFUND)
+                        START=$START_UPDATE_ETERFUND ;;
+                    UPDATE_GITHUB)
+                        START=$START_UPDATE_GITHUB ;;
+                esac
+                export "$3"="$((( END - START )/1000000 ))"
+            else
+                DIFF=$((( END - START )/1000000 ))
                 print_warning "It took $DIFF milliseconds for $2"
             fi
         else
+            DIFF=$((( END - START )/1000000 ))
             print_warning "It took $DIFF milliseconds"
         fi
     fi
-    return 0
+}
+
+# Поиск нужного .desktop файла по $portwine_exe
+search_desktop_file () {
+    local count desktop_file desktop_file_new EXEC_DESKTOP EXEC_DESKTOP_NEW TIME_TOTAL i j df
+    unset TIME_CURRENT_ARRAY DESKTOP_FILES_ARRAY
+    count=0
+    for desktop_file in "$PORT_WINE_PATH"/* ; do
+        desktop_file_new="${desktop_file//"$PORT_WINE_PATH/"/}"
+        if [[ $desktop_file_new =~ .desktop$ ]] ; then
+            if [[ ! $desktop_file_new =~ (PortProton|readme) ]] ; then
+                while IFS= read -r line ; do
+                    if [[ $line =~ ^Exec= ]] ; then
+                        if check_flatpak ; then
+                            EXEC_DESKTOP=${line//Exec=flatpak run ru.linux_gaming.PortProton /}
+                        else
+                            EXEC_DESKTOP=${line//Exec=env \"$PORT_SCRIPTS_PATH\/start.sh\" /}
+                        fi
+                        EXEC_DESKTOP_NEW=${EXEC_DESKTOP//\"/}
+                    fi
+                    if [[ $line =~ ^#Time= ]] && [[ $portwine_exe == "$EXEC_DESKTOP_NEW" ]] ; then
+                        TIME_CURRENT=${line//#Time=/}
+                    fi
+                done < "$desktop_file"
+                if [[ $portwine_exe == "$EXEC_DESKTOP_NEW" ]] ; then
+                    # Когда новый .desktop файл
+                    if [[ $TIME_CURRENT == "" ]] ; then
+                        echo "#NEW_DESKTOP" >> "$desktop_file"
+                        TIME_CURRENT="0"
+                    # Для битых #Time=
+                    elif [[ ! $TIME_CURRENT == "" ]] && [[ ! $TIME_CURRENT =~ [0-9]+ ]] ; then
+                        TIME_CURRENT="0"
+                    fi
+                    TIME_CURRENT_ARRAY+=($TIME_CURRENT)
+                    unset TIME_CURRENT
+                    DESKTOP_FILES_ARRAY["$count"]="$desktop_file"
+                    (( count++ ))
+                fi
+            fi
+        fi
+    done
+    IFS="$orig_IFS"
+
+    # Если существуют .desktop файлы на один и тот же .exe файл, то среди них выбирается
+    # текущее время берётся из того .desktop файла, в котором проведено больше времени
+    # и запись этого большего времени будет потом записываться во все .desktop файлы
+    # у которых общий .exe файл, это нужно для того, чтобы в главном меню .desktop файлы
+    # упорядочивались нормально.
+    for i in "${!TIME_CURRENT_ARRAY[@]}" ; do
+        for j in "${!TIME_CURRENT_ARRAY[@]}" ; do
+            if (( ${TIME_CURRENT_ARRAY[$i]} > ${TIME_CURRENT_ARRAY[$j]} )) ; then
+                tmp=${TIME_CURRENT_ARRAY[$i]}
+                TIME_CURRENT_ARRAY[i]=${TIME_CURRENT_ARRAY[$j]}
+                TIME_CURRENT_ARRAY[j]=$tmp
+            fi
+        done
+    done
+
+    TIME_CURRENT="${TIME_CURRENT_ARRAY[0]}"
+    if [[ -n $PW_TIME_IN_GAME ]] ; then
+        TIME_TOTAL=$(( TIME_CURRENT + PW_TIME_IN_GAME ))
+        for df in "${DESKTOP_FILES_ARRAY[@]}" ; do
+            sed -i '/^#Time=/d' "$df"
+            echo "#Time=$TIME_TOTAL" >> "$df"
+        done
+    else
+        for df in "${DESKTOP_FILES_ARRAY[@]}" ; do
+            sed -i '/^#Time=/d' "$df"
+            echo "#Time=$TIME_CURRENT" >> "$df"
+        done
+    fi
+}
+
+# Конвертация секунд в дни, часы, минуты
+seconds_to_time () {
+    [[ -z $1 ]] && return 0
+    local seconds days hours minutes
+    seconds=$1
+
+    days=$((seconds / (60 * 60 * 24)))
+    seconds=$((seconds % (60 * 60 * 24)))
+
+    hours=$((seconds / (60 * 60)))
+    seconds=$((seconds % (60 * 60)))
+
+    minutes=$((seconds / 60))
+    seconds=$((seconds % 60))
+
+    if [[ $days =~ ^0$ ]] ; then
+        days=
+    elif [[ $days =~ ^1$ ]] ; then
+        days="$days ${translations[day]}, "
+    elif [[ $days =~ ^([2-9]1|[1-9][0-9]+1)$ ]] && [[ $LANGUAGE == ru ]] ; then
+        days="$days ${translations[day]}, "
+    elif [[ $days =~ ^([2-4]|[2-9][2-4]|[1-9][0-9]+[2-4])$ ]] && [[ $LANGUAGE == ru ]] ; then
+        days="$days дня, "
+    else
+        days="$days ${translations[days]}, "
+    fi
+
+    if [[ $hours =~ ^0$ ]] ; then
+        hours=
+    elif [[ $hours =~ ^1$ ]] ; then
+        hours="$hours ${translations[hour]} ${translations[and]} "
+    elif [[ $hours =~ ^([2-4]|2[2-4])$ ]] && [[ $LANGUAGE == ru ]] ; then
+        hours="$hours часа ${translations[and]} "
+    elif [[ $hours =~ ^21$ ]] && [[ $LANGUAGE == ru ]] ; then
+        hours="$hours ${translations[hour]} ${translations[and]} "
+    else
+        hours="$hours ${translations[hours]} ${translations[and]} "
+    fi
+
+    if [[ $minutes =~ ^0$ ]] ; then
+        hours=${hours//" ${translations[and]} "/}
+        minutes=
+        if [[ $days == "" ]] || [[ $hours == "" ]] ; then
+            days=${days//","/}
+        fi
+        if [[ $days == "" ]] && [[ $hours == "" ]] ; then
+            minutes="${translations[less than a minute]}"
+        fi
+    elif [[ $minutes =~ ^1$ ]] ; then
+        minutes="$minutes ${translations[minute]}"
+    elif [[ $minutes =~ ^[2-5]1$ ]] && [[ $LANGUAGE == ru ]] ; then
+        minutes="$minutes ${translations[minute]}"
+    elif [[ $minutes =~ ^([2-4]|[2-5][2-4])$ ]] && [[ $LANGUAGE == ru ]] ; then
+        minutes="$minutes минуты"
+    else
+        minutes="$minutes ${translations[minutes]}"
+    fi
+
+    echo -e "<b>\n${translations[Time spent]}: $days$hours$minutes</b>"
 }
 
 combobox_fix () {
@@ -761,6 +915,7 @@ combobox_fix () {
         print_error "no argument specified for combobox_fix"
         return 1
     else
+        local name1 name2
         if [[ "$1" == "--disabled" ]] ; then
             if [[ -z "$3" ]] ; then
                 echo "disabled"
@@ -783,6 +938,7 @@ combobox_fix () {
             fi
             name2="$2"
         fi
+        local name3 name4
         name3="${name2//\!${name1}\!/\!}"
         name3="!${name3//${name1}\!/\!}"
         name3="${name3//\!\!/\!}"
@@ -1258,7 +1414,7 @@ pw_exit_tray () {
 export -f pw_exit_tray
 
 stop_portwine () {
-    [[ "$int_xneur" == "1"  ]] && xneur &
+    [[ "$int_xneur" == "1" ]] && xneur &
 
     if [[ "$PW_USE_US_LAYOUT" == "1" ]] \
     && ! check_wayland_session \
@@ -1292,12 +1448,17 @@ stop_portwine () {
     pw_stop_progress_bar
     try_remove_file "${PORT_SCRIPTS_PATH}/0"
     try_remove_file "${PORT_SCRIPTS_PATH}/1"
-    kill_portwine &&
+    kill_portwine
     try_remove_dir "${PW_WINELIB}/var"
     find "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/" -maxdepth 1 -type f -name "*.tmp" -delete
     pw_exit_tray
     pw_auto_create_shortcut
     add_in_stop_portwine
+
+    debug_timer --end -s "PW_TIME_IN_GAME"
+    PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 )) # в секундах
+    search_desktop_file
+
     case "$1" in
         --restart)
             restart_pp ;;
@@ -1755,23 +1916,21 @@ pw_port_update () {
     URL_GITHUB="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/${BRANCH}/data_from_portwine/scripts/var"
 
     pw_check_update () {
-        debug_timer --start
+        debug_timer --start -s "UPDATE_ETERFUND"
         if ! timeout 2 curl -f -s --list-only "$URL_ETERFUND" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
         then
             print_warning "https://gitlab.eterfund.ru/ broken. Skip it..."
             UPDATE_SKIP_ETERFUND="1"
         fi
-        debug_timer --end -s
-        UPDATE_ETERFUND="$DIFF"
+        debug_timer --end -s "UPDATE_ETERFUND"
 
-        debug_timer --start
+        debug_timer --start -s "UPDATE_GITHUB"
         if ! timeout 2 curl -f -s --list-only "$URL_GITHUB" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
         then
             print_warning "https://raw.githubusercontent.com/ broken. Skip it..."
             UPDATE_SKIP_GITHUB="1"
         fi
-        debug_timer --end -s
-        UPDATE_GITHUB="$DIFF"
+        debug_timer --end -s "UPDATE_GITHUB"
 
         if [[ "$UPDATE_SKIP_ETERFUND" == "1" ]] \
         && [[ "$UPDATE_SKIP_GITHUB" == "1" ]] ; then
@@ -2191,14 +2350,12 @@ pw_find_exe () {
     --button="${translations[CANCEL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
     --button="${translations[OK]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)"
     YAD_STATUS="$?"
-    if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
-        if [[ -z "${PW_SET_FIND_EXE}" ]] ; then
-            print_info "Restarting..."
-            restart_pp
-        fi
-        exit 0
-    fi
+
     IFS="$orig_IFS"
+    if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
+        print_info "Restarting..."
+        restart_pp
+    fi
 
     if [[ -n "${PW_SET_FIND_EXE}" ]] ; then
         portwine_exe="${PW_PATH_FOR_FIND}$(echo "${PW_SET_FIND_EXE}" | awk -F'|' '{print $1}')"
@@ -2571,7 +2728,7 @@ start_portwine () {
     if check_gamescope_session ; then
         export PW_GAMEMODERUN_SLR=""
     elif [[ "$PW_USE_GAMEMODE" = "1" ]] \
-    && [[ -n "$DBUS_SESSION_BUS_ADDRESS"  ]]
+    && [[ -n "$DBUS_SESSION_BUS_ADDRESS" ]]
     then
         if command -v gamemoded &>/dev/null ; then
             export GAMEMODERUN=1
@@ -2992,7 +3149,7 @@ start_portwine () {
     if [[ -n "$CP_DXVK_FILES" ]] ; then
         print_info "Try create symlink DXVK files..."
         for wine_dxvk_dll in $CP_DXVK_FILES ; do
-            if [[ -f "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll"  ]] ; then
+            if [[ -f "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" ]] ; then
                 try_force_link_file "${PATH_TO_DXVK_FILES}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
                 try_force_link_file "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
                 var_winedlloverride_update "${wine_dxvk_dll}=n"
@@ -3531,6 +3688,7 @@ portwine_launch () {
         PW_VD_TMP=(explorer "/desktop=PortProton,${PW_SCREEN_RESOLUTION}")
     fi
 
+    debug_timer --start -s "PW_TIME_IN_GAME"
     case "$portwine_exe" in
         *.[Ee][Xx][Ee])
             pw_run ${PW_VD_TMP[@]} ${WINE_WIN_START} "$portwine_exe"
@@ -4674,7 +4832,7 @@ gui_mangohud () {
     export PW_MANGOHUD FPS_LIMIT
     edit_db_from_gui MANGOHUD_CONFIG PW_MANGOHUD FPS_LIMIT
 
-    if [[  "${YAD_MANGOHUD_STATUS}" == "184" ]] ; then
+    if [[ "${YAD_MANGOHUD_STATUS}" == "184" ]] ; then
         PW_MANGOHUD="1"
         pw_init_runtime
         pw_mangohud_check
@@ -5093,11 +5251,29 @@ gui_userconf () {
         GPU_VAR="disabled"
     fi
 
+    if [[ -n "${DESKTOP_WITH_TIME}" ]] \
+    && [[ "${DESKTOP_WITH_TIME}" != "disabled" ]]
+    then
+        DESKTOP_WITH_TIME="enabled"
+    else
+        DESKTOP_WITH_TIME="disabled"
+    fi
+
+    if [[ -n "${SORT_WITH_TIME}" ]] \
+    && [[ "${SORT_WITH_TIME}" == "disabled" ]]
+    then
+        SORT_WITH_TIME="disabled"
+    else
+        SORT_WITH_TIME="enabled"
+    fi
+
     "${pw_yad}" --plug=$KEY_USERCONF_GUI --tabnum="2" --form --columns=1 --separator="%" --homogeneous-row \
-    --gui-type-text="${PANED_GUI_TYPE_TEXT_DOWN}" --gui-type-layout="${PANED_GUI_TYPE_LAYOUT_DOWN}" \
-    --field="${translations[Choose a graphics card to run the game]}!${translations[Select which video card will be used to run the game (used for all running games and programs in PortProton)]} :CB" "$(combobox_fix --disabled "${GPU_VAR}" "${GET_GPU_NAMES}")" \
-    --field="${translations[Choice wine audio driver]}!${translations[Fixes sound popling if choice alsa]} :CB" "$(combobox_fix --disabled "${SOUND_DRIVER_VAR}" "alsa!oss!pulse")" \
-    --field="${translations[Choice gui themes]}!${translations[Allows you to select a theme for PortProton]} :CB" "$(combobox_fix "${GUI_THEME}" "default!compact!classic")" \
+    --gui-type-text="$PANED_GUI_TYPE_TEXT_DOWN" --gui-type-layout="$PANED_GUI_TYPE_LAYOUT_DOWN" \
+    --field="${translations[Choose a graphics card to run the game]}!${translations[Select which video card will be used to run the game (used for all running games and programs in PortProton)]} :CB" "$(combobox_fix --disabled "$GPU_VAR" "$GET_GPU_NAMES")" \
+    --field="${translations[Choice wine audio driver]}!${translations[Fixes sound popling if choice alsa]} :CB" "$(combobox_fix --disabled "$SOUND_DRIVER_VAR" "alsa!oss!pulse")" \
+    --field="${translations[Choice gui themes]}!${translations[Allows you to select a theme for PortProton]} :CB" "$(combobox_fix "$GUI_THEME" "default!compact!classic")" \
+    --field="${translations[Time display]}!${translations[Displays time spent in an application or game]} :CB" "$(combobox_fix "$DESKTOP_WITH_TIME" "enabled!disabled")" \
+    --field="${translations[Sort shortcuts by time]}!${translations[This setting sorts the shortcuts in the main menu depending on the time spent in the application or game]} :CB" "$(combobox_fix "$SORT_WITH_TIME" "enabled!disabled")" \
     1> "${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb" 2>/dev/null &
 
     "${pw_yad}" --key=$KEY_USERCONF_GUI --paned --sensitive \
@@ -5133,7 +5309,9 @@ gui_userconf () {
             PW_GPU_USE="${PW_ADD_SETTINGS_UC[0]}"
             PW_SOUND_DRIVER_USE="${PW_ADD_SETTINGS_UC[1]}"
             GUI_THEME="${PW_ADD_SETTINGS_UC[2]}"
-            edit_user_conf_from_gui PW_GPU_USE PW_SOUND_DRIVER_USE GUI_THEME
+            DESKTOP_WITH_TIME="${PW_ADD_SETTINGS_UC[3]}"
+            SORT_WITH_TIME="${PW_ADD_SETTINGS_UC[4]}"
+            edit_user_conf_from_gui PW_GPU_USE PW_SOUND_DRIVER_USE GUI_THEME DESKTOP_WITH_TIME SORT_WITH_TIME
             restart_pp
             ;;
     esac
@@ -5207,10 +5385,11 @@ portwine_create_shortcut () {
     [[ -z "${PW_SHORTCUT_STEAM}" ]] && PW_SHORTCUT_STEAM="FALSE"
 
     if [[ -z "${PORTPROTON_NAME}" ]] ; then
-        export name_desktop="$(basename "$portwine_exe")"
+        name_desktop="$(basename "$portwine_exe")"
     else
-        export name_desktop="${PORTPROTON_NAME}"
+        name_desktop="${PORTPROTON_NAME}"
     fi
+    export name_desktop
 
     [[ -z "${name_desktop_png}" ]] && name_desktop_png="${PORTPROTON_NAME// /_}"
 
@@ -5327,17 +5506,14 @@ portwine_create_shortcut () {
 
         if [[ "$PW_NO_RESTART_PPDB" != "1" ]] ; then
             print_info "Restarting PP..."
-            if [[ "${PW_GUI_START}" == "NOTEBOOK" ]] ; then
-                unset PW_YAD_FORM_TAB
-            fi
+            [[ "$PW_GUI_START" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
             restart_pp
         fi
     elif [[ "$PW_YAD_OUT" == "2" ]] ; then
         print_info "Restarting PP..."
-        if [[ "${PW_GUI_START}" == "NOTEBOOK" ]] ; then
-            unset PW_YAD_FORM_TAB
-        fi
-        restart_pp
+        [[ -n $KEY_MENU ]] && unset portwine_exe
+        [[ "$PW_GUI_START" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
+        [[ -z $LINKS ]] && restart_pp
     fi
 }
 
@@ -5354,15 +5530,12 @@ pw_auto_create_shortcut () {
     unset LINKS
     for link_file in "${PORT_WINE_PATH}"/data/prefixes/*/drive_c/users/*/Desktop/*.lnk
     do
-        if ! echo "$link_file" | grep "\*.lnk" &>/dev/null ; then
-            link_file=$(readlink -f "${link_file}")
-            LINKS+=("${link_file// /@_@}")
-        else
-            continue
-        fi
+        link_file=$(readlink -f "${link_file}")
+        LINKS+=(${link_file// /@_@})
     done
-    [[ -z "$LINKS" ]] && return 0
-    SORTED_LINKS=($(echo ${LINKS[@]} | tr ' ' '\n' | sort -u))
+
+    [[ -z "${LINKS[0]}" ]] && return 0
+    read -r -a SORTED_LINKS < <(echo ${LINKS[@]} | tr ' ' '\n' | sort -u | tr '\n' ' ')
 
     for link_file in "${SORTED_LINKS[@]//@_@/ }" ; do
         if command -v exiftool &>/dev/null ; then
@@ -5402,10 +5575,8 @@ pw_auto_create_shortcut () {
             link_cmd=$(sed -n 's/^Command Line Arguments\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
         fi
 
-        try_remove_file "$link_file"
-
         if ! exe_path="$(realpath "${link_path}" 2>/dev/null)" ; then
-            print_warning "Removed broken link for: $link_name"
+            print_warning "Link broken for: $link_name"
         else
             print_info "Created link for: $link_name"
             PORTPROTON_NAME="$link_name"
@@ -5851,21 +6022,12 @@ button_click () {
         --desktop)
             kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_MENU}" | awk '{print $1}') > /dev/null 2>&1
             PW_YAD_SET="${PORT_WINE_PATH}/${PW_YAD_SET//#@_@#/ }"
-            if [[ $PW_DESKTOP_FILES_REGEX == "1" ]] ; then
-                PW_YAD_SET="${PW_YAD_SET//#+_1#/\(}"
-                PW_YAD_SET="${PW_YAD_SET//#+_2#/\)}"
-                PW_YAD_SET="${PW_YAD_SET//#+_3#/\!}"
-                PW_YAD_SET="${PW_YAD_SET//#+_4#/\$}"
-                PW_YAD_SET="${PW_YAD_SET//#+_5#/\%}"
-                PW_YAD_SET="${PW_YAD_SET//#+_6#/\&}"
-                PW_YAD_SET="${PW_YAD_SET//#+_7#/\`}"
-                PW_YAD_SET="${PW_YAD_SET//#+_8#/\'}"
-                PW_YAD_SET="${PW_YAD_SET//#+_9#/\"}"
-                PW_YAD_SET="${PW_YAD_SET//#+_10#/\>}"
-                PW_YAD_SET="${PW_YAD_SET//#+_11#/\<}"
-                PW_YAD_SET="${PW_YAD_SET//#+_12#/\\}"
-                PW_YAD_SET="${PW_YAD_SET//#+_13#/\|}"
-                PW_YAD_SET="${PW_YAD_SET//#+_14#/\;}"
+            if [[ -n $PW_DESKTOP_FILES_REGEX ]] ; then
+                local count=1
+                for y in "${PW_DESKTOP_FILES_REGEX[@]}" ; do
+                    PW_YAD_SET="${PW_YAD_SET//#+_$count#/$y}"
+                    (( count++ ))
+                done
             fi
             if check_flatpak
             then PW_EXEC_FROM_DESKTOP="$(grep Exec "$PW_YAD_SET" | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
