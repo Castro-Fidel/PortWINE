@@ -16,7 +16,10 @@ echo '
 '
 
 $PW_DEBUG
-if [[ $(id -u) = 0 ]] && [[ ! -e "/userdata/system/batocera.conf" ]] ; then
+
+if [[ $(id -u) = 0 ]] \
+&& [[ ! -e "/userdata/system/batocera.conf" ]]
+then
     echo "Do not run this script as root!"
     exit 1
 fi
