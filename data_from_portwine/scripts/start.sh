@@ -660,7 +660,8 @@ else
     if [[ $SORT_WITH_TIME == enabled ]] ; then
         for i in "${!PW_GAME_TIME[@]}" ; do
             for j in "${!PW_GAME_TIME[@]}" ; do
-                if (( ${PW_GAME_TIME[$i]} > ${PW_GAME_TIME[$j]} )) ; then
+                if (( ${PW_GAME_TIME[$i]} > ${PW_GAME_TIME[$j]} )) \
+                && [[ ! ${PW_AMOUNT_NEW_DESKTOP[*]} =~ $j ]] ; then
                     tmp_0=${PW_GAME_TIME[$i]}
                     tmp_1=${PW_ALL_DF[$i]}
                     tmp_2=${PW_NAME_D_ICON[$i]}
