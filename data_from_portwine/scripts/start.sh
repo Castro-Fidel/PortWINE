@@ -752,7 +752,6 @@ else
 
     if [[ $AI_SKIP != 1 ]] ; then
         # AI_TOP_GAMES используется для сортировки автоинсталлов (работает на эмуляторы тоже)
-        AI_TOP_GAMES="PW_LGC PW_VKPLAY PW_EPIC PW_BATTLE_NET"
         AI_AMOUNT_GAMES="0" && AI_AMOUNT_EMULS="0" && AI_AMOUNT_ARRAY="0"
         for ai_file in "$PORT_SCRIPTS_PATH"/pw_autoinstall/* ; do
             while IFS= read -r line ; do
