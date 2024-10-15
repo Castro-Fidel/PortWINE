@@ -918,7 +918,7 @@ combobox_fix () {
         local name1 name2
         if [[ "$1" == "--disabled" ]] ; then
             if [[ -z "$3" ]] ; then
-                echo "disabled"
+                echo "${translations[disabled]}"
                 return 0
             fi
             name1="$2"
@@ -947,8 +947,16 @@ combobox_fix () {
         then name3="${name3%\!"${name1}"}"
         fi
         if [[ "$1" == "--disabled" ]] ; then
-            if [[ ${name1} != "disabled" ]]
-            then fix_disabled="!disabled"
+            if [[ ${name1} == "disabled" ]] ; then
+                name1="${translations[disabled]}"
+                if [[ ${name3} =~ enabled ]] ; then
+                    name3="${name3//enabled/${translations[enable]}}"
+                fi
+            elif [[ ${name1} != "disabled" ]] ; then
+                fix_disabled="!${translations[disable]}"
+                if [[ ${name1} == "enabled" ]] ; then
+                    name1="${translations[enabled]}"
+                fi
             fi
             echo "${name1}${name3}${fix_disabled}"
         elif [[ "$1" == "--empty" ]] ; then
@@ -2230,9 +2238,15 @@ edit_db_from_gui () {
     && [[ -f "$PORTWINE_DB_FILE" ]]
     then
         for mod_db in $@ ; do
+            proxy_mod_db="${!mod_db}"
+            if [[ $proxy_mod_db =~ (${translations[disabled]}|${translations[disable]}) ]] ; then
+                proxy_mod_db=disabled
+            elif [[ $proxy_mod_db =~ (${translations[enabled]}|${translations[enable]}) ]] ; then
+                proxy_mod_db=enabled
+            fi
             if [[ $(<"${PORTWINE_DB_FILE}") =~ export\ ${mod_db}= ]]
-            then sed -i "s|export ${mod_db}=.*|export ${mod_db}=\"${!mod_db}\"|g" "${PORTWINE_DB_FILE}"
-            else echo "export ${mod_db}=\"${!mod_db}\"" >> "${PORTWINE_DB_FILE}"
+            then sed -i "s|export ${mod_db}=.*|export ${mod_db}=\"$proxy_mod_db\"|g" "${PORTWINE_DB_FILE}"
+            else echo "export ${mod_db}=\"$proxy_mod_db\"" >> "${PORTWINE_DB_FILE}"
             fi            
         done
     fi
@@ -2241,15 +2255,21 @@ edit_db_from_gui () {
 
 edit_user_conf_from_gui () {
     for mod_db in $@ ; do
+        proxy_mod_db="${!mod_db}"
+        if [[ $proxy_mod_db =~ (${translations[disabled]}|${translations[disable]}) ]] ; then
+            proxy_mod_db=disabled
+        elif [[ $proxy_mod_db =~ (${translations[enabled]}|${translations[enable]}) ]] ; then
+            proxy_mod_db=enabled
+        fi
         if ! grep "export ${mod_db}=" "${USER_CONF}" &>/dev/null
-        then echo "export ${mod_db}=\"${!mod_db}\"" >> "${USER_CONF}"
+        then echo "export ${mod_db}=\"$proxy_mod_db\"" >> "${USER_CONF}"
         elif grep "export ${mod_db}=" "${USER_CONF}" | grep -v "#" &>/dev/null
         then
-            if [[ "$(grep "export ${mod_db}=" "${USER_CONF}" | grep -v "#")" != "export ${mod_db}=\"${!mod_db}\"" ]]
-            then sed -ri "s/^export ${mod_db}=.*/export ${mod_db}=\"${!mod_db}\"/" "${USER_CONF}"
+            if [[ "$(grep "export ${mod_db}=" "${USER_CONF}" | grep -v "#")" != "export ${mod_db}=\"$proxy_mod_db\"" ]]
+            then sed -ri "s/^export ${mod_db}=.*/export ${mod_db}=\"$proxy_mod_db\"/" "${USER_CONF}"
             fi
-        elif [[ "$(grep "export ${mod_db}=" "${USER_CONF}")" != "export ${mod_db}=${!mod_db}" ]]
-        then sed -ri "s/.*export ${mod_db}=.*/export ${mod_db}=\"${!mod_db}\"/g" "${USER_CONF}"
+        elif [[ "$(grep "export ${mod_db}=" "${USER_CONF}")" != "export ${mod_db}=$proxy_mod_db" ]]
+        then sed -ri "s/.*export ${mod_db}=.*/export ${mod_db}=\"$proxy_mod_db\"/g" "${USER_CONF}"
         fi
     done
     return 0
@@ -4460,7 +4480,7 @@ A brief instruction:
     PW_VKD3D_FEATURE_LEVEL="${PW_ADD_SETTINGS[8]}"
     PW_LOCALE_SELECT="${PW_ADD_SETTINGS[9]}"
 
-    if [[ "${CPU_LIMIT}" != "disabled" ]] ; then
+    if [[ "${CPU_LIMIT}" =~ [0-9]+ ]] ; then
         PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $(( CPU_LIMIT - 1 )))"
     else
         PW_WINE_CPU_TOPOLOGY="disabled"
@@ -5272,8 +5292,8 @@ gui_userconf () {
     --field="${translations[Choose a graphics card to run the game]}!${translations[Select which video card will be used to run the game (used for all running games and programs in PortProton)]} :CB" "$(combobox_fix --disabled "$GPU_VAR" "$GET_GPU_NAMES")" \
     --field="${translations[Choice wine audio driver]}!${translations[Fixes sound popling if choice alsa]} :CB" "$(combobox_fix --disabled "$SOUND_DRIVER_VAR" "alsa!oss!pulse")" \
     --field="${translations[Choice gui themes]}!${translations[Allows you to select a theme for PortProton]} :CB" "$(combobox_fix "$GUI_THEME" "default!compact!classic")" \
-    --field="${translations[Time display]}!${translations[Displays time spent in an application or game]} :CB" "$(combobox_fix "$DESKTOP_WITH_TIME" "enabled!disabled")" \
-    --field="${translations[Sort shortcuts by time]}!${translations[This setting sorts the shortcuts in the main menu depending on the time spent in the application or game]} :CB" "$(combobox_fix "$SORT_WITH_TIME" "enabled!disabled")" \
+    --field="${translations[Time display]}!${translations[Displays time spent in an application or game]} :CB" "$(combobox_fix --disabled "$DESKTOP_WITH_TIME" "enabled")" \
+    --field="${translations[Sort shortcuts by time]}!${translations[This setting sorts the shortcuts in the main menu depending on the time spent in the application or game]} :CB" "$(combobox_fix --disabled "$SORT_WITH_TIME" "enabled")" \
     1> "${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb" 2>/dev/null &
 
     "${pw_yad}" --key=$KEY_USERCONF_GUI --paned --sensitive \
