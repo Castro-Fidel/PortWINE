@@ -3230,6 +3230,12 @@ start_portwine () {
 
     if [[ "${PW_MESA_GL_VERSION_OVERRIDE}" != "disabled" ]] ; then
         export MESA_GL_VERSION_OVERRIDE="${PW_MESA_GL_VERSION_OVERRIDE}"
+        if [[ $PW_MESA_GL_VERSION_OVERRIDE = 3.2COMPAT ]] ; then
+            export MESA_GLSL_VERSION_OVERRIDE="150"
+        else
+            MESA_GLSL_VERSION_OVERRIDE="${PW_MESA_GL_VERSION_OVERRIDE//./}"
+            export MESA_GLSL_VERSION_OVERRIDE="${MESA_GLSL_VERSION_OVERRIDE//COMPAT/}0"
+        fi
     fi
 
     if [[ "${PW_VKD3D_FEATURE_LEVEL}" != "disabled" ]] ; then
@@ -3239,14 +3245,12 @@ start_portwine () {
     if [[ "${PW_MESA_VK_WSI_PRESENT_MODE}" != "disabled" ]] ; then
         export MESA_VK_WSI_PRESENT_MODE="${PW_MESA_VK_WSI_PRESENT_MODE}"
         case "$PW_MESA_VK_WSI_PRESENT_MODE" in
-        immediate|mailbox)
-            export vblank_mode=0
-            export __GL_SYNC_TO_VBLANK=0
-            ;;
-        relaxed|fifo)
-            export vblank_mode=1
-            export __GL_SYNC_TO_VBLANK=1
-            ;;
+            immediate|mailbox)
+                export vblank_mode=0
+                export __GL_SYNC_TO_VBLANK=0 ;;
+            relaxed|fifo)
+                export vblank_mode=1
+                export __GL_SYNC_TO_VBLANK=1 ;;
         esac
     fi
 
@@ -4401,7 +4405,7 @@ A brief instruction:
     --field="${translations[ADD ARGUMENTS FOR .EXE FILE]}!${translations[Adding an argument after the <b>.exe</b> file, just like you would add an argument in a shortcut on a <b>WINDOWS </b> system]} :CBE" "$(combobox_fix --empty "\\${LAUNCH_PARAMETERS[@]}" "-dx11 -skipintro 1")" \
     --field=":LBLH" "" \
     --field="${translations[Limit the use of processor cores]}!${translations[Limiting the number of CPU cores is useful for Unity games (It is recommended to set the value equal to 8)]} :CB" "$(combobox_fix --disabled "${CPU_LIMIT_VAR}" "${GET_LOGICAL_CORE}")" \
-    --field="${translations[Forcibly select the OpenGL version for the game]}!${translations[You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)]} :CB" "$(combobox_fix --disabled "${PW_MESA_GL_VERSION_OVERRIDE}" "4.6COMPAT!4.6!4.5COMPAT!4.5!3.3COMPAT!3.3")" \
+    --field="${translations[Forcibly select the OpenGL version for the game]}!${translations[You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)]} :CB" "$(combobox_fix --disabled "${PW_MESA_GL_VERSION_OVERRIDE}" "4.6COMPAT!4.5COMPAT!4.3COMPAT!4.1COMPAT!3.3COMPAT!3.2COMPAT")" \
     --field="${translations[Forcibly select the VKD3D feature level]}!${translations[You can set a forced feature level VKD3D for games on DirectX12]} :$VKD3D_CB" "$(combobox_fix --disabled "${PW_VKD3D_FEATURE_LEVEL}" "12_2!12_1!12_0!11_1!11_0")" \
     --field="${translations[Force certain locale for an app:]}!${translations[Fixes encoding issues in legacy software]} :CB" "$(combobox_fix --disabled "${PW_LOCALE_SELECT}" "$LOCALE_LIST")" \
     --field="${translations[Window mode (for Vulkan and OpenGL)]}!${translations[fifo - First in, first out. Limits the frame rate + no tearing. (VSync)
