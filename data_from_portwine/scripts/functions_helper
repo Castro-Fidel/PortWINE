@@ -806,8 +806,11 @@ search_desktop_file () {
                         echo "#NEW_DESKTOP" >> "$desktop_file"
                         TIME_CURRENT="0"
                     # Для битых #Time=
-                    elif [[ ! $TIME_CURRENT == "" ]] && [[ ! $TIME_CURRENT =~ [0-9]+ ]] ; then
-                        TIME_CURRENT="0"
+                    else
+                        if [[ ! $TIME_CURRENT =~ [0-9]+ ]] \
+                        || (( $TIME_CURRENT >= 999999999 )) ; then
+                            TIME_CURRENT="0"
+                        fi
                     fi
                     TIME_CURRENT_ARRAY+=($TIME_CURRENT)
                     unset TIME_CURRENT
@@ -1455,9 +1458,11 @@ stop_portwine () {
     pw_auto_create_shortcut
     add_in_stop_portwine
 
-    debug_timer --end -s "PW_TIME_IN_GAME"
-    PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 )) # в секундах
-    search_desktop_file
+    if [[ $PW_LOG != 1 ]] ; then
+        debug_timer --end -s "PW_TIME_IN_GAME"
+        PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 )) # в секундах
+        search_desktop_file
+    fi
 
     case "$1" in
         --restart)
@@ -3688,7 +3693,7 @@ portwine_launch () {
         PW_VD_TMP=(explorer "/desktop=PortProton,${PW_SCREEN_RESOLUTION}")
     fi
 
-    debug_timer --start -s "PW_TIME_IN_GAME"
+    [[ $PW_LOG != 1 ]] && debug_timer --start -s "PW_TIME_IN_GAME"
     case "$portwine_exe" in
         *.[Ee][Xx][Ee])
             pw_run ${PW_VD_TMP[@]} ${WINE_WIN_START} "$portwine_exe"
