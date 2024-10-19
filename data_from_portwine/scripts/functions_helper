@@ -378,7 +378,13 @@ create_new_dir () {
 }
 
 try_force_link_file () {
-    if [[ ! -f "$1" ]] ; then print_warning "file not found for link: $1" && return 1
+    if [[ ! -f "$1" ]] ; then
+        print_warning "file not found for link: $1"
+        if [[ -f "$2" ]] ; then
+            try_remove_file "$2"
+            print_warning "removed old link: $2"
+        fi
+        return 1
     elif [[ -z "$2" ]] ; then print_error "no way to link file $1" && return 1
     elif [[ -f "$2.sha256sum" ]] ; then print_warning "$2 this file has sha256sum"
         try_remove_file "$2"
@@ -5371,8 +5377,11 @@ resize_png () {
         local RESIZE_TO="$3"
     fi
 
-    [[ -f "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png" ]] && return 0
-
+    if [[ -f "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png" ]] \
+    || [[ ! -f "${RESIZE_FILE}" ]]
+    then
+        return 0
+    fi
     try_remove_file "${PORT_WINE_PATH}/data/img/launcher.png"
     try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
 
