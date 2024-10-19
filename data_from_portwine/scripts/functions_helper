@@ -2716,45 +2716,58 @@ start_portwine () {
         export int_xneur=1
     fi
 
-    if check_gamescope_session ; then
-        export PW_GAMEMODERUN_SLR=""
-    elif [[ "$PW_USE_GAMEMODE" = "1" ]] \
-    && [[ -n "$DBUS_SESSION_BUS_ADDRESS" ]]
-    then
-        if command -v gamemoded &>/dev/null ; then
-            export GAMEMODERUN=1
-            PW_GAMEMODERUN_SLR="gamemoderun"
-            systemctl enable --now --user gamemoded &>/dev/null
-            print_info "Gamemod will be launched."
-        elif check_flatpak ; then
-            export GAMEMODERUN=1
-            PW_GAMEMODERUN_SLR="gamemoderun"
-            print_info "Gamemod will be launched."
-        elif [[ "$PW_USE_RUNTIME" == 1 ]] ; then
-            export GAMEMODERUN=1
-            if ! pidof gamemoded &>/dev/null ; then
-                GAMEMODEAUTO_NAME="libgamemodeauto.so.0"
-                if [[ -n "${PW_LD_PRELOAD}" ]]
-                then export PW_LD_PRELOAD="${PW_LD_PRELOAD}:${GAMEMODEAUTO_NAME}"
-                else export PW_LD_PRELOAD="${GAMEMODEAUTO_NAME}"
-                fi
+	if check_gamescope_session ; then
+		export PW_GAMEMODERUN_SLR=""
+	elif [[ "$PW_USE_GAMEMODE" = "1" ]] && [[ -n "$DBUS_SESSION_BUS_ADDRESS" ]]; then
+		if systemctl is-active --quiet ananicy.service || systemctl is-active --quiet ananicy-cpp.service; then
+		    export GAMEMODERUN=0
+		    export PW_GAMEMODERUN_SLR=""
 
-                env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32" \
-                "${PW_PLUGINS_PATH}/portable/bin/gamemoded" &>/dev/null &
+		    if command -v powerprofilesctl &>/dev/null ; then
+			    if powerprofilesctl list | grep -q 'performance:'; then
+			        export PW_POWERPROFILECTL_SLR="powerprofilesctl launch -p performance --"
+			   		print_info "Gamemode replaced by powerprofilectl to avoid conflict with ananicy."
+			     else
+			     	export PW_POWERPROFILECTL_SLR=""
+			     fi
+			fi
+		else
+		    if command -v gamemoded &>/dev/null ; then
+		        export GAMEMODERUN=1
+		        PW_GAMEMODERUN_SLR="gamemoderun"
+		        systemctl enable --now --user gamemoded &>/dev/null
+		        print_info "Gamemode will be launched."
+		    elif check_flatpak ; then
+		        export GAMEMODERUN=1
+		        PW_GAMEMODERUN_SLR="gamemoderun"
+		        print_info "Gamemode will be launched."
+		    elif [[ "$PW_USE_RUNTIME" == 1 ]] ; then
+		        export GAMEMODERUN=1
+		        if ! pidof gamemoded &>/dev/null ; then
+		            GAMEMODEAUTO_NAME="libgamemodeauto.so.0"
+		            if [[ -n "${PW_LD_PRELOAD}" ]]; then
+		                export PW_LD_PRELOAD="${PW_LD_PRELOAD}:${GAMEMODEAUTO_NAME}"
+		            else
+		                export PW_LD_PRELOAD="${GAMEMODEAUTO_NAME}"
+		            fi
 
-                print_info "Gamemod will be launched."
-                sleep 0.1
-            fi
-        else
-            export GAMEMODERUN=0
-            export PW_GAMEMODERUN_SLR=""
-        fi
-    else
-        export GAMEMODERUN=0
-        export PW_GAMEMODERUN_SLR=""
-        print_info "Gamemod is not installed or disabled in vars script or db file: PW_USE_GAMEMODE=$PW_USE_GAMEMODE"
-    fi
-    pw_other_fixes
+		            env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32" \
+		                "${PW_PLUGINS_PATH}/portable/bin/gamemoded" &>/dev/null &
+
+		            print_info "Gamemode will be launched."
+		            sleep 0.1
+		        fi
+		    else
+		        export GAMEMODERUN=0
+		        export PW_GAMEMODERUN_SLR=""
+		        print_info "Gamemode is not installed or disabled in vars script or db file: PW_USE_GAMEMODE=$PW_USE_GAMEMODE"
+		    fi
+		fi
+	else
+		export GAMEMODERUN=0
+		export PW_GAMEMODERUN_SLR=""
+	fi
+	pw_other_fixes
 
     # enabled BattleEye_Runtime and EasyAntiCheat_Runtime
     if [[ "${PW_USE_EAC_AND_BE}" == 1 ]] ; then
@@ -3576,6 +3589,7 @@ pw_run () {
             echo ""
             print_info "Log from RUNTIME and WINE:"
             ${PW_RUN_GAMESCOPE} \
+            ${PW_POWERPROFILECTL_SLR} \
             ${pw_runtime} \
             LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             LD_PRELOAD="${PW_LD_PRELOAD}" \
@@ -3593,6 +3607,7 @@ pw_run () {
             echo ""
             echo "Log WINE:" > "${PW_LOG_TO_FILE}"
             ${PW_RUN_GAMESCOPE} \
+            ${PW_POWERPROFILECTL_SLR} \
             ${pw_runtime} \
             LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             LD_PRELOAD="${PW_LD_PRELOAD}" \
@@ -3625,6 +3640,7 @@ pw_run () {
             VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
             ${PW_RUN_GAMESCOPE} \
             ${PW_GAMEMODERUN_SLR} \
+            ${PW_POWERPROFILECTL_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
             "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
@@ -3642,6 +3658,7 @@ pw_run () {
             VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
             ${PW_RUN_GAMESCOPE} \
             ${PW_GAMEMODERUN_SLR} \
+            ${PW_POWERPROFILECTL_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
             "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]}
