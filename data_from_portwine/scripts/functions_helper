@@ -52,6 +52,38 @@ rm_from_var () {
     fi
 }
 
+add_to_array () {
+    local array_name=$1
+    local add_names=${*:2}
+
+    if [[ -v "$array_name" ]] ; then
+        for element in $add_names ; do
+            eval "$array_name+=($element)"
+        done
+    else
+        print_error "$array_name not found for array"
+    fi
+}
+
+rm_from_array () {
+    local array_name=$1
+    local rm_names=${*:2}
+
+    if [[ -v "$array_name" ]] ; then
+        local count=0
+        eval \
+        "for element in \${$array_name[@]} ; do
+            if [[ \$rm_names =~ \$element ]] ; then
+                unset $array_name[\$count]
+                $array_name=(\${$array_name[@]})
+            fi
+            ((count++))
+        done"
+    else
+        print_error "$array_name not found for array"
+    fi
+}
+
 fatal () {
     print_error "$@"
     exit 1
@@ -4320,15 +4352,14 @@ gui_edit_db () {
     # PW_USE_FAKE_DLSS_3
 
     if check_wayland_session ; then
-        unset 'PW_EDIT_DB_LIST[20]' # "PW_USE_US_LAYOUT"
+        rm_from_array "PW_EDIT_DB_LIST" PW_USE_US_LAYOUT
     else
-        unset 'PW_EDIT_DB_LIST[31]' # "PW_USE_NATIVE_WAYLAND"
+        rm_from_array "PW_EDIT_DB_LIST" PW_USE_NATIVE_WAYLAND
     fi
 
     if check_flatpak ; then
-        unset 'PW_EDIT_DB_LIST[29]' # "PW_USE_RUNTIME"
+        rm_from_array "PW_EDIT_DB_LIST" PW_USE_RUNTIME
     fi
-
     # PW_HEAP_DELAY_FREE
 
     PW_DGVOODOO2_INFO=${translations[Enable dgVoodoo2. Forced use all dgVoodoo2 libs (Glide 2.11-3.1, DirectDraw 1-7, Direct3D 2-9) on all 3D API. For WineD3D OpenGL need use WineLG (For Gallium Nine and Zink use too)]}
@@ -5075,20 +5106,16 @@ gui_gamescope () {
     PW_GS_EXPOSE_WAYLAND PW_GS_REALTIME_SCHEDULING
     )
 
-    grep -e '--mangoapp' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null && PW_GS_LIST+=(PW_GS_MANGOAPP)
-    grep -e '--backend' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null \
-    && PW_GS_LIST+=(PW_GS_BACKEND_SDL) && PW_GS_LIST+=(PW_GS_SDL_VIDEODRIVER_X11)
+    grep -e '--mangoapp' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null && add_to_array "PW_GS_LIST" PW_GS_MANGOAPP
+    grep -e '--backend' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null && add_to_array "PW_GS_LIST" PW_GS_BACKEND_SDL PW_GS_SDL_VIDEODRIVER_X11
 
     GS_FILTER_CB="linear!nearest!fsr!nis!pixel"
     #debian bookworm fix
     if grep -e '-U, --fsr-upscaling' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null ; then
         GS_FILTER_CB="fsr!nis"
         export PW_GS_FILTER_MODE_OLD="true"
-        unset 'PW_GS_LIST[3]' # "PW_GS_FORCE_GRAB_CURSOR"
-        unset 'PW_GS_LIST[4]' # "PW_GS_FORCE_GRAB_KEYBOARD"
-        unset 'PW_GS_LIST[5]' # "PW_GS_HDR_ENABLE"
-        unset 'PW_GS_LIST[10]' # "PW_GS_HDR_FORCE_SUPPORT"
-        unset 'PW_GS_LIST[11]' # "PW_GS_HDR_FORCE_OUTPUT"
+        rm_from_array "PW_GS_LIST" PW_GS_FORCE_GRAB_CURSOR PW_GS_FORCE_GRAB_KEYBOARD PW_GS_HDR_ENABLE PW_GS_HDR_FORCE_SUPPORT \
+        PW_GS_HDR_FORCE_OUTPUT
     fi
 
     PW_GS_FULLSCREEN_INFO=${translations[Make the window fullscreen]}
