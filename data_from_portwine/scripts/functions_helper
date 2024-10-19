@@ -2296,10 +2296,12 @@ pw_create_gui_png () {
                 PW_PRODUCTNAME=$(env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" -ProductName "${portwine_exe}" | sed -n 's/^Product Name\s*:\s*//p')
             fi
 
-            if [[ "$PW_PRODUCTNAME" =~ "Launcher" ]] \
-            || [[ "$PW_PRODUCTNAME" =~ "RU" ]]
+            if [[ "$PW_PRODUCTNAME" =~ (Launcher|RU) ]]
             then
                 PW_PRODUCTNAME="$(echo "$PW_PRODUCTNAME" | sed 's/Launcher\|RU//g')"
+                echo $PW_PRODUCTNAME
+                PW_PRODUCTNAME="${PW_PRODUCTNAME//(Launcher|RU)/}"
+                echo $PW_PRODUCTNAME
             fi
 
             if [[ -n "$PW_PRODUCTNAME" ]] \
@@ -3889,13 +3891,10 @@ pw_update_pfx_cover_gui () {
         PW_GIF_SIZE_X=$(file "${PW_GIF_FILE}" | awk '{print $7 + 20}')
         PW_GIF_SIZE_Y=$(file "${PW_GIF_FILE}" | awk '{print $9 + 65}')
         echo "UPDATE PREFIX..." > "${PW_TMPFS_PATH}/update_pfx_log"
-        export PW_TIMER=0
+        local PW_TIMER=0
         while read -r line || [[ -n $(pgrep -a yad | grep "yad_gui_pp --notebook --key=$PW_KEY_PROGRESS_BAR_UP" | awk '{print $1}') ]] ; do
                 sleep 0.005
-                if [[ -n "${line}" ]] && [[ -z "$(echo "${line}" | grep -i "gstreamer")" ]] \
-                                        && [[ -z "$(echo "${line}" | grep -i "kerberos")" ]] \
-                                        && [[ -z "$(echo "${line}" | grep -i "ntlm")" ]]
-                then
+                if [[ -n "${line}" ]] && ! echo "${line}" | grep -qi "gstreamer\|kerberos\|ntlm" ; then
                     echo "# ${line}"
                 fi
                 if [[ "${PW_TIMER}" != 1 ]] ; then
@@ -5922,12 +5921,10 @@ portwine_start_debug () {
     portwine_launch &
     sleep 3
     pw_stop_progress_bar_cover
-    unset PW_TIMER
+    local PW_TIMER=0
     while read -r line || [[ -n $(pgrep -a yad | grep "yad_gui_pp --text-info --tail --button="STOP"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 --title="DEBUG"" | awk '{print $1}') ]] ; do
             sleep 0.005
-            if [[ -n "${line}" ]] && [[ -z "$(echo "${line}" | grep -i "kerberos")" ]] \
-                                    && [[ -z "$(echo "${line}" | grep -i "ntlm")" ]]
-            then
+            if [[ -n "${line}" ]] && ! echo "${line}" | grep -qi "kerberos\|ntlm" ; then
                 echo "# ${line}"
             fi
             if [[ "${PW_TIMER}" != 1 ]] ; then
