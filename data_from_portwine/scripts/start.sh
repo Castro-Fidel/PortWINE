@@ -644,7 +644,8 @@ else
                     PW_AMOUNT_OLD_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
                 fi
                 # Для фикса битых #Time=
-                if [[ ! ${PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]} =~ [0-9]+ ]] ; then
+                if [[ ! ${PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]} =~ [0-9]+ ]] \
+                || (( ${PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]} >= 999999999 )) ; then
                     portwine_exe=${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]//\"/}
                     search_desktop_file
                     unset portwine_exe
@@ -660,7 +661,8 @@ else
     if [[ $SORT_WITH_TIME == enabled ]] ; then
         for i in "${!PW_GAME_TIME[@]}" ; do
             for j in "${!PW_GAME_TIME[@]}" ; do
-                if (( ${PW_GAME_TIME[$i]} > ${PW_GAME_TIME[$j]} )) ; then
+                if (( ${PW_GAME_TIME[$i]} > ${PW_GAME_TIME[$j]} )) \
+                && [[ ! ${PW_AMOUNT_NEW_DESKTOP[*]} =~ $j ]] ; then
                     tmp_0=${PW_GAME_TIME[$i]}
                     tmp_1=${PW_ALL_DF[$i]}
                     tmp_2=${PW_NAME_D_ICON[$i]}
