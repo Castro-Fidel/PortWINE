@@ -3586,10 +3586,8 @@ pw_run () {
             ${PW_DISPLAY} \
             "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
         else
-            if [[ "$PW_USE_TERMINAL" == 1 ]] \
-            && [[ "$PW_USE_RUNTIME" == 1 ]]
-            then
-                export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
+            if [[ "$PW_USE_TERMINAL" == 1 ]] ; then
+                PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
                 pw_init_runtime
             fi
             echo ""
@@ -3727,10 +3725,14 @@ pw_winefile () {
 }
 
 pw_winecmd () {
-    export PW_USE_TERMINAL=1
     start_portwine
     cd "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c" || fatal
-    pw_run cmd
+    if check_flatpak ; then
+        $PW_TERM "pw_run cmd"
+    else
+        export PW_USE_TERMINAL=1
+        pw_run cmd
+    fi
     stop_portwine --restart
 }
 

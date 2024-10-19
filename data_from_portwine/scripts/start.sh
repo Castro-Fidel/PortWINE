@@ -257,8 +257,8 @@ esac
 
 if check_flatpak ; then
     if check_gamescope_session
-    then PW_TERM="xterm -fullscreen -bg black -fg white -e"
-    else PW_TERM="xterm -bg black -fg white -e"
+    then PW_TERM="env LANG=C xterm -fullscreen -bg black -fg white -e"
+    else PW_TERM="env LANG=C xterm -bg black -fg white -e"
     fi
 fi
 
