@@ -2708,20 +2708,6 @@ start_portwine () {
         export VKD3D_FILTER_DEVICE_NAME="${PW_GPU_USE}"
     fi
 
-    case "$PW_FORCE_USE_VSYNC" in  # 0-FORCE_OFF, 1-FORCE_ON, 2-BY_DEFAULT
-        0)
-            export vblank_mode=0
-            export __GL_SYNC_TO_VBLANK=0
-            ;;
-        1)
-            export vblank_mode=1
-            export __GL_SYNC_TO_VBLANK=1
-            ;;
-        *)
-            unset vblank_mode __GL_SYNC_TO_VBLANK
-            ;;
-    esac
-
     export int_xneur=0
     if command -v xneur &>/dev/null \
     && pgrep xneur
@@ -3249,10 +3235,28 @@ start_portwine () {
 
     if [[ "${PW_MESA_GL_VERSION_OVERRIDE}" != "disabled" ]] ; then
         export MESA_GL_VERSION_OVERRIDE="${PW_MESA_GL_VERSION_OVERRIDE}"
+        if [[ $PW_MESA_GL_VERSION_OVERRIDE = 3.2COMPAT ]] ; then
+            export MESA_GLSL_VERSION_OVERRIDE="150"
+        else
+            MESA_GLSL_VERSION_OVERRIDE="${PW_MESA_GL_VERSION_OVERRIDE//./}"
+            export MESA_GLSL_VERSION_OVERRIDE="${MESA_GLSL_VERSION_OVERRIDE//COMPAT/}0"
+        fi
     fi
 
     if [[ "${PW_VKD3D_FEATURE_LEVEL}" != "disabled" ]] ; then
         export VKD3D_FEATURE_LEVEL="${PW_VKD3D_FEATURE_LEVEL}"
+    fi
+
+    if [[ "${PW_MESA_VK_WSI_PRESENT_MODE}" != "disabled" ]] ; then
+        export MESA_VK_WSI_PRESENT_MODE="${PW_MESA_VK_WSI_PRESENT_MODE}"
+        case "$PW_MESA_VK_WSI_PRESENT_MODE" in
+            immediate|mailbox)
+                export vblank_mode=0
+                export __GL_SYNC_TO_VBLANK=0 ;;
+            relaxed|fifo)
+                export vblank_mode=1
+                export __GL_SYNC_TO_VBLANK=1 ;;
+        esac
     fi
 
     #run_winetricks_from_db
@@ -3511,11 +3515,6 @@ start_portwine () {
         fi
 
         [[ "${PW_GS_FRAME_LIMIT}" != "disabled" ]] && PW_GAMESCOPE_ARGS_NEW+=" -r ${PW_GS_FRAME_LIMIT}"
-
-        if [[ "${PW_GS_MESA_VK_WSI_PRESENT_MODE}" != "disabled" ]] ; then
-            export MESA_VK_WSI_PRESENT_MODE=${PW_GS_MESA_VK_WSI_PRESENT_MODE}
-        fi
-
         [[ "${PW_GS_MAX_SCALE_FACTOR}" != "0.0" ]] && PW_GAMESCOPE_ARGS_NEW+=" -m ${PW_GS_MAX_SCALE_FACTOR}"
         [[ "${PW_GS_SCALER_MODE}" != "disabled" ]] && PW_GAMESCOPE_ARGS_NEW+=" -S ${PW_GS_SCALER_MODE}"
 
@@ -4283,7 +4282,7 @@ gui_edit_db () {
         unset 'PW_EDIT_DB_LIST[29]' # "PW_USE_RUNTIME"
     fi
 
-    # PW_FORCE_USE_VSYNC PW_HEAP_DELAY_FREE
+    # PW_HEAP_DELAY_FREE
 
     PW_DGVOODOO2_INFO=${translations[Enable dgVoodoo2. Forced use all dgVoodoo2 libs (Glide 2.11-3.1, DirectDraw 1-7, Direct3D 2-9) on all 3D API. For WineD3D OpenGL need use WineLG (For Gallium Nine and Zink use too)]}
     PW_DINPUT_PROTOCOL_INFO=${translations[Force use DirectInput protocol instead of XInput]}
@@ -4297,7 +4296,6 @@ gui_edit_db () {
     PW_USE_NVAPI_AND_DLSS_INFO=${translations[Enable DLSS on supported NVIDIA graphics cards]}
     PW_OLD_GL_STRING_INFO=${translations[Forced use of older versions of OpenGL]}
     PW_HIDE_NVIDIA_GPU_INFO=${translations[Disguise all features used for NVIDIA graphics cards]}
-    PW_FORCE_USE_VSYNC_INFO=${translations[Forced activation of vertical sync]}
     PW_VIRTUAL_DESKTOP_INFO=${translations[Enable the application to run in the WINE virtual desktop]}
     PW_USE_TERMINAL_INFO=${translations[Run the application in the terminal]}
     PW_HEAP_DELAY_FREE_INFO=${translations[Include a delay in releasing some memory to bypass errors associated with using the application after the memory is released]}
@@ -4412,9 +4410,13 @@ A brief instruction:
     --field="${translations[ADD ARGUMENTS FOR .EXE FILE]}!${translations[Adding an argument after the <b>.exe</b> file, just like you would add an argument in a shortcut on a <b>WINDOWS </b> system]} :CBE" "$(combobox_fix --empty "\\${LAUNCH_PARAMETERS[@]}" "-dx11 -skipintro 1")" \
     --field=":LBLH" "" \
     --field="${translations[Limit the use of processor cores]}!${translations[Limiting the number of CPU cores is useful for Unity games (It is recommended to set the value equal to 8)]} :CB" "$(combobox_fix --disabled "${CPU_LIMIT_VAR}" "${GET_LOGICAL_CORE}")" \
-    --field="${translations[Forcibly select the OpenGL version for the game]}!${translations[You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)]} :CB" "$(combobox_fix --disabled "${PW_MESA_GL_VERSION_OVERRIDE}" "4.6COMPAT!4.6!4.5COMPAT!4.5!3.3COMPAT!3.3")" \
-    --field="${translations[Forcibly select the VKD3D feature level]}!${translations[You can set a forced feature level VKD3D for games on DirectX12]} :${VKD3D_CB}" "$(combobox_fix --disabled "${PW_VKD3D_FEATURE_LEVEL}" "12_2!12_1!12_0!11_1!11_0")" \
+    --field="${translations[Forcibly select the OpenGL version for the game]}!${translations[You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)]} :CB" "$(combobox_fix --disabled "${PW_MESA_GL_VERSION_OVERRIDE}" "4.6COMPAT!4.5COMPAT!4.3COMPAT!4.1COMPAT!3.3COMPAT!3.2COMPAT")" \
+    --field="${translations[Forcibly select the VKD3D feature level]}!${translations[You can set a forced feature level VKD3D for games on DirectX12]} :$VKD3D_CB" "$(combobox_fix --disabled "${PW_VKD3D_FEATURE_LEVEL}" "12_2!12_1!12_0!11_1!11_0")" \
     --field="${translations[Force certain locale for an app:]}!${translations[Fixes encoding issues in legacy software]} :CB" "$(combobox_fix --disabled "${PW_LOCALE_SELECT}" "$LOCALE_LIST")" \
+    --field="${translations[Window mode (for Vulkan and OpenGL)]}!${translations[fifo - First in, first out. Limits the frame rate + no tearing. (VSync)
+immediate - Unlimited frame rate + tearing.
+mailbox - Triple buffering. Unlimited frame rate + no tearing.
+relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]} :CB" "$(combobox_fix --disabled "${PW_MESA_VK_WSI_PRESENT_MODE}" "fifo!immediate!mailbox!relaxed")" \
     1> "$PW_TMPFS_PATH/tmp_output_yad_fps_limit" 2>/dev/null &
 
     "${pw_yad}" --notebook --key="$KEY_EDIT_DB_GUI" --title "${translations[EDIT DB]}" --text-align=center \
@@ -4464,6 +4466,7 @@ A brief instruction:
     PW_MESA_GL_VERSION_OVERRIDE="${PW_ADD_SETTINGS[7]}"
     PW_VKD3D_FEATURE_LEVEL="${PW_ADD_SETTINGS[8]}"
     PW_LOCALE_SELECT="${PW_ADD_SETTINGS[9]}"
+    PW_MESA_VK_WSI_PRESENT_MODE="${PW_ADD_SETTINGS[10]}"
 
     if [[ "${CPU_LIMIT}" != "disabled" ]] ; then
         PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $(( CPU_LIMIT - 1 )))"
@@ -4473,7 +4476,7 @@ A brief instruction:
     export PW_WINE_CPU_TOPOLOGY
 
     edit_db_from_gui ${PW_EDIT_DB_LIST[@]} LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY \
-    PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PW_LOCALE_SELECT
+    PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PW_LOCALE_SELECT PW_MESA_VK_WSI_PRESENT_MODE
 
     if [[ -z "$MANGOHUD_CONFIG" ]] ; then
         MONITOR_HEIGHT="$(echo "$PW_SCREEN_RESOLUTION" | awk -F'x' '{print $2}')"
@@ -5083,18 +5086,6 @@ gui_gamescope () {
             GAMESCOPE_NEED_INSTALL="${translations[<b>Gamescope is not detected on the system, please contact the manufacturer of your distribution\\nor search the Internet for information on how to install gamescope on your system.</b>]}"
         fi
         GS_CB="DCB" && GS_CBE="DCBE" && GS_NUM="DNUM" && GS_NUMN="DNUMN"
-        PW_GS_SHOW_RESOLUTION="disabled"
-        PW_GS_INTERNAL_RESOLUTION="0.0"
-        PW_GS_FRAME_LIMIT="disabled"
-        PW_GS_MESA_VK_WSI_PRESENT_MODE="disabled"
-        PW_GS_SCALER_MODE="disabled"
-        PW_GS_FILTER_MODE="disabled"
-        PW_GS_UPSCALE_SHARPNESS="0"
-        PW_GS_MAX_SCALE_FACTOR="0.0"
-        PW_GS_MOUSE_SENSITIVITY="0.0"
-        PW_GS_SDR_CONTENT_NITS="0"
-        PW_GS_ITM_SDR_NITS="0"
-        PW_GS_ITM_TARGET_NITS="0"
         for int_to_boole in ${PW_GS_LIST[@]} ; do
             if [[ "${!int_to_boole}" == "1" ]]
             then export ${int_to_boole}="TRUE"
@@ -5126,11 +5117,6 @@ gui_gamescope () {
     --field="${CHKBOX_SPACE}${translations[Show resolution]}!${translations[Set the resolution used by gamescope. Resizing the gamescope window will update these settings. Defaults to 1280x720.]} :${GS_CBE}" "$(combobox_fix --disabled "${PW_GS_SHOW_RESOLUTION}" "${GAMESCOPE_XRANDR_NEW::-1}")" \
     --field="${CHKBOX_SPACE}${translations[Internal resolution]}!${translations[Scale internal resolution (0.0 is unused)]} :${GS_NUMN}" "${PW_GS_INTERNAL_RESOLUTION}:!0..2" \
     --field="${CHKBOX_SPACE}${translations[Frame limit]}!${translations[Set a framerate limit. Specified in frames per second]} :${GS_CBE}" "$(combobox_fix --disabled "${PW_GS_FRAME_LIMIT}" "30!40!45!48!60!75!90!120!144!165!175!240")" \
-    --field="${CHKBOX_SPACE}${translations[Mesa vulkan WSI]}!${translations[Overrides the WSI present mode:
-fifo - First in, first out. Limits the frame rate + no tearing. (VSync)
-immediate - Unlimited frame rate + tearing.
-mailbox - Triple buffering. Unlimited frame rate + no tearing.
-relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]} :${GS_CB}" "$(combobox_fix --disabled "${PW_GS_MESA_VK_WSI_PRESENT_MODE}" "fifo!immediate!mailbox!relaxed")" \
     --field="${CHKBOX_SPACE}${translations[Scaler mode]}!${translations[Specify how to scale the GameScope window content]} :${GS_CB}" "$(combobox_fix --disabled "${PW_GS_SCALER_MODE}" "auto!integer!fit!fill!stretch")" \
     --field="${CHKBOX_SPACE}${translations[Filter mode]}!${translations[Use a filter such as AMD FidelityFX SuperResolution 1.0 (FSR) or NVIDIA Image Scaling v1.0.3 (NIS)]} :${GS_CB}" "$(combobox_fix --disabled "${PW_GS_FILTER_MODE}" "${GS_FILTER_CB}")" \
     --field="${CHKBOX_SPACE}${translations[Upscale sharpness]}!${translations[Sharpening value for FidelityFX SuperResolution 1.0 (FSR) and NVIDIA Image Scaling v1.0.3 (NIS). 0 is max sharpening, 20 is min sharpening.]} :${GS_NUM}" "${PW_GS_UPSCALE_SHARPNESS}:!0..20" \
@@ -5184,18 +5170,17 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
     PW_GS_SHOW_RESOLUTION="${PW_ADD_SETTINGS_GS[0]}"
     PW_GS_INTERNAL_RESOLUTION="${PW_ADD_SETTINGS_GS[1]//','/'.'}"
     PW_GS_FRAME_LIMIT="${PW_ADD_SETTINGS_GS[2]}"
-    PW_GS_MESA_VK_WSI_PRESENT_MODE="${PW_ADD_SETTINGS_GS[3]}"
-    PW_GS_SCALER_MODE="${PW_ADD_SETTINGS_GS[4]}"
-    PW_GS_FILTER_MODE="${PW_ADD_SETTINGS_GS[5]}"
-    PW_GS_UPSCALE_SHARPNESS="${PW_ADD_SETTINGS_GS[6]}"
-    PW_GS_MAX_SCALE_FACTOR="${PW_ADD_SETTINGS_GS[7]//','/'.'}"
-    PW_GS_MOUSE_SENSITIVITY="${PW_ADD_SETTINGS_GS[8]//','/'.'}"
-    PW_GS_SDR_CONTENT_NITS="${PW_ADD_SETTINGS_GS[9]}"
-    PW_GS_ITM_SDR_NITS="${PW_ADD_SETTINGS_GS[10]}"
-    PW_GS_ITM_TARGET_NITS="${PW_ADD_SETTINGS_GS[11]}"
+    PW_GS_SCALER_MODE="${PW_ADD_SETTINGS_GS[3]}"
+    PW_GS_FILTER_MODE="${PW_ADD_SETTINGS_GS[4]}"
+    PW_GS_UPSCALE_SHARPNESS="${PW_ADD_SETTINGS_GS[5]}"
+    PW_GS_MAX_SCALE_FACTOR="${PW_ADD_SETTINGS_GS[6]//','/'.'}"
+    PW_GS_MOUSE_SENSITIVITY="${PW_ADD_SETTINGS_GS[7]//','/'.'}"
+    PW_GS_SDR_CONTENT_NITS="${PW_ADD_SETTINGS_GS[8]}"
+    PW_GS_ITM_SDR_NITS="${PW_ADD_SETTINGS_GS[9]}"
+    PW_GS_ITM_TARGET_NITS="${PW_ADD_SETTINGS_GS[10]}"
 
     edit_db_from_gui ${PW_GS_LIST[@]} PW_GAMESCOPE PW_GS_SHOW_RESOLUTION PW_GS_INTERNAL_RESOLUTION \
-    PW_GS_FRAME_LIMIT PW_GS_MESA_VK_WSI_PRESENT_MODE PW_GS_SCALER_MODE  PW_GS_FILTER_MODE \
+    PW_GS_FRAME_LIMIT PW_GS_SCALER_MODE PW_GS_FILTER_MODE \
     PW_GS_UPSCALE_SHARPNESS PW_GS_MAX_SCALE_FACTOR PW_GS_MOUSE_SENSITIVITY \
     PW_GS_SDR_CONTENT_NITS PW_GS_ITM_SDR_NITS PW_GS_ITM_TARGET_NITS
 
