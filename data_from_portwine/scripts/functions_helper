@@ -2586,7 +2586,11 @@ start_portwine () {
 
     echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
 
-    if [[ "${PW_NO_ESYNC}" == 1 ]]
+    ULIMIT_HN=$(ulimit -Hn)
+    if [[ $ULIMIT_HN -lt 524288 ]] ; then
+        print_warning "ESYNC dont work! (ulimit -Hn $ULIMIT_HN < 524288)"
+        export WINEESYNC="0"
+    elif [[ "${PW_NO_ESYNC}" == 1 ]]
     then export WINEESYNC="0"
     else export WINEESYNC="1"
     fi
