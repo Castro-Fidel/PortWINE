@@ -2745,60 +2745,62 @@ start_portwine () {
         export int_xneur=1
     fi
 
-	if check_gamescope_session ; then
-		export PW_GAMEMODERUN_SLR=""
-	elif [[ "$PW_USE_GAMEMODE" = "1" ]] && [[ -n "$DBUS_SESSION_BUS_ADDRESS" ]]; then
-		if systemctl is-active --quiet ananicy.service \
-        || systemctl is-active --quiet ananicy-cpp.service
-        then
-		    export GAMEMODERUN=0
-		    export PW_GAMEMODERUN_SLR=""
+    if check_gamescope_session ; then
+        export PW_GAMEMODERUN_SLR=""
+    elif [[ "$PW_USE_GAMEMODE" = "1" ]] && [[ -n "$DBUS_SESSION_BUS_ADDRESS" ]]; then
+        if ! check_flatpak ; then
+            if systemctl is-active --quiet ananicy.service \
+            || systemctl is-active --quiet ananicy-cpp.service
+            then
+                export GAMEMODERUN=0
+                export PW_GAMEMODERUN_SLR=""
 
-		    if command -v powerprofilesctl &>/dev/null ; then
-			    if powerprofilesctl list | grep -q 'performance:'; then
-			        export PW_POWERPROFILECTL_SLR="powerprofilesctl launch -p performance --"
-			   		print_info "Gamemode replaced by powerprofilectl to avoid conflict with ananicy."
-			     else
-			     	export PW_POWERPROFILECTL_SLR=""
-			     fi
-			fi
-		else
-		    if command -v gamemoded &>/dev/null ; then
-		        export GAMEMODERUN=1
-		        PW_GAMEMODERUN_SLR="gamemoderun"
-		        systemctl enable --now --user gamemoded &>/dev/null
-		        print_info "Gamemode will be launched."
-		    elif check_flatpak ; then
-		        export GAMEMODERUN=1
-		        PW_GAMEMODERUN_SLR="gamemoderun"
-		        print_info "Gamemode will be launched."
-		    elif [[ "$PW_USE_RUNTIME" == 1 ]] ; then
-		        export GAMEMODERUN=1
-		        if ! pidof gamemoded &>/dev/null ; then
-		            GAMEMODEAUTO_NAME="libgamemodeauto.so.0"
-		            if [[ -n "${PW_LD_PRELOAD}" ]]; then
-		                export PW_LD_PRELOAD="${PW_LD_PRELOAD}:${GAMEMODEAUTO_NAME}"
-		            else
-		                export PW_LD_PRELOAD="${GAMEMODEAUTO_NAME}"
-		            fi
+                if command -v powerprofilesctl &>/dev/null ; then
+                    if powerprofilesctl list | grep -q 'performance:'; then
+                        export PW_POWERPROFILECTL_SLR="powerprofilesctl launch -p performance --"
+                        print_info "Gamemode replaced by powerprofilectl to avoid conflict with ananicy."
+                    else
+                        export PW_POWERPROFILECTL_SLR=""
+                    fi
+                fi
+            fi
+        else
+            if command -v gamemoded &>/dev/null ; then
+                export GAMEMODERUN=1
+                PW_GAMEMODERUN_SLR="gamemoderun"
+                systemctl enable --now --user gamemoded &>/dev/null
+                print_info "Gamemode will be launched."
+            elif check_flatpak ; then
+                export GAMEMODERUN=1
+                PW_GAMEMODERUN_SLR="gamemoderun"
+                print_info "Gamemode will be launched."
+            elif [[ "$PW_USE_RUNTIME" == 1 ]] ; then
+                export GAMEMODERUN=1
+                if ! pidof gamemoded &>/dev/null ; then
+                    GAMEMODEAUTO_NAME="libgamemodeauto.so.0"
+                    if [[ -n "${PW_LD_PRELOAD}" ]]; then
+                        export PW_LD_PRELOAD="${PW_LD_PRELOAD}:${GAMEMODEAUTO_NAME}"
+                    else
+                        export PW_LD_PRELOAD="${GAMEMODEAUTO_NAME}"
+                    fi
 
-		            env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32" \
-		                "${PW_PLUGINS_PATH}/portable/bin/gamemoded" &>/dev/null &
+                    env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32" \
+                        "${PW_PLUGINS_PATH}/portable/bin/gamemoded" &>/dev/null &
 
-		            print_info "Gamemode will be launched."
-		            sleep 0.1
-		        fi
-		    else
-		        export GAMEMODERUN=0
-		        export PW_GAMEMODERUN_SLR=""
-		        print_info "Gamemode is not installed or disabled in vars script or db file: PW_USE_GAMEMODE=$PW_USE_GAMEMODE"
-		    fi
-		fi
-	else
-		export GAMEMODERUN=0
-		export PW_GAMEMODERUN_SLR=""
-	fi
-	pw_other_fixes
+                    print_info "Gamemode will be launched."
+                    sleep 0.1
+                fi
+            else
+                export GAMEMODERUN=0
+                export PW_GAMEMODERUN_SLR=""
+                print_info "Gamemode is not installed or disabled in vars script or db file: PW_USE_GAMEMODE=$PW_USE_GAMEMODE"
+            fi
+        fi
+    else
+        export GAMEMODERUN=0
+        export PW_GAMEMODERUN_SLR=""
+    fi
+    pw_other_fixes
 
     # enabled BattleEye_Runtime and EasyAntiCheat_Runtime
     if [[ "${PW_USE_EAC_AND_BE}" == 1 ]] ; then
@@ -4352,7 +4354,7 @@ gui_edit_db () {
     PW_FORCE_LARGE_ADDRESS_AWARE_INFO=${translations[Increases RAM usage limits for 32-bit applications from two to four gigabytes]}
     PW_USE_RUNTIME_INFO=${translations[Use container launch mode (It is recommended not to change the value)]}
     PW_MANGOHUD_INFO=${translations[Using FPS and system load monitoring (Turns on and off by the key combination - right Shift + F12)]}
-    PW_USE_GAMEMODE_INFO=${translations[Using automatic system optimization to improve performance in games (provided the gamemode package is installed on the system)]}
+    PW_USE_GAMEMODE_INFO=${translations[Using automatic system optimization to improve performance in games (provided the gamemode package is installed on the system, doesn\'t work with ananicy)]}
     PW_USE_WINE_DXGI_INFO=${translations[Forced use of built-in DXGI library (in rare cases it solves problems with DX12 games)]}
     PW_MANGOHUD_USER_CONF_INFO=${translations[Forced use of MANGOHUD system settings (GOverlay, etc.)]}
     PW_VKBASALT_USER_CONF_INFO=${translations[Forced use of VKBASALT system settings (GOverlay, etc.)]}
