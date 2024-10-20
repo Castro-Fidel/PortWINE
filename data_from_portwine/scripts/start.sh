@@ -643,6 +643,14 @@ else
                 else
                     PW_AMOUNT_OLD_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
                 fi
+                # Для конвертация .desktop файлов flatpak в натив и наоборот
+                if [[ ${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]} =~ ^"Exec=flatpak run ru.linux_gaming.PortProton " ]] ; then
+                    PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]//Exec=flatpak run ru.linux_gaming.PortProton /}
+                    search_desktop_file
+                elif [[ ${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]} =~ ^"Exec=env \"$PORT_SCRIPTS_PATH/start.sh\" " ]] ; then
+                    PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]//Exec=env \"$PORT_SCRIPTS_PATH\/start.sh\" /}
+                    search_desktop_file
+                fi
                 # Для фикса битых #Time=
                 if [[ ! ${PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]} =~ [0-9]+ ]] \
                 || (( ${PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]} >= 999999999 )) ; then
@@ -658,7 +666,7 @@ else
 
     # Переопределение элементов в массивах в зависимости от PW_GAME_TIME, от большего значения к меньшему.
     # 10 миллисекунд на 40 .desktop файлов, работает быстро
-    if [[ $SORT_WITH_TIME == enabled ]] ; then
+    if [[ $SORT_WITH_TIME == enabled ]] && [[ -n ${PW_GAME_TIME[1]} ]] ; then
         for i in "${!PW_GAME_TIME[@]}" ; do
             for j in "${!PW_GAME_TIME[@]}" ; do
                 if (( ${PW_GAME_TIME[$i]} > ${PW_GAME_TIME[$j]} )) \

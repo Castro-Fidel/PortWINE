@@ -786,7 +786,7 @@ debug_timer () {
 
 # Поиск нужного .desktop файла по $portwine_exe
 search_desktop_file () {
-    local count desktop_file desktop_file_new EXEC_DESKTOP EXEC_DESKTOP_NEW TIME_TOTAL i j
+    local count desktop_file desktop_file_new EXEC_DESKTOP TIME_CURRENT_PROXY EXEC_DESKTOP_NEW TIME_TOTAL i j
     unset TIME_CURRENT_ARRAY DESKTOP_FILES_ARRAY
     count=0
     for desktop_file in "$PORT_WINE_PATH"/* ; do
@@ -800,12 +800,36 @@ search_desktop_file () {
                         else
                             EXEC_DESKTOP=${line//Exec=env \"$PORT_SCRIPTS_PATH\/start.sh\" /}
                         fi
-                        EXEC_DESKTOP_NEW=${EXEC_DESKTOP//\"/}
                     fi
-                    if [[ $line =~ ^#Time= ]] && [[ $portwine_exe == "$EXEC_DESKTOP_NEW" ]] ; then
-                        TIME_CURRENT=${line//#Time=/}
-                    fi
+                    [[ $line =~ ^#Time= ]] && TIME_CURRENT_PROXY=${line//#Time=/}
                 done < "$desktop_file"
+                # Для конвертации существующих .desktop файлов flatpak в натив и наоборот
+                if [[ $EXEC_DESKTOP =~ ^"Exec=flatpak run ru.linux_gaming.PortProton " ]] ; then
+                    sed -i "s|Exec=flatpak run ru.linux_gaming.PortProton|Exec=env \"$PORT_SCRIPTS_PATH/start.sh\"|" "$desktop_file"
+                elif [[ $EXEC_DESKTOP =~ ^"Exec=env \"$PORT_SCRIPTS_PATH/start.sh\" " ]] ; then
+                    sed -i "s|Exec=env \"$PORT_SCRIPTS_PATH/start.sh\"|Exec=flatpak run ru.linux_gaming.PortProton|" "$desktop_file"
+                fi
+                EXEC_DESKTOP_NEW=${EXEC_DESKTOP//\"/}
+                if [[ -n $TIME_CURRENT_PROXY ]] && [[ $portwine_exe == "$EXEC_DESKTOP_NEW" ]] ; then
+                    TIME_CURRENT=$TIME_CURRENT_PROXY
+                    TIME_CURRENT_ARRAY+=($TIME_CURRENT)
+                    # Если существует несколько .desktop файлов на один и тот же .exe файл,
+                    # то среди них время берётся из того .desktop файла, в котором проведено дольше времени
+                    # и данное время будет потом записываться во все .desktop файлы у которых общий .exe файл
+                    if [[ -n ${TIME_CURRENT_ARRAY[1]} ]] ; then
+                        for i in "${!TIME_CURRENT_ARRAY[@]}" ; do
+                            for j in "${!TIME_CURRENT_ARRAY[@]}" ; do
+                                if (( ${TIME_CURRENT_ARRAY[$i]} > ${TIME_CURRENT_ARRAY[$j]} )) ; then
+                                    tmp=${TIME_CURRENT_ARRAY[$i]}
+                                    TIME_CURRENT_ARRAY[i]=${TIME_CURRENT_ARRAY[$j]}
+                                    TIME_CURRENT_ARRAY[j]=$tmp
+                                fi
+                            done
+                        done
+                    fi
+                    TIME_CURRENT="${TIME_CURRENT_ARRAY[0]}"
+                fi
+                unset TIME_CURRENT_PROXY
                 if [[ $portwine_exe == "$EXEC_DESKTOP_NEW" ]] ; then
                     # Когда новый .desktop файл
                     if [[ $TIME_CURRENT == "" ]] ; then
@@ -814,12 +838,10 @@ search_desktop_file () {
                     # Для битых #Time=
                     else
                         if [[ ! $TIME_CURRENT =~ [0-9]+ ]] \
-                        || (( $TIME_CURRENT >= 999999999 )) ; then
+                        || (( TIME_CURRENT >= 999999999 )) ; then
                             TIME_CURRENT="0"
                         fi
                     fi
-                    TIME_CURRENT_ARRAY+=($TIME_CURRENT)
-                    unset TIME_CURRENT
                     DESKTOP_FILES_ARRAY["$count"]="$desktop_file"
                     (( count++ ))
                 fi
@@ -827,23 +849,8 @@ search_desktop_file () {
         fi
     done
     IFS="$orig_IFS"
+    export TIME_CURRENT
 
-    # Если существуют .desktop файлы на один и тот же .exe файл, то среди них выбирается
-    # текущее время берётся из того .desktop файла, в котором проведено больше времени
-    # и запись этого большего времени будет потом записываться во все .desktop файлы
-    # у которых общий .exe файл, это нужно для того, чтобы в главном меню .desktop файлы
-    # упорядочивались нормально.
-    for i in "${!TIME_CURRENT_ARRAY[@]}" ; do
-        for j in "${!TIME_CURRENT_ARRAY[@]}" ; do
-            if (( ${TIME_CURRENT_ARRAY[$i]} > ${TIME_CURRENT_ARRAY[$j]} )) ; then
-                tmp=${TIME_CURRENT_ARRAY[$i]}
-                TIME_CURRENT_ARRAY[i]=${TIME_CURRENT_ARRAY[$j]}
-                TIME_CURRENT_ARRAY[j]=$tmp
-            fi
-        done
-    done
-
-    TIME_CURRENT="${TIME_CURRENT_ARRAY[0]}"
     if [[ -n $PW_TIME_IN_GAME ]] ; then
         TIME_TOTAL=$(( TIME_CURRENT + PW_TIME_IN_GAME ))
         for df in "${DESKTOP_FILES_ARRAY[@]}" ; do
