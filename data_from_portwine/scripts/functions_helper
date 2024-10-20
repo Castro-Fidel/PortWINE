@@ -786,7 +786,7 @@ debug_timer () {
 
 # Поиск нужного .desktop файла по $portwine_exe
 search_desktop_file () {
-    local count desktop_file desktop_file_new EXEC_DESKTOP EXEC_DESKTOP_NEW TIME_TOTAL i j df
+    local count desktop_file desktop_file_new EXEC_DESKTOP TIME_CURRENT_PROXY EXEC_DESKTOP_NEW TIME_TOTAL i j df
     unset TIME_CURRENT_ARRAY DESKTOP_FILES_ARRAY
     count=0
     for desktop_file in "$PORT_WINE_PATH"/* ; do
@@ -800,50 +800,53 @@ search_desktop_file () {
                         else
                             EXEC_DESKTOP=${line//Exec=env \"$PORT_SCRIPTS_PATH\/start.sh\" /}
                         fi
-                        EXEC_DESKTOP_NEW=${EXEC_DESKTOP//\"/}
                     fi
-                    if [[ $line =~ ^#Time= ]] && [[ $portwine_exe == "$EXEC_DESKTOP_NEW" ]] ; then
-                        TIME_CURRENT=${line//#Time=/}
-                    fi
+                    [[ $line =~ ^#Time= ]] && TIME_CURRENT_PROXY=${line//#Time=/}
                 done < "$desktop_file"
+                # Для конвертации существующих .desktop файлов flatpak в натив и наоборот
+                if [[ $EXEC_DESKTOP =~ ^"Exec=flatpak run ru.linux_gaming.PortProton " ]] ; then
+                    sed -i "s|Exec=flatpak run ru.linux_gaming.PortProton|Exec=env \"$PORT_SCRIPTS_PATH/start.sh\"|" "$desktop_file"
+                elif [[ $EXEC_DESKTOP =~ ^"Exec=env \"$PORT_SCRIPTS_PATH/start.sh\" " ]] ; then
+                    sed -i "s|Exec=env \"$PORT_SCRIPTS_PATH/start.sh\"|Exec=flatpak run ru.linux_gaming.PortProton|" "$desktop_file"
+                fi
+                EXEC_DESKTOP_NEW=${EXEC_DESKTOP//\"/}
                 if [[ $portwine_exe == "$EXEC_DESKTOP_NEW" ]] ; then
-                    # Когда новый .desktop файл
-                    if [[ $TIME_CURRENT == "" ]] ; then
-                        echo "#NEW_DESKTOP" >> "$desktop_file"
-                        TIME_CURRENT="0"
-                    # Для битых #Time=
-                    else
+                    if [[ -n $TIME_CURRENT_PROXY ]] ; then
+                        TIME_CURRENT=$TIME_CURRENT_PROXY
+                        TIME_CURRENT_ARRAY+=($TIME_CURRENT)
+                        # Если существует несколько .desktop файлов на один и тот же .exe файл,
+                        # то среди них время берётся из того .desktop файла, в котором проведено дольше времени
+                        # и данное время будет потом записываться во все .desktop файлы у которых общий .exe файл
+                        if [[ -n ${TIME_CURRENT_ARRAY[1]} ]] ; then
+                            for i in "${!TIME_CURRENT_ARRAY[@]}" ; do
+                                for j in "${!TIME_CURRENT_ARRAY[@]}" ; do
+                                    if (( ${TIME_CURRENT_ARRAY[$i]} > ${TIME_CURRENT_ARRAY[$j]} )) ; then
+                                        tmp=${TIME_CURRENT_ARRAY[$i]}
+                                        TIME_CURRENT_ARRAY[i]=${TIME_CURRENT_ARRAY[$j]}
+                                        TIME_CURRENT_ARRAY[j]=$tmp
+                                    fi
+                                done
+                            done
+                        fi
+                        TIME_CURRENT="${TIME_CURRENT_ARRAY[0]}"
+                        # Для битых #Time=
                         if [[ ! $TIME_CURRENT =~ [0-9]+ ]] \
-                        || (( $TIME_CURRENT >= 999999999 )) ; then
+                        || (( TIME_CURRENT >= 999999999 )) ; then
                             TIME_CURRENT="0"
                         fi
                     fi
-                    TIME_CURRENT_ARRAY+=($TIME_CURRENT)
-                    unset TIME_CURRENT
                     DESKTOP_FILES_ARRAY["$count"]="$desktop_file"
                     (( count++ ))
                 fi
+                unset TIME_CURRENT_PROXY
             fi
         fi
     done
     IFS="$orig_IFS"
 
-    # Если существуют .desktop файлы на один и тот же .exe файл, то среди них выбирается
-    # текущее время берётся из того .desktop файла, в котором проведено больше времени
-    # и запись этого большего времени будет потом записываться во все .desktop файлы
-    # у которых общий .exe файл, это нужно для того, чтобы в главном меню .desktop файлы
-    # упорядочивались нормально.
-    for i in "${!TIME_CURRENT_ARRAY[@]}" ; do
-        for j in "${!TIME_CURRENT_ARRAY[@]}" ; do
-            if (( ${TIME_CURRENT_ARRAY[$i]} > ${TIME_CURRENT_ARRAY[$j]} )) ; then
-                tmp=${TIME_CURRENT_ARRAY[$i]}
-                TIME_CURRENT_ARRAY[i]=${TIME_CURRENT_ARRAY[$j]}
-                TIME_CURRENT_ARRAY[j]=$tmp
-            fi
-        done
-    done
+    [[ -z $TIME_CURRENT ]] && TIME_CURRENT=0
+    export TIME_CURRENT
 
-    TIME_CURRENT="${TIME_CURRENT_ARRAY[0]}"
     if [[ -n $PW_TIME_IN_GAME ]] ; then
         TIME_TOTAL=$(( TIME_CURRENT + PW_TIME_IN_GAME ))
         for df in "${DESKTOP_FILES_ARRAY[@]}" ; do
@@ -5424,10 +5427,23 @@ portwine_create_shortcut () {
     [[ -z "${PW_SHORTCUT_DESKTOP}" ]] && PW_SHORTCUT_DESKTOP="TRUE"
     [[ -z "${PW_SHORTCUT_STEAM}" ]] && PW_SHORTCUT_STEAM="FALSE"
 
-    if [[ -z "${PORTPROTON_NAME}" ]] ; then
-        name_desktop="$(basename "$portwine_exe")"
-    else
-        name_desktop="${PORTPROTON_NAME}"
+    unset name_desktop
+    name_desktop_basename="$(basename "${portwine_exe//.exe/}")"
+    search_desktop_file
+    if [[ -n ${DESKTOP_FILES_ARRAY[0]} ]] ; then
+        for df in "${DESKTOP_FILES_ARRAY[@]}" ; do
+            df="${df//"$PORT_WINE_PATH/"/}"
+            df="${df//.desktop/}"
+            if [[ ${name_desktop_basename^^} =~ ${df^^} ]]
+            then name_desktop="$df"
+            fi
+        done
+    fi
+    if [[ -z $name_desktop ]] ; then
+        if [[ -n $PORTPROTON_NAME ]]
+        then name_desktop="$PORTPROTON_NAME"
+        else name_desktop="$name_desktop_basename"
+        fi
     fi
     export name_desktop
 
@@ -5477,7 +5493,15 @@ portwine_create_shortcut () {
 
         edit_user_conf_from_gui PW_SHORTCUT_MENU PW_SHORTCUT_DESKTOP PW_SHORTCUT_STEAM
 
-        try_remove_file "${PORT_WINE_PATH}/${name_desktop}.desktop"
+        if [[ -n ${DESKTOP_FILES_ARRAY[1]} ]] ; then
+            if yad_question "${translations[A higher number of duplicate desktop files were found for this file.\\nShould I delete the extra ones or not?]}" ; then
+                for rm in "${DESKTOP_FILES_ARRAY[@]}" ; do
+                    rm -f "$rm"
+                done
+            fi
+        else
+            try_remove_file "${PORT_WINE_PATH}/${name_desktop}.desktop"
+        fi
 
         echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
         echo "Name=${name_desktop}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
@@ -5543,6 +5567,9 @@ portwine_create_shortcut () {
             fi
             unset PW_SKIP_RESTART_STEAM
         fi
+
+        # Когда новый .desktop файл
+        echo "#NEW_DESKTOP" >> "$PORT_WINE_PATH/$name_desktop.desktop"
 
         if [[ "$PW_NO_RESTART_PPDB" != "1" ]] ; then
             print_info "Restarting PP..."
