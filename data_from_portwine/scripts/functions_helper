@@ -786,7 +786,7 @@ debug_timer () {
 
 # Поиск нужного .desktop файла по $portwine_exe
 search_desktop_file () {
-    local count desktop_file desktop_file_new EXEC_DESKTOP EXEC_DESKTOP_NEW TIME_TOTAL i j df
+    local count desktop_file desktop_file_new EXEC_DESKTOP EXEC_DESKTOP_NEW TIME_TOTAL i j
     unset TIME_CURRENT_ARRAY DESKTOP_FILES_ARRAY
     count=0
     for desktop_file in "$PORT_WINE_PATH"/* ; do
@@ -5424,10 +5424,26 @@ portwine_create_shortcut () {
     [[ -z "${PW_SHORTCUT_DESKTOP}" ]] && PW_SHORTCUT_DESKTOP="TRUE"
     [[ -z "${PW_SHORTCUT_STEAM}" ]] && PW_SHORTCUT_STEAM="FALSE"
 
-    if [[ -z "${PORTPROTON_NAME}" ]] ; then
-        name_desktop="$(basename "$portwine_exe")"
+    name_desktop_basename="$(basename "${portwine_exe//.exe/}")"
+    search_desktop_file
+    if [[ -n $df ]] ; then
+        name_desktop_df="${df//"$PORT_WINE_PATH/"/}"
+        name_desktop_df="${name_desktop_df//.desktop/}"
+        if [[ $(echo "$name_desktop_basename" | tr '[:lower:]' '[:upper:]') =~ $(echo "$name_desktop_df" | tr '[:lower:]' '[:upper:]') ]]
+        then
+            name_desktop="$name_desktop_df"
+        elif [[ -n $PORTPROTON_NAME ]] && [[ ${DESKTOP_FILES_ARRAY[*]} =~ $PORTPROTON_NAME ]]
+        then
+            name_desktop="$PORTPROTON_NAME"
+        else
+            name_desktop="$name_desktop_df"
+        fi
     else
-        name_desktop="${PORTPROTON_NAME}"
+        if [[ -z $PORTPROTON_NAME ]] ; then
+            name_desktop="$name_desktop_basename"
+        else
+            name_desktop="$PORTPROTON_NAME"
+        fi
     fi
     export name_desktop
 
@@ -5477,7 +5493,15 @@ portwine_create_shortcut () {
 
         edit_user_conf_from_gui PW_SHORTCUT_MENU PW_SHORTCUT_DESKTOP PW_SHORTCUT_STEAM
 
-        try_remove_file "${PORT_WINE_PATH}/${name_desktop}.desktop"
+        if [[ -n ${DESKTOP_FILES_ARRAY[1]} ]] ; then
+            if yad_question "${translations[A higher number of duplicate desktop files were found for this file.\\nShould I delete the extra ones or not?]}" ; then
+                for rm in "${DESKTOP_FILES_ARRAY[@]}" ; do
+                    rm -f "$rm"
+                done
+            fi
+        else
+            try_remove_file "${PORT_WINE_PATH}/${name_desktop}.desktop"
+        fi
 
         echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
         echo "Name=${name_desktop}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
