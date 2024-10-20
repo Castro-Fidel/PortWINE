@@ -786,7 +786,7 @@ debug_timer () {
 
 # Поиск нужного .desktop файла по $portwine_exe
 search_desktop_file () {
-    local count desktop_file desktop_file_new EXEC_DESKTOP TIME_CURRENT_PROXY EXEC_DESKTOP_NEW TIME_TOTAL i j
+    local count desktop_file desktop_file_new EXEC_DESKTOP TIME_CURRENT_PROXY EXEC_DESKTOP_NEW TIME_TOTAL i j df
     unset TIME_CURRENT_ARRAY DESKTOP_FILES_ARRAY
     count=0
     for desktop_file in "$PORT_WINE_PATH"/* ; do
@@ -5427,25 +5427,21 @@ portwine_create_shortcut () {
     [[ -z "${PW_SHORTCUT_DESKTOP}" ]] && PW_SHORTCUT_DESKTOP="TRUE"
     [[ -z "${PW_SHORTCUT_STEAM}" ]] && PW_SHORTCUT_STEAM="FALSE"
 
-    name_desktop_basename="$(basename "${portwine_exe//.exe/}")"
+    unset name_desktop
     search_desktop_file
-    if [[ -n $df ]] ; then
-        name_desktop_df="${df//"$PORT_WINE_PATH/"/}"
-        name_desktop_df="${name_desktop_df//.desktop/}"
-        if [[ $(echo "$name_desktop_basename" | tr '[:lower:]' '[:upper:]') =~ $(echo "$name_desktop_df" | tr '[:lower:]' '[:upper:]') ]]
-        then
-            name_desktop="$name_desktop_df"
-        elif [[ -n $PORTPROTON_NAME ]] && [[ ${DESKTOP_FILES_ARRAY[*]} =~ $PORTPROTON_NAME ]]
-        then
-            name_desktop="$PORTPROTON_NAME"
-        else
-            name_desktop="$name_desktop_df"
-        fi
-    else
-        if [[ -z $PORTPROTON_NAME ]] ; then
-            name_desktop="$name_desktop_basename"
-        else
-            name_desktop="$PORTPROTON_NAME"
+    if [[ -n ${DESKTOP_FILES_ARRAY[0]} ]] ; then
+        for df in "${DESKTOP_FILES_ARRAY[@]}" ; do
+            df="${df//"$PORT_WINE_PATH/"/}"
+            df="${df//.desktop/}"
+            if [[ ${PORTWINE_DB^^} =~ ${df^^} ]]
+            then name_desktop="$df"
+            fi
+        done
+    fi
+    if [[ -z $name_desktop ]] ; then
+        if [[ -n $PORTPROTON_NAME ]]
+        then name_desktop="$PORTPROTON_NAME"
+        else name_desktop="$PORTWINE_DB"
         fi
     fi
     export name_desktop

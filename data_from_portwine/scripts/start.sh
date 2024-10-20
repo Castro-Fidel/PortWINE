@@ -96,9 +96,7 @@ unset CHK_SYMLINK_FILE PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PATH_T
 unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD PW_WINE_CPU_TOPOLOGY
 unset MANGOHUD_CONFIG FPS_LIMIT PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME PORTWINE_CREATE_SHORTCUT_NAME MIRROR
 unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NOSTSTDIR RADV_DEBUG PW_NO_AUTO_CREATE_SHORTCUT
-unset PW_NAME_D_ICON PW_ICON_PATH PW_GAME_TIME PW_ALL_DF PW_AMOUNT_NEW_DESKTOP PW_AMOUNT_OLD_DESKTOP PW_DESKTOP_FILES
-unset AI_TYPE AI_NAME AI_IMAGE AI_INFO AI_FILE_ARRAY AI_TRUE_FILE AI_FILE_UNSORTED AI_FILE_SORTED PW_GENERATE_BUTTONS
-unset PW_DESKTOP_FILES_REGEX PW_TERM PW_EXEC_FROM_DESKTOP
+unset PW_TERM PW_EXEC_FROM_DESKTOP
 
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 rm -f "$PORT_WINE_TMP_PATH"/*{exe,msi,tar}*
@@ -617,6 +615,8 @@ else
         gui_userconf
     fi
 
+    unset PW_NAME_D_ICON PW_ICON_PATH PW_GAME_TIME PW_ALL_DF PW_AMOUNT_NEW_DESKTOP PW_AMOUNT_OLD_DESKTOP PW_DESKTOP_FILES
+    unset AI_TYPE AI_NAME AI_IMAGE AI_INFO AI_FILE_ARRAY AI_TRUE_FILE AI_FILE_UNSORTED AI_FILE_SORTED PW_DESKTOP_FILES_REGEX
     # Поиск .desktop файлов
     AMOUNT_GENERATE_BUTTONS="0"
     for desktop_file in "$PORT_WINE_PATH"/* ; do
@@ -646,17 +646,19 @@ else
                 # Для конвертация .desktop файлов flatpak в натив и наоборот
                 if [[ ${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]} =~ ^"Exec=flatpak run ru.linux_gaming.PortProton " ]] ; then
                     PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]//Exec=flatpak run ru.linux_gaming.PortProton /}
-                    search_desktop_file
+                    NEED_FIXES_DESKTOP=1
                 elif [[ ${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]} =~ ^"Exec=env \"$PORT_SCRIPTS_PATH/start.sh\" " ]] ; then
                     PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]//Exec=env \"$PORT_SCRIPTS_PATH\/start.sh\" /}
-                    search_desktop_file
+                    NEED_FIXES_DESKTOP=1
                 fi
                 # Для фикса битых #Time=
                 if [[ ! ${PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]} =~ [0-9]+ ]] \
-                || (( ${PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]} >= 999999999 )) ; then
+                || (( ${PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]} >= 999999999 )) \
+                || [[ $NEED_FIXES_DESKTOP == 1 ]]
+                then
                     portwine_exe=${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]//\"/}
                     search_desktop_file
-                    unset portwine_exe
+                    unset portwine_exe NEED_FIXES_DESKTOP
                     PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=$TIME_CURRENT
                 fi
                 (( AMOUNT_GENERATE_BUTTONS++ ))
