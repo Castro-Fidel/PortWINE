@@ -810,33 +810,26 @@ search_desktop_file () {
                     sed -i "s|Exec=env \"$PORT_SCRIPTS_PATH/start.sh\"|Exec=flatpak run ru.linux_gaming.PortProton|" "$desktop_file"
                 fi
                 EXEC_DESKTOP_NEW=${EXEC_DESKTOP//\"/}
-                if [[ -n $TIME_CURRENT_PROXY ]] && [[ $portwine_exe == "$EXEC_DESKTOP_NEW" ]] ; then
-                    TIME_CURRENT=$TIME_CURRENT_PROXY
-                    TIME_CURRENT_ARRAY+=($TIME_CURRENT)
-                    # Если существует несколько .desktop файлов на один и тот же .exe файл,
-                    # то среди них время берётся из того .desktop файла, в котором проведено дольше времени
-                    # и данное время будет потом записываться во все .desktop файлы у которых общий .exe файл
-                    if [[ -n ${TIME_CURRENT_ARRAY[1]} ]] ; then
-                        for i in "${!TIME_CURRENT_ARRAY[@]}" ; do
-                            for j in "${!TIME_CURRENT_ARRAY[@]}" ; do
-                                if (( ${TIME_CURRENT_ARRAY[$i]} > ${TIME_CURRENT_ARRAY[$j]} )) ; then
-                                    tmp=${TIME_CURRENT_ARRAY[$i]}
-                                    TIME_CURRENT_ARRAY[i]=${TIME_CURRENT_ARRAY[$j]}
-                                    TIME_CURRENT_ARRAY[j]=$tmp
-                                fi
-                            done
-                        done
-                    fi
-                    TIME_CURRENT="${TIME_CURRENT_ARRAY[0]}"
-                fi
-                unset TIME_CURRENT_PROXY
                 if [[ $portwine_exe == "$EXEC_DESKTOP_NEW" ]] ; then
-                    # Когда новый .desktop файл
-                    if [[ $TIME_CURRENT == "" ]] ; then
-                        echo "#NEW_DESKTOP" >> "$desktop_file"
-                        TIME_CURRENT="0"
-                    # Для битых #Time=
-                    else
+                    if [[ -n $TIME_CURRENT_PROXY ]] ; then
+                        TIME_CURRENT=$TIME_CURRENT_PROXY
+                        TIME_CURRENT_ARRAY+=($TIME_CURRENT)
+                        # Если существует несколько .desktop файлов на один и тот же .exe файл,
+                        # то среди них время берётся из того .desktop файла, в котором проведено дольше времени
+                        # и данное время будет потом записываться во все .desktop файлы у которых общий .exe файл
+                        if [[ -n ${TIME_CURRENT_ARRAY[1]} ]] ; then
+                            for i in "${!TIME_CURRENT_ARRAY[@]}" ; do
+                                for j in "${!TIME_CURRENT_ARRAY[@]}" ; do
+                                    if (( ${TIME_CURRENT_ARRAY[$i]} > ${TIME_CURRENT_ARRAY[$j]} )) ; then
+                                        tmp=${TIME_CURRENT_ARRAY[$i]}
+                                        TIME_CURRENT_ARRAY[i]=${TIME_CURRENT_ARRAY[$j]}
+                                        TIME_CURRENT_ARRAY[j]=$tmp
+                                    fi
+                                done
+                            done
+                        fi
+                        TIME_CURRENT="${TIME_CURRENT_ARRAY[0]}"
+                        # Для битых #Time=
                         if [[ ! $TIME_CURRENT =~ [0-9]+ ]] \
                         || (( TIME_CURRENT >= 999999999 )) ; then
                             TIME_CURRENT="0"
@@ -845,10 +838,13 @@ search_desktop_file () {
                     DESKTOP_FILES_ARRAY["$count"]="$desktop_file"
                     (( count++ ))
                 fi
+                unset TIME_CURRENT_PROXY
             fi
         fi
     done
     IFS="$orig_IFS"
+
+    [[ -z $TIME_CURRENT ]] && TIME_CURRENT=0
     export TIME_CURRENT
 
     if [[ -n $PW_TIME_IN_GAME ]] ; then
@@ -5574,6 +5570,9 @@ portwine_create_shortcut () {
             fi
             unset PW_SKIP_RESTART_STEAM
         fi
+
+        # Когда новый .desktop файл
+        echo "#NEW_DESKTOP" >> "$PORT_WINE_PATH/$name_desktop.desktop"
 
         if [[ "$PW_NO_RESTART_PPDB" != "1" ]] ; then
             print_info "Restarting PP..."
