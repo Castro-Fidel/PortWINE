@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Author: chal55rus
+# type: games
+# name: DC Universe Online
+# image: dcuniverseonline
+# info_en:
+# info_ru:
+########################################################################
+export PW_PREFIX_NAME="DC_UNIVERSE_ONLINE"
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/DCUO_setup.exe"
+export PORTWINE_CREATE_SHORTCUT_NAME="DC Universe Online"
+
+start_portwine
+if try_download "https://launch.daybreakgames.com/installer/DCUO_setup.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
+then
+    pw_start_progress_bar_install_game "DC Universe Online."
+    "$pw_7z" x -y "${PW_AUTOINSTALL_EXE}" -o"$WINEPREFIX/drive_c/Program Files (x86)/Daybreak Game Company"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/Daybreak Game Company/LaunchPad.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    kill_portwine
+    pw_stop_progress_bar
+    portwine_create_shortcut
+fi
+stop_portwine
