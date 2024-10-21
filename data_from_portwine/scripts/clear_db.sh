@@ -17,7 +17,7 @@ if [[ -n "$DUPLICATE" ]] ; then
     exit 1
 fi
 
-for ppdb in $SELF_PATH/portwine_db/* ; do
+for ppdb in "$SELF_PATH/portwine_db/"* ; do
     echo "$ppdb"
 
     sed -i '/##export/d' "$ppdb"
