@@ -246,14 +246,11 @@ if [[ "${INSTALLING_PORT}" == 1 ]] ; then
 fi
 
 # choose gui start
-case "$PW_GUI_START" in
-    PANED|NOTEBOOK) : ;;
-    *)
-              sed -i '/export PW_GUI_START=/d' "$USER_CONF"
-              echo 'export PW_GUI_START="NOTEBOOK"' >> "$USER_CONF"
-              export PW_GUI_START="NOTEBOOK"
-              ;;
-esac
+if [[ ! $PW_GUI_START =~ (PANED|NOTEBOOK) ]] ; then
+    sed -i '/export PW_GUI_START=/d' "$USER_CONF"
+    echo 'export PW_GUI_START="NOTEBOOK"' >> "$USER_CONF"
+    export PW_GUI_START="NOTEBOOK"
+fi
 
 if check_flatpak ; then
     if check_gamescope_session
