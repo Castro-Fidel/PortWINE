@@ -501,13 +501,24 @@ if [[ -f "${portwine_exe}" ]] ; then
         else
             PW_SHORTCUT="${translations[DELETE SHORTCUT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Delete shortcut for select file...]}:98"
         fi
-
         [[ $DESKTOP_WITH_TIME == enabled ]] && search_desktop_file
         if [[ -z "${PW_COMMENT_DB}" ]] ; then
-            if [[ -n "${PORTPROTON_NAME}" ]] ; then
+            if [[ ${PORTPROTON_NAME^^} =~ ${PORTWINE_DB^^} ]] && [[ ${PORTPROTON_NAME^^} != "${PORTWINE_DB^^}" ]] ; then
                 PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTPROTON_NAME}" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
             else
-                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTWINE_DB}" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
+                unset PORTWINE_DB_NEW
+                if (( ${#PORTWINE_DB} > 2 )) ; then
+                    for ((i=0 ; i<${#PORTWINE_DB} ; i++)) ; do
+                        if [[ ${PORTWINE_DB:i:2} =~ ([a-z][A-Z]|[a-z][0-9]) ]] ; then
+                            PORTWINE_DB_NEW+="${PORTWINE_DB:i:1} "
+                        else
+                            PORTWINE_DB_NEW+="${PORTWINE_DB:i:1}"
+                        fi
+                    done
+                else
+                    PORTWINE_DB_NEW="$PORTWINE_DB"
+                fi
+                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTWINE_DB_NEW}" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
             fi
         else
             PW_COMMENT_DB="$PW_COMMENT_DB$(seconds_to_time "$TIME_CURRENT")"
