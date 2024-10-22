@@ -502,10 +502,40 @@ if [[ -f "${portwine_exe}" ]] ; then
 
         [[ $DESKTOP_WITH_TIME == enabled ]] && search_desktop_file
         if [[ -z "${PW_COMMENT_DB}" ]] ; then
-            if [[ -n "${PORTPROTON_NAME}" ]] ; then
+            if [[ ${PORTPROTON_NAME^^} =~ ${PORTWINE_DB^^} ]] && [[ ${PORTPROTON_NAME^^} != "${PORTWINE_DB^^}" ]] ; then
                 PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTPROTON_NAME}" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
             else
-                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTWINE_DB}" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
+                unset PORTWINE_DB_PROXY PORTWINE_DB_NEW
+                PORTWINE_DB="${PORTWINE_DB//_/ }"
+                if [[ ${PORTWINE_DB:0:1} =~ [a-z] ]] ; then
+                    PORTWINE_DB_UPPER="${PORTWINE_DB^^}"
+                    PORTWINE_DB="${PORTWINE_DB_UPPER:0:1}${PORTWINE_DB:1}"
+                fi
+                if (( ${#PORTWINE_DB} > 2 )) ; then
+                    for ((i=0 ; i<${#PORTWINE_DB} ; i++)) ; do
+                        if [[ ${PORTWINE_DB:i:2} =~ ([a-z][A-Z]|[a-z][0-9]) ]] \
+                        && [[ ! ${PORTWINE_DB:i:3} =~ ([a-z][A-Z]" "|[a-z][0-9]" ") ]] ; then
+                            PORTWINE_DB_PROXY+="${PORTWINE_DB:i:1} "
+                        elif [[ ${PORTWINE_DB:i:3} =~ [0-9][0-9][a-zA-Z] ]] ; then
+                            PORTWINE_DB_PROXY+="${PORTWINE_DB:i:2} "
+                            ((i++))
+                        else
+                            PORTWINE_DB_PROXY+="${PORTWINE_DB:i:1}"
+                        fi
+                    done
+                    for ((i=0 ; i<${#PORTWINE_DB_PROXY} ; i++)) ; do
+                        if [[ ${PORTWINE_DB_PROXY:i:2} =~ " "[a-z] ]] ; then
+                            PORTWINE_DB_UPPER="${PORTWINE_DB_PROXY:i:2}"
+                            PORTWINE_DB_NEW+="${PORTWINE_DB_UPPER^^}"
+                            ((i++))
+                        else
+                            PORTWINE_DB_NEW+="${PORTWINE_DB_PROXY:i:1}"
+                        fi
+                    done
+                else
+                    PORTWINE_DB_NEW="$PORTWINE_DB"
+                fi
+                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTWINE_DB_NEW}" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
             fi
         else
             PW_COMMENT_DB="$PW_COMMENT_DB$(seconds_to_time "$TIME_CURRENT")"
@@ -639,7 +669,7 @@ else
                 if [[ $SORT_WITH_TIME == enabled ]] && [[ $NEW_DESKTOP == 1 ]] ; then
                     unset NEW_DESKTOP
                     sed -i '/^#NEW_DESKTOP/d' "$desktop_file"
-                    PW_AMOUNT_NEW_DESKTOP=($AMOUNT_GENERATE_BUTTONS)
+                    PW_AMOUNT_NEW_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
                 else
                     PW_AMOUNT_OLD_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
                 fi
