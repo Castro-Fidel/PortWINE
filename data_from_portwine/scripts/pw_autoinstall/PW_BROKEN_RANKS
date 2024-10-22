@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Author: chal55rus
+# type: games
+# name: Broken Ranks
+# image: brokenranks
+# info_en:
+# info_ru:
+########################################################################
+export PW_PREFIX_NAME="BROKEN_RANKS"
+export LAUNCH_PARAMETERS=("/q")
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/BrokenRanksInstaller.exe"
+export PORTWINE_CREATE_SHORTCUT_NAME="Broken Ranks"
+
+start_portwine
+if try_download "https://eu.brokenranks.com/BrokenRanksInstaller.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
+then
+    pw_start_progress_bar_install_game "Broken Ranks."
+    pw_kill_autostart ConsoleLauncher.exe &
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/Whitemoon/BrokenRanks/ConsoleLauncher.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    kill_portwine
+    pw_stop_progress_bar
+    portwine_create_shortcut
+fi
+stop_portwine
