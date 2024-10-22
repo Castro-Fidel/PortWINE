@@ -378,7 +378,13 @@ create_new_dir () {
 }
 
 try_force_link_file () {
-    if [[ ! -f "$1" ]] ; then print_warning "file not found for link: $1" && return 1
+    if [[ ! -f "$1" ]] ; then
+        print_warning "file not found for link: $1"
+        if [[ -f "$2" ]] ; then
+            try_remove_file "$2"
+            print_warning "removed old link: $2"
+        fi
+        return 1
     elif [[ -z "$2" ]] ; then print_error "no way to link file $1" && return 1
     elif [[ -f "$2.sha256sum" ]] ; then print_warning "$2 this file has sha256sum"
         try_remove_file "$2"
@@ -806,8 +812,11 @@ search_desktop_file () {
                         echo "#NEW_DESKTOP" >> "$desktop_file"
                         TIME_CURRENT="0"
                     # Для битых #Time=
-                    elif [[ ! $TIME_CURRENT == "" ]] && [[ ! $TIME_CURRENT =~ [0-9]+ ]] ; then
-                        TIME_CURRENT="0"
+                    else
+                        if [[ ! $TIME_CURRENT =~ [0-9]+ ]] \
+                        || (( $TIME_CURRENT >= 999999999 )) ; then
+                            TIME_CURRENT="0"
+                        fi
                     fi
                     TIME_CURRENT_ARRAY+=($TIME_CURRENT)
                     unset TIME_CURRENT
@@ -918,7 +927,7 @@ combobox_fix () {
         local name1 name2
         if [[ "$1" == "--disabled" ]] ; then
             if [[ -z "$3" ]] ; then
-                echo "disabled"
+                echo "${translations[Disabled]}"
                 return 0
             fi
             name1="$2"
@@ -947,8 +956,16 @@ combobox_fix () {
         then name3="${name3%\!"${name1}"}"
         fi
         if [[ "$1" == "--disabled" ]] ; then
-            if [[ ${name1} != "disabled" ]]
-            then fix_disabled="!disabled"
+            if [[ ${name1} == "disabled" ]] ; then
+                name1="${translations[Disabled]}"
+                if [[ ${name3} =~ enabled ]] ; then
+                    name3="${name3//enabled/${translations[Enable]}}"
+                fi
+            elif [[ ${name1} != "disabled" ]] ; then
+                fix_disabled="!${translations[Disable]}"
+                if [[ ${name1} == "enabled" ]] ; then
+                    name1="${translations[Enabled]}"
+                fi
             fi
             echo "${name1}${name3}${fix_disabled}"
         elif [[ "$1" == "--empty" ]] ; then
@@ -1455,9 +1472,11 @@ stop_portwine () {
     pw_auto_create_shortcut
     add_in_stop_portwine
 
-    debug_timer --end -s "PW_TIME_IN_GAME"
-    PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 )) # в секундах
-    search_desktop_file
+    if [[ $PW_LOG != 1 ]] ; then
+        debug_timer --end -s "PW_TIME_IN_GAME"
+        PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 )) # в секундах
+        search_desktop_file
+    fi
 
     case "$1" in
         --restart)
@@ -2230,9 +2249,15 @@ edit_db_from_gui () {
     && [[ -f "$PORTWINE_DB_FILE" ]]
     then
         for mod_db in $@ ; do
+            proxy_mod_db="${!mod_db}"
+            if [[ $proxy_mod_db =~ (${translations[Disabled]}|${translations[Disable]}) ]] ; then
+                proxy_mod_db=disabled
+            elif [[ $proxy_mod_db =~ (${translations[Enabled]}|${translations[Enable]}) ]] ; then
+                proxy_mod_db=enabled
+            fi
             if [[ $(<"${PORTWINE_DB_FILE}") =~ export\ ${mod_db}= ]]
-            then sed -i "s|export ${mod_db}=.*|export ${mod_db}=\"${!mod_db}\"|g" "${PORTWINE_DB_FILE}"
-            else echo "export ${mod_db}=\"${!mod_db}\"" >> "${PORTWINE_DB_FILE}"
+            then sed -i "s|export ${mod_db}=.*|export ${mod_db}=\"$proxy_mod_db\"|g" "${PORTWINE_DB_FILE}"
+            else echo "export ${mod_db}=\"$proxy_mod_db\"" >> "${PORTWINE_DB_FILE}"
             fi            
         done
     fi
@@ -2241,15 +2266,21 @@ edit_db_from_gui () {
 
 edit_user_conf_from_gui () {
     for mod_db in $@ ; do
+        proxy_mod_db="${!mod_db}"
+        if [[ $proxy_mod_db =~ (${translations[Disabled]}|${translations[Disable]}) ]] ; then
+            proxy_mod_db=disabled
+        elif [[ $proxy_mod_db =~ (${translations[Enabled]}|${translations[Enable]}) ]] ; then
+            proxy_mod_db=enabled
+        fi
         if ! grep "export ${mod_db}=" "${USER_CONF}" &>/dev/null
-        then echo "export ${mod_db}=\"${!mod_db}\"" >> "${USER_CONF}"
+        then echo "export ${mod_db}=\"$proxy_mod_db\"" >> "${USER_CONF}"
         elif grep "export ${mod_db}=" "${USER_CONF}" | grep -v "#" &>/dev/null
         then
-            if [[ "$(grep "export ${mod_db}=" "${USER_CONF}" | grep -v "#")" != "export ${mod_db}=\"${!mod_db}\"" ]]
-            then sed -ri "s/^export ${mod_db}=.*/export ${mod_db}=\"${!mod_db}\"/" "${USER_CONF}"
+            if [[ "$(grep "export ${mod_db}=" "${USER_CONF}" | grep -v "#")" != "export ${mod_db}=\"$proxy_mod_db\"" ]]
+            then sed -ri "s/^export ${mod_db}=.*/export ${mod_db}=\"$proxy_mod_db\"/" "${USER_CONF}"
             fi
-        elif [[ "$(grep "export ${mod_db}=" "${USER_CONF}")" != "export ${mod_db}=${!mod_db}" ]]
-        then sed -ri "s/.*export ${mod_db}=.*/export ${mod_db}=\"${!mod_db}\"/g" "${USER_CONF}"
+        elif [[ "$(grep "export ${mod_db}=" "${USER_CONF}")" != "export ${mod_db}=$proxy_mod_db" ]]
+        then sed -ri "s/.*export ${mod_db}=.*/export ${mod_db}=\"$proxy_mod_db\"/g" "${USER_CONF}"
         fi
     done
     return 0
@@ -2291,10 +2322,9 @@ pw_create_gui_png () {
                 PW_PRODUCTNAME=$(env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" -ProductName "${portwine_exe}" | sed -n 's/^Product Name\s*:\s*//p')
             fi
 
-            if [[ "$PW_PRODUCTNAME" =~ "Launcher" ]] \
-            || [[ "$PW_PRODUCTNAME" =~ "RU" ]]
+            if [[ "$PW_PRODUCTNAME" =~ (Launcher|RU) ]]
             then
-                PW_PRODUCTNAME="$(echo "$PW_PRODUCTNAME" | sed 's/Launcher\|RU//g')"
+                PW_PRODUCTNAME="${PW_PRODUCTNAME//(Launcher|RU)/}"
             fi
 
             if [[ -n "$PW_PRODUCTNAME" ]] \
@@ -2488,7 +2518,7 @@ start_portwine () {
     fi
 
     pw_wineboot () {
-        LIST_NATIVE_WINE_DLL_LINKS="winevulkan ir50_32 wined3d vulkan-1"
+        LIST_NATIVE_WINE_DLL_LINKS="winevulkan ir50_32 amd_ags_x64 wined3d vulkan-1"
         for change_wine_dll in $LIST_NATIVE_WINE_DLL_LINKS ; do
             try_force_link_file "${WINEDIR}/lib64/wine/x86_64-windows/${change_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${change_wine_dll}.dll"
             try_force_link_file "${WINEDIR}/lib/wine/i386-windows/${change_wine_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${change_wine_dll}.dll"
@@ -2556,7 +2586,11 @@ start_portwine () {
 
     echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
 
-    if [[ "${PW_NO_ESYNC}" == 1 ]]
+    ULIMIT_HN=$(ulimit -Hn)
+    if [[ $ULIMIT_HN -lt 524288 ]] ; then
+        print_warning "ESYNC dont work! (ulimit -Hn $ULIMIT_HN < 524288)"
+        export WINEESYNC="0"
+    elif [[ "${PW_NO_ESYNC}" == 1 ]]
     then export WINEESYNC="0"
     else export WINEESYNC="1"
     fi
@@ -2703,20 +2737,6 @@ start_portwine () {
         export VKD3D_FILTER_DEVICE_NAME="${PW_GPU_USE}"
     fi
 
-    case "$PW_FORCE_USE_VSYNC" in  # 0-FORCE_OFF, 1-FORCE_ON, 2-BY_DEFAULT
-        0)
-            export vblank_mode=0
-            export __GL_SYNC_TO_VBLANK=0
-            ;;
-        1)
-            export vblank_mode=1
-            export __GL_SYNC_TO_VBLANK=1
-            ;;
-        *)
-            unset vblank_mode __GL_SYNC_TO_VBLANK
-            ;;
-    esac
-
     export int_xneur=0
     if command -v xneur &>/dev/null \
     && pgrep xneur
@@ -2725,45 +2745,60 @@ start_portwine () {
         export int_xneur=1
     fi
 
-    if check_gamescope_session ; then
-        export PW_GAMEMODERUN_SLR=""
-    elif [[ "$PW_USE_GAMEMODE" = "1" ]] \
-    && [[ -n "$DBUS_SESSION_BUS_ADDRESS" ]]
-    then
-        if command -v gamemoded &>/dev/null ; then
-            export GAMEMODERUN=1
-            PW_GAMEMODERUN_SLR="gamemoderun"
-            systemctl enable --now --user gamemoded &>/dev/null
-            print_info "Gamemod will be launched."
-        elif check_flatpak ; then
-            export GAMEMODERUN=1
-            PW_GAMEMODERUN_SLR="gamemoderun"
-            print_info "Gamemod will be launched."
-        elif [[ "$PW_USE_RUNTIME" == 1 ]] ; then
-            export GAMEMODERUN=1
-            if ! pidof gamemoded &>/dev/null ; then
-                GAMEMODEAUTO_NAME="libgamemodeauto.so.0"
-                if [[ -n "${PW_LD_PRELOAD}" ]]
-                then export PW_LD_PRELOAD="${PW_LD_PRELOAD}:${GAMEMODEAUTO_NAME}"
-                else export PW_LD_PRELOAD="${GAMEMODEAUTO_NAME}"
-                fi
+	if check_gamescope_session ; then
+		export PW_GAMEMODERUN_SLR=""
+	elif [[ "$PW_USE_GAMEMODE" = "1" ]] && [[ -n "$DBUS_SESSION_BUS_ADDRESS" ]]; then
+		if systemctl is-active --quiet ananicy.service \
+        || systemctl is-active --quiet ananicy-cpp.service
+        then
+		    export GAMEMODERUN=0
+		    export PW_GAMEMODERUN_SLR=""
 
-                env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32" \
-                "${PW_PLUGINS_PATH}/portable/bin/gamemoded" &>/dev/null &
+		    if command -v powerprofilesctl &>/dev/null ; then
+			    if powerprofilesctl list | grep -q 'performance:'; then
+			        export PW_POWERPROFILECTL_SLR="powerprofilesctl launch -p performance --"
+			   		print_info "Gamemode replaced by powerprofilectl to avoid conflict with ananicy."
+			     else
+			     	export PW_POWERPROFILECTL_SLR=""
+			     fi
+			fi
+		else
+		    if command -v gamemoded &>/dev/null ; then
+		        export GAMEMODERUN=1
+		        PW_GAMEMODERUN_SLR="gamemoderun"
+		        systemctl enable --now --user gamemoded &>/dev/null
+		        print_info "Gamemode will be launched."
+		    elif check_flatpak ; then
+		        export GAMEMODERUN=1
+		        PW_GAMEMODERUN_SLR="gamemoderun"
+		        print_info "Gamemode will be launched."
+		    elif [[ "$PW_USE_RUNTIME" == 1 ]] ; then
+		        export GAMEMODERUN=1
+		        if ! pidof gamemoded &>/dev/null ; then
+		            GAMEMODEAUTO_NAME="libgamemodeauto.so.0"
+		            if [[ -n "${PW_LD_PRELOAD}" ]]; then
+		                export PW_LD_PRELOAD="${PW_LD_PRELOAD}:${GAMEMODEAUTO_NAME}"
+		            else
+		                export PW_LD_PRELOAD="${GAMEMODEAUTO_NAME}"
+		            fi
 
-                print_info "Gamemod will be launched."
-                sleep 0.1
-            fi
-        else
-            export GAMEMODERUN=0
-            export PW_GAMEMODERUN_SLR=""
-        fi
-    else
-        export GAMEMODERUN=0
-        export PW_GAMEMODERUN_SLR=""
-        print_info "Gamemod is not installed or disabled in vars script or db file: PW_USE_GAMEMODE=$PW_USE_GAMEMODE"
-    fi
-    pw_other_fixes
+		            env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32" \
+		                "${PW_PLUGINS_PATH}/portable/bin/gamemoded" &>/dev/null &
+
+		            print_info "Gamemode will be launched."
+		            sleep 0.1
+		        fi
+		    else
+		        export GAMEMODERUN=0
+		        export PW_GAMEMODERUN_SLR=""
+		        print_info "Gamemode is not installed or disabled in vars script or db file: PW_USE_GAMEMODE=$PW_USE_GAMEMODE"
+		    fi
+		fi
+	else
+		export GAMEMODERUN=0
+		export PW_GAMEMODERUN_SLR=""
+	fi
+	pw_other_fixes
 
     # enabled BattleEye_Runtime and EasyAntiCheat_Runtime
     if [[ "${PW_USE_EAC_AND_BE}" == 1 ]] ; then
@@ -3244,10 +3279,28 @@ start_portwine () {
 
     if [[ "${PW_MESA_GL_VERSION_OVERRIDE}" != "disabled" ]] ; then
         export MESA_GL_VERSION_OVERRIDE="${PW_MESA_GL_VERSION_OVERRIDE}"
+        if [[ $PW_MESA_GL_VERSION_OVERRIDE = 3.2COMPAT ]] ; then
+            export MESA_GLSL_VERSION_OVERRIDE="150"
+        else
+            MESA_GLSL_VERSION_OVERRIDE="${PW_MESA_GL_VERSION_OVERRIDE//./}"
+            export MESA_GLSL_VERSION_OVERRIDE="${MESA_GLSL_VERSION_OVERRIDE//COMPAT/}0"
+        fi
     fi
 
     if [[ "${PW_VKD3D_FEATURE_LEVEL}" != "disabled" ]] ; then
         export VKD3D_FEATURE_LEVEL="${PW_VKD3D_FEATURE_LEVEL}"
+    fi
+
+    if [[ "${PW_MESA_VK_WSI_PRESENT_MODE}" != "disabled" ]] ; then
+        export MESA_VK_WSI_PRESENT_MODE="${PW_MESA_VK_WSI_PRESENT_MODE}"
+        case "$PW_MESA_VK_WSI_PRESENT_MODE" in
+            immediate|mailbox)
+                export vblank_mode=0
+                export __GL_SYNC_TO_VBLANK=0 ;;
+            relaxed|fifo)
+                export vblank_mode=1
+                export __GL_SYNC_TO_VBLANK=1 ;;
+        esac
     fi
 
     #run_winetricks_from_db
@@ -3506,11 +3559,6 @@ start_portwine () {
         fi
 
         [[ "${PW_GS_FRAME_LIMIT}" != "disabled" ]] && PW_GAMESCOPE_ARGS_NEW+=" -r ${PW_GS_FRAME_LIMIT}"
-
-        if [[ "${PW_GS_MESA_VK_WSI_PRESENT_MODE}" != "disabled" ]] ; then
-            export MESA_VK_WSI_PRESENT_MODE=${PW_GS_MESA_VK_WSI_PRESENT_MODE}
-        fi
-
         [[ "${PW_GS_MAX_SCALE_FACTOR}" != "0.0" ]] && PW_GAMESCOPE_ARGS_NEW+=" -m ${PW_GS_MAX_SCALE_FACTOR}"
         [[ "${PW_GS_SCALER_MODE}" != "disabled" ]] && PW_GAMESCOPE_ARGS_NEW+=" -S ${PW_GS_SCALER_MODE}"
 
@@ -3572,6 +3620,7 @@ pw_run () {
             echo ""
             print_info "Log from RUNTIME and WINE:"
             ${PW_RUN_GAMESCOPE} \
+            ${PW_POWERPROFILECTL_SLR} \
             ${pw_runtime} \
             LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             LD_PRELOAD="${PW_LD_PRELOAD}" \
@@ -3582,15 +3631,14 @@ pw_run () {
             ${PW_DISPLAY} \
             "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
         else
-            if [[ "$PW_USE_TERMINAL" == 1 ]] \
-            && [[ "$PW_USE_RUNTIME" == 1 ]]
-            then
-                export PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
+            if [[ "$PW_USE_TERMINAL" == 1 ]] ; then
+                PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
                 pw_init_runtime
             fi
             echo ""
             echo "Log WINE:" > "${PW_LOG_TO_FILE}"
             ${PW_RUN_GAMESCOPE} \
+            ${PW_POWERPROFILECTL_SLR} \
             ${pw_runtime} \
             LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             LD_PRELOAD="${PW_LD_PRELOAD}" \
@@ -3623,6 +3671,7 @@ pw_run () {
             VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
             ${PW_RUN_GAMESCOPE} \
             ${PW_GAMEMODERUN_SLR} \
+            ${PW_POWERPROFILECTL_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
             "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
@@ -3640,6 +3689,7 @@ pw_run () {
             VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
             ${PW_RUN_GAMESCOPE} \
             ${PW_GAMEMODERUN_SLR} \
+            ${PW_POWERPROFILECTL_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
             "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]}
@@ -3688,7 +3738,7 @@ portwine_launch () {
         PW_VD_TMP=(explorer "/desktop=PortProton,${PW_SCREEN_RESOLUTION}")
     fi
 
-    debug_timer --start -s "PW_TIME_IN_GAME"
+    [[ $PW_LOG != 1 ]] && debug_timer --start -s "PW_TIME_IN_GAME"
     case "$portwine_exe" in
         *.[Ee][Xx][Ee])
             pw_run ${PW_VD_TMP[@]} ${WINE_WIN_START} "$portwine_exe"
@@ -3723,10 +3773,14 @@ pw_winefile () {
 }
 
 pw_winecmd () {
-    export PW_USE_TERMINAL=1
     start_portwine
     cd "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c" || fatal
-    pw_run cmd
+    if check_flatpak ; then
+        $PW_TERM "pw_run cmd"
+    else
+        export PW_USE_TERMINAL=1
+        pw_run cmd
+    fi
     stop_portwine --restart
 }
 
@@ -3864,13 +3918,10 @@ pw_update_pfx_cover_gui () {
         PW_GIF_SIZE_X=$(file "${PW_GIF_FILE}" | awk '{print $7 + 20}')
         PW_GIF_SIZE_Y=$(file "${PW_GIF_FILE}" | awk '{print $9 + 65}')
         echo "UPDATE PREFIX..." > "${PW_TMPFS_PATH}/update_pfx_log"
-        export PW_TIMER=0
+        local PW_TIMER=0
         while read -r line || [[ -n $(pgrep -a yad | grep "yad_gui_pp --notebook --key=$PW_KEY_PROGRESS_BAR_UP" | awk '{print $1}') ]] ; do
                 sleep 0.005
-                if [[ -n "${line}" ]] && [[ -z "$(echo "${line}" | grep -i "gstreamer")" ]] \
-                                        && [[ -z "$(echo "${line}" | grep -i "kerberos")" ]] \
-                                        && [[ -z "$(echo "${line}" | grep -i "ntlm")" ]]
-                then
+                if [[ -n "${line}" ]] && ! echo "${line}" | grep -qi "gstreamer\|kerberos\|ntlm" ; then
                     echo "# ${line}"
                 fi
                 if [[ "${PW_TIMER}" != 1 ]] ; then
@@ -4278,7 +4329,7 @@ gui_edit_db () {
         unset 'PW_EDIT_DB_LIST[29]' # "PW_USE_RUNTIME"
     fi
 
-    # PW_FORCE_USE_VSYNC PW_HEAP_DELAY_FREE
+    # PW_HEAP_DELAY_FREE
 
     PW_DGVOODOO2_INFO=${translations[Enable dgVoodoo2. Forced use all dgVoodoo2 libs (Glide 2.11-3.1, DirectDraw 1-7, Direct3D 2-9) on all 3D API. For WineD3D OpenGL need use WineLG (For Gallium Nine and Zink use too)]}
     PW_DINPUT_PROTOCOL_INFO=${translations[Force use DirectInput protocol instead of XInput]}
@@ -4292,7 +4343,6 @@ gui_edit_db () {
     PW_USE_NVAPI_AND_DLSS_INFO=${translations[Enable DLSS on supported NVIDIA graphics cards]}
     PW_OLD_GL_STRING_INFO=${translations[Forced use of older versions of OpenGL]}
     PW_HIDE_NVIDIA_GPU_INFO=${translations[Disguise all features used for NVIDIA graphics cards]}
-    PW_FORCE_USE_VSYNC_INFO=${translations[Forced activation of vertical sync]}
     PW_VIRTUAL_DESKTOP_INFO=${translations[Enable the application to run in the WINE virtual desktop]}
     PW_USE_TERMINAL_INFO=${translations[Run the application in the terminal]}
     PW_HEAP_DELAY_FREE_INFO=${translations[Include a delay in releasing some memory to bypass errors associated with using the application after the memory is released]}
@@ -4407,9 +4457,13 @@ A brief instruction:
     --field="${translations[ADD ARGUMENTS FOR .EXE FILE]}!${translations[Adding an argument after the <b>.exe</b> file, just like you would add an argument in a shortcut on a <b>WINDOWS </b> system]} :CBE" "$(combobox_fix --empty "\\${LAUNCH_PARAMETERS[@]}" "-dx11 -skipintro 1")" \
     --field=":LBLH" "" \
     --field="${translations[Limit the use of processor cores]}!${translations[Limiting the number of CPU cores is useful for Unity games (It is recommended to set the value equal to 8)]} :CB" "$(combobox_fix --disabled "${CPU_LIMIT_VAR}" "${GET_LOGICAL_CORE}")" \
-    --field="${translations[Forcibly select the OpenGL version for the game]}!${translations[You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)]} :CB" "$(combobox_fix --disabled "${PW_MESA_GL_VERSION_OVERRIDE}" "4.6COMPAT!4.6!4.5COMPAT!4.5!3.3COMPAT!3.3")" \
-    --field="${translations[Forcibly select the VKD3D feature level]}!${translations[You can set a forced feature level VKD3D for games on DirectX12]} :${VKD3D_CB}" "$(combobox_fix --disabled "${PW_VKD3D_FEATURE_LEVEL}" "12_2!12_1!12_0!11_1!11_0")" \
+    --field="${translations[Forcibly select the OpenGL version for the game]}!${translations[You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)]} :CB" "$(combobox_fix --disabled "${PW_MESA_GL_VERSION_OVERRIDE}" "4.6COMPAT!4.5COMPAT!4.3COMPAT!4.1COMPAT!3.3COMPAT!3.2COMPAT")" \
+    --field="${translations[Forcibly select the VKD3D feature level]}!${translations[You can set a forced feature level VKD3D for games on DirectX12]} :$VKD3D_CB" "$(combobox_fix --disabled "${PW_VKD3D_FEATURE_LEVEL}" "12_2!12_1!12_0!11_1!11_0")" \
     --field="${translations[Force certain locale for an app:]}!${translations[Fixes encoding issues in legacy software]} :CB" "$(combobox_fix --disabled "${PW_LOCALE_SELECT}" "$LOCALE_LIST")" \
+    --field="${translations[Window mode (for Vulkan and OpenGL)]}!${translations[fifo - First in, first out. Limits the frame rate + no tearing. (VSync)
+immediate - Unlimited frame rate + tearing.
+mailbox - Triple buffering. Unlimited frame rate + no tearing.
+relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]} :CB" "$(combobox_fix --disabled "${PW_MESA_VK_WSI_PRESENT_MODE}" "fifo!immediate!mailbox!relaxed")" \
     1> "$PW_TMPFS_PATH/tmp_output_yad_fps_limit" 2>/dev/null &
 
     "${pw_yad}" --notebook --key="$KEY_EDIT_DB_GUI" --title "${translations[EDIT DB]}" --text-align=center \
@@ -4459,8 +4513,9 @@ A brief instruction:
     PW_MESA_GL_VERSION_OVERRIDE="${PW_ADD_SETTINGS[7]}"
     PW_VKD3D_FEATURE_LEVEL="${PW_ADD_SETTINGS[8]}"
     PW_LOCALE_SELECT="${PW_ADD_SETTINGS[9]}"
+    PW_MESA_VK_WSI_PRESENT_MODE="${PW_ADD_SETTINGS[10]}"
 
-    if [[ "${CPU_LIMIT}" != "disabled" ]] ; then
+    if [[ "${CPU_LIMIT}" =~ [0-9]+ ]] ; then
         PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $(( CPU_LIMIT - 1 )))"
     else
         PW_WINE_CPU_TOPOLOGY="disabled"
@@ -4468,7 +4523,7 @@ A brief instruction:
     export PW_WINE_CPU_TOPOLOGY
 
     edit_db_from_gui ${PW_EDIT_DB_LIST[@]} LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY \
-    PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PW_LOCALE_SELECT
+    PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PW_LOCALE_SELECT PW_MESA_VK_WSI_PRESENT_MODE
 
     if [[ -z "$MANGOHUD_CONFIG" ]] ; then
         MONITOR_HEIGHT="$(echo "$PW_SCREEN_RESOLUTION" | awk -F'x' '{print $2}')"
@@ -5078,18 +5133,6 @@ gui_gamescope () {
             GAMESCOPE_NEED_INSTALL="${translations[<b>Gamescope is not detected on the system, please contact the manufacturer of your distribution\\nor search the Internet for information on how to install gamescope on your system.</b>]}"
         fi
         GS_CB="DCB" && GS_CBE="DCBE" && GS_NUM="DNUM" && GS_NUMN="DNUMN"
-        PW_GS_SHOW_RESOLUTION="disabled"
-        PW_GS_INTERNAL_RESOLUTION="0.0"
-        PW_GS_FRAME_LIMIT="disabled"
-        PW_GS_MESA_VK_WSI_PRESENT_MODE="disabled"
-        PW_GS_SCALER_MODE="disabled"
-        PW_GS_FILTER_MODE="disabled"
-        PW_GS_UPSCALE_SHARPNESS="0"
-        PW_GS_MAX_SCALE_FACTOR="0.0"
-        PW_GS_MOUSE_SENSITIVITY="0.0"
-        PW_GS_SDR_CONTENT_NITS="0"
-        PW_GS_ITM_SDR_NITS="0"
-        PW_GS_ITM_TARGET_NITS="0"
         for int_to_boole in ${PW_GS_LIST[@]} ; do
             if [[ "${!int_to_boole}" == "1" ]]
             then export ${int_to_boole}="TRUE"
@@ -5121,11 +5164,6 @@ gui_gamescope () {
     --field="${CHKBOX_SPACE}${translations[Show resolution]}!${translations[Set the resolution used by gamescope. Resizing the gamescope window will update these settings. Defaults to 1280x720.]} :${GS_CBE}" "$(combobox_fix --disabled "${PW_GS_SHOW_RESOLUTION}" "${GAMESCOPE_XRANDR_NEW::-1}")" \
     --field="${CHKBOX_SPACE}${translations[Internal resolution]}!${translations[Scale internal resolution (0.0 is unused)]} :${GS_NUMN}" "${PW_GS_INTERNAL_RESOLUTION}:!0..2" \
     --field="${CHKBOX_SPACE}${translations[Frame limit]}!${translations[Set a framerate limit. Specified in frames per second]} :${GS_CBE}" "$(combobox_fix --disabled "${PW_GS_FRAME_LIMIT}" "30!40!45!48!60!75!90!120!144!165!175!240")" \
-    --field="${CHKBOX_SPACE}${translations[Mesa vulkan WSI]}!${translations[Overrides the WSI present mode:
-fifo - First in, first out. Limits the frame rate + no tearing. (VSync)
-immediate - Unlimited frame rate + tearing.
-mailbox - Triple buffering. Unlimited frame rate + no tearing.
-relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]} :${GS_CB}" "$(combobox_fix --disabled "${PW_GS_MESA_VK_WSI_PRESENT_MODE}" "fifo!immediate!mailbox!relaxed")" \
     --field="${CHKBOX_SPACE}${translations[Scaler mode]}!${translations[Specify how to scale the GameScope window content]} :${GS_CB}" "$(combobox_fix --disabled "${PW_GS_SCALER_MODE}" "auto!integer!fit!fill!stretch")" \
     --field="${CHKBOX_SPACE}${translations[Filter mode]}!${translations[Use a filter such as AMD FidelityFX SuperResolution 1.0 (FSR) or NVIDIA Image Scaling v1.0.3 (NIS)]} :${GS_CB}" "$(combobox_fix --disabled "${PW_GS_FILTER_MODE}" "${GS_FILTER_CB}")" \
     --field="${CHKBOX_SPACE}${translations[Upscale sharpness]}!${translations[Sharpening value for FidelityFX SuperResolution 1.0 (FSR) and NVIDIA Image Scaling v1.0.3 (NIS). 0 is max sharpening, 20 is min sharpening.]} :${GS_NUM}" "${PW_GS_UPSCALE_SHARPNESS}:!0..20" \
@@ -5179,18 +5217,17 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
     PW_GS_SHOW_RESOLUTION="${PW_ADD_SETTINGS_GS[0]}"
     PW_GS_INTERNAL_RESOLUTION="${PW_ADD_SETTINGS_GS[1]//','/'.'}"
     PW_GS_FRAME_LIMIT="${PW_ADD_SETTINGS_GS[2]}"
-    PW_GS_MESA_VK_WSI_PRESENT_MODE="${PW_ADD_SETTINGS_GS[3]}"
-    PW_GS_SCALER_MODE="${PW_ADD_SETTINGS_GS[4]}"
-    PW_GS_FILTER_MODE="${PW_ADD_SETTINGS_GS[5]}"
-    PW_GS_UPSCALE_SHARPNESS="${PW_ADD_SETTINGS_GS[6]}"
-    PW_GS_MAX_SCALE_FACTOR="${PW_ADD_SETTINGS_GS[7]//','/'.'}"
-    PW_GS_MOUSE_SENSITIVITY="${PW_ADD_SETTINGS_GS[8]//','/'.'}"
-    PW_GS_SDR_CONTENT_NITS="${PW_ADD_SETTINGS_GS[9]}"
-    PW_GS_ITM_SDR_NITS="${PW_ADD_SETTINGS_GS[10]}"
-    PW_GS_ITM_TARGET_NITS="${PW_ADD_SETTINGS_GS[11]}"
+    PW_GS_SCALER_MODE="${PW_ADD_SETTINGS_GS[3]}"
+    PW_GS_FILTER_MODE="${PW_ADD_SETTINGS_GS[4]}"
+    PW_GS_UPSCALE_SHARPNESS="${PW_ADD_SETTINGS_GS[5]}"
+    PW_GS_MAX_SCALE_FACTOR="${PW_ADD_SETTINGS_GS[6]//','/'.'}"
+    PW_GS_MOUSE_SENSITIVITY="${PW_ADD_SETTINGS_GS[7]//','/'.'}"
+    PW_GS_SDR_CONTENT_NITS="${PW_ADD_SETTINGS_GS[8]}"
+    PW_GS_ITM_SDR_NITS="${PW_ADD_SETTINGS_GS[9]}"
+    PW_GS_ITM_TARGET_NITS="${PW_ADD_SETTINGS_GS[10]}"
 
     edit_db_from_gui ${PW_GS_LIST[@]} PW_GAMESCOPE PW_GS_SHOW_RESOLUTION PW_GS_INTERNAL_RESOLUTION \
-    PW_GS_FRAME_LIMIT PW_GS_MESA_VK_WSI_PRESENT_MODE PW_GS_SCALER_MODE  PW_GS_FILTER_MODE \
+    PW_GS_FRAME_LIMIT PW_GS_SCALER_MODE PW_GS_FILTER_MODE \
     PW_GS_UPSCALE_SHARPNESS PW_GS_MAX_SCALE_FACTOR PW_GS_MOUSE_SENSITIVITY \
     PW_GS_SDR_CONTENT_NITS PW_GS_ITM_SDR_NITS PW_GS_ITM_TARGET_NITS
 
@@ -5272,8 +5309,8 @@ gui_userconf () {
     --field="${translations[Choose a graphics card to run the game]}!${translations[Select which video card will be used to run the game (used for all running games and programs in PortProton)]} :CB" "$(combobox_fix --disabled "$GPU_VAR" "$GET_GPU_NAMES")" \
     --field="${translations[Choice wine audio driver]}!${translations[Fixes sound popling if choice alsa]} :CB" "$(combobox_fix --disabled "$SOUND_DRIVER_VAR" "alsa!oss!pulse")" \
     --field="${translations[Choice gui themes]}!${translations[Allows you to select a theme for PortProton]} :CB" "$(combobox_fix "$GUI_THEME" "default!compact!classic")" \
-    --field="${translations[Time display]}!${translations[Displays time spent in an application or game]} :CB" "$(combobox_fix "$DESKTOP_WITH_TIME" "enabled!disabled")" \
-    --field="${translations[Sort shortcuts by time]}!${translations[This setting sorts the shortcuts in the main menu depending on the time spent in the application or game]} :CB" "$(combobox_fix "$SORT_WITH_TIME" "enabled!disabled")" \
+    --field="${translations[Time display]}!${translations[Displays time spent in an application or game]} :CB" "$(combobox_fix --disabled "$DESKTOP_WITH_TIME" "enabled")" \
+    --field="${translations[Sort shortcuts by time]}!${translations[This setting sorts the shortcuts in the main menu depending on the time spent in the application or game]} :CB" "$(combobox_fix --disabled "$SORT_WITH_TIME" "enabled")" \
     1> "${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb" 2>/dev/null &
 
     "${pw_yad}" --key=$KEY_USERCONF_GUI --paned --sensitive \
@@ -5344,8 +5381,11 @@ resize_png () {
         local RESIZE_TO="$3"
     fi
 
-    [[ -f "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png" ]] && return 0
-
+    if [[ -f "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png" ]] \
+    || [[ ! -f "${RESIZE_FILE}" ]]
+    then
+        return 0
+    fi
     try_remove_file "${PORT_WINE_PATH}/data/img/launcher.png"
     try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
 
@@ -5911,12 +5951,10 @@ portwine_start_debug () {
     portwine_launch &
     sleep 3
     pw_stop_progress_bar_cover
-    unset PW_TIMER
+    local PW_TIMER=0
     while read -r line || [[ -n $(pgrep -a yad | grep "yad_gui_pp --text-info --tail --button="STOP"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 --title="DEBUG"" | awk '{print $1}') ]] ; do
             sleep 0.005
-            if [[ -n "${line}" ]] && [[ -z "$(echo "${line}" | grep -i "kerberos")" ]] \
-                                    && [[ -z "$(echo "${line}" | grep -i "ntlm")" ]]
-            then
+            if [[ -n "${line}" ]] && ! echo "${line}" | grep -qi "kerberos\|ntlm" ; then
                 echo "# ${line}"
             fi
             if [[ "${PW_TIMER}" != 1 ]] ; then
