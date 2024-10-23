@@ -38,6 +38,18 @@ print_wrapped () {
 }
 export -f print_wrapped
 
+make_abbreviation () {
+    local words new_word i
+    words=($1)
+    # Создаем новое слово, состоящее из начальных букв слов
+    new_word="${words[0]:0:1}"
+    for ((i=1 ; i<${#words[@]} ; i++)) ; do
+        new_word+="${words[$i]:0:1}"
+    done
+    echo "$new_word"
+}
+export -f make_abbreviation
+
 check_variables () { [[ -z ${!1} ]] && export $1="$2" ;}
 
 add_to_var () {
@@ -2304,25 +2316,25 @@ pw_create_gui_png () {
         export name_desktop_png="bat"
         return 0
     fi
-
     if [[ -z "$PORTPROTON_NAME" ]] \
+    || [[ -z "$FILE_DESCRIPTION" ]] \
     || [[ "$PW_NO_RESTART_PPDB" == "1" ]]
     then
         if [[ -n "${PORTWINE_CREATE_SHORTCUT_NAME}" ]] ; then
             PORTPROTON_NAME="${PORTWINE_CREATE_SHORTCUT_NAME}"
         else
             if command -v exiftool &>/dev/null ; then
-                if ! PW_PRODUCTNAME=$(timeout 3 exiftool -ProductName "${portwine_exe}" 2>/dev/null | sed -n 's/^Product Name\s*:\s*//p') ; then
+                if timeout 3 exiftool "$portwine_exe" &> "${PW_TMPFS_PATH}/exiftool.tmp" ; then
+                    PW_PRODUCTNAME=$(sed -n 's/^Product Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
+                    FILE_DESCRIPTION=$(sed -n 's/^File Description\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
+                else
                     print_error "exiftool - broken!"
-                    if [[ -n "$PW_DEBUG" ]] ; then
-                        debug_timer --start
-                        timeout 5 exiftool -ProductName "${portwine_exe}"
-                        debug_timer --end "exiftool"
-                    fi
                 fi
             else
                 print_warning "use portable exiftool"
-                PW_PRODUCTNAME=$(env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" -ProductName "${portwine_exe}" | sed -n 's/^Product Name\s*:\s*//p')
+                env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" "$portwine_exe" &> "${PW_TMPFS_PATH}/exiftool.tmp"
+                PW_PRODUCTNAME=$(sed -n 's/^Product Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
+                FILE_DESCRIPTION=$(sed -n 's/^File Description\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
             fi
 
             if [[ "$PW_PRODUCTNAME" =~ (Launcher|RU) ]]
@@ -2341,7 +2353,7 @@ pw_create_gui_png () {
 
         PORTPROTON_NAME="$(echo "${PORTPROTON_NAME}" | sed "s/\`//g" | sed "s/\"//g" | sed "s/'//g" | sed "s/\!//g")"
         export PORTPROTON_NAME
-        edit_db_from_gui PORTPROTON_NAME
+        edit_db_from_gui PORTPROTON_NAME FILE_DESCRIPTION
     fi
 
     resize_png "$portwine_exe" "${PORTPROTON_NAME}" "128"
@@ -5398,11 +5410,6 @@ resize_png () {
         && [[ "$ALPINE_FP" != "1" ]]
         then
             print_error "exe-thumbnailer - broken!"
-            if [[ -n "$PW_DEBUG" ]] ; then
-                debug_timer --start
-                timeout 5 exe-thumbnailer --force-resize -s "$RESIZE_TO" "$(readlink -f "${RESIZE_FILE}")" "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png"
-                debug_timer --end "exe-thumbnailer"
-            fi
         fi
     else
         print_warning "use portable exe-thumbnailer"
@@ -5439,12 +5446,9 @@ portwine_create_shortcut () {
         done
     fi
     if [[ -z $name_desktop ]] ; then
-        if [[ ${PORTPROTON_NAME^^} =~ ${PORTWINE_DB^^} ]] \
-        && [[ ${PORTPROTON_NAME^^} != "${PORTWINE_DB^^}" ]]
-        then
-            name_desktop="$PORTPROTON_NAME"
-        else
-            name_desktop="$PORTWINE_DB_NEW"
+        if [[ -n $PW_SHORTCUT_PROXY ]]
+        then name_desktop="$PW_SHORTCUT_PROXY"
+        else name_desktop="$PORTWINE_DB"
         fi
     fi
     export name_desktop
@@ -5622,11 +5626,6 @@ pw_auto_create_shortcut () {
                 link_cmd=$(sed -n 's/^Command Line Arguments\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
             else
                 print_error "exiftool - broken!"
-                if [[ -n "$PW_DEBUG" ]] ; then
-                    debug_timer --start
-                    timeout 5 exiftool "$link_file"
-                    debug_timer --end "exiftool"
-                fi
             fi
         else
             print_warning "use portable exiftool"

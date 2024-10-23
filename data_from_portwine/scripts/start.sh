@@ -502,8 +502,17 @@ if [[ -f "${portwine_exe}" ]] ; then
 
         [[ $DESKTOP_WITH_TIME == enabled ]] && search_desktop_file
         if [[ -z "${PW_COMMENT_DB}" ]] ; then
-            if [[ ${PORTPROTON_NAME^^} =~ ${PORTWINE_DB^^} ]] && [[ ${PORTPROTON_NAME^^} != "${PORTWINE_DB^^}" ]] ; then
-                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTPROTON_NAME}" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
+            unset PW_SHORTCUT_PROXY
+            FILE_DESCRIPTION_ABBR=$(make_abbreviation "$FILE_DESCRIPTION")
+            PORTPROTON_NAME_ABBR=$(make_abbreviation "$PORTPROTON_NAME")
+            if [[ ${PORTPROTON_NAME^^} =~ ${PORTWINE_DB^^} ]] && [[ ${PORTPROTON_NAME^^} != "${PORTWINE_DB^^}" ]] \
+            || (( ${#PORTPROTON_NAME_ABBR} > 2 )) && [[ ${PORTPROTON_NAME_ABBR^^} =~ ${PORTWINE_DB^^} ]] ; then
+                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$PORTPROTON_NAME" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
+                PW_SHORTCUT_PROXY="$PORTPROTON_NAME"
+            elif [[ ${FILE_DESCRIPTION^^} =~ ${PORTWINE_DB^^} ]] && [[ ${FILE_DESCRIPTION^^} != "${PORTWINE_DB^^}" ]] \
+            || (( ${#FILE_DESCRIPTION_ABBR} > 2 )) && [[ ${FILE_DESCRIPTION_ABBR^^} =~ ${PORTWINE_DB^^} ]] ; then
+                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$FILE_DESCRIPTION" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
+                PW_SHORTCUT_PROXY="$FILE_DESCRIPTION"
             else
                 unset PORTWINE_DB_PROXY PORTWINE_DB_NEW
                 PORTWINE_DB="${PORTWINE_DB//_/ }"
@@ -511,7 +520,7 @@ if [[ -f "${portwine_exe}" ]] ; then
                     PORTWINE_DB_UPPER="${PORTWINE_DB^^}"
                     PORTWINE_DB="${PORTWINE_DB_UPPER:0:1}${PORTWINE_DB:1}"
                 fi
-                if (( ${#PORTWINE_DB} > 2 )) ; then
+                if (( ${#PORTWINE_DB} > 3 )) ; then
                     for ((i=0 ; i<${#PORTWINE_DB} ; i++)) ; do
                         if [[ ${PORTWINE_DB:i:2} =~ ([a-z][A-Z]|[a-z][0-9]) ]] \
                         && [[ ! ${PORTWINE_DB:i:3} =~ ([a-z][A-Z]" "|[a-z][0-9]" ") ]] ; then
@@ -535,7 +544,8 @@ if [[ -f "${portwine_exe}" ]] ; then
                 else
                     PORTWINE_DB_NEW="$PORTWINE_DB"
                 fi
-                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTWINE_DB_NEW}" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
+                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$PORTWINE_DB_NEW" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
+                PW_SHORTCUT_PROXY="$PORTWINE_DB_NEW"
             fi
         else
             PW_COMMENT_DB="$PW_COMMENT_DB$(seconds_to_time "$TIME_CURRENT")"
