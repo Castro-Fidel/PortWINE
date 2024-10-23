@@ -2,7 +2,7 @@
 # Author: linux-gaming.ru
 # shellcheck disable=SC2317
 export INSTALLING_PORT=1
-# shellcheck source=./start.sh
+# shellcheck source=/dev/null
 source "$(dirname "$(readlink -f "$0")")/start.sh"
 
 if check_flatpak
