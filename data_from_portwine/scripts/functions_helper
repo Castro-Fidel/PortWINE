@@ -908,30 +908,31 @@ search_desktop_file () {
 create_pw_comment () {
     search_desktop_file
     unset DESKTOP_NAME_FILE PW_SHORTCUT_PROXY
-    if [[ -n ${DESKTOP_FILES_ARRAY[0]} ]] ; then
-        for df in "${DESKTOP_FILES_ARRAY[@]}" ; do
-            df="${df//"$PORT_WINE_PATH/"/}"
-            DESKTOP_NAME_FILE="${df//.desktop/}"
-        done
+    if [[ -n $DESKTOP_NAME_YAD ]] ; then
+        DESKTOP_NAME_FILE="${DESKTOP_NAME_YAD//.desktop/}"
+        unset DESKTOP_NAME_YAD
+    elif [[ -n $name_desktop ]] ; then
+        DESKTOP_NAME_FILE="$name_desktop"
+        unset name_desktop
+    elif [[ -n ${DESKTOP_FILES_ARRAY[0]} ]] \
+    && [[ -z ${DESKTOP_FILES_ARRAY[1]} ]] ; then
+        DESKTOP_NAME_FILE="${DESKTOP_FILES_ARRAY[0]//"$PORT_WINE_PATH/"/}"
+        DESKTOP_NAME_FILE="${DESKTOP_NAME_FILE//.desktop/}"
     fi
     if [[ -z "${PW_COMMENT_DB}" ]] ; then
-        [[ $FILE_DESCRIPTION != "" ]] && FILE_DESCRIPTION_ABBR=$(make_abbreviation "$FILE_DESCRIPTION")
-        [[ $PORTPROTON_NAME != "" ]] && PORTPROTON_NAME_ABBR=$(make_abbreviation "$PORTPROTON_NAME")
-        if [[ -n $DESKTOP_NAME_FILE ]] && [[ $DESKTOP_NAME_FILE != "" ]] ; then
+        [[ -n $PORTPROTON_NAME ]] && PORTPROTON_NAME_ABBR=$(make_abbreviation "$PORTPROTON_NAME")
+        [[ -n $FILE_DESCRIPTION ]] && FILE_DESCRIPTION_ABBR=$(make_abbreviation "$FILE_DESCRIPTION")
+        if [[ -n $DESKTOP_NAME_FILE ]] ; then
             PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$DESKTOP_NAME_FILE" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
             PW_SHORTCUT_PROXY="$DESKTOP_NAME_FILE"
-        elif [[ ${PORTPROTON_NAME^^} =~ ${PORTWINE_DB^^} ]] && [[ ${PORTPROTON_NAME^^} != "${PORTWINE_DB^^}" ]] ; then
-            PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$PORTPROTON_NAME" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
-            PW_SHORTCUT_PROXY="$PORTPROTON_NAME"
-        elif (( ${#PORTPROTON_NAME_ABBR} > 2 )) && [[ ${PORTPROTON_NAME_ABBR^^} =~ ${PORTWINE_DB^^} ]] ; then
-            PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$PORTPROTON_NAME" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
-            PW_SHORTCUT_PROXY="$PORTPROTON_NAME"
-        elif [[ ${FILE_DESCRIPTION^^} =~ ${PORTWINE_DB^^} ]] && [[ ${FILE_DESCRIPTION^^} != "${PORTWINE_DB^^}" ]] ; then
-            PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$FILE_DESCRIPTION" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
-            PW_SHORTCUT_PROXY="$FILE_DESCRIPTION"
-        elif (( ${#FILE_DESCRIPTION_ABBR} > 2 )) && [[ ${FILE_DESCRIPTION_ABBR^^} =~ ${PORTWINE_DB^^} ]] ; then
-            PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$FILE_DESCRIPTION" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
-            PW_SHORTCUT_PROXY="$FILE_DESCRIPTION"
+        elif [[ ${PORTPROTON_NAME^^} =~ ${PORTWINE_DB^^} && ${PORTPROTON_NAME} != "${PORTWINE_DB}" ]] \
+        || [[ ${#PORTPROTON_NAME_ABBR} -gt 2 && ${PORTPROTON_NAME_ABBR^^} =~ ${PORTWINE_DB^^} ]] ; then
+                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$PORTPROTON_NAME" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
+                PW_SHORTCUT_PROXY="$PORTPROTON_NAME"
+        elif [[ ${FILE_DESCRIPTION^^} =~ ${PORTWINE_DB^^} && ${FILE_DESCRIPTION} != "${PORTWINE_DB}" ]] \
+        || [[ ${#FILE_DESCRIPTION_ABBR} -gt 2 && ${FILE_DESCRIPTION_ABBR^^} =~ ${PORTWINE_DB^^} ]] ; then
+                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$FILE_DESCRIPTION" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
+                PW_SHORTCUT_PROXY="$FILE_DESCRIPTION"
         else
             unset PORTWINE_DB_PROXY PORTWINE_DB_NEW
             PORTWINE_DB="${PORTWINE_DB//_/ }"
@@ -5588,11 +5589,12 @@ portwine_create_shortcut () {
                 for rm in "${DESKTOP_FILES_ARRAY[@]}" ; do
                     rm -f "$rm"
                 done
-                [[ $name_desktop == "" ]] && create_pw_comment && export name_desktop="$PW_SHORTCUT_PROXY"
             fi
         else
             try_remove_file "${PORT_WINE_PATH}/${name_desktop}.desktop"
         fi
+
+        [[ -z $name_desktop ]] && unset name_desktop && export name_desktop="$DESKTOP_NAME_FILE"
 
         echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
         echo "Name=${name_desktop}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
@@ -6178,6 +6180,7 @@ button_click () {
                     (( count++ ))
                 done
             fi
+            export DESKTOP_NAME_YAD="${PW_YAD_SET//"$PORT_WINE_PATH/"/}"
             if check_flatpak
             then PW_EXEC_FROM_DESKTOP="$(grep Exec "$PW_YAD_SET" | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
             else PW_EXEC_FROM_DESKTOP="$(grep Exec "$PW_YAD_SET" | head -n 1 | awk -F"=env " '{print $2}')"
