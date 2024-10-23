@@ -875,6 +875,7 @@ search_desktop_file () {
 
 # Конвертация секунд в дни, часы, минуты
 seconds_to_time () {
+    [[ ! $DESKTOP_WITH_TIME == enabled ]] && return 0
     [[ -z $1 ]] && return 0
     local seconds days hours minutes
     seconds=$1
@@ -5434,22 +5435,9 @@ portwine_create_shortcut () {
     [[ -z "${PW_SHORTCUT_DESKTOP}" ]] && PW_SHORTCUT_DESKTOP="TRUE"
     [[ -z "${PW_SHORTCUT_STEAM}" ]] && PW_SHORTCUT_STEAM="FALSE"
 
-    unset name_desktop
-    search_desktop_file
-    if [[ -n ${DESKTOP_FILES_ARRAY[0]} ]] ; then
-        for df in "${DESKTOP_FILES_ARRAY[@]}" ; do
-            df="${df//"$PORT_WINE_PATH/"/}"
-            df="${df//.desktop/}"
-            if [[ ${PORTWINE_DB^^} =~ ${df^^} ]] && [[ ${PORTWINE_DB^^} != ${df^^} ]]
-            then name_desktop="$df"
-            fi
-        done
-    fi
-    if [[ -z $name_desktop ]] ; then
-        if [[ -n $PW_SHORTCUT_PROXY ]]
-        then name_desktop="$PW_SHORTCUT_PROXY"
-        else name_desktop="$PORTWINE_DB"
-        fi
+    if [[ -n $PW_SHORTCUT_PROXY ]]
+    then name_desktop="$PW_SHORTCUT_PROXY"
+    else name_desktop="$PORTWINE_DB"
     fi
     export name_desktop
 
@@ -5499,11 +5487,12 @@ portwine_create_shortcut () {
 
         edit_user_conf_from_gui PW_SHORTCUT_MENU PW_SHORTCUT_DESKTOP PW_SHORTCUT_STEAM
 
-        if [[ -n ${DESKTOP_FILES_ARRAY[0]} ]] && [[ $name_desktop != $df ]] || [[ -n ${DESKTOP_FILES_ARRAY[1]} ]] ; then
+        if [[ -n ${DESKTOP_FILES_ARRAY[0]} ]] && [[ $name_desktop != $DESKTOP_NAME_FILE ]] || [[ -n ${DESKTOP_FILES_ARRAY[1]} ]] ; then
             if yad_question "${translations[A higher number of duplicate desktop files were found for this file.\\nShould I delete the extra ones or not?]}" ; then
                 for rm in "${DESKTOP_FILES_ARRAY[@]}" ; do
                     rm -f "$rm"
                 done
+                name_desktop="$PW_SHORTCUT_PROXY"
             fi
         else
             try_remove_file "${PORT_WINE_PATH}/${name_desktop}.desktop"
