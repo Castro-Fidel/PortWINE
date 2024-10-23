@@ -96,9 +96,7 @@ unset CHK_SYMLINK_FILE PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PATH_T
 unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD PW_WINE_CPU_TOPOLOGY
 unset MANGOHUD_CONFIG FPS_LIMIT PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME PORTWINE_CREATE_SHORTCUT_NAME MIRROR
 unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NOSTSTDIR RADV_DEBUG PW_NO_AUTO_CREATE_SHORTCUT
-unset PW_NAME_D_ICON PW_ICON_PATH PW_GAME_TIME PW_ALL_DF PW_AMOUNT_NEW_DESKTOP PW_AMOUNT_OLD_DESKTOP PW_DESKTOP_FILES
-unset AI_TYPE AI_NAME AI_IMAGE AI_INFO AI_FILE_ARRAY AI_TRUE_FILE AI_FILE_UNSORTED AI_FILE_SORTED PW_GENERATE_BUTTONS
-unset PW_DESKTOP_FILES_REGEX PW_TERM PW_EXEC_FROM_DESKTOP
+unset PW_TERM PW_EXEC_FROM_DESKTOP
 
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 rm -f "$PORT_WINE_TMP_PATH"/*{exe,msi,tar}*
@@ -502,16 +500,7 @@ if [[ -f "${portwine_exe}" ]] ; then
             PW_SHORTCUT="${translations[DELETE SHORTCUT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Delete shortcut for select file...]}:98"
         fi
 
-        [[ $DESKTOP_WITH_TIME == enabled ]] && search_desktop_file
-        if [[ -z "${PW_COMMENT_DB}" ]] ; then
-            if [[ -n "${PORTPROTON_NAME}" ]] ; then
-                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTPROTON_NAME}" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
-            else
-                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTWINE_DB}" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
-            fi
-        else
-            PW_COMMENT_DB="$PW_COMMENT_DB$(seconds_to_time "$TIME_CURRENT")"
-        fi
+        create_pw_comment
 
         export KEY_START="$RANDOM"
         if [[ "${PW_GUI_START}" == "NOTEBOOK" ]] ; then
@@ -617,6 +606,8 @@ else
         gui_userconf
     fi
 
+    unset PW_NAME_D_ICON PW_ICON_PATH PW_GAME_TIME PW_ALL_DF PW_AMOUNT_NEW_DESKTOP PW_AMOUNT_OLD_DESKTOP PW_DESKTOP_FILES
+    unset AI_TYPE AI_NAME AI_IMAGE AI_INFO AI_FILE_ARRAY AI_TRUE_FILE AI_FILE_UNSORTED AI_FILE_SORTED PW_DESKTOP_FILES_REGEX
     # Поиск .desktop файлов
     AMOUNT_GENERATE_BUTTONS="0"
     for desktop_file in "$PORT_WINE_PATH"/* ; do
@@ -636,20 +627,30 @@ else
                     [[ $line =~ ^#NEW_DESKTOP ]] && NEW_DESKTOP=1
                 done < "$desktop_file"
                 PW_ALL_DF["$AMOUNT_GENERATE_BUTTONS"]="$desktop_file_new"
-                if [[ $NEW_DESKTOP == 1 ]] && [[ $SORT_WITH_TIME == enabled ]] ; then
+                if [[ $SORT_WITH_TIME == enabled ]] && [[ $NEW_DESKTOP == 1 ]] ; then
                     unset NEW_DESKTOP
                     sed -i '/^#NEW_DESKTOP/d' "$desktop_file"
                     PW_AMOUNT_NEW_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
                 else
                     PW_AMOUNT_OLD_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
                 fi
+                # Для конвертация .desktop файлов flatpak в натив и наоборот
+                if [[ ${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]} =~ ^"Exec=flatpak run ru.linux_gaming.PortProton " ]] ; then
+                    PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]//Exec=flatpak run ru.linux_gaming.PortProton /}
+                    NEED_FIXES_DESKTOP=1
+                elif [[ ${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]} =~ ^"Exec=env \"$PORT_SCRIPTS_PATH/start.sh\" " ]] ; then
+                    PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]//Exec=env \"$PORT_SCRIPTS_PATH\/start.sh\" /}
+                    NEED_FIXES_DESKTOP=1
+                fi
                 # Для фикса битых #Time=
                 if [[ ! ${PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]} =~ [0-9]+ ]] \
-                || (( ${PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]} >= 999999999 )) ; then
+                || (( ${PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]} >= 999999999 )) \
+                || [[ $NEED_FIXES_DESKTOP == 1 ]]
+                then
                     portwine_exe=${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]//\"/}
                     search_desktop_file
-                    unset portwine_exe
-                    PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=${TIME_CURRENT_ARRAY[0]}
+                    unset portwine_exe NEED_FIXES_DESKTOP
+                    PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=$TIME_CURRENT
                 fi
                 (( AMOUNT_GENERATE_BUTTONS++ ))
             fi
@@ -658,11 +659,10 @@ else
 
     # Переопределение элементов в массивах в зависимости от PW_GAME_TIME, от большего значения к меньшему.
     # 10 миллисекунд на 40 .desktop файлов, работает быстро
-    if [[ $SORT_WITH_TIME == enabled ]] ; then
-        for i in "${!PW_GAME_TIME[@]}" ; do
-            for j in "${!PW_GAME_TIME[@]}" ; do
-                if (( ${PW_GAME_TIME[$i]} > ${PW_GAME_TIME[$j]} )) \
-                && [[ ! ${PW_AMOUNT_NEW_DESKTOP[*]} =~ $j ]] ; then
+    if [[ $SORT_WITH_TIME == enabled ]] && [[ -n ${PW_GAME_TIME[1]} ]] ; then
+        for i in "${PW_AMOUNT_OLD_DESKTOP[@]}" ; do
+            for j in "${PW_AMOUNT_OLD_DESKTOP[@]}" ; do
+                if (( ${PW_GAME_TIME[$i]} > ${PW_GAME_TIME[$j]} )) ; then
                     tmp_0=${PW_GAME_TIME[$i]}
                     tmp_1=${PW_ALL_DF[$i]}
                     tmp_2=${PW_NAME_D_ICON[$i]}
@@ -685,7 +685,7 @@ else
     # Генерация .desktop баттанов для главного меню
     IFS=$'\n'
     PW_GENERATE_BUTTONS="--field=   ${translations[Create shortcut...]}!${PW_GUI_ICON_PATH}/find_48.svg!:FBTNR%@bash -c \"button_click --normal pw_find_exe\"%"
-    for dp in ${PW_AMOUNT_NEW_DESKTOP[@]} ${PW_AMOUNT_OLD_DESKTOP[@]} ; do
+    for dp in "${PW_AMOUNT_NEW_DESKTOP[@]}" "${PW_AMOUNT_OLD_DESKTOP[@]}" ; do
         PW_NAME_D_ICON_48="${PW_ICON_PATH[dp]%.png}_48"
         PW_NAME_D_ICON_128="${PW_ICON_PATH[dp]%.png}"
         PW_NAME_D_ICON_NEW="${PW_NAME_D_ICON[dp]//\"/}"
@@ -725,7 +725,6 @@ else
     --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
     --align-buttons --scroll --separator=" " ${PW_GENERATE_BUTTONS} 2>/dev/null &
     IFS="$orig_IFS"
-    unset PW_GENERATE_BUTTONS
 
     "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[3]}" --form --columns=3 --align-buttons --separator=";" --homogeneous-column \
     --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
