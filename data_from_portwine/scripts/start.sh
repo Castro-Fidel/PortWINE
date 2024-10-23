@@ -437,9 +437,6 @@ if [[ -d "${PORT_WINE_PATH}/data/prefixes/" ]] ; then
 fi
 
 unset DIST_ADD_TO_GUI
-if command -v wine &>/dev/null
-then DIST_ADD_TO_GUI="!USE_SYSTEM_WINE"
-fi
 if [[ -d "${PORT_WINE_PATH}/data/dist/" ]] ; then
     for DAIG in "${PORT_WINE_PATH}"/data/dist/* ; do
         if [[ "${DAIG//"${PORT_WINE_PATH}/data/dist/"/}" != "${PW_WINE_LG_VER}" ]] \
@@ -449,6 +446,9 @@ if [[ -d "${PORT_WINE_PATH}/data/dist/" ]] ; then
             DIST_ADD_TO_GUI="${DIST_ADD_TO_GUI}!${DAIG//"${PORT_WINE_PATH}/data/dist/"/}"
         fi
     done
+fi
+if command -v wine &>/dev/null
+then DIST_ADD_TO_GUI+="!${translations[USE_SYSTEM_WINE]}"
 fi
 
 SORT_OPENGL="${translations[WineD3D OpenGL (For video cards without Vulkan)]}"
@@ -471,14 +471,14 @@ esac
 
 if [[ $PW_WINE_USE == PROTON_LG ]] ; then
     PW_WINE_USE="${PW_PROTON_LG_VER}"
-    PW_DEFAULT_WINE_USE="${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
+    PW_DEFAULT_WINE_USE="${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!${translations[GET-OTHER-WINE]}"
 elif [[ $PW_WINE_USE == WINE_*_LG ]] \
 || [[ $PW_WINE_USE == WINE_LG ]]
 then
     PW_WINE_USE="${PW_WINE_LG_VER}"
-    PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
+    PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}${DIST_ADD_TO_GUI}!${translations[GET-OTHER-WINE]}"
 else
-    PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!GET-OTHER-WINE"
+    PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!${translations[GET-OTHER-WINE]}"
 fi
 
 if [[ -z "${PORTWINE_DB_FILE}" ]] ; then
