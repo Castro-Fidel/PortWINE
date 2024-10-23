@@ -5802,7 +5802,7 @@ pw_prefix_manager () {
         try_remove_file  "${PW_TMPFS_PATH}/dll_list_tmp"
         while read PW_BOOL_IN_DLL_LIST ; do
             if [[ -z $(echo "${PW_BOOL_IN_DLL_LIST}" | grep -E 'd3d|directx9|dont_use|dxvk|vkd3d|galliumnine|faudio1|Foundation') ]] ; then
-                if grep "^$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{print $1}')$" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
+                if grep ^$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{print $1}')$ "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
                     echo -e "true\n$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{print $1}')\n$(echo ${PW_BOOL_IN_DLL_LIST} | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PW_TMPFS_PATH}/dll_list_tmp"
                 else
                     echo -e "false\n$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{print $1}')\n$(echo ${PW_BOOL_IN_DLL_LIST} | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PW_TMPFS_PATH}/dll_list_tmp"
@@ -5812,7 +5812,7 @@ pw_prefix_manager () {
         try_remove_file  "${PW_TMPFS_PATH}/fonts_list_tmp"
         while read PW_BOOL_IN_FONTS_LIST ; do
             if [[ -z $(echo "${PW_BOOL_IN_FONTS_LIST}" | grep -E 'dont_use') ]] ; then
-                if grep "^$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')$" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
+                if grep ^$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')$ "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
                     echo -e "true\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PW_TMPFS_PATH}/fonts_list_tmp"
                 else
                     echo -e "false\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PW_TMPFS_PATH}/fonts_list_tmp"
@@ -5822,7 +5822,7 @@ pw_prefix_manager () {
         try_remove_file  "${PW_TMPFS_PATH}/settings_list_tmp"
         while read PW_BOOL_IN_FONTS_LIST ; do
             if [[ -z $(echo "${PW_BOOL_IN_FONTS_LIST}" | grep -E 'vista|alldlls|autostart_|bad|good|win|videomemory|vd=|isolate_home') ]] ; then
-                if grep "^$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')$" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
+                if grep ^$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')$ "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
                     echo -e "true\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PW_TMPFS_PATH}/settings_list_tmp"
                 else
                     echo -e "false\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PW_TMPFS_PATH}/settings_list_tmp"
@@ -5870,8 +5870,7 @@ pw_prefix_manager () {
         case "$YAD_STATUS" in
             1|252)
                 print_info "Nothing to do. Restarting PortProton..."
-                stop_portwine &
-                restart_pp
+                stop_portwine --restart
                 ;;
             0)
                 WT_FORCE=""
@@ -5903,8 +5902,7 @@ pw_prefix_manager () {
             gui_prefix_manager
         else
             print_info "Nothing to do. Restarting PortProton..."
-            stop_portwine &
-            restart_pp
+            stop_portwine --restart
         fi
     }
     gui_prefix_manager
@@ -5920,7 +5918,7 @@ portwine_start_debug () {
         "${translations[It is recommended to run games in OpenGL (low performance possible)!]}"
     fi
     echo "${translations[PortProton was launched in creation mode PortProton.log and it is successfully stored in the root directory of the port]}" > "${PORT_WINE_PATH}/PortProton.log"
-    echo "${translations[To diagnose the problem, copy ALL of the log to discord server: https://discord.gg/FTaheP99wE]}" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "${translations[To diagnose the problem, copy ALL of the log to:]} https://linux-gaming.ru/c/ppsup/12" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "-------------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "PortWINE version:" >> "${PORT_WINE_PATH}/PortProton.log"
     read install_ver < "${PORT_WINE_TMP_PATH}/PortProton_ver"
