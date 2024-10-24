@@ -267,7 +267,7 @@ EOF
                     while [[ ! $line =~ msgid ]] ; do
                         msgstr+=$line
                         read -r line
-                        if [[ $line == "" ]] ; then
+                        if [[ -z $line ]] ; then
                             break
                         fi
                     done
@@ -756,8 +756,8 @@ background_pid () {
                 export bg_pid"${arg3}"="$PID" ;;
             --end)
                 PID=$(get_bg_pid bg_pid"${arg3}")
-                [[ $PID == "" ]] && return 1
-                wait "$PID" && return 0 ;;
+                [[ -z $PID ]] && return 1
+                wait "$PID" 2>/dev/null && return 0 ;;
         esac
     fi
 }
@@ -927,12 +927,12 @@ create_pw_comment () {
             PW_SHORTCUT_PROXY="$DESKTOP_NAME_FILE"
         elif [[ ${PORTPROTON_NAME^^} =~ ${PORTWINE_DB^^} && ${PORTPROTON_NAME} != "${PORTWINE_DB}" ]] \
         || [[ ${#PORTPROTON_NAME_ABBR} -gt 2 && ${PORTPROTON_NAME_ABBR^^} =~ ${PORTWINE_DB^^} ]] ; then
-                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$PORTPROTON_NAME" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
-                PW_SHORTCUT_PROXY="$PORTPROTON_NAME"
+            PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$PORTPROTON_NAME" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
+            PW_SHORTCUT_PROXY="$PORTPROTON_NAME"
         elif [[ ${FILE_DESCRIPTION^^} =~ ${PORTWINE_DB^^} && ${FILE_DESCRIPTION} != "${PORTWINE_DB}" ]] \
         || [[ ${#FILE_DESCRIPTION_ABBR} -gt 2 && ${FILE_DESCRIPTION_ABBR^^} =~ ${PORTWINE_DB^^} ]] ; then
-                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$FILE_DESCRIPTION" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
-                PW_SHORTCUT_PROXY="$FILE_DESCRIPTION"
+            PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$FILE_DESCRIPTION" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
+            PW_SHORTCUT_PROXY="$FILE_DESCRIPTION"
         else
             unset PORTWINE_DB_PROXY PORTWINE_DB_NEW
             PORTWINE_DB="${PORTWINE_DB//_/ }"
@@ -1016,10 +1016,10 @@ seconds_to_time () {
     if [[ $minutes =~ ^0$ ]] ; then
         hours=${hours//" ${translations[and]} "/}
         minutes=
-        if [[ $days == "" ]] || [[ $hours == "" ]] ; then
+        if [[ -z $days ]] || [[ -z $hours ]] ; then
             days=${days//","/}
         fi
-        if [[ $days == "" ]] && [[ $hours == "" ]] ; then
+        if [[ -z $days ]] && [[ -z $hours ]] ; then
             minutes="${translations[less than a minute]}"
         fi
     elif [[ $minutes =~ ^1$ ]] ; then
