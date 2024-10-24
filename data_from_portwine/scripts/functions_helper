@@ -297,10 +297,10 @@ EOF
             if [[ -z $msgstr ]] ; then
                 msgstr="$msgid"
             fi
-            if [[ $msgid =~ "\$" ]] ; then
-                msgid=${msgid//"\$"/\\$}
-                if [[ $msgstr =~ "\$%" ]] ; then
-                    msgstr=${msgstr//"\$"/\\$}
+            if [[ $msgid =~ \$ ]] ; then
+                msgid=${msgid//\$/\\$}
+                if [[ $msgstr =~ \$% ]] ; then
+                    msgstr=${msgstr//\$/\\$}
                 fi
             fi
             echo \["$msgid"\]="$msgstr" >> "${PW_CACHE_LANG_PATH}/$LANGUAGE"
@@ -1881,7 +1881,7 @@ check_dirs_and_files_in_pfx () {
 
         for drive_dir in "${MOUNT_DIRS[@]}" ; do
             if  mountpoint -q "$drive_dir" ; then
-                if ! realpath "${WINEPREFIX}/dosdevices"/*: | grep -w "$drive_dir$" &>/dev/null ; then
+                if ! realpath "${WINEPREFIX}/dosdevices"/*: | grep -w "$drive_dir"$ &>/dev/null ; then
                     drive_num=0
                     while [[ "$drive_num" -lt "${#DRIVES[@]}" ]] ; do
                         drive_path="${WINEPREFIX}/dosdevices/${DRIVES[$drive_num]}:"
@@ -1935,8 +1935,8 @@ pw_init_db () {
             # shellcheck source=/dev/null
             source "${PORTWINE_DB_FILE}"
             if echo "${portwine_exe}" | grep "/prefixes/" &>/dev/null ; then
-                if [[ -z $(ls "${PORT_WINE_PATH}/prefixes/" | grep -e "^${PW_PREFIX_NAME}$") ]] \
-                || [[ -z $(grep -e "^export PW_PREFIX_NAME=" "${PORTWINE_DB_FILE}" 2>/dev/null) ]]
+                if [[ -z $(ls "${PORT_WINE_PATH}/prefixes/" | grep -e ^"${PW_PREFIX_NAME}"$) ]] \
+                || [[ -z $(grep -e ^"export PW_PREFIX_NAME=" "${PORTWINE_DB_FILE}" 2>/dev/null) ]]
                 then
                     PW_PREFIX_NAME=$(echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
                     edit_db_from_gui PW_PREFIX_NAME
@@ -1975,8 +1975,8 @@ pw_init_db () {
                 try_copy_file "${PW_FIND_DB_FILE}" "${portwine_exe}".ppdb
                 PORTWINE_DB_FILE="${portwine_exe}".ppdb
                 if echo "${portwine_exe}" | grep "/prefixes/" &>/dev/null ; then
-                    if [[ -z $(ls "${PORT_WINE_PATH}/prefixes/" | grep -e "^${PW_PREFIX_NAME}$") ]] \
-                    || [[ -z $(grep -e "^export PW_PREFIX_NAME=" "${PORTWINE_DB_FILE}" 2>/dev/null) ]]
+                    if [[ -z $(ls "${PORT_WINE_PATH}/prefixes/" | grep -e ^"${PW_PREFIX_NAME}"$) ]] \
+                    || [[ -z $(grep -e ^"export PW_PREFIX_NAME=" "${PORTWINE_DB_FILE}" 2>/dev/null) ]]
                     then
                         PW_PREFIX_NAME=$(echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
                         edit_db_from_gui PW_PREFIX_NAME
@@ -2026,7 +2026,7 @@ pw_init_db () {
         fi
         if ls "${PATH_TO_GAME}"/*_Data/Resources/ 2>/dev/null | grep "unity" &>/dev/null \
         && [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] \
-        && [[ $(grep -c "^processor" /proc/cpuinfo) -gt "8" ]]
+        && [[ $(grep -c ^"processor" /proc/cpuinfo) -gt "8" ]]
         then
             export PW_WINE_CPU_TOPOLOGY="8:0,1,2,3,4,5,6,7"
             print_info "Automatic added fix for unity games: WINE_CPU_TOPOLOGY=8:0,1,2,3,4,5,6,7"
@@ -2356,7 +2356,7 @@ pw_skip_get_info () {
             export LOCALE_LIST
         fi
 
-        logical_cores=$(grep -c "^processor" /proc/cpuinfo)
+        logical_cores=$(grep -c ^"processor" /proc/cpuinfo)
         if [[ "${logical_cores}" -le "4" ]] ; then
             GET_LOGICAL_CORE="1!$(seq -s! 1 $(( logical_cores - 1 )))"
         else
@@ -5113,7 +5113,7 @@ gui_dgvoodoo2 () {
     1> "${PW_TMPFS_PATH}/tmp_yad_dgv2_set" 2>/dev/null &
     IFS="$orig_IFS"
 
-    DGVOODOO2_XRANDR="$(grep -e '[0-9]x' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}' | sort -rVu | grep "^[0-9]" | tr '\n' ' ')"
+    DGVOODOO2_XRANDR="$(grep -e '[0-9]x' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}' | sort -rVu | grep ^"[0-9]" | tr '\n' ' ')"
     for drop_low in ${DGVOODOO2_XRANDR} ; do
         if (( "${drop_low//x/}" > "1000000" )) ; then
             DGVOODOO2_XRANDR_NEW+="${drop_low}!"
@@ -5296,7 +5296,7 @@ gui_gamescope () {
     1> "${PW_TMPFS_PATH}/tmp_yad_gs_set" 2>/dev/null &
     IFS="$orig_IFS"
 
-    GAMESCOPE_XRANDR="$(grep -e '[0-9]x' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}' | sort -rVu | grep "^[0-9]" | tr '\n' ' ')"
+    GAMESCOPE_XRANDR="$(grep -e '[0-9]x' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}' | sort -rVu | grep ^"[0-9]" | tr '\n' ' ')"
     for drop_low in ${GAMESCOPE_XRANDR} ; do
         if (( "${drop_low//x/}" > "1000000" )) ; then
             GAMESCOPE_XRANDR_NEW+="${drop_low}!"
@@ -5810,30 +5810,30 @@ pw_prefix_manager () {
     gui_prefix_manager () {
         unset SET_FROM_PFX_MANAGER_TMP SET_FROM_PFX_MANAGER
         IFS=$'\n'
-        try_remove_file  "${PW_TMPFS_PATH}/dll_list_tmp"
-        while read PW_BOOL_IN_DLL_LIST ; do
-            if [[ -z $(echo "${PW_BOOL_IN_DLL_LIST}" | grep -E 'd3d|directx9|dont_use|dxvk|vkd3d|galliumnine|faudio1|Foundation') ]] ; then
-                if grep ^$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{print $1}')$ "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
-                    echo -e "true\n$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{print $1}')\n$(echo ${PW_BOOL_IN_DLL_LIST} | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PW_TMPFS_PATH}/dll_list_tmp"
+        try_remove_file "${PW_TMPFS_PATH}/dll_list_tmp"
+        while read -r PW_BOOL_IN_DLL_LIST ; do
+            if [[ ! ${PW_BOOL_IN_DLL_LIST} =~ (d3d|directx9|dont_use|dxvk|vkd3d|galliumnine|faudio1|Foundation) ]] ; then
+                if grep ^"$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{print $1}')"$ "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
+                    echo -e "true\n$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{print $1}')\n$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PW_TMPFS_PATH}/dll_list_tmp"
                 else
-                    echo -e "false\n$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{print $1}')\n$(echo ${PW_BOOL_IN_DLL_LIST} | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PW_TMPFS_PATH}/dll_list_tmp"
+                    echo -e "false\n$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{print $1}')\n$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PW_TMPFS_PATH}/dll_list_tmp"
                 fi
             fi
         done < "${PW_TMPFS_PATH}/dll_list"
-        try_remove_file  "${PW_TMPFS_PATH}/fonts_list_tmp"
-        while read PW_BOOL_IN_FONTS_LIST ; do
-            if [[ -z $(echo "${PW_BOOL_IN_FONTS_LIST}" | grep -E 'dont_use') ]] ; then
-                if grep ^$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')$ "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
+        try_remove_file "${PW_TMPFS_PATH}/fonts_list_tmp"
+        while read -r PW_BOOL_IN_FONTS_LIST ; do
+            if [[ ! ${PW_BOOL_IN_FONTS_LIST} =~ dont_use ]] ; then
+                if grep ^"$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')"$ "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
                     echo -e "true\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PW_TMPFS_PATH}/fonts_list_tmp"
                 else
                     echo -e "false\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PW_TMPFS_PATH}/fonts_list_tmp"
                 fi
             fi
         done < "${PW_TMPFS_PATH}/fonts_list"
-        try_remove_file  "${PW_TMPFS_PATH}/settings_list_tmp"
-        while read PW_BOOL_IN_FONTS_LIST ; do
-            if [[ -z $(echo "${PW_BOOL_IN_FONTS_LIST}" | grep -E 'vista|alldlls|autostart_|bad|good|win|videomemory|vd=|isolate_home') ]] ; then
-                if grep ^$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')$ "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
+        try_remove_file "${PW_TMPFS_PATH}/settings_list_tmp"
+        while read -r PW_BOOL_IN_FONTS_LIST ; do
+            if [[ ! ${PW_BOOL_IN_FONTS_LIST} =~ (vista|alldlls|autostart_|bad|good|win|videomemory|vd=|isolate_home) ]] ; then
+                if grep ^"$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')"$ "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
                     echo -e "true\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PW_TMPFS_PATH}/settings_list_tmp"
                 else
                     echo -e "false\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{print $1}')\n$(echo "${PW_BOOL_IN_FONTS_LIST}" | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PW_TMPFS_PATH}/settings_list_tmp"
@@ -6053,7 +6053,7 @@ portwine_start_debug () {
     fi
     echo "------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "winetricks.log:" >> "${PORT_WINE_PATH}/PortProton.log"
-    cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" | sed -e /"^d3dcomp*"/d -e /"^d3dx*"/d >> "${PORT_WINE_PATH}/PortProton.log"
+    cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" | sed -e /^"d3dcomp*"/d -e /^"d3dx*"/d >> "${PORT_WINE_PATH}/PortProton.log"
     echo "-----------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     if [[ -n "${PORTWINE_DB_FILE}" ]] ; then
         echo "Use ${PORTWINE_DB_FILE} db file:" >> "${PORT_WINE_PATH}/PortProton.log"
