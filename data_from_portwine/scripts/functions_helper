@@ -925,11 +925,11 @@ create_pw_comment () {
         if [[ -n $DESKTOP_NAME_FILE ]] ; then
             PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$DESKTOP_NAME_FILE" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
             PW_SHORTCUT_PROXY="$DESKTOP_NAME_FILE"
-        elif [[ ${PORTPROTON_NAME^^} =~ ${PORTWINE_DB^^} && ${PORTPROTON_NAME} != "${PORTWINE_DB}" ]] \
+        elif [[ ${PORTPROTON_NAME^^} =~ ${PORTWINE_DB^^} && $PORTPROTON_NAME != "$PORTWINE_DB" ]] \
         || [[ ${#PORTPROTON_NAME_ABBR} -gt 2 && ${PORTPROTON_NAME_ABBR^^} =~ ${PORTWINE_DB^^} ]] ; then
             PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$PORTPROTON_NAME" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
             PW_SHORTCUT_PROXY="$PORTPROTON_NAME"
-        elif [[ ${FILE_DESCRIPTION^^} =~ ${PORTWINE_DB^^} && ${FILE_DESCRIPTION} != "${PORTWINE_DB}" ]] \
+        elif [[ ${FILE_DESCRIPTION^^} =~ ${PORTWINE_DB^^} && $FILE_DESCRIPTION != "$PORTWINE_DB" ]] \
         || [[ ${#FILE_DESCRIPTION_ABBR} -gt 2 && ${FILE_DESCRIPTION_ABBR^^} =~ ${PORTWINE_DB^^} ]] ; then
             PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$FILE_DESCRIPTION" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
             PW_SHORTCUT_PROXY="$FILE_DESCRIPTION"
@@ -2505,8 +2505,7 @@ pw_find_exe () {
 
     if [[ -n "${PW_SET_FIND_EXE}" ]] ; then
         portwine_exe="${PW_PATH_FOR_FIND}$(echo "${PW_SET_FIND_EXE}" | awk -F'|' '{print $1}')"
-        portwine_create_shortcut silent
-        restart_pp
+        portwine_create_shortcut
     fi
 }
 
@@ -4587,7 +4586,7 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
     1> "$PW_TMPFS_PATH/tmp_output_yad_fps_limit" 2>/dev/null &
 
     "${pw_yad}" --notebook --key="$KEY_EDIT_DB_GUI" --title "${translations[EDIT DB]}" --text-align=center \
-    --text "${translations[Change settings in database file for]} <b>${PORTWINE_DB}</b>\n ${translations[<b>NOTE:</b> To display help for each item, simply hover your mouse over the text]}" \
+    --text "${translations[Change settings in database file for]} <b>$PW_SHORTCUT_PROXY</b>\n ${translations[<b>NOTE:</b> To display help for each item, simply hover your mouse over the text]}" \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand \
     --gui-type="settings-base" \
     --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" \
@@ -5228,7 +5227,7 @@ gui_gamescope () {
 
     unset ADD_CHK_BOX_GS
     if [[ "${GAMESCOPE_INSTALLED}" == 1 ]] ; then
-        GAMESCOPE_NEED_INSTALL="${translations[Change settings gamescope for]} <b>${PORTWINE_DB}</b>\n ${translations[<b>NOTE:</b> To display help for each item, simply hover your mouse over the text]}"
+        GAMESCOPE_NEED_INSTALL="${translations[Change settings gamescope for]} <b>$PW_SHORTCUT_PROXY</b>\n ${translations[<b>NOTE:</b> To display help for each item, simply hover your mouse over the text]}"
         GS_CB="CB" && GS_CBE="CBE" && GS_NUM="NUM" && GS_NUMN="NUMN"
         for int_to_boole in ${PW_GS_LIST[@]} ; do
             if [[ "${!int_to_boole}" == "1" ]]
