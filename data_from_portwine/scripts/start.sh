@@ -497,7 +497,12 @@ if [[ -f "${portwine_exe}" ]] ; then
             PW_SHORTCUT="${translations[DELETE SHORTCUT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Delete shortcut for select file...]}:98"
         fi
 
-        create_pw_comment
+        create_name_desktop
+        if [[ -z "${PW_COMMENT_DB}" ]] ; then
+            PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$PW_NAME_DESKTOP_PROXY" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
+        else
+            PW_COMMENT_DB="$PW_COMMENT_DB$(seconds_to_time "$TIME_CURRENT")"
+        fi
 
         export KEY_START="$RANDOM"
         if [[ "${PW_GUI_START}" == "NOTEBOOK" ]] ; then
