@@ -35,6 +35,29 @@ function generateShortcutVDFAppId {
 	echo "-$(( 16#${seed} % 1000000000 ))"
 }
 
+
+function pw_start_progress_bar_block () {
+    "${pw_yad}" --progress-old --text="$@" --pulsate --hide-text --borders="$PROGRESS_BAR_BORDERS_SIZE" \
+    --no-buttons --undecorated --skip-taskbar --no-escape --text-align="center" --height=90 --fixed \
+    --width="$PROGRESS_BAR_WIDTH_SIZE" --wrap-width="$PROGRESS_BAR_WIDTH_SIZE" \
+    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" &>/dev/null &
+    export PW_YAD_PID_PROGRESS_BAR_BLOCK="$!"
+    return 0
+}
+
+function pw_stop_progress_bar () {
+    sleep 0.1
+    for PW_KILL_YAD_PID in "$PW_YAD_PID_PROGRESS_BAR_BLOCK" "$PW_YAD_PID_PROGRESS_BAR_CS" \
+                           "$PW_YAD_PID_PFX_COVER_UI" "$PW_YAD_PID_PROGRESS_BAR_COVER"
+    do
+        kill -s SIGUSR1 "$PW_KILL_YAD_PID" &>/dev/null
+    done
+    unset PW_YAD_PID_PROGRESS_BAR_BLOCK PW_YAD_PID_PROGRESS_BAR_CS \
+           PW_YAD_PID_PFX_COVER_UI PW_YAD_PID_PROGRESS_BAR_COVER
+    return 0
+}
+
+
 function dec2hex {
 	printf '%x\n' "$1" | cut -c 9-  # cut removes the 'ffffffff' from the string (represents the sign) and starts from the 9th character
 }
@@ -150,16 +173,6 @@ function downloadArtFromSteamGridDB {
     [[ -n "$SEARCHHUMOR" ]] && SGDB_ENDPOINT_STR+="&humor=${SEARCHHUMOR}"
     [[ -n "$SEARCHEPILEPSY" ]] && SGDB_ENDPOINT_STR+="&epilepsy=${SEARCHEPILEPSY}"
 
-    set -o pipefail
-    RESPONSE=$(curl -H "Authorization: Bearer $SGDBAPIKEY" -s "$SGDB_ENDPOINT_STR" 2> >(grep -v "SSL_INIT"))
-    if [[ "${PIPESTATUS[0]}" != 0 ]] && [[ "$DOWNLOAD_STEAM_GRID" != 0 ]] ; then
-		pw_notify_send -i info \
-		"$(gettext "SteamGridDB is not response, force disable cover download")"
-		sed -i 's/DOWNLOAD_STEAM_GRID=.*/DOWNLOAD_STEAM_GRID="0"/' "$USER_CONF"
-		export DOWNLOAD_STEAM_GRID="0"
-		return
-    fi
-
 
     if ! jq -e '.success' <<< "$RESPONSE" > /dev/null; then
         echo "The server response wasn't 'success' for this batch of requested games."
@@ -204,12 +217,7 @@ function downloadArtFromSteamGridDB {
             fi
 
             if [[ "$STARTDL" -eq 1 ]] ; then
-				filename="$(basename "$DLDST")"
-                curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$DLSRC" -o "$DLDST" 2>&1 | \
-                 tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
-				"$pw_yad" --progress --text="$(gettext "Downloading") $filename" --auto-close --no-escape \
-				--auto-kill --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
-				--window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders="$PROGRESS_BAR_BORDERS_SIZE"
+                curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$DLSRC" -o "$DLDST"
             fi
         else
             echo "No grid found to download for '$SEARCHID' - maybe loosen filters?"
@@ -295,15 +303,29 @@ function commandlineGetSteamGridDBArtwork {
 	SGDBSEARCHENDPOINT_HERO="${BASESTEAMGRIDDBAPI}/heroes/${SGDBENDPOINTTYPE}"
 	SGDBSEARCHENDPOINT_LOGO="${BASESTEAMGRIDDBAPI}/logos/${SGDBENDPOINTTYPE}"
 	SGDBSEARCHENDPOINT_BOXART="${BASESTEAMGRIDDBAPI}/grids/${SGDBENDPOINTTYPE}"	 # Grid endpoint is used for Boxart and Tenfoot, which SteamGridDB counts as vertical/horizontal grids respectively
+	SGDB_ENDPOINT_STR="${SGDBSEARCHENDPOINT_HERO}/$(echo "$GSGDBA_APPID" | awk '{print $1}' | paste -s -d, -)?"
 
+	set -o pipefail
+	RESPONSE=$(curl -H "Authorization: Bearer $SGDBAPIKEY" -s "$SGDB_ENDPOINT_STR" 2> >(grep -v "SSL_INIT"))
+	if [[ "${PIPESTATUS[0]}" != 0 ]] && [[ "$DOWNLOAD_STEAM_GRID" != 0 ]]; then
+		pw_notify_send -i info \
+		"${translations[SteamGridDB is not responding, forcing cover download to be disabled]}"
+		sed -i 's/DOWNLOAD_STEAM_GRID=.*/DOWNLOAD_STEAM_GRID="0"/' "$USER_CONF"
+		export DOWNLOAD_STEAM_GRID="0"
+		return
+	fi
+    if [[ ! -z "$GSGDBA_FOUNDGAMEID" ]] ; then
+        pw_start_progress_bar_block "${translations[Please wait. downloading covers for]} $NOSTAPPNAME"
+		# Download Hero, Logo, Boxart, Tenfoot from SteamGridDB from given endpoint using given AppID
+		# On SteamGridDB tenfoot called horizontal Steam grid, so fetch it by passing specific dimensions matching this -- Users can override this, but default is what SteamGridDB expects for the tenfoot sizes
 
-	# Download Hero, Logo, Boxart, Tenfoot from SteamGridDB from given endpoint using given AppID
-	# On SteamGridDB tenfoot called horizontal Steam grid, so fetch it by passing specific dimensions matching this -- Users can override this, but default is what SteamGridDB expects for the tenfoot sizes
-	downloadArtFromSteamGridDB "$GSGDBA_APPID" "$SGDBSEARCHENDPOINT_HERO" "${GSGDBA_FILENAME}_hero" "$SGDBHEROSTYLES" "$SGDBHERODIMS" "$SGDBHEROTYPES" "$SGDBHERONSFW" "$SGDBHEROHUMOR" "$SGDBHEROEPILEPSY" "$GSGDBA_HASFILE" "$GSGDBA_APPLYARTWORK"
-	# Logo doesn't have dimensions, so it's left intentionally blank
-	downloadArtFromSteamGridDB "$GSGDBA_APPID" "$SGDBSEARCHENDPOINT_LOGO" "${GSGDBA_FILENAME}_logo" "$SGDBLOGOSTYLES" "" "$SGDBLOGOTYPES" "$SGDBLOGONSFW" "$SGDBLOGOHUMOR" "$SGDBLOGOEPILEPSY" "$GSGDBA_HASFILE" "$GSGDBA_APPLYARTWORK"
-	downloadArtFromSteamGridDB "$GSGDBA_APPID" "$SGDBSEARCHENDPOINT_BOXART" "${GSGDBA_FILENAME}p" "$SGDBBOXARTSTYLES" "$SGDBBOXARTDIMS" "$SGDBBOXARTTYPES" "$SGDBBOXARTNSFW" "$SGDBBOXARTHUMOR" "$SGDBBOXARTEPILEPSY" "$GSGDBA_HASFILE" "$GSGDBA_APPLYARTWORK"
-	downloadArtFromSteamGridDB "$GSGDBA_APPID" "$SGDBSEARCHENDPOINT_BOXART" "${GSGDBA_FILENAME}" "$SGDBTENFOOTSTYLES" "$SGDBTENFOOTDIMS" "$SGDBTENFOOTTYPES" "$SGDBTENFOOTNSFW" "$SGDBTENFOOTHUMOR" "$SGDBTENFOOTEPILEPSY" "$GSGDBA_HASFILE" "$GSGDBA_APPLYARTWORK"
+		downloadArtFromSteamGridDB "$GSGDBA_APPID" "$SGDBSEARCHENDPOINT_HERO" "${GSGDBA_FILENAME}_hero" "$SGDBHEROSTYLES" "$SGDBHERODIMS" "$SGDBHEROTYPES" "$SGDBHERONSFW" "$SGDBHEROHUMOR" "$SGDBHEROEPILEPSY" "$GSGDBA_HASFILE" "$GSGDBA_APPLYARTWORK"
+		# Logo doesn't have dimensions, so it's left intentionally blank
+		downloadArtFromSteamGridDB "$GSGDBA_APPID" "$SGDBSEARCHENDPOINT_LOGO" "${GSGDBA_FILENAME}_logo" "$SGDBLOGOSTYLES" "" "$SGDBLOGOTYPES" "$SGDBLOGONSFW" "$SGDBLOGOHUMOR" "$SGDBLOGOEPILEPSY" "$GSGDBA_HASFILE" "$GSGDBA_APPLYARTWORK"
+		downloadArtFromSteamGridDB "$GSGDBA_APPID" "$SGDBSEARCHENDPOINT_BOXART" "${GSGDBA_FILENAME}p" "$SGDBBOXARTSTYLES" "$SGDBBOXARTDIMS" "$SGDBBOXARTTYPES" "$SGDBBOXARTNSFW" "$SGDBBOXARTHUMOR" "$SGDBBOXARTEPILEPSY" "$GSGDBA_HASFILE" "$GSGDBA_APPLYARTWORK"
+		downloadArtFromSteamGridDB "$GSGDBA_APPID" "$SGDBSEARCHENDPOINT_BOXART" "${GSGDBA_FILENAME}" "$SGDBTENFOOTSTYLES" "$SGDBTENFOOTDIMS" "$SGDBTENFOOTTYPES" "$SGDBTENFOOTNSFW" "$SGDBTENFOOTHUMOR" "$SGDBTENFOOTEPILEPSY" "$GSGDBA_HASFILE" "$GSGDBA_APPLYARTWORK"
+		pw_stop_progress_bar
+    fi
 }
 
 ## Fetch artwork from SteamGridDB
