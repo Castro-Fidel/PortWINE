@@ -38,15 +38,26 @@ print_wrapped () {
 }
 export -f print_wrapped
 
-make_abbreviation () {
-    local words new_word i
+make_acronym () {
+    local words acronym i
     words=($1)
-    # Создаем новое слово, состоящее из начальных букв слов
-    new_word="${words[0]:0:1}"
+    acronym="${words[0]:0:1}"
     for ((i=1 ; i<${#words[@]} ; i++)) ; do
-        new_word+="${words[$i]:0:1}"
+        acronym+="${words[$i]:0:1}"
     done
-    echo "$new_word"
+    echo "$acronym"
+}
+export -f make_acronym
+
+make_abbreviation () {
+    local word abbreviation i
+    word=$1
+    for (( i=0 ; i<${#word} ; i++ )) ; do
+        if [[ ${word:$i:1} =~ ^[A-Z]$ ]] ; then
+            abbreviation+="${word:$i:1}"
+        fi
+    done
+    echo "$abbreviation"
 }
 export -f make_abbreviation
 
@@ -917,7 +928,10 @@ search_desktop_file () {
 
 create_name_desktop () {
     search_desktop_file
-    unset DESKTOP_NAME_FILE
+    if [[ -n $DESKTOP_NAME_FILE ]] ; then
+        DESKTOP_NAME_FILE_OLD=$DESKTOP_NAME_FILE
+        unset DESKTOP_NAME_FILE
+    fi
     if [[ -n $DESKTOP_NAME_YAD ]] ; then
         DESKTOP_NAME_FILE="${DESKTOP_NAME_YAD//.desktop/}"
         unset DESKTOP_NAME_YAD
@@ -930,22 +944,33 @@ create_name_desktop () {
         DESKTOP_NAME_FILE="${DESKTOP_NAME_FILE//.desktop/}"
     fi
 
-    [[ -n $PORTPROTON_NAME ]] && PORTPROTON_NAME_ABBR=$(make_abbreviation "$PORTPROTON_NAME")
-    [[ -n $FILE_DESCRIPTION ]] && FILE_DESCRIPTION_ABBR=$(make_abbreviation "$FILE_DESCRIPTION")
-
     if [[ -z $PORTWINE_DB ]] ; then
         PORTWINE_DB_DESKTOP="$(basename "${portwine_exe%.[Ee][Xx][Ee]}")"
     else
         PORTWINE_DB_DESKTOP="$PORTWINE_DB"
     fi
+    if [[ -n $PORTPROTON_NAME ]] ; then
+        PORTPROTON_NAME_ABBR=$(make_abbreviation "$PORTPROTON_NAME")
+        PORTPROTON_NAME_ACRO=$(make_acronym "$PORTPROTON_NAME")
+    fi
+    if [[ -n $FILE_DESCRIPTION ]] ; then
+        FILE_DESCRIPTION_ABBR=$(make_abbreviation "$FILE_DESCRIPTION")
+        FILE_DESCRIPTION_ACRO=$(make_acronym "$FILE_DESCRIPTION")
+    fi
 
     if [[ -n $DESKTOP_NAME_FILE ]] ; then
         PW_NAME_DESKTOP_PROXY="$DESKTOP_NAME_FILE"
+    elif [[ -n $DESKTOP_NAME_FILE_OLD && ${PORTWINE_DB_DESKTOP^^} =~ ${DESKTOP_NAME_FILE_OLD^^} ]] ; then
+        PW_NAME_DESKTOP_PROXY="$DESKTOP_NAME_FILE_OLD"
     elif [[ -n $PORTPROTON_NAME && ${PORTPROTON_NAME^^} =~ ${PORTWINE_DB_DESKTOP^^} && $PORTPROTON_NAME != "$PORTWINE_DB_DESKTOP" ]] \
-    || [[ -n $PORTPROTON_NAME && ${#PORTPROTON_NAME_ABBR} -gt 2 && ${PORTPROTON_NAME_ABBR^^} =~ ${PORTWINE_DB_DESKTOP^^} ]] ; then
+    || [[ -n $PORTPROTON_NAME && ${#PORTPROTON_NAME_ABBR} -gt 2 && ${PORTWINE_DB_DESKTOP^^} =~ $PORTPROTON_NAME_ABBR ]] \
+    || [[ -n $PORTPROTON_NAME && ${#PORTPROTON_NAME_ACRO} -gt 2 && ${PORTWINE_DB_DESKTOP^^} =~ ${PORTPROTON_NAME_ACRO^^} ]]
+    then
         PW_NAME_DESKTOP_PROXY="$PORTPROTON_NAME"
     elif [[ -n $FILE_DESCRIPTION && ${FILE_DESCRIPTION^^} =~ ${PORTWINE_DB_DESKTOP^^} && $FILE_DESCRIPTION != "$PORTWINE_DB_DESKTOP" ]] \
-    || [[ -n $FILE_DESCRIPTION && ${#FILE_DESCRIPTION_ABBR} -gt 2 && ${FILE_DESCRIPTION_ABBR^^} =~ ${PORTWINE_DB_DESKTOP^^} ]] ; then
+    || [[ -n $FILE_DESCRIPTION && ${#FILE_DESCRIPTION_ABBR} -gt 2 && ${PORTWINE_DB_DESKTOP^^} =~ $FILE_DESCRIPTION_ABBR ]] \
+    || [[ -n $FILE_DESCRIPTION && ${#FILE_DESCRIPTION_ACRO} -gt 2 && ${PORTWINE_DB_DESKTOP^^} =~ ${FILE_DESCRIPTION_ACRO^^} ]]
+    then
         PW_NAME_DESKTOP_PROXY="$FILE_DESCRIPTION"
     else
         unset PORTWINE_DB_PROXY PORTWINE_DB_NEW
