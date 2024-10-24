@@ -186,6 +186,10 @@ generate_pot () {
     sed -i 's/]}/")/g' setup.sh_tmp
     sed -i 's/eval_translations/gettext/g' setup.sh_tmp
 
+    sed 's/{translations\[/(gettext \"/g' add_in_steam.sh > add_in_steam.sh_tmp
+    sed -i 's/]}/")/g' add_in_steam.sh_tmp
+    sed -i 's/eval_translations/gettext/g' add_in_steam.sh_tmp
+
     #Когда присходит предупреждение: синтаксис $"..." запрещен по соображениям безопасности; используйте eval_gettext
     #и ругается на строку в которой нет перевода, можно использовать sed -i '//d' и убрать эту строку
     #либо отредактировать сам код, чтобы не было такой ошибки (к примеру вместо двойных ковычек использовать в таком месте одинарные)
@@ -202,6 +206,7 @@ generate_pot () {
         "data/scripts/start.sh_tmp" \
         "data/scripts/setup.sh_tmp" \
         "data/scripts/functions_helper_tmp" \
+        "data/scripts/add_in_steam.sh_tmp" \
         -o "$TEMPLATE_POT"
         popd 1>/dev/null || fatal
         if [[ -f "$LANG_PO" ]] ; then
@@ -216,6 +221,7 @@ generate_pot () {
     try_remove_file "${PORT_SCRIPTS_PATH}/start.sh_tmp"
     try_remove_file "${PORT_SCRIPTS_PATH}/setup.sh_tmp"
     try_remove_file "${PORT_SCRIPTS_PATH}/functions_helper_tmp"
+    try_remove_file "${PORT_SCRIPTS_PATH}/add_in_steam.sh_tmp"
     try_remove_dir "${PW_CACHE_LANG_PATH}"
 }
 export -f generate_pot
@@ -5641,7 +5647,8 @@ portwine_create_shortcut () {
                 create_new_dir "${STUIDPATH}/config/grid"
                 export SCPATH="${STUIDPATH}/config/$SCVDF"
                 export SGGRIDDIR="${STUIDPATH}/config/grid"
-                "${PORT_SCRIPTS_PATH}/add_in_steam.sh"
+                # shellcheck source=/dev/null
+                source "${PORT_SCRIPTS_PATH}/add_in_steam.sh"
             done
             if [[ "${PW_SKIP_RESTART_STEAM}" != 1 ]] && pgrep -i steam &>/dev/null ; then
                 if yad_question "${translations[For adding shortcut to STEAM, needed restart.\\n\\nRestart STEAM now?]}" ; then
