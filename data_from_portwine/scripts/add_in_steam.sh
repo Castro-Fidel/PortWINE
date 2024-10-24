@@ -35,29 +35,6 @@ function generateShortcutVDFAppId {
 	echo "-$(( 16#${seed} % 1000000000 ))"
 }
 
-
-function pw_start_progress_bar_block () {
-    "${pw_yad}" --progress-old --text="$@" --pulsate --hide-text --borders="$PROGRESS_BAR_BORDERS_SIZE" \
-    --no-buttons --undecorated --skip-taskbar --no-escape --text-align="center" --height=90 --fixed \
-    --width="$PROGRESS_BAR_WIDTH_SIZE" --wrap-width="$PROGRESS_BAR_WIDTH_SIZE" \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" &>/dev/null &
-    export PW_YAD_PID_PROGRESS_BAR_BLOCK="$!"
-    return 0
-}
-
-function pw_stop_progress_bar () {
-    sleep 0.1
-    for PW_KILL_YAD_PID in "$PW_YAD_PID_PROGRESS_BAR_BLOCK" "$PW_YAD_PID_PROGRESS_BAR_CS" \
-                           "$PW_YAD_PID_PFX_COVER_UI" "$PW_YAD_PID_PROGRESS_BAR_COVER"
-    do
-        kill -s SIGUSR1 "$PW_KILL_YAD_PID" &>/dev/null
-    done
-    unset PW_YAD_PID_PROGRESS_BAR_BLOCK PW_YAD_PID_PROGRESS_BAR_CS \
-           PW_YAD_PID_PFX_COVER_UI PW_YAD_PID_PROGRESS_BAR_COVER
-    return 0
-}
-
-
 function dec2hex {
 	printf '%x\n' "$1" | cut -c 9-  # cut removes the 'ffffffff' from the string (represents the sign) and starts from the 9th character
 }
