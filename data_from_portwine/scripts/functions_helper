@@ -2695,10 +2695,6 @@ start_portwine () {
         || ! grep "${PW_WINE_USE}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver" &>/dev/null
         then
             pw_update_pfx_cover_gui
-            # # HOTFIX - update prefix for vkPlay
-            # if echo "$portwine_exe" | grep -i vkplay &>/dev/null
-            # then pw_kill_autostart GameCe 5 please & :
-            # fi
             pw_wineboot -r
         fi
     fi
@@ -3175,10 +3171,10 @@ start_portwine () {
             [[ "${PW_DGV2_FILTERING}" == "Anisotropic 8x" ]] && sed -i "s/\<Filtering = appdriven\>/Filtering = 8/" "$DGV2CONF"
             [[ "${PW_DGV2_FILTERING}" == "Anisotropic 16x" ]] && sed -i "s/\<Filtering = appdriven\>/Filtering = 16/" "$DGV2CONF"
             case "${PW_DGV2_FILTERING}" in
-            "Point sampled")
-                sed -i "s/TMUFiltering = appdriven/TMUFiltering = pointsampled/" "$DGV2CONF" ;;
-            "Bilinear"|"Linear mip"|"Trilinear"|"Anisotropic 2x"|"Anisotropic 4x"|"Anisotropic 8x"|"Anisotropic 16x")
-                sed -i "s/TMUFiltering = appdriven/TMUFiltering = bilinear/" "$DGV2CONF" ;;
+                "Point sampled")
+                    sed -i "s/TMUFiltering = appdriven/TMUFiltering = pointsampled/" "$DGV2CONF" ;;
+                "Bilinear"|"Linear mip"|"Trilinear"|"Anisotropic 2x"|"Anisotropic 4x"|"Anisotropic 8x"|"Anisotropic 16x")
+                    sed -i "s/TMUFiltering = appdriven/TMUFiltering = bilinear/" "$DGV2CONF" ;;
             esac
         fi
 
@@ -4384,7 +4380,7 @@ gui_proton_downloader () {
                 try_remove_file "${PORT_WINE_PATH}/data/tmp/${FILENAME}"
                 try_remove_dir "${PORT_WINE_PATH}/data/dist/${FILENAME}"
                 if yad_error_download
-                then gui_proton_downloader $@
+                then gui_proton_downloader ""
                 else
                     export PW_WINE_VER="$PW_WINE_USE"
                     init_wine_ver
@@ -4392,7 +4388,7 @@ gui_proton_downloader () {
             fi
         else
             if yad_error_download
-            then gui_proton_downloader $@
+            then gui_proton_downloader ""
             else
                 export PW_WINE_VER="$PW_WINE_USE"
                 init_wine_ver
@@ -4416,7 +4412,7 @@ gui_proton_downloader () {
                     export URL_VERSION_PROTON_GIT="${GIVE_WINE_URL}"
                 fi
             done
-            pw_download_get_wine
+            pw_download_get_wine ""
         done
         edit_db_from_gui
         restart_pp
@@ -4427,7 +4423,7 @@ gui_proton_downloader () {
                 export URL_VERSION_PROTON_GIT="${GIVE_WINE_URL}"
             fi
         done
-        pw_download_get_wine
+        pw_download_get_wine ""
     fi
 }
 export -f gui_proton_downloader
@@ -4741,19 +4737,17 @@ gui_vkbasalt () {
     done
 
     if [[ -n "${PW_VKBASALT_FFX_CAS}" ]] ; then
-        if [[ "$PW_VKBASALT_FFX_CAS" == "0" ]] \
-        || [[ "$PW_VKBASALT_FFX_CAS" == "-1" ]]
-        then export VKBASALT_FFX_CAS_GUI="0"
-        elif [[ "$PW_VKBASALT_FFX_CAS" == "1" ]]
-        then export VKBASALT_FFX_CAS_GUI="100"
-        elif [[ "$PW_VKBASALT_FFX_CAS" == 0.0* ]]
-        then VKBASALT_FFX_CAS_GUI="$(echo "$PW_VKBASALT_FFX_CAS" | awk -F'0.0' '{print $2}')"
-        else VKBASALT_FFX_CAS_GUI="$(echo "$PW_VKBASALT_FFX_CAS" | awk -F'0.' '{print $2}')"
-        fi
+        case "$PW_VKBASALT_FFX_CAS" in
+            0|-1) VKBASALT_FFX_CAS_GUI="0" ;;
+               1) VKBASALT_FFX_CAS_GUI="100" ;;
+            0.0*) VKBASALT_FFX_CAS_GUI="$(echo "$PW_VKBASALT_FFX_CAS" | awk -F'0.0' '{print $2}')" ;;
+               *) VKBASALT_FFX_CAS_GUI="$(echo "$PW_VKBASALT_FFX_CAS" | awk -F'0.' '{print $2}')" ;;
+        esac
         export VKBASALT_FFX_CAS_GUI
     else
-        VKBASALT_FFX_CAS_GUI=66
+        VKBASALT_FFX_CAS_GUI=50
     fi
+
     IFS="%"
     "${pw_yad}" --plug=$KEY_FX_GUI --tabnum="1" --form --columns=4 --separator=" " \
     --text-align=center --text="${translations[VkBasalt settings for adding effects to games running under Vulkan. (The <b>HOME</b> key disables vkbasalt)\\n<b>NOTE:</b> To display help for each item, simply hover over the text]}" \
@@ -5545,51 +5539,30 @@ portwine_create_shortcut () {
 
     [[ -z "${name_desktop_png}" ]] && name_desktop_png="${PORTPROTON_NAME// /_}"
 
-    if [[ "$1" == "block_name" ]] ; then
-        OUTPUT=$("${pw_yad}" --title="${translations[Choices]}" --form \
-        --gui-type="settings-shortcut" \
-        --gui-type-box="${NOTEBOOK_GUI_TYPE_BOX}" --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" \
-        --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" --gui-type-images="${NOTEBOOK_GUI_TYPE_IMAGE}" \
-        --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
-        --image "${PORT_WINE_PATH}/data/img/${name_desktop_png}.png" \
-        --text-align="center" --text "${translations[The shortcut will be created in the PortProton directory.]}" \
-        --field="  ${name_desktop}":LBL "" \
-        --field="  ${translations[Add shortcut to MENU -> GAMES]}":CHK "$PW_SHORTCUT_MENU" \
-        --field="  ${translations[Add shortcut to Desktop]}":CHK "$PW_SHORTCUT_DESKTOP" \
-        --field="  ${translations[Add shortcut to STEAM library]}":CHK "$PW_SHORTCUT_STEAM" \
-        --button="${translations[CANCEL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":2 \
-        --button="${translations[CREATE SHORTCUT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
-        PW_YAD_OUT=$?
-    else
-        OUTPUT=$("${pw_yad}" --title="${translations[Choices]}" --form \
-        --gui-type="settings-shortcut" \
-        --gui-type-box="${NOTEBOOK_GUI_TYPE_BOX}" --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" \
-        --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" --gui-type-images="${NOTEBOOK_GUI_TYPE_IMAGE}" \
-        --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
-        --image "${PORT_WINE_PATH}/data/img/${name_desktop_png}.png" \
-        --text-align="center" --text "${translations[The shortcut will be created in the PortProton directory.]}" \
-        --field="${translations[Name]}" "${name_desktop}" \
-        --field="  ${translations[Add shortcut to MENU -> GAMES]}":CHK "$PW_SHORTCUT_MENU" \
-        --field="  ${translations[Add shortcut to Desktop]}":CHK "$PW_SHORTCUT_DESKTOP" \
-        --field="  ${translations[Add shortcut to STEAM library]}":CHK "$PW_SHORTCUT_STEAM" \
-        --button="${translations[CANCEL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":2 \
-        --button="${translations[CREATE SHORTCUT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
-        PW_YAD_OUT=$?
-    fi
+    OUTPUT=$("${pw_yad}" --title="${translations[Choices]}" --form \
+    --gui-type="settings-shortcut" \
+    --gui-type-box="${NOTEBOOK_GUI_TYPE_BOX}" --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" \
+    --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" --gui-type-images="${NOTEBOOK_GUI_TYPE_IMAGE}" \
+    --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
+    --image "${PORT_WINE_PATH}/data/img/${name_desktop_png}.png" \
+    --text-align="center" --text "${translations[The shortcut will be created in the PortProton directory.]}" \
+    --field="${translations[Name]}" "${name_desktop}" \
+    --field="  ${translations[Add shortcut to MENU -> GAMES]}":CHK "$PW_SHORTCUT_MENU" \
+    --field="  ${translations[Add shortcut to Desktop]}":CHK "$PW_SHORTCUT_DESKTOP" \
+    --field="  ${translations[Add shortcut to STEAM library]}":CHK "$PW_SHORTCUT_STEAM" \
+    --button="${translations[CANCEL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":2 \
+    --button="${translations[CREATE SHORTCUT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
+    PW_YAD_OUT=$?
 
     if [[ "$PW_YAD_OUT" == "0" ]] ; then
-        if [[ "$1" == "block_name" ]]
-        then name_desktop="$PORTWINE_CREATE_SHORTCUT_NAME"
-        else name_desktop=$(echo "$OUTPUT" | awk -F'|' '{print $1}')
-        fi
-        name_desktop="$(echo "${name_desktop}" | sed "s/\`//g" | sed "s/\"//g" | sed "s/'//g" | sed "s/\!//g")"
+        name_desktop=$(echo "$OUTPUT" | awk -F'|' '{print $1}' | sed "s/\`//g" | sed "s/\"//g" | sed "s/'//g" | sed "s/\!//g")
         PW_SHORTCUT_MENU=$(echo "$OUTPUT" | awk -F'|' '{print $2}')
         PW_SHORTCUT_DESKTOP=$(echo "$OUTPUT" | awk -F'|' '{print $3}')
         PW_SHORTCUT_STEAM=$(echo "$OUTPUT" | awk -F'|' '{print $4}')
 
         edit_user_conf_from_gui PW_SHORTCUT_MENU PW_SHORTCUT_DESKTOP PW_SHORTCUT_STEAM
 
-        if [[ -n ${DESKTOP_FILES_ARRAY[0]} && $name_desktop != $DESKTOP_NAME_FILE ]] || [[ -n ${DESKTOP_FILES_ARRAY[1]} ]] ; then
+        if [[ -n ${DESKTOP_FILES_ARRAY[0]} && $name_desktop != "$DESKTOP_NAME_FILE" ]] || [[ -n ${DESKTOP_FILES_ARRAY[1]} ]] ; then
             if yad_question "${translations[A higher number of duplicate desktop files were found for this file.\\nShould I delete the extra ones or not?]}" ; then
                 for rm in "${DESKTOP_FILES_ARRAY[@]}" ; do
                     rm -f "$rm"
