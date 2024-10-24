@@ -802,6 +802,8 @@ debug_timer () {
                     START_UPDATE_ETERFUND=$START ;;
                 UPDATE_GITHUB)
                     START_UPDATE_GITHUB=$START ;;
+                UPDATE_PP_GITEA)
+                    START_UPDATE_PP_GITEA=$START ;;
             esac
         fi
     elif [[ "$1" == "--end" ]] ; then
@@ -815,6 +817,8 @@ debug_timer () {
                         START=$START_UPDATE_ETERFUND ;;
                     UPDATE_GITHUB)
                         START=$START_UPDATE_GITHUB ;;
+                    UPDATE_PP_GITEA)
+                        START=$START_UPDATE_PP_GITEA ;;
                 esac
                 export "$3"="$((( END - START )/1000000 ))"
             else
@@ -2048,6 +2052,7 @@ pw_port_update () {
 
     URL_ETERFUND="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/raw/${BRANCH}/data_from_portwine/scripts/var"
     URL_GITHUB="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/${BRANCH}/data_from_portwine/scripts/var"
+    URL_PP_GITEA="https://git.linux-gaming.ru/CastroFidel/PortWINE/raw/branch/${BRANCH}/data_from_portwine/scripts/var"
 
     pw_check_update () {
         debug_timer --start -s "UPDATE_ETERFUND"
@@ -2066,13 +2071,22 @@ pw_port_update () {
         fi
         debug_timer --end -s "UPDATE_GITHUB"
 
+        debug_timer --start -s "UPDATE_PP_GITEA"
+        if ! timeout 2 curl -f -s --list-only "$URL_PP_GITEA" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+        then
+            print_warning "https://git.linux-gaming.ru/ broken. Skip it..."
+            UPDATE_SKIP_PP_GITEA="1"
+        fi
+        debug_timer --end -s "UPDATE_PP_GITEA"
+
         if [[ "$UPDATE_SKIP_ETERFUND" == "1" ]] \
-        && [[ "$UPDATE_SKIP_GITHUB" == "1" ]] ; then
+        && [[ "$UPDATE_SKIP_GITHUB" == "1" ]] \
+        && [[ "$UPDATE_SKIP_PP_GITEA" == "1" ]] ; then
             print_error "Unable to determine the version on the server. Skip it..."
             return 1
         fi
 
-        PW_UPDATE_ALL_LIST=($UPDATE_ETERFUND $UPDATE_GITHUB)
+        PW_UPDATE_ALL_LIST=($UPDATE_ETERFUND $UPDATE_GITHUB $UPDATE_PP_GITEA)
 
         UPDATE_MIN=${PW_UPDATE_ALL_LIST[0]}
         for i in "${!PW_UPDATE_ALL_LIST[@]}"; do
@@ -2084,13 +2098,17 @@ pw_port_update () {
         UPDATE_DAYS=$(date +%-j)
         UPDATE_MINUTES=$(($(date +%-H) * 60 + $(date +%-M)))
         if [[ "$UPDATE_ETERFUND" == "$UPDATE_MIN" ]] ; then
-            # print_info "Selected https://gitlab.eterfund.ru/"
+            print_info "Selected https://gitlab.eterfund.ru/"
             echo "$UPDATE_DAYS $UPDATE_MINUTES UPDATE_ETERFUND $UPDATE_MINUTES" > "${PORT_WINE_TMP_PATH}/update_skip_mirror"
             UPDATE_URL_MIRROR="UPDATE_ETERFUND"
         elif [[ "$UPDATE_GITHUB" == "$UPDATE_MIN" ]] ; then
-            # print_info "Selected https://raw.githubusercontent.com/"
+            print_info "Selected https://raw.githubusercontent.com/"
             echo "$UPDATE_DAYS $UPDATE_MINUTES UPDATE_GITHUB $UPDATE_MINUTES" > "${PORT_WINE_TMP_PATH}/update_skip_mirror"
             UPDATE_URL_MIRROR="UPDATE_GITHUB"
+        elif [[ "$UPDATE_PP_GITEA" == "$UPDATE_MIN" ]] ; then
+            print_info "Selected https://git.linux-gaming.ru/"
+            echo "$UPDATE_DAYS $UPDATE_MINUTES UPDATE_PP_GITEA $UPDATE_MINUTES" > "${PORT_WINE_TMP_PATH}/update_skip_mirror"
+            UPDATE_URL_MIRROR="UPDATE_PP_GITEA"
         fi
         PW_FORCE_UPDATE="1"
     }
@@ -2152,6 +2170,16 @@ pw_port_update () {
                 URL_FOR_CHANGELOG="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/${BRANCH}/data_from_portwine"
                 URL_TO_PW_BRANCH="https://github.com/Castro-Fidel/PortWINE/archive/refs/heads/${BRANCH}.tar.gz"
                 ;;
+            UPDATE_PP_GITEA)
+                if [[ ! -f "${PORT_WINE_TMP_PATH}/curent_var_ver" ]] \
+                && ! timeout 2 curl -f -s --list-only "$URL_PP_GITEA" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+                then
+                    pw_check_update
+                fi
+                URL_FOR_CHANGELOG="https://git.linux-gaming.ru/CastroFidel/PortWINE/raw/branch/${BRANCH}/data_from_portwine"
+                URL_TO_PW_BRANCH="https://git.linux-gaming.ru/CastroFidel/PortWINE/archive/${BRANCH}.tar.gz"
+                UPDATE_PP_GITEA_FIX=1
+                ;;
         esac
     else
         return 0
@@ -2209,6 +2237,12 @@ pw_port_update () {
                 20)
                     echo "######################################################"
                     print_info "Update scripts..."
+                    if [[ $UPDATE_PP_GITEA_FIX == 1 ]] ; then
+                        unset UPDATE_PP_GITEA_FIX
+                        PW_NAME_ARCHIVE="portwine"
+                    else
+                        PW_NAME_ARCHIVE="PortWINE-${BRANCH}"
+                    fi
                     try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-${BRANCH}.tar.gz"
                     if try_download "${URL_TO_PW_BRANCH}" "${PORT_WINE_TMP_PATH}/PortWINE-${BRANCH}.tar.gz" no_mirror ; then
                         if unpack "${PORT_WINE_TMP_PATH}/PortWINE-${BRANCH}.tar.gz" "${PORT_WINE_TMP_PATH}"
@@ -2218,9 +2252,9 @@ pw_port_update () {
                             tar -czpf "${PORT_WINE_TMP_PATH}/scripts_backup/scripts_v.${scripts_install_ver}.tar.gz" \
                             ./scripts ./img/gui ./locales ./themes ./changelog* ./dxvk.conf ./vkBasalt.conf ./tmp/scripts_ver
                             try_remove_dir "${PORT_WINE_PATH}/data/scripts/"
-                            cp -fr "${PORT_WINE_TMP_PATH}/PortWINE-${BRANCH}/data_from_portwine/"* "${PORT_WINE_PATH}/data/"
+                            cp -fr "${PORT_WINE_TMP_PATH}/$PW_NAME_ARCHIVE/data_from_portwine/"* "${PORT_WINE_PATH}/data/"
                             try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-${BRANCH}.tar.gz"
-                            try_remove_dir "${PORT_WINE_TMP_PATH}/PortWINE-${BRANCH}/"
+                            try_remove_dir "${PORT_WINE_TMP_PATH}/$PW_NAME_ARCHIVE/"
                             echo "${scripts_current_ver}" > "${PORT_WINE_TMP_PATH}/scripts_ver"
                             unset SKIP_CHECK_UPDATES
                             echo "Restarting PP after update..."
