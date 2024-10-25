@@ -150,7 +150,7 @@ function downloadArtFromSteamGridDB {
     [[ -n "$SEARCHHUMOR" ]] && SGDB_ENDPOINT_STR+="&humor=${SEARCHHUMOR}"
     [[ -n "$SEARCHEPILEPSY" ]] && SGDB_ENDPOINT_STR+="&epilepsy=${SEARCHEPILEPSY}"
 
-
+    RESPONSE=$(curl -H "Authorization: Bearer $SGDBAPIKEY" -s "$SGDB_ENDPOINT_STR" 2> >(grep -v "SSL_INIT"))
     if ! jq -e '.success' <<< "$RESPONSE" > /dev/null; then
         echo "The server response wasn't 'success' for this batch of requested games."
         return
@@ -194,7 +194,7 @@ function downloadArtFromSteamGridDB {
             fi
 
             if [[ "$STARTDL" -eq 1 ]] ; then
-                curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$DLSRC" -o "$DLDST"
+				curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -L "$DLSRC" -o "$DLDST" 2>&1
             fi
         else
             echo "No grid found to download for '$SEARCHID' - maybe loosen filters?"
@@ -280,10 +280,11 @@ function commandlineGetSteamGridDBArtwork {
 	SGDBSEARCHENDPOINT_HERO="${BASESTEAMGRIDDBAPI}/heroes/${SGDBENDPOINTTYPE}"
 	SGDBSEARCHENDPOINT_LOGO="${BASESTEAMGRIDDBAPI}/logos/${SGDBENDPOINTTYPE}"
 	SGDBSEARCHENDPOINT_BOXART="${BASESTEAMGRIDDBAPI}/grids/${SGDBENDPOINTTYPE}"	 # Grid endpoint is used for Boxart and Tenfoot, which SteamGridDB counts as vertical/horizontal grids respectively
-	SGDB_ENDPOINT_STR="${SGDBSEARCHENDPOINT_HERO}/$(echo "$GSGDBA_APPID" | awk '{print $1}' | paste -s -d, -)?"
+	SGDB_ENDPOINT_STR_TEST="${SGDBSEARCHENDPOINT_HERO}/$(echo "$GSGDBA_APPID" | awk '{print $1}' | paste -s -d, -)?"
+
 
 	set -o pipefail
-	RESPONSE=$(curl -H "Authorization: Bearer $SGDBAPIKEY" -s "$SGDB_ENDPOINT_STR" 2> >(grep -v "SSL_INIT"))
+	TEST_RESPONSE=$(curl -H "Authorization: Bearer $SGDBAPIKEY" -s "$SGDB_ENDPOINT_STR_TEST" 2> >(grep -v "SSL_INIT"))
 	if [[ "${PIPESTATUS[0]}" != 0 ]] && [[ "$DOWNLOAD_STEAM_GRID" != 0 ]]; then
 		pw_notify_send -i info \
 		"${translations[SteamGridDB is not responding, forcing cover download to be disabled]}"
@@ -291,18 +292,20 @@ function commandlineGetSteamGridDBArtwork {
 		export DOWNLOAD_STEAM_GRID="0"
 		return
 	fi
-    if [[ ! -z "$GSGDBA_FOUNDGAMEID" ]] ; then
-        pw_start_progress_bar_block "${translations[Please wait. downloading covers for]} $NOSTAPPNAME"
-		# Download Hero, Logo, Boxart, Tenfoot from SteamGridDB from given endpoint using given AppID
-		# On SteamGridDB tenfoot called horizontal Steam grid, so fetch it by passing specific dimensions matching this -- Users can override this, but default is what SteamGridDB expects for the tenfoot sizes
+
+	# Download Hero, Logo, Boxart, Tenfoot from SteamGridDB from given endpoint using given AppID
+	# On SteamGridDB tenfoot called horizontal Steam grid, so fetch it by passing specific dimensions matching this -- Users can override this, but default is what SteamGridDB expects for the tenfoot sizes
+	if [[ ! -z "$GSGDBA_FOUNDGAMEID" ]] ; then
+		pw_start_progress_bar_block "${translations[Please wait. downloading covers for]} $NOSTAPPNAME"
 
 		downloadArtFromSteamGridDB "$GSGDBA_APPID" "$SGDBSEARCHENDPOINT_HERO" "${GSGDBA_FILENAME}_hero" "$SGDBHEROSTYLES" "$SGDBHERODIMS" "$SGDBHEROTYPES" "$SGDBHERONSFW" "$SGDBHEROHUMOR" "$SGDBHEROEPILEPSY" "$GSGDBA_HASFILE" "$GSGDBA_APPLYARTWORK"
 		# Logo doesn't have dimensions, so it's left intentionally blank
 		downloadArtFromSteamGridDB "$GSGDBA_APPID" "$SGDBSEARCHENDPOINT_LOGO" "${GSGDBA_FILENAME}_logo" "$SGDBLOGOSTYLES" "" "$SGDBLOGOTYPES" "$SGDBLOGONSFW" "$SGDBLOGOHUMOR" "$SGDBLOGOEPILEPSY" "$GSGDBA_HASFILE" "$GSGDBA_APPLYARTWORK"
 		downloadArtFromSteamGridDB "$GSGDBA_APPID" "$SGDBSEARCHENDPOINT_BOXART" "${GSGDBA_FILENAME}p" "$SGDBBOXARTSTYLES" "$SGDBBOXARTDIMS" "$SGDBBOXARTTYPES" "$SGDBBOXARTNSFW" "$SGDBBOXARTHUMOR" "$SGDBBOXARTEPILEPSY" "$GSGDBA_HASFILE" "$GSGDBA_APPLYARTWORK"
 		downloadArtFromSteamGridDB "$GSGDBA_APPID" "$SGDBSEARCHENDPOINT_BOXART" "${GSGDBA_FILENAME}" "$SGDBTENFOOTSTYLES" "$SGDBTENFOOTDIMS" "$SGDBTENFOOTTYPES" "$SGDBTENFOOTNSFW" "$SGDBTENFOOTHUMOR" "$SGDBTENFOOTEPILEPSY" "$GSGDBA_HASFILE" "$GSGDBA_APPLYARTWORK"
+
 		pw_stop_progress_bar
-    fi
+	fi
 }
 
 ## Fetch artwork from SteamGridDB
