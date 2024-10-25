@@ -151,6 +151,7 @@ source "${PORT_SCRIPTS_PATH}/var"
 export STEAM_SCRIPTS="${PORT_WINE_PATH}/steam_scripts"
 export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
 export PW_CACHE_LANG_PATH="${PORT_WINE_TMP_PATH}/cache_lang/"
+export PW_DATABASE_PATH="${PORT_WINE_TMP_PATH}/database/"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
 export PW_GUI_THEMES_PATH="${PORT_WINE_PATH}/data/themes"
 export pw_yad="${PW_GUI_THEMES_PATH}/gui/yad_gui_pp"
@@ -178,9 +179,9 @@ try_remove_file "${PW_TMPFS_PATH}/update_pfx_log"
 # shellcheck source=/dev/null
 source "${USER_CONF}"
 
-if [[ ! -f "${PW_CACHE_LANG_PATH}/$LANGUAGE" ]] ; then
-    create_translations
-fi
+[[ ! -d $PW_DATABASE_PATH ]] && create_new_dir "$PW_DATABASE_PATH"
+[[ ! -f $PW_DATABASE_PATH/times_current ]] && touch "$PW_DATABASE_PATH/times_current"
+[[ ! -f "${PW_CACHE_LANG_PATH}/$LANGUAGE" ]] && create_translations
 
 unset translations
 # shellcheck source=/dev/null
@@ -616,17 +617,16 @@ else
         desktop_file_new="${desktop_file//"$PORT_WINE_PATH/"/}"
         if [[ $desktop_file_new =~ .desktop$ ]] ; then
             if [[ ! $desktop_file_new =~ (PortProton|readme) ]] ; then
-                while IFS= read -r line ; do
-                    if [[ $line =~ ^Exec= ]] ; then
+                while IFS= read -r line1 ; do
+                    if [[ $line1 =~ ^Exec= ]] ; then
                         if check_flatpak ; then
-                            PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${line//Exec=flatpak run ru.linux_gaming.PortProton /}
+                            PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${line1//Exec=flatpak run ru.linux_gaming.PortProton /}
                         else
-                            PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${line//Exec=env \"$PORT_SCRIPTS_PATH\/start.sh\" /}
+                            PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${line1//Exec=env \"$PORT_SCRIPTS_PATH\/start.sh\" /}
                         fi
                     fi
-                    [[ $line =~ ^Icon= ]] && PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]="${line//Icon=/}"
-                    [[ $line =~ ^#Time= ]] && PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]="${line//#Time=/}"
-                    [[ $line =~ ^#NEW_DESKTOP ]] && NEW_DESKTOP=1
+                    [[ $line1 =~ ^Icon= ]] && PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]=${line1//Icon=/}
+                    [[ $line1 =~ ^#NEW_DESKTOP ]] && NEW_DESKTOP=1
                 done < "$desktop_file"
                 PW_ALL_DF["$AMOUNT_GENERATE_BUTTONS"]="$desktop_file_new"
                 if [[ $SORT_WITH_TIME == enabled ]] && [[ $NEW_DESKTOP == 1 ]] ; then
@@ -636,29 +636,27 @@ else
                 else
                     PW_AMOUNT_OLD_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
                 fi
-                # Для конвертация .desktop файлов flatpak в натив и наоборот
+                # Для конвертации существующих .desktop файлов flatpak в натив и наоборот
                 if [[ ${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]} =~ ^"Exec=flatpak run ru.linux_gaming.PortProton " ]] ; then
                     PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]//Exec=flatpak run ru.linux_gaming.PortProton /}
-                    NEED_FIXES_DESKTOP=1
+                    sed -i "s|Exec=flatpak run ru.linux_gaming.PortProton|Exec=env \"$PORT_SCRIPTS_PATH/start.sh\"|" "$desktop_file"
                 elif [[ ${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]} =~ ^"Exec=env \"$PORT_SCRIPTS_PATH/start.sh\" " ]] ; then
                     PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]//Exec=env \"$PORT_SCRIPTS_PATH\/start.sh\" /}
-                    NEED_FIXES_DESKTOP=1
+                    sed -i "s|Exec=env \"$PORT_SCRIPTS_PATH/start.sh\"|Exec=flatpak run ru.linux_gaming.PortProton|" "$desktop_file"
                 fi
-                # Для фикса битых #Time=
-                if [[ ! ${PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]} =~ [0-9]+ ]] \
-                || (( ${PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]} >= 999999999 )) \
-                || [[ $NEED_FIXES_DESKTOP == 1 ]]
-                then
-                    portwine_exe=${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]//\"/}
-                    search_desktop_file
-                    unset portwine_exe NEED_FIXES_DESKTOP
-                    PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=$TIME_CURRENT
-                fi
+                PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]//\"/}
+                while IFS=" " read -r -a line2 ; do
+                    if [[ ${line2[0]//#@_@#/ } == ${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]} ]] ; then
+                        PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=${line2[2]}
+                        break
+                    else
+                        PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=0
+                    fi
+                done < "$PW_DATABASE_PATH/times_current"
                 (( AMOUNT_GENERATE_BUTTONS++ ))
             fi
         fi
     done
-
     # Переопределение элементов в массивах в зависимости от PW_GAME_TIME, от большего значения к меньшему.
     # 10 миллисекунд на 40 .desktop файлов, работает быстро
     if [[ $SORT_WITH_TIME == enabled ]] && [[ -n ${PW_GAME_TIME[1]} ]] ; then
@@ -683,16 +681,14 @@ else
             done
         done
     fi
-
     # Генерация .desktop баттанов для главного меню
     IFS=$'\n'
     PW_GENERATE_BUTTONS="--field=   ${translations[Create shortcut...]}!${PW_GUI_ICON_PATH}/find_48.svg!:FBTNR%@bash -c \"button_click --normal pw_find_exe\"%"
     for dp in "${PW_AMOUNT_NEW_DESKTOP[@]}" "${PW_AMOUNT_OLD_DESKTOP[@]}" ; do
         PW_NAME_D_ICON_48="${PW_ICON_PATH[dp]%.png}_48"
         PW_NAME_D_ICON_128="${PW_ICON_PATH[dp]%.png}"
-        PW_NAME_D_ICON_NEW="${PW_NAME_D_ICON[dp]//\"/}"
-        resize_png "$PW_NAME_D_ICON_NEW" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
-        resize_png "$PW_NAME_D_ICON_NEW" "${PW_NAME_D_ICON_128//"${PORT_WINE_PATH}/data/img/"/}" "128"
+        resize_png "$PW_NAME_D_ICON" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
+        resize_png "$PW_NAME_D_ICON" "${PW_NAME_D_ICON_128//"${PORT_WINE_PATH}/data/img/"/}" "128"
 
         PW_DESKTOP_FILES="${PW_ALL_DF[$dp]}"
         PW_DESKTOP_FILES_SHOW="$PW_DESKTOP_FILES"

@@ -248,9 +248,7 @@ eval_translations () {
 
 create_translations () {
     local po_file msgid msgstr
-    if [[ ! -d "${PW_CACHE_LANG_PATH}" ]] ; then
-        create_new_dir "${PW_CACHE_LANG_PATH}"
-    fi
+    [[ ! -d $PW_CACHE_LANG_PATH ]] && create_new_dir "$PW_CACHE_LANG_PATH"
     cat << EOF > "${PW_CACHE_LANG_PATH}/$LANGUAGE"
 #!/usr/bin/env bash
 TRANSLATIONS_VER=$scripts_install_ver
@@ -849,81 +847,63 @@ debug_timer () {
     fi
 }
 
-# Поиск нужного .desktop файла по $portwine_exe
+# Поиск нужного .desktop файла по $portwine_exe (для показа в комментариях нужного времени)
+# Параллельное создание базы по времени после завершения приложения
 search_desktop_file () {
-    local count desktop_file desktop_file_new EXEC_DESKTOP TIME_CURRENT_PROXY EXEC_DESKTOP_NEW TIME_TOTAL i j df
-    unset TIME_CURRENT_ARRAY DESKTOP_FILES_ARRAY
-    count=0
+    local desktop_file desktop_file_new EXEC_DESKTOP EXEC_DESKTOP_NEW TIME_TOTAL line1 line2 ENTRY_POINT_FIND
+    unset TIME_CURRENT
     for desktop_file in "$PORT_WINE_PATH"/* ; do
         desktop_file_new="${desktop_file//"$PORT_WINE_PATH/"/}"
         if [[ $desktop_file_new =~ .desktop$ ]] ; then
             if [[ ! $desktop_file_new =~ (PortProton|readme) ]] ; then
-                while IFS= read -r line ; do
-                    if [[ $line =~ ^Exec= ]] ; then
+                while IFS= read -r line1 ; do
+                    if [[ $line1 =~ ^Exec= ]] ; then
                         if check_flatpak ; then
-                            EXEC_DESKTOP=${line//Exec=flatpak run ru.linux_gaming.PortProton /}
+                            EXEC_DESKTOP=${line1//Exec=flatpak run ru.linux_gaming.PortProton /}
                         else
-                            EXEC_DESKTOP=${line//Exec=env \"$PORT_SCRIPTS_PATH\/start.sh\" /}
+                            EXEC_DESKTOP=${line1//Exec=env \"$PORT_SCRIPTS_PATH\/start.sh\" /}
                         fi
                     fi
-                    [[ $line =~ ^#Time= ]] && TIME_CURRENT_PROXY=${line//#Time=/}
                 done < "$desktop_file"
-                # Для конвертации существующих .desktop файлов flatpak в натив и наоборот
-                if [[ $EXEC_DESKTOP =~ ^"Exec=flatpak run ru.linux_gaming.PortProton " ]] ; then
-                    sed -i "s|Exec=flatpak run ru.linux_gaming.PortProton|Exec=env \"$PORT_SCRIPTS_PATH/start.sh\"|" "$desktop_file"
-                elif [[ $EXEC_DESKTOP =~ ^"Exec=env \"$PORT_SCRIPTS_PATH/start.sh\" " ]] ; then
-                    sed -i "s|Exec=env \"$PORT_SCRIPTS_PATH/start.sh\"|Exec=flatpak run ru.linux_gaming.PortProton|" "$desktop_file"
-                fi
+                while IFS=" " read -r -a line2 ; do
+                    if [[ ${line2[0]} == ${portwine_exe// /#@_@#} ]] ; then
+                        TIME_CURRENT=${line2[2]}
+                    fi
+                    if [[ ${line2[1]} =~ ^$ENTRY_POINT ]] ; then
+                        ENTRY_POINT_FIND=$ENTRY_POINT
+                        break
+                    fi
+                done < "$PW_DATABASE_PATH/times_current"
                 EXEC_DESKTOP_NEW=${EXEC_DESKTOP//\"/}
                 if [[ $portwine_exe == "$EXEC_DESKTOP_NEW" ]] ; then
-                    if [[ -n $TIME_CURRENT_PROXY ]] ; then
-                        TIME_CURRENT=$TIME_CURRENT_PROXY
-                        TIME_CURRENT_ARRAY+=($TIME_CURRENT)
-                        # Если существует несколько .desktop файлов на один и тот же .exe файл,
-                        # то среди них время берётся из того .desktop файла, в котором проведено дольше времени
-                        # и данное время будет потом записываться во все .desktop файлы у которых общий .exe файл
-                        if [[ -n ${TIME_CURRENT_ARRAY[1]} ]] ; then
-                            for i in "${!TIME_CURRENT_ARRAY[@]}" ; do
-                                for j in "${!TIME_CURRENT_ARRAY[@]}" ; do
-                                    if (( ${TIME_CURRENT_ARRAY[$i]} > ${TIME_CURRENT_ARRAY[$j]} )) ; then
-                                        tmp=${TIME_CURRENT_ARRAY[$i]}
-                                        TIME_CURRENT_ARRAY[i]=${TIME_CURRENT_ARRAY[$j]}
-                                        TIME_CURRENT_ARRAY[j]=$tmp
-                                    fi
-                                done
-                            done
-                        fi
-                        TIME_CURRENT="${TIME_CURRENT_ARRAY[0]}"
-                        # Для битых #Time=
-                        if [[ ! $TIME_CURRENT =~ [0-9]+ ]] \
-                        || (( TIME_CURRENT >= 999999999 )) ; then
-                            TIME_CURRENT="0"
-                        fi
-                    fi
-                    DESKTOP_FILES_ARRAY["$count"]="$desktop_file"
-                    (( count++ ))
+                    DESKTOP_SEARCH_FILE=$desktop_file
+                    break
                 fi
-                unset TIME_CURRENT_PROXY
             fi
         fi
     done
     IFS="$orig_IFS"
-
-    [[ -z $TIME_CURRENT ]] && TIME_CURRENT=0
-    export TIME_CURRENT
-
     if [[ -n $PW_TIME_IN_GAME ]] ; then
-        TIME_TOTAL=$(( TIME_CURRENT + PW_TIME_IN_GAME ))
-        for df in "${DESKTOP_FILES_ARRAY[@]}" ; do
-            sed -i '/^#Time=/d' "$df"
-            echo "#Time=$TIME_TOTAL" >> "$df"
-        done
+        if [[ -n $TIME_CURRENT ]] ; then
+            TIME_TOTAL=$(( TIME_CURRENT + PW_TIME_IN_GAME ))
+            sed -i "s|${portwine_exe// /#@_@#} $ENTRY_POINT $TIME_CURRENT|${portwine_exe// /#@_@#} $ENTRY_POINT $TIME_TOTAL|g" "$PW_DATABASE_PATH/times_current"
+        else
+            TIME_TOTAL=$(( 0 + PW_TIME_IN_GAME ))
+            echo "${portwine_exe// /#@_@#} $ENTRY_POINT $TIME_TOTAL" >> "$PW_DATABASE_PATH/times_current"
+        fi
     else
-        for df in "${DESKTOP_FILES_ARRAY[@]}" ; do
-            sed -i '/^#Time=/d' "$df"
-            echo "#Time=$TIME_CURRENT" >> "$df"
-        done
+        if [[ -n $ENTRY_POINT_FIND ]] ; then
+            TIME_CURRENT=${line2[2]}
+            if [[ -n $PW_TIME_IN_GAME ]]
+            then TIME_TOTAL=$(( TIME_CURRENT + PW_TIME_IN_GAME ))
+            else TIME_TOTAL=$TIME_CURRENT
+            fi
+            sed -i "s|${line2[0]} ${line2[1]} ${line2[2]}|${portwine_exe// /#@_@#} $ENTRY_POINT_FIND $TIME_TOTAL|g" "$PW_DATABASE_PATH/times_current"
+        else
+            TIME_CURRENT=0
+        fi
     fi
+    export TIME_CURRENT DESKTOP_SEARCH_FILE
 }
 
 create_name_desktop () {
@@ -938,9 +918,8 @@ create_name_desktop () {
     elif [[ -n $name_desktop ]] ; then
         DESKTOP_NAME_FILE="$name_desktop"
         unset name_desktop
-    elif [[ -n ${DESKTOP_FILES_ARRAY[0]} ]] \
-    && [[ -z ${DESKTOP_FILES_ARRAY[1]} ]] ; then
-        DESKTOP_NAME_FILE="${DESKTOP_FILES_ARRAY[0]//"$PORT_WINE_PATH/"/}"
+    elif [[ -n $DESKTOP_SEARCH_FILE ]] ; then
+        DESKTOP_NAME_FILE="${DESKTOP_SEARCH_FILE//"$PORT_WINE_PATH/"/}"
         DESKTOP_NAME_FILE="${DESKTOP_NAME_FILE//.desktop/}"
     fi
 
@@ -2483,6 +2462,7 @@ pw_create_gui_png () {
     fi
     if [[ -z "$PORTPROTON_NAME" ]] \
     || [[ -z "$FILE_DESCRIPTION" ]] \
+    || [[ -z "$ENTRY_POINT" ]] \
     || [[ "$PW_NO_RESTART_PPDB" == "1" ]]
     then
         if [[ -n "${PORTWINE_CREATE_SHORTCUT_NAME}" ]] ; then
@@ -2492,6 +2472,7 @@ pw_create_gui_png () {
                 if timeout 3 exiftool "$portwine_exe" &> "${PW_TMPFS_PATH}/exiftool.tmp" ; then
                     PW_PRODUCTNAME=$(sed -n 's/^Product Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
                     FILE_DESCRIPTION=$(sed -n 's/^File Description\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
+                    ENTRY_POINT=$(sed -n 's/^Entry Point\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
                 else
                     print_error "exiftool - broken!"
                 fi
@@ -2500,6 +2481,7 @@ pw_create_gui_png () {
                 env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" "$portwine_exe" &> "${PW_TMPFS_PATH}/exiftool.tmp"
                 PW_PRODUCTNAME=$(sed -n 's/^Product Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
                 FILE_DESCRIPTION=$(sed -n 's/^File Description\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
+                ENTRY_POINT=$(sed -n 's/^Entry Point\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
             fi
 
             if [[ "$PW_PRODUCTNAME" =~ (Launcher|RU) ]]
@@ -2518,7 +2500,7 @@ pw_create_gui_png () {
 
         PORTPROTON_NAME="$(echo "${PORTPROTON_NAME}" | sed "s/\`//g" | sed "s/\"//g" | sed "s/'//g" | sed "s/\!//g")"
         export PORTPROTON_NAME
-        edit_db_from_gui PORTPROTON_NAME FILE_DESCRIPTION
+        edit_db_from_gui PORTPROTON_NAME FILE_DESCRIPTION ENTRY_POINT
     fi
 
     resize_png "$portwine_exe" "${PORTPROTON_NAME}" "128"
@@ -5609,12 +5591,8 @@ portwine_create_shortcut () {
 
         edit_user_conf_from_gui PW_SHORTCUT_MENU PW_SHORTCUT_DESKTOP PW_SHORTCUT_STEAM
 
-        if [[ -n ${DESKTOP_FILES_ARRAY[0]} && $name_desktop != "$DESKTOP_NAME_FILE" ]] || [[ -n ${DESKTOP_FILES_ARRAY[1]} ]] ; then
-            if yad_question "${translations[A higher number of duplicate desktop files were found for this file.\\nShould I delete the extra ones or not?]}" ; then
-                for rm in "${DESKTOP_FILES_ARRAY[@]}" ; do
-                    rm -f "$rm"
-                done
-            fi
+        if [[ -n $DESKTOP_SEARCH_FILE && $name_desktop != "$DESKTOP_NAME_FILE" ]] ; then
+            rm -f "$DESKTOP_SEARCH_FILE"
         else
             try_remove_file "${PORT_WINE_PATH}/${name_desktop}.desktop"
         fi
