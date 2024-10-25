@@ -626,16 +626,8 @@ else
                         fi
                     fi
                     [[ $line1 =~ ^Icon= ]] && PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]=${line1//Icon=/}
-                    [[ $line1 =~ ^#NEW_DESKTOP ]] && NEW_DESKTOP=1
                 done < "$desktop_file"
                 PW_ALL_DF["$AMOUNT_GENERATE_BUTTONS"]="$desktop_file_new"
-                if [[ $SORT_WITH_TIME == enabled ]] && [[ $NEW_DESKTOP == 1 ]] ; then
-                    unset NEW_DESKTOP
-                    sed -i '/^#NEW_DESKTOP/d' "$desktop_file"
-                    PW_AMOUNT_NEW_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
-                else
-                    PW_AMOUNT_OLD_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
-                fi
                 # Для конвертации существующих .desktop файлов flatpak в натив и наоборот
                 if [[ ${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]} =~ ^"Exec=flatpak run ru.linux_gaming.PortProton " ]] ; then
                     PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]//Exec=flatpak run ru.linux_gaming.PortProton /}
@@ -644,15 +636,22 @@ else
                     PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]//Exec=env \"$PORT_SCRIPTS_PATH\/start.sh\" /}
                     sed -i "s|Exec=env \"$PORT_SCRIPTS_PATH/start.sh\"|Exec=flatpak run ru.linux_gaming.PortProton|" "$desktop_file"
                 fi
-                PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]//\"/}
                 while IFS=" " read -r -a line2 ; do
-                    if [[ ${line2[0]//#@_@#/ } == ${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]} ]] ; then
+                    if [[ \"${line2[0]//#@_@#/ }\" == "${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]}" ]] ; then
+                        [[ ${line2[3]} == NEW_DESKTOP ]] && NEW_DESKTOP=1
                         PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=${line2[2]}
                         break
                     else
                         PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=0
                     fi
                 done < "$PW_DATABASE_PATH/times_current"
+                if [[ $SORT_WITH_TIME == enabled ]] && [[ $NEW_DESKTOP == 1 ]] ; then
+                    unset NEW_DESKTOP
+                    sed -i "s/${line2[1]} ${line2[2]} ${line2[3]}/${line2[1]} ${line2[2]}/" "$PW_DATABASE_PATH/times_current"
+                    PW_AMOUNT_NEW_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
+                else
+                    PW_AMOUNT_OLD_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
+                fi
                 (( AMOUNT_GENERATE_BUTTONS++ ))
             fi
         fi
@@ -687,8 +686,9 @@ else
     for dp in "${PW_AMOUNT_NEW_DESKTOP[@]}" "${PW_AMOUNT_OLD_DESKTOP[@]}" ; do
         PW_NAME_D_ICON_48="${PW_ICON_PATH[dp]%.png}_48"
         PW_NAME_D_ICON_128="${PW_ICON_PATH[dp]%.png}"
-        resize_png "$PW_NAME_D_ICON" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
-        resize_png "$PW_NAME_D_ICON" "${PW_NAME_D_ICON_128//"${PORT_WINE_PATH}/data/img/"/}" "128"
+        PW_NAME_D_ICON_NEW="${PW_NAME_D_ICON[dp]//\"/}"
+        resize_png "$PW_NAME_D_ICON_NEW" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
+        resize_png "$PW_NAME_D_ICON_NEW" "${PW_NAME_D_ICON_128//"${PORT_WINE_PATH}/data/img/"/}" "128"
 
         PW_DESKTOP_FILES="${PW_ALL_DF[$dp]}"
         PW_DESKTOP_FILES_SHOW="$PW_DESKTOP_FILES"
