@@ -492,10 +492,10 @@ if [[ -f "${portwine_exe}" ]] ; then
     fi
     if [[ "${PW_GUI_DISABLED_CS}" != 1 ]] ; then
         pw_create_gui_png
-        if ! grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop &>/dev/null ; then
+        if ! grep -il "${portwine_exe}" "$PORT_WINE_PATH"/*.desktop &>/dev/null ; then
             PW_SHORTCUT="${translations[CREATE SHORTCUT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Create shortcut for select file...]}:100"
         else
-            PW_SHORTCUT="${translations[DELETE SHORTCUT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Delete shortcut for select file...]}:98"
+            PW_SHORTCUT="${translations[CHANGE SHORTCUT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Change shortcut for select file...]}:98"
         fi
 
         create_name_desktop
@@ -647,7 +647,7 @@ else
                 done < "$PW_DATABASE_PATH/times_current"
                 if [[ $SORT_WITH_TIME == enabled ]] && [[ $NEW_DESKTOP == 1 ]] ; then
                     unset NEW_DESKTOP
-                    sed -i "s/${line2[1]} ${line2[2]} ${line2[3]}/${line2[1]} ${line2[2]}/" "$PW_DATABASE_PATH/times_current"
+                    sed -i "s/${line2[1]} ${line2[2]} ${line2[3]}/${line2[1]} ${line2[2]} OLD_DESKTOP/" "$PW_DATABASE_PATH/times_current"
                     PW_AMOUNT_NEW_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
                 else
                     PW_AMOUNT_OLD_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
@@ -899,7 +899,7 @@ case "$PW_YAD_SET" in
 esac
 
 case "$PW_YAD_SET" in
-    98) portwine_delete_shortcut ;;
+    98) portwine_change_shortcut ;;
     100) portwine_create_shortcut ;;
     DEBUG|102) portwine_start_debug ;;
     106) portwine_launch ;;
