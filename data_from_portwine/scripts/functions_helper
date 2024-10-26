@@ -4153,12 +4153,15 @@ pw_start_progress_bar_install_game () {
 }
 
 pw_stop_progress_bar () {
-    sleep 0.1
-    for PW_KILL_YAD_PID in "$PW_YAD_PID_PROGRESS_BAR_BLOCK" "$PW_YAD_PID_PROGRESS_BAR_CS" \
-                           "$PW_YAD_PID_PFX_COVER_UI" "$PW_YAD_PID_PROGRESS_BAR_COVER"
-    do
-        kill -s SIGUSR1 "$PW_KILL_YAD_PID" &>/dev/null
-    done
+    if [[ -n $PW_YAD_PID_PROGRESS_BAR_BLOCK ]] ; then
+        kill -s SIGUSR1 "$PW_YAD_PID_PROGRESS_BAR_BLOCK" &>/dev/null
+    elif [[ -n $PW_YAD_PID_PROGRESS_BAR_CS ]] ; then
+        kill -s SIGUSR1 "$PW_YAD_PID_PROGRESS_BAR_CS" &>/dev/null
+    elif [[ -n $PW_YAD_PID_PFX_COVER_UI ]] ; then
+        kill -s SIGUSR1 "$PW_YAD_PID_PFX_COVER_UI" &>/dev/null
+    elif [[ -n $PW_YAD_PID_PROGRESS_BAR_COVER ]] ; then
+        kill -s SIGUSR1 "$PW_YAD_PID_PROGRESS_BAR_COVER" &>/dev/null
+    fi
     unset PW_YAD_PID_PROGRESS_BAR_BLOCK PW_YAD_PID_PROGRESS_BAR_CS \
     PW_YAD_PID_PFX_COVER_UI PW_YAD_PID_PROGRESS_BAR_COVER
     return 0
