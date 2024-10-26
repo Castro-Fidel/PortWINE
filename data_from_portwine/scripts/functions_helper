@@ -2925,7 +2925,7 @@ start_portwine () {
     elif [[ "$PW_USE_GAMEMODE" = "1" ]] \
     && [[ -n "$DBUS_SESSION_BUS_ADDRESS" ]]
     then
-        if command -v systemctl \
+        if command -v systemctl &>/dev/null \
         && (systemctl is-active --quiet ananicy.service \
         || systemctl is-active --quiet ananicy-cpp.service)
         then
@@ -2972,6 +2972,11 @@ start_portwine () {
     else
         export GAMEMODERUN=0
         export PW_GAMEMODERUN_SLR=""
+    fi
+
+    if command -v systemd-inhibit &>/dev/null && [[ "$GAMEMODERUN" != "1" ]] ; then
+        PW_INHIBIT_SLR='systemd-inhibit --mode=block --who="PortProton" --why="Running"'
+        print_info "Screensaver will be inhibit"
     fi
     pw_other_fixes
 
@@ -3793,6 +3798,7 @@ pw_run () {
             print_info "Log from RUNTIME and WINE:"
             ${PW_RUN_GAMESCOPE} \
             ${PW_POWERPROFILECTL_SLR} \
+            ${PW_INHIBIT_SLR} \
             ${pw_runtime} \
             LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             LD_PRELOAD="${PW_LD_PRELOAD}" \
@@ -3811,6 +3817,7 @@ pw_run () {
             echo "Log WINE:" > "${PW_LOG_TO_FILE}"
             ${PW_RUN_GAMESCOPE} \
             ${PW_POWERPROFILECTL_SLR} \
+            ${PW_INHIBIT_SLR} \
             ${pw_runtime} \
             LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             LD_PRELOAD="${PW_LD_PRELOAD}" \
@@ -3846,6 +3853,7 @@ pw_run () {
             ${PW_POWERPROFILECTL_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
+            ${PW_INHIBIT_SLR} \
             "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
             wait_wineserver
         else
@@ -3864,6 +3872,7 @@ pw_run () {
             ${PW_POWERPROFILECTL_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
+            ${PW_INHIBIT_SLR} \
             "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]}
             wait_wineserver
         fi
