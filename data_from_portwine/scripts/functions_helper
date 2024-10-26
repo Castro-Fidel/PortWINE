@@ -767,10 +767,10 @@ background_pid () {
         case $arg1 in
             --start)
                 eval "$arg2 &"
-                PID=$!
+                local PID=$!
                 export bg_pid"${arg3}"="$PID" ;;
             --end)
-                PID=$(get_bg_pid bg_pid"${arg3}")
+                local PID=$(get_bg_pid bg_pid"${arg3}")
                 [[ -z $PID ]] && return 1
                 wait "$PID" 2>/dev/null && return 0 ;;
         esac
@@ -850,9 +850,7 @@ debug_timer () {
 # Поиск нужного .desktop файла по $portwine_exe (для показа в комментариях нужного времени)
 # Параллельное создание базы по времени после завершения приложения
 search_desktop_file () {
-    local desktop_file desktop_file_new EXEC_DESKTOP EXEC_DESKTOP_NEW TIME_TOTAL count line1 line2
-    unset TIME_CURRENT DESKTOP_CORRECT_FILE
-    count=0
+    local desktop_file desktop_file_new EXEC_DESKTOP line1 line2 TIME_TOTAL
     for desktop_file in "$PORT_WINE_PATH"/* ; do
         desktop_file_new="${desktop_file//"$PORT_WINE_PATH/"/}"
         if [[ $desktop_file_new =~ .desktop$ ]] ; then
@@ -934,6 +932,7 @@ create_name_desktop () {
         unset name_desktop
     elif [[ -n $DESKTOP_CORRECT_FILE ]] ; then
         DESKTOP_NAME_FILE="${DESKTOP_CORRECT_FILE//"$PORT_WINE_PATH/"/}"
+        unset DESKTOP_CORRECT_FILE
         DESKTOP_NAME_FILE="${DESKTOP_NAME_FILE//.desktop/}"
     fi
 
@@ -5606,7 +5605,9 @@ portwine_output_yad_shortcut () {
         PW_SHORTCUT_DESKTOP=$(echo "$OUTPUT" | awk -F'|' '{print $3}')
         PW_SHORTCUT_STEAM=$(echo "$OUTPUT" | awk -F'|' '{print $4}')
 
-        edit_user_conf_from_gui PW_SHORTCUT_MENU PW_SHORTCUT_DESKTOP PW_SHORTCUT_STEAM
+        if [[ $PORTWINE_CHANGE_SHORTCUT != 1 ]] ; then
+            edit_user_conf_from_gui PW_SHORTCUT_MENU PW_SHORTCUT_DESKTOP PW_SHORTCUT_STEAM
+        fi
 
         portwine_delete_shortcut
 
@@ -5764,9 +5765,16 @@ export -f pw_auto_create_shortcut
 portwine_change_shortcut () {
     export GDK_BACKEND="x11"
 
-    [[ -z "${PW_SHORTCUT_MENU}" ]] && PW_SHORTCUT_MENU="TRUE"
-    [[ -z "${PW_SHORTCUT_DESKTOP}" ]] && PW_SHORTCUT_DESKTOP="TRUE"
-    [[ -z "${PW_SHORTCUT_STEAM}" ]] && PW_SHORTCUT_STEAM="FALSE"
+    portwine_search_shortcut
+    if [[ -n $PW_DELETE_MENU ]]
+    then PW_SHORTCUT_MENU="TRUE"
+    else PW_SHORTCUT_MENU="FALSE"
+    fi
+    if [[ -n ${PW_DELETE_SHORTCUT_DESKTOP[0]} ]]
+    then PW_SHORTCUT_DESKTOP="TRUE"
+    else PW_SHORTCUT_DESKTOP="FALSE"
+    fi
+    PW_SHORTCUT_STEAM="FALSE"
 
     unset name_desktop
     create_name_desktop
@@ -5788,6 +5796,7 @@ portwine_change_shortcut () {
     --button="${translations[REMOVE SHORTCUT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
     --button="${translations[CHANGE SHORTCUT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
     PW_YAD_OUT=$?
+    PORTWINE_CHANGE_SHORTCUT=1
     if [[ $PW_YAD_OUT == 1 ]] ; then
         [[ "$PW_GUI_START" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
         portwine_delete_shortcut
@@ -5796,27 +5805,35 @@ portwine_change_shortcut () {
     portwine_output_yad_shortcut
 }
 
-portwine_delete_shortcut () {
+portwine_search_shortcut () {
+    unset PW_DELETE_SHORTCUT_MENU PW_DELETE_SHORTCUT_DESKTOP
     PW_DELETE_MENU="$(grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop 2>/dev/null)"
-    PW_DELETE_SHORTCUT+=(${PW_DELETE_MENU// /@_@})
+    PW_DELETE_SHORTCUT_MENU+=(${PW_DELETE_MENU// /@_@})
 
     PW_DELETE_PP="$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop 2>/dev/null)"
-    PW_DELETE_SHORTCUT+=(${PW_DELETE_PP// /@_@})
+    PW_DELETE_SHORTCUT_MENU+=(${PW_DELETE_PP// /@_@})
 
     if [[ -d "${HOME}/Desktop" ]] ; then
         PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "${HOME}/Desktop"/*.desktop 2>/dev/null)"
-        PW_DELETE_SHORTCUT+=(${PW_DELETE_DESKTOP// /@_@})
+        PW_DELETE_SHORTCUT_DESKTOP+=(${PW_DELETE_DESKTOP// /@_@})
     fi
     if [[ -d "${HOME}/Рабочий стол" ]] ; then
         PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "${HOME}/Рабочий стол"/*.desktop 2>/dev/null)"
-        PW_DELETE_SHORTCUT+=(${PW_DELETE_DESKTOP// /@_@})
+        PW_DELETE_SHORTCUT_DESKTOP+=(${PW_DELETE_DESKTOP// /@_@})
     fi
     if [[ $(xdg-user-dir DESKTOP) ]] ; then
         PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "$(xdg-user-dir DESKTOP)"/*.desktop 2>/dev/null)"
-        PW_DELETE_SHORTCUT+=(${PW_DELETE_DESKTOP// /@_@})
+        PW_DELETE_SHORTCUT_DESKTOP+=(${PW_DELETE_DESKTOP// /@_@})
     fi
+}
 
-    for delete_shortcut in ${PW_DELETE_SHORTCUT[@]} ; do
+portwine_delete_shortcut () {
+    if [[ $PORTWINE_CHANGE_SHORTCUT != 1 ]] ; then
+        portwine_search_shortcut
+    fi
+    unset PORTWINE_CHANGE_SHORTCUT
+
+    for delete_shortcut in ${PW_DELETE_SHORTCUT_MENU[@]} ${PW_DELETE_SHORTCUT_DESKTOP[@]} ; do
         rm -f "${delete_shortcut//@_@/ }"
     done
 }
@@ -6145,7 +6162,7 @@ portwine_start_debug () {
 }
 
 pw_create_prefix_backup () {
-    cd "$HOME"
+    cd "$HOME" || fatal
     PW_PREFIX_TO_BACKUP=$("${pw_yad}" --file --directory --width=800 --height=500 \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "${translations[BACKUP PREFIX TO...]}" \
     --button="${translations[CANCEL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
