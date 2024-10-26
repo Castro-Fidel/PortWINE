@@ -151,7 +151,7 @@ source "${PORT_SCRIPTS_PATH}/var"
 export STEAM_SCRIPTS="${PORT_WINE_PATH}/steam_scripts"
 export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
 export PW_CACHE_LANG_PATH="${PORT_WINE_TMP_PATH}/cache_lang/"
-export PW_DATABASE_PATH="${PORT_WINE_TMP_PATH}/database/"
+export PW_DATABASE_PATH="${PORT_WINE_TMP_PATH}/pw_database/"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
 export PW_GUI_THEMES_PATH="${PORT_WINE_PATH}/data/themes"
 export pw_yad="${PW_GUI_THEMES_PATH}/gui/yad_gui_pp"
@@ -179,8 +179,10 @@ try_remove_file "${PW_TMPFS_PATH}/update_pfx_log"
 # shellcheck source=/dev/null
 source "${USER_CONF}"
 
-[[ ! -d $PW_DATABASE_PATH ]] && create_new_dir "$PW_DATABASE_PATH"
-[[ ! -f $PW_DATABASE_PATH/times_current ]] && touch "$PW_DATABASE_PATH/times_current"
+if [[ ! -f $PW_DATABASE_PATH/database ]] ; then
+    create_new_dir "$PW_DATABASE_PATH"
+    touch "$PW_DATABASE_PATH/database"
+fi
 [[ ! -f "${PW_CACHE_LANG_PATH}/$LANGUAGE" ]] && create_translations
 
 unset translations
@@ -638,16 +640,14 @@ else
                 fi
                 while IFS=" " read -r -a line2 ; do
                     if [[ \"${line2[0]//#@_@#/ }\" == "${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]}" ]] ; then
-                        [[ ${line2[3]} == NEW_DESKTOP ]] && NEW_DESKTOP=1
                         PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=${line2[2]}
                         break
                     else
                         PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=0
                     fi
-                done < "$PW_DATABASE_PATH/times_current"
-                if [[ $SORT_WITH_TIME == enabled ]] && [[ $NEW_DESKTOP == 1 ]] ; then
-                    unset NEW_DESKTOP
-                    sed -i "s/${line2[1]} ${line2[2]} NEW_DESKTOP/${line2[1]} ${line2[2]} OLD_DESKTOP/" "$PW_DATABASE_PATH/times_current"
+                done < "$PW_DATABASE_PATH/database"
+                if [[ $SORT_WITH_TIME == enabled ]] && [[ ${line2[3]} == NEW_DESKTOP ]] ; then
+                    sed -i "s/${line2[1]} ${line2[2]} NEW_DESKTOP/${line2[1]} ${line2[2]} OLD_DESKTOP/" "$PW_DATABASE_PATH/database"
                     PW_AMOUNT_NEW_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
                 else
                     PW_AMOUNT_OLD_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)

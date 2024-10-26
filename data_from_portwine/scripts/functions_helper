@@ -870,7 +870,7 @@ search_desktop_file () {
                     if [[ ${line2[1]} == "$ENTRY_POINT" ]] ; then
                         break
                     fi
-                done < "$PW_DATABASE_PATH/times_current"
+                done < "$PW_DATABASE_PATH/database"
                 if [[ $portwine_exe == "${EXEC_DESKTOP//\"/}" ]] ; then
                     DESKTOP_CORRECT_FILE="$desktop_file"
                 fi
@@ -886,9 +886,9 @@ search_desktop_file () {
     # Проверка новых десктоп файлов, чтобы их можно было сортировать первыми при первом создании в главном меню
     if [[ $PW_NEW_DESKTOP == 1 ]] && [[ ${line2[3]} != NEW_DESKTOP ]] ; then
         if [[ -n ${line2[1]} ]] ; then
-            sed -i "s|$ENTRY_POINT $TIME_CURRENT OLD_DESKTOP|$ENTRY_POINT $TIME_CURRENT NEW_DESKTOP|" "$PW_DATABASE_PATH/times_current"
+            sed -i "s|$ENTRY_POINT $TIME_CURRENT OLD_DESKTOP|$ENTRY_POINT $TIME_CURRENT NEW_DESKTOP|" "$PW_DATABASE_PATH/database"
         else
-            echo "${portwine_exe// /#@_@#} $ENTRY_POINT $TIME_CURRENT NEW_DESKTOP" >> "$PW_DATABASE_PATH/times_current"
+            echo "${portwine_exe// /#@_@#} $ENTRY_POINT $TIME_CURRENT NEW_DESKTOP" >> "$PW_DATABASE_PATH/database"
         fi
     fi
     unset PW_NEW_DESKTOP
@@ -897,26 +897,26 @@ search_desktop_file () {
         TIME_TOTAL=$(( TIME_CURRENT + PW_TIME_IN_GAME ))
         if [[ -n ${line2[1]} ]] ; then
             # Когда есть предыдущее время
-            sed -i "s|$ENTRY_POINT $TIME_CURRENT|$ENTRY_POINT $TIME_TOTAL|" "$PW_DATABASE_PATH/times_current"
+            sed -i "s|$ENTRY_POINT $TIME_CURRENT|$ENTRY_POINT $TIME_TOTAL|" "$PW_DATABASE_PATH/database"
         else
             # Когда только запустили приложение первый раз
-            echo "${portwine_exe// /#@_@#} $ENTRY_POINT $TIME_TOTAL OLD_DESKTOP" >> "$PW_DATABASE_PATH/times_current"
+            echo "${portwine_exe// /#@_@#} $ENTRY_POINT $TIME_TOTAL OLD_DESKTOP" >> "$PW_DATABASE_PATH/database"
         fi
         # Здесь добавляются новые линии для статистики по аналогии, к примеру ${line2[4]}
+        # L4 важен, чтобы не было путаницы из-за sed, то что используется \(.*\), для ${line2[5]} это будет L5 и т.д.
         if [[ -z ${line2[4]} ]] ; then
-            line2[4]=0
-            sed -i "s|$ENTRY_POINT \(.*\)|$ENTRY_POINT \1 ${line2[4]}|" "$PW_DATABASE_PATH/times_current"
+            line2[4]=1
+            sed -i "s|$ENTRY_POINT \(.*\)|$ENTRY_POINT \1 L4-${line2[4]}|" "$PW_DATABASE_PATH/database"
+        else
+            line2[4]=${line2[4]//L4-/}
+            NUMBER_OF_STARTS=$(( line2[4] + 1 ))
+            sed -i "s|$ENTRY_POINT \(.*\) L4-${line2[4]}|$ENTRY_POINT \1 L4-$NUMBER_OF_STARTS|" "$PW_DATABASE_PATH/database"
         fi
-        NUMBER_OF_STARTS=$(( ${line2[4]} + 1 ))
-        sed -i "s|$ENTRY_POINT \(.*\) ${line2[4]}|$ENTRY_POINT \1 $NUMBER_OF_STARTS|" "$PW_DATABASE_PATH/times_current"
     fi
     # Ремонтирует путь на новый, если вдруг путь до .exe файла битый или изменился, но .exe файл он опознал
     if [[ -n ${line2[1]} ]] && [[ ${line2[0]} != "${portwine_exe// /#@_@#}" ]] ; then
-        if [[ -n $TIME_TOTAL ]]
-        then TIME_TOTAL=$TIME_TOTAL
-        else TIME_TOTAL=$TIME_CURRENT
-        fi
-        sed -i "s|${line2[0]} $ENTRY_POINT $TIME_CURRENT|${portwine_exe// /#@_@#} $ENTRY_POINT $TIME_TOTAL|" "$PW_DATABASE_PATH/times_current"
+        [[ -z $TIME_TOTAL ]] && TIME_TOTAL=$TIME_CURRENT
+        sed -i "s|${line2[0]} $ENTRY_POINT $TIME_CURRENT|${portwine_exe// /#@_@#} $ENTRY_POINT $TIME_TOTAL|" "$PW_DATABASE_PATH/database"
     fi
 }
 
