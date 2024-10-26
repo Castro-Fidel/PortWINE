@@ -647,7 +647,7 @@ else
                 done < "$PW_DATABASE_PATH/times_current"
                 if [[ $SORT_WITH_TIME == enabled ]] && [[ $NEW_DESKTOP == 1 ]] ; then
                     unset NEW_DESKTOP
-                    sed -i "s/${line2[1]} ${line2[2]} ${line2[3]}/${line2[1]} ${line2[2]} OLD_DESKTOP/" "$PW_DATABASE_PATH/times_current"
+                    sed -i "s/${line2[1]} ${line2[2]} NEW_DESKTOP/${line2[1]} ${line2[2]} OLD_DESKTOP/" "$PW_DATABASE_PATH/times_current"
                     PW_AMOUNT_NEW_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
                 else
                     PW_AMOUNT_OLD_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
