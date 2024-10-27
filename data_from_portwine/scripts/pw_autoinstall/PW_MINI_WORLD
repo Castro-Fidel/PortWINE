@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Author: chal55rus
+# type: games
+# name: Mini World
+# image: miniworld
+# info_en:
+# info_ru:
+########################################################################
+export PW_PREFIX_NAME="MINI_WORLD"
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/miniworld_universal_1.2.0_410.exe"
+export PORTWINE_CREATE_SHORTCUT_NAME="Mini World"
+
+start_portwine
+if try_download "https://mwu-cdn.miniworldgame.com/install/1/410/miniworld_universal_1.2.0_410.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
+then
+    pw_start_progress_bar_install_game "Mini World."
+    "$pw_7z" x -y "${PW_AUTOINSTALL_EXE}" -o"$WINEPREFIX/drive_c/users/steamuser/AppData/Roaming/miniworldOverseasgame"
+    portwine_exe="$WINEPREFIX/drive_c/users/steamuser/AppData/Roaming/miniworldOverseasgame/MicroMiniNew.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    kill_portwine
+    pw_stop_progress_bar
+    portwine_create_shortcut
+fi
+stop_portwine

@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Author: chal55rus
+# type: games
+# name: Doomsday
+# image: doomsday
+# info_en:
+# info_ru:
+########################################################################
+export PW_PREFIX_NAME="DOOMSDAY"
+export LAUNCH_PARAMETERS=("/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-")
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/dls_installer_1.0.30_1729944485-3778620.exe"
+export PORTWINE_CREATE_SHORTCUT_NAME="Doomsday"
+
+start_portwine
+if try_download "https://statics-global.igg.com/game_package/dls/11200199071/2024/08/28/dls_installer_1.0.30.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
+then
+    pw_start_progress_bar_install_game "Doomsday."
+    pw_kill_autostart Launcher.exe &
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/Doomsday/DoomsdayLastSurvivors.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    kill_portwine
+    pw_stop_progress_bar
+    portwine_create_shortcut
+fi
+stop_portwine

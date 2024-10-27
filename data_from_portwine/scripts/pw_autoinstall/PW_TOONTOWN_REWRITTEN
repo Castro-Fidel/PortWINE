@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Author: chal55rus
+# type: games
+# name: Toontown Rewritten (ENG)
+# image: toontownrewritten
+# info_en:
+# info_ru:
+########################################################################
+export PW_PREFIX_NAME="TOONTOWN_REWRITTEN"
+export LAUNCH_PARAMETERS=("/S")
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/TTRInstaller-v1.5.10"
+export PORTWINE_CREATE_SHORTCUT_NAME="Toontown Rewritten"
+
+start_portwine
+if try_download "https://cdn.toontownrewritten.com/launcher/windows/TTRInstaller-v1.5.10.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
+then
+    pw_start_progress_bar_install_game "Toontown Rewritten."
+    pw_kill_autostart Launcher.exe &
+     pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/Toontown Rewritten/Launcher.exe"
+    pw_create_unique_exe "Toontown_Launcher"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    kill_portwine
+    pw_stop_progress_bar
+    portwine_create_shortcut
+fi
+stop_portwine
