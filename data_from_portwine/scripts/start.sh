@@ -608,8 +608,8 @@ else
         gui_userconf
     fi
 
-    unset PW_NAME_D_ICON PW_ICON_PATH PW_GAME_TIME PW_ALL_DF PW_AMOUNT_NEW_DESKTOP PW_AMOUNT_OLD_DESKTOP PW_DESKTOP_FILES
-    unset AI_TYPE AI_NAME AI_IMAGE AI_INFO AI_FILE_ARRAY AI_TRUE_FILE AI_FILE_UNSORTED AI_FILE_SORTED PW_DESKTOP_FILES_REGEX
+    unset PW_NAME_D_ICON PW_ICON_PATH PW_GAME_TIME PW_ALL_DF PW_AMOUNT_NEW_DESKTOP 
+    unset PW_DESKTOP_FILES_REGEX PW_AMOUNT_OLD_DESKTOP PW_DESKTOP_FILES
     # Поиск .desktop файлов
     AMOUNT_GENERATE_BUTTONS="0"
     for desktop_file in "$PORT_WINE_PATH"/* ; do
@@ -749,6 +749,7 @@ else
     --field="   ${translations[Command line]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run wine cmd]}":"FBTN" '@bash -c "button_click --normal WINECMD"' \
     --field="   ${translations[Regedit]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run wine regedit]}":"FBTN" '@bash -c "button_click --normal WINEREG"' 1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
+    unset AI_TYPE AI_NAME AI_IMAGE AI_INFO AI_FILE_ARRAY AI_TRUE_FILE AI_FILE_UNSORTED AI_FILE_SORTED AI_FILE_ENG
     if [[ $AI_SKIP != 1 ]] ; then
         # AI_TOP_GAMES используется для сортировки автоинсталлов (работает на эмуляторы тоже)
         AI_AMOUNT_GAMES="0" && AI_AMOUNT_EMULS="0" && AI_AMOUNT_ARRAY="0"
@@ -770,7 +771,11 @@ else
             if [[ $AI_TOP_GAMES =~ ${AI_FILE_CHECK//=*/} ]] ; then
                 AI_TRUE_FILE+=($AI_FILE_CHECK)
             else
-                AI_FILE_UNSORTED+=($AI_AMOUNT_ARRAY)
+                if [[ ${AI_NAME["$AI_AMOUNT_ARRAY"]} =~ \(ENG\) ]] ; then
+                    AI_FILE_ENG+=($AI_AMOUNT_ARRAY)
+                else
+                    AI_FILE_UNSORTED+=($AI_AMOUNT_ARRAY)
+                fi
             fi
             (( AI_AMOUNT_ARRAY++ ))
         done
@@ -783,7 +788,7 @@ else
         done
 
         IFS=$'\n'
-        for ai in "${AI_FILE_SORTED[@]}" "${AI_FILE_UNSORTED[@]}" ; do
+        for ai in "${AI_FILE_SORTED[@]}" "${AI_FILE_UNSORTED[@]}" "${AI_FILE_ENG[@]}" ; do
             case ${AI_TYPE[$ai]} in
                 games)
                     export PW_GENERATE_BUTTONS_GAMES+="--field=   ${AI_NAME[$ai]}!$PW_GUI_ICON_PATH/${AI_IMAGE[$ai]}.png!${AI_INFO[$ai]}:FBTNR%@bash -c \"button_click --normal ${AI_FILE_ARRAY[$ai]}\"%"
