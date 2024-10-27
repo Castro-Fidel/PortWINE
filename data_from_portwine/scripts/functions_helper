@@ -876,6 +876,7 @@ search_desktop_file () {
                         if [[ -z ${line2[0]} ]] \
                         || [[ ! ${line2[0]} =~ (.[Bb][Aa][Tt]$|.[Ee][Xx][Ee]$|.[Mm][Ss][Ii]$|.[Rr][Ee][Gg]$) ]] ; then
                             BROKEN_LINE=1
+                            break
                         fi
                         if [[ ${line2[1]} == "$FILE_SHA256SUM" ]] ; then
                             FILE_SHA256SUM_FOUND=1
@@ -884,6 +885,7 @@ search_desktop_file () {
                         if [[ ${line2[1]} != "$FILE_SHA256SUM" ]] \
                         && [[ ${line2[0]} == "${portwine_exe// /#@_@#}" ]] ; then
                             FILE_SHA256SUM_NOT_FOUND=1
+                            break
                         fi
                     done < "$PORT_WINE_TMP_PATH/statistics"
                 fi
@@ -894,7 +896,6 @@ search_desktop_file () {
     if [[ $DESKTOP_WITH_TIME == enabled ]] || [[ $SORT_WITH_TIME == enabled ]] ; then
         local line3 line4 count_line i TIME_TOTAL SKIP_REPAIR
         ## Ремонты:
-
         # Ремонт, проверяет чтобы длинна хеш суммы была равна 64 символам, в ином случае удалит битые
         if [[ $FILE_SHA256SUM_NOT_FOUND == 1 ]] && [[ ${#line2[1]} != "64" ]] ; then
             while IFS=" " read -r -a line3 ; do
@@ -936,11 +937,22 @@ search_desktop_file () {
         # Когда приложения ещё нет в статистике
         [[ -z ${line2[2]} ]] && line2[2]=0
         # Ремонт, если сломалось время
-        if [[ ! ${line2[2]} =~ [0-9]+ ]] || (( line2[2] >= 999999999 )) ; then
+        if (( line2[2] >= 999999999 )) ; then
             sed -i "s|${line2[1]} ${line2[2]}|${line2[1]} 0|" "$PORT_WINE_TMP_PATH/statistics"
             line2[2]=0
         fi
+        # Ремонт, если кто-то сломал время
+        if [[ ! ${line2[2]} =~ ^[0-9]+$ ]] ; then
+            sed -i "/${line2[1]}/d" "$PORT_WINE_TMP_PATH/statistics"
+            search_desktop_file
+        fi
+
+        ###############################
+        # Общее проведённое время в секундах
         export TIME_CURRENT=${line2[2]}
+        # количество запусков приложения
+        export COUNT_STARTS=${line2[4]//L4-/}
+        ###############################
 
         # Проверка новых десктоп файлов, чтобы их можно было сортировать первыми при первом создании в главном меню + ремонт
         if [[ $PW_NEW_DESKTOP == 1 ]] && [[ ${line2[3]} != NEW_DESKTOP ]] ; then
@@ -1002,6 +1014,7 @@ search_desktop_file () {
                 fi
                 # Сюда все sedы от L4, L5 и т.д. (после всех ремонтов)
                 sed -i "s|$FILE_SHA256SUM \(.*\) ${line2[4]}|$FILE_SHA256SUM \1 L4-$NUMBER_OF_STARTS|" "$PORT_WINE_TMP_PATH/statistics"
+#                 sed -i "s|$FILE_SHA256SUM \(.*\) ${line2[5]}|$FILE_SHA256SUM \1 L5-$NUMBER_OF_STARTS|" "$PORT_WINE_TMP_PATH/statistics"
             fi
         fi
     fi
@@ -4768,7 +4781,7 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
     PW_LOCALE_SELECT="${PW_ADD_SETTINGS[9]}"
     PW_MESA_VK_WSI_PRESENT_MODE="${PW_ADD_SETTINGS[10]}"
 
-    if [[ "${CPU_LIMIT}" =~ [0-9]+ ]] ; then
+    if [[ "${CPU_LIMIT}" =~ ^[0-9]+$ ]] ; then
         PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $(( CPU_LIMIT - 1 )))"
     else
         PW_WINE_CPU_TOPOLOGY="disabled"
