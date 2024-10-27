@@ -6,13 +6,17 @@
 # info_en:
 # info_ru:
 ########################################################################
+URL_VER=$(curl https://www.toontownrewritten.com/play \
+| awk -F"https://cdn.toontownrewritten.com/launcher/windows/TTRInstaller-" '{print $2}' \
+| awk -F".exe" '{print $1}' | grep "v1" | head -n1)
+
 export PW_PREFIX_NAME="TOONTOWN_REWRITTEN"
 export LAUNCH_PARAMETERS=("/S")
-export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/TTRInstaller-v1.5.10"
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/TTRInstaller-$URL_VER.exe"
 export PORTWINE_CREATE_SHORTCUT_NAME="Toontown Rewritten"
 
 start_portwine
-if try_download "https://cdn.toontownrewritten.com/launcher/windows/TTRInstaller-v1.5.10.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
+if try_download "https://cdn.toontownrewritten.com/launcher/windows/TTRInstaller-$URL_VER.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
 then
     pw_start_progress_bar_install_game "Toontown Rewritten."
     pw_kill_autostart Launcher.exe &

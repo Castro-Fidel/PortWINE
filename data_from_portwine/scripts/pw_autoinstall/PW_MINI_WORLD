@@ -6,12 +6,14 @@
 # info_en:
 # info_ru:
 ########################################################################
+URL_VER=$(curl https://www.miniworldgame.com/ | awk -F"/app_install/" '{print $2}' |  awk -F"universal" '{print $1}')
+
 export PW_PREFIX_NAME="MINI_WORLD"
-export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/miniworld_universal_1.2.0_410.exe"
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/miniworld_universal.exe"
 export PORTWINE_CREATE_SHORTCUT_NAME="Mini World"
 
 start_portwine
-if try_download "https://mwu-cdn.miniworldgame.com/install/1/410/miniworld_universal_1.2.0_410.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
+if try_download "https://mwu-api.miniworldgame.com/app_install/${URL_VER//[[:space:]]/}universal" "${PW_AUTOINSTALL_EXE}" no_mirror
 then
     pw_start_progress_bar_install_game "Mini World."
     "$pw_7z" x -y "${PW_AUTOINSTALL_EXE}" -o"$WINEPREFIX/drive_c/users/steamuser/AppData/Roaming/miniworldOverseasgame"
