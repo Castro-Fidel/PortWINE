@@ -5663,14 +5663,17 @@ portwine_create_shortcut () {
             fi
             chmod u+x "${STEAM_SCRIPTS}/${name_desktop}.sh"
             export SCVDF="shortcuts.vdf"
-            for STUIDPATH in "${HOME}"/.local/share/Steam/userdata/*/ ; do
-                create_new_dir "${STUIDPATH}/config/"
-                create_new_dir "${STUIDPATH}/config/grid"
-                export SCPATH="${STUIDPATH}/config/$SCVDF"
-                export SGGRIDDIR="${STUIDPATH}/config/grid"
-                # shellcheck source=/dev/null
-                source "${PORT_SCRIPTS_PATH}/add_in_steam.sh"
+            for STUIDPATH in "${HOME}"/.local/share/Steam/userdata/*/; do
+                if [[ -d "$STUIDPATH" ]]; then
+                    create_new_dir "${STUIDPATH}config/"
+                    create_new_dir "${STUIDPATH}config/grid"
+                    export SCPATH="${STUIDPATH}config/$SCVDF"
+                    export SGGRIDDIR="${STUIDPATH}config/grid"
+                    # shellcheck source=/dev/null
+                    source "${PORT_SCRIPTS_PATH}/add_in_steam.sh"
+                fi
             done
+
             if [[ "${PW_SKIP_RESTART_STEAM}" != 1 ]] && pgrep -i steam &>/dev/null ; then
                 if yad_question "${translations[For adding shortcut to STEAM, needed restart.\\n\\nRestart STEAM now?]}" ; then
                     pw_start_progress_bar_block "${translations[Restarting STEAM... Please wait.]}"
