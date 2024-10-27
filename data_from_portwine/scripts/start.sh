@@ -3,6 +3,10 @@
 # Development assistants: Cefeiko; Dezert1r; Taz_mania; Anton_Famillianov; gavr; RidBowt; chal55rus; UserDiscord; Boria138; Vano; Akai; Htylol
 # shellcheck disable=SC2140,SC2119,SC2206,SC2068
 ########################################################################
+export url_site="https://linux-gaming.ru/portproton/"
+export url_cloud="https://cloud.linux-gaming.ru/portproton"
+export url_git="https://git.linux-gaming.ru/CastroFidel/PortWINE"
+########################################################################
 echo '
             █░░ █ █▄░█ █░█ ▀▄▀ ▄▄ █▀▀ ▄▀█ █▀▄▀█ █ █▄░█ █▀▀ ░ █▀█ █░█
             █▄▄ █ █░▀█ █▄█ █░█ ░░ █▄█ █▀█ █░▀░█ █ █░▀█ █▄█ ▄ █▀▄ █▄█
@@ -151,16 +155,12 @@ source "${PORT_SCRIPTS_PATH}/var"
 export STEAM_SCRIPTS="${PORT_WINE_PATH}/steam_scripts"
 export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
 export PW_CACHE_LANG_PATH="${PORT_WINE_TMP_PATH}/cache_lang/"
-export PW_DATABASE_PATH="${PORT_WINE_TMP_PATH}/pw_database/"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
 export PW_GUI_THEMES_PATH="${PORT_WINE_PATH}/data/themes"
 export pw_yad="${PW_GUI_THEMES_PATH}/gui/yad_gui_pp"
 
 change_locale
 
-export urlg="https://linux-gaming.ru/portproton/"
-export url_cloud="https://cloud.linux-gaming.ru/portproton"
-export url_git="https://git.linux-gaming.ru/CastroFidel/PortWINE"
 export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
 try_remove_dir "${PW_WINELIB}/var"
 install_ver="$(<"${PORT_WINE_TMP_PATH}/PortProton_ver")"
@@ -177,23 +177,20 @@ check_variables PW_LOG "0"
 try_remove_file "${PW_TMPFS_PATH}/update_pfx_log"
 
 # shellcheck source=/dev/null
-source "${USER_CONF}"
+source "$USER_CONF"
 
-if [[ ! -f $PW_DATABASE_PATH/database ]] ; then
-    create_new_dir "$PW_DATABASE_PATH"
-    touch "$PW_DATABASE_PATH/database"
-fi
-[[ ! -f "${PW_CACHE_LANG_PATH}/$LANGUAGE" ]] && create_translations
+[[ ! -f "$PORT_WINE_TMP_PATH/statistics" ]] && touch "$PORT_WINE_TMP_PATH/statistics"
+[[ ! -f "$PW_CACHE_LANG_PATH/$LANGUAGE" ]] && create_translations
 
 unset translations
 # shellcheck source=/dev/null
-source "${PW_CACHE_LANG_PATH}/$LANGUAGE"
+source "$PW_CACHE_LANG_PATH/$LANGUAGE"
 
 if [[ $TRANSLATIONS_VER != "$scripts_install_ver" ]] ; then
-    try_remove_dir "${PW_CACHE_LANG_PATH}"
+    try_remove_dir "$PW_CACHE_LANG_PATH"
     create_translations
     # shellcheck source=/dev/null
-    source "${PW_CACHE_LANG_PATH}/$LANGUAGE"
+    source "$PW_CACHE_LANG_PATH/$LANGUAGE"
 fi
 
 # check PortProton theme
@@ -645,9 +642,9 @@ else
                     else
                         PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=0
                     fi
-                done < "$PW_DATABASE_PATH/database"
+                done < "$PORT_WINE_TMP_PATH/statistics"
                 if [[ $SORT_WITH_TIME == enabled ]] && [[ ${line2[3]} == NEW_DESKTOP ]] ; then
-                    sed -i "s/${line2[1]} ${line2[2]} NEW_DESKTOP/${line2[1]} ${line2[2]} OLD_DESKTOP/" "$PW_DATABASE_PATH/database"
+                    sed -i "s/${line2[1]} ${line2[2]} NEW_DESKTOP/${line2[1]} ${line2[2]} OLD_DESKTOP/" "$PORT_WINE_TMP_PATH/statistics"
                     PW_AMOUNT_NEW_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
                 else
                     PW_AMOUNT_OLD_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
