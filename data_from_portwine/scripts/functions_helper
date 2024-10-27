@@ -248,9 +248,7 @@ eval_translations () {
 
 create_translations () {
     local po_file msgid msgstr
-    if [[ ! -d "${PW_CACHE_LANG_PATH}" ]] ; then
-        create_new_dir "${PW_CACHE_LANG_PATH}"
-    fi
+    [[ ! -d $PW_CACHE_LANG_PATH ]] && create_new_dir "$PW_CACHE_LANG_PATH"
     cat << EOF > "${PW_CACHE_LANG_PATH}/$LANGUAGE"
 #!/usr/bin/env bash
 TRANSLATIONS_VER=$scripts_install_ver
@@ -769,10 +767,10 @@ background_pid () {
         case $arg1 in
             --start)
                 eval "$arg2 &"
-                PID=$!
+                local PID=$!
                 export bg_pid"${arg3}"="$PID" ;;
             --end)
-                PID=$(get_bg_pid bg_pid"${arg3}")
+                local PID=$(get_bg_pid bg_pid"${arg3}")
                 [[ -z $PID ]] && return 1
                 wait "$PID" 2>/dev/null && return 0 ;;
         esac
@@ -849,80 +847,74 @@ debug_timer () {
     fi
 }
 
-# Поиск нужного .desktop файла по $portwine_exe
+# Поиск нужного .desktop файла по $portwine_exe (для показа в комментариях нужного времени)
+# Параллельное создание базы по времени после завершения приложения
 search_desktop_file () {
-    local count desktop_file desktop_file_new EXEC_DESKTOP TIME_CURRENT_PROXY EXEC_DESKTOP_NEW TIME_TOTAL i j df
-    unset TIME_CURRENT_ARRAY DESKTOP_FILES_ARRAY
-    count=0
+    local desktop_file desktop_file_new EXEC_DESKTOP line1 line2 TIME_TOTAL
     for desktop_file in "$PORT_WINE_PATH"/* ; do
         desktop_file_new="${desktop_file//"$PORT_WINE_PATH/"/}"
         if [[ $desktop_file_new =~ .desktop$ ]] ; then
             if [[ ! $desktop_file_new =~ (PortProton|readme) ]] ; then
-                while IFS= read -r line ; do
-                    if [[ $line =~ ^Exec= ]] ; then
+                while IFS= read -r line1 ; do
+                    if [[ $line1 =~ ^Exec= ]] ; then
                         if check_flatpak ; then
-                            EXEC_DESKTOP=${line//Exec=flatpak run ru.linux_gaming.PortProton /}
+                            EXEC_DESKTOP=${line1//Exec=flatpak run ru.linux_gaming.PortProton /}
                         else
-                            EXEC_DESKTOP=${line//Exec=env \"$PORT_SCRIPTS_PATH\/start.sh\" /}
+                            EXEC_DESKTOP=${line1//Exec=env \"$PORT_SCRIPTS_PATH\/start.sh\" /}
                         fi
                     fi
-                    [[ $line =~ ^#Time= ]] && TIME_CURRENT_PROXY=${line//#Time=/}
                 done < "$desktop_file"
-                # Для конвертации существующих .desktop файлов flatpak в натив и наоборот
-                if [[ $EXEC_DESKTOP =~ ^"Exec=flatpak run ru.linux_gaming.PortProton " ]] ; then
-                    sed -i "s|Exec=flatpak run ru.linux_gaming.PortProton|Exec=env \"$PORT_SCRIPTS_PATH/start.sh\"|" "$desktop_file"
-                elif [[ $EXEC_DESKTOP =~ ^"Exec=env \"$PORT_SCRIPTS_PATH/start.sh\" " ]] ; then
-                    sed -i "s|Exec=env \"$PORT_SCRIPTS_PATH/start.sh\"|Exec=flatpak run ru.linux_gaming.PortProton|" "$desktop_file"
-                fi
-                EXEC_DESKTOP_NEW=${EXEC_DESKTOP//\"/}
-                if [[ $portwine_exe == "$EXEC_DESKTOP_NEW" ]] ; then
-                    if [[ -n $TIME_CURRENT_PROXY ]] ; then
-                        TIME_CURRENT=$TIME_CURRENT_PROXY
-                        TIME_CURRENT_ARRAY+=($TIME_CURRENT)
-                        # Если существует несколько .desktop файлов на один и тот же .exe файл,
-                        # то среди них время берётся из того .desktop файла, в котором проведено дольше времени
-                        # и данное время будет потом записываться во все .desktop файлы у которых общий .exe файл
-                        if [[ -n ${TIME_CURRENT_ARRAY[1]} ]] ; then
-                            for i in "${!TIME_CURRENT_ARRAY[@]}" ; do
-                                for j in "${!TIME_CURRENT_ARRAY[@]}" ; do
-                                    if (( ${TIME_CURRENT_ARRAY[$i]} > ${TIME_CURRENT_ARRAY[$j]} )) ; then
-                                        tmp=${TIME_CURRENT_ARRAY[$i]}
-                                        TIME_CURRENT_ARRAY[i]=${TIME_CURRENT_ARRAY[$j]}
-                                        TIME_CURRENT_ARRAY[j]=$tmp
-                                    fi
-                                done
-                            done
-                        fi
-                        TIME_CURRENT="${TIME_CURRENT_ARRAY[0]}"
-                        # Для битых #Time=
-                        if [[ ! $TIME_CURRENT =~ [0-9]+ ]] \
-                        || (( TIME_CURRENT >= 999999999 )) ; then
-                            TIME_CURRENT="0"
-                        fi
+                while IFS=" " read -r -a line2 ; do
+                    if [[ ${line2[1]} == "$ENTRY_POINT" ]] ; then
+                        break
                     fi
-                    DESKTOP_FILES_ARRAY["$count"]="$desktop_file"
-                    (( count++ ))
+                done < "$PW_DATABASE_PATH/database"
+                if [[ $portwine_exe == "${EXEC_DESKTOP//\"/}" ]] ; then
+                    DESKTOP_CORRECT_FILE="$desktop_file"
                 fi
-                unset TIME_CURRENT_PROXY
             fi
         fi
     done
     IFS="$orig_IFS"
-
-    [[ -z $TIME_CURRENT ]] && TIME_CURRENT=0
+    if [[ -n ${line2[2]} ]]
+    then TIME_CURRENT=${line2[2]}
+    else TIME_CURRENT=0
+    fi
     export TIME_CURRENT
-
+    # Проверка новых десктоп файлов, чтобы их можно было сортировать первыми при первом создании в главном меню
+    if [[ $PW_NEW_DESKTOP == 1 ]] && [[ ${line2[3]} != NEW_DESKTOP ]] ; then
+        if [[ -n ${line2[1]} ]] ; then
+            sed -i "s|$ENTRY_POINT $TIME_CURRENT OLD_DESKTOP|$ENTRY_POINT $TIME_CURRENT NEW_DESKTOP|" "$PW_DATABASE_PATH/database"
+        else
+            echo "${portwine_exe// /#@_@#} $ENTRY_POINT $TIME_CURRENT NEW_DESKTOP" >> "$PW_DATABASE_PATH/database"
+        fi
+    fi
+    unset PW_NEW_DESKTOP
+    # Когда приложение было запущено и завершено
     if [[ -n $PW_TIME_IN_GAME ]] ; then
         TIME_TOTAL=$(( TIME_CURRENT + PW_TIME_IN_GAME ))
-        for df in "${DESKTOP_FILES_ARRAY[@]}" ; do
-            sed -i '/^#Time=/d' "$df"
-            echo "#Time=$TIME_TOTAL" >> "$df"
-        done
-    else
-        for df in "${DESKTOP_FILES_ARRAY[@]}" ; do
-            sed -i '/^#Time=/d' "$df"
-            echo "#Time=$TIME_CURRENT" >> "$df"
-        done
+        if [[ -n ${line2[1]} ]] ; then
+            # Когда есть предыдущее время
+            sed -i "s|$ENTRY_POINT $TIME_CURRENT|$ENTRY_POINT $TIME_TOTAL|" "$PW_DATABASE_PATH/database"
+        else
+            # Когда только запустили приложение первый раз
+            echo "${portwine_exe// /#@_@#} $ENTRY_POINT $TIME_TOTAL OLD_DESKTOP" >> "$PW_DATABASE_PATH/database"
+        fi
+        # Здесь добавляются новые линии для статистики по аналогии, к примеру ${line2[4]}
+        # L4 важен, чтобы не было путаницы из-за sed, то что используется \(.*\), для ${line2[5]} это будет L5 и т.д.
+        if [[ -z ${line2[4]} ]] ; then
+            line2[4]=1
+            sed -i "s|$ENTRY_POINT \(.*\)|$ENTRY_POINT \1 L4-${line2[4]}|" "$PW_DATABASE_PATH/database"
+        else
+            line2[4]=${line2[4]//L4-/}
+            NUMBER_OF_STARTS=$(( line2[4] + 1 ))
+            sed -i "s|$ENTRY_POINT \(.*\) L4-${line2[4]}|$ENTRY_POINT \1 L4-$NUMBER_OF_STARTS|" "$PW_DATABASE_PATH/database"
+        fi
+    fi
+    # Ремонтирует путь на новый, если вдруг путь до .exe файла битый или изменился, но .exe файл он опознал
+    if [[ -n ${line2[1]} ]] && [[ ${line2[0]} != "${portwine_exe// /#@_@#}" ]] ; then
+        [[ -z $TIME_TOTAL ]] && TIME_TOTAL=$TIME_CURRENT
+        sed -i "s|${line2[0]} $ENTRY_POINT $TIME_CURRENT|${portwine_exe// /#@_@#} $ENTRY_POINT $TIME_TOTAL|" "$PW_DATABASE_PATH/database"
     fi
 }
 
@@ -938,9 +930,9 @@ create_name_desktop () {
     elif [[ -n $name_desktop ]] ; then
         DESKTOP_NAME_FILE="$name_desktop"
         unset name_desktop
-    elif [[ -n ${DESKTOP_FILES_ARRAY[0]} ]] \
-    && [[ -z ${DESKTOP_FILES_ARRAY[1]} ]] ; then
-        DESKTOP_NAME_FILE="${DESKTOP_FILES_ARRAY[0]//"$PORT_WINE_PATH/"/}"
+    elif [[ -n $DESKTOP_CORRECT_FILE ]] ; then
+        DESKTOP_NAME_FILE="${DESKTOP_CORRECT_FILE//"$PORT_WINE_PATH/"/}"
+        unset DESKTOP_CORRECT_FILE
         DESKTOP_NAME_FILE="${DESKTOP_NAME_FILE//.desktop/}"
     fi
 
@@ -2483,6 +2475,7 @@ pw_create_gui_png () {
     fi
     if [[ -z "$PORTPROTON_NAME" ]] \
     || [[ -z "$FILE_DESCRIPTION" ]] \
+    || [[ -z "$ENTRY_POINT" ]] \
     || [[ "$PW_NO_RESTART_PPDB" == "1" ]]
     then
         if [[ -n "${PORTWINE_CREATE_SHORTCUT_NAME}" ]] ; then
@@ -2492,6 +2485,7 @@ pw_create_gui_png () {
                 if timeout 3 exiftool "$portwine_exe" &> "${PW_TMPFS_PATH}/exiftool.tmp" ; then
                     PW_PRODUCTNAME=$(sed -n 's/^Product Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
                     FILE_DESCRIPTION=$(sed -n 's/^File Description\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
+                    ENTRY_POINT=$(sed -n 's/^Entry Point\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
                 else
                     print_error "exiftool - broken!"
                 fi
@@ -2500,6 +2494,7 @@ pw_create_gui_png () {
                 env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" "$portwine_exe" &> "${PW_TMPFS_PATH}/exiftool.tmp"
                 PW_PRODUCTNAME=$(sed -n 's/^Product Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
                 FILE_DESCRIPTION=$(sed -n 's/^File Description\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
+                ENTRY_POINT=$(sed -n 's/^Entry Point\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
             fi
 
             if [[ "$PW_PRODUCTNAME" =~ (Launcher|RU) ]]
@@ -2518,7 +2513,7 @@ pw_create_gui_png () {
 
         PORTPROTON_NAME="$(echo "${PORTPROTON_NAME}" | sed "s/\`//g" | sed "s/\"//g" | sed "s/'//g" | sed "s/\!//g")"
         export PORTPROTON_NAME
-        edit_db_from_gui PORTPROTON_NAME FILE_DESCRIPTION
+        edit_db_from_gui PORTPROTON_NAME FILE_DESCRIPTION ENTRY_POINT
     fi
 
     resize_png "$portwine_exe" "${PORTPROTON_NAME}" "128"
@@ -5600,24 +5595,21 @@ portwine_create_shortcut () {
     --button="${translations[CANCEL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":2 \
     --button="${translations[CREATE SHORTCUT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
     PW_YAD_OUT=$?
+    portwine_output_yad_shortcut
+}
 
+portwine_output_yad_shortcut () {
     if [[ "$PW_YAD_OUT" == "0" ]] ; then
         name_desktop=$(echo "$OUTPUT" | awk -F'|' '{print $1}' | sed "s/\`//g" | sed "s/\"//g" | sed "s/'//g" | sed "s/\!//g")
         PW_SHORTCUT_MENU=$(echo "$OUTPUT" | awk -F'|' '{print $2}')
         PW_SHORTCUT_DESKTOP=$(echo "$OUTPUT" | awk -F'|' '{print $3}')
         PW_SHORTCUT_STEAM=$(echo "$OUTPUT" | awk -F'|' '{print $4}')
 
-        edit_user_conf_from_gui PW_SHORTCUT_MENU PW_SHORTCUT_DESKTOP PW_SHORTCUT_STEAM
-
-        if [[ -n ${DESKTOP_FILES_ARRAY[0]} && $name_desktop != "$DESKTOP_NAME_FILE" ]] || [[ -n ${DESKTOP_FILES_ARRAY[1]} ]] ; then
-            if yad_question "${translations[A higher number of duplicate desktop files were found for this file.\\nShould I delete the extra ones or not?]}" ; then
-                for rm in "${DESKTOP_FILES_ARRAY[@]}" ; do
-                    rm -f "$rm"
-                done
-            fi
-        else
-            try_remove_file "${PORT_WINE_PATH}/${name_desktop}.desktop"
+        if [[ $PORTWINE_CHANGE_SHORTCUT != 1 ]] ; then
+            edit_user_conf_from_gui PW_SHORTCUT_MENU PW_SHORTCUT_DESKTOP PW_SHORTCUT_STEAM
         fi
+
+        portwine_delete_shortcut
 
         [[ -z $name_desktop ]] && create_name_desktop && export name_desktop="$PW_NAME_DESKTOP_PROXY"
 
@@ -5690,15 +5682,14 @@ portwine_create_shortcut () {
             unset PW_SKIP_RESTART_STEAM
         fi
 
-        # Когда новый .desktop файл
-        echo "#NEW_DESKTOP" >> "$PORT_WINE_PATH/$name_desktop.desktop"
+        export PW_NEW_DESKTOP="1"
 
         if [[ "$PW_NO_RESTART_PPDB" != "1" ]] ; then
             print_info "Restarting PP..."
             [[ "$PW_GUI_START" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
             restart_pp
         fi
-    elif [[ "$PW_YAD_OUT" == "2" ]] ; then
+    elif [[ "$PW_YAD_OUT" =~ (^1$|^2$|^252$) ]] ; then
         print_info "Restarting PP..."
         [[ -n $KEY_MENU ]] && unset portwine_exe
         [[ "$PW_GUI_START" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
@@ -5773,27 +5764,79 @@ pw_auto_create_shortcut () {
 }
 export -f pw_auto_create_shortcut
 
-portwine_delete_shortcut () {
+# GUI CHANGE SHORTCUT
+portwine_change_shortcut () {
+    export GDK_BACKEND="x11"
+
+    portwine_search_shortcut
+    if [[ -n $PW_DELETE_MENU ]]
+    then PW_SHORTCUT_MENU="TRUE"
+    else PW_SHORTCUT_MENU="FALSE"
+    fi
+    if [[ -n ${PW_DELETE_SHORTCUT_DESKTOP[0]} ]]
+    then PW_SHORTCUT_DESKTOP="TRUE"
+    else PW_SHORTCUT_DESKTOP="FALSE"
+    fi
+    PW_SHORTCUT_STEAM="FALSE"
+
+    unset name_desktop
+    create_name_desktop
+    export name_desktop="$PW_NAME_DESKTOP_PROXY"
+
+    [[ -z "${name_desktop_png}" ]] && name_desktop_png="${PORTPROTON_NAME// /_}"
+
+    OUTPUT=$("${pw_yad}" --title="${translations[Choices]}" --form \
+    --gui-type="settings-shortcut" \
+    --gui-type-box="${NOTEBOOK_GUI_TYPE_BOX}" --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" \
+    --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" --gui-type-images="${NOTEBOOK_GUI_TYPE_IMAGE}" \
+    --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
+    --image "${PORT_WINE_PATH}/data/img/${name_desktop_png}.png" \
+    --text-align="center" --text "${translations[The shortcut will be changed in the PortProton directory.]}" \
+    --field="${translations[Name]}" "${name_desktop}" \
+    --field="  ${translations[Add shortcut to MENU -> GAMES]}":CHK "$PW_SHORTCUT_MENU" \
+    --field="  ${translations[Add shortcut to Desktop]}":CHK "$PW_SHORTCUT_DESKTOP" \
+    --field="  ${translations[Add shortcut to STEAM library]}":CHK "$PW_SHORTCUT_STEAM" \
+    --button="${translations[REMOVE SHORTCUT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
+    --button="${translations[CHANGE SHORTCUT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
+    PW_YAD_OUT=$?
+    PORTWINE_CHANGE_SHORTCUT=1
+    if [[ $PW_YAD_OUT == 1 ]] ; then
+        [[ "$PW_GUI_START" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
+        portwine_delete_shortcut
+        restart_pp
+    fi
+    portwine_output_yad_shortcut
+}
+
+portwine_search_shortcut () {
+    unset PW_DELETE_SHORTCUT_MENU PW_DELETE_SHORTCUT_DESKTOP
     PW_DELETE_MENU="$(grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop 2>/dev/null)"
-    PW_DELETE_SHORTCUT+=(${PW_DELETE_MENU// /@_@})
+    PW_DELETE_SHORTCUT_MENU+=(${PW_DELETE_MENU// /@_@})
 
     PW_DELETE_PP="$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop 2>/dev/null)"
-    PW_DELETE_SHORTCUT+=(${PW_DELETE_PP// /@_@})
+    PW_DELETE_SHORTCUT_MENU+=(${PW_DELETE_PP// /@_@})
 
     if [[ -d "${HOME}/Desktop" ]] ; then
         PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "${HOME}/Desktop"/*.desktop 2>/dev/null)"
-        PW_DELETE_SHORTCUT+=(${PW_DELETE_DESKTOP// /@_@})
+        PW_DELETE_SHORTCUT_DESKTOP+=(${PW_DELETE_DESKTOP// /@_@})
     fi
     if [[ -d "${HOME}/Рабочий стол" ]] ; then
         PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "${HOME}/Рабочий стол"/*.desktop 2>/dev/null)"
-        PW_DELETE_SHORTCUT+=(${PW_DELETE_DESKTOP// /@_@})
+        PW_DELETE_SHORTCUT_DESKTOP+=(${PW_DELETE_DESKTOP// /@_@})
     fi
     if [[ $(xdg-user-dir DESKTOP) ]] ; then
         PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "$(xdg-user-dir DESKTOP)"/*.desktop 2>/dev/null)"
-        PW_DELETE_SHORTCUT+=(${PW_DELETE_DESKTOP// /@_@})
+        PW_DELETE_SHORTCUT_DESKTOP+=(${PW_DELETE_DESKTOP// /@_@})
     fi
+}
 
-    for delete_shortcut in ${PW_DELETE_SHORTCUT[@]} ; do
+portwine_delete_shortcut () {
+    if [[ $PORTWINE_CHANGE_SHORTCUT != 1 ]] ; then
+        portwine_search_shortcut
+    fi
+    unset PORTWINE_CHANGE_SHORTCUT
+
+    for delete_shortcut in ${PW_DELETE_SHORTCUT_MENU[@]} ${PW_DELETE_SHORTCUT_DESKTOP[@]} ; do
         rm -f "${delete_shortcut//@_@/ }"
     done
 }
@@ -6122,7 +6165,7 @@ portwine_start_debug () {
 }
 
 pw_create_prefix_backup () {
-    cd "$HOME"
+    cd "$HOME" || fatal
     PW_PREFIX_TO_BACKUP=$("${pw_yad}" --file --directory --width=800 --height=500 \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "${translations[BACKUP PREFIX TO...]}" \
     --button="${translations[CANCEL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
