@@ -849,8 +849,7 @@ debug_timer () {
 # Поиск нужного .desktop файла по $portwine_exe (для показа в комментариях нужного времени)
 # Параллельное создание базы по времени после завершения приложения
 search_desktop_file () {
-    local desktop_file desktop_file_new line1 line2 line3 line4 count_line i
-    local EXEC_DESKTOP TIME_TOTAL BROKEN_LINE FILE_SHA256SUM_ARRAY FILE_SHA256SUM_FOUND FILE_SHA256SUM_NOT_FOUND SKIP_REPAIR
+    local desktop_file desktop_file_new line1 line2 FILE_SHA256SUM_ARRAY EXEC_DESKTOP BROKEN_LINE FILE_SHA256SUM_FOUND FILE_SHA256SUM_NOT_FOUND
     if [[ -z $FILE_SHA256SUM ]] ; then
         read -r -a FILE_SHA256SUM_ARRAY < <(sha256sum "$portwine_exe")
         FILE_SHA256SUM=${FILE_SHA256SUM_ARRAY[0]}
@@ -869,134 +868,141 @@ search_desktop_file () {
                         fi
                     fi
                 done < "$desktop_file"
-                while IFS=" " read -r -a line2 ; do
-                    if [[ -z ${line2[0]} ]] \
-                    || [[ ! ${line2[0]} =~ (.[Bb][Aa][Tt]$|.[Ee][Xx][Ee]$|.[Mm][Ss][Ii]$|.[Rr][Ee][Gg]$) ]] ; then
-                        BROKEN_LINE=1
-                    fi
-                    if [[ ${line2[1]} == "$FILE_SHA256SUM" ]] ; then
-                        FILE_SHA256SUM_FOUND=1
-                        break
-                    fi
-                    if [[ ${line2[1]} != "$FILE_SHA256SUM" ]] \
-                    && [[ ${line2[0]} == "${portwine_exe// /#@_@#}" ]] ; then
-                        FILE_SHA256SUM_NOT_FOUND=1
-                    fi
-                done < "$PORT_WINE_TMP_PATH/statistics"
                 if [[ $portwine_exe == "${EXEC_DESKTOP//\"/}" ]] ; then
                     DESKTOP_CORRECT_FILE="$desktop_file"
+                fi
+                if [[ $DESKTOP_WITH_TIME == enabled ]] || [[ $SORT_WITH_TIME == enabled ]] ; then
+                    while IFS=" " read -r -a line2 ; do
+                        if [[ -z ${line2[0]} ]] \
+                        || [[ ! ${line2[0]} =~ (.[Bb][Aa][Tt]$|.[Ee][Xx][Ee]$|.[Mm][Ss][Ii]$|.[Rr][Ee][Gg]$) ]] ; then
+                            BROKEN_LINE=1
+                        fi
+                        if [[ ${line2[1]} == "$FILE_SHA256SUM" ]] ; then
+                            FILE_SHA256SUM_FOUND=1
+                            break
+                        fi
+                        if [[ ${line2[1]} != "$FILE_SHA256SUM" ]] \
+                        && [[ ${line2[0]} == "${portwine_exe// /#@_@#}" ]] ; then
+                            FILE_SHA256SUM_NOT_FOUND=1
+                        fi
+                    done < "$PORT_WINE_TMP_PATH/statistics"
                 fi
             fi
         fi
     done
     IFS="$orig_IFS"
-    ## Ремонты:
-    # Когда приложения ещё нет в статистике
-    [[ -z ${line2[2]} ]] && line2[2]=0
+    if [[ $DESKTOP_WITH_TIME == enabled ]] || [[ $SORT_WITH_TIME == enabled ]] ; then
+        local line3 line4 count_line i TIME_TOTAL SKIP_REPAIR
+        ## Ремонты:
 
-    ## TODO: ремонтирует devel пр с entry point потом можно будет это дропнуть
-    if [[ $FILE_SHA256SUM_NOT_FOUND == 1 ]] && [[ ${#line2[1]} != "64" ]] ; then
-        while IFS=" " read -r -a line3 ; do
-            if [[ ${#line3[1]} == "64" ]]
-            then echo "${line3[*]}"
-            fi
-        done < "$PORT_WINE_TMP_PATH/statistics" > "$PORT_WINE_TMP_PATH/statistics_repair"
-        try_remove_file "$PORT_WINE_TMP_PATH/statistics"
-        mv -f "$PORT_WINE_TMP_PATH/statistics_repair" "$PORT_WINE_TMP_PATH/statistics"
-        return 0
-    fi
-
-    # Ремонт, если есть пустые строки и непонятные строки без .exe, .bat, .msi, .reg
-    if [[ $BROKEN_LINE == 1 ]] ; then
-        while IFS=" " read -r -a line4 ; do
-            if [[ -n ${line4[0]} ]] && [[ ${line4[0]} =~ (.[Bb][Aa][Tt]$|.[Ee][Xx][Ee]$|.[Mm][Ss][Ii]$|.[Rr][Ee][Gg]$) ]]
-            then echo "${line4[*]}"
-            fi
-        done < "$PORT_WINE_TMP_PATH/statistics" > "$PORT_WINE_TMP_PATH/statistics_repair"
-        try_remove_file "$PORT_WINE_TMP_PATH/statistics"
-        mv -f "$PORT_WINE_TMP_PATH/statistics_repair" "$PORT_WINE_TMP_PATH/statistics"
-        return 0
-    fi
-
-    # Ремонтирует путь на новый, если вдруг путь до .exe файла битый или изменился, но .exe файл он опознал
-    if [[ $FILE_SHA256SUM_FOUND == 1 ]] && [[ ${line2[0]} != "${portwine_exe// /#@_@#}" ]] ; then
-        sed -i "s|${line2[0]} ${line2[1]}|${portwine_exe// /#@_@#} ${line2[1]}|" "$PORT_WINE_TMP_PATH/statistics"
-        line2[0]=${portwine_exe// /#@_@#}
-    fi
-
-    # Ремонт, если sha256sum изменилась, но путь до .exe тот же
-    if [[ $FILE_SHA256SUM_NOT_FOUND == 1 ]] ; then
-        sed -i "s|${line2[0]} ${line2[1]}|${line2[0]} $FILE_SHA256SUM|" "$PORT_WINE_TMP_PATH/statistics"
-        line2[1]=$FILE_SHA256SUM
-    fi
-
-    # Ремонт, если сломалось время
-    if [[ ! ${line2[2]} =~ [0-9]+ ]] || (( line2[2] >= 999999999 )) ; then
-        sed -i "s|${line2[1]} ${line2[2]}|${line2[1]} 0|" "$PORT_WINE_TMP_PATH/statistics"
-        line2[2]=0
-    fi
-    export TIME_CURRENT=${line2[2]}
-
-    # Проверка новых десктоп файлов, чтобы их можно было сортировать первыми при первом создании в главном меню + ремонт
-    if [[ $PW_NEW_DESKTOP == 1 ]] && [[ ${line2[3]} != NEW_DESKTOP ]] ; then
-        if [[ $FILE_SHA256SUM_FOUND == 1 ]] ; then
-            sed -i "s|${line2[1]} \(.*\) ${line2[3]}|${line2[1]} \1 NEW_DESKTOP|" "$PORT_WINE_TMP_PATH/statistics"
-        else
-            echo "${portwine_exe// /#@_@#} $FILE_SHA256SUM $TIME_CURRENT NEW_DESKTOP" >> "$PORT_WINE_TMP_PATH/statistics"
+        # Ремонт, проверяет чтобы длинна хеш суммы была равна 64 символам, в ином случае удалит битые
+        if [[ $FILE_SHA256SUM_NOT_FOUND == 1 ]] && [[ ${#line2[1]} != "64" ]] ; then
+            while IFS=" " read -r -a line3 ; do
+                if [[ ${#line3[1]} == "64" ]]
+                then echo "${line3[*]}"
+                fi
+            done < "$PORT_WINE_TMP_PATH/statistics" > "$PORT_WINE_TMP_PATH/statistics_repair"
+            IFS="$orig_IFS"
+            try_remove_file "$PORT_WINE_TMP_PATH/statistics"
+            mv -f "$PORT_WINE_TMP_PATH/statistics_repair" "$PORT_WINE_TMP_PATH/statistics"
+            search_desktop_file
         fi
-    fi
-    unset PW_NEW_DESKTOP
 
-    # Когда приложение было запущено и завершено
-    if [[ -n $PW_TIME_IN_GAME ]] ; then
-        TIME_TOTAL=$(( TIME_CURRENT + PW_TIME_IN_GAME ))
-        if [[ $FILE_SHA256SUM_FOUND == 1 ]] ; then
-            # Когда есть предыдущее время
-            sed -i "s|$FILE_SHA256SUM $TIME_CURRENT|$FILE_SHA256SUM $TIME_TOTAL|" "$PORT_WINE_TMP_PATH/statistics"
-        else
-            # Когда только запустили приложение первый раз
-            echo "${portwine_exe// /#@_@#} $FILE_SHA256SUM $TIME_TOTAL OLD_DESKTOP" >> "$PORT_WINE_TMP_PATH/statistics"
+        # Ремонт, если есть пустые строки и непонятные строки без .exe, .bat, .msi, .reg
+        if [[ $BROKEN_LINE == 1 ]] ; then
+            while IFS=" " read -r -a line4 ; do
+                if [[ -n ${line4[0]} ]] && [[ ${line4[0]} =~ (.[Bb][Aa][Tt]$|.[Ee][Xx][Ee]$|.[Mm][Ss][Ii]$|.[Rr][Ee][Gg]$) ]]
+                then echo "${line4[*]}"
+                fi
+            done < "$PORT_WINE_TMP_PATH/statistics" > "$PORT_WINE_TMP_PATH/statistics_repair"
+            IFS="$orig_IFS"
+            try_remove_file "$PORT_WINE_TMP_PATH/statistics"
+            mv -f "$PORT_WINE_TMP_PATH/statistics_repair" "$PORT_WINE_TMP_PATH/statistics"
+            search_desktop_file
         fi
-        count_line=4
-        # Здесь добавляются новые линии для статистики
-        if [[ -z ${line2[4]} ]] ; then
-            SKIP_REPAIR=1
-            sed -i "s|$FILE_SHA256SUM \(.*\)|$FILE_SHA256SUM \1 L4-1|" "$PORT_WINE_TMP_PATH/statistics"
-        else
-            # ремонт, если L4 по каким-то причинам сломался
-            if [[ ${line2[4]} =~ ^L4 ]] ; then
-                local NUMBER_OF_STARTS=$(( ${line2[4]//L4-/} + 1 ))
+
+        # Ремонтирует путь на новый, если вдруг путь до .exe файла битый или изменился, но .exe файл он опознал
+        if [[ $FILE_SHA256SUM_FOUND == 1 ]] && [[ ${line2[0]} != "${portwine_exe// /#@_@#}" ]] ; then
+            sed -i "s|${line2[0]} ${line2[1]}|${portwine_exe// /#@_@#} ${line2[1]}|" "$PORT_WINE_TMP_PATH/statistics"
+            line2[0]=${portwine_exe// /#@_@#}
+        fi
+
+        # Ремонт, если sha256sum изменилась, но путь до .exe тот же
+        if [[ $FILE_SHA256SUM_NOT_FOUND == 1 ]] ; then
+            sed -i "s|${line2[0]} ${line2[1]}|${line2[0]} $FILE_SHA256SUM|" "$PORT_WINE_TMP_PATH/statistics"
+            line2[1]=$FILE_SHA256SUM
+        fi
+
+        # Когда приложения ещё нет в статистике
+        [[ -z ${line2[2]} ]] && line2[2]=0
+        # Ремонт, если сломалось время
+        if [[ ! ${line2[2]} =~ [0-9]+ ]] || (( line2[2] >= 999999999 )) ; then
+            sed -i "s|${line2[1]} ${line2[2]}|${line2[1]} 0|" "$PORT_WINE_TMP_PATH/statistics"
+            line2[2]=0
+        fi
+        export TIME_CURRENT=${line2[2]}
+
+        # Проверка новых десктоп файлов, чтобы их можно было сортировать первыми при первом создании в главном меню + ремонт
+        if [[ $PW_NEW_DESKTOP == 1 ]] && [[ ${line2[3]} != NEW_DESKTOP ]] ; then
+            if [[ $FILE_SHA256SUM_FOUND == 1 ]] ; then
+                sed -i "s|${line2[1]} \(.*\) ${line2[3]}|${line2[1]} \1 NEW_DESKTOP|" "$PORT_WINE_TMP_PATH/statistics"
             else
-                SKIP_REPAIR=1
-                sed -i "s|$FILE_SHA256SUM \(.*\) ${line2[4]}|$FILE_SHA256SUM \1 L4-1|" "$PORT_WINE_TMP_PATH/statistics"
+                echo "${portwine_exe// /#@_@#} $FILE_SHA256SUM $TIME_CURRENT NEW_DESKTOP" >> "$PORT_WINE_TMP_PATH/statistics"
             fi
         fi
-        (( count_line ++ ))
+        unset PW_NEW_DESKTOP
 
-#         Пример для L5
-#         if [[ -z ${line2[5]} ]] ; then
-#             SKIP_REPAIR=1
-#             sed -i "s|$FILE_SHA256SUM \(.*\)|$FILE_SHA256SUM \1 L5-1|" "$PORT_WINE_TMP_PATH/statistics"
-#         else
-#             if [[ ${line2[5]} =~ ^L5 ]] ; then
-#                 local ЗДЕСЬ_НОВАЯ_ПЕРЕМЕННАЯ=$(( ${line2[5]//L5-/} + 1 ))
-#             else
-#                 SKIP_REPAIR=1
-#                 sed -i "s|$FILE_SHA256SUM \(.*\) ${line2[5]}|$FILE_SHA256SUM \1 L5-1|" "$PORT_WINE_TMP_PATH/statistics"
-#             fi
-#         fi
-#         (( count_line ++ ))
-
-        if [[ $SKIP_REPAIR != 1 ]] ; then
-            # Ремонт, если количество элементов массива по каким-то причина больше, чем должно быть
-            if [[ -n ${line2["$count_line"]} ]] ; then
-                for i in $(seq $count_line ${#line2[@]}) ; do
-                    unset 'line2[$i]'
-                done
-                sed -i "s|${portwine_exe// /#@_@#} $FILE_SHA256SUM \(.*\)|${line2[*]}|" "$PORT_WINE_TMP_PATH/statistics"
+        # Когда приложение было запущено и завершено
+        if [[ -n $PW_TIME_IN_GAME ]] ; then
+            TIME_TOTAL=$(( TIME_CURRENT + PW_TIME_IN_GAME ))
+            if [[ $FILE_SHA256SUM_FOUND == 1 ]] ; then
+                # Когда есть предыдущее время
+                sed -i "s|$FILE_SHA256SUM $TIME_CURRENT|$FILE_SHA256SUM $TIME_TOTAL|" "$PORT_WINE_TMP_PATH/statistics"
+            else
+                # Когда только запустили приложение первый раз
+                echo "${portwine_exe// /#@_@#} $FILE_SHA256SUM $TIME_TOTAL OLD_DESKTOP" >> "$PORT_WINE_TMP_PATH/statistics"
             fi
-            # Сюда все sedы от L4, L5 и т.д. (после всех ремонтов)
-            sed -i "s|$FILE_SHA256SUM \(.*\) L4-${line2[4]}|$FILE_SHA256SUM \1 L4-$NUMBER_OF_STARTS|" "$PORT_WINE_TMP_PATH/statistics"
+            count_line=4
+            # Здесь добавляются новые линии для статистики (L4-) важен
+            if [[ -z ${line2[4]} ]] ; then
+                SKIP_REPAIR=1
+                sed -i "s|$FILE_SHA256SUM \(.*\)|$FILE_SHA256SUM \1 L4-1|" "$PORT_WINE_TMP_PATH/statistics"
+            else
+                # ремонт, если L4 по каким-то причинам сломался
+                if [[ ${line2[4]} =~ ^L4 ]] ; then
+                    local NUMBER_OF_STARTS=$(( ${line2[4]//L4-/} + 1 ))
+                else
+                    SKIP_REPAIR=1
+                    sed -i "s|$FILE_SHA256SUM \(.*\) ${line2[4]}|$FILE_SHA256SUM \1 L4-1|" "$PORT_WINE_TMP_PATH/statistics"
+                fi
+            fi
+            (( count_line ++ ))
+
+#             Пример для L5
+#             if [[ -z ${line2[5]} ]] ; then
+#                 SKIP_REPAIR=1
+#                 sed -i "s|$FILE_SHA256SUM \(.*\)|$FILE_SHA256SUM \1 L5-1|" "$PORT_WINE_TMP_PATH/statistics"
+#             else
+#                 if [[ ${line2[5]} =~ ^L5 ]] ; then
+#                     local ЗДЕСЬ_НОВАЯ_ПЕРЕМЕННАЯ=$(( ${line2[5]//L5-/} + 1 ))
+#                 else
+#                     SKIP_REPAIR=1
+#                     sed -i "s|$FILE_SHA256SUM \(.*\) ${line2[5]}|$FILE_SHA256SUM \1 L5-1|" "$PORT_WINE_TMP_PATH/statistics"
+#                 fi
+#             fi
+#             (( count_line ++ ))
+
+            if [[ $SKIP_REPAIR != 1 ]] ; then
+                # Ремонт, если количество элементов массива по каким-то причина больше, чем должно быть
+                if [[ -n ${line2["$count_line"]} ]] ; then
+                    for i in $(seq $count_line ${#line2[@]}) ; do
+                        unset 'line2[$i]'
+                    done
+                    sed -i "s|${portwine_exe// /#@_@#} $FILE_SHA256SUM \(.*\)|${line2[*]}|" "$PORT_WINE_TMP_PATH/statistics"
+                fi
+                # Сюда все sedы от L4, L5 и т.д. (после всех ремонтов)
+                sed -i "s|$FILE_SHA256SUM \(.*\) ${line2[4]}|$FILE_SHA256SUM \1 L4-$NUMBER_OF_STARTS|" "$PORT_WINE_TMP_PATH/statistics"
+            fi
         fi
     fi
 }
