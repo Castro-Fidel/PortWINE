@@ -2968,8 +2968,10 @@ start_portwine () {
         export PW_GAMEMODERUN_SLR=""
     fi
 
-    if command -v systemd-inhibit &>/dev/null && [[ "$GAMEMODERUN" != "1" ]] ; then
-        PW_INHIBIT_SLR='systemd-inhibit --mode=block --who="PortProton" --why="Running"'
+    if command -v systemd-inhibit &>/dev/null \
+    && [[ "$GAMEMODERUN" != "1" ]]
+    then
+        PW_INHIBIT_SLR="systemd-inhibit --mode=block --who=ru.linux_gaming.PortProton --why=${PW_NAME_DESKTOP_PROXY// /_}"
         print_info "Screensaver will be inhibit"
     fi
     pw_other_fixes
@@ -3792,7 +3794,7 @@ pw_run () {
             print_info "Log from RUNTIME and WINE:"
             ${PW_RUN_GAMESCOPE} \
             ${PW_POWERPROFILECTL_SLR} \
-            ${PW_INHIBIT_SLR} \
+            ${PW_INHIBIT_SLR}\
             ${pw_runtime} \
             LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             LD_PRELOAD="${PW_LD_PRELOAD}" \
@@ -3811,7 +3813,7 @@ pw_run () {
             echo "Log WINE:" > "${PW_LOG_TO_FILE}"
             ${PW_RUN_GAMESCOPE} \
             ${PW_POWERPROFILECTL_SLR} \
-            ${PW_INHIBIT_SLR} \
+            ${PW_INHIBIT_SLR}\
             ${pw_runtime} \
             LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             LD_PRELOAD="${PW_LD_PRELOAD}" \
@@ -3847,7 +3849,7 @@ pw_run () {
             ${PW_POWERPROFILECTL_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
-            ${PW_INHIBIT_SLR} \
+            ${PW_INHIBIT_SLR}\
             "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
             wait_wineserver
         else
@@ -3866,7 +3868,7 @@ pw_run () {
             ${PW_POWERPROFILECTL_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
-            ${PW_INHIBIT_SLR} \
+            ${PW_INHIBIT_SLR}\
             "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]}
             wait_wineserver
         fi
