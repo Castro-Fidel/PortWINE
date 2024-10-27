@@ -790,7 +790,6 @@ unpack () {
         silent) local silent=true ;;
     esac
 
-
     # If gamescope session is active, use PW_TERM for unpack
     if check_gamescope_session ; then
         $PW_TERM "echo ; echo ; echo \"Unpacking file: $1. Please wait...\" ; $command \"$1\" -C \"$2\""
@@ -4157,11 +4156,6 @@ pw_stop_progress_bar () {
 }
 export -f pw_stop_progress_bar
 
-pw_stop_progress_bar_cover () {
-    kill -s KILL "$PW_YAD_PID_PROGRESS_BAR_COVER" &>/dev/null
-}
-export -f pw_stop_progress_bar_cover
-
 pw_stop_progress_bar_cover_block () {
     kill -s KILL "$PW_YAD_PID_PROGRESS_BAR_COVER_BLOCK" &>/dev/null
 }
@@ -6126,7 +6120,7 @@ portwine_start_debug () {
 
     portwine_launch &
     sleep 3
-    pw_stop_progress_bar_cover
+    pw_stop_progress_bar
     local PW_TIMER=0
     while read -r line || [[ -n $(pgrep -a yad | grep "yad_gui_pp --text-info --tail --button="STOP"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 --title="DEBUG"" | awk '{print $1}') ]] ; do
             sleep 0.005
