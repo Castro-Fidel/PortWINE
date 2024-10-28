@@ -63,12 +63,15 @@ export -f make_abbreviation
 
 check_variables () { [[ -z ${!1} ]] && export $1="$2" ;}
 
-cli_edit_db () {
+# Эксортирует несколько переменных за один раз (одной командой)
+# и создаёт список этих переменных в $keys_all
+# К примеру set_several_variables PW_MANGOHUD=1 PW_VKBASALT=0
+set_several_variables () {
     local key value
     unset keys_all
-    while (( $# > 0 )); do
-        key=$(echo "$1" | cut -d'=' -f1)
-        value=$(echo "$1" | cut -d'=' -f2)
+    while (( $# > 0 )) ; do
+        key=${1//=*/}
+        value=${1//*=/}
         keys_all+="$key "
         export "$key"="$value"
         shift
