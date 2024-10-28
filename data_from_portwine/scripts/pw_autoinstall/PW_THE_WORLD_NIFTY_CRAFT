@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Author: chal55rus
+# type: games
+# name: The World of Nifty Craft (ENG)
+# image: theworldofniftycraft
+# info_en:
+# info_ru:
+########################################################################
+export PW_PREFIX_NAME="THE_WORLD_NIFTY_CRAFT"
+export LAUNCH_PARAMETERS=("/S")
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/web_installer.exe"
+export PORTWINE_CREATE_SHORTCUT_NAME="The World of Nifty Craft"
+
+start_portwine
+if try_download "https://installer.launcher.xsolla.com/xlauncher-builds/xsolla-launcher-update/9969/bin/web_installer.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
+then
+    pw_start_progress_bar_install_game "The World of Nifty Craft."
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/users/steamuser/AppData/Local/The World of Nifty Craft/launcher.exe"
+    pw_create_unique_exe "Nifty_Craft_launcher"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    kill_portwine
+    pw_stop_progress_bar
+    portwine_create_shortcut
+fi
+stop_portwine
