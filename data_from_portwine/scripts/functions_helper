@@ -907,7 +907,7 @@ search_desktop_file () {
             IFS="$orig_IFS"
             try_remove_file "$PORT_WINE_TMP_PATH/statistics"
             mv -f "$PORT_WINE_TMP_PATH/statistics_repair" "$PORT_WINE_TMP_PATH/statistics"
-            search_desktop_file
+            return 1
         fi
 
         # Ремонт, если есть пустые строки и непонятные строки без .exe, .bat, .msi, .reg
@@ -920,7 +920,7 @@ search_desktop_file () {
             IFS="$orig_IFS"
             try_remove_file "$PORT_WINE_TMP_PATH/statistics"
             mv -f "$PORT_WINE_TMP_PATH/statistics_repair" "$PORT_WINE_TMP_PATH/statistics"
-            search_desktop_file
+            return 1
         fi
 
         # Ремонтирует путь на новый, если вдруг путь до .exe файла битый или изменился, но .exe файл он опознал
@@ -945,7 +945,7 @@ search_desktop_file () {
         # Ремонт, если кто-то сломал время
         if [[ ! ${line2[2]} =~ ^[0-9]+$ ]] ; then
             sed -i "/${line2[1]}/d" "$PORT_WINE_TMP_PATH/statistics"
-            search_desktop_file
+            return 1
         fi
 
         ###############################
@@ -1019,10 +1019,24 @@ search_desktop_file () {
             fi
         fi
     fi
+    if [[ -n $PW_TIME_IN_GAME ]]
+    then return 2
+    else return 0
+    fi
 }
 
 create_name_desktop () {
-    search_desktop_file
+    while true ; do
+        search_desktop_file
+        local exit_code=$?
+        if [[ $exit_code == 0 ]] ; then
+            break
+        elif [[ $exit_code == 1 ]] ; then
+            continue
+        elif [[ $exit_code == 2 ]] ; then
+            return 0
+        fi
+    done
     if [[ -n $DESKTOP_NAME_FILE ]] ; then
         DESKTOP_NAME_FILE_OLD=$DESKTOP_NAME_FILE
         unset DESKTOP_NAME_FILE
@@ -1720,7 +1734,7 @@ stop_portwine () {
     if [[ $PW_LOG != 1 ]] && [[ -n $START_PW_TIME_IN_GAME ]] ; then
         debug_timer --end -s "PW_TIME_IN_GAME"
         PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 )) # в секундах
-        search_desktop_file
+        create_name_desktop
     fi
 
     case "$1" in
