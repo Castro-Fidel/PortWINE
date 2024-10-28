@@ -870,28 +870,29 @@ search_desktop_file () {
                 done < "$desktop_file"
                 if [[ $portwine_exe == "${EXEC_DESKTOP//\"/}" ]] ; then
                     DESKTOP_CORRECT_FILE="$desktop_file"
-                fi
-                if [[ $DESKTOP_WITH_TIME == enabled ]] || [[ $SORT_WITH_TIME == enabled ]] ; then
-                    while IFS=" " read -r -a line2 ; do
-                        if [[ -z ${line2[0]} ]] \
-                        || [[ ! ${line2[0]} =~ (.[Bb][Aa][Tt]$|.[Ee][Xx][Ee]$|.[Mm][Ss][Ii]$|.[Rr][Ee][Gg]$) ]] ; then
-                            BROKEN_LINE=1
-                            break
-                        fi
-                        if [[ ${line2[1]} == "$FILE_SHA256SUM" ]] ; then
-                            FILE_SHA256SUM_FOUND=1
-                            break
-                        fi
-                        if [[ ${line2[1]} != "$FILE_SHA256SUM" ]] \
-                        && [[ ${line2[0]} == "${portwine_exe// /#@_@#}" ]] ; then
-                            FILE_SHA256SUM_NOT_FOUND=1
-                            break
-                        fi
-                    done < "$PORT_WINE_TMP_PATH/statistics"
+                    break
                 fi
             fi
         fi
     done
+    if [[ $DESKTOP_WITH_TIME == enabled ]] || [[ $SORT_WITH_TIME == enabled ]] ; then
+        while IFS=" " read -r -a line2 ; do
+            if [[ -z ${line2[0]} ]] \
+            || [[ ! ${line2[0]} =~ (.[Bb][Aa][Tt]$|.[Ee][Xx][Ee]$|.[Mm][Ss][Ii]$|.[Rr][Ee][Gg]$) ]] ; then
+                BROKEN_LINE=1
+                break
+            fi
+            if [[ ${line2[1]} == "$FILE_SHA256SUM" ]] ; then
+                FILE_SHA256SUM_FOUND=1
+                break
+            fi
+            if [[ ${line2[1]} != "$FILE_SHA256SUM" ]] \
+            && [[ ${line2[0]} == "${portwine_exe// /#@_@#}" ]] ; then
+                FILE_SHA256SUM_NOT_FOUND=1
+                break
+            fi
+        done < "$PORT_WINE_TMP_PATH/statistics"
+    fi
     IFS="$orig_IFS"
     if [[ $DESKTOP_WITH_TIME == enabled ]] || [[ $SORT_WITH_TIME == enabled ]] ; then
         local line3 line4 count_line i TIME_TOTAL SKIP_REPAIR
