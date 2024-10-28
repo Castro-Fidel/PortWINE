@@ -63,6 +63,18 @@ export -f make_abbreviation
 
 check_variables () { [[ -z ${!1} ]] && export $1="$2" ;}
 
+cli_edit_db () {
+    local key value
+    unset keys_all
+    while (( $# > 0 )); do
+        key=$(echo "$1" | cut -d'=' -f1)
+        value=$(echo "$1" | cut -d'=' -f2)
+        keys_all+="$key "
+        export "$key"="$value"
+        shift
+    done
+}
+
 add_to_var () {
     if ! echo ${!1} | grep "$2" &>/dev/null
     then export $1="${!1} $2"

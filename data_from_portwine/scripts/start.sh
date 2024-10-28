@@ -59,11 +59,11 @@ elif [[ -f "$OLDPWD/$1" ]] \
 && [[ "$1" == *.[Ee][Xx][Ee] || "$1" == *.[Bb][Aa][Tt] || "$1" == *.[Rr][Ee][Gg] || "$1" == *.[Mm][Ss][Ii] ]]
 then
     portwine_exe="$(realpath -s "$OLDPWD/$1")"
-elif [[ "$1" == "--debug" ]] \
+elif [[ "$1" =~ (^--debug$|^--launch$|^--edit-db$) ]] \
 && [[ -f "$2" ]]
 then
     portwine_exe="$(realpath -s "$2")"
-elif [[ "$1" == "--debug" ]] \
+elif [[ "$1" =~ (^--debug$|^--launch$|^--edit-db$) ]] \
 && [[ -f "$OLDPWD/$2" ]] \
 && [[ "$2" == *.[Ee][Xx][Ee] || "$2" == *.[Bb][Aa][Tt] || "$2" == *.[Rr][Ee][Gg] || "$2" == *.[Mm][Ss][Ii] ]]
 then
@@ -360,7 +360,7 @@ fi
 
 ### CLI ###
 
-case "${1}" in
+case "$1" in
     '--help' )
         files_from_autoinstall=$(ls "${PORT_SCRIPTS_PATH}/pw_autoinstall")
         echo -e "
@@ -413,6 +413,18 @@ use: [--repair] [--reinstall] [--autoinstall]
 
     '--update' )
         gui_pw_update ;;
+
+    '--launch' )
+        export START_FROM_STEAM=1
+        export LD_PRELOAD=
+        portwine_launch
+        stop_portwine ;;
+
+    '--edit-db' )
+        # --edit-db /полный/путь/до/файла.exe PW_MANGOHUD=1 PW_VKBASALT=0 (и т.д) для примера
+        cli_edit_db ${@:3}
+        edit_db_from_gui $keys_all
+        exit 0 ;;
 esac
 
 ### GUI ###
