@@ -1064,7 +1064,9 @@ create_name_desktop () {
         FILE_DESCRIPTION_ACRO=$(make_acronym "$FILE_DESCRIPTION")
     fi
 
-    if [[ -n $DESKTOP_NAME_FILE ]] ; then
+    if [[ -n $PORTWINE_CREATE_SHORTCUT_NAME ]] ; then
+        PW_NAME_DESKTOP_PROXY="$PORTWINE_CREATE_SHORTCUT_NAME"
+    elif [[ -n $DESKTOP_NAME_FILE ]] ; then
         PW_NAME_DESKTOP_PROXY="$DESKTOP_NAME_FILE"
     elif [[ -n $DESKTOP_NAME_FILE_OLD && ${PORTWINE_DB_DESKTOP^^} =~ ${DESKTOP_NAME_FILE_OLD^^} ]] ; then
         PW_NAME_DESKTOP_PROXY="$DESKTOP_NAME_FILE_OLD"
@@ -5796,7 +5798,8 @@ portwine_output_yad_shortcut () {
 
         export PW_NEW_DESKTOP="1"
 
-        if [[ "$PW_NO_RESTART_PPDB" != "1" ]] ; then
+        if [[ "$PW_NO_RESTART_PPDB" != "1" ]] \
+        || [[ -z ${LINKS[1]} ]] ; then
             print_info "Restarting PP..."
             [[ "$PW_GUI_START" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
             restart_pp
@@ -5805,7 +5808,7 @@ portwine_output_yad_shortcut () {
         print_info "Restarting PP..."
         [[ -n $KEY_MENU ]] && unset portwine_exe
         [[ "$PW_GUI_START" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
-        [[ -z $LINKS ]] && restart_pp
+        [[ -z ${LINKS[0]} ]] && restart_pp
     fi
 }
 
