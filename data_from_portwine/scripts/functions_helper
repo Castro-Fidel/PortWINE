@@ -748,6 +748,30 @@ check_flatpak () {
 }
 export -f check_flatpak
 
+check_selinux () {
+    if [[ -n "$SELINUX_IN_USE" ]]
+    then [[ "$SELINUX_IN_USE" == 1 ]] && return 0 || return 1
+    fi
+    if check_flatpak ; then
+        if grep -i ^"SELINUX=enforcing" /run/host/etc/selinux/config &>/dev/null ; then
+            export SELINUX_IN_USE=1
+            return 0
+        else
+            export SELINUX_IN_USE=0
+            return 1
+        fi
+    else
+        if grep -i ^"SELINUX=enforcing" /etc/selinux/config &>/dev/null ; then
+            export SELINUX_IN_USE=1
+            return 0
+        else
+            export SELINUX_IN_USE=0
+            return 1
+        fi
+    fi
+}
+export -f check_selinux
+
 background_pid () {
     local arg1=$1 # --start или --end
     local arg2=$2 # Название команды
