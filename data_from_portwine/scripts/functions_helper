@@ -798,7 +798,7 @@ unpack () {
         set -o pipefail
         pw_start_progress_bar_cover_block "${COVERS_PATH}/unpacking_${LANGUAGE_GIF}.gif"
         $command "$1" -C "$2" 2>/dev/null
-        pw_stop_progress_bar_cover_block
+        pw_stop_progress_bar
         [[ "${PIPESTATUS[0]}" != 0 ]] && print_error "File $1 unpacking error." && return 1 || return 0
     else
         $command "$1" -C "$2" && return 0 || return 1
@@ -1288,7 +1288,7 @@ init_wine_ver () {
                     try_remove_dir "${WINEDIR}/share/wine/${mono_gecko_chk}"
                     try_force_link_dir "${PORT_WINE_TMP_PATH}/${mono_gecko_chk}" "${WINEDIR}"/share/wine/
                     print_info "Copy ${WINEDIR}/share/wine/${mono_gecko_chk} to tmp and create symlink to ${WINEDIR}/share/wine/. OK."
-                    pw_stop_progress_bar_cover_block
+                    pw_stop_progress_bar
                 else
                     try_remove_dir "${WINEDIR}/share/wine/${mono_gecko_chk}"
                     try_force_link_dir "${PORT_WINE_TMP_PATH}/${mono_gecko_chk}" "${WINEDIR}"/share/wine
@@ -3615,7 +3615,7 @@ start_portwine () {
         sed -i "/\"Audio\"=/d" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" &>/dev/null
     fi
 
-    pw_stop_progress_bar &&
+    pw_stop_progress_bar
     if ! check_start_from_steam ; then
         pw_tray_icon
         sleep 0.5
@@ -3780,7 +3780,7 @@ pw_run () {
     print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VULKAN_DRIVER_NAME"
     print_var "VKD3D_CONFIG" "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2"
     print_var "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH"
-    kill -s SIGUSR1 "$PW_YAD_PID_PFX_COVER_UI" &>/dev/null
+    pw_stop_progress_bar
     if [[ "$PW_USE_RUNTIME" == 1 ]] \
     && [[ "$PW_WINE_USE" != "USE_SYSTEM_WINE" ]]
     then
@@ -4046,14 +4046,14 @@ pw_start_progress_bar_cover () {
     if check_gamescope_session ; then
         PW_GIF_FILE="${COVERS_PATH}/loading_deck.gif"
         "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated --fullscreen --skip-taskbar > /dev/null 2>&1 &
-        export PW_YAD_PID_PROGRESS_BAR_COVER="$!"
+        PW_YAD_PID_PROGRESS_BAR_BLOCK+=($!)
     elif ! check_start_from_steam ; then
         PW_GIF_FILE="$1"
         PW_GIF_SIZE_X=$(file "${PW_GIF_FILE}" | awk '{print $7 + 8}')
         PW_GIF_SIZE_Y=$(file "${PW_GIF_FILE}" | awk '{print $9 + 15}')
         "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated \
         --skip-taskbar --width="$PW_GIF_SIZE_X" --height="$PW_GIF_SIZE_Y" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" > /dev/null 2>&1 &
-        export PW_YAD_PID_PROGRESS_BAR_COVER="$!"
+        PW_YAD_PID_PROGRESS_BAR_BLOCK+=($!)
     fi
     return 0
 }
@@ -4066,7 +4066,7 @@ pw_start_progress_bar_cover_block () {
         PW_GIF_SIZE_Y=$(file "${PW_GIF_FILE}" | awk '{print $9 + 15}')
         "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated \
         --skip-taskbar --width="$PW_GIF_SIZE_X" --height="$PW_GIF_SIZE_Y" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" > /dev/null 2>&1 &
-        export PW_YAD_PID_PROGRESS_BAR_COVER_BLOCK="$!"
+        PW_YAD_PID_PROGRESS_BAR_BLOCK+=($!)
         return 0
     fi
 }
@@ -4111,7 +4111,7 @@ pw_update_pfx_cover_gui () {
         "${pw_yad}" --notebook --key="$PW_KEY_PROGRESS_BAR_UP" $TAB_PLACE --no-buttons \
         --skip-taskbar --width="$PW_GIF_SIZE_X" --height="$PW_GIF_SIZE_Y" $YAD_UNDECORATED \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "PortProton" --tab-pos="bottom" --expand 2>/dev/null &
-        export PW_YAD_PID_PFX_COVER_UI="$!"
+        PW_YAD_PID_PROGRESS_BAR_BLOCK+=($!)
         return 0
     fi
 }
@@ -4124,7 +4124,7 @@ pw_start_progress_bar_cs () {
         --width="$PROGRESS_BAR_WIDTH_SIZE" \
         --wrap-width="$PROGRESS_BAR_WIDTH_SIZE" \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" &>/dev/null &
-        export PW_YAD_PID_PROGRESS_BAR_CS="$!"
+        PW_YAD_PID_PROGRESS_BAR_BLOCK+=($!)
         return 0
     fi
 }
@@ -4138,7 +4138,7 @@ pw_start_progress_bar_block () {
         --width="$PROGRESS_BAR_WIDTH_SIZE" \
         --wrap-width="$PROGRESS_BAR_WIDTH_SIZE" \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" &>/dev/null &
-        export PW_YAD_PID_PROGRESS_BAR_BLOCK="$!"
+        PW_YAD_PID_PROGRESS_BAR_BLOCK+=($!)
         return 0
     fi
 }
@@ -4152,25 +4152,23 @@ pw_start_progress_bar_install_game () {
         --width="$PROGRESS_BAR_WIDTH_SIZE" \
         --wrap-width="$PROGRESS_BAR_WIDTH_SIZE" \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" &>/dev/null &
-        export PW_YAD_PID_PROGRESS_BAR_BLOCK="$!"
+        PW_YAD_PID_PROGRESS_BAR_BLOCK+=($!)
         return 0
     fi
 }
 
 pw_stop_progress_bar () {
-    [[ -n $PW_YAD_PID_PROGRESS_BAR_BLOCK ]] && kill -s SIGUSR1 "$PW_YAD_PID_PROGRESS_BAR_BLOCK" &>/dev/null
-    [[ -n $PW_YAD_PID_PROGRESS_BAR_CS ]] && kill -s SIGUSR1 "$PW_YAD_PID_PROGRESS_BAR_CS" &>/dev/null
-    [[ -n $PW_YAD_PID_PFX_COVER_UI ]] && kill -s SIGUSR1 "$PW_YAD_PID_PFX_COVER_UI" &>/dev/null
-    [[ -n $PW_YAD_PID_PROGRESS_BAR_COVER ]] && kill -s SIGUSR1 "$PW_YAD_PID_PROGRESS_BAR_COVER" &>/dev/null
-    unset PW_YAD_PID_PROGRESS_BAR_BLOCK PW_YAD_PID_PROGRESS_BAR_CS
-    unset PW_YAD_PID_PFX_COVER_UI PW_YAD_PID_PROGRESS_BAR_COVER
+    if [[ -n ${PW_YAD_PID_PROGRESS_BAR_BLOCK[0]} ]] ; then
+        local pid
+        for pid in ${PW_YAD_PID_PROGRESS_BAR_BLOCK[@]} ; do
+            while $(sleep 0.02) && [[ -f /proc/$pid/exe ]] ; do
+                kill -s SIGUSR1 "$pid" &>/dev/null
+            done
+        done
+        unset PW_YAD_PID_PROGRESS_BAR_BLOCK
+    fi
 }
 export -f pw_stop_progress_bar
-
-pw_stop_progress_bar_cover_block () {
-    kill -s KILL "$PW_YAD_PID_PROGRESS_BAR_COVER_BLOCK" &>/dev/null
-}
-export -f pw_stop_progress_bar_cover_block
 
 open_changelog () {
     [[ "$LANGUAGE" == ru ]] && local PW_CHANGELOG_FILE="changelog_ru" || local PW_CHANGELOG_FILE="changelog_en"
