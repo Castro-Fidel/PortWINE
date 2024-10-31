@@ -49,14 +49,14 @@ MISSING_DESKTOP_FILE="0"
 
 unset PW_NO_RESTART_PPDB PW_DISABLED_CREATE_DB
 
-if [[ "$1" == *.[Pp][Pp][Aa][Cc][Kk] ]] ; then
+if [[ "${1,,}" =~ .ppack$ ]] ; then
     export PW_NO_RESTART_PPDB="1"
     export PW_DISABLED_CREATE_DB="1"
     portwine_exe="$1"
 elif [[ -f "$1" ]] ; then
     portwine_exe="$(realpath -s "$1")"
 elif [[ -f "$OLDPWD/$1" ]] \
-&& [[ "$1" =~ (.[Ee][Xx][Ee]$|.[Bb][Aa][Tt]$|.[Mm][Ss][Ii]$|.[Rr][Ee][Gg]$) ]]
+&& [[ "${1,,}" =~ (.exe$|.bat$|.msi$|.reg$) ]]
 then
     portwine_exe="$(realpath -s "$OLDPWD/$1")"
 elif [[ "$1" =~ (^--debug$|^--launch$|^--edit-db$) ]] \
@@ -65,10 +65,10 @@ then
     portwine_exe="$(realpath -s "$2")"
 elif [[ "$1" =~ (^--debug$|^--launch$|^--edit-db$) ]] \
 && [[ -f "$OLDPWD/$2" ]] \
-&& [[ "$2" =~ (.[Ee][Xx][Ee]$|.[Bb][Aa][Tt]$|.[Mm][Ss][Ii]$|.[Rr][Ee][Gg]$) ]]
+&& [[ "${2,,}" =~ (.exe$|.bat$|.msi$|.reg$) ]]
 then
     portwine_exe="$(realpath -s "$OLDPWD/$2")"
-elif [[ "$1" =~ (.[Ee][Xx][Ee]$|.[Bb][Aa][Tt]$|.[Mm][Ss][Ii]$|.[Rr][Ee][Gg]$) ]]
+elif [[ "${1,,}" =~ (.exe$|.bat$|.msi$|.reg$) ]]
 then
     portwine_exe="$1"
     MISSING_DESKTOP_FILE="1"
@@ -324,7 +324,7 @@ export SKIP_CHECK_UPDATES="1"
 
 [[ "$MISSING_DESKTOP_FILE" == "1" ]] && portwine_missing_shortcut
 
-if [[ $(basename "${portwine_exe}") =~ .[Pp][Pp][Aa][Cc][Kk]$ ]] ; then
+if [[ $(basename "${portwine_exe,,}") =~ .ppack$ ]] ; then
     unset PW_SANDBOX_HOME_PATH
     pw_init_runtime
     if check_flatpak
@@ -335,7 +335,8 @@ if [[ $(basename "${portwine_exe}") =~ .[Pp][Pp][Aa][Cc][Kk]$ ]] ; then
     then NO_XATTRS_NEED="-no-xattrs"
     else NO_XATTRS_NEED=""
     fi
-    PW_PREFIX_NAME=$(basename "$1" | awk -F'.' '{print $1}')
+    PW_PREFIX_NAME=$(basename "${1,,}" .ppack)
+    PW_PREFIX_NAME="${PW_PREFIX_NAME^^}"
 cat << EOF > "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack.sh
     #!/usr/bin/env bash
     ${TMP_ALL_PATH} unsquashfs -f -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" "$1" \
