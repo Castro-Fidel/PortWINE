@@ -878,7 +878,7 @@ search_desktop_file () {
     if [[ $DESKTOP_WITH_TIME == enabled ]] || [[ $SORT_WITH_TIME == enabled ]] ; then
         while IFS=" " read -r -a line2 ; do
             if [[ -z ${line2[0]} ]] \
-            || [[ ! ${line2[0]} =~ (.[Bb][Aa][Tt]$|.[Ee][Xx][Ee]$|.[Mm][Ss][Ii]$|.[Rr][Ee][Gg]$) ]] ; then
+            || [[ ! ${line2[0],,} =~ (.bat$|.exe$|.msi$|.reg$) ]] ; then
                 BROKEN_LINE=1
                 break
             fi
@@ -4030,18 +4030,18 @@ portwine_launch () {
     fi
 
     [[ $PW_LOG != 1 ]] && debug_timer --start -s "PW_TIME_IN_GAME"
-    case "$portwine_exe" in
-        *.[Ee][Xx][Ee])
+    case "${portwine_exe,,}" in
+        *.exe)
             pw_run ${PW_VD_TMP[@]} ${WINE_WIN_START} "$portwine_exe"
         ;;
-        *.[Bb][Aa][Tt])
+        *.bat)
             PW_USE_TERMINAL=1
             pw_run ${PW_VD_TMP[@]} "$portwine_exe"
         ;;
-        *.[Mm][Ss][Ii])
+        *.msi)
             pw_run ${PW_VD_TMP[@]} msiexec /i "$portwine_exe"
         ;;
-        *.[Rr][Ee][Gg])
+        *.reg)
             pw_run ${PW_VD_TMP[@]} regedit "$portwine_exe"
         ;;
         *)
