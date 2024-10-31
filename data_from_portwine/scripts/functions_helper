@@ -1029,13 +1029,12 @@ create_name_desktop () {
     while true ; do
         search_desktop_file
         local exit_code=$?
-        if [[ $exit_code == 0 ]] ; then
-            break
-        elif [[ $exit_code == 1 ]] ; then
-            continue
-        elif [[ $exit_code == 2 ]] ; then
-            return 0
-        fi
+        case $exit_code in
+            0) break ;;
+            1) continue ;;
+            2) return 0 ;;
+            *) print_error "Broken search_desktop_file func. No exit_code." ;;
+        esac
     done
     if [[ -n $DESKTOP_NAME_FILE ]] ; then
         DESKTOP_NAME_FILE_OLD=$DESKTOP_NAME_FILE
