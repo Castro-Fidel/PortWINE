@@ -18,7 +18,6 @@ echo '
 ██║░░░░░╚█████╔╝██║░░██║░░░██║░░░██║░░░░░██║░░██║╚█████╔╝░░░██║░░░╚█████╔╝██║░╚███║
 ╚═╝░░░░░░╚════╝░╚═╝░░╚═╝░░░╚═╝░░░╚═╝░░░░░╚═╝░░╚═╝░╚════╝░░░░╚═╝░░░░╚════╝░╚═╝░░╚══╝
 '
-
 $PW_DEBUG
 
 if [[ $(id -u) = 0 ]] \
@@ -366,68 +365,50 @@ fi
 ### CLI ###
 
 case "$1" in
-    '--help' )
-        files_from_autoinstall=$(ls "${PORT_SCRIPTS_PATH}/pw_autoinstall")
-        echo -e "
-use: [--repair] [--reinstall] [--autoinstall]
-
---repair                                            forces all scripts to be updated to a working state
-                                                    (helps if PortProton is not working)
---reinstall                                         reinstall files of the portproton to default settings
---autoinstall [script_frome_pw_autoinstall]         autoinstall from the list below:
-"
-        echo ${files_from_autoinstall}
-
-        echo "
---generate-pot                                      generated pot file
-"
-        echo "
---debug                                             debug scripts for PortProton
-                                                    (saved log in $PORT_WINE_PATH/scripts-debug.log)
-"
-        echo "
---update                                            check update scripts for PortProton
-"
-        exit 0 ;;
-
-    '--reinstall' )
+    --help)
+        # shellcheck source=/dev/null
+        source "${PORT_SCRIPTS_PATH}/help_info"
+        exit 0
+        ;;
+    --reinstall)
         export PW_REINSTALL_FROM_TERMINAL=1
-        pw_reinstall_pp ;;
-
-    '--autoinstall' )
+        pw_reinstall_pp
+        ;;
+    --autoinstall)
         export PW_YAD_SET="$2"
         pw_autoinstall_from_db
-        exit 0 ;;
-
-    '--generate-pot' )
+        exit 0
+        ;;
+    --generate-pot)
         generate_pot
-        exit 0 ;;
-
-    '--debug' )
+        exit 0
+        ;;
+    --debug)
         clear
         export PW_DEBUG="set -x"
         /usr/bin/env bash -c ${pw_full_command_line[@]} 2>&1 | tee "$PORT_WINE_PATH/scripts-debug.log" &
-        exit 0 ;;
-
-    '--server-file-access' )
+        exit 0
+        ;;
+    --server-file-access)
         echo
         curl -s --list-only "https://cloud.linux-gaming.ru/log/$(date +20%y_%m)_file_access.log" | sort -V -k 2,2 \
         | sed 's/count=//g' | awk '{a=$1; $1=$2; $2=a} 1' | awk 'BEGIN {print "Count: Name:"} {print}' | column -t
         echo
-        exit 0 ;;
-
-    '--update' )
-        gui_pw_update ;;
-
-    '--launch' )
+        exit 0
+        ;;
+    --update)
+        gui_pw_update
+        ;;
+    --launch)
         portwine_launch
-        stop_portwine ;;
-
-    '--edit-db' )
+        stop_portwine
+        ;;
+    --edit-db)
         # --edit-db /полный/путь/до/файла.exe PW_MANGOHUD=1 PW_VKBASALT=0 (и т.д) для примера
         set_several_variables ${@:3}
         edit_db_from_gui $keys_all
-        exit 0 ;;
+        exit 0
+        ;;
 esac
 
 ### GUI ###
