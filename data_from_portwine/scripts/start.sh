@@ -56,19 +56,19 @@ if [[ "$1" == *.[Pp][Pp][Aa][Cc][Kk] ]] ; then
 elif [[ -f "$1" ]] ; then
     portwine_exe="$(realpath -s "$1")"
 elif [[ -f "$OLDPWD/$1" ]] \
-&& [[ "$1" == *.[Ee][Xx][Ee] || "$1" == *.[Bb][Aa][Tt] || "$1" == *.[Rr][Ee][Gg] || "$1" == *.[Mm][Ss][Ii] ]]
+&& [[ "$1" =~ (.[Ee][Xx][Ee]$|.[Bb][Aa][Tt]$|.[Mm][Ss][Ii]$|.[Rr][Ee][Gg]$) ]]
 then
     portwine_exe="$(realpath -s "$OLDPWD/$1")"
-elif [[ "$1" == "--debug" ]] \
+elif [[ "$1" =~ (^--debug$|^--launch$|^--edit-db$) ]] \
 && [[ -f "$2" ]]
 then
     portwine_exe="$(realpath -s "$2")"
-elif [[ "$1" == "--debug" ]] \
+elif [[ "$1" =~ (^--debug$|^--launch$|^--edit-db$) ]] \
 && [[ -f "$OLDPWD/$2" ]] \
-&& [[ "$2" == *.[Ee][Xx][Ee] || "$2" == *.[Bb][Aa][Tt] || "$2" == *.[Rr][Ee][Gg] || "$2" == *.[Mm][Ss][Ii] ]]
+&& [[ "$2" =~ (.[Ee][Xx][Ee]$|.[Bb][Aa][Tt]$|.[Mm][Ss][Ii]$|.[Rr][Ee][Gg]$) ]]
 then
     portwine_exe="$(realpath -s "$OLDPWD/$2")"
-elif [[ "$1" == *.[Ee][Xx][Ee] || "$1" == *.[Bb][Aa][Tt] || "$1" == *.[Mm][Ss][Ii] || "$1" == *.[Rr][Ee][Gg] ]]
+elif [[ "$1" =~ (.[Ee][Xx][Ee]$|.[Bb][Aa][Tt]$|.[Mm][Ss][Ii]$|.[Rr][Ee][Gg]$) ]]
 then
     portwine_exe="$1"
     MISSING_DESKTOP_FILE="1"
@@ -365,7 +365,7 @@ fi
 
 ### CLI ###
 
-case "${1}" in
+case "$1" in
     '--help' )
         files_from_autoinstall=$(ls "${PORT_SCRIPTS_PATH}/pw_autoinstall")
         echo -e "
@@ -418,6 +418,16 @@ use: [--repair] [--reinstall] [--autoinstall]
 
     '--update' )
         gui_pw_update ;;
+
+    '--launch' )
+        portwine_launch
+        stop_portwine ;;
+
+    '--edit-db' )
+        # --edit-db /полный/путь/до/файла.exe PW_MANGOHUD=1 PW_VKBASALT=0 (и т.д) для примера
+        set_several_variables ${@:3}
+        edit_db_from_gui $keys_all
+        exit 0 ;;
 esac
 
 ### GUI ###
