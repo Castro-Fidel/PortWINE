@@ -3608,7 +3608,7 @@ start_portwine () {
             GREP_NUMBER_DPI=$(grep -n '"LogPixels"=' user.reg)
             GREP_NUMBER_DPI=${GREP_NUMBER_DPI//:*/}
             PW_WINE_DPI_VALUE_NEW=$(convert_dec_and_hex --dec "$PW_WINE_DPI_VALUE")
-            sed -i ${GREP_NUMBER_DPI}s'/"LogPixels"=dword:[0-9]*/\"LogPixels"=dword:'$PW_WINE_DPI_VALUE_NEW/ "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
+            sed -i ${GREP_NUMBER_DPI}s'/"LogPixels"=dword:.*/\"LogPixels"=dword:'$PW_WINE_DPI_VALUE_NEW/ "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
         else
             print_info "Added LogPixels (for DPI) to reg file"
             ${pw_runtime} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
@@ -3910,8 +3910,6 @@ pw_run () {
             wait_wineserver
         fi
     fi
-
-    return 0
 }
 export -f pw_run
 
@@ -5508,11 +5506,11 @@ gui_userconf () {
     "${pw_yad}" --plug=$KEY_USERCONF_GUI --tabnum="2" --form --columns=1 --separator="@" --homogeneous-row \
     --gui-type-text="$PANED_GUI_TYPE_TEXT_DOWN" --gui-type-layout="$PANED_GUI_TYPE_LAYOUT_DOWN" \
     --field="${translations[Choose a graphics card to run the game]}!${translations[Select which video card will be used to run the game (used for all running games and programs in PortProton)]} :CB" "$(combobox_fix --disabled "$GPU_VAR" "$GET_GPU_NAMES")" \
+    --field="${translations[Force dpi for fonts]}!${translations[Here you can set forced dpi for fonts in wine]} :CB" "$(combobox_fix --disabled "$YAD_DPI_VAR" "96 (100%)!120 (125%)!144 (150%)!168 (175%)!192 (200%)!216 (225%)!240 (250%)!264 (275%)!288 (300%)")" \
     --field="${translations[Choice wine audio driver]}!${translations[Fixes sound popling if choice alsa]} :CB" "$(combobox_fix --disabled "$SOUND_DRIVER_VAR" "alsa!oss!pulse")" \
     --field="${translations[Choice gui themes]}!${translations[Allows you to select a theme for PortProton]} :CB" "$(combobox_fix "$GUI_THEME" "default!compact!classic")" \
     --field="${translations[Time display]}!${translations[Displays time spent in an application or game]} :CB" "$(combobox_fix --disabled "$DESKTOP_WITH_TIME" "enabled")" \
     --field="${translations[Sort shortcuts by time]}!${translations[This setting sorts the shortcuts in the main menu depending on the time spent in the application or game]} :CB" "$(combobox_fix --disabled "$SORT_WITH_TIME" "enabled")" \
-    --field="${translations[Force dpi for fonts]}!${translations[Here you can set forced dpi for fonts in wine]} :CB" "$(combobox_fix --disabled "$YAD_DPI_VAR" "96 (100%)!120 (125%)!144 (150%)!168 (175%)!192 (200%)!216 (225%)!240 (250%)!264 (275%)!288 (300%)")" \
     1> "${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb" 2>/dev/null &
 
     "${pw_yad}" --key=$KEY_USERCONF_GUI --paned --sensitive \
@@ -5546,12 +5544,12 @@ gui_userconf () {
             IFS='@' read -r -a PW_ADD_SETTINGS_UC <"${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb"
             IFS="$orig_IFS"
             PW_GPU_USE="${PW_ADD_SETTINGS_UC[0]}"
-            PW_SOUND_DRIVER_USE="${PW_ADD_SETTINGS_UC[1]}"
-            GUI_THEME="${PW_ADD_SETTINGS_UC[2]}"
-            DESKTOP_WITH_TIME="${PW_ADD_SETTINGS_UC[3]}"
-            SORT_WITH_TIME="${PW_ADD_SETTINGS_UC[4]}"
-            PW_WINE_DPI_VALUE="${PW_ADD_SETTINGS_UC[5]}"
-            edit_user_conf_from_gui PW_GPU_USE PW_SOUND_DRIVER_USE GUI_THEME DESKTOP_WITH_TIME SORT_WITH_TIME PW_WINE_DPI_VALUE
+            PW_WINE_DPI_VALUE="${PW_ADD_SETTINGS_UC[1]}"
+            PW_SOUND_DRIVER_USE="${PW_ADD_SETTINGS_UC[2]}"
+            GUI_THEME="${PW_ADD_SETTINGS_UC[3]}"
+            DESKTOP_WITH_TIME="${PW_ADD_SETTINGS_UC[4]}"
+            SORT_WITH_TIME="${PW_ADD_SETTINGS_UC[5]}"
+            edit_user_conf_from_gui PW_GPU_USE PW_WINE_DPI_VALUE PW_SOUND_DRIVER_USE GUI_THEME DESKTOP_WITH_TIME SORT_WITH_TIME
             restart_pp
             ;;
     esac
