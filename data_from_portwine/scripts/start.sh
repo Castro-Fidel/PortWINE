@@ -128,7 +128,6 @@ popd 1>/dev/null || fatal
 
 create_new_dir "${PORT_WINE_PATH}/data/prefixes/DEFAULT"
 create_new_dir "${PORT_WINE_PATH}/data/prefixes/DOTNET"
-create_new_dir "${PORT_WINE_PATH}/data/prefixes/PROGRAMS"
 try_force_link_dir "${PORT_WINE_PATH}/data/prefixes" "${PORT_WINE_PATH}"
 
 pushd "${PORT_WINE_PATH}/data/prefixes/" 1>/dev/null || fatal

@@ -541,7 +541,7 @@ try_download () {
     if [[ -n "${PW_AUTOINSTALL_EXE}" ]] \
     && [[ "$no_mirror" == "true" ]]
     then
-        filename="$(basename "${PW_AUTOINSTALL_EXE}")"
+        filename="${PW_AUTOINSTALL_EXE//*\//}"
     else
         filename="$(basename "$1")"
     fi
@@ -575,8 +575,8 @@ try_download () {
     else
         curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
         -H 'Pragma: no-cache' -L ${FIRST_URL[@]} -o "$dest" 2>&1 | \
-        tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
-        "$pw_yad" --progress --pulsate --text="${translations[Downloading]} $filename" --auto-close --no-escape \
+        tr '\r' '\n' | sed -ur 's|[# ]+||g;s|100||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
+        "$pw_yad" --progress --text="${translations[Downloading]} $filename" --auto-close --no-escape \
         --auto-kill --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders="$PROGRESS_BAR_BORDERS_SIZE"
     fi
@@ -586,8 +586,8 @@ try_download () {
             print_warning "Failed download $filename from ${FIRST_URL[0]}, trying mirror: ${SECOND_URL[0]}"
             curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
             -H 'Pragma: no-cache' -L ${SECOND_URL[@]} -o "$dest" 2>&1 | \
-            tr '\r' '\n' | sed -ur 's|[# ]+||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
-            "$pw_yad" --progress --pulsate --text="${translations[Downloading]} $filename" --auto-close --no-escape \
+            tr '\r' '\n' | sed -ur 's|[# ]+||g;s|100||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
+            "$pw_yad" --progress --text="${translations[Downloading]} $filename" --auto-close --no-escape \
             --auto-kill --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders="$PROGRESS_BAR_BORDERS_SIZE"
         fi
@@ -2750,7 +2750,6 @@ start_portwine () {
 
     pw_get_pfx () {
         case "${PW_PREFIX_NAME}" in
-            PROGRAMS) local FILE_NAME_PFX="progpfx${PROGPFX_VER}" ;;
               DOTNET) local FILE_NAME_PFX="dotpfx${DOTPFX_VER}" ;;
                    *) return 0 ;;
         esac
