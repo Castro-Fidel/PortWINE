@@ -831,7 +831,7 @@ unpack () {
         [[ "$?" != 0 ]] && return 1 || return 0
     elif [[ "$silent" != "true" ]] ; then
         set -o pipefail
-        pw_start_progress_bar_cover_block "${COVERS_PATH}/unpacking_${LANGUAGE_GIF}.gif"
+        pw_start_progress_bar_cover "${COVERS_PATH}/unpacking_${LANGUAGE_GIF}.gif" --block
         $command "$1" -C "$2" 2>/dev/null
         pw_stop_progress_bar
         [[ "${PIPESTATUS[0]}" != 0 ]] && print_error "File $1 unpacking error." && return 1 || return 0
@@ -1434,7 +1434,7 @@ init_wine_ver () {
                 if check_symlink "${WINEDIR}/share/wine/${mono_gecko_chk}" ; then
                     print_info "${WINEDIR}/share/wine/${mono_gecko_chk} is symlink. OK."
                 elif [[ -d "${WINEDIR}/share/wine/${mono_gecko_chk}" ]] ; then
-                    pw_start_progress_bar_cover_block "${COVERS_PATH}/loading_${LANGUAGE_GIF}.gif"
+                    pw_start_progress_bar_cover "${COVERS_PATH}/loading_${LANGUAGE_GIF}.gif" --block
                     try_copy_dir "${WINEDIR}/share/wine/${mono_gecko_chk}" "${PORT_WINE_TMP_PATH}"
                     try_remove_dir "${WINEDIR}/share/wine/${mono_gecko_chk}"
                     try_force_link_dir "${PORT_WINE_TMP_PATH}/${mono_gecko_chk}" "${WINEDIR}"/share/wine/
@@ -3770,7 +3770,7 @@ start_portwine () {
     fi
 
     if [[ "${PW_CHECK_AUTOINSTALL}" != "1" ]] ; then
-            pw_start_progress_bar_cover "${COVERS_PATH}/loading_${LANGUAGE_GIF}.gif"
+        pw_start_progress_bar_cover "${COVERS_PATH}/loading_${LANGUAGE_GIF}.gif"
     fi
     add_in_start_portwine
 
@@ -4191,32 +4191,20 @@ yad_question () {
 }
 
 pw_start_progress_bar_cover () {
+    [[ "$2" != "--block" ]] && local AUTOCLOUSE="--close-on-unfocus"
     if check_gamescope_session ; then
         PW_GIF_FILE="${COVERS_PATH}/loading_deck.gif"
-        "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated --fullscreen --skip-taskbar > /dev/null 2>&1 &
-        PW_YAD_PID_PROGRESS_BAR_BLOCK+=($!)
+        "${pw_yad}" --picture --filename="${PW_GIF_FILE}" $AUTOCLOUSE --no-buttons --undecorated --fullscreen --skip-taskbar > /dev/null 2>&1 &
+        PW_YAD_PID_PROGRESS_BAR+=($!)
     elif ! check_start_from_steam ; then
         PW_GIF_FILE="$1"
         PW_GIF_SIZE_X=$(file "${PW_GIF_FILE}" | awk '{print $7 + 8}')
         PW_GIF_SIZE_Y=$(file "${PW_GIF_FILE}" | awk '{print $9 + 15}')
-        "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated \
+        "${pw_yad}" --picture --filename="${PW_GIF_FILE}" $AUTOCLOUSE --no-buttons --undecorated \
         --skip-taskbar --width="$PW_GIF_SIZE_X" --height="$PW_GIF_SIZE_Y" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" > /dev/null 2>&1 &
-        PW_YAD_PID_PROGRESS_BAR_BLOCK+=($!)
+        PW_YAD_PID_PROGRESS_BAR+=($!)
     fi
     return 0
-}
-
-pw_start_progress_bar_cover_block () {
-    if ! check_start_from_steam ; then
-        [[ ! -f "${pw_yad}" ]] && local pw_yad="yad"
-        PW_GIF_FILE="$1"
-        PW_GIF_SIZE_X=$(file "${PW_GIF_FILE}" | awk '{print $7 + 8}')
-        PW_GIF_SIZE_Y=$(file "${PW_GIF_FILE}" | awk '{print $9 + 15}')
-        "${pw_yad}" --picture --filename="${PW_GIF_FILE}" --close-on-unfocus --no-buttons --undecorated \
-        --skip-taskbar --width="$PW_GIF_SIZE_X" --height="$PW_GIF_SIZE_Y" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" > /dev/null 2>&1 &
-        PW_YAD_PID_PROGRESS_BAR_BLOCK+=($!)
-        return 0
-    fi
 }
 
 pw_update_pfx_cover_gui () {
@@ -4259,7 +4247,7 @@ pw_update_pfx_cover_gui () {
         "${pw_yad}" --notebook --key="$PW_KEY_PROGRESS_BAR_UP" $TAB_PLACE --no-buttons \
         --skip-taskbar --width="$PW_GIF_SIZE_X" --height="$PW_GIF_SIZE_Y" $YAD_UNDECORATED \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "PortProton" --tab-pos="bottom" --expand 2>/dev/null &
-        PW_YAD_PID_PROGRESS_BAR_BLOCK+=($!)
+        PW_YAD_PID_PROGRESS_BAR+=($!)
         return 0
     fi
 }
@@ -4272,7 +4260,7 @@ pw_start_progress_bar_cs () {
         --width="$PROGRESS_BAR_WIDTH_SIZE" \
         --wrap-width="$PROGRESS_BAR_WIDTH_SIZE" \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" &>/dev/null &
-        PW_YAD_PID_PROGRESS_BAR_BLOCK+=($!)
+        PW_YAD_PID_PROGRESS_BAR+=($!)
         return 0
     fi
 }
@@ -4286,7 +4274,7 @@ pw_start_progress_bar_block () {
         --width="$PROGRESS_BAR_WIDTH_SIZE" \
         --wrap-width="$PROGRESS_BAR_WIDTH_SIZE" \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" &>/dev/null &
-        PW_YAD_PID_PROGRESS_BAR_BLOCK+=($!)
+        PW_YAD_PID_PROGRESS_BAR+=($!)
         return 0
     fi
 }
@@ -4300,22 +4288,22 @@ pw_start_progress_bar_install_game () {
         --width="$PROGRESS_BAR_WIDTH_SIZE" \
         --wrap-width="$PROGRESS_BAR_WIDTH_SIZE" \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" &>/dev/null &
-        PW_YAD_PID_PROGRESS_BAR_BLOCK+=($!)
+        PW_YAD_PID_PROGRESS_BAR+=($!)
         return 0
     fi
 }
 
 pw_stop_progress_bar () {
-    if [[ -n ${PW_YAD_PID_PROGRESS_BAR_BLOCK[0]} ]] ; then
+    if [[ -n ${PW_YAD_PID_PROGRESS_BAR[0]} ]] ; then
         local pid
-        for pid in ${PW_YAD_PID_PROGRESS_BAR_BLOCK[@]} ; do
+        for pid in ${PW_YAD_PID_PROGRESS_BAR[@]} ; do
             # Здесь sleep нужен, потому что pid может уже быть, но kill его не убьет
             # со sleep 0.01 он делает 2 kill, c 0.02 нормально один
             while $(sleep 0.02) && [[ -f /proc/$pid/exe ]] ; do
                 kill -s SIGUSR1 "$pid" &>/dev/null
             done
         done
-        unset PW_YAD_PID_PROGRESS_BAR_BLOCK
+        unset PW_YAD_PID_PROGRESS_BAR
     fi
 }
 export -f pw_stop_progress_bar
