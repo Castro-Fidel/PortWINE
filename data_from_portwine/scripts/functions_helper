@@ -849,7 +849,12 @@ debug_timer () {
 # Поиск нужного .desktop файла по $portwine_exe (для показа в комментариях нужного времени)
 # Параллельное создание базы по времени после завершения приложения
 search_desktop_file () {
-    local desktop_file desktop_file_new EXEC_DESKTOP line1 line2 TIME_TOTAL
+    local desktop_file desktop_file_new line1 line2 FILE_SHA256SUM_ARRAY EXEC_DESKTOP BROKEN_LINE FILE_SHA256SUM_FOUND FILE_SHA256SUM_NOT_FOUND
+    if [[ -z $FILE_SHA256SUM ]] ; then
+        read -r -a FILE_SHA256SUM_ARRAY < <(sha256sum "$portwine_exe")
+        FILE_SHA256SUM=${FILE_SHA256SUM_ARRAY[0]}
+        edit_db_from_gui FILE_SHA256SUM
+    fi
     for desktop_file in "$PORT_WINE_PATH"/* ; do
         desktop_file_new="${desktop_file//"$PORT_WINE_PATH/"/}"
         if [[ $desktop_file_new =~ .desktop$ ]] ; then
@@ -863,62 +868,175 @@ search_desktop_file () {
                         fi
                     fi
                 done < "$desktop_file"
-                while IFS=" " read -r -a line2 ; do
-                    if [[ ${line2[1]} == "$ENTRY_POINT" ]] ; then
-                        break
-                    fi
-                done < "$PORT_WINE_TMP_PATH/statistics"
                 if [[ $portwine_exe == "${EXEC_DESKTOP//\"/}" ]] ; then
                     DESKTOP_CORRECT_FILE="$desktop_file"
+                    break
                 fi
             fi
         fi
     done
+    if [[ $DESKTOP_WITH_TIME == enabled ]] || [[ $SORT_WITH_TIME == enabled ]] ; then
+        while IFS=" " read -r -a line2 ; do
+            if [[ -z ${line2[0]} ]] \
+            || [[ ! ${line2[0]} =~ (.[Bb][Aa][Tt]$|.[Ee][Xx][Ee]$|.[Mm][Ss][Ii]$|.[Rr][Ee][Gg]$) ]] ; then
+                BROKEN_LINE=1
+                break
+            fi
+            if [[ ${line2[1]} == "$FILE_SHA256SUM" ]] ; then
+                FILE_SHA256SUM_FOUND=1
+                break
+            fi
+            if [[ ${line2[1]} != "$FILE_SHA256SUM" ]] \
+            && [[ ${line2[0]} == "${portwine_exe// /#@_@#}" ]] ; then
+                FILE_SHA256SUM_NOT_FOUND=1
+                break
+            fi
+        done < "$PORT_WINE_TMP_PATH/statistics"
+    fi
     IFS="$orig_IFS"
-    if [[ -n ${line2[2]} ]]
-    then TIME_CURRENT=${line2[2]}
-    else TIME_CURRENT=0
-    fi
-    export TIME_CURRENT
-    # Проверка новых десктоп файлов, чтобы их можно было сортировать первыми при первом создании в главном меню
-    if [[ $PW_NEW_DESKTOP == 1 ]] && [[ ${line2[3]} != NEW_DESKTOP ]] ; then
-        if [[ -n ${line2[1]} ]] ; then
-            sed -i "s|$ENTRY_POINT $TIME_CURRENT OLD_DESKTOP|$ENTRY_POINT $TIME_CURRENT NEW_DESKTOP|" "$PORT_WINE_TMP_PATH/statistics"
-        else
-            echo "${portwine_exe// /#@_@#} $ENTRY_POINT $TIME_CURRENT NEW_DESKTOP" >> "$PORT_WINE_TMP_PATH/statistics"
+    if [[ $DESKTOP_WITH_TIME == enabled ]] || [[ $SORT_WITH_TIME == enabled ]] ; then
+        local line3 line4 count_line i TIME_TOTAL SKIP_REPAIR
+        ## Ремонты:
+        # Ремонт, проверяет чтобы длинна хеш суммы была равна 64 символам, в ином случае удалит битые
+        if [[ $FILE_SHA256SUM_NOT_FOUND == 1 ]] && [[ ${#line2[1]} != "64" ]] ; then
+            while IFS=" " read -r -a line3 ; do
+                if [[ ${#line3[1]} == "64" ]]
+                then echo "${line3[*]}"
+                fi
+            done < "$PORT_WINE_TMP_PATH/statistics" > "$PORT_WINE_TMP_PATH/statistics_repair"
+            IFS="$orig_IFS"
+            try_remove_file "$PORT_WINE_TMP_PATH/statistics"
+            mv -f "$PORT_WINE_TMP_PATH/statistics_repair" "$PORT_WINE_TMP_PATH/statistics"
+            return 1
+        fi
+
+        # Ремонт, если есть пустые строки и непонятные строки без .exe, .bat, .msi, .reg
+        if [[ $BROKEN_LINE == 1 ]] ; then
+            while IFS=" " read -r -a line4 ; do
+                if [[ -n ${line4[0]} ]] && [[ ${line4[0]} =~ (.[Bb][Aa][Tt]$|.[Ee][Xx][Ee]$|.[Mm][Ss][Ii]$|.[Rr][Ee][Gg]$) ]]
+                then echo "${line4[*]}"
+                fi
+            done < "$PORT_WINE_TMP_PATH/statistics" > "$PORT_WINE_TMP_PATH/statistics_repair"
+            IFS="$orig_IFS"
+            try_remove_file "$PORT_WINE_TMP_PATH/statistics"
+            mv -f "$PORT_WINE_TMP_PATH/statistics_repair" "$PORT_WINE_TMP_PATH/statistics"
+            return 1
+        fi
+
+        # Ремонтирует путь на новый, если вдруг путь до .exe файла битый или изменился, но .exe файл он опознал
+        if [[ $FILE_SHA256SUM_FOUND == 1 ]] && [[ ${line2[0]} != "${portwine_exe// /#@_@#}" ]] ; then
+            sed -i "s|${line2[0]} ${line2[1]}|${portwine_exe// /#@_@#} ${line2[1]}|" "$PORT_WINE_TMP_PATH/statistics"
+            line2[0]=${portwine_exe// /#@_@#}
+        fi
+
+        # Ремонт, если sha256sum изменилась, но путь до .exe тот же
+        if [[ $FILE_SHA256SUM_NOT_FOUND == 1 ]] ; then
+            sed -i "s|${line2[0]} ${line2[1]}|${line2[0]} $FILE_SHA256SUM|" "$PORT_WINE_TMP_PATH/statistics"
+            line2[1]=$FILE_SHA256SUM
+        fi
+
+        # Когда приложения ещё нет в статистике
+        [[ -z ${line2[2]} ]] && line2[2]=0
+        # Ремонт, если сломалось время
+        if (( line2[2] >= 999999999 )) ; then
+            sed -i "s|${line2[1]} ${line2[2]}|${line2[1]} 0|" "$PORT_WINE_TMP_PATH/statistics"
+            line2[2]=0
+        fi
+        # Ремонт, если кто-то сломал время
+        if [[ ! ${line2[2]} =~ ^[0-9]+$ ]] ; then
+            sed -i "/${line2[1]}/d" "$PORT_WINE_TMP_PATH/statistics"
+            return 1
+        fi
+
+        ###############################
+        # Общее проведённое время в секундах
+        export TIME_CURRENT=${line2[2]}
+        # количество запусков приложения
+        export COUNT_STARTS=${line2[4]//L4-/}
+        ###############################
+
+        # Проверка новых десктоп файлов, чтобы их можно было сортировать первыми при первом создании в главном меню + ремонт
+        if [[ $PW_NEW_DESKTOP == 1 ]] && [[ ${line2[3]} != NEW_DESKTOP ]] ; then
+            if [[ $FILE_SHA256SUM_FOUND == 1 ]] ; then
+                sed -i "s|${line2[1]} \(.*\) ${line2[3]}|${line2[1]} \1 NEW_DESKTOP|" "$PORT_WINE_TMP_PATH/statistics"
+            else
+                echo "${portwine_exe// /#@_@#} $FILE_SHA256SUM $TIME_CURRENT NEW_DESKTOP" >> "$PORT_WINE_TMP_PATH/statistics"
+            fi
+        fi
+        unset PW_NEW_DESKTOP
+
+        # Когда приложение было запущено и завершено
+        if [[ -n $PW_TIME_IN_GAME ]] ; then
+            TIME_TOTAL=$(( TIME_CURRENT + PW_TIME_IN_GAME ))
+            if [[ $FILE_SHA256SUM_FOUND == 1 ]] ; then
+                # Когда есть предыдущее время
+                sed -i "s|$FILE_SHA256SUM $TIME_CURRENT|$FILE_SHA256SUM $TIME_TOTAL|" "$PORT_WINE_TMP_PATH/statistics"
+            else
+                # Когда только запустили приложение первый раз
+                echo "${portwine_exe// /#@_@#} $FILE_SHA256SUM $TIME_TOTAL OLD_DESKTOP" >> "$PORT_WINE_TMP_PATH/statistics"
+            fi
+            count_line=4
+            # Здесь добавляются новые линии для статистики (L4-) важен
+            if [[ -z ${line2[4]} ]] ; then
+                SKIP_REPAIR=1
+                sed -i "s|$FILE_SHA256SUM \(.*\)|$FILE_SHA256SUM \1 L4-1|" "$PORT_WINE_TMP_PATH/statistics"
+            else
+                # ремонт, если L4 по каким-то причинам сломался
+                if [[ ${line2[4]} =~ ^L4 ]] ; then
+                    local NUMBER_OF_STARTS=$(( ${line2[4]//L4-/} + 1 ))
+                else
+                    SKIP_REPAIR=1
+                    sed -i "s|$FILE_SHA256SUM \(.*\) ${line2[4]}|$FILE_SHA256SUM \1 L4-1|" "$PORT_WINE_TMP_PATH/statistics"
+                fi
+            fi
+            (( count_line ++ ))
+
+#             Пример для L5
+#             if [[ -z ${line2[5]} ]] ; then
+#                 SKIP_REPAIR=1
+#                 sed -i "s|$FILE_SHA256SUM \(.*\)|$FILE_SHA256SUM \1 L5-1|" "$PORT_WINE_TMP_PATH/statistics"
+#             else
+#                 if [[ ${line2[5]} =~ ^L5 ]] ; then
+#                     local ЗДЕСЬ_НОВАЯ_ПЕРЕМЕННАЯ=$(( ${line2[5]//L5-/} + 1 ))
+#                 else
+#                     SKIP_REPAIR=1
+#                     sed -i "s|$FILE_SHA256SUM \(.*\) ${line2[5]}|$FILE_SHA256SUM \1 L5-1|" "$PORT_WINE_TMP_PATH/statistics"
+#                 fi
+#             fi
+#             (( count_line ++ ))
+
+            if [[ $SKIP_REPAIR != 1 ]] ; then
+                # Ремонт, если количество элементов массива по каким-то причина больше, чем должно быть
+                if [[ -n ${line2["$count_line"]} ]] ; then
+                    for i in $(seq $count_line ${#line2[@]}) ; do
+                        unset 'line2[$i]'
+                    done
+                    sed -i "s|${portwine_exe// /#@_@#} $FILE_SHA256SUM \(.*\)|${line2[*]}|" "$PORT_WINE_TMP_PATH/statistics"
+                fi
+                # Сюда все sedы от L4, L5 и т.д. (после всех ремонтов)
+                sed -i "s|$FILE_SHA256SUM \(.*\) ${line2[4]}|$FILE_SHA256SUM \1 L4-$NUMBER_OF_STARTS|" "$PORT_WINE_TMP_PATH/statistics"
+#                 sed -i "s|$FILE_SHA256SUM \(.*\) ${line2[5]}|$FILE_SHA256SUM \1 L5-$NUMBER_OF_STARTS|" "$PORT_WINE_TMP_PATH/statistics"
+            fi
         fi
     fi
-    unset PW_NEW_DESKTOP
-    # Когда приложение было запущено и завершено
-    if [[ -n $PW_TIME_IN_GAME ]] ; then
-        TIME_TOTAL=$(( TIME_CURRENT + PW_TIME_IN_GAME ))
-        if [[ -n ${line2[1]} ]] ; then
-            # Когда есть предыдущее время
-            sed -i "s|$ENTRY_POINT $TIME_CURRENT|$ENTRY_POINT $TIME_TOTAL|" "$PORT_WINE_TMP_PATH/statistics"
-        else
-            # Когда только запустили приложение первый раз
-            echo "${portwine_exe// /#@_@#} $ENTRY_POINT $TIME_TOTAL OLD_DESKTOP" >> "$PORT_WINE_TMP_PATH/statistics"
-        fi
-        # Здесь добавляются новые линии для статистики по аналогии, к примеру ${line2[4]}
-        # L4 важен, чтобы не было путаницы из-за sed, то что используется \(.*\), для ${line2[5]} это будет L5 и т.д.
-        if [[ -z ${line2[4]} ]] ; then
-            line2[4]=1
-            sed -i "s|$ENTRY_POINT \(.*\)|$ENTRY_POINT \1 L4-${line2[4]}|" "$PORT_WINE_TMP_PATH/statistics"
-        else
-            line2[4]=${line2[4]//L4-/}
-            NUMBER_OF_STARTS=$(( line2[4] + 1 ))
-            sed -i "s|$ENTRY_POINT \(.*\) L4-${line2[4]}|$ENTRY_POINT \1 L4-$NUMBER_OF_STARTS|" "$PORT_WINE_TMP_PATH/statistics"
-        fi
-    fi
-    # Ремонтирует путь на новый, если вдруг путь до .exe файла битый или изменился, но .exe файл он опознал
-    if [[ -n ${line2[1]} ]] && [[ ${line2[0]} != "${portwine_exe// /#@_@#}" ]] ; then
-        [[ -z $TIME_TOTAL ]] && TIME_TOTAL=$TIME_CURRENT
-        sed -i "s|${line2[0]} $ENTRY_POINT $TIME_CURRENT|${portwine_exe// /#@_@#} $ENTRY_POINT $TIME_TOTAL|" "$PORT_WINE_TMP_PATH/statistics"
+    if [[ -n $PW_TIME_IN_GAME ]]
+    then return 2
+    else return 0
     fi
 }
 
 create_name_desktop () {
-    search_desktop_file
+    while true ; do
+        search_desktop_file
+        local exit_code=$?
+        if [[ $exit_code == 0 ]] ; then
+            break
+        elif [[ $exit_code == 1 ]] ; then
+            continue
+        elif [[ $exit_code == 2 ]] ; then
+            return 0
+        fi
+    done
     if [[ -n $DESKTOP_NAME_FILE ]] ; then
         DESKTOP_NAME_FILE_OLD=$DESKTOP_NAME_FILE
         unset DESKTOP_NAME_FILE
@@ -935,11 +1053,8 @@ create_name_desktop () {
         DESKTOP_NAME_FILE="${DESKTOP_NAME_FILE//.desktop/}"
     fi
 
-    if [[ -z $PORTWINE_DB ]] ; then
-        PORTWINE_DB_DESKTOP="$(basename "${portwine_exe%.[Ee][Xx][Ee]}")"
-    else
-        PORTWINE_DB_DESKTOP="$PORTWINE_DB"
-    fi
+    PORTWINE_DB_DESKTOP="$(basename "${portwine_exe%.[Ee][Xx][Ee]}")"
+
     if [[ -n $PORTPROTON_NAME ]] ; then
         PORTPROTON_NAME_ABBR=$(make_abbreviation "$PORTPROTON_NAME")
         PORTPROTON_NAME_ACRO=$(make_acronym "$PORTPROTON_NAME")
@@ -949,7 +1064,9 @@ create_name_desktop () {
         FILE_DESCRIPTION_ACRO=$(make_acronym "$FILE_DESCRIPTION")
     fi
 
-    if [[ -n $DESKTOP_NAME_FILE ]] ; then
+    if [[ -n $PORTWINE_CREATE_SHORTCUT_NAME ]] ; then
+        PW_NAME_DESKTOP_PROXY="$PORTWINE_CREATE_SHORTCUT_NAME"
+    elif [[ -n $DESKTOP_NAME_FILE ]] ; then
         PW_NAME_DESKTOP_PROXY="$DESKTOP_NAME_FILE"
     elif [[ -n $DESKTOP_NAME_FILE_OLD && ${PORTWINE_DB_DESKTOP^^} =~ ${DESKTOP_NAME_FILE_OLD^^} ]] ; then
         PW_NAME_DESKTOP_PROXY="$DESKTOP_NAME_FILE_OLD"
@@ -1613,10 +1730,10 @@ stop_portwine () {
     pw_auto_create_shortcut
     add_in_stop_portwine
 
-    if [[ $PW_LOG != 1 ]] ; then
+    if [[ $PW_LOG != 1 ]] && [[ -n $START_PW_TIME_IN_GAME ]] ; then
         debug_timer --end -s "PW_TIME_IN_GAME"
         PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 )) # в секундах
-        search_desktop_file
+        create_name_desktop
     fi
 
     case "$1" in
@@ -2474,7 +2591,6 @@ pw_create_gui_png () {
     fi
     if [[ -z "$PORTPROTON_NAME" ]] \
     || [[ -z "$FILE_DESCRIPTION" ]] \
-    || [[ -z "$ENTRY_POINT" ]] \
     || [[ "$PW_NO_RESTART_PPDB" == "1" ]]
     then
         if [[ -n "${PORTWINE_CREATE_SHORTCUT_NAME}" ]] ; then
@@ -2484,7 +2600,6 @@ pw_create_gui_png () {
                 if timeout 3 exiftool "$portwine_exe" &> "${PW_TMPFS_PATH}/exiftool.tmp" ; then
                     PW_PRODUCTNAME=$(sed -n 's/^Product Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
                     FILE_DESCRIPTION=$(sed -n 's/^File Description\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
-                    ENTRY_POINT=$(sed -n 's/^Entry Point\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
                 else
                     print_error "exiftool - broken!"
                 fi
@@ -2493,7 +2608,6 @@ pw_create_gui_png () {
                 env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" "$portwine_exe" &> "${PW_TMPFS_PATH}/exiftool.tmp"
                 PW_PRODUCTNAME=$(sed -n 's/^Product Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
                 FILE_DESCRIPTION=$(sed -n 's/^File Description\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
-                ENTRY_POINT=$(sed -n 's/^Entry Point\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
             fi
 
             if [[ "$PW_PRODUCTNAME" =~ (Launcher|RU) ]]
@@ -2512,7 +2626,7 @@ pw_create_gui_png () {
 
         PORTPROTON_NAME="$(echo "${PORTPROTON_NAME}" | sed "s/\`//g" | sed "s/\"//g" | sed "s/'//g" | sed "s/\!//g")"
         export PORTPROTON_NAME
-        edit_db_from_gui PORTPROTON_NAME FILE_DESCRIPTION ENTRY_POINT
+        edit_db_from_gui PORTPROTON_NAME FILE_DESCRIPTION
     fi
 
     resize_png "$portwine_exe" "${PORTPROTON_NAME}" "128"
@@ -4681,7 +4795,7 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
     PW_LOCALE_SELECT="${PW_ADD_SETTINGS[9]}"
     PW_MESA_VK_WSI_PRESENT_MODE="${PW_ADD_SETTINGS[10]}"
 
-    if [[ "${CPU_LIMIT}" =~ [0-9]+ ]] ; then
+    if [[ "${CPU_LIMIT}" =~ ^[0-9]+$ ]] ; then
         PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $(( CPU_LIMIT - 1 )))"
     else
         PW_WINE_CPU_TOPOLOGY="disabled"
@@ -5684,7 +5798,8 @@ portwine_output_yad_shortcut () {
 
         export PW_NEW_DESKTOP="1"
 
-        if [[ "$PW_NO_RESTART_PPDB" != "1" ]] ; then
+        if [[ "$PW_NO_RESTART_PPDB" != "1" ]] \
+        || [[ -z ${LINKS[1]} ]] ; then
             print_info "Restarting PP..."
             [[ "$PW_GUI_START" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
             restart_pp
@@ -5693,7 +5808,7 @@ portwine_output_yad_shortcut () {
         print_info "Restarting PP..."
         [[ -n $KEY_MENU ]] && unset portwine_exe
         [[ "$PW_GUI_START" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
-        [[ -z $LINKS ]] && restart_pp
+        [[ -z ${LINKS[0]} ]] && restart_pp
     fi
 }
 
