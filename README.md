@@ -7,8 +7,8 @@
   <a href="https://flathub.org/apps/ru.linux_gaming.PortProton">
     <img src="https://img.shields.io/flathub/downloads/ru.linux_gaming.PortProton?style=flat&logo=flathub" alt="Flathub Downloads">
   </a>
-  <a href="https://discord.gg/FTaheP99wE">
-    <img src="https://img.shields.io/discord/378683352946835456?logo=discord" alt="Discord">
+  <a href="https://t.me/linux_gaming_ru">
+    <img src="https://img.shields.io/endpoint?&style=flat&url=https%3A%2F%2Ftg.sumanjay.workers.dev%2Flinux_gaming_ru" alt="Telegram">
   </a>
   <a href="https://www.youtube.com/@linux-gaming5986">
     <img src="https://img.shields.io/youtube/channel/subscribers/UCbI8OJx2D3q-4QKt4LffXTw?style=flat&logo=youtube" alt="YouTube Channel Subscribers">
