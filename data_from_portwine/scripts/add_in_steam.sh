@@ -2,7 +2,6 @@
 # GPL-3.0 license
 # based on https://github.com/sonic2kk/steamtinkerlaunch/blob/master/steamtinkerlaunch
 PROGNAME="PortProton"
-name_desktop_png="${name_desktop// /_}"
 NOSTAPPNAME="$name_desktop"
 NOSTEXEPATH="\"${STEAM_SCRIPTS}/${name_desktop}.sh\""
 # NOSTSTDIR="\"${PATH_TO_GAME}\""
