@@ -200,28 +200,17 @@ change_locale () {
 export -f change_locale
 
 generate_pot () {
-    sed 's/{translations\[/(gettext \"/g' functions_helper > functions_helper_tmp
-    sed -i 's/]}/")/g' functions_helper_tmp
-    sed -i 's/eval_translations/gettext/g' functions_helper_tmp
-
-    sed 's/{translations\[/(gettext \"/g' start.sh > start.sh_tmp
-    sed -i 's/]}/")/g' start.sh_tmp
-    sed -i 's/eval_translations/gettext/g' start.sh_tmp
-
-    sed 's/{translations\[/(gettext \"/g' setup.sh > setup.sh_tmp
-    sed -i 's/]}/")/g' setup.sh_tmp
-    sed -i 's/eval_translations/gettext/g' setup.sh_tmp
-
-    sed 's/{translations\[/(gettext \"/g' add_in_steam.sh > add_in_steam.sh_tmp
-    sed -i 's/]}/")/g' add_in_steam.sh_tmp
-    sed -i 's/eval_translations/gettext/g' add_in_steam.sh_tmp
-
+    local FILES_FOR_GETTEXT i
+    FILES_FOR_GETTEXT=(functions_helper start.sh setup.sh add_in_steam.sh help_info)
+    for i in ${FILES_FOR_GETTEXT[@]} ; do
+        sed 's/{translations\[/(gettext \"/g' "${PORT_SCRIPTS_PATH}/$i" > "${PORT_SCRIPTS_PATH}/${i}_tmp"
+        sed -i 's/]}/")/g' "${PORT_SCRIPTS_PATH}/${i}_tmp"
+        sed -i 's/eval_translations/gettext/g' "${PORT_SCRIPTS_PATH}/${i}_tmp"
+    done
     #Когда присходит предупреждение: синтаксис $"..." запрещен по соображениям безопасности; используйте eval_gettext
     #и ругается на строку в которой нет перевода, можно использовать sed -i '//d' и убрать эту строку
     #либо отредактировать сам код, чтобы не было такой ошибки (к примеру вместо двойных ковычек использовать в таком месте одинарные)
-
-    for lang in $LANGUAGES_LIST
-    do
+    for lang in $LANGUAGES_LIST ; do
         echo "${lang}"
         create_new_dir "${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/"
         LANG_PO="${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/PortProton.po"
@@ -233,6 +222,7 @@ generate_pot () {
         "data/scripts/setup.sh_tmp" \
         "data/scripts/functions_helper_tmp" \
         "data/scripts/add_in_steam.sh_tmp" \
+        "data/scripts/help_info_tmp" \
         -o "$TEMPLATE_POT"
         popd 1>/dev/null || fatal
         if [[ -f "$LANG_PO" ]] ; then
@@ -248,6 +238,7 @@ generate_pot () {
     try_remove_file "${PORT_SCRIPTS_PATH}/setup.sh_tmp"
     try_remove_file "${PORT_SCRIPTS_PATH}/functions_helper_tmp"
     try_remove_file "${PORT_SCRIPTS_PATH}/add_in_steam.sh_tmp"
+    try_remove_file "${PORT_SCRIPTS_PATH}/help_info_tmp"
     try_remove_dir "${PW_CACHE_LANG_PATH}"
 }
 export -f generate_pot
@@ -2534,7 +2525,7 @@ pw_check_command () {
             unset TIMEOUT_CMD
             return 1
         else
-            print_info "$S_CMD - found"
+            # print_info "$S_CMD - found"
             unset TIMEOUT_CMD
             return 0
         fi
