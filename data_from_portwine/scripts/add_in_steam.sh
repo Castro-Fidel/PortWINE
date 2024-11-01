@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # GPL-3.0 license
 # based on https://github.com/sonic2kk/steamtinkerlaunch/blob/master/steamtinkerlaunch
 PROGNAME="PortProton"
