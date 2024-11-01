@@ -1125,54 +1125,75 @@ combobox_fix () {
 }
 
 get_and_set_reg_file () {
-local name_block name_for_find find_block find_file find_line count
-local line_reg find_number_line find_check_file name_for_set
-name_block=$1
-name_for_find=$2
-name_for_set=$3
-name_block=${name_block//\\/\\\\}
-name_block=${name_block//\[/\\[}
-name_block=${name_block//\]/\\]}
-find_block=$(grep -n "$name_block" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/"*.reg)
-find_file=${find_block//:*/}
-find_line=${find_block//$find_file:/}
-find_line=${find_line//:*/}
-count=-1
-while IFS= read -r line_reg ; do
-    ((count++))
-    if [[ $line_reg =~ $name_for_find ]] ; then
-        find_number_line=$(( count + find_line ))
-        find_check_file=1
-        break
+    local name_block name_for_find find_block find_file find_line count
+    local line_reg find_number_line find_check_file name_for_set name_block_old
+    name_block=$1
+    name_for_find=$2
+    name_for_set=$3
+    name_block_old=$name_block
+    name_block=${name_block//\\/\\\\}
+    name_block=${name_block//\[/\\[}
+    name_block=${name_block//\]/\\]}
+    find_block=$(grep -n "$name_block" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/"*.reg)
+    if [[ -n $find_block ]] ; then
+        find_file=${find_block//:*/}
+        find_line=${find_block//$find_file:/}
+        find_line=${find_line//:*/}
+    else
+        if [[ -n $4 ]] ; then
+            sed -i '$a\\n'"${name_block_old//\\/\\\\}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$4.reg"
+            find_file=${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$4.reg
+            find_line=$(wc -l "$find_file" | awk -F" " '{print $1}')
+        else
+            print_error "$name_block_old not found in reg files"
+            return 1
+        fi
     fi
-    [[ -z $line_reg ]] && break
-done <<< $(sed -n "$find_line"',$p' $find_file)
-IFS="$orig_IFS"
-if [[ $name_for_set =~ ^[0-9]+$ ]] ; then
-    name_for_set=$(convert_dec_and_hex --dec "$name_for_set")
-fi
-if [[ $find_check_file == 1 ]] ; then
-    sed -i "${find_number_line}s/$name_for_find.*/$name_for_find$name_for_set/" "$find_file"
-else
-    print_info "Added ${name_for_find//=*} to reg file"
-    sed -i "$(( find_line + 1 ))a$name_for_find$name_for_set" "$find_file"
-fi
+    count=-1
+    while IFS= read -r line_reg ; do
+        ((count++))
+        if [[ $line_reg =~ $name_for_find ]] ; then
+            find_number_line=$(( count + find_line ))
+            find_check_file=1
+            break
+        fi
+        [[ -z $line_reg ]] && break
+    done <<< $(sed -n "$find_line"',$p' $find_file)
+    IFS="$orig_IFS"
+    if [[ $name_for_set =~ ^[0-9]+$ ]] ; then
+        name_for_set=$(convert_dec_and_hex --dec "$name_for_set")
+    fi
+    if [[ ${name_for_set,,} =~ ^[a-z]+$ ]] ; then
+        if [[ $find_check_file == 1 ]] ; then
+            sed -i "${find_number_line}s/$name_for_find.*/$name_for_find\"$name_for_set\"/" "$find_file"
+        else
+            print_info "Added ${name_for_find//=*} to reg file"
+            sed -i "$(( find_line + 1 ))a$name_for_find\"$name_for_set\"" "$find_file"
+        fi
+    else
+        if [[ $find_check_file == 1 ]] ; then
+            sed -i "${find_number_line}s/$name_for_find.*/$name_for_find$name_for_set/" "$find_file"
+        else
+            print_info "Added ${name_for_find//=*} to reg file"
+            sed -i "$(( find_line + 1 ))a$name_for_find$name_for_set" "$find_file"
+        fi
+    fi
 }
 
 convert_dec_and_hex () {
-  local type=$1
-  local num=$2
+    local type=$1
+    local num=$2
 
-  case "$type" in
-    --dec)
-      # Преобразование из десятичного в шестнадцатеричный
-      echo -n $(printf "%08x" $num) ;;
-    --hex)
-      # Преобразование из шестнадцатеричного в десятичный
-      echo $(( 0x$num )) ;;
-    *)
-      echo "Неверный тип преобразования. Используйте --dec или --hex." ;;
-  esac
+    case "$type" in
+        --dec)
+        # Преобразование из десятичного в шестнадцатеричный
+        echo -n $(printf "%08x" $num) ;;
+        --hex)
+        # Преобразование из шестнадцатеричного в десятичный
+        echo $(( 0x$num )) ;;
+        *)
+        echo "Неверный тип преобразования. Используйте --dec или --hex." ;;
+    esac
 }
 
 restart_pp () {
@@ -3588,52 +3609,12 @@ start_portwine () {
         [[ -z "$LAUNCH_PARAMETERS" ]] && export LAUNCH_PARAMETERS+=" -eac-nop-loaded "
     fi
 
-    HIDRAW_VAR="$(grep "DisableHidraw" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg")"
-    SDL_VAR="$(grep "Enable SDL" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg")"
     if [[ "$PW_DINPUT_PROTOCOL" == "1" ]] ; then
-        if [[ "$HIDRAW_VAR" ]] \
-        && [[ "$SDL_VAR" ]]
-        then
-            if [[ "${HIDRAW_VAR: -1}" != "0" ]] ; then
-                sed -i "s/${HIDRAW_VAR}/${HIDRAW_VAR%?}0/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
-            fi
-
-            if [[ "${SDL_VAR: -1}" != "0" ]] ; then
-                sed -i "s/${SDL_VAR}/${SDL_VAR%?}0/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
-            fi
-        else
-            print_info "Added DisableHidraw = 0 to reg file"
-            ${pw_runtime} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
-            "${WINELOADER}" reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\winebus" /v "DisableHidraw" /t REG_DWORD /d 0 /f
-            wait_wineserver
-            print_info "Added Enable SDL = 0 to reg file"
-            ${pw_runtime} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
-            "${WINELOADER}" reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\winebus" /v "Enable SDL" /t REG_DWORD /d 0 /f
-            wait_wineserver
-        fi
+        get_and_set_reg_file '[System\\CurrentControlSet\\Services\\winebus]' '"DisableHidraw"=dword:' "0"
+        get_and_set_reg_file '[System\\CurrentControlSet\\Services\\winebus]' '"Enable SDL"=dword:' "0"
     else
-        # var_winedlloverride_update "xinput1_1,xinput1_2,xinput1_3,xinput9_1_0=b"
-
-        if [[ "$HIDRAW_VAR" ]] \
-        && [[ "$SDL_VAR" ]]
-        then
-            if [[ "${HIDRAW_VAR: -1}" != "1" ]] ; then
-                sed -i "s/${HIDRAW_VAR}/${HIDRAW_VAR%?}1/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
-            fi
-
-            if [[ "${SDL_VAR: -1}" != "1" ]] ; then
-                sed -i "s/${SDL_VAR}/${SDL_VAR%?}1/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
-            fi
-        else
-            print_info "Added DisableHidraw = 1 to reg file"
-            ${pw_runtime} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
-            "${WINELOADER}" reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\winebus" /v "DisableHidraw" /t REG_DWORD /d 1 /f
-            wait_wineserver
-            print_info "Added Enable SDL = 1 to reg file"
-            ${pw_runtime} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
-            "${WINELOADER}" reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\winebus" /v "Enable SDL" /t REG_DWORD /d 1 /f
-            wait_wineserver
-        fi
+        get_and_set_reg_file '[System\\CurrentControlSet\\Services\\winebus]' '"DisableHidraw"=dword:' "1"
+        get_and_set_reg_file '[System\\CurrentControlSet\\Services\\winebus]' '"Enable SDL"=dword:' "1"
     fi
 
     if [[ "$PW_WINE_DPI_VALUE" != "disabled" ]] ; then
@@ -3660,20 +3641,8 @@ start_portwine () {
         fi
     fi
 
-    if [[ "${PW_SOUND_DRIVER_USE}" != "disabled" ]] \
-    && grep -v "\"Audio\"=\"$PW_SOUND_DRIVER_USE\"" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" &>/dev/null
-    then
-        if grep "\"Audio\"=" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" &>/dev/null ; then
-            sed -i 's/"Audio"=".*"/"Audio"="'${PW_SOUND_DRIVER_USE}'"/' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
-        else
-            echo -e '\n[Software\\Wine\\Drivers]\n"Audio"="'${PW_SOUND_DRIVER_USE}'"' >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
-        fi
-        kill_portwine
-    elif [[ "${PW_SOUND_DRIVER_USE}" == "disabled" ]] \
-    && grep -v "\"Audio\"=" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" &>/dev/null
-    then
-        sed -i '/\[Software\\Wine\\Drivers\]/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" &>/dev/null
-        sed -i "/\"Audio\"=/d" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" &>/dev/null
+    if [[ "${PW_SOUND_DRIVER_USE}" != "disabled" ]] ; then
+        get_and_set_reg_file '[Software\\Wine\\Drivers]' '"Audio"=' "$PW_SOUND_DRIVER_USE" "user"
     fi
 
     pw_stop_progress_bar &&
