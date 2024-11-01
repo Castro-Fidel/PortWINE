@@ -5805,42 +5805,59 @@ portwine_output_yad_shortcut () {
         fi
 
         if [[ "${PW_SHORTCUT_STEAM}" == "TRUE" ]] ; then
-            export STEAM_SCRIPTS="${PORT_WINE_PATH}/steam_scripts"
-            create_new_dir "${STEAM_SCRIPTS}"
-            echo "#!/usr/bin/env bash" > "${STEAM_SCRIPTS}/${name_desktop}.sh"
-            echo "export START_FROM_STEAM=1" >> "${STEAM_SCRIPTS}/${name_desktop}.sh"
-            echo "export LD_PRELOAD=" >> "${STEAM_SCRIPTS}/${name_desktop}.sh"
-            if check_flatpak
-            then echo "flatpak run ru.linux_gaming.PortProton \"${portwine_exe}\" " >> "${STEAM_SCRIPTS}/${name_desktop}.sh"
-            else echo "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" " >> "${STEAM_SCRIPTS}/${name_desktop}.sh"
-            fi
-            chmod u+x "${STEAM_SCRIPTS}/${name_desktop}.sh"
-            export SCVDF="shortcuts.vdf"
-            for STUIDPATH in "${HOME}"/.local/share/Steam/userdata/*/; do
-                if [[ -d "$STUIDPATH" ]]; then
-                    create_new_dir "${STUIDPATH}config/"
-                    create_new_dir "${STUIDPATH}config/grid"
-                    export SCPATH="${STUIDPATH}config/$SCVDF"
-                    export SGGRIDDIR="${STUIDPATH}config/grid"
-                    # shellcheck source=/dev/null
-                    source "${PORT_SCRIPTS_PATH}/add_in_steam.sh"
+            SLUF="${HOME}/.local/share/Steam/config/loginusers.vdf"
+            if [[ -f "${SLUF}" ]]; then
+                SLUFUB=false
+                STUID64=""
+                while IFS= read -r line; do
+                    if [[ "${line}" =~ ^[[:space:]]*\"([0-9]+)\"$ ]]; then
+                        STUIDCUR="${BASH_REMATCH[1]}"
+                        SLUFUB=true
+                    elif [[ "${line}" == *'"MostRecent"'*'"1"' && ${SLUFUB} = true ]]; then
+                        STUID64="${STUIDCUR}"
+                        break
+                    elif [[ "${line}" == "}" ]]; then
+                        SLUFUB=false
+                    fi
+                done < "${SLUF}"
+                if [ -n "${STUID64}" ]; then
+                    STUID32=$((STUID64 - 76561197960265728))
+                    STUIDPATH="${HOME}/.local/share/Steam/userdata/${STUID32}"
+                    if [[ -d "${STUIDPATH}" ]]; then
+                        export SCPATH="${STUIDPATH}/config/shortcuts.vdf"
+                        if [[ -f "${SCPATH}" ]]; then
+                            export STEAM_SCRIPTS="${PORT_WINE_PATH}/steam_scripts"
+                            create_new_dir "${STEAM_SCRIPTS}"
+                            echo "#!/usr/bin/env bash" > "${STEAM_SCRIPTS}/${name_desktop}.sh"
+                            echo "export START_FROM_STEAM=1" >> "${STEAM_SCRIPTS}/${name_desktop}.sh"
+                            echo "export LD_PRELOAD=" >> "${STEAM_SCRIPTS}/${name_desktop}.sh"
+                            if check_flatpak
+                            then echo "flatpak run ru.linux_gaming.PortProton \"${portwine_exe}\" " >> "${STEAM_SCRIPTS}/${name_desktop}.sh"
+                            else echo "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" " >> "${STEAM_SCRIPTS}/${name_desktop}.sh"
+                            fi
+                            chmod u+x "${STEAM_SCRIPTS}/${name_desktop}.sh"
+                            create_new_dir "${STUIDPATH}/config/"
+                            create_new_dir "${STUIDPATH}/config/grid"
+                            export SGGRIDDIR="${STUIDPATH}/config/grid"
+                            source "${PORT_SCRIPTS_PATH}/add_in_steam.sh"
+                            if [[ "${PW_SKIP_RESTART_STEAM}" != 1 ]] && pgrep -i steam &>/dev/null ; then
+                                if yad_question "${translations[For adding shortcut to STEAM, needed restart.\\n\\nRestart STEAM now?]}" ; then
+                                    pw_start_progress_bar_block "${translations[Restarting STEAM... Please wait.]}"
+                                    kill -s SIGTERM $(pgrep -a steam) &>/dev/null
+                                    while pgrep -i steam &>/dev/null ; do
+                                        sleep 0.5
+                                    done
+                                    steam &
+                                    sleep 5
+                                    pw_stop_progress_bar
+                                    exit 0
+                                fi
+                            fi
+                            unset PW_SKIP_RESTART_STEAM
+                        fi
+                    fi
                 fi
-            done
-
-            if [[ "${PW_SKIP_RESTART_STEAM}" != 1 ]] && pgrep -i steam &>/dev/null ; then
-                if yad_question "${translations[For adding shortcut to STEAM, needed restart.\\n\\nRestart STEAM now?]}" ; then
-                    pw_start_progress_bar_block "${translations[Restarting STEAM... Please wait.]}"
-                    kill -s SIGTERM $(pgrep -a steam) &>/dev/null
-                    while pgrep -i steam &>/dev/null ; do
-                        sleep 0.5
-                    done
-                    steam &
-                    sleep 5
-                    pw_stop_progress_bar
-                    exit 0
-                fi
             fi
-            unset PW_SKIP_RESTART_STEAM
         fi
 
         export PW_NEW_DESKTOP="1"
