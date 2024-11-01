@@ -1124,6 +1124,41 @@ combobox_fix () {
     fi
 }
 
+get_and_set_reg_file () {
+local name_block name_for_find find_block find_file find_line count
+local line_reg find_number_line find_check_file name_for_set
+name_block=$1
+name_for_find=$2
+name_for_set=$3
+name_block=${name_block//\\/\\\\}
+name_block=${name_block//\[/\\[}
+name_block=${name_block//\]/\\]}
+find_block=$(grep -n "$name_block" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/"*.reg)
+find_file=${find_block//:*/}
+find_line=${find_block//$find_file:/}
+find_line=${find_line//:*/}
+count=-1
+while IFS= read -r line_reg ; do
+    ((count++))
+    if [[ $line_reg =~ $name_for_find ]] ; then
+        find_number_line=$(( count + find_line ))
+        find_check_file=1
+        break
+    fi
+    [[ -z $line_reg ]] && break
+done <<< $(sed -n "$find_line"',$p' $find_file)
+IFS="$orig_IFS"
+if [[ $name_for_set =~ ^[0-9]+$ ]] ; then
+    name_for_set=$(convert_dec_and_hex --dec "$name_for_set")
+fi
+if [[ $find_check_file == 1 ]] ; then
+    sed -i "${find_number_line}s/$name_for_find.*/$name_for_find$name_for_set/" "$find_file"
+else
+    print_info "Added ${name_for_find//=*} to reg file"
+    sed -i "$(( find_line + 1 ))a$name_for_find$name_for_set" "$find_file"
+fi
+}
+
 convert_dec_and_hex () {
   local type=$1
   local num=$2
@@ -3601,20 +3636,8 @@ start_portwine () {
         fi
     fi
 
-    WINE_DPI_VAR="$(grep -A200 '\[Control Panel\\\\Desktop\]' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" | grep '"LogPixels"=')"
     if [[ "$PW_WINE_DPI_VALUE" != "disabled" ]] ; then
-        PW_WINE_DPI_VALUE=${PW_WINE_DPI_VALUE// (*/}
-        if [[ -n $WINE_DPI_VAR ]] ; then
-            GREP_NUMBER_DPI=$(grep -n '"LogPixels"=' user.reg)
-            GREP_NUMBER_DPI=${GREP_NUMBER_DPI//:*/}
-            PW_WINE_DPI_VALUE_NEW=$(convert_dec_and_hex --dec "$PW_WINE_DPI_VALUE")
-            sed -i ${GREP_NUMBER_DPI}s'/"LogPixels"=dword:.*/\"LogPixels"=dword:'$PW_WINE_DPI_VALUE_NEW/ "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
-        else
-            print_info "Added LogPixels (for DPI) to reg file"
-            ${pw_runtime} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
-            "${WINELOADER}" reg add "HKEY_CURRENT_USER\Control Panel\Desktop" /v "LogPixels" /t REG_DWORD /d $PW_WINE_DPI_VALUE /f
-            wait_wineserver
-        fi
+        get_and_set_reg_file '[Control Panel\\Desktop]' '"LogPixels"=dword:' "${PW_WINE_DPI_VALUE// (*/}"
     fi
 
     WINE_WAYLAND_VAR="$(grep "x11,wayland" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg")"
