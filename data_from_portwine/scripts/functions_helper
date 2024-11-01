@@ -1125,58 +1125,66 @@ combobox_fix () {
 }
 
 get_and_set_reg_file () {
-    local name_block name_for_find find_block find_file find_line count
+    local name_block name_for_find find_block find_file find_line count name_for_new_block
     local line_reg find_number_line find_check_file name_for_set name_block_old
-    name_block=$1
-    name_for_find=$2
-    name_for_set=$3
+    name_block=$2
     name_block_old=$name_block
+    name_for_find=$3
+    name_for_set=$4
+    name_for_new_block=$5
     name_block=${name_block//\\/\\\\}
     name_block=${name_block//\[/\\[}
-    name_block=${name_block//\]/\\]}
-    find_block=$(grep -n "$name_block" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/"*.reg)
+    find_block=$(grep -n "${name_block//\]/\\]}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/"*.reg)
     if [[ -n $find_block ]] ; then
         find_file=${find_block//:*/}
         find_line=${find_block//$find_file:/}
         find_line=${find_line//:*/}
-    else
-        if [[ -n $4 ]] ; then
-            sed -i '$a\\n'"${name_block_old//\\/\\\\}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$4.reg"
-            find_file=${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$4.reg
-            find_line=$(wc -l "$find_file" | awk -F" " '{print $1}')
-        else
-            print_error "$name_block_old not found in reg files"
-            return 1
-        fi
+        count=-1
+        while IFS= read -r line_reg ; do
+            ((count++))
+            if [[ $line_reg =~ $name_for_find ]] ; then
+                find_number_line=$(( count + find_line ))
+                find_check_file=1
+                break
+            fi
+            [[ -z $line_reg ]] && break
+        done <<< $(sed -n "$find_line"',$p' $find_file)
+        IFS="$orig_IFS"
     fi
-    count=-1
-    while IFS= read -r line_reg ; do
-        ((count++))
-        if [[ $line_reg =~ $name_for_find ]] ; then
-            find_number_line=$(( count + find_line ))
-            find_check_file=1
-            break
+    if [[ $1 == --add ]] ; then
+        if [[ -z $find_block ]] ; then
+            if [[ -n $name_for_new_block ]] ; then
+                sed -i '$a\\n'"${name_block_old//\\/\\\\}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg"
+                find_file=${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg
+                find_line=$(wc -l "$find_file" | awk -F" " '{print $1}')
+                find_line=$(( find_line - 1 ))
+            else
+                print_error "$name_block_old not found in reg files"
+                return 1
+            fi
         fi
-        [[ -z $line_reg ]] && break
-    done <<< $(sed -n "$find_line"',$p' $find_file)
-    IFS="$orig_IFS"
-    if [[ $name_for_set =~ ^[0-9]+$ ]] ; then
-        name_for_set=$(convert_dec_and_hex --dec "$name_for_set")
-    fi
-    if [[ ${name_for_set,,} =~ ^[a-z]+$ ]] ; then
-        if [[ $find_check_file == 1 ]] ; then
-            sed -i "${find_number_line}s/$name_for_find.*/$name_for_find\"$name_for_set\"/" "$find_file"
+        if [[ $name_for_set =~ ^[0-9]+$ ]] ; then
+            name_for_set=$(convert_dec_and_hex --dec "$name_for_set")
+        fi
+        if [[ ! $name_for_set =~ ^[0-9]+$ ]] ; then
+            if [[ $find_check_file == 1 ]] ; then
+                sed -i "${find_number_line}s/$name_for_find.*/$name_for_find\"$name_for_set\"/" "$find_file"
+            else
+                print_info "Added ${name_for_find//=*} to reg file"
+                sed -i "$(( find_line + 1 ))"'a\\n'"$name_for_find\"$name_for_set\"" "$find_file"
+            fi
         else
-            print_info "Added ${name_for_find//=*} to reg file"
-            sed -i "$(( find_line + 1 ))a$name_for_find\"$name_for_set\"" "$find_file"
+            if [[ $find_check_file == 1 ]] ; then
+                sed -i "${find_number_line}s/$name_for_find.*/$name_for_find$name_for_set/" "$find_file"
+            else
+                print_info "Added ${name_for_find//=*} to reg file"
+                sed -i "$(( find_line + 1 ))"'a\\n'"$name_for_find$name_for_set" "$find_file"
+            fi
         fi
-    else
-        if [[ $find_check_file == 1 ]] ; then
-            sed -i "${find_number_line}s/$name_for_find.*/$name_for_find$name_for_set/" "$find_file"
-        else
-            print_info "Added ${name_for_find//=*} to reg file"
-            sed -i "$(( find_line + 1 ))a$name_for_find$name_for_set" "$find_file"
-        fi
+    elif [[ $1 == --delete ]] ; then
+        [[ $find_check_file != 1 ]] && return 0
+        print_info "Delete ${name_for_find//=*} to reg file"
+        sed -i "${find_number_line}d" "$find_file"
     fi
 }
 
@@ -3610,39 +3618,28 @@ start_portwine () {
     fi
 
     if [[ "$PW_DINPUT_PROTOCOL" == "1" ]] ; then
-        get_and_set_reg_file '[System\\CurrentControlSet\\Services\\winebus]' '"DisableHidraw"=dword:' "0"
-        get_and_set_reg_file '[System\\CurrentControlSet\\Services\\winebus]' '"Enable SDL"=dword:' "0"
+        get_and_set_reg_file --add '[System\\CurrentControlSet\\Services\\winebus]' '"DisableHidraw"=dword:' "0"
+        get_and_set_reg_file --add '[System\\CurrentControlSet\\Services\\winebus]' '"Enable SDL"=dword:' "0"
     else
-        get_and_set_reg_file '[System\\CurrentControlSet\\Services\\winebus]' '"DisableHidraw"=dword:' "1"
-        get_and_set_reg_file '[System\\CurrentControlSet\\Services\\winebus]' '"Enable SDL"=dword:' "1"
+        get_and_set_reg_file --add '[System\\CurrentControlSet\\Services\\winebus]' '"DisableHidraw"=dword:' "1"
+        get_and_set_reg_file --add '[System\\CurrentControlSet\\Services\\winebus]' '"Enable SDL"=dword:' "1"
     fi
 
     if [[ "$PW_WINE_DPI_VALUE" != "disabled" ]] ; then
-        get_and_set_reg_file '[Control Panel\\Desktop]' '"LogPixels"=dword:' "${PW_WINE_DPI_VALUE// (*/}"
+        get_and_set_reg_file --add '[Control Panel\\Desktop]' '"LogPixels"=dword:' "${PW_WINE_DPI_VALUE// (*/}"
     fi
 
-    WINE_WAYLAND_VAR="$(grep "x11,wayland" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg")"
-    if [[ "${PW_USE_NATIVE_WAYLAND}" == "1" ]] ; then
-        if [[ ! "$WINE_WAYLAND_VAR" ]] ; then
-            print_info "Enable experimental Wayland support"
-            ${pw_runtime} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
-            "${WINELOADER}" reg add "HKEY_CURRENT_USER\Software\Wine\Drivers" /v "Graphics" /t REG_SZ /d "x11,wayland" /f
-            wait_wineserver
-        fi
+    if [[ "$PW_USE_NATIVE_WAYLAND" == "1" ]] ; then
         export PW_DISPLAY="env DISPLAY="
         export PW_USE_RUNTIME="0"
+        get_and_set_reg_file --add '[Software\\Wine\\Drivers]' '"Graphics"=' "x11,wayland" "user"
     else
         unset PW_DISPLAY
-        if [[ "$WINE_WAYLAND_VAR" ]] ; then
-            print_info "Disable experimental Wayland support"
-            ${pw_runtime} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
-            "${WINELOADER}" reg delete "HKEY_CURRENT_USER\Software\Wine\Drivers" /v "Graphics" /f
-            wait_wineserver
-        fi
+        get_and_set_reg_file --delete '[Software\\Wine\\Drivers]' '"Graphics"=' "x11,wayland"
     fi
 
-    if [[ "${PW_SOUND_DRIVER_USE}" != "disabled" ]] ; then
-        get_and_set_reg_file '[Software\\Wine\\Drivers]' '"Audio"=' "$PW_SOUND_DRIVER_USE" "user"
+    if [[ "$PW_SOUND_DRIVER_USE" != "disabled" ]] ; then
+        get_and_set_reg_file --add '[Software\\Wine\\Drivers]' '"Audio"=' "$PW_SOUND_DRIVER_USE" "user"
     fi
 
     pw_stop_progress_bar &&
