@@ -1267,16 +1267,36 @@ combobox_fix () {
 }
 
 get_and_set_reg_file () {
-    local name_block name_for_find find_block find_file find_line count name_for_new_block
-    local line_reg find_number_line find_check_file name_for_set name_block_old
+    local name_block name_for_find find_block find_file find_line count name_for_new_block name_for_find_old
+    local line_reg find_number_line find_check_file name_for_set name_type_reg name_fatal name_add_or_del
+    name_add_or_del=$1
     name_block=$2
-    name_block_old=$name_block
     name_for_find=$3
-    name_for_set=$4
-    name_for_new_block=$5
-    name_block=${name_block//\\/\\\\}
-    name_block=${name_block//\[/\\[}
-    find_block=$(grep -n "${name_block//\]/\\]}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/"*.reg)
+    name_type_reg=$4
+    name_for_set=$5
+    name_for_new_block=$6
+    name_for_find_old=$name_for_find
+    name_fatal="$name_block $name_for_find"
+
+    case $name_type_reg in
+            REG_DWORD)
+                name_for_find='"'"$name_for_find"'"'"=dword:"
+                name_for_set=$(convert_dec_and_hex --dec "$name_for_set") ;;
+            REG_SZ)
+                name_for_find='"'"$name_for_find"'"'"="
+                name_for_set='"'"$name_for_set"'"' ;;
+            *)
+                if [[ $name_add_or_del == --delete ]] ; then
+                    name_for_find='"'"$name_for_find"'"'
+                else
+                    print_error "Name type reg not set for $name_fatal"
+                    return 1
+                fi ;;
+    esac
+    name_block=${name_block//\\/\\\\\\\\\\\\\\}
+    name_block=${name_block//*/\\[$name_block}
+    name_block="${name_block//*/${name_block//\\/\\\\}\\]}"
+    find_block=$(grep -n "$name_block" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/"*.reg)
     if [[ -n $find_block ]] ; then
         find_file=${find_block//:*/}
         find_line=${find_block//$find_file:/}
@@ -1285,47 +1305,40 @@ get_and_set_reg_file () {
         while IFS= read -r line_reg ; do
             ((count++))
             if [[ $line_reg =~ $name_for_find ]] ; then
+                if [[ $line_reg == $name_for_find$name_for_set ]] ; then
+                    # когда менять не нужно, потому что такое же
+                    return 0
+                fi
                 find_number_line=$(( count + find_line ))
                 find_check_file=1
                 break
             fi
             [[ -z $line_reg ]] && break
-        done <<< $(sed -n "$find_line"',$p' $find_file)
+        done <<< "$(sed -n "$find_line"',$p' "$find_file")"
         IFS="$orig_IFS"
     fi
-    if [[ $1 == --add ]] ; then
+    if [[ $name_add_or_del == --add ]] ; then
         if [[ -z $find_block ]] ; then
             if [[ -n $name_for_new_block ]] ; then
-                sed -i '$a\\n'"${name_block_old//\\/\\\\}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg"
+                sed -i '$a\\n'"$name_block\n" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg"
                 find_file=${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg
                 find_line=$(wc -l "$find_file" | awk -F" " '{print $1}')
                 find_line=$(( find_line - 1 ))
             else
-                print_error "$name_block_old not found in reg files"
+                print_error "$name_fatal not found in reg files"
                 return 1
             fi
         fi
-        if [[ $name_for_set =~ ^[0-9]+$ ]] ; then
-            name_for_set=$(convert_dec_and_hex --dec "$name_for_set")
-        fi
-        if [[ ! $name_for_set =~ ^[0-9]+$ ]] ; then
-            if [[ $find_check_file == 1 ]] ; then
-                sed -i "${find_number_line}s/$name_for_find.*/$name_for_find\"$name_for_set\"/" "$find_file"
-            else
-                print_info "Added ${name_for_find//=*} to reg file"
-                sed -i "$(( find_line + 1 ))"'a\\n'"$name_for_find\"$name_for_set\"" "$find_file"
-            fi
+        if [[ $find_check_file == 1 ]] ; then
+            print_info "Change $name_for_find_old to reg file"
+            sed -i "${find_number_line}s/$name_for_find.*/$name_for_find$name_for_set/" "$find_file"
         else
-            if [[ $find_check_file == 1 ]] ; then
-                sed -i "${find_number_line}s/$name_for_find.*/$name_for_find$name_for_set/" "$find_file"
-            else
-                print_info "Added ${name_for_find//=*} to reg file"
-                sed -i "$(( find_line + 1 ))"'a\\n'"$name_for_find$name_for_set" "$find_file"
-            fi
+            print_info "Added $name_for_find_old to reg file"
+            sed -i "$(( find_line + 1 ))a$name_for_find$name_for_set" "$find_file"
         fi
-    elif [[ $1 == --delete ]] ; then
+    elif [[ $name_add_or_del == --delete ]] ; then
         [[ $find_check_file != 1 ]] && return 0
-        print_info "Delete ${name_for_find//=*} to reg file"
+        print_info "Delete $name_for_find_old to reg file"
         sed -i "${find_number_line}d" "$find_file"
     fi
 }
@@ -1337,7 +1350,7 @@ convert_dec_and_hex () {
     case "$type" in
         --dec)
         # Преобразование из десятичного в шестнадцатеричный
-        echo -n $(printf "%08x" $num) ;;
+        echo -n "$(printf "%08x" "$num")" ;;
         --hex)
         # Преобразование из шестнадцатеричного в десятичный
         echo $(( 0x$num )) ;;
@@ -3758,28 +3771,28 @@ start_portwine () {
     fi
 
     if [[ "$PW_DINPUT_PROTOCOL" == "1" ]] ; then
-        get_and_set_reg_file --add '[System\\CurrentControlSet\\Services\\winebus]' '"DisableHidraw"=dword:' "0"
-        get_and_set_reg_file --add '[System\\CurrentControlSet\\Services\\winebus]' '"Enable SDL"=dword:' "0"
+        get_and_set_reg_file --add 'System\CurrentControlSet\Services\winebus' 'DisableHidraw' 'REG_DWORD' "0" "system"
+        get_and_set_reg_file --add 'System\CurrentControlSet\Services\winebus' 'Enable SDL' 'REG_DWORD' "0" "system"
     else
-        get_and_set_reg_file --add '[System\\CurrentControlSet\\Services\\winebus]' '"DisableHidraw"=dword:' "1"
-        get_and_set_reg_file --add '[System\\CurrentControlSet\\Services\\winebus]' '"Enable SDL"=dword:' "1"
+        get_and_set_reg_file --add 'System\CurrentControlSet\Services\winebus' 'DisableHidraw' 'REG_DWORD' "1" "system"
+        get_and_set_reg_file --add 'System\CurrentControlSet\Services\winebus' 'Enable SDL' 'REG_DWORD' "1" "system"
     fi
 
     if [[ "$PW_WINE_DPI_VALUE" != "disabled" ]] ; then
-        get_and_set_reg_file --add '[Control Panel\\Desktop]' '"LogPixels"=dword:' "${PW_WINE_DPI_VALUE// (*/}"
+        get_and_set_reg_file --add 'Control Panel\Desktop' 'LogPixels' 'REG_DWORD' "${PW_WINE_DPI_VALUE// (*/}" "user"
     fi
 
     if [[ "$PW_USE_NATIVE_WAYLAND" == "1" ]] ; then
         export PW_DISPLAY="env DISPLAY="
         export PW_USE_RUNTIME="0"
-        get_and_set_reg_file --add '[Software\\Wine\\Drivers]' '"Graphics"=' "x11,wayland" "user"
+        get_and_set_reg_file --add 'Software\Wine\Drivers' 'Graphics' 'REG_SZ' "x11,wayland" "user"
     else
         unset PW_DISPLAY
-        get_and_set_reg_file --delete '[Software\\Wine\\Drivers]' '"Graphics"=' "x11,wayland"
+        get_and_set_reg_file --delete 'Software\Wine\Drivers' 'Graphics'
     fi
 
     if [[ "$PW_SOUND_DRIVER_USE" != "disabled" ]] ; then
-        get_and_set_reg_file --add '[Software\\Wine\\Drivers]' '"Audio"=' "$PW_SOUND_DRIVER_USE" "user"
+        get_and_set_reg_file --add 'Software\Wine\Drivers' 'Audio' 'REG_SZ' "$PW_SOUND_DRIVER_USE" "user"
     fi
 
     pw_stop_progress_bar
