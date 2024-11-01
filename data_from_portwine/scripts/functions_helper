@@ -1275,6 +1275,86 @@ combobox_fix () {
     fi
 }
 
+get_and_set_reg_file () {
+    local name_block name_for_find find_block find_file find_line count name_for_new_block
+    local line_reg find_number_line find_check_file name_for_set name_block_old
+    name_block=$2
+    name_block_old=$name_block
+    name_for_find=$3
+    name_for_set=$4
+    name_for_new_block=$5
+    name_block=${name_block//\\/\\\\}
+    name_block=${name_block//\[/\\[}
+    find_block=$(grep -n "${name_block//\]/\\]}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/"*.reg)
+    if [[ -n $find_block ]] ; then
+        find_file=${find_block//:*/}
+        find_line=${find_block//$find_file:/}
+        find_line=${find_line//:*/}
+        count=-1
+        while IFS= read -r line_reg ; do
+            ((count++))
+            if [[ $line_reg =~ $name_for_find ]] ; then
+                find_number_line=$(( count + find_line ))
+                find_check_file=1
+                break
+            fi
+            [[ -z $line_reg ]] && break
+        done <<< $(sed -n "$find_line"',$p' $find_file)
+        IFS="$orig_IFS"
+    fi
+    if [[ $1 == --add ]] ; then
+        if [[ -z $find_block ]] ; then
+            if [[ -n $name_for_new_block ]] ; then
+                sed -i '$a\\n'"${name_block_old//\\/\\\\}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg"
+                find_file=${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg
+                find_line=$(wc -l "$find_file" | awk -F" " '{print $1}')
+                find_line=$(( find_line - 1 ))
+            else
+                print_error "$name_block_old not found in reg files"
+                return 1
+            fi
+        fi
+        if [[ $name_for_set =~ ^[0-9]+$ ]] ; then
+            name_for_set=$(convert_dec_and_hex --dec "$name_for_set")
+        fi
+        if [[ ! $name_for_set =~ ^[0-9]+$ ]] ; then
+            if [[ $find_check_file == 1 ]] ; then
+                sed -i "${find_number_line}s/$name_for_find.*/$name_for_find\"$name_for_set\"/" "$find_file"
+            else
+                print_info "Added ${name_for_find//=*} to reg file"
+                sed -i "$(( find_line + 1 ))"'a\\n'"$name_for_find\"$name_for_set\"" "$find_file"
+            fi
+        else
+            if [[ $find_check_file == 1 ]] ; then
+                sed -i "${find_number_line}s/$name_for_find.*/$name_for_find$name_for_set/" "$find_file"
+            else
+                print_info "Added ${name_for_find//=*} to reg file"
+                sed -i "$(( find_line + 1 ))"'a\\n'"$name_for_find$name_for_set" "$find_file"
+            fi
+        fi
+    elif [[ $1 == --delete ]] ; then
+        [[ $find_check_file != 1 ]] && return 0
+        print_info "Delete ${name_for_find//=*} to reg file"
+        sed -i "${find_number_line}d" "$find_file"
+    fi
+}
+
+convert_dec_and_hex () {
+    local type=$1
+    local num=$2
+
+    case "$type" in
+        --dec)
+        # Преобразование из десятичного в шестнадцатеричный
+        echo -n $(printf "%08x" $num) ;;
+        --hex)
+        # Преобразование из шестнадцатеричного в десятичный
+        echo $(( 0x$num )) ;;
+        *)
+        echo "Неверный тип преобразования. Используйте --dec или --hex." ;;
+    esac
+}
+
 restart_pp () {
     case "$1" in
         --userconf) export RESTART_PP_USED="userconf" ;;
@@ -1644,7 +1724,7 @@ regdlloverrides () {
 wait_wineserver () {
     while ls -l /proc/*/exe >/dev/null 2>&1 | grep -ie PortProton | grep -E 'wine(64)?-preloader|wineserver'
     do
-        sleep 1
+        sleep 0.1
     done
     "$WINESERVER" -w
     return 0
@@ -2690,7 +2770,7 @@ pw_find_exe () {
     pw_stop_progress_bar
 
     unset FIND_TO_GUI
-    while read line; do
+    while read -r line; do
         FIND_TO_GUI+="${line}%"
     done < "${PW_TMPFS_PATH}/tmp_yad_find_exe"
 
@@ -3681,93 +3761,39 @@ start_portwine () {
         echo "Set to win${PW_WINDOWS_VER}"
     fi
 
-    if [[ "${portwine_exe}" == *-Shipping.exe ]] ; then
+    if [[ "$portwine_exe" == *-Shipping.exe ]] ; then
         echo "Disable EAC"
-        [[ -z "${LAUNCH_PARAMETERS}" ]] && export LAUNCH_PARAMETERS+=" -eac-nop-loaded "
+        [[ -z "$LAUNCH_PARAMETERS" ]] && export LAUNCH_PARAMETERS+=" -eac-nop-loaded "
     fi
 
-    HIDRAW_VAR="$(grep "DisableHidraw" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg")"
-    SDL_VAR="$(grep "Enable SDL" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg")"
-    if [[ "${PW_DINPUT_PROTOCOL}" == "1" ]] ; then
-        if [[ "$HIDRAW_VAR" ]] \
-        && [[ "$SDL_VAR" ]]
-        then
-            if [[ "${HIDRAW_VAR: -1}" != "0" ]] ; then
-                sed -i "s/${HIDRAW_VAR}/${HIDRAW_VAR%?}0/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
-            fi
-
-            if [[ "${SDL_VAR: -1}" != "0" ]] ; then
-                sed -i "s/${SDL_VAR}/${SDL_VAR%?}0/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
-            fi
-        else
-            print_info "Added DisableHidraw = 0 to reg file"
-            ${pw_runtime} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
-            "${WINELOADER}" reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\winebus" /v "DisableHidraw" /t REG_DWORD /d 0 /f
-            print_info "Added Enable SDL = 0 to reg file"
-            ${pw_runtime} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
-            "${WINELOADER}" reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\winebus" /v "Enable SDL" /t REG_DWORD /d 0 /f
-        fi
+    if [[ "$PW_DINPUT_PROTOCOL" == "1" ]] ; then
+        get_and_set_reg_file --add '[System\\CurrentControlSet\\Services\\winebus]' '"DisableHidraw"=dword:' "0"
+        get_and_set_reg_file --add '[System\\CurrentControlSet\\Services\\winebus]' '"Enable SDL"=dword:' "0"
     else
-        # var_winedlloverride_update "xinput1_1,xinput1_2,xinput1_3,xinput9_1_0=b"
-
-        if [[ "$HIDRAW_VAR" ]] \
-        && [[ "$SDL_VAR" ]]
-        then
-            if [[ "${HIDRAW_VAR: -1}" != "1" ]] ; then
-                sed -i "s/${HIDRAW_VAR}/${HIDRAW_VAR%?}1/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
-            fi
-
-            if [[ "${SDL_VAR: -1}" != "1" ]] ; then
-                sed -i "s/${SDL_VAR}/${SDL_VAR%?}1/" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
-            fi
-        else
-            print_info "Added DisableHidraw = 1 to reg file"
-            ${pw_runtime} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
-            "${WINELOADER}" reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\winebus" /v "DisableHidraw" /t REG_DWORD /d 1 /f
-            print_info "Added Enable SDL = 1 to reg file"
-            ${pw_runtime} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
-            "${WINELOADER}" reg add "HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\winebus" /v "Enable SDL" /t REG_DWORD /d 1 /f
-        fi
+        get_and_set_reg_file --add '[System\\CurrentControlSet\\Services\\winebus]' '"DisableHidraw"=dword:' "1"
+        get_and_set_reg_file --add '[System\\CurrentControlSet\\Services\\winebus]' '"Enable SDL"=dword:' "1"
     fi
 
-    WINE_WAYLAND_VAR="$(grep "x11,wayland" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg")"
-    if [[ "${PW_USE_NATIVE_WAYLAND}" == "1" ]] ; then
-        if [[ ! "$WINE_WAYLAND_VAR" ]] ; then
-            print_info "Enable experimental Wayland support"
-            ${pw_runtime} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
-            "${WINELOADER}" reg add "HKEY_CURRENT_USER\Software\Wine\Drivers" /v "Graphics" /t REG_SZ /d "x11,wayland" /f
-        fi
+    if [[ "$PW_WINE_DPI_VALUE" != "disabled" ]] ; then
+        get_and_set_reg_file --add '[Control Panel\\Desktop]' '"LogPixels"=dword:' "${PW_WINE_DPI_VALUE// (*/}"
+    fi
+
+    if [[ "$PW_USE_NATIVE_WAYLAND" == "1" ]] ; then
         export PW_DISPLAY="env DISPLAY="
         export PW_USE_RUNTIME="0"
+        get_and_set_reg_file --add '[Software\\Wine\\Drivers]' '"Graphics"=' "x11,wayland" "user"
     else
         unset PW_DISPLAY
-        if [[ "$WINE_WAYLAND_VAR" ]] ; then
-            print_info "Disable experimental Wayland support"
-            ${pw_runtime} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
-            "${WINELOADER}" reg delete "HKEY_CURRENT_USER\Software\Wine\Drivers" /v Graphics /f
-        fi
+        get_and_set_reg_file --delete '[Software\\Wine\\Drivers]' '"Graphics"=' "x11,wayland"
     fi
 
-    if [[ "${PW_SOUND_DRIVER_USE}" != "disabled" ]] \
-    && grep -v "\"Audio\"=\"$PW_SOUND_DRIVER_USE\"" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" &>/dev/null
-    then
-        if grep "\"Audio\"=" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" &>/dev/null ; then
-            sed -i 's/"Audio"=".*"/"Audio"="'${PW_SOUND_DRIVER_USE}'"/' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
-        else
-            echo -e '\n[Software\\Wine\\Drivers]\n"Audio"="'${PW_SOUND_DRIVER_USE}'"' >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg"
-        fi
-        kill_portwine
-    elif [[ "${PW_SOUND_DRIVER_USE}" == "disabled" ]] \
-    && grep -v "\"Audio\"=" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" &>/dev/null
-    then
-        sed -i '/\[Software\\Wine\\Drivers\]/d' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" &>/dev/null
-        sed -i "/\"Audio\"=/d" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/user.reg" &>/dev/null
+    if [[ "$PW_SOUND_DRIVER_USE" != "disabled" ]] ; then
+        get_and_set_reg_file --add '[Software\\Wine\\Drivers]' '"Audio"=' "$PW_SOUND_DRIVER_USE" "user"
     fi
 
     pw_stop_progress_bar
     if ! check_start_from_steam ; then
         pw_tray_icon
-        sleep 0.5
     fi
 
     if [[ "${PW_CHECK_AUTOINSTALL}" != "1" ]] ; then
@@ -4370,8 +4396,6 @@ pw_tray_icon () {
         PW_GUI_TRAY_PATH="${PW_GUI_THEMES_PATH}/tray"
         env LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" "${PW_GUI_TRAY_PATH}/tray_gui_pp" &
     fi
-
-    return 0
 }
 
 # GUI GET OTHER WINE
@@ -5564,41 +5588,50 @@ gui_userconf () {
     --field="   $NEW_STEAM_BEHAVIOR ${translations[steam covers download]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[If downloading steam covers is enabled, they will be downloaded and created. (Disablement is provided in cases where their downloading is unavailable for some reason)]}":"FBTN" '@bash -c "button_click --userconf change_download_grid"' \
     2>/dev/null &
 
-    if [[ -n "${PW_SOUND_DRIVER_USE}" ]] \
-    && [[ "${PW_SOUND_DRIVER_USE}" != "disabled" ]]
+    if [[ -n "$PW_SOUND_DRIVER_USE" ]] \
+    && [[ "$PW_SOUND_DRIVER_USE" != "disabled" ]]
     then
-        SOUND_DRIVER_VAR="${PW_SOUND_DRIVER_USE}"
+        SOUND_DRIVER_VAR="$PW_SOUND_DRIVER_USE"
     else
         SOUND_DRIVER_VAR="disabled"
     fi
 
-    if [[ -n "${PW_GPU_USE}" ]] \
-    && [[ "${PW_GPU_USE}" != "disabled" ]]
+    if [[ -n "$PW_GPU_USE" ]] \
+    && [[ "$PW_GPU_USE" != "disabled" ]]
     then
-        GPU_VAR="${PW_GPU_USE}"
+        GPU_VAR="$PW_GPU_USE"
     else
         GPU_VAR="disabled"
     fi
 
-    if [[ -n "${DESKTOP_WITH_TIME}" ]] \
-    && [[ "${DESKTOP_WITH_TIME}" != "disabled" ]]
+    if [[ -n "$DESKTOP_WITH_TIME" ]] \
+    && [[ "$DESKTOP_WITH_TIME" != "disabled" ]]
     then
         DESKTOP_WITH_TIME="enabled"
     else
         DESKTOP_WITH_TIME="disabled"
     fi
 
-    if [[ -n "${SORT_WITH_TIME}" ]] \
-    && [[ "${SORT_WITH_TIME}" == "disabled" ]]
+    if [[ -n "$SORT_WITH_TIME" ]] \
+    && [[ "$SORT_WITH_TIME" == "disabled" ]]
     then
         SORT_WITH_TIME="disabled"
     else
         SORT_WITH_TIME="enabled"
     fi
 
-    "${pw_yad}" --plug=$KEY_USERCONF_GUI --tabnum="2" --form --columns=1 --separator="%" --homogeneous-row \
+    if [[ -n "$PW_WINE_DPI_VALUE" ]] \
+    && [[ "$PW_WINE_DPI_VALUE" != "disabled" ]]
+    then
+        YAD_DPI_VAR="$PW_WINE_DPI_VALUE"
+    else
+        YAD_DPI_VAR="disabled"
+    fi
+
+    "${pw_yad}" --plug=$KEY_USERCONF_GUI --tabnum="2" --form --columns=1 --separator="@" --homogeneous-row \
     --gui-type-text="$PANED_GUI_TYPE_TEXT_DOWN" --gui-type-layout="$PANED_GUI_TYPE_LAYOUT_DOWN" \
     --field="${translations[Choose a graphics card to run the game]}!${translations[Select which video card will be used to run the game (used for all running games and programs in PortProton)]} :CB" "$(combobox_fix --disabled "$GPU_VAR" "$GET_GPU_NAMES")" \
+    --field="${translations[Force dpi for fonts]}!${translations[Here you can set forced dpi for fonts in wine]} :CB" "$(combobox_fix --disabled "$YAD_DPI_VAR" "96 (100%)!120 (125%)!144 (150%)!168 (175%)!192 (200%)!216 (225%)!240 (250%)!264 (275%)!288 (300%)")" \
     --field="${translations[Choice wine audio driver]}!${translations[Fixes sound popling if choice alsa]} :CB" "$(combobox_fix --disabled "$SOUND_DRIVER_VAR" "alsa!oss!pulse")" \
     --field="${translations[Choice gui themes]}!${translations[Allows you to select a theme for PortProton]} :CB" "$(combobox_fix "$GUI_THEME" "default!compact!classic")" \
     --field="${translations[Time display]}!${translations[Displays time spent in an application or game]} :CB" "$(combobox_fix --disabled "$DESKTOP_WITH_TIME" "enabled")" \
@@ -5633,14 +5666,15 @@ gui_userconf () {
             gui_open_user_conf
             ;;
         166)
-            IFS='%' read -r -a PW_ADD_SETTINGS_UC <"${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb"
+            IFS='@' read -r -a PW_ADD_SETTINGS_UC <"${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb"
             IFS="$orig_IFS"
             PW_GPU_USE="${PW_ADD_SETTINGS_UC[0]}"
-            PW_SOUND_DRIVER_USE="${PW_ADD_SETTINGS_UC[1]}"
-            GUI_THEME="${PW_ADD_SETTINGS_UC[2]}"
-            DESKTOP_WITH_TIME="${PW_ADD_SETTINGS_UC[3]}"
-            SORT_WITH_TIME="${PW_ADD_SETTINGS_UC[4]}"
-            edit_user_conf_from_gui PW_GPU_USE PW_SOUND_DRIVER_USE GUI_THEME DESKTOP_WITH_TIME SORT_WITH_TIME
+            PW_WINE_DPI_VALUE="${PW_ADD_SETTINGS_UC[1]}"
+            PW_SOUND_DRIVER_USE="${PW_ADD_SETTINGS_UC[2]}"
+            GUI_THEME="${PW_ADD_SETTINGS_UC[3]}"
+            DESKTOP_WITH_TIME="${PW_ADD_SETTINGS_UC[4]}"
+            SORT_WITH_TIME="${PW_ADD_SETTINGS_UC[5]}"
+            edit_user_conf_from_gui PW_GPU_USE PW_WINE_DPI_VALUE PW_SOUND_DRIVER_USE GUI_THEME DESKTOP_WITH_TIME SORT_WITH_TIME
             restart_pp
             ;;
     esac
