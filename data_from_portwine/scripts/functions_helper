@@ -1296,11 +1296,20 @@ get_and_set_reg_file () {
     name_block=${name_block//\\/\\\\\\\\\\\\\\}
     name_block=${name_block//*/\\[$name_block}
     name_block="${name_block//*/${name_block//\\/\\\\}\\]}"
-    find_block=$(grep -n "$name_block" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/"*.reg)
+    if [[ -n $name_for_new_block ]] ; then
+        find_block=$(grep -n "$name_block" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg")
+    else
+        find_block=$(grep -n "$name_block" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/"*.reg)
+    fi
     if [[ -n $find_block ]] ; then
-        find_file=${find_block//:*/}
-        find_line=${find_block//$find_file:/}
-        find_line=${find_line//:*/}
+        if [[ -n $name_for_new_block ]] ; then
+            find_file="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg"
+            find_line=${find_block//:*/}
+        else
+            find_file=${find_block//:*/}
+            find_line=${find_block//$find_file:/}
+            find_line=${find_line//:*/}
+        fi
         count=-1
         while IFS= read -r line_reg ; do
             ((count++))
@@ -1321,7 +1330,7 @@ get_and_set_reg_file () {
         if [[ -z $find_block ]] ; then
             if [[ -n $name_for_new_block ]] ; then
                 sed -i '$a\\n'"$name_block\n" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg"
-                find_file=${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg
+                find_file="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg"
                 find_line=$(wc -l "$find_file" | awk -F" " '{print $1}')
                 find_line=$(( find_line - 1 ))
             else
@@ -1357,6 +1366,32 @@ convert_dec_and_hex () {
         *)
         echo "Неверный тип преобразования. Используйте --dec или --hex." ;;
     esac
+}
+
+recommend_dpi () {
+    local height=$1
+
+    if [[ -z "$height" ]] ; then
+        echo "disabled"
+        return 1
+    fi
+    local dpi=$(( height / 9 ))
+    echo "$dpi"
+}
+
+fixes_after_update () {
+    local fixes_path line fixes_info IFS
+    fixes_info=$1
+    fixes_path="$PORT_WINE_TMP_PATH/fixes_apply"
+    [[ ! -f $fixes_path ]] && touch "$fixes_path"
+
+    while IFS= read -r line ; do
+        if [[ $line == "$fixes_info" ]] ; then
+            return 1
+        fi
+    done < "$fixes_path"
+    echo "$fixes_info" >> "$fixes_path"
+    return 0
 }
 
 restart_pp () {
@@ -3779,7 +3814,12 @@ start_portwine () {
     fi
 
     if [[ "$PW_WINE_DPI_VALUE" != "disabled" ]] ; then
-        get_and_set_reg_file --add 'Control Panel\Desktop' 'LogPixels' 'REG_DWORD' "${PW_WINE_DPI_VALUE// (*/}" "user"
+        if [[ "$PW_WINE_DPI_VALUE" == "recommended" ]] ; then
+            PW_RECOMMENDED_DPI=$(recommend_dpi "${PW_SCREEN_RESOLUTION:5:8}")
+            get_and_set_reg_file --add 'Control Panel\Desktop' 'LogPixels' 'REG_DWORD' "$PW_RECOMMENDED_DPI" "user"
+        else
+            get_and_set_reg_file --add 'Control Panel\Desktop' 'LogPixels' 'REG_DWORD' "$PW_WINE_DPI_VALUE" "user"
+        fi
     fi
 
     if [[ "$PW_USE_NATIVE_WAYLAND" == "1" ]] ; then
@@ -5624,6 +5664,9 @@ gui_userconf () {
         SORT_WITH_TIME="enabled"
     fi
 
+    if [[ $PW_WINE_DPI_VALUE == "recommended" ]] ; then
+        PW_WINE_DPI_VALUE="${translations[Recommended value]}"
+    fi
     if [[ -n "$PW_WINE_DPI_VALUE" ]] \
     && [[ "$PW_WINE_DPI_VALUE" != "disabled" ]]
     then
@@ -5632,10 +5675,10 @@ gui_userconf () {
         YAD_DPI_VAR="disabled"
     fi
 
-    "${pw_yad}" --plug=$KEY_USERCONF_GUI --tabnum="2" --form --columns=1 --separator="@" --homogeneous-row \
+    "${pw_yad}" --plug=$KEY_USERCONF_GUI --tabnum="2" --form --columns=1 --separator="%" --homogeneous-row \
     --gui-type-text="$PANED_GUI_TYPE_TEXT_DOWN" --gui-type-layout="$PANED_GUI_TYPE_LAYOUT_DOWN" \
     --field="${translations[Choose a graphics card to run the game]}!${translations[Select which video card will be used to run the game (used for all running games and programs in PortProton)]} :CB" "$(combobox_fix --disabled "$GPU_VAR" "$GET_GPU_NAMES")" \
-    --field="${translations[Force dpi for fonts]}!${translations[Here you can set forced dpi for fonts in wine]} :CB" "$(combobox_fix --disabled "$YAD_DPI_VAR" "96 (100%)!120 (125%)!144 (150%)!168 (175%)!192 (200%)!216 (225%)!240 (250%)!264 (275%)!288 (300%)")" \
+    --field="${translations[Force dpi]}!${translations[Here you can set forced dpi for applications wine]} :CB" "$(combobox_fix --disabled "$YAD_DPI_VAR" "${translations[Recommended value]}!96!120!144!168!192!216!240!264!288")" \
     --field="${translations[Choice wine audio driver]}!${translations[Fixes sound popling if choice alsa]} :CB" "$(combobox_fix --disabled "$SOUND_DRIVER_VAR" "alsa!oss!pulse")" \
     --field="${translations[Choice gui themes]}!${translations[Allows you to select a theme for PortProton]} :CB" "$(combobox_fix "$GUI_THEME" "default!compact!classic")" \
     --field="${translations[Time display]}!${translations[Displays time spent in an application or game]} :CB" "$(combobox_fix --disabled "$DESKTOP_WITH_TIME" "enabled")" \
@@ -5670,10 +5713,13 @@ gui_userconf () {
             gui_open_user_conf
             ;;
         166)
-            IFS='@' read -r -a PW_ADD_SETTINGS_UC <"${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb"
+            IFS='%' read -r -a PW_ADD_SETTINGS_UC <"${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb"
             IFS="$orig_IFS"
             PW_GPU_USE="${PW_ADD_SETTINGS_UC[0]}"
             PW_WINE_DPI_VALUE="${PW_ADD_SETTINGS_UC[1]}"
+            if [[ $PW_WINE_DPI_VALUE == "${translations[Recommended value]}" ]] ; then
+                PW_WINE_DPI_VALUE="recommended"
+            fi
             PW_SOUND_DRIVER_USE="${PW_ADD_SETTINGS_UC[2]}"
             GUI_THEME="${PW_ADD_SETTINGS_UC[3]}"
             DESKTOP_WITH_TIME="${PW_ADD_SETTINGS_UC[4]}"

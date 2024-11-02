@@ -248,6 +248,17 @@ if [[ ! $PW_GUI_START =~ (PANED|NOTEBOOK) ]] ; then
     export PW_GUI_START="NOTEBOOK"
 fi
 
+# TODO:fixes_after_update
+if fixes_after_update "2371: Reset PW_WINE_DPI_VALUE in user.conf" ; then
+    sed -i '/export PW_WINE_DPI_VALUE=/d' "$USER_CONF"
+    unset PW_WINE_DPI_VALUE
+fi
+# choose wine dpi default
+if [[ -z $PW_WINE_DPI_VALUE ]] ; then
+    echo 'export PW_WINE_DPI_VALUE="recommended"' >> "$USER_CONF"
+    export PW_WINE_DPI_VALUE="recommended"
+fi
+
 if check_flatpak ; then
     if check_gamescope_session
     then PW_TERM="env LANG=C xterm -fullscreen -bg black -fg white -e"
