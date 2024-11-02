@@ -78,10 +78,7 @@ if [[ "$DOWNLOAD_STEAM_GRID" == "1" ]] ; then
 fi
 
 echo "#!/usr/bin/env bash" > "${NOSTSHPATH}"
-echo "# AppName=\""${AppName}\""" >> "${NOSTSHPATH}"
 echo "# AppId=${AppId}" >> "${NOSTSHPATH}"
-echo "# SteamAppId=${SteamAppId:-0}" >> "${NOSTSHPATH}"
-echo "# SteamGridDBId=${SteamGridDBId:-0}" >> "${NOSTSHPATH}"
 echo "export START_FROM_STEAM=1" >> "${NOSTSHPATH}"
 echo "export LD_PRELOAD=" >> "${NOSTSHPATH}"
 if check_flatpak
