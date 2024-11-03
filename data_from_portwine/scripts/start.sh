@@ -52,25 +52,21 @@ if [[ "${1,,}" =~ .ppack$ ]] ; then
     export PW_NO_RESTART_PPDB="1"
     export PW_DISABLED_CREATE_DB="1"
     portwine_exe="$1"
-elif [[ -f "$1" ]] ; then
-    portwine_exe="$(realpath -s "$1")"
-elif [[ -f "$OLDPWD/$1" ]] \
-&& [[ "${1,,}" =~ (.exe$|.bat$|.msi$|.reg$) ]]
-then
-    portwine_exe="$(realpath -s "$OLDPWD/$1")"
-elif [[ "$1" =~ (^--debug$|^--launch$|^--edit-db$) ]] \
-&& [[ -f "$2" ]]
-then
-    portwine_exe="$(realpath -s "$2")"
-elif [[ "$1" =~ (^--debug$|^--launch$|^--edit-db$) ]] \
-&& [[ -f "$OLDPWD/$2" ]] \
-&& [[ "${2,,}" =~ (.exe$|.bat$|.msi$|.reg$) ]]
-then
-    portwine_exe="$(realpath -s "$OLDPWD/$2")"
-elif [[ "${1,,}" =~ (.exe$|.bat$|.msi$|.reg$) ]]
-then
-    portwine_exe="$1"
-    MISSING_DESKTOP_FILE="1"
+elif [[ "${1,,}" =~ (.exe$|.bat$|.msi$|.reg$) ]] ; then
+    if [[ -f "$1" ]] ; then
+        portwine_exe="$(realpath -s "$1")"
+    elif [[ -f "$OLDPWD/$1" ]] ; then
+        portwine_exe="$(realpath -s "$OLDPWD/$1")"
+    elif [[ ! -f "$1" ]] ; then
+        portwine_exe="$1"
+        MISSING_DESKTOP_FILE="1"
+    fi
+elif [[ "$1" =~ (^--debug$|^--launch$|^--edit-db$) && "${2,,}" =~ (.exe$|.bat$|.msi$|.reg$) ]] ; then
+    if [[ -f "$2" ]] ; then
+        portwine_exe="$(realpath -s "$2")"
+    elif [[ -f "$OLDPWD/$2" ]] ; then
+        portwine_exe="$(realpath -s "$OLDPWD/$2")"
+    fi
 fi
 export portwine_exe
 

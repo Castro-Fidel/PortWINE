@@ -939,7 +939,7 @@ search_desktop_file () {
         # Ремонт, если есть пустые строки и непонятные строки без .exe, .bat, .msi, .reg
         if [[ $BROKEN_LINE == 1 ]] ; then
             while IFS=" " read -r -a line4 ; do
-                if [[ -n ${line4[0]} ]] && [[ ${line4[0]} =~ (.[Bb][Aa][Tt]$|.[Ee][Xx][Ee]$|.[Mm][Ss][Ii]$|.[Rr][Ee][Gg]$) ]]
+                if [[ -n ${line4[0]} ]] && [[ ${line4[0],,} =~ (.bat$|.exe$|.msi$|.reg$) ]]
                 then echo "${line4[*]}"
                 fi
             done < "$PORT_WINE_TMP_PATH/statistics" > "$PORT_WINE_TMP_PATH/statistics_repair"
@@ -1475,20 +1475,20 @@ init_wine_ver () {
         export WINELOADER="${WINEDIR}/bin/wine"
         export WINESERVER="${WINEDIR}/bin/wineserver"
         if [[ -d "${WINEDIR}/files" && ! -d "${WINEDIR}/dist" ]] ; then
-            for clear_dist_files in $(ls "${WINEDIR}" | sed -e "s/^files$//g" | sed -e "s/^version$//g") ; do
+            for clear_dist_files in $(ls "${WINEDIR}" | sed -re "s/(^files$|^version$)//g") ; do
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
             mv -f "${WINEDIR}/files"/* "${WINEDIR}/"
             rm -fr "${WINEDIR}/files"
         elif [[ ! -d "${WINEDIR}/files" && -d "${WINEDIR}/dist" ]] ; then
-            for clear_dist_files in $(ls "${WINEDIR}" | sed -e "s/^dist$//g" | sed -e "s/^version$//g") ; do
+            for clear_dist_files in $(ls "${WINEDIR}" | sed -re "s/(^dist$|^version$)//g") ; do
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
             mv -f "${WINEDIR}/dist"/* "${WINEDIR}/"
             rm -fr "${WINEDIR}/dist"
         elif [[ -f "${WINEDIR}/proton_dist.tar" ]] ; then
             unpack "${WINEDIR}/proton_dist.tar" "${WINEDIR}/"
-            for clear_dist_files in $(ls "${WINEDIR}" | sed -e "s/^bin$//g" | sed -e "s/^lib$//g" | sed -e "s/^lib64$//g" | sed -e "s/^share$//g" | sed -e "s/^version$//g") ; do
+            for clear_dist_files in $(ls "${WINEDIR}" | sed -re "s/(^bin$|^lib$|^lib64$|^share$|^version$)//g") ; do
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
         fi
