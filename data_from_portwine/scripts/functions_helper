@@ -5624,13 +5624,20 @@ gui_userconf () {
     elif [[ $GUI_THEME == classic ]] ; then GUI_THEME=${translations[classic]}
     fi
 
-    if [[ -z $GTK_THEME ]] ; then
-        YAD_GTK_THEME="${translations[default]}!${translations[light]}!${translations[dark]}"
-    else
-        if [[ $GTK_THEME =~ :dark$ ]]
-        then YAD_GTK_THEME="${translations[dark]}!${translations[light]}!${translations[default]}"
-        else YAD_GTK_THEME="${translations[light]}!${translations[dark]}!${translations[default]}"
+    if command -v gsettings ; then
+        YAD_GTK_THEME_CHECK=$(gsettings get org.gnome.desktop.interface gtk-theme)
+        YAD_GTK_THEME_CHECK=${YAD_GTK_THEME_CHECK//\'/}
+        if [[ -n $YAD_GTK_THEME_CHECK ]] ; then
+            if [[ ! ${YAD_GTK_THEME_CHECK,,} == adwaita ]] ; then
+                YAD_GTK_THEME="$YAD_GTK_THEME_CHECK:${translations[light]}!$YAD_GTK_THEME_CHECK:${translations[dark]}!"
+            elif [[ ${YAD_GTK_THEME_CHECK,,} == breeze ]] ; then
+                YAD_GTK_THEME="$YAD_GTK_THEME_CHECK!"
+            fi
         fi
+    fi
+    if [[ -z $GTK_THEME ]] ; then GTK_THEME=${translations[default]}
+    elif [[ $GTK_THEME =~ light$ ]] ; then GTK_THEME="${GTK_THEME//light/${translations[light]}}"
+    elif [[ $GTK_THEME =~ dark$ ]] ; then GTK_THEME="${GTK_THEME//dark/${translations[dark]}}"
     fi
 
     "${pw_yad}" --plug=$KEY_USERCONF_GUI --tabnum="2" --form --columns=1 --separator="@" --homogeneous-row \
@@ -5639,7 +5646,7 @@ gui_userconf () {
     --field="${translations[Force dpi for fonts]}!${translations[Here you can set forced dpi for fonts in wine]} :CB" "$(combobox_fix --disabled "$YAD_DPI_VAR" "96 (100%)!120 (125%)!144 (150%)!168 (175%)!192 (200%)!216 (225%)!240 (250%)!264 (275%)!288 (300%)")" \
     --field="${translations[Choice wine audio driver]}!${translations[Fixes sound popling if choice alsa]} :CB" "$(combobox_fix --disabled "$SOUND_DRIVER_VAR" "alsa!oss!pulse")" \
     --field="${translations[Select PortProton theme]}!${translations[Allows you to select a theme for PortProton]} :CB" "$(combobox_fix "$GUI_THEME" "${translations[default]}!${translations[compact]}!${translations[classic]}")" \
-    --field="${translations[Select gtk theme]}!${translations[Allows you to select a theme for GTK.]} :CB" "$(combobox_fix "$YAD_GTK_THEME")" \
+    --field="${translations[Select gtk theme]}!${translations[Allows you to select a theme for GTK.]} :CB" "$(combobox_fix "$GTK_THEME" "${YAD_GTK_THEME}Adwaita:${translations[light]}!Adwaita:${translations[dark]}!${translations[default]}")" \
     --field="${translations[Time display]}!${translations[Displays time spent in an application or game]} :CB" "$(combobox_fix --disabled "$DESKTOP_WITH_TIME" "enabled")" \
     --field="${translations[Sort shortcuts by time]}!${translations[This setting sorts the shortcuts in the main menu depending on the time spent in the application or game]} :CB" "$(combobox_fix --disabled "$SORT_WITH_TIME" "enabled")" \
     1> "${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb" 2>/dev/null &
@@ -5683,11 +5690,9 @@ gui_userconf () {
             elif [[ $GUI_THEME == ${translations[classic]} ]] ; then GUI_THEME=classic
             fi
             GTK_THEME="${PW_ADD_SETTINGS_UC[4]}"
-            YAD_GTK_THEME=$(gsettings get org.gnome.desktop.interface gtk-theme)
-            YAD_GTK_THEME=${YAD_GTK_THEME//\'/}
             if [[ $GTK_THEME == ${translations[default]} ]] ; then unset GTK_THEME
-            elif [[ $GTK_THEME == ${translations[light]} ]] ; then GTK_THEME="$YAD_GTK_THEME:light"
-            elif [[ $GTK_THEME == ${translations[dark]} ]] ; then GTK_THEME="$YAD_GTK_THEME:dark"
+            elif [[ $GTK_THEME =~ ${translations[light]} ]] ; then GTK_THEME="${GTK_THEME//${translations[light]}/light}"
+            elif [[ $GTK_THEME =~ ${translations[dark]} ]] ; then GTK_THEME="${GTK_THEME//${translations[dark]}/dark}"
             fi
             DESKTOP_WITH_TIME="${PW_ADD_SETTINGS_UC[5]}"
             SORT_WITH_TIME="${PW_ADD_SETTINGS_UC[6]}"
