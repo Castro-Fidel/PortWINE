@@ -3820,7 +3820,8 @@ start_portwine () {
         fi
     fi
 
-    # GAMESCOPE enable:
+    unset PW_GAMESCOPE_ARGS_NEW PW_GAMESCOPE_VARIABLES_BEFORE PW_GAMESCOPE_VARIABLES_AFTER
+    # GAMESCOPE fixes:
     if [[ "${PW_GAMESCOPE}" == "1" && "${GAMESCOPE_INSTALLED}" == "1" ]] \
     || check_gamescope_session
     then
@@ -3836,7 +3837,12 @@ start_portwine () {
         if [[ -d /sys/bus/pci/drivers/i915 ]] ; then
             export INTEL_DEBUG="norbc"
         fi
+        if [[ -d /sys/bus/pci/drivers/nvidia ]] ; then
+            PW_GAMESCOPE_VARIABLES_BEFORE+="__GL_THREADED_OPTIMIZATIONS=0 "
+            PW_GAMESCOPE_VARIABLES_AFTER+="__GL_THREADED_OPTIMIZATIONS=1 "
+        fi
     fi
+    # GAMESCOPE enable:
     if [[ "${PW_GAMESCOPE}" == "1" && "${GAMESCOPE_INSTALLED}" == "1" ]] \
     && ! check_gamescope_session
     then
@@ -3849,7 +3855,6 @@ start_portwine () {
         fi
 
         #checkbox
-        unset PW_GAMESCOPE_ARGS_NEW
         [[ "${PW_GS_FULLSCREEN}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" -f"
         [[ "${PW_GS_FORCE_FULLSCREEN}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --force-windows-fullscreen"
         [[ "${PW_GS_BORDERLESS_WINDOW}" == "1" ]] &&  PW_GAMESCOPE_ARGS_NEW+=" -b"
@@ -3922,7 +3927,7 @@ start_portwine () {
         [[ "${PW_GS_ITM_TARGET_NITS}" != "0" ]] && PW_GAMESCOPE_ARGS_NEW+=" --hdr-itm-target-nits ${PW_GS_ITM_TARGET_NITS}"
 
         edit_db_from_gui PW_GAMESCOPE_ARGS_NEW
-        export PW_RUN_GAMESCOPE="gamescope${PW_ID_VIDEO}${PW_GAMESCOPE_ARGS_NEW} --"
+        export PW_RUN_GAMESCOPE="${PW_GAMESCOPE_VARIABLES_BEFORE}gamescope${PW_ID_VIDEO}${PW_GAMESCOPE_ARGS_NEW} env ${PW_GAMESCOPE_VARIABLES_AFTER}"
     fi
 
     pw_mangohud_check
