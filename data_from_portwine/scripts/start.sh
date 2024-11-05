@@ -702,7 +702,13 @@ else
         PW_GENERATE_BUTTONS+="--field=   $(print_wrapped "${PW_DESKTOP_FILES_SHOW//".desktop"/""}" "25" "...")!${PW_NAME_D_ICON_48}.png!:FBTNR%@bash -c \"button_click --desktop "${PW_DESKTOP_FILES// /#@_@#}"\"%"
     done
 
-    MAIN_GUI_ROWS="$(( ( AMOUNT_GENERATE_BUTTONS + 1 ) / MAIN_GUI_COLUMNS + 1 ))"
+    if [[ $AMOUNT_GENERATE_BUTTONS == 1 ]] ; then
+        MAIN_GUI_ROWS=1
+    elif (( AMOUNT_GENERATE_BUTTONS <= 5 )) ; then
+        MAIN_GUI_ROWS=2
+    else
+        MAIN_GUI_ROWS="$(( ( AMOUNT_GENERATE_BUTTONS + 1 ) / MAIN_GUI_COLUMNS + 1 ))"
+    fi
 
     if [[ -z $PW_DESKTOP_FILES ]]
     then export PW_GUI_SORT_TABS=(1 2 3 4 5)
