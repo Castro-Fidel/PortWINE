@@ -904,7 +904,7 @@ search_desktop_file () {
     if [[ $DESKTOP_WITH_TIME == enabled ]] || [[ $SORT_WITH_TIME == enabled ]] ; then
         while IFS=" " read -r -a line2 ; do
             if [[ -z ${line2[0]} ]] \
-            || [[ ! ${line2[0],,} =~ (.bat$|.exe$|.msi$|.reg$) ]] ; then
+            || [[ ! ${line2[0],,} =~ .(bat|exe|msi|reg)$ ]] ; then
                 BROKEN_LINE=1
                 break
             fi
@@ -939,7 +939,7 @@ search_desktop_file () {
         # Ремонт, если есть пустые строки и непонятные строки без .exe, .bat, .msi, .reg
         if [[ $BROKEN_LINE == 1 ]] ; then
             while IFS=" " read -r -a line4 ; do
-                if [[ -n ${line4[0]} ]] && [[ ${line4[0]} =~ (.[Bb][Aa][Tt]$|.[Ee][Xx][Ee]$|.[Mm][Ss][Ii]$|.[Rr][Ee][Gg]$) ]]
+                if [[ -n ${line4[0]} ]] && [[ ${line4[0],,} =~ .(bat|exe|msi|reg)$ ]]
                 then echo "${line4[*]}"
                 fi
             done < "$PORT_WINE_TMP_PATH/statistics" > "$PORT_WINE_TMP_PATH/statistics_repair"
@@ -1114,8 +1114,8 @@ create_name_desktop () {
         fi
         if (( ${#PORTWINE_DB_DESKTOP} > 3 )) ; then
             for ((i=0 ; i<${#PORTWINE_DB_DESKTOP} ; i++)) ; do
-                if [[ ${PORTWINE_DB_DESKTOP:i:2} =~ ([a-z][A-Z]|[a-z][0-9]) ]] \
-                && [[ ! ${PORTWINE_DB_DESKTOP:i:3} =~ ([a-z][A-Z]" "|[a-z][0-9]" ") ]] ; then
+                if [[ ${PORTWINE_DB_DESKTOP:i:2} =~ [a-z]([A-Z]|[0-9]) ]] \
+                && [[ ! ${PORTWINE_DB_DESKTOP:i:3} =~ [a-z]([A-Z]|[0-9])" " ]] ; then
                     PORTWINE_DB_PROXY+="${PORTWINE_DB_DESKTOP:i:1} "
                 elif [[ ${PORTWINE_DB_DESKTOP:i:3} =~ [0-9][0-9][a-zA-Z] ]] ; then
                     PORTWINE_DB_PROXY+="${PORTWINE_DB_DESKTOP:i:2} "
@@ -1524,20 +1524,20 @@ init_wine_ver () {
         export WINELOADER="${WINEDIR}/bin/wine"
         export WINESERVER="${WINEDIR}/bin/wineserver"
         if [[ -d "${WINEDIR}/files" && ! -d "${WINEDIR}/dist" ]] ; then
-            for clear_dist_files in $(ls "${WINEDIR}" | sed -e "s/^files$//g" | sed -e "s/^version$//g") ; do
+            for clear_dist_files in $(ls "${WINEDIR}" | sed -r "s/^(files|version)$//g") ; do
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
             mv -f "${WINEDIR}/files"/* "${WINEDIR}/"
             rm -fr "${WINEDIR}/files"
         elif [[ ! -d "${WINEDIR}/files" && -d "${WINEDIR}/dist" ]] ; then
-            for clear_dist_files in $(ls "${WINEDIR}" | sed -e "s/^dist$//g" | sed -e "s/^version$//g") ; do
+            for clear_dist_files in $(ls "${WINEDIR}" | sed -r "s/^(dist|version)$//g") ; do
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
             mv -f "${WINEDIR}/dist"/* "${WINEDIR}/"
             rm -fr "${WINEDIR}/dist"
         elif [[ -f "${WINEDIR}/proton_dist.tar" ]] ; then
             unpack "${WINEDIR}/proton_dist.tar" "${WINEDIR}/"
-            for clear_dist_files in $(ls "${WINEDIR}" | sed -e "s/^bin$//g" | sed -e "s/^lib$//g" | sed -e "s/^lib64$//g" | sed -e "s/^share$//g" | sed -e "s/^version$//g") ; do
+            for clear_dist_files in $(ls "${WINEDIR}" | sed -r "s/^(bin|lib|lib64|share|version)$//g") ; do
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
         fi
@@ -2778,7 +2778,7 @@ pw_create_gui_png () {
             fi
         fi
 
-        PORTPROTON_NAME="$(echo "${PORTPROTON_NAME}" | sed "s/\`//g" | sed "s/\"//g" | sed "s/'//g" | sed "s/\!//g")"
+        PORTPROTON_NAME="${PORTPROTON_NAME//(\`|\"|\'|\!)/})"
         export PORTPROTON_NAME
         edit_db_from_gui PORTPROTON_NAME FILE_DESCRIPTION
     fi
@@ -5939,7 +5939,7 @@ portwine_output_yad_shortcut () {
             [[ "$PW_GUI_START" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
             restart_pp
         fi
-    elif [[ "$PW_YAD_OUT" =~ (^1$|^2$|^252$) ]] ; then
+    elif [[ "$PW_YAD_OUT" =~ ^(1|2|252)$ ]] ; then
         print_info "Restarting PP..."
         [[ -n $KEY_MENU ]] && unset portwine_exe
         [[ "$PW_GUI_START" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
