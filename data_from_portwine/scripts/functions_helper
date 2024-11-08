@@ -5686,12 +5686,34 @@ gui_userconf () {
         YAD_DPI_VAR="disabled"
     fi
 
+    if [[ $GUI_THEME == default ]] ; then GUI_THEME=${translations[default]}
+    elif [[ $GUI_THEME == compact ]] ; then GUI_THEME=${translations[compact]}
+    elif [[ $GUI_THEME == classic ]] ; then GUI_THEME=${translations[classic]}
+    fi
+
+    if command -v gsettings ; then
+        YAD_GTK_THEME_CHECK=$(gsettings get org.gnome.desktop.interface gtk-theme)
+        YAD_GTK_THEME_CHECK=${YAD_GTK_THEME_CHECK//\'/}
+        if [[ -n $YAD_GTK_THEME_CHECK ]] ; then
+            if [[ ! ${YAD_GTK_THEME_CHECK,,} == adwaita ]] ; then
+                YAD_GTK_THEME="$YAD_GTK_THEME_CHECK:${translations[light]}!$YAD_GTK_THEME_CHECK:${translations[dark]}!"
+            elif [[ ${YAD_GTK_THEME_CHECK,,} == breeze ]] ; then
+                YAD_GTK_THEME="$YAD_GTK_THEME_CHECK!"
+            fi
+        fi
+    fi
+    if [[ -z $GTK_THEME ]] ; then GTK_THEME=${translations[default]}
+    elif [[ $GTK_THEME =~ light$ ]] ; then GTK_THEME="${GTK_THEME//light/${translations[light]}}"
+    elif [[ $GTK_THEME =~ dark$ ]] ; then GTK_THEME="${GTK_THEME//dark/${translations[dark]}}"
+    fi
+
     "${pw_yad}" --plug=$KEY_USERCONF_GUI --tabnum="2" --form --columns=1 --separator="%" --homogeneous-row \
     --gui-type-text="$PANED_GUI_TYPE_TEXT_DOWN" --gui-type-layout="$PANED_GUI_TYPE_LAYOUT_DOWN" \
     --field="${translations[Choose a graphics card to run the game]}!${translations[Select which video card will be used to run the game (used for all running games and programs in PortProton)]} :CB" "$(combobox_fix --disabled "$GPU_VAR" "$GET_GPU_NAMES")" \
     --field="${translations[Force dpi]}!${translations[Here you can set forced dpi for applications wine]} :CB" "$(combobox_fix --disabled "$YAD_DPI_VAR" "${translations[Recommended value]}!96!120!144!168!192!216!240!264!288")" \
     --field="${translations[Choice wine audio driver]}!${translations[Fixes sound popling if choice alsa]} :CB" "$(combobox_fix --disabled "$SOUND_DRIVER_VAR" "alsa!oss!pulse")" \
-    --field="${translations[Choice gui themes]}!${translations[Allows you to select a theme for PortProton]} :CB" "$(combobox_fix "$GUI_THEME" "default!compact!classic")" \
+    --field="${translations[Select PortProton theme]}!${translations[Allows you to select a theme for PortProton]} :CB" "$(combobox_fix "$GUI_THEME" "${translations[default]}!${translations[compact]}!${translations[classic]}")" \
+    --field="${translations[Select gtk theme]}!${translations[Allows you to select a theme for GTK.]} :CB" "$(combobox_fix "$GTK_THEME" "${YAD_GTK_THEME}Adwaita:${translations[light]}!Adwaita:${translations[dark]}!${translations[default]}")" \
     --field="${translations[Time display]}!${translations[Displays time spent in an application or game]} :CB" "$(combobox_fix --disabled "$DESKTOP_WITH_TIME" "enabled")" \
     --field="${translations[Sort shortcuts by time]}!${translations[This setting sorts the shortcuts in the main menu depending on the time spent in the application or game]} :CB" "$(combobox_fix --disabled "$SORT_WITH_TIME" "enabled")" \
     1> "${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb" 2>/dev/null &
@@ -5733,9 +5755,18 @@ gui_userconf () {
             fi
             PW_SOUND_DRIVER_USE="${PW_ADD_SETTINGS_UC[2]}"
             GUI_THEME="${PW_ADD_SETTINGS_UC[3]}"
-            DESKTOP_WITH_TIME="${PW_ADD_SETTINGS_UC[4]}"
-            SORT_WITH_TIME="${PW_ADD_SETTINGS_UC[5]}"
-            edit_user_conf_from_gui PW_GPU_USE PW_WINE_DPI_VALUE PW_SOUND_DRIVER_USE GUI_THEME DESKTOP_WITH_TIME SORT_WITH_TIME
+            if [[ $GUI_THEME == ${translations[default]} ]] ; then GUI_THEME=default
+            elif [[ $GUI_THEME == ${translations[compact]} ]] ; then GUI_THEME=compact
+            elif [[ $GUI_THEME == ${translations[classic]} ]] ; then GUI_THEME=classic
+            fi
+            GTK_THEME="${PW_ADD_SETTINGS_UC[4]}"
+            if [[ $GTK_THEME == ${translations[default]} ]] ; then unset GTK_THEME
+            elif [[ $GTK_THEME =~ ${translations[light]} ]] ; then GTK_THEME="${GTK_THEME//${translations[light]}/light}"
+            elif [[ $GTK_THEME =~ ${translations[dark]} ]] ; then GTK_THEME="${GTK_THEME//${translations[dark]}/dark}"
+            fi
+            DESKTOP_WITH_TIME="${PW_ADD_SETTINGS_UC[5]}"
+            SORT_WITH_TIME="${PW_ADD_SETTINGS_UC[6]}"
+            edit_user_conf_from_gui PW_GPU_USE PW_WINE_DPI_VALUE PW_SOUND_DRIVER_USE GUI_THEME GTK_THEME DESKTOP_WITH_TIME SORT_WITH_TIME
             restart_pp
             ;;
     esac
