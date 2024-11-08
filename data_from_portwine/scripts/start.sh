@@ -340,8 +340,7 @@ if [[ $(basename "${portwine_exe,,}") =~ .ppack$ ]] ; then
     then NO_XATTRS_NEED="-no-xattrs"
     else NO_XATTRS_NEED=""
     fi
-    PW_PREFIX_NAME=$(basename "${1,,}" .ppack)
-    PW_PREFIX_NAME="${PW_PREFIX_NAME^^}"
+    PW_PREFIX_NAME=$(basename "${1^^}" .PPACK)
 cat << EOF > "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack.sh
     #!/usr/bin/env bash
     ${TMP_ALL_PATH} unsquashfs -f -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" "$1" \
@@ -422,24 +421,19 @@ esac
 
 unset PW_ADD_PREFIXES_TO_GUI
 if [[ -d "${PORT_WINE_PATH}/data/prefixes/" ]] ; then
-    PW_PREFIX_NAME="${PW_PREFIX_NAME//[[:blank:]]/_}"
     for PAIG in "${PORT_WINE_PATH}"/data/prefixes/* ; do
-        if [[ "${PAIG//"${PORT_WINE_PATH}/data/prefixes/"/}" != "${PORTWINE_DB^^//[[:blank:]]/_}" ]] \
-        && [[ "${PAIG//"${PORT_WINE_PATH}/data/prefixes/"/}" != "${PW_PREFIX_NAME}" ]] \
-        && [[ "${PAIG//"${PORT_WINE_PATH}/data/prefixes/"/}" != "*" ]]
+        if [[ ! "${PAIG//"${PORT_WINE_PATH}/data/prefixes/"/}" =~ ^($PW_PREFIX_NAME|'*')$ ]]
         then
             PW_ADD_PREFIXES_TO_GUI="${PW_ADD_PREFIXES_TO_GUI}!${PAIG//"${PORT_WINE_PATH}/data/prefixes/"/}"
         fi
     done
-    PW_ADD_PREFIXES_TO_GUI="${PW_PREFIX_NAME^^}${PW_ADD_PREFIXES_TO_GUI}"
+    PW_ADD_PREFIXES_TO_GUI="${PW_PREFIX_NAME}${PW_ADD_PREFIXES_TO_GUI}"
 fi
 
 unset DIST_ADD_TO_GUI
 if [[ -d "${PORT_WINE_PATH}/data/dist/" ]] ; then
     for DAIG in "${PORT_WINE_PATH}"/data/dist/* ; do
-        if [[ "${DAIG//"${PORT_WINE_PATH}/data/dist/"/}" != "${PW_WINE_LG_VER}" ]] \
-        && [[ "${DAIG//"${PORT_WINE_PATH}/data/dist/"/}" != "${PW_PROTON_LG_VER}" ]] \
-        && [[ "${DAIG//"${PORT_WINE_PATH}/data/dist/"/}" != "*" ]]
+        if [[ ! "${DAIG//"${PORT_WINE_PATH}/data/dist/"/}" =~ ^($PW_WINE_LG_VER|$PW_PROTON_LG_VER|'*')$ ]]
         then
             DIST_ADD_TO_GUI="${DIST_ADD_TO_GUI}!${DAIG//"${PORT_WINE_PATH}/data/dist/"/}"
         fi
@@ -457,7 +451,7 @@ SORT_NEWEST="${translations[Newest DXVK, VKD3D, D8VK (Vulkan v1.3+)]}"
 SORT_G_NINE="${translations[Gallium Nine (DirectX 9 for MESA)]}"
 SORT_G_ZINK="${translations[Gallium Zink (OpenGL to Vulkan)]}"
 
-case "${PW_VULKAN_USE}" in
+case "$PW_VULKAN_USE" in
     0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY!$SORT_G_ZINK!$SORT_G_NINE!$SORT_VULKAN" ;;
     6) PW_DEFAULT_VULKAN_USE="$SORT_VULKAN!$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY!$SORT_G_ZINK!$SORT_G_NINE!$SORT_OPENGL" ;;
     1) PW_DEFAULT_VULKAN_USE="$SORT_STABLE!$SORT_NEWEST!$SORT_LEGACY!$SORT_G_ZINK!$SORT_G_NINE!$SORT_OPENGL!$SORT_VULKAN" ;;
@@ -479,11 +473,11 @@ else
     PW_DEFAULT_WINE_USE="${PW_PROTON_LG_VER}!${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!${translations[GET-OTHER-WINE]}"
 fi
 
-if [[ -z "${PORTWINE_DB_FILE}" ]] ; then
+if [[ -z "$PORTWINE_DB_FILE" ]] ; then
     unset PW_GUI_DISABLED_CS
 fi
 
-if [[ -f "${portwine_exe}" ]] ; then
+if [[ -f "$portwine_exe" ]] ; then
     unset TAB_MAIN_MENU
     if [[ "$RESTART_PP_USED" == "edit_db" ]] ; then
         unset RESTART_PP_USED
@@ -492,34 +486,34 @@ if [[ -f "${portwine_exe}" ]] ; then
         unset RESTART_PP_USED
         gui_userconf
     fi
-    if [[ "${PW_GUI_DISABLED_CS}" != 1 ]] ; then
+    if [[ "$PW_GUI_DISABLED_CS" != 1 ]] ; then
         pw_create_gui_png
-        if ! grep -il "${portwine_exe}" "$PORT_WINE_PATH"/*.desktop &>/dev/null ; then
+        if ! grep -il "$portwine_exe" "$PORT_WINE_PATH"/*.desktop &>/dev/null ; then
             PW_SHORTCUT="${translations[CREATE SHORTCUT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Create shortcut for select file...]}:100"
         else
             PW_SHORTCUT="${translations[CHANGE SHORTCUT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Change shortcut for select file...]}:98"
         fi
 
         create_name_desktop
-        if [[ -z "${PW_COMMENT_DB}" ]] ; then
+        if [[ -z "$PW_COMMENT_DB" ]] ; then
             PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$PW_NAME_DESKTOP_PROXY" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
         else
             PW_COMMENT_DB="$PW_COMMENT_DB$(seconds_to_time "$TIME_CURRENT")"
         fi
 
         export KEY_START="$RANDOM"
-        if [[ "${PW_GUI_START}" == "NOTEBOOK" ]] ; then
-            "${pw_yad}" --plug=$KEY_START --tabnum=1 --form --separator=";" ${START_GUI_TYPE} \
-            --gui-type-box="${START_GUI_TYPE_BOX}" --gui-type-layout="${START_GUI_TYPE_LAYOUT_UP}" \
-            --gui-type-text="${START_GUI_TYPE_TEXT}" --gui-type-images="${START_GUI_TYPE_IMAGE}" \
-            --image="${PW_ICON_FOR_YAD}" --text-align="center" --text "$PW_COMMENT_DB" \
-            --field="3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
-            --field="  WINE  : :CB" "$(combobox_fix "${PW_WINE_USE}" "${PW_DEFAULT_WINE_USE}")" \
-            --field="PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
+        if [[ "$PW_GUI_START" == "NOTEBOOK" ]] ; then
+            "${pw_yad}" --plug=$KEY_START --tabnum=1 --form --separator=";" $START_GUI_TYPE \
+            --gui-type-box="$START_GUI_TYPE_BOX" --gui-type-layout="$START_GUI_TYPE_LAYOUT_UP" \
+            --gui-type-text="$START_GUI_TYPE_TEXT" --gui-type-images="$START_GUI_TYPE_IMAGE" \
+            --image="$PW_ICON_FOR_YAD" --text-align="center" --text "$PW_COMMENT_DB" \
+            --field="3D API  : :CB" "$PW_DEFAULT_VULKAN_USE" \
+            --field="  WINE  : :CB" "$(combobox_fix "$PW_WINE_USE" "$PW_DEFAULT_WINE_USE")" \
+            --field="PREFIX  : :CBE" "$PW_ADD_PREFIXES_TO_GUI" \
             1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
-            "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="${START_GUI_NOTEBOOK_COLUMNS}" --align-buttons --homogeneous-column \
-            --gui-type-layout="${START_GUI_TYPE_LAYOUT_NOTEBOOK}" \
+            "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="$START_GUI_NOTEBOOK_COLUMNS" --align-buttons --homogeneous-column \
+            --gui-type-layout="$START_GUI_TYPE_LAYOUT_NOTEBOOK" \
             --field="   ${translations[Base settings]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Edit database file for]} ${PORTWINE_DB}":"FBTN" '@bash -c "button_click --start 118"' \
             --field="   ${translations[Global settings]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Settings for user.conf]}":"FBTN" '@bash -c "button_click --start 128"' \
             --field="   ${translations[Open directory]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Open directory with <b>.ppdb</b> file]}":"FBTN" '@bash -c "button_click --start open_game_folder"' \
@@ -529,8 +523,8 @@ if [[ -f "${portwine_exe}" ]] ; then
             --field="   GameScope"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Enable GameScope by default (Wayland micro compositor)]}":"FBTN" '@bash -c "button_click --start 126"' \
             2>/dev/null &
 
-            if [[ "${PW_YAD_FORM_TAB}" == "1" ]] \
-            && [[ -n "${TAB_START}" ]]
+            if [[ "$PW_YAD_FORM_TAB" == "1" ]] \
+            && [[ -n "$TAB_START" ]]
             then
                 export TAB_START="2"
                 unset PW_YAD_FORM_TAB
@@ -538,10 +532,10 @@ if [[ -f "${portwine_exe}" ]] ; then
                 export TAB_START="1"
             fi
 
-            "${pw_yad}" --key=$KEY_START --notebook --active-tab="${TAB_START}" \
+            "${pw_yad}" --key=$KEY_START --notebook --active-tab="$TAB_START" \
             --gui-type="settings-notebook" \
-            --width="${PW_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" \
-            --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" --expand \
+            --width="$PW_START_SIZE_W" --tab-pos="$PW_TAB_POSITON" \
+            --title "PortProton-$install_ver (${scripts_install_ver}${BRANCH_VERSION})" --expand \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
             --tab="${translations[GENERAL]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
             --tab="${translations[SETTINGS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
@@ -553,17 +547,17 @@ if [[ -f "${portwine_exe}" ]] ; then
             export PW_YAD_FORM_TAB="1"
 
         elif [[ "${PW_GUI_START}" == "PANED" ]] ; then
-            "${pw_yad}" --plug=$KEY_START --tabnum=1 --form --separator=";" ${START_GUI_TYPE} \
-            --gui-type-box="${START_GUI_TYPE_BOX}" --gui-type-layout="${START_GUI_TYPE_LAYOUT_UP}" \
-            --gui-type-text="${START_GUI_TYPE_TEXT}" --gui-type-images="${START_GUI_TYPE_IMAGE}" \
-            --image="${PW_ICON_FOR_YAD}" --text-align="center" --text "$PW_COMMENT_DB" \
-            --field="3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
-            --field="  WINE  : :CB" "$(combobox_fix "${PW_WINE_USE}" "${PW_DEFAULT_WINE_USE}")" \
-            --field="PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
+            "${pw_yad}" --plug=$KEY_START --tabnum=1 --form --separator=";" $START_GUI_TYPE \
+            --gui-type-box="$START_GUI_TYPE_BOX" --gui-type-layout="$START_GUI_TYPE_LAYOUT_UP" \
+            --gui-type-text="$START_GUI_TYPE_TEXT" --gui-type-images="$START_GUI_TYPE_IMAGE" \
+            --image="$PW_ICON_FOR_YAD" --text-align="center" --text "$PW_COMMENT_DB" \
+            --field="3D API  : :CB" "$PW_DEFAULT_VULKAN_USE" \
+            --field="  WINE  : :CB" "$(combobox_fix "$PW_WINE_USE" "$PW_DEFAULT_WINE_USE")" \
+            --field="PREFIX  : :CBE" "$PW_ADD_PREFIXES_TO_GUI" \
             1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
-            "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="${START_GUI_PANED_COLUMNS}" \
-            --gui-type-layout="${START_GUI_TYPE_LAYOUT_PANED}" \
+            "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="$START_GUI_PANED_COLUMNS" \
+            --gui-type-layout="$START_GUI_TYPE_LAYOUT_PANED" \
             --align-buttons --homogeneous-row --homogeneous-column \
             --field="   ${translations[Base settings]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Edit database file for]} ${PORTWINE_DB}":"FBTN" '@bash -c "button_click --start 118"' \
             --field="   ${translations[Global settings]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Settings for user.conf]}":"FBTN" '@bash -c "button_click --start 128"' \
@@ -576,8 +570,8 @@ if [[ -f "${portwine_exe}" ]] ; then
 
             "${pw_yad}" --key=$KEY_START --paned \
             --gui-type="settings-paned" \
-            --width="${PW_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" \
-            --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
+            --width="$PW_START_SIZE_W" --tab-pos="$PW_TAB_POSITON" \
+            --title "PortProton-$install_ver (${scripts_install_ver}${BRANCH_VERSION})" \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
             --button="${translations[MAIN MENU]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Main menu]}":128 \
             --button="${PW_SHORTCUT}" \
@@ -588,7 +582,7 @@ if [[ -f "${portwine_exe}" ]] ; then
         case "$PW_YAD_SET" in
             128)
                 [[ "$PW_GUI_START" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
-                PORTWINE_DB_FOR_UNSET=$(sed -n '/export/p' "${PORTWINE_DB_FILE}" | sed 's/\(export\|=.*\| \)//g')
+                PORTWINE_DB_FOR_UNSET=$(sed -n '/export/p' "$PORTWINE_DB_FILE" | sed 's/\(export\|=.*\| \)//g' | sort -u)
                 for db_unset in $PORTWINE_DB_FOR_UNSET ; do
                     unset "$db_unset"
                 done
@@ -744,10 +738,10 @@ else
     2>/dev/null &
 
     "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[2]}" --form --columns=3 --align-buttons --separator=";" \
-    --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
-    --field="   3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
-    --field="   PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
-    --field="     WINE  : :CB" "$(combobox_fix "${PW_WINE_USE}" "${PW_DEFAULT_WINE_USE}")" \
+    --gui-type-layout="$MAIN_MENU_GUI_TYPE_LAYOUT" \
+    --field="   3D API  : :CB" "$PW_DEFAULT_VULKAN_USE" \
+    --field="   PREFIX  : :CBE" "$PW_ADD_PREFIXES_TO_GUI" \
+    --field="     WINE  : :CB" "$(combobox_fix "$PW_WINE_USE" "$PW_DEFAULT_WINE_USE")" \
     --field="${translations[Create prefix backup]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"CFBTN" '@bash -c "button_click --normal pw_create_prefix_backup"' \
     --field="   Winetricks"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run winetricks to install additional libraries to the selected prefix]}":"FBTN" '@bash -c "button_click --normal WINETRICKS"' \
     --field="   ${translations[Clear prefix]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Clear the prefix to fix problems]}":"FBTN" '@bash -c "button_click --normal gui_clear_pfx"' \
