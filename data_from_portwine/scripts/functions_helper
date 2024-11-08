@@ -3874,7 +3874,8 @@ start_portwine () {
         fi
     fi
 
-    # GAMESCOPE enable:
+    unset PW_GAMESCOPE_ARGS_NEW PW_GAMESCOPE_VARIABLES_BEFORE PW_GAMESCOPE_VARIABLES_AFTER
+    # GAMESCOPE fixes:
     if [[ "${PW_GAMESCOPE}" == "1" && "${GAMESCOPE_INSTALLED}" == "1" ]] \
     || check_gamescope_session
     then
@@ -3890,7 +3891,12 @@ start_portwine () {
         if [[ -d /sys/bus/pci/drivers/i915 ]] ; then
             export INTEL_DEBUG="norbc"
         fi
+        if [[ -d /sys/bus/pci/drivers/nvidia ]] ; then
+            PW_GAMESCOPE_VARIABLES_BEFORE+="__GL_THREADED_OPTIMIZATIONS=0 "
+            PW_GAMESCOPE_VARIABLES_AFTER+="__GL_THREADED_OPTIMIZATIONS=1 "
+        fi
     fi
+    # GAMESCOPE enable:
     if [[ "${PW_GAMESCOPE}" == "1" && "${GAMESCOPE_INSTALLED}" == "1" ]] \
     && ! check_gamescope_session
     then
@@ -3903,7 +3909,6 @@ start_portwine () {
         fi
 
         #checkbox
-        unset PW_GAMESCOPE_ARGS_NEW
         [[ "${PW_GS_FULLSCREEN}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" -f"
         [[ "${PW_GS_FORCE_FULLSCREEN}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --force-windows-fullscreen"
         [[ "${PW_GS_BORDERLESS_WINDOW}" == "1" ]] &&  PW_GAMESCOPE_ARGS_NEW+=" -b"
@@ -3933,6 +3938,7 @@ start_portwine () {
 
         [[ "${PW_GS_BACKEND_SDL}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --backend sdl"
         [[ "${PW_GS_SDL_VIDEODRIVER_X11}" == "1" ]] && export SDL_VIDEODRIVER="x11"
+        [[ "${PW_GS_CURSOR_SCALE_HEIGHT}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --cursor-scale-height 1"
 
         #combobox
         if [[ "${PW_GS_SHOW_RESOLUTION}" != "disabled" ]] ; then
@@ -3975,7 +3981,7 @@ start_portwine () {
         [[ "${PW_GS_ITM_TARGET_NITS}" != "0" ]] && PW_GAMESCOPE_ARGS_NEW+=" --hdr-itm-target-nits ${PW_GS_ITM_TARGET_NITS}"
 
         edit_db_from_gui PW_GAMESCOPE_ARGS_NEW
-        export PW_RUN_GAMESCOPE="gamescope${PW_ID_VIDEO}${PW_GAMESCOPE_ARGS_NEW} --"
+        export PW_RUN_GAMESCOPE="${PW_GAMESCOPE_VARIABLES_BEFORE}gamescope${PW_ID_VIDEO}${PW_GAMESCOPE_ARGS_NEW} env ${PW_GAMESCOPE_VARIABLES_AFTER}"
     fi
 
     pw_mangohud_check
@@ -5440,16 +5446,19 @@ gui_gamescope () {
     PW_GS_EXPOSE_WAYLAND PW_GS_REALTIME_SCHEDULING
     )
 
-    grep -e '--mangoapp' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null && add_to_array "PW_GS_LIST" PW_GS_MANGOAPP
-    grep -e '--backend' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null && add_to_array "PW_GS_LIST" PW_GS_BACKEND_SDL PW_GS_SDL_VIDEODRIVER_X11
+    [[ $(<"${PW_TMPFS_PATH}/gamescope.tmp") =~ '--mangoapp' ]] && add_to_array "PW_GS_LIST" PW_GS_MANGOAPP
+    [[ $(<"${PW_TMPFS_PATH}/gamescope.tmp") =~ '--backend' ]] && add_to_array "PW_GS_LIST" PW_GS_BACKEND_SDL
+    check_wayland_session && add_to_array "PW_GS_LIST" PW_GS_SDL_VIDEODRIVER_X11
+    [[ $(<"${PW_TMPFS_PATH}/gamescope.tmp") =~ '--cursor-scale-height' ]] && add_to_array "PW_GS_LIST" PW_GS_CURSOR_SCALE_HEIGHT
 
-    GS_FILTER_CB="linear!nearest!fsr!nis!pixel"
     #debian bookworm fix
-    if grep -e '-U, --fsr-upscaling' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null ; then
+    if [[ $(<"${PW_TMPFS_PATH}/gamescope.tmp") =~ '-U, --fsr-upscaling' ]] ; then
         GS_FILTER_CB="fsr!nis"
         export PW_GS_FILTER_MODE_OLD="true"
         rm_from_array "PW_GS_LIST" PW_GS_FORCE_GRAB_CURSOR PW_GS_FORCE_GRAB_KEYBOARD PW_GS_HDR_ENABLE PW_GS_HDR_FORCE_SUPPORT \
         PW_GS_HDR_FORCE_OUTPUT
+    else
+        GS_FILTER_CB="linear!nearest!fsr!nis!pixel"
     fi
 
     PW_GS_FULLSCREEN_INFO=${translations[Make the window fullscreen]}
@@ -5470,6 +5479,7 @@ gui_gamescope () {
     PW_GS_MANGOAPP_INFO=${translations[Launch with the mangoapp (mangohud) performance overlay enabled. You should use this instead of using mangohud on the game or gamescope.]}
     PW_GS_BACKEND_SDL_INFO=${translations[Use sdl backend. (by default wayland backend is used).]}
     PW_GS_SDL_VIDEODRIVER_X11_INFO=${translations[Force use sdl videodriver x11, works with BACKEND SDL. (Default is wayland)]}
+    PW_GS_CURSOR_SCALE_HEIGHT_INFO=${translations[if specified, sets a base output height to linearly scale the cursor against.]}
 
     unset ADD_CHK_BOX_GS
     if [[ "${GAMESCOPE_INSTALLED}" == 1 ]] ; then
