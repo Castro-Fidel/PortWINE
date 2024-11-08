@@ -2708,6 +2708,10 @@ edit_db_from_gui () {
 
 edit_user_conf_from_gui () {
     for mod_db in $@ ; do
+        if [[ -z "${!mod_db}" ]] ; then
+            sed -i "/^export ${mod_db}=.*/d" "${USER_CONF}"
+            return 0
+        fi
         proxy_mod_db="${!mod_db}"
         if [[ $proxy_mod_db =~ (${translations[Disabled]}|${translations[Disable]}) ]] ; then
             proxy_mod_db=disabled
