@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Author: Dervart
+# type: games
+# name: Saturn
+# image: saturn
+# info_en:
+# info_ru:
+########################################################################
+export PW_PREFIX_NAME="NINSAR"
+export PW_WINE_USE="WINE_LG"
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/saturn.zip"
+start_portwine
+if try_download "https://cdn-s3.quadrosim.ru/saturn/saturn.zip" "${PW_AUTOINSTALL_EXE}" no_mirror
+then
+    pw_start_progress_bar_install_game "Saturn."
+    "$pw_7z" x -y "${PW_AUTOINSTALL_EXE}" -o"$WINEPREFIX/drive_c/Program Files (x86)/saturn"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/saturn/Saturn.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    kill_portwine
+    pw_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="Saturn"
+    portwine_create_shortcut
+fi
+stop_portwine
