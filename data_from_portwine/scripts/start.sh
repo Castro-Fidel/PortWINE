@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Author: Castro-Fidel (linux-gaming.ru)
 # Development assistants: Cefeiko; Dezert1r; Taz_mania; Anton_Famillianov; gavr; RidBowt; chal55rus; UserDiscord; Boria138; Vano; Akai; Htylol
-# shellcheck disable=SC2140,SC2119,SC2206,SC2068
 ########################################################################
 export url_site="https://linux-gaming.ru/portproton/"
 export url_cloud="https://cloud.linux-gaming.ru/portproton"
@@ -520,13 +519,13 @@ if [[ -f "${portwine_exe}" ]] ; then
 
             "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="${START_GUI_NOTEBOOK_COLUMNS}" --align-buttons --homogeneous-column \
             --gui-type-layout="${START_GUI_TYPE_LAYOUT_NOTEBOOK}" \
-            --field="   ${translations[Base settings]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Edit database file for]} ${PORTWINE_DB}":"FBTN" '@bash -c "button_click --start 118"' \
-            --field="   ${translations[Global settings]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Settings for user.conf]}":"FBTN" '@bash -c "button_click --start 128"' \
-            --field="   ${translations[Open directory]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Open directory with <b>.ppdb</b> file]}":"FBTN" '@bash -c "button_click --start open_game_folder"' \
-            --field="   vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)]}":"FBTN" '@bash -c "button_click --start 120"' \
-            --field="   MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)]}":"FBTN" '@bash -c "button_click --start 122"' \
-            --field="   dgVoodoo2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)]}":"FBTN" '@bash -c "button_click --start 124"' \
-            --field="   GameScope"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Enable GameScope by default (Wayland micro compositor)]}":"FBTN" '@bash -c "button_click --start 126"' \
+            --field="   ${translations[Base settings]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Edit database file for]} ${PORTWINE_DB}":"FBTN" '@bash -c "button_click --start 118"' \
+            --field="   ${translations[Global settings]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Settings for user.conf]}":"FBTN" '@bash -c "button_click --start 128"' \
+            --field="   ${translations[Open directory]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Open directory with <b>.ppdb</b> file]}":"FBTN" '@bash -c "button_click --start open_game_folder"' \
+            --field="   vkBasalt!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)]}":"FBTN" '@bash -c "button_click --start 120"' \
+            --field="   MangoHud!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)]}":"FBTN" '@bash -c "button_click --start 122"' \
+            --field="   dgVoodoo2!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)]}":"FBTN" '@bash -c "button_click --start 124"' \
+            --field="   GameScope!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable GameScope by default (Wayland micro compositor)]}":"FBTN" '@bash -c "button_click --start 126"' \
             2>/dev/null &
 
             if [[ "${PW_YAD_FORM_TAB}" == "1" ]] \
@@ -543,12 +542,12 @@ if [[ -f "${portwine_exe}" ]] ; then
             --width="${PW_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" \
             --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" --expand \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-            --tab="${translations[GENERAL]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-            --tab="${translations[SETTINGS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-            --button="${translations[MAIN MENU]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Main menu]}":128 \
+            --tab="${translations[GENERAL]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+            --tab="${translations[SETTINGS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+            --button="${translations[MAIN MENU]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Main menu]}":128 \
             --button="${PW_SHORTCUT}" \
-            --button="${translations[DEBUG]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Launch with the creation of a .log file at the root PortProton]}":102 \
-            --button="${translations[LAUNCH]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Run file ...]}":106 2>/dev/null
+            --button="${translations[DEBUG]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Launch with the creation of a .log file at the root PortProton]}":102 \
+            --button="${translations[LAUNCH]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Run file ...]}":106 2>/dev/null
             PW_YAD_SET="$?"
             export PW_YAD_FORM_TAB="1"
 
@@ -565,13 +564,13 @@ if [[ -f "${portwine_exe}" ]] ; then
             "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="${START_GUI_PANED_COLUMNS}" \
             --gui-type-layout="${START_GUI_TYPE_LAYOUT_PANED}" \
             --align-buttons --homogeneous-row --homogeneous-column \
-            --field="   ${translations[Base settings]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Edit database file for]} ${PORTWINE_DB}":"FBTN" '@bash -c "button_click --start 118"' \
-            --field="   ${translations[Global settings]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Settings for user.conf]}":"FBTN" '@bash -c "button_click --start 128"' \
-            --field="   ${translations[Open directory]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Open directory with <b>.ppdb</b> file]}":"FBTN" '@bash -c "button_click --start open_game_folder"' \
-            --field="   vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)]}":"FBTN" '@bash -c "button_click --start 120"' \
-            --field="   MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)]}":"FBTN" '@bash -c "button_click --start 122"' \
-            --field="   dgVoodoo2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)]}":"FBTN" '@bash -c "button_click --start 124"' \
-            --field="   GameScope"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Enable GameScope by default (Wayland micro compositor)]}":"FBTN" '@bash -c "button_click --start 126"' \
+            --field="   ${translations[Base settings]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Edit database file for]} ${PORTWINE_DB}":"FBTN" '@bash -c "button_click --start 118"' \
+            --field="   ${translations[Global settings]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Settings for user.conf]}":"FBTN" '@bash -c "button_click --start 128"' \
+            --field="   ${translations[Open directory]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Open directory with <b>.ppdb</b> file]}":"FBTN" '@bash -c "button_click --start open_game_folder"' \
+            --field="   vkBasalt!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)]}":"FBTN" '@bash -c "button_click --start 120"' \
+            --field="   MangoHud!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)]}":"FBTN" '@bash -c "button_click --start 122"' \
+            --field="   dgVoodoo2!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)]}":"FBTN" '@bash -c "button_click --start 124"' \
+            --field="   GameScope!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable GameScope by default (Wayland micro compositor)]}":"FBTN" '@bash -c "button_click --start 126"' \
             2>/dev/null &
 
             "${pw_yad}" --key=$KEY_START --paned \
@@ -579,10 +578,10 @@ if [[ -f "${portwine_exe}" ]] ; then
             --width="${PW_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" \
             --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-            --button="${translations[MAIN MENU]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Main menu]}":128 \
+            --button="${translations[MAIN MENU]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Main menu]}":128 \
             --button="${PW_SHORTCUT}" \
-            --button="${translations[DEBUG]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Launch with the creation of a .log file at the root PortProton]}":102 \
-            --button="${translations[LAUNCH]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Run file ...]}":106 2>/dev/null
+            --button="${translations[DEBUG]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Launch with the creation of a .log file at the root PortProton]}":102 \
+            --button="${translations[LAUNCH]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Run file ...]}":106 2>/dev/null
             PW_YAD_SET="$?"
         fi
         case "$PW_YAD_SET" in
@@ -638,7 +637,7 @@ else
                     PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]//Exec=env \"$PORT_SCRIPTS_PATH\/start.sh\" /}
                     sed -i "s|Exec=env \"$PORT_SCRIPTS_PATH/start.sh\"|Exec=flatpak run ru.linux_gaming.PortProton|" "$desktop_file"
                 fi
-                while IFS=" " read -r -a line2 ; do
+                while IFS=' ' read -r -a line2 ; do
                     if [[ \"${line2[0]//#@_@#/ }\" == "${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]}" ]] ; then
                         PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=${line2[2]}
                         break
@@ -732,15 +731,15 @@ else
 
     "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[3]}" --form --columns=3 --align-buttons --separator=";" --homogeneous-column \
     --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
-    --field="   ${translations[Reinstall PortProton]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal gui_pw_reinstall_pp"' \
-    --field="   ${translations[Remove PortProton]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal gui_rm_portproton"' \
-    --field="   ${translations[Update PortProton]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal gui_pw_update"' \
-    --field="   ${translations[Changelog]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal open_changelog"' \
-    --field="   ${translations[Change language]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal change_loc"' \
-    --field="   ${translations[Global settings (user.conf)]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal 128"' \
-    --field="   ${translations[Scripts from backup]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal gui_open_scripts_from_backup"' \
-    --field="   Xterm"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal pw_start_cont_xterm"' \
-    --field="   ${translations[Credits]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal gui_credits"' \
+    --field="   ${translations[Reinstall PortProton]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!":"FBTN" '@bash -c "button_click --normal gui_pw_reinstall_pp"' \
+    --field="   ${translations[Remove PortProton]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!":"FBTN" '@bash -c "button_click --normal gui_rm_portproton"' \
+    --field="   ${translations[Update PortProton]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!":"FBTN" '@bash -c "button_click --normal gui_pw_update"' \
+    --field="   ${translations[Changelog]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!":"FBTN" '@bash -c "button_click --normal open_changelog"' \
+    --field="   ${translations[Change language]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!":"FBTN" '@bash -c "button_click --normal change_loc"' \
+    --field="   ${translations[Global settings (user.conf)]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!":"FBTN" '@bash -c "button_click --normal 128"' \
+    --field="   ${translations[Scripts from backup]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!":"FBTN" '@bash -c "button_click --normal gui_open_scripts_from_backup"' \
+    --field="   Xterm!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!":"FBTN" '@bash -c "button_click --normal pw_start_cont_xterm"' \
+    --field="   ${translations[Credits]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!":"FBTN" '@bash -c "button_click --normal gui_credits"' \
     2>/dev/null &
 
     "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[2]}" --form --columns=3 --align-buttons --separator=";" \
@@ -748,15 +747,15 @@ else
     --field="   3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
     --field="   PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
     --field="     WINE  : :CB" "$(combobox_fix "${PW_WINE_USE}" "${PW_DEFAULT_WINE_USE}")" \
-    --field="${translations[Create prefix backup]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"CFBTN" '@bash -c "button_click --normal pw_create_prefix_backup"' \
-    --field="   Winetricks"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run winetricks to install additional libraries to the selected prefix]}":"FBTN" '@bash -c "button_click --normal WINETRICKS"' \
-    --field="   ${translations[Clear prefix]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Clear the prefix to fix problems]}":"FBTN" '@bash -c "button_click --normal gui_clear_pfx"' \
-    --field="   ${translations[Get other Wine]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Open the menu to download other versions of WINE or PROTON]}":"FBTN" '@bash -c "button_click --normal gui_proton_downloader"' \
-    --field="   ${translations[Uninstaller]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run the program uninstaller built into wine]}":"FBTN" '@bash -c "button_click --normal gui_wine_uninstaller"' \
-    --field="   ${translations[Prefix Manager]}     "!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run winecfg to edit the settings of the selected prefix]}":"FBTN" '@bash -c "button_click --normal WINECFG"' \
-    --field="   ${translations[File Manager]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run wine file manager]}":"FBTN" '@bash -c "button_click --normal WINEFILE"' \
-    --field="   ${translations[Command line]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run wine cmd]}":"FBTN" '@bash -c "button_click --normal WINECMD"' \
-    --field="   ${translations[Regedit]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run wine regedit]}":"FBTN" '@bash -c "button_click --normal WINEREG"' 1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
+    --field="${translations[Create prefix backup]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!":"CFBTN" '@bash -c "button_click --normal pw_create_prefix_backup"' \
+    --field="   Winetricks!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[Run winetricks to install additional libraries to the selected prefix]}":"FBTN" '@bash -c "button_click --normal WINETRICKS"' \
+    --field="   ${translations[Clear prefix]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[Clear the prefix to fix problems]}":"FBTN" '@bash -c "button_click --normal gui_clear_pfx"' \
+    --field="   ${translations[Get other Wine]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[Open the menu to download other versions of WINE or PROTON]}":"FBTN" '@bash -c "button_click --normal gui_proton_downloader"' \
+    --field="   ${translations[Uninstaller]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[Run the program uninstaller built into wine]}":"FBTN" '@bash -c "button_click --normal gui_wine_uninstaller"' \
+    --field="   ${translations[Prefix Manager]}     !$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[Run winecfg to edit the settings of the selected prefix]}":"FBTN" '@bash -c "button_click --normal WINECFG"' \
+    --field="   ${translations[File Manager]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[Run wine file manager]}":"FBTN" '@bash -c "button_click --normal WINEFILE"' \
+    --field="   ${translations[Command line]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[Run wine cmd]}":"FBTN" '@bash -c "button_click --normal WINECMD"' \
+    --field="   ${translations[Regedit]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[Run wine regedit]}":"FBTN" '@bash -c "button_click --normal WINEREG"' 1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
     unset AI_TYPE AI_NAME AI_IMAGE AI_INFO AI_FILE_ARRAY AI_TRUE_FILE AI_FILE_UNSORTED AI_FILE_SORTED AI_FILE_ENG
     if [[ $AI_SKIP != 1 ]] ; then
@@ -837,11 +836,11 @@ else
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
         --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
         --tab-pos="bottom" \
-        --tab="${translations[AUTOINSTALLS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="${translations[EMULATORS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="${translations[WINE SETTINGS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="${translations[PORTPROTON SETTINGS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="${translations[INSTALLED]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" 2>/dev/null
+        --tab="${translations[AUTOINSTALLS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+        --tab="${translations[EMULATORS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+        --tab="${translations[WINE SETTINGS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+        --tab="${translations[PORTPROTON SETTINGS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+        --tab="${translations[INSTALLED]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" 2>/dev/null
         YAD_STATUS="$?"
     else
         "${pw_yad}" --key=$KEY_MENU --notebook --expand \
@@ -850,11 +849,11 @@ else
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
         --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
         --tab-pos="bottom" \
-        --tab="${translations[INSTALLED]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="${translations[AUTOINSTALLS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="${translations[EMULATORS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="${translations[WINE SETTINGS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="${translations[PORTPROTON SETTINGS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" 2>/dev/null
+        --tab="${translations[INSTALLED]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+        --tab="${translations[AUTOINSTALLS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+        --tab="${translations[EMULATORS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+        --tab="${translations[WINE SETTINGS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+        --tab="${translations[PORTPROTON SETTINGS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" 2>/dev/null
         YAD_STATUS="$?"
     fi
 

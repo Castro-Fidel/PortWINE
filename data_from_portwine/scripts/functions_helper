@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Author: Castro-Fidel (linux-gaming.ru)
-# shellcheck disable=SC2140,SC2034,SC2068,SC2206
+# shellcheck disable=SC2034
 ########################################################################
 $PW_DEBUG
 print_error () { printf "\E[31m%s Error: $@ %s\e[0m\n" ;}
@@ -40,7 +40,7 @@ export -f print_wrapped
 
 make_acronym () {
     local words acronym i
-    words=($1)
+    IFS=' ' read -r -a words <<< "$1"
     acronym="${words[0]:0:1}"
     for ((i=1 ; i<${#words[@]} ; i++)) ; do
         acronym+="${words[$i]:0:1}"
@@ -61,7 +61,7 @@ make_abbreviation () {
 }
 export -f make_abbreviation
 
-check_variables () { [[ -z ${!1} ]] && export $1="$2" ;}
+check_variables () { [[ -z ${!1} ]] && export "$1"="$2" ;}
 
 # Эксортирует несколько переменных за один раз (одной командой)
 # и создаёт список этих переменных в $keys_all
@@ -79,14 +79,14 @@ set_several_variables () {
 }
 
 add_to_var () {
-    if ! echo ${!1} | grep "$2" &>/dev/null
-    then export $1="${!1} $2"
+    if ! echo "${!1}" | grep "$2" &>/dev/null
+    then export "$1"="${!1} $2"
     fi
 }
 
 rm_from_var () {
-    if echo ${!1} | grep "$2" &>/dev/null
-    then export $1="$(echo "${!1//$2/}" | tr -s " ")"
+    if echo "${!1}" | grep "$2" &>/dev/null
+    then export "$1"="$(echo "${!1//$2/}" | tr -s " ")"
     fi
 }
 
@@ -202,10 +202,9 @@ export -f change_locale
 generate_pot () {
     local FILES_FOR_GETTEXT i
     FILES_FOR_GETTEXT=(functions_helper start.sh setup.sh add_in_steam.sh help_info)
-    for i in ${FILES_FOR_GETTEXT[@]} ; do
-        sed 's/{translations\[/(gettext \"/g' "${PORT_SCRIPTS_PATH}/$i" > "${PORT_SCRIPTS_PATH}/${i}_tmp"
-        sed -i 's/]}/")/g' "${PORT_SCRIPTS_PATH}/${i}_tmp"
-        sed -i 's/eval_translations/gettext/g' "${PORT_SCRIPTS_PATH}/${i}_tmp"
+    for i in "${FILES_FOR_GETTEXT[@]}" ; do
+        sed -e 's/{translations\[/(gettext \"/g' -e 's/]}/")/g' -e 's/eval_translations/gettext/g' \
+        "${PORT_SCRIPTS_PATH}/$i" > "${PORT_SCRIPTS_PATH}/${i}_tmp"
     done
     #Когда присходит предупреждение: синтаксис $"..." запрещен по соображениям безопасности; используйте eval_gettext
     #и ругается на строку в которой нет перевода, можно использовать sed -i '//d' и убрать эту строку
@@ -322,7 +321,6 @@ EOF
         fi
         done
     done < "$po_file"
-    IFS="$orig_IFS"
 
     echo ")" >> "${PW_CACHE_LANG_PATH}/$LANGUAGE"
     sed -i 's/+_+/\n/g' "${PW_CACHE_LANG_PATH}/$LANGUAGE"
@@ -412,34 +410,29 @@ try_copy_dir () {
     if [[ ! -d "$1" ]] ; then print_info "directory $1 not found for copy"
     elif [[ -z "$2" ]] ; then print_error "no way to copy directory $1"
     else
-        cp -fr "$1" "$2"
-        [[ "$?" != 0 ]] && print_error "failed to copy directory $1 to $2" || return 0
+        cp -fr "$1" "$2" && return 0 || print_error "failed to copy directory $1 to $2" && return 1
     fi
-    return 1
 }
 export -f try_copy_dir
 
 try_remove_file () {
     if [[ -f "$1" ]] || [[ ! -e "$1" ]] ; then
-        rm -f "$1"
-        [[ "$?" == 0 ]] && return 0 || return 1
+        rm -f "$1" && return 0
     fi
 }
 export -f try_remove_file
 
 try_remove_dir () {
     if [[ -d "$1" ]] ; then
-        rm -fr "$1"
-        [[ "$?" == 0 ]] && return 0 || return 1
+        rm -fr "$1" && return 0
     fi
 }
 export -f try_remove_dir
 
 create_new_dir () {
     if [[ ! -d "$1" ]] ; then
-        mkdir -p "$1"
+        mkdir -p "$1" && return 0
     fi
-    return 0
 }
 
 try_force_link_file () {
@@ -483,10 +476,13 @@ try_force_link_dir () {
     if [[ ! -d "$1" ]] ; then print_info "directory $1 not found for link"
     elif [[ -z "$2" ]] ; then print_error "no way to link directory $1"
     else
-        ln -s -f -r "$1" "$2"
-        [[ "$?" != 0 ]] && print_error "failed to link directory $1 to $2" || return 0
+        if ln -s -f -r "$1" "$2" ; then 
+            return 0
+        else
+            print_error "failed to link directory $1 to $2"
+            return 1
+        fi
     fi
-    return 1
 }
 export -f try_force_link_dir
 
@@ -541,9 +537,9 @@ try_download () {
     && [[ "$no_mirror" != "true" ]]
     then
         FIRST_URL=("$url_cloud/$filename")
-        SECOND_URL=($1)
+        IFS=' ' read -r -a SECOND_URL <<< "$1"
     else
-        FIRST_URL=($1)
+        IFS=' ' read -r -a FIRST_URL <<< "$1"
         SECOND_URL=("$url_cloud/$filename")
     fi
 
@@ -553,7 +549,7 @@ try_download () {
     if check_gamescope_session ; then
         $PW_TERM "echo ; echo ; echo \"Downloading: $filename. Please wait...\" \
         ; curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
-        -H 'Pragma: no-cache' -L ${FIRST_URL[@]} -o \"$dest\""
+        -H 'Pragma: no-cache' -L ${FIRST_URL[*]} -o \"$dest\""
         [[ "$?" != 0 ]] && return 1 || return 0
     fi
 
@@ -562,10 +558,10 @@ try_download () {
     set -o pipefail
     if [[ "$silent" == "true" ]] ; then
         curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
-        -H 'Pragma: no-cache' -L ${FIRST_URL[@]} -o "$dest" 2>&1
+        -H 'Pragma: no-cache' -L "${FIRST_URL[@]}" -o "$dest" 2>&1
     else
         curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
-        -H 'Pragma: no-cache' -L ${FIRST_URL[@]} -o "$dest" 2>&1 | \
+        -H 'Pragma: no-cache' -L "${FIRST_URL[@]}" -o "$dest" 2>&1 | \
         tr '\r' '\n' | sed -ur 's|[# ]+||g;s|100||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
         "$pw_yad" --progress --text="${translations[Downloading]} $filename" --auto-close --no-escape \
         --auto-kill --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
@@ -576,7 +572,7 @@ try_download () {
         if [[ "$no_mirror" != "true" ]] ; then
             print_warning "Failed download $filename from ${FIRST_URL[0]}, trying mirror: ${SECOND_URL[0]}"
             curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
-            -H 'Pragma: no-cache' -L ${SECOND_URL[@]} -o "$dest" 2>&1 | \
+            -H 'Pragma: no-cache' -L "${SECOND_URL[@]}" -o "$dest" 2>&1 | \
             tr '\r' '\n' | sed -ur 's|[# ]+||g;s|100||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
             "$pw_yad" --progress --text="${translations[Downloading]} $filename" --auto-close --no-escape \
             --auto-kill --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
@@ -587,7 +583,7 @@ try_download () {
             return 1
         else
             print_ok "File downloaded successfully: $filename from ${SECOND_URL[0]}"
-            if try_check_sha256sum ${SECOND_URL[@]} ; then
+            if try_check_sha256sum "${SECOND_URL[@]}" ; then
                 return 0
             else
                 try_remove_file "$dest"
@@ -596,7 +592,7 @@ try_download () {
         fi
     fi
     print_ok "File downloaded successfully: $filename from ${FIRST_URL[0]}"
-    if try_check_sha256sum ${FIRST_URL[@]} ; then
+    if try_check_sha256sum "${FIRST_URL[@]}" ; then
         return 0
     else
         try_remove_file "$dest"
@@ -775,9 +771,10 @@ check_selinux () {
 export -f check_selinux
 
 background_pid () {
-    local arg1=$1 # --start или --end
-    local arg2=$2 # Название команды
-    local arg3=$3 # Номер процесса (1,2,3..)
+    local arg1 arg2 arg3 PID
+    arg1=$1 # --start или --end
+    arg2=$2 # Название команды
+    arg3=$3 # Номер процесса (1,2,3..)
 
     if [[ "$START_FROM_STEAM" == 1 ]] \
     || [[ "$PW_GUI_DISABLED_CS" == 1 ]] \
@@ -793,10 +790,10 @@ background_pid () {
         case $arg1 in
             --start)
                 eval "$arg2 &"
-                local PID=$!
+                PID=$!
                 export bg_pid"${arg3}"="$PID" ;;
             --end)
-                local PID=$(get_bg_pid bg_pid"${arg3}")
+                PID=$(get_bg_pid bg_pid"${arg3}")
                 [[ -z $PID ]] && return 1
                 wait "$PID" 2>/dev/null && return 0 ;;
         esac
@@ -902,7 +899,7 @@ search_desktop_file () {
         fi
     done
     if [[ $DESKTOP_WITH_TIME == enabled ]] || [[ $SORT_WITH_TIME == enabled ]] ; then
-        while IFS=" " read -r -a line2 ; do
+        while IFS=' ' read -r -a line2 ; do
             if [[ -z ${line2[0]} ]] \
             || [[ ! ${line2[0],,} =~ .(bat|exe|msi|reg)$ ]] ; then
                 BROKEN_LINE=1
@@ -919,18 +916,16 @@ search_desktop_file () {
             fi
         done < "$PORT_WINE_TMP_PATH/statistics"
     fi
-    IFS="$orig_IFS"
     if [[ $DESKTOP_WITH_TIME == enabled ]] || [[ $SORT_WITH_TIME == enabled ]] ; then
         local line3 line4 count_line i TIME_TOTAL SKIP_REPAIR
         ## Ремонты:
         # Ремонт, проверяет чтобы длинна хеш суммы была равна 64 символам, в ином случае удалит битые
         if [[ $FILE_SHA256SUM_NOT_FOUND == 1 ]] && [[ ${#line2[1]} != "64" ]] ; then
-            while IFS=" " read -r -a line3 ; do
+            while IFS=' ' read -r -a line3 ; do
                 if [[ ${#line3[1]} == "64" ]]
                 then echo "${line3[*]}"
                 fi
             done < "$PORT_WINE_TMP_PATH/statistics" > "$PORT_WINE_TMP_PATH/statistics_repair"
-            IFS="$orig_IFS"
             try_remove_file "$PORT_WINE_TMP_PATH/statistics"
             mv -f "$PORT_WINE_TMP_PATH/statistics_repair" "$PORT_WINE_TMP_PATH/statistics"
             return 1
@@ -938,12 +933,11 @@ search_desktop_file () {
 
         # Ремонт, если есть пустые строки и непонятные строки без .exe, .bat, .msi, .reg
         if [[ $BROKEN_LINE == 1 ]] ; then
-            while IFS=" " read -r -a line4 ; do
+            while IFS=' ' read -r -a line4 ; do
                 if [[ -n ${line4[0]} ]] && [[ ${line4[0],,} =~ .(bat|exe|msi|reg)$ ]]
                 then echo "${line4[*]}"
                 fi
             done < "$PORT_WINE_TMP_PATH/statistics" > "$PORT_WINE_TMP_PATH/statistics_repair"
-            IFS="$orig_IFS"
             try_remove_file "$PORT_WINE_TMP_PATH/statistics"
             mv -f "$PORT_WINE_TMP_PATH/statistics_repair" "$PORT_WINE_TMP_PATH/statistics"
             return 1
@@ -1324,7 +1318,6 @@ get_and_set_reg_file () {
             fi
             [[ -z $line_reg ]] && break
         done <<< "$(sed -n "$find_line"',$p' "$find_file")"
-        IFS="$orig_IFS"
     fi
     if [[ $name_add_or_del == --add ]] ; then
         if [[ -z $find_block ]] ; then
@@ -1569,7 +1562,7 @@ init_wine_ver () {
 
             if ! grep 'Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' "${WINEDIR}/share/wine/wine.inf" &>/dev/null ; then
                 echo 'HKLM,Software\NVIDIA Corporation\Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
-                echo 'HKLM,System\ControlSet001\Services\nvlddmkm,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
+                echo -e 'HKLM,System\ControlSet001\Services\nvlddmkm,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
                 sed -i '/Steam.exe/d' "${WINEDIR}/share/wine/wine.inf"
                 sed -i '/\\Valve\\Steam/d' "${WINEDIR}/share/wine/wine.inf"
                 sed -i '/winemenubuilder/d' "${WINEDIR}/share/wine/wine.inf"
@@ -1669,13 +1662,13 @@ ${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:\
     export FONTCONFIG_PATH=''
 
     unset PRESSURE_VESSEL_FILESYSTEMS_RO PRESSURE_VESSEL_FILESYSTEMS_RW
-    for PWRTMRO in ${PW_RT_MOUNT_RO[*]} ; do
+    for PWRTMRO in "${PW_RT_MOUNT_RO[@]}" ; do
         if [[ -n "${PRESSURE_VESSEL_FILESYSTEMS_RO}" ]]
         then export PRESSURE_VESSEL_FILESYSTEMS_RO="${PRESSURE_VESSEL_FILESYSTEMS_RO}:${PWRTMRO}"
         else export PRESSURE_VESSEL_FILESYSTEMS_RO="${PWRTMRO}"
         fi
     done
-    for PWRTMRW in ${PW_RT_MOUNT_RW[*]} ; do
+    for PWRTMRW in "${PW_RT_MOUNT_RW[@]}" ; do
         if [[ -n "${PRESSURE_VESSEL_FILESYSTEMS_RW}" ]]
         then export PRESSURE_VESSEL_FILESYSTEMS_RW="${PRESSURE_VESSEL_FILESYSTEMS_RW}:${PWRTMRW}"
         else export PRESSURE_VESSEL_FILESYSTEMS_RW="${PWRTMRW}"
@@ -2379,7 +2372,7 @@ pw_port_update () {
             return 1
         fi
 
-        PW_UPDATE_ALL_LIST=($UPDATE_ETERFUND $UPDATE_GITHUB $UPDATE_PP_GITEA)
+        IFS=' ' read -r -a PW_UPDATE_ALL_LIST <<< "$UPDATE_ETERFUND $UPDATE_GITHUB $UPDATE_PP_GITEA"
 
         UPDATE_MIN=${PW_UPDATE_ALL_LIST[0]}
         for i in "${!PW_UPDATE_ALL_LIST[@]}"; do
@@ -2512,12 +2505,12 @@ pw_port_update () {
 
                 "${pw_yad}" --title "${translations[Update scripts:]} v.(${scripts_install_ver}${BRANCH_VERSION})" \
                 --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --width=1280 --height=720 --text-info --wrap --scroll \
-                --button="${translations[DO NOT REMIND ME]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":16 \
-                --button="${translations[REMIND ME LATER]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":18 \
-                --button="${translations[UPDATING NOW]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":20 < "${PORT_WINE_TMP_PATH}/curent_var_ver" 2>/dev/null
+                --button="${translations[DO NOT REMIND ME]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!":16 \
+                --button="${translations[REMIND ME LATER]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!":18 \
+                --button="${translations[UPDATING NOW]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!":20 < "${PORT_WINE_TMP_PATH}/curent_var_ver" 2>/dev/null
                 YAD_STATUS="$?"
 
-                # --button="${translations[EXIT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":252 \
+                # --button="${translations[EXIT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!":252 \
             fi
             try_remove_file "${PORT_WINE_TMP_PATH}/curent_var_ver"
             case $YAD_STATUS in
@@ -2685,12 +2678,11 @@ edit_db_from_gui () {
         print_warning "Skipped edit_db_from_gui"
         return 0
     fi
-
     print_info "edit_db_from_gui PORTWINE_DB_FILE=$PORTWINE_DB_FILE"
     if [[ -n "$PORTWINE_DB_FILE" ]] \
     && [[ -f "$PORTWINE_DB_FILE" ]]
     then
-        for mod_db in $@ ; do
+        for mod_db in "$@" ; do
             proxy_mod_db="${!mod_db}"
             if [[ $proxy_mod_db =~ (${translations[Disabled]}|${translations[Disable]}) ]] ; then
                 proxy_mod_db=disabled
@@ -2707,7 +2699,7 @@ edit_db_from_gui () {
 }
 
 edit_user_conf_from_gui () {
-    for mod_db in $@ ; do
+    for mod_db in "$@" ; do
         if [[ -z "${!mod_db}" ]] ; then
             sed -i "/^export ${mod_db}=.*/d" "${USER_CONF}"
             return 0
@@ -2782,7 +2774,7 @@ pw_create_gui_png () {
             fi
         fi
 
-        PORTPROTON_NAME="${PORTPROTON_NAME//(\`|\"|\'|\!)/})"
+        PORTPROTON_NAME="${PORTPROTON_NAME//(\`|\"|\'|\!)/}"
         export PORTPROTON_NAME
         edit_db_from_gui PORTPROTON_NAME FILE_DESCRIPTION
     fi
@@ -2823,8 +2815,8 @@ pw_find_exe () {
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "${translations[Create shortcut for...]}" \
     --text="\n${translations[Choose the .exe file for which you need to create a shortcut and click OK.\\n]}" \
     --column="${translations[Choose path to .exe file:]}" ${FIND_TO_GUI} \
-    --button="${translations[CANCEL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
-    --button="${translations[OK]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)"
+    --button="${translations[CANCEL]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
+    --button="${translations[OK]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)"
     YAD_STATUS="$?"
 
     IFS="$orig_IFS"
@@ -3750,8 +3742,9 @@ start_portwine () {
     fi
 
     #run_winetricks_from_db
-    if [[ -n "${PW_MUST_HAVE_DLL}" ]]
-    then export PW_DLL_INSTALL="$(echo "${PW_MUST_HAVE_DLL} ${PW_DLL_INSTALL}" | awk '{ for(i=1;i<=NF;i++){a[$i]++} }END{ for(i in a){printf("%s ",i)} }' )"
+    if [[ -n "${PW_MUST_HAVE_DLL}" ]] ; then 
+        PW_DLL_INSTALL="$(echo "${PW_MUST_HAVE_DLL} ${PW_DLL_INSTALL}" | awk '{ for(i=1;i<=NF;i++){a[$i]++} }END{ for(i in a){printf("%s ",i)} }' )"
+        export PW_DLL_INSTALL
     fi
 
     if [[ -n "${PW_DLL_INSTALL}" ]] ; then
@@ -4126,12 +4119,9 @@ pw_yad_form_vulkan () {
             PW_PREFIX_NAME=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $2}' | sed -e s/[[:blank:]]/_/g)
             PW_WINE_VER=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $3}')
         fi
-        if [[ -z "${PW_PREFIX_NAME}" ]] \
-        || [[ -n "$(echo "${PW_PREFIX_NAME}" | grep -E '^_.*' )" ]]
-        then
-            PW_PREFIX_NAME="DEFAULT"
-        else
-            PW_PREFIX_NAME="${PW_PREFIX_NAME^^}"
+        if [[ -z "${PW_PREFIX_NAME}" ]]
+        then PW_PREFIX_NAME="DEFAULT"
+        else PW_PREFIX_NAME="${PW_PREFIX_NAME^^}"
         fi
         export PW_PREFIX_NAME PW_WINE_VER VULKAN_MOD
     fi
@@ -4147,20 +4137,20 @@ portwine_launch () {
     [[ $PW_LOG != 1 ]] && debug_timer --start -s "PW_TIME_IN_GAME"
     case "${portwine_exe,,}" in
         *.exe)
-            pw_run ${PW_VD_TMP[@]} ${WINE_WIN_START} "$portwine_exe"
+            pw_run "${PW_VD_TMP[@]}" ${WINE_WIN_START} "$portwine_exe"
         ;;
         *.bat)
             PW_USE_TERMINAL=1
-            pw_run ${PW_VD_TMP[@]} "$portwine_exe"
+            pw_run "${PW_VD_TMP[@]}" "$portwine_exe"
         ;;
         *.msi)
-            pw_run ${PW_VD_TMP[@]} msiexec /i "$portwine_exe"
+            pw_run "${PW_VD_TMP[@]}" msiexec /i "$portwine_exe"
         ;;
         *.reg)
-            pw_run ${PW_VD_TMP[@]} regedit "$portwine_exe"
+            pw_run "${PW_VD_TMP[@]}" regedit "$portwine_exe"
         ;;
         *)
-            pw_run ${PW_VD_TMP[@]} winefile
+            pw_run "${PW_VD_TMP[@]}" winefile
         ;;
     esac
 }
@@ -4222,7 +4212,7 @@ yad_info () {
     --gui-type-layout="${YAD_INFO_GUI_TYPE_LAYOUT}" \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/info.svg" \
     --text-align=center --fixed \
-    --button="${translations[OK]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
+    --button="${translations[OK]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
 }
 export -f yad_info
 
@@ -4237,7 +4227,7 @@ yad_error () {
     --gui-type-layout="${YAD_INFO_GUI_TYPE_LAYOUT}" \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/error.svg" \
     --text-align=center --fixed \
-    --button="${translations[EXIT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
+    --button="${translations[EXIT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png" 2>/dev/null
 }
 export -f yad_error
 
@@ -4251,8 +4241,8 @@ yad_error_download () {
     --gui-type-layout="${YAD_INFO_GUI_TYPE_LAYOUT}" \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/download.svg" \
     --no-wrap --text-align=center \
-    --button="${translations[SKIP]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
-    --button="${translations[REPEAT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null
+    --button="${translations[SKIP]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
+    --button="${translations[REPEAT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null
     [[ "$?" != 0 ]] && return 1 || return 0
 }
 
@@ -4266,8 +4256,8 @@ yad_question () {
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --image="$PW_GUI_ICON_PATH/question.svg" \
     --gui-type-layout="${YAD_INFO_GUI_TYPE_LAYOUT}" \
     --no-wrap --text-align=center --fixed \
-    --button="${translations[CANCEL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
-    --button="${translations[OK]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null
+    --button="${translations[CANCEL]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
+    --button="${translations[OK]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null
     [[ "$?" != 0 ]] && return 1 || return 0
 }
 
@@ -4377,10 +4367,10 @@ pw_start_progress_bar_install_game () {
 pw_stop_progress_bar () {
     if [[ -n ${PW_YAD_PID_PROGRESS_BAR[0]} ]] ; then
         local pid
-        for pid in ${PW_YAD_PID_PROGRESS_BAR[@]} ; do
+        for pid in "${PW_YAD_PID_PROGRESS_BAR[@]}" ; do
             # Здесь sleep нужен, потому что pid может уже быть, но kill его не убьет
             # со sleep 0.01 он делает 2 kill, c 0.02 нормально один
-            while $(sleep 0.02) && [[ -f /proc/$pid/exe ]] ; do
+            while sleep 0.02 && [[ -f /proc/$pid/exe ]] ; do
                 kill -s SIGUSR1 "$pid" &>/dev/null
             done
         done
@@ -4390,7 +4380,10 @@ pw_stop_progress_bar () {
 export -f pw_stop_progress_bar
 
 open_changelog () {
-    [[ "$LANGUAGE" == ru ]] && local PW_CHANGELOG_FILE="changelog_ru" || local PW_CHANGELOG_FILE="changelog_en"
+    if [[ "$LANGUAGE" == ru ]]
+    then local PW_CHANGELOG_FILE="changelog_ru"
+    else local PW_CHANGELOG_FILE="changelog_en"
+    fi
     "${pw_yad}" --title="${translations[CHANGELOG]}" --no-buttons \
     --text-info --show-uri --wrap --width=1200 --height=700 --uri-color=red \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
@@ -4480,47 +4473,39 @@ gui_proton_downloader () {
     pw_start_progress_bar_block "${translations[Check new version WINE...]}"
 
     # PROTON_GE
-    export PROTON_GE_GIT=($(curl -s "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases" | grep "browser_download_url.*\.tar\.gz" | cut -d \" -f 4))
-    if [[ -n "${PROTON_GE_GIT}" ]] ; then
-        for PGEGIT in ${PROTON_GE_GIT[@]} ; do
-            echo ${PGEGIT} | awk -F/ '{print $NF}' | sed 's/.tar.gz//' >> "${PW_TMPFS_PATH}/tmp_proton_ge_git"
+    read -r -d '' -a PROTON_GE_GIT <<< "$(curl -s "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases" | grep "browser_download_url.*\.tar\.gz" | cut -d \" -f 4)"
+    if [[ -n "${PROTON_GE_GIT[0]}" ]] ; then
+        for PGEGIT in "${PROTON_GE_GIT[@]}" ; do
+            echo "${PGEGIT}" | awk -F/ '{print $NF}' | sed 's/.tar.gz//' >> "${PW_TMPFS_PATH}/tmp_proton_ge_git"
         done
-        sed -i '/Proton-6.5-GE-2/,$d' "${PW_TMPFS_PATH}/tmp_proton_ge_git"
-        sed -i '/github-action/d' "${PW_TMPFS_PATH}/tmp_proton_ge_git"
-        sed -i '/^$/d' "${PW_TMPFS_PATH}/tmp_proton_ge_git"
+        sed -i -e '/Proton-6.5-GE-2/,$d' -e '/github-action/d' -e '/^$/d' "${PW_TMPFS_PATH}/tmp_proton_ge_git"
     fi
 
     # WINE_KRON4EK
-    export WINE_KRON4EK=($(curl -s "https://api.github.com/repos/Kron4ek/Wine-Builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4))
-    if [[ -n "${WINE_KRON4EK}" ]] ; then
-        for PGEGIT in ${WINE_KRON4EK[@]} ; do
-            echo ${PGEGIT} | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
+    read -r -d '' -a WINE_KRON4EK <<< "$(curl -s "https://api.github.com/repos/Kron4ek/Wine-Builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4)"
+    if [[ -n "${WINE_KRON4EK[0]}" ]] ; then
+        for PGEGIT in "${WINE_KRON4EK[@]}" ; do
+            echo "${PGEGIT}" | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
         done
-        sed -i '/6.3/,$d' "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
-        sed -i '/-x86/d' "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
-        sed -i '/-wow64/d' "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
-        sed -i '/^$/d' "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
+        sed -i -e '/6.3/,$d' -e '/-x86/d' -e '/-wow64/d' -e '/^$/d' "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
     fi
 
     # WINE_GE_CUSTOM
-    export WINE_GE_CUSTOM=($(curl -s "https://api.github.com/repos/GloriousEggroll/wine-ge-custom/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4))
-    if [[ -n "${WINE_GE_CUSTOM}" ]] ; then
-        for PGEGIT in ${WINE_GE_CUSTOM[@]} ; do
-            echo ${PGEGIT} | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git"
+    read -r -d '' -a WINE_GE_CUSTOM <<< "$(curl -s "https://api.github.com/repos/GloriousEggroll/wine-ge-custom/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4)"
+    if [[ -n "${WINE_GE_CUSTOM[0]}" ]] ; then
+        for PGEGIT in "${WINE_GE_CUSTOM[@]}" ; do
+            echo "${PGEGIT}" | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git"
         done
-        sed -i '/6.23/,$d' "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git"
-        sed -i '/^$/d' "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git"
+        sed -i -e '/6.23/,$d' -e '/^$/d' "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git"
     fi
 
     # PROTON_LG
-    export PROTON_PW_GIT=($(curl -s "https://api.github.com/repos/Castro-Fidel/wine_builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4 | sort -r))
-    if [[ -n "${PROTON_PW_GIT}" ]] ; then
-        for PPWGIT in ${PROTON_PW_GIT[@]} ; do
-            echo ${PPWGIT} | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_proton_pw_git"
+    read -r -d '' -a PROTON_PW_GIT <<< "$(curl -s "https://api.github.com/repos/Castro-Fidel/wine_builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4 | sort -r)"
+    if [[ -n "${PROTON_PW_GIT[0]}" ]] ; then
+        for PPWGIT in "${PROTON_PW_GIT[@]}" ; do
+            echo "${PPWGIT}" | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_proton_pw_git"
         done
-        sed -i /${PW_WINE_LG_VER}/d "${PW_TMPFS_PATH}/tmp_proton_pw_git"
-        sed -i '/plugins/d' "${PW_TMPFS_PATH}/tmp_proton_pw_git"
-        sed -i '/^$/d' "${PW_TMPFS_PATH}/tmp_proton_pw_git"
+        sed -i -e "/${PW_WINE_LG_VER}/d" -e '/plugins/d' -e '/^$/d' "${PW_TMPFS_PATH}/tmp_proton_pw_git"
     fi
     pw_stop_progress_bar
 
@@ -4531,10 +4516,9 @@ gui_proton_downloader () {
 
     pushd "${PORT_WINE_PATH}/data/dist/" || fatal
     for INSTALLING_VERSION_IN_DIST in * ; do
-        sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PW_TMPFS_PATH}/tmp_proton_pw_git"
-        sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PW_TMPFS_PATH}/tmp_proton_ge_git"
-        sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
-        sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git"
+        sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PW_TMPFS_PATH}/tmp_proton_pw_git" \
+        "${PW_TMPFS_PATH}/tmp_proton_ge_git" "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git" \
+        "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git"
     done
     popd 1>/dev/null || fatal
 
@@ -4543,7 +4527,7 @@ gui_proton_downloader () {
     TMP_PROTON_KR_GIT="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git" | tr '\n' ' ')"
     TMP_PROTON_CU_GIT="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git" | tr '\n' ' ')"
 
-    ls -l ${PORT_WINE_PATH}/data/dist | awk '{print $9}' | sed "/$PW_PROTON_LG_VER/d" | sed "/$PW_WINE_LG_VER/d" | sed '/^$/d' 1>${PW_TMPFS_PATH}/tmp_installed_wine
+    ls -l ${PORT_WINE_PATH}/data/dist | awk '{print $9}' | sed -e "/$PW_PROTON_LG_VER/d" -e "/$PW_WINE_LG_VER/d" -e '/^$/d' 1>"${PW_TMPFS_PATH}/tmp_installed_wine"
     TMP_INSTALLED_WINE="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_installed_wine" | tr '\n' ' ')"
 
     if [[ "$1" != "silent" ]] ; then
@@ -4594,13 +4578,13 @@ gui_proton_downloader () {
         --gui-type="settings-notebook" \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "${translations[WINE MANAGER]}" --separator="" --expand \
         --tab-pos="top" \
-        --tab="PROTON-LG"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="WINE-KRON4EK"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="PROTON-GE"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="WINE-GE-CUSTOM"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="${translations[INSTALLED]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --button="${translations[CANCEL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":1 \
-        --button="${translations[OK]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":0 2>/dev/null
+        --tab="PROTON-LG!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+        --tab="WINE-KRON4EK!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+        --tab="PROTON-GE!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+        --tab="WINE-GE-CUSTOM!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+        --tab="${translations[INSTALLED]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+        --button="${translations[CANCEL]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!":1 \
+        --button="${translations[OK]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!":0 2>/dev/null
         YAD_WINE_STATUS="$?"
         if [[ "$YAD_WINE_STATUS" == "1" || "$YAD_WINE_STATUS" == "252" ]] ; then
             restart_pp
@@ -4634,7 +4618,7 @@ gui_proton_downloader () {
             if unpack "${PORT_WINE_PATH}/data/tmp/${FILENAME}" "${PORT_WINE_PATH}/data/dist/" ; then
                 try_remove_file "${PORT_WINE_PATH}/data/tmp/${FILENAME}"
                 if [[ -n "${portwine_exe}" ]] ; then
-                    PW_WINE_USE="$(echo "${VERSION_WINE_GIT}" | tr [[:lower:]] [[:upper:]])"
+                    PW_WINE_USE=${VERSION_WINE_GIT^^}
                     edit_db_from_gui PW_WINE_USE
                 fi
             else
@@ -4668,8 +4652,8 @@ gui_proton_downloader () {
 
     if [[ "$1" != "silent" ]] ; then
         for GIVE_ALL_WINE in ${VERSION_WINE_GIT} ; do
-            for GIVE_WINE_URL in ${WINE_GE_CUSTOM[@]} ${PROTON_GE_GIT[@]} ${WINE_KRON4EK[@]} ${PROTON_PW_GIT[@]} ; do
-                if [[ -n $(echo ${GIVE_WINE_URL} | grep -i "${GIVE_ALL_WINE}") ]] ; then
+            for GIVE_WINE_URL in "${WINE_GE_CUSTOM[@]} ${PROTON_GE_GIT[@]} ${WINE_KRON4EK[@]} ${PROTON_PW_GIT[@]}" ; do
+                if [[ $GIVE_WINE_URL =~ $GIVE_ALL_WINE ]] ; then
                     export URL_VERSION_PROTON_GIT="${GIVE_WINE_URL}"
                 fi
             done
@@ -4679,8 +4663,8 @@ gui_proton_downloader () {
         restart_pp
     else
         print_error "$PW_WINE_USE"
-        for GIVE_WINE_URL in ${WINE_GE_CUSTOM[@]} ${PROTON_GE_GIT[@]} ${WINE_KRON4EK[@]} ${PROTON_PW_GIT[@]} ; do
-            if [[ -n $(echo ${GIVE_WINE_URL} | grep -i "${PW_WINE_USE}") ]] ; then
+        for GIVE_WINE_URL in "${WINE_GE_CUSTOM[@]} ${PROTON_GE_GIT[@]} ${WINE_KRON4EK[@]} ${PROTON_PW_GIT[@]}" ; do
+            if [[ $GIVE_WINE_URL =~ $PW_WINE_USE ]] ; then
                 export URL_VERSION_PROTON_GIT="${GIVE_WINE_URL}"
             fi
         done
@@ -4786,18 +4770,26 @@ gui_edit_db () {
     esac
 
     unset ADD_CHK_BOX_EDIT_DB
-    for int_to_boole in ${PW_EDIT_DB_LIST[@]} ; do
+    for int_to_boole in "${PW_EDIT_DB_LIST[@]}" ; do
         if [[ "${!int_to_boole}" == "1" ]]
-        then export ${int_to_boole}="TRUE"
-        else export ${int_to_boole}="FALSE"
+        then export "$int_to_boole"="TRUE"
+        else export "$int_to_boole"="FALSE"
         fi
         TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
         int_to_boole_non_pw="${int_to_boole//PW_/}"
         int_to_boole_non_pw="${int_to_boole_non_pw//"_"/" "}"
-        if [[ ! "${PW_VULKAN_USE}" == [12] ]] \
-        && [[ "${DISABLE_EDIT_DB_LIST}" =~ ${int_to_boole} ]]
-        then ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:D${THEME_CHKBOX}%${!int_to_boole}%"
-        else ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
+        if [[ ! "${PW_VULKAN_USE}" =~ ^(1|2)$ ]] \
+        && [[ -n $DISABLE_EDIT_DB_LIST ]] ; then
+            unset CHECK_BOOLE_TRUE
+            for check_boole in $DISABLE_EDIT_DB_LIST ; do
+                if [[ $check_boole == "$int_to_boole" ]] ; then
+                    CHECK_BOOLE_TRUE=1
+                    ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:D${THEME_CHKBOX}%${!int_to_boole}%"
+                fi
+            done
+            if [[ $CHECK_BOOLE_TRUE != 1 ]] ; then
+                ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
+            fi
         fi
     done
 
@@ -4852,12 +4844,12 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --separator=" " --expand \
     --gui-type="settings-base" \
     --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" \
-    --tab="${translations[MAIN]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-    --tab="${translations[ADVANCED]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-    --button="${translations[CANCEL THE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Cancel the current changes and return to the previous menu]}":1 \
-    --button="${translations[RESET SETTINGS]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Restore default settings]}":2 \
-    --button="${translations[OPEN THE SETTINGS FILE]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Open the <b>.ppdb</b> settings file in a system text editor to view and change variables manually]}":150 \
-    --button="${translations[SAVE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Save the current changes, and go to the previous menu]}":0 2>/dev/null
+    --tab="${translations[MAIN]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+    --tab="${translations[ADVANCED]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+    --button="${translations[CANCEL THE CHANGES]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Cancel the current changes and return to the previous menu]}":1 \
+    --button="${translations[RESET SETTINGS]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Restore default settings]}":2 \
+    --button="${translations[OPEN THE SETTINGS FILE]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Open the <b>.ppdb</b> settings file in a system text editor to view and change variables manually]}":150 \
+    --button="${translations[SAVE CHANGES]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Save the current changes, and go to the previous menu]}":0 2>/dev/null
     YAD_STATUS="$?"
 
     case "$YAD_STATUS" in
@@ -4873,19 +4865,18 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
             ;;
     esac
 
-    output_yad_edit_db=($(<"${PW_TMPFS_PATH}/tmp_output_yad_edit_db"))
+    IFS=' ' read -r -a output_yad_edit_db <"${PW_TMPFS_PATH}/tmp_output_yad_edit_db"
     bool_from_yad="0"
-    for boole_to_int in ${PW_EDIT_DB_LIST[@]} ; do
-        export ${boole_to_int}="${output_yad_edit_db[$bool_from_yad]}"
+    for boole_to_int in "${PW_EDIT_DB_LIST[@]}" ; do
+        export "${boole_to_int}"="${output_yad_edit_db[$bool_from_yad]}"
         if [[ "${!boole_to_int}" == "TRUE" ]]
-        then export ${boole_to_int}="1"
-        else export ${boole_to_int}="0"
+        then export "${boole_to_int}"="1"
+        else export "${boole_to_int}"="0"
         fi
         export bool_from_yad=$(( bool_from_yad + 1 ))
     done
 
     IFS='%' read -r -a PW_ADD_SETTINGS <"${PW_TMPFS_PATH}/tmp_output_yad_fps_limit"
-    IFS="$orig_IFS"
     PW_WINDOWS_VER="${PW_ADD_SETTINGS[0]}"
     PW_DLL_INSTALL="${PW_ADD_SETTINGS[1]}"
     WINEDLLOVERRIDES="${PW_ADD_SETTINGS[2]}"
@@ -4903,7 +4894,7 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
     fi
     export PW_WINE_CPU_TOPOLOGY
 
-    edit_db_from_gui ${PW_EDIT_DB_LIST[@]} LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY \
+    edit_db_from_gui "${PW_EDIT_DB_LIST[@]}" LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY \
     PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PW_LOCALE_SELECT PW_MESA_VK_WSI_PRESENT_MODE
 
     if [[ -z "$MANGOHUD_CONFIG" ]] ; then
@@ -4928,8 +4919,8 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
 gui_vkbasalt () {
     KEY_FX_GUI=$RANDOM
     FILE_VKBASALT_CONF="${PORT_WINE_PATH}/data/vkBasalt.conf"
-    LIST_FX=($(grep -E '.fx$|.fxh$' "${FILE_VKBASALT_CONF}" | awk '{print $1}'))
-    GET_FX_IN_FILE=($(echo ${PW_VKBASALT_EFFECTS} | sed s/"cas:"// | sed s/":"/" "/g))
+    read -r -d '' -a LIST_FX <<< "$(grep -E '.fx$|.fxh$' "$FILE_VKBASALT_CONF" | awk '{print $1}')"
+    IFS=' ' read -r -a GET_FX_IN_FILE <<< "$(echo "$PW_VKBASALT_EFFECTS" | sed s/"cas:"// | sed s/":"/" "/g)"
 
     PW_3DFX_INFO=${translations[Simulation of an old 3dfx graphics accelerator (adds horizontal stripes)]}
     PW_AdaptiveSharpen_INFO=${translations[Sharpness increase, can be used with CAS]}
@@ -4988,11 +4979,16 @@ gui_vkbasalt () {
     PW_PPFX_Bloom_INFO=${translations[Adds a Bloom effect]}
 
     unset ADD_GUI_FX GUI_FX_RESULT
-    for add_list_fx in ${LIST_FX[@]} ; do
+    for add_list_fx in "${LIST_FX[@]}" ; do
+        unset PW_FX_TRUE
         PW_VKBASALT_GUI_HELP="PW_${add_list_fx}_INFO"
-        if [[ ${GET_FX_IN_FILE[*]} =~ ${add_list_fx} ]]; then
-            ADD_GUI_FX+="--field=${CHKBOX_SPACE}${add_list_fx}!${!PW_VKBASALT_GUI_HELP}:${THEME_CHKBOX}%TRUE%"
-        else
+        for check_list_fx in "${GET_FX_IN_FILE[@]}" ; do
+            if [[ $check_list_fx == "$add_list_fx" ]] ; then
+                PW_FX_TRUE=1
+                ADD_GUI_FX+="--field=${CHKBOX_SPACE}${add_list_fx}!${!PW_VKBASALT_GUI_HELP}:${THEME_CHKBOX}%TRUE%"
+            fi
+        done
+        if [[ $PW_FX_TRUE != 1 ]] ; then
             ADD_GUI_FX+="--field=${CHKBOX_SPACE}${add_list_fx}!${!PW_VKBASALT_GUI_HELP}:${THEME_CHKBOX}%FALSE%"
         fi
     done
@@ -5014,16 +5010,16 @@ gui_vkbasalt () {
 
     "${pw_yad}" --plug=$KEY_FX_GUI --tabnum="2" --separator=" " --form \
     --gui-type-layout="${PANED_GUI_TYPE_LAYOUT_DOWN}" \
-    --field="AMD FidelityFX - Contrast Adaptive Sharpening"!"${translations[AMD FidelityFX - CAS is designed to dramatically improve texture sharpness without additional modification settings for games, with minimal loss of performance. (For older games it is recommended to set value = 100)]}":SCL "${VKBASALT_FFX_CAS_GUI}" \
+    --field="AMD FidelityFX - Contrast Adaptive Sharpening!${translations[AMD FidelityFX - CAS is designed to dramatically improve texture sharpness without additional modification settings for games, with minimal loss of performance. (For older games it is recommended to set value = 100)]}":SCL "${VKBASALT_FFX_CAS_GUI}" \
     1> "${PW_TMPFS_PATH}/tmp_yad_cas_set" 2>/dev/null &
 
     "${pw_yad}" --paned --key="$KEY_FX_GUI" --sensitive --title="vkBasalt" \
     --gui-type="settings-paned" \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-    --button="${translations[CANCEL THE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Cancel the current changes and return to the previous menu]}":1 \
-    --button="${translations[RESET]} VKBASALT"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Restore default settings for]} vkBasalt":178 \
-    --button="${translations[DISABLE]} VKBASALT"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Disable vkBasalt and go to the previous menu]}":180 \
-    --button="${translations[SAVE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Save the current changes, and go to the previous menu]}":182 2>/dev/null
+    --button="${translations[CANCEL THE CHANGES]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Cancel the current changes and return to the previous menu]}":1 \
+    --button="${translations[RESET]} VKBASALT!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Restore default settings for]} vkBasalt":178 \
+    --button="${translations[DISABLE]} VKBASALT!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Disable vkBasalt and go to the previous menu]}":180 \
+    --button="${translations[SAVE CHANGES]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Save the current changes, and go to the previous menu]}":182 2>/dev/null
     YAD_VKBASALT_STATUS="$?"
 
     case "${YAD_VKBASALT_STATUS}" in
@@ -5144,28 +5140,40 @@ gui_mangohud () {
     GET_REFRESH_RATE=(30 40 45 48 60 75 90 120 144 165 175 240)
 
     if [[ -n "$MANGOHUD_CONFIG" ]] ; then
-        PW_MANGOHUD_CONFIG=($(echo "$MANGOHUD_CONFIG" | tr ',' '\n' | grep -v '=' | tr [[:lower:]] [[:upper:]]))
+        PW_MANGOHUD_CONFIG=$MANGOHUD_CONFIG
     else
-        PW_MANGOHUD_CONFIG=($(echo "$DEFAULT_MANGOHUD_CONFIG" | tr ',' '\n' | grep -v '=' | tr [[:lower:]] [[:upper:]]))
+        PW_MANGOHUD_CONFIG=$DEFAULT_MANGOHUD_CONFIG
     fi
+    IFS=',' read -r -a PW_MANGOHUD_CONFIG <<< "${PW_MANGOHUD_CONFIG^^}"
 
     if [[ -n "$FPS_LIMIT" ]] ; then
-        PW_FPS_LIMIT_VAR=($(echo "$FPS_LIMIT" | tr '' '\n' | grep -v '='))
+        IFS='+' read -r -a PW_FPS_LIMIT_VAR <<< "$FPS_LIMIT"
     fi
 
-    for add_list_mh in "${LIST_MH[@]}"; do
+    for add_list_mh in "${LIST_MH[@]}" ; do
+        unset PW_MH_TRUE
         PW_MH_GUI_HELP="PW_MH_${add_list_mh}_INFO"
-        if [[ ${PW_MANGOHUD_CONFIG[*]} =~ $add_list_mh ]]; then
-            ADD_GUI_MH+="--field=${CHKBOX_SPACE}${add_list_mh//"_"/" "}!${!PW_MH_GUI_HELP}:${THEME_CHKBOX}%TRUE%"
-        else
+        for check_list_mh in "${PW_MANGOHUD_CONFIG[@]}" ; do
+            [[ $check_list_mh =~ = ]] && continue
+            if [[ $check_list_mh == "$add_list_mh" ]] ; then
+                PW_MH_TRUE=1
+                ADD_GUI_MH+="--field=${CHKBOX_SPACE}${add_list_mh//"_"/" "}!${!PW_MH_GUI_HELP}:${THEME_CHKBOX}%TRUE%"
+            fi
+        done
+        if [[ $PW_MH_TRUE != 1 ]] ; then
             ADD_GUI_MH+="--field=${CHKBOX_SPACE}${add_list_mh//"_"/" "}!${!PW_MH_GUI_HELP}:${THEME_CHKBOX}%FALSE%"
         fi
     done
 
-    for add_list_mh_fps in "${GET_REFRESH_RATE[@]}"; do
-        if [[ ${PW_FPS_LIMIT_VAR[*]} =~ $add_list_mh_fps ]]; then
-            ADD_GUI_MH_FPS+="--field=${CHKBOX_SPACE}$add_list_mh_fps:${THEME_CHKBOX}%TRUE%"
-        else
+    for add_list_mh_fps in "${GET_REFRESH_RATE[@]}" ; do
+        unset PW_MH_TRUE
+        for check_list_mh_fps in "${PW_FPS_LIMIT_VAR[@]}" ; do
+            if [[ $check_list_mh_fps == "$add_list_mh_fps" ]] ; then
+                PW_MH_TRUE=1
+                ADD_GUI_MH_FPS+="--field=${CHKBOX_SPACE}$add_list_mh_fps:${THEME_CHKBOX}%TRUE%"
+            fi
+        done
+        if [[ $PW_MH_TRUE != 1 ]] ; then
             ADD_GUI_MH_FPS+="--field=${CHKBOX_SPACE}$add_list_mh_fps:${THEME_CHKBOX}%FALSE%"
         fi
     done
@@ -5184,11 +5192,11 @@ gui_mangohud () {
     "${pw_yad}" --paned --key="$KEY_MH_GUI" --title="MangoHud" \
         --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --sensitive \
         --gui-type="settings-paned" \
-        --button="${translations[CANCEL THE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Cancel the current changes and return to the previous menu]}":1 \
-        --button="${translations[RESET]} MANGOHUD"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Restore default settings for]} MangoHud":180 \
-        --button="${translations[PREVIEW CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Start vkcube for preview changes]}":184 \
-        --button="${translations[DISABLE]} MANGOHUD"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Disable MangoHud and go to the previous menu]}":182 \
-        --button="${translations[SAVE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Save the current changes, and go to the previous menu]}":186  2>/dev/null
+        --button="${translations[CANCEL THE CHANGES]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Cancel the current changes and return to the previous menu]}":1 \
+        --button="${translations[RESET]} MANGOHUD!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Restore default settings for]} MangoHud":180 \
+        --button="${translations[PREVIEW CHANGES]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Start vkcube for preview changes]}":184 \
+        --button="${translations[DISABLE]} MANGOHUD!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Disable MangoHud and go to the previous menu]}":182 \
+        --button="${translations[SAVE CHANGES]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Save the current changes, and go to the previous menu]}":186  2>/dev/null
     YAD_MANGOHUD_STATUS="$?"
 
     case "${YAD_MANGOHUD_STATUS}" in
@@ -5223,7 +5231,8 @@ gui_mangohud () {
         fi
         ((INT_COUNT_MH++))
     done
-    GUI_MH_RESULT=$(echo "$GUI_MH_RESULT" | sed 's/ /_/g' | tr '[:upper:]' '[:lower:]')
+    GUI_MH_RESULT=${GUI_MH_RESULT// /_}
+    GUI_MH_RESULT=${GUI_MH_RESULT,,}
 
     INT_COUNT_MH_FPS="0"
     for read_list_mh_fps in ${YAD_MH_FPS_LIMIT} ; do
@@ -5318,18 +5327,26 @@ gui_dgvoodoo2 () {
     esac
 
     unset ADD_CHK_BOX_DGV2
-    for int_to_boole in ${PW_DGV2_LIST[@]} ; do
+    for int_to_boole in "${PW_DGV2_LIST[@]}" ; do
         if [[ "${!int_to_boole}" == "1" ]]
-        then export ${int_to_boole}="TRUE"
-        else export ${int_to_boole}="FALSE"
+        then export "$int_to_boole"="TRUE"
+        else export "$int_to_boole"="FALSE"
         fi
         TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
         int_to_boole_non_pw="${int_to_boole//PW_DGV2/}"
         int_to_boole_non_pw="${int_to_boole_non_pw//"_"/" "}"
-        if [[ ! "${PW_VULKAN_USE}" == [12] ]] \
-        && [[ "${DISABLE_DGV2_LIST}" =~ ${int_to_boole} ]]
-        then ADD_CHK_BOX_DGV2+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:D${THEME_CHKBOX}%${!int_to_boole}%"
-        else ADD_CHK_BOX_DGV2+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
+        if [[ ! "${PW_VULKAN_USE}" =~ ^(1|2)$ ]] \
+        && [[ -n $DISABLE_DGV2_LIST ]] ; then
+            unset CHECK_BOOLE_TRUE
+            for check_boole in $DISABLE_DGV2_LIST ; do
+                if [[ $check_boole == "$int_to_boole" ]] ; then
+                    CHECK_BOOLE_TRUE=1
+                    ADD_CHK_BOX_DGV2+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:D${THEME_CHKBOX}%${!int_to_boole}%"
+                fi
+            done
+            if [[ $CHECK_BOOLE_TRUE != 1 ]] ; then
+                ADD_CHK_BOX_DGV2+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:${THEME_CHKBOX}%${!int_to_boole}%"
+            fi
         fi
     done
 
@@ -5383,10 +5400,10 @@ gui_dgvoodoo2 () {
     "${pw_yad}" --paned --key=$KEY_DGV2_GUI --height="350" --title="dgVoodoo2" \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --gui-type="settings-paned" \
-    --button="${translations[CANCEL THE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Cancel the current changes and return to the previous menu]}":1 \
-    --button="${translations[RESET]} DGVOODOO2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Restore default settings for]} dgVoodoo2":162 \
-    --button="${translations[DISABLE]} DGVOODOO2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Disable dgVoodoo2 and go to the previous menu]}":164 \
-    --button="${translations[SAVE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Save the current changes, and go to the previous menu]}":166 \
+    --button="${translations[CANCEL THE CHANGES]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Cancel the current changes and return to the previous menu]}":1 \
+    --button="${translations[RESET]} DGVOODOO2!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Restore default settings for]} dgVoodoo2":162 \
+    --button="${translations[DISABLE]} DGVOODOO2!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Disable dgVoodoo2 and go to the previous menu]}":164 \
+    --button="${translations[SAVE CHANGES]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Save the current changes, and go to the previous menu]}":166 \
     2>/dev/null
     YAD_DGV2_STATUS="$?"
 
@@ -5407,19 +5424,18 @@ gui_dgvoodoo2 () {
             ;;
     esac
 
-    output_yad_dgv2=($(<"${PW_TMPFS_PATH}/tmp_yad_dgv2_set"))
+    IFS=' ' read -r -a output_yad_dgv2 <"${PW_TMPFS_PATH}/tmp_yad_dgv2_set"
     bool_from_yad=0
-    for boole_to_int in ${PW_DGV2_LIST[@]} ; do
-        export ${boole_to_int}="${output_yad_dgv2[$bool_from_yad]}"
+    for boole_to_int in "${PW_DGV2_LIST[@]}" ; do
+        export "${boole_to_int}"="${output_yad_dgv2[$bool_from_yad]}"
         if [[ "${!boole_to_int}" == "TRUE" ]]
-        then export ${boole_to_int}="1"
-        else export ${boole_to_int}="0"
+        then export "${boole_to_int}"="1"
+        else export "${boole_to_int}"="0"
         fi
         export bool_from_yad=$(( bool_from_yad + 1 ))
     done
 
     IFS='%' read -r -a PW_ADD_SETTINGS_DGV2 <"${PW_TMPFS_PATH}/tmp_yad_dgv2_set_cb"
-    IFS="$orig_IFS"
     PW_DGV2_RESOLUTION="${PW_ADD_SETTINGS_DGV2[0]}"
     PW_DGV2_FPS_LIMIT="${PW_ADD_SETTINGS_DGV2[1]}"
     PW_DGV2_FILTERING="${PW_ADD_SETTINGS_DGV2[2]}"
@@ -5434,7 +5450,7 @@ gui_dgvoodoo2 () {
     PW_DGV2_RESAMPLING="${PW_ADD_SETTINGS_DGV2[11]}"
     PW_DGV2_CURSOR_SCALE="${PW_ADD_SETTINGS_DGV2[12]}"
 
-    edit_db_from_gui ${PW_DGV2_LIST[@]} PW_DGVOODOO2 PW_DGV2_FILTERING PW_DGV2_ANTIALIASING PW_DGV2_VRAM PW_DGV2_RESOLUTION \
+    edit_db_from_gui "${PW_DGV2_LIST[@]}" PW_DGVOODOO2 PW_DGV2_FILTERING PW_DGV2_ANTIALIASING PW_DGV2_VRAM PW_DGV2_RESOLUTION \
     PW_DGV2_FPS_LIMIT PW_DGV2_BIT_DEPTH PW_DGV2_BRIGHTNESS PW_DGV2_COLOR PW_DGV2_CONTRAST PW_DGV2_VIDEOCARD PW_DGV2_DISPLAY_ROI \
     PW_DGV2_CURSOR_SCALE PW_DGV2_RESAMPLING
 
@@ -5489,10 +5505,10 @@ gui_gamescope () {
     if [[ "${GAMESCOPE_INSTALLED}" == 1 ]] ; then
         GAMESCOPE_NEED_INSTALL="${translations[Change settings gamescope for]} <b>$PW_NAME_DESKTOP_PROXY</b>\n ${translations[<b>NOTE:</b> To display help for each item, simply hover your mouse over the text]}"
         GS_CB="CB" && GS_CBE="CBE" && GS_NUM="NUM" && GS_NUMN="NUMN"
-        for int_to_boole in ${PW_GS_LIST[@]} ; do
+        for int_to_boole in "${PW_GS_LIST[@]}" ; do
             if [[ "${!int_to_boole}" == "1" ]]
-            then export ${int_to_boole}="TRUE"
-            else export ${int_to_boole}="FALSE"
+            then export "${int_to_boole}"="TRUE"
+            else export "${int_to_boole}"="FALSE"
             fi
             TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
             int_to_boole_non_pw="${int_to_boole//PW_GS/}"
@@ -5508,10 +5524,10 @@ gui_gamescope () {
             GAMESCOPE_NEED_INSTALL="${translations[<b>Gamescope is not detected on the system, please contact the manufacturer of your distribution\\nor search the Internet for information on how to install gamescope on your system.</b>]}"
         fi
         GS_CB="DCB" && GS_CBE="DCBE" && GS_NUM="DNUM" && GS_NUMN="DNUMN"
-        for int_to_boole in ${PW_GS_LIST[@]} ; do
+        for int_to_boole in "${PW_GS_LIST[@]}" ; do
             if [[ "${!int_to_boole}" == "1" ]]
-            then export ${int_to_boole}="TRUE"
-            else export ${int_to_boole}="FALSE"
+            then export "${int_to_boole}"="TRUE"
+            else export "${int_to_boole}"="FALSE"
             fi
             TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
             int_to_boole_non_pw="${int_to_boole//PW_GS/}"
@@ -5552,10 +5568,10 @@ gui_gamescope () {
     "${pw_yad}" --paned --key="$KEY_GS_GUI" --title="GameScope" \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --gui-type="settings-paned" \
-    --button="${translations[CANCEL THE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Cancel the current changes and return to the previous menu]}":1 \
-    --button="${translations[RESET]} GAMESCOPE"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Restore default settings for]} GameScope":162 \
-    --button="${translations[DISABLE]} GAMESCOPE"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Disable GameScope and go to the previous menu]}":164 \
-    --button="${translations[SAVE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Save the current changes, and go to the previous menu]}":166 \
+    --button="${translations[CANCEL THE CHANGES]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Cancel the current changes and return to the previous menu]}":1 \
+    --button="${translations[RESET]} GAMESCOPE!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Restore default settings for]} GameScope":162 \
+    --button="${translations[DISABLE]} GAMESCOPE!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Disable GameScope and go to the previous menu]}":164 \
+    --button="${translations[SAVE CHANGES]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Save the current changes, and go to the previous menu]}":166 \
     2>/dev/null
     YAD_GAMESCOPE_STATUS="$?"
 
@@ -5576,19 +5592,18 @@ gui_gamescope () {
             ;;
     esac
 
-    output_yad_gs=($(<"${PW_TMPFS_PATH}/tmp_yad_gs_set"))
+    IFS=' ' read -r -a output_yad_gs <"${PW_TMPFS_PATH}/tmp_yad_gs_set"
     bool_from_yad="0"
-    for boole_to_int in ${PW_GS_LIST[@]} ; do
-        export ${boole_to_int}="${output_yad_gs[$bool_from_yad]}"
+    for boole_to_int in "${PW_GS_LIST[@]}" ; do
+        export "${boole_to_int}"="${output_yad_gs[$bool_from_yad]}"
         if [[ "${!boole_to_int}" == "TRUE" ]]
-        then export ${boole_to_int}="1"
-        else export ${boole_to_int}="0"
+        then export "${boole_to_int}"="1"
+        else export "${boole_to_int}"="0"
         fi
         export bool_from_yad=$(( bool_from_yad + 1 ))
     done
 
     IFS='%' read -r -a PW_ADD_SETTINGS_GS <"${PW_TMPFS_PATH}/tmp_yad_gs_set_cb"
-    IFS="$orig_IFS"
     PW_GS_SHOW_RESOLUTION="${PW_ADD_SETTINGS_GS[0]}"
     PW_GS_INTERNAL_RESOLUTION="${PW_ADD_SETTINGS_GS[1]//','/'.'}"
     PW_GS_FRAME_LIMIT="${PW_ADD_SETTINGS_GS[2]}"
@@ -5601,7 +5616,7 @@ gui_gamescope () {
     PW_GS_ITM_SDR_NITS="${PW_ADD_SETTINGS_GS[9]}"
     PW_GS_ITM_TARGET_NITS="${PW_ADD_SETTINGS_GS[10]}"
 
-    edit_db_from_gui ${PW_GS_LIST[@]} PW_GAMESCOPE PW_GS_SHOW_RESOLUTION PW_GS_INTERNAL_RESOLUTION \
+    edit_db_from_gui "${PW_GS_LIST[@]}" PW_GAMESCOPE PW_GS_SHOW_RESOLUTION PW_GS_INTERNAL_RESOLUTION \
     PW_GS_FRAME_LIMIT PW_GS_SCALER_MODE PW_GS_FILTER_MODE \
     PW_GS_UPSCALE_SHARPNESS PW_GS_MAX_SCALE_FACTOR PW_GS_MOUSE_SENSITIVITY \
     PW_GS_SDR_CONTENT_NITS PW_GS_ITM_SDR_NITS PW_GS_ITM_TARGET_NITS
@@ -5641,10 +5656,10 @@ gui_userconf () {
     "${pw_yad}" --plug=$KEY_USERCONF_GUI --tabnum="1" --form --columns=2 --separator=" " --text-align=center \
     --text "${translations[Change global settings]} <b>(edit user.conf)</b>\n ${translations[<b>NOTE:</b> To display help for each item, simply hover your mouse over the text]}" \
     --align-buttons --homogeneous-column --gui-type-text="${PANED_GUI_TYPE_TEXT_UP}" --gui-type-layout="${PANED_GUI_TYPE_LAYOUT_UP}" \
-    --field="   ${translations[Change mirror to]} $NEW_MIRROR"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Depending on which mirror is selected, updates will be downloaded from there.]}":"FBTN" '@bash -c "button_click --userconf change_mirror"' \
-    --field="   ${translations[Change branch to]} $NEW_BRANCH"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Depending on the version of the scripts, PortProton will receive the latest changes first (the DEVEL branch), the STABLE branch is updated later and is stable.]}":"FBTN" '@bash -c "button_click --userconf change_branch"' \
-    --field="   ${translations[Change start gui to]} $NEW_START_GUI"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[When using PANED in the game start menu, additional buttons are located on one large page; if NOTEBOOK, then they are divided into several.]}":"FBTN" '@bash -c "button_click --userconf change_gui_start"' \
-    --field="   $NEW_STEAM_BEHAVIOR ${translations[steam covers download]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[If downloading steam covers is enabled, they will be downloaded and created. (Disablement is provided in cases where their downloading is unavailable for some reason)]}":"FBTN" '@bash -c "button_click --userconf change_download_grid"' \
+    --field="   ${translations[Change mirror to]} $NEW_MIRROR!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[Depending on which mirror is selected, updates will be downloaded from there.]}":"FBTN" '@bash -c "button_click --userconf change_mirror"' \
+    --field="   ${translations[Change branch to]} $NEW_BRANCH!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[Depending on the version of the scripts, PortProton will receive the latest changes first (the DEVEL branch), the STABLE branch is updated later and is stable.]}":"FBTN" '@bash -c "button_click --userconf change_branch"' \
+    --field="   ${translations[Change start gui to]} $NEW_START_GUI!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[When using PANED in the game start menu, additional buttons are located on one large page; if NOTEBOOK, then they are divided into several.]}":"FBTN" '@bash -c "button_click --userconf change_gui_start"' \
+    --field="   $NEW_STEAM_BEHAVIOR ${translations[steam covers download]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[If downloading steam covers is enabled, they will be downloaded and created. (Disablement is provided in cases where their downloading is unavailable for some reason)]}":"FBTN" '@bash -c "button_click --userconf change_download_grid"' \
     2>/dev/null &
 
     if [[ -n "$PW_SOUND_DRIVER_USE" ]] \
@@ -5726,10 +5741,10 @@ gui_userconf () {
     --title="${translations[GLOBAL SETTINGS (USER.CONF)]}" \
     --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
     --gui-type="settings-paned" \
-    --button="${translations[CANCEL THE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Cancel the current changes and return to the previous menu]}":1 \
-    --button="${translations[RESET]} USER.CONF"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Restore default settings for]} user.conf":2 \
-    --button="${translations[OPEN THE SETTINGS FILE]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Open the <b>user.conf</b> settings file in a system text editor to view and change variables manually]}":164 \
-    --button="${translations[SAVE CHANGES]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Save the current changes, and go to the previous menu]}":166 \
+    --button="${translations[CANCEL THE CHANGES]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Cancel the current changes and return to the previous menu]}":1 \
+    --button="${translations[RESET]} USER.CONF!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Restore default settings for]} user.conf":2 \
+    --button="${translations[OPEN THE SETTINGS FILE]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Open the <b>user.conf</b> settings file in a system text editor to view and change variables manually]}":164 \
+    --button="${translations[SAVE CHANGES]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Save the current changes, and go to the previous menu]}":166 \
     2>/dev/null
     YAD_USERCONF_STATUS="$?"
 
@@ -5751,7 +5766,6 @@ gui_userconf () {
             ;;
         166)
             IFS='%' read -r -a PW_ADD_SETTINGS_UC <"${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb"
-            IFS="$orig_IFS"
             PW_GPU_USE="${PW_ADD_SETTINGS_UC[0]}"
             PW_WINE_DPI_VALUE="${PW_ADD_SETTINGS_UC[1]}"
             if [[ $PW_WINE_DPI_VALUE == "${translations[Recommended value]}" ]] ; then
@@ -5759,12 +5773,12 @@ gui_userconf () {
             fi
             PW_SOUND_DRIVER_USE="${PW_ADD_SETTINGS_UC[2]}"
             GUI_THEME="${PW_ADD_SETTINGS_UC[3]}"
-            if [[ $GUI_THEME == ${translations[default]} ]] ; then GUI_THEME=default
-            elif [[ $GUI_THEME == ${translations[compact]} ]] ; then GUI_THEME=compact
-            elif [[ $GUI_THEME == ${translations[classic]} ]] ; then GUI_THEME=classic
+            if [[ $GUI_THEME == "${translations[default]}" ]] ; then GUI_THEME=default
+            elif [[ $GUI_THEME == "${translations[compact]}" ]] ; then GUI_THEME=compact
+            elif [[ $GUI_THEME == "${translations[classic]}" ]] ; then GUI_THEME=classic
             fi
             GTK_THEME="${PW_ADD_SETTINGS_UC[4]}"
-            if [[ $GTK_THEME == ${translations[default]} ]] ; then unset GTK_THEME
+            if [[ $GTK_THEME == "${translations[default]}" ]] ; then unset GTK_THEME
             elif [[ $GTK_THEME =~ ${translations[light]} ]] ; then GTK_THEME="${GTK_THEME//${translations[light]}/light}"
             elif [[ $GTK_THEME =~ ${translations[dark]} ]] ; then GTK_THEME="${GTK_THEME//${translations[dark]}/dark}"
             fi
@@ -5859,15 +5873,15 @@ portwine_create_shortcut () {
     --field="  ${translations[Add shortcut to MENU -> GAMES]}":CHK "$PW_SHORTCUT_MENU" \
     --field="  ${translations[Add shortcut to Desktop]}":CHK "$PW_SHORTCUT_DESKTOP" \
     --field="  ${translations[Add shortcut to STEAM library]}":CHK "$PW_SHORTCUT_STEAM" \
-    --button="${translations[CANCEL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":2 \
-    --button="${translations[CREATE SHORTCUT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
+    --button="${translations[CANCEL]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":2 \
+    --button="${translations[CREATE SHORTCUT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
     PW_YAD_OUT=$?
     portwine_output_yad_shortcut
 }
 
 portwine_output_yad_shortcut () {
     if [[ "$PW_YAD_OUT" == "0" ]] ; then
-        name_desktop=$(echo "$OUTPUT" | awk -F'|' '{print $1}' | sed "s/\`//g" | sed "s/\"//g" | sed "s/'//g" | sed "s/\!//g")
+        name_desktop=$(echo "$OUTPUT" | awk -F'|' '{print $1}' | sed -e "s/\`//g" -e "s/\"//g" -e "s/'//g" -e "s/\!//g")
         PW_SHORTCUT_MENU=$(echo "$OUTPUT" | awk -F'|' '{print $2}')
         PW_SHORTCUT_DESKTOP=$(echo "$OUTPUT" | awk -F'|' '{print $3}')
         PW_SHORTCUT_STEAM=$(echo "$OUTPUT" | awk -F'|' '{print $4}')
@@ -5945,6 +5959,7 @@ portwine_output_yad_shortcut () {
                             create_new_dir "${STUIDPATH}/config/"
                             create_new_dir "${STUIDPATH}/config/grid"
                             export SGGRIDDIR="${STUIDPATH}/config/grid"
+                            # shellcheck source=/dev/null
                             source "${PORT_SCRIPTS_PATH}/add_in_steam.sh"
                             if [[ "${PW_SKIP_RESTART_STEAM}" != 1 ]] && pgrep -i steam &>/dev/null ; then
                                 if yad_question "${translations[For adding shortcut to STEAM, needed restart.\\n\\nRestart STEAM now?]}" ; then
@@ -5996,11 +6011,11 @@ pw_auto_create_shortcut () {
     for link_file in "${PORT_WINE_PATH}"/data/prefixes/*/drive_c/users/*/Desktop/*.lnk
     do
         link_file=$(readlink -f "${link_file}")
-        LINKS+=(${link_file// /@_@})
+        IFS=' ' read -r -a LINKS <<< "${LINKS[*]} ${link_file// /@_@}"
     done
 
     [[ -z "${LINKS[0]}" ]] && return 0
-    read -r -a SORTED_LINKS < <(echo ${LINKS[@]} | tr ' ' '\n' | sort -u | tr '\n' ' ')
+    IFS=' ' read -r -a SORTED_LINKS <<< "$(echo "${LINKS[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ')"
 
     for link_file in "${SORTED_LINKS[@]//@_@/ }" ; do
         if command -v exiftool &>/dev/null ; then
@@ -6081,8 +6096,8 @@ portwine_change_shortcut () {
     --field="  ${translations[Add shortcut to MENU -> GAMES]}":CHK "$PW_SHORTCUT_MENU" \
     --field="  ${translations[Add shortcut to Desktop]}":CHK "$PW_SHORTCUT_DESKTOP" \
     --field="  ${translations[Add shortcut to STEAM library]}":CHK "$PW_SHORTCUT_STEAM" \
-    --button="${translations[REMOVE SHORTCUT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
-    --button="${translations[CHANGE SHORTCUT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
+    --button="${translations[REMOVE SHORTCUT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
+    --button="${translations[CHANGE SHORTCUT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
     PW_YAD_OUT=$?
     PORTWINE_CHANGE_SHORTCUT=1
     if [[ $PW_YAD_OUT == 1 ]] ; then
@@ -6096,22 +6111,22 @@ portwine_change_shortcut () {
 portwine_search_shortcut () {
     unset PW_DELETE_SHORTCUT_MENU PW_DELETE_SHORTCUT_DESKTOP
     PW_DELETE_MENU="$(grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop 2>/dev/null)"
-    PW_DELETE_SHORTCUT_MENU+=(${PW_DELETE_MENU// /@_@})
+    read -r -d '' -a PW_DELETE_SHORTCUT_MENU <<< "${PW_DELETE_SHORTCUT_MENU[*]} ${PW_DELETE_MENU// /@_@}"
 
     PW_DELETE_PP="$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop 2>/dev/null)"
-    PW_DELETE_SHORTCUT_MENU+=(${PW_DELETE_PP// /@_@})
+    read -r -d '' -a PW_DELETE_SHORTCUT_MENU <<< "${PW_DELETE_SHORTCUT_MENU[*]} ${PW_DELETE_PP// /@_@}"
 
     if [[ -d "${HOME}/Desktop" ]] ; then
         PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "${HOME}/Desktop"/*.desktop 2>/dev/null)"
-        PW_DELETE_SHORTCUT_DESKTOP+=(${PW_DELETE_DESKTOP// /@_@})
+        read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]} ${PW_DELETE_DESKTOP// /@_@}"
     fi
     if [[ -d "${HOME}/Рабочий стол" ]] ; then
         PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "${HOME}/Рабочий стол"/*.desktop 2>/dev/null)"
-        PW_DELETE_SHORTCUT_DESKTOP+=(${PW_DELETE_DESKTOP// /@_@})
+        read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]} ${PW_DELETE_DESKTOP// /@_@}"
     fi
     if [[ $(xdg-user-dir DESKTOP) ]] ; then
         PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "$(xdg-user-dir DESKTOP)"/*.desktop 2>/dev/null)"
-        PW_DELETE_SHORTCUT_DESKTOP+=(${PW_DELETE_DESKTOP// /@_@})
+        read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]} ${PW_DELETE_DESKTOP// /@_@}"
     fi
 }
 
@@ -6121,7 +6136,7 @@ portwine_delete_shortcut () {
     fi
     unset PORTWINE_CHANGE_SHORTCUT
 
-    for delete_shortcut in ${PW_DELETE_SHORTCUT_MENU[@]} ${PW_DELETE_SHORTCUT_DESKTOP[@]} ; do
+    for delete_shortcut in "${PW_DELETE_SHORTCUT_MENU[@]}" "${PW_DELETE_SHORTCUT_DESKTOP[@]}" ; do
         rm -f "${delete_shortcut//@_@/ }"
     done
 }
@@ -6131,8 +6146,8 @@ portwine_missing_shortcut () {
     --window-icon "$PW_GUI_ICON_PATH/portproton.svg" --fixed \
     --image "$PW_GUI_ICON_PATH/error.svg" \
     --text "\n${translations[Could not find the file:]}\n$(print_wrapped "${portwine_exe}" "50")\n\n${translations[ATTENTION:\\nIf you forgot to mount the disk with the running application, click CANCEL!]}\n" \
-    --button="${translations[DELETE SHORTCUT]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 \
-    --button="${translations[CANCEL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1
+    --button="${translations[DELETE SHORTCUT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 \
+    --button="${translations[CANCEL]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1
     if [[ $? -eq "0" ]] ; then
         portwine_delete_shortcut
     fi
@@ -6216,13 +6231,13 @@ pw_prefix_manager () {
         --width=700 --height=700 --expand \
         --gui-type="settings-notebook" \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "${translations[PREFIX MANAGER]}" \
-        --button="${translations[CANCEL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":1 \
-        --button="${translations[FORCE INSTALL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Installation with forced redownload of libraries]}":2 \
-        --button="${translations[INSTALL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Standard installation.]}":0 \
+        --button="${translations[CANCEL]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!":1 \
+        --button="${translations[FORCE INSTALL]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Installation with forced redownload of libraries]}":2 \
+        --button="${translations[INSTALL]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Standard installation.]}":0 \
         --tab-pos="top" \
-        --tab="${translations[DLLS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="${translations[FONTS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="${translations[SETTINGS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" 2>/dev/null
+        --tab="${translations[DLLS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+        --tab="${translations[FONTS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+        --tab="${translations[SETTINGS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" 2>/dev/null
         YAD_STATUS="$?"
 
         try_remove_file  "${PW_TMPFS_PATH}/dll_list_tmp"
@@ -6355,9 +6370,9 @@ portwine_start_debug () {
     echo "RAM:" >> "${PORT_WINE_PATH}/PortProton.log"
     free -m >> "${PORT_WINE_PATH}/PortProton.log"
     echo "--------------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Filesystem "${PATH_TO_GAME}" - $(stat -f -c %T "${PATH_TO_GAME}")" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Filesystem "${PORT_WINE_PATH}" - $(stat -f -c %T "${PORT_WINE_PATH}")" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Filesystem "${PW_TMPFS_PATH}" - $(stat -f -c %T "${PW_TMPFS_PATH}")" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "Filesystem ${PATH_TO_GAME} - $(stat -f -c %T "${PATH_TO_GAME}")" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "Filesystem ${PORT_WINE_PATH} - $(stat -f -c %T "${PORT_WINE_PATH}")" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "Filesystem ${PW_TMPFS_PATH} - $(stat -f -c %T "${PW_TMPFS_PATH}")" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "---------------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "Graphic cards and drivers:" >> "${PORT_WINE_PATH}/PortProton.log"
     echo 'lspci -k | grep -EA3 VGA|3D|Display :' >> "${PORT_WINE_PATH}/PortProton.log"
@@ -6421,7 +6436,7 @@ portwine_start_debug () {
     sleep 3
     pw_stop_progress_bar
     local PW_TIMER=0
-    while read -r line || [[ -n $(pgrep -a yad | grep "yad_gui_pp --text-info --tail --button="STOP"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 --title="DEBUG"" | awk '{print $1}') ]] ; do
+    while read -r line || [[ -n $(pgrep -a yad | grep "yad_gui_pp --text-info --tail --button="STOP!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 --title="DEBUG"" | awk '{print $1}') ]] ; do
             sleep 0.005
             if [[ -n "${line}" ]] && ! echo "${line}" | grep -qi "kerberos\|ntlm" ; then
                 echo "# ${line}"
@@ -6430,7 +6445,7 @@ portwine_start_debug () {
                 sleep 3
                 PW_TIMER=1
             fi
-    done < "${PORT_WINE_PATH}/PortProton.log" | "${pw_yad}" --text-info --tail --button="STOP"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 --title="DEBUG" \
+    done < "${PORT_WINE_PATH}/PortProton.log" | "${pw_yad}" --text-info --tail --button="STOP!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 --title="DEBUG" \
     --skip-taskbar --width=800 --height=400 --text "${translations[Please wait! After finishing the PortProton, click STOP.]}" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" 2>/dev/null &&
     kill_portwine
     sed -i '/.fx$/d' "${PORT_WINE_PATH}/PortProton.log"
@@ -6452,8 +6467,8 @@ pw_create_prefix_backup () {
     cd "$HOME" || :
     PW_PREFIX_TO_BACKUP=$("${pw_yad}" --file --directory --width=800 --height=500 \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "${translations[BACKUP PREFIX TO...]}" \
-    --button="${translations[CANCEL]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
-    --button="${translations[OK]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
+    --button="${translations[CANCEL]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
+    --button="${translations[OK]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
     YAD_STATUS="$?"
 
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
@@ -6509,8 +6524,8 @@ pw_autoinstall_from_db () {
     export PW_MANGOHUD=0
     export PW_VKBASALT=0
     export PW_USE_D3D_EXTRAS=1
+    # shellcheck source=/dev/null
     . "${PORT_SCRIPTS_PATH}/pw_autoinstall/${PW_YAD_SET}"
-
 }
 
 button_click () {
@@ -6518,16 +6533,16 @@ button_click () {
 
     case "$1" in
         --normal)
-            kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_MENU}" | awk '{print $1}') > /dev/null 2>&1
+            kill -s SIGUSR1 "$(pgrep -a yad | grep "\--key=${KEY_MENU}" | awk '{print $1}')" > /dev/null 2>&1
             ;;
         --start)
-            kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_START}" | awk '{print $1}') > /dev/null 2>&1
+            kill -s SIGUSR1 "$(pgrep -a yad | grep "\--key=${KEY_START}" | awk '{print $1}')" > /dev/null 2>&1
             ;;
         --userconf)
-            kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_USERCONF_GUI}" | awk '{print $1}') > /dev/null 2>&1
+            kill -s SIGUSR1 "$(pgrep -a yad | grep "\--key=${KEY_USERCONF_GUI}" | awk '{print $1}')" > /dev/null 2>&1
             ;;
         --desktop)
-            kill -s SIGUSR1 $(pgrep -a yad | grep "\--key=${KEY_MENU}" | awk '{print $1}') > /dev/null 2>&1
+            kill -s SIGUSR1 "$(pgrep -a yad | grep "\--key=${KEY_MENU}" | awk '{print $1}')" > /dev/null 2>&1
             PW_YAD_SET="${PORT_WINE_PATH}/${PW_YAD_SET//#@_@#/ }"
             if [[ -n $PW_DESKTOP_FILES_REGEX ]] ; then
                 local count=1
@@ -6678,8 +6693,8 @@ gui_open_user_conf () {
     PW_USERCONF_GUI="$("${pw_yad}" --title="${translations[EDIT USER CONFIG]}" \
     --text-info --editable --width=800 --height=600 \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-    --button="${translations[BACK]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":1 \
-    --button="${translations[SAVE]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":2 \
+    --button="${translations[BACK]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!":1 \
+    --button="${translations[SAVE]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!":2 \
     --filename="${PORT_WINE_PATH}/data/user.conf" 2>/dev/null)"
     YAD_STATUS="$?"
 
@@ -6701,8 +6716,8 @@ gui_edit_db_file () {
     GUI_EDIT_DB_FILE="$("${pw_yad}" --title="${translations[EDIT DB]}" \
     --text-info --editable --width=800 --height=600 \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-    --button="${translations[BACK]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":1 \
-    --button="${translations[SAVE]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"":2 \
+    --button="${translations[BACK]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!":1 \
+    --button="${translations[SAVE]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!":2 \
     --filename="${PORTWINE_DB_FILE}" 2>/dev/null)"
     YAD_STATUS="$?"
 
