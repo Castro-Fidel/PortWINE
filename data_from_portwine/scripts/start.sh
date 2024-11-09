@@ -40,7 +40,8 @@ source "$PORT_SCRIPTS_PATH/functions_helper"
 export PW_START_PID="$$"
 export NO_AT_BRIDGE="1"
 export GDK_BACKEND="x11"
-export pw_full_command_line=("$0" $*)
+IFS=' ' read -r -a pw_full_command_line <<< "$0 $*"
+export pw_full_command_line
 export orig_IFS="$IFS"
 
 MISSING_DESKTOP_FILE="0"
@@ -392,7 +393,7 @@ case "$1" in
     --debug)
         clear
         export PW_DEBUG="set -x"
-        /usr/bin/env bash -c ${pw_full_command_line[@]} 2>&1 | tee "$PORT_WINE_PATH/scripts-debug.log" &
+        /usr/bin/env bash -c "${pw_full_command_line[@]}" 2>&1 | tee "$PORT_WINE_PATH/scripts-debug.log" &
         exit 0
         ;;
     --server-file-access)
@@ -411,7 +412,7 @@ case "$1" in
         ;;
     --edit-db)
         # --edit-db /полный/путь/до/файла.exe PW_MANGOHUD=1 PW_VKBASALT=0 (и т.д) для примера
-        set_several_variables ${@:3}
+        set_several_variables "${@:3}"
         edit_db_from_gui $keys_all
         exit 0
         ;;
@@ -647,9 +648,9 @@ else
                 done < "$PORT_WINE_TMP_PATH/statistics"
                 if [[ $SORT_WITH_TIME == enabled ]] && [[ ${line2[3]} == NEW_DESKTOP ]] ; then
                     sed -i "s/${line2[1]} ${line2[2]} NEW_DESKTOP/${line2[1]} ${line2[2]} OLD_DESKTOP/" "$PORT_WINE_TMP_PATH/statistics"
-                    PW_AMOUNT_NEW_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
+                    IFS=' ' read -r -a PW_AMOUNT_NEW_DESKTOP <<< "${PW_AMOUNT_NEW_DESKTOP[*]} $AMOUNT_GENERATE_BUTTONS"
                 else
-                    PW_AMOUNT_OLD_DESKTOP+=($AMOUNT_GENERATE_BUTTONS)
+                    IFS=' ' read -r -a PW_AMOUNT_OLD_DESKTOP <<< "${PW_AMOUNT_OLD_DESKTOP[*]} $AMOUNT_GENERATE_BUTTONS"
                 fi
                 (( AMOUNT_GENERATE_BUTTONS++ ))
             fi
@@ -775,14 +776,14 @@ else
             done < "$ai_file"
             AI_FILE="${ai_file//"$PORT_SCRIPTS_PATH/pw_autoinstall/"/}"
             AI_FILE_CHECK="$AI_FILE=$AI_AMOUNT_ARRAY"
-            AI_FILE_ARRAY+=($AI_FILE)
+            IFS=' ' read -r -a AI_FILE_ARRAY <<< "${AI_FILE_ARRAY[*]} $AI_FILE"
             if [[ $AI_TOP_GAMES =~ ${AI_FILE_CHECK//=*/} ]] ; then
-                AI_TRUE_FILE+=($AI_FILE_CHECK)
+                IFS=' ' read -r -a AI_TRUE_FILE <<< "${AI_TRUE_FILE[*]} $AI_FILE_CHECK"
             else
                 if [[ ${AI_NAME["$AI_AMOUNT_ARRAY"]} =~ \(ENG\) ]] ; then
-                    AI_FILE_ENG+=($AI_AMOUNT_ARRAY)
+                    IFS=' ' read -r -a AI_FILE_ENG <<< "${AI_FILE_ENG[*]} $AI_AMOUNT_ARRAY"
                 else
-                    AI_FILE_UNSORTED+=($AI_AMOUNT_ARRAY)
+                    IFS=' ' read -r -a AI_FILE_UNSORTED <<< "${AI_FILE_UNSORTED[*]} $AI_AMOUNT_ARRAY"
                 fi
             fi
             (( AI_AMOUNT_ARRAY++ ))
