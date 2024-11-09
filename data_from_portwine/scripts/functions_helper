@@ -2774,7 +2774,7 @@ pw_create_gui_png () {
             fi
         fi
 
-        PORTPROTON_NAME="${PORTPROTON_NAME//(\`|\"|\'|\!)/}"
+        PORTPROTON_NAME="${PORTPROTON_NAME//(\`|\"|\'|\!)/})"
         export PORTPROTON_NAME
         edit_db_from_gui PORTPROTON_NAME FILE_DESCRIPTION
     fi
@@ -4920,7 +4920,7 @@ gui_vkbasalt () {
     KEY_FX_GUI=$RANDOM
     FILE_VKBASALT_CONF="${PORT_WINE_PATH}/data/vkBasalt.conf"
     read -r -d '' -a LIST_FX <<< "$(grep -E '.fx$|.fxh$' "$FILE_VKBASALT_CONF" | awk '{print $1}')"
-    IFS=' ' read -r -a GET_FX_IN_FILE <<< "$(echo "$PW_VKBASALT_EFFECTS" | sed s/"cas:"// | sed s/":"/" "/g)"
+    IFS=' ' read -r -a GET_FX_IN_FILE <<< "$(echo "$PW_VKBASALT_EFFECTS" | sed -e s/"cas:"// -e s/":"/" "/g)"
 
     PW_3DFX_INFO=${translations[Simulation of an old 3dfx graphics accelerator (adds horizontal stripes)]}
     PW_AdaptiveSharpen_INFO=${translations[Sharpness increase, can be used with CAS]}
@@ -5507,8 +5507,8 @@ gui_gamescope () {
         GS_CB="CB" && GS_CBE="CBE" && GS_NUM="NUM" && GS_NUMN="NUMN"
         for int_to_boole in "${PW_GS_LIST[@]}" ; do
             if [[ "${!int_to_boole}" == "1" ]]
-            then export "${int_to_boole}"="TRUE"
-            else export "${int_to_boole}"="FALSE"
+            then export "$int_to_boole"="TRUE"
+            else export "$int_to_boole"="FALSE"
             fi
             TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
             int_to_boole_non_pw="${int_to_boole//PW_GS/}"
@@ -5526,8 +5526,8 @@ gui_gamescope () {
         GS_CB="DCB" && GS_CBE="DCBE" && GS_NUM="DNUM" && GS_NUMN="DNUMN"
         for int_to_boole in "${PW_GS_LIST[@]}" ; do
             if [[ "${!int_to_boole}" == "1" ]]
-            then export "${int_to_boole}"="TRUE"
-            else export "${int_to_boole}"="FALSE"
+            then export "$int_to_boole"="TRUE"
+            else export "$int_to_boole"="FALSE"
             fi
             TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
             int_to_boole_non_pw="${int_to_boole//PW_GS/}"
@@ -5710,7 +5710,7 @@ gui_userconf () {
     elif [[ $GUI_THEME == classic ]] ; then GUI_THEME=${translations[classic]}
     fi
 
-    if command -v gsettings ; then
+    if command -v gsettings &>/dev/null ; then
         YAD_GTK_THEME_CHECK=$(gsettings get org.gnome.desktop.interface gtk-theme)
         YAD_GTK_THEME_CHECK=${YAD_GTK_THEME_CHECK//\'/}
         if [[ -n $YAD_GTK_THEME_CHECK ]] ; then
