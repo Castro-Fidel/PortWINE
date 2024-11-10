@@ -406,6 +406,136 @@ try_copy_file_with_checksums () {
 }
 export -f try_copy_file_with_checksums
 
+mega_bash_function () {
+    local grep_with_i grep_with_s sed_with_r find_name directory find_file found_successfully
+    local sed_with_r_before sed_with_r_after sed_view variable sed grep_use sed_use sed_global
+    local find_file_old first_command sed_with_circumflex sed_with_dollar
+    if [[ -n $1 && $1 =~ ^--ls$ ]] ; then
+        shift
+        if [[ $1 =~ \/ ]] ; then
+            directory=$1 ; shift
+        else
+            directory=$PWD
+        fi
+    elif [[ -n $1 && $1 =~ ^--echo$ ]] ; then
+        shift
+        variable=$(eval "echo \$1")
+        find_file=$variable ; shift
+    else
+        return 1
+    fi
+    sed_grep_on_bash () {
+        [[ $first_command == grep ]] && find_file_old=$find_file
+        if [[ -n $sed_with_r ]] ; then
+            if [[ $sed_with_r =~ ^s\| ]] ; then
+                sed_view='|'
+            elif [[ $sed_with_r =~ ^s\/ ]] ; then
+                sed_view='/'
+            fi
+            sed_with_r=${sed_with_r/s${sed_view}/}
+            sed_with_r_before=${sed_with_r/${sed_view}*/}
+            if [[ $sed_with_r_before =~ ^('(^'|'^') ]] ; then
+                sed_with_r_before=${sed_with_r_before//^/}
+                sed_with_circumflex='^'
+            fi
+            if [[ $sed_with_r_before =~ ('$)'|'$')$ ]] ; then
+                sed_with_r_before=${sed_with_r_before//$/}
+                sed_with_dollar='$'
+            fi
+            sed_with_r_after=${sed_with_r/${sed_view}/#@_@#}
+            sed_with_r_after=${sed_with_r_after/*#@_@#}
+            sed_with_r_after=${sed_with_r_after/${sed_view}*/}
+            [[ ${sed_with_r//*${sed_view}g/true} == true ]] && sed_global=1
+            if [[ $sed_with_r_before == \(*\) ]] ; then
+                sed_with_r_before=${sed_with_r_before//\(/}
+                sed_with_r_before=${sed_with_r_before//\)/}
+                IFS='|'
+                for sed in $sed_with_r_before ; do
+                    if [[ $find_file =~ ${sed_with_circumflex}${sed}${sed_with_dollar} ]] ; then
+                        if [[ $sed_global == 1 ]] ; then
+                            find_file=${find_file//$sed/$sed_with_r_after}
+                        else
+                            find_file=${find_file/$sed/$sed_with_r_after}
+                        fi
+                    fi
+                done
+                IFS="$orig_IFS"
+            else
+                if [[ $sed_global == 1 ]] ; then
+                    find_file=${find_file//$sed_with_r_before/$sed_with_r_after}
+                else
+                    find_file=${find_file/$sed_with_r_before/$sed_with_r_after}
+                fi
+            fi
+        fi
+
+        if [[ $grep_with_i == true ]] ; then
+            [[ $first_command == grep ]] && find_file_old=${find_file_old,,}
+            find_file=${find_file,,}
+            find_name=${find_name,,}
+        fi
+        if [[ -n $find_file_old && $find_file_old =~ $find_name ]] \
+        || [[ $first_command == sed && $find_file =~ $find_name ]] \
+        || [[ -z $find_name ]] ; then
+            [[ $grep_with_s != true ]] && echo "$find_file"
+            found_successfully=1
+        fi
+    }
+    while true ; do
+        unset grep_use sed_use
+        if [[ $1 == --grep ]] ; then
+            shift
+            [[ -n $1 ]] && grep_use=1
+            while true ; do
+                # аналог grep -i
+                if [[ $1 == "-i" ]] ; then
+                    grep_with_i=true ; shift ; continue
+                fi
+                # не выводить найденные файлы (silent)
+                if [[ $1 == "-s" ]] ; then
+                    grep_with_s=true ; shift ; continue
+                fi
+                break
+            done
+            find_name=$1 ; shift
+        fi
+        if [[ $1 == --sed ]] ; then
+            shift
+            [[ -n $1 ]] && sed_use=1
+            while true ; do
+                # аналог sed -r
+                if [[ $1 == "-r" ]] ; then
+                    shift
+                    sed_with_r=$1 ; shift ; continue
+                fi
+                break
+            done
+        fi
+        if [[ $grep_use == 1 ]] ; then
+            readonly first_command=grep 2>/dev/null
+            continue
+        fi
+        if [[ $sed_use == 1 ]] ; then
+            readonly first_command=sed 2>/dev/null
+            continue
+        fi
+        break
+    done
+    if [[ -n $directory ]] ; then
+        for find_file in "$directory"/* ; do
+            find_file=${find_file//*\//}
+            sed_grep_on_bash
+        done
+    elif [[ -n $variable ]] ; then
+        sed_grep_on_bash
+    fi
+    if [[ $found_successfully == 1 ]] ; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 try_copy_dir () {
     if [[ ! -d "$1" ]] ; then print_info "directory $1 not found for copy"
     elif [[ -z "$2" ]] ; then print_error "no way to copy directory $1"
@@ -1518,20 +1648,20 @@ init_wine_ver () {
         export WINELOADER="${WINEDIR}/bin/wine"
         export WINESERVER="${WINEDIR}/bin/wineserver"
         if [[ -d "${WINEDIR}/files" && ! -d "${WINEDIR}/dist" ]] ; then
-            for clear_dist_files in $(ls "${WINEDIR}" | sed -r "s/^(files|version)$//g") ; do
+            for clear_dist_files in $(mega_bash_function --ls "$WINEDIR" --sed -r "s/^(files|version)$//g") ; do
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
             mv -f "${WINEDIR}/files"/* "${WINEDIR}/"
             rm -fr "${WINEDIR}/files"
         elif [[ ! -d "${WINEDIR}/files" && -d "${WINEDIR}/dist" ]] ; then
-            for clear_dist_files in $(ls "${WINEDIR}" | sed -r "s/^(dist|version)$//g") ; do
+            for clear_dist_files in $(mega_bash_function --ls "$WINEDIR" --sed -r "s/^(dist|version)$//g") ; do
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
             mv -f "${WINEDIR}/dist"/* "${WINEDIR}/"
             rm -fr "${WINEDIR}/dist"
         elif [[ -f "${WINEDIR}/proton_dist.tar" ]] ; then
             unpack "${WINEDIR}/proton_dist.tar" "${WINEDIR}/"
-            for clear_dist_files in $(ls "${WINEDIR}" | sed -r "s/^(bin|lib|lib64|share|version)$//g") ; do
+            for clear_dist_files in $(mega_bash_function --ls "$WINEDIR" --sed -r "s/^(bin|lib|lib64|share|version)$//g") ; do
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
         fi
@@ -2763,7 +2893,7 @@ pw_create_gui_png () {
 
             if [[ "$PW_PRODUCTNAME" =~ (Launcher|RU) ]]
             then
-                PW_PRODUCTNAME="${PW_PRODUCTNAME//(Launcher|RU)/}"
+                mega_bash_function --echo "$PW_PRODUCTNAME" --sed -r "s/(Launcher|RU)//g/"
             fi
 
             if [[ -n "$PW_PRODUCTNAME" ]] \
@@ -2775,7 +2905,7 @@ pw_create_gui_png () {
             fi
         fi
 
-        PORTPROTON_NAME="${PORTPROTON_NAME//(\`|\"|\'|\!)/}"
+        mega_bash_function --echo "$PW_PRODUCTNAME" --sed -r "s/(\`|\"|\'|\!)//g/"
         export PORTPROTON_NAME
         edit_db_from_gui PORTPROTON_NAME FILE_DESCRIPTION
     fi
