@@ -2939,10 +2939,11 @@ start_portwine () {
     fi
 
     check_variables VKD3D_DEBUG none
+    check_variables VKD3D_SHADER_DEBUG none
     check_variables DXVK_LOG_LEVEL none
+    check_variables DXVK_NVAPI_LOG_LEVEL none
     check_variables VK_LOADER_DEBUG none
     check_variables VKBASALT_LOG_LEVEL none
-    check_variables DXVK_NVAPI_LOG_LEVEL none
     if [[ "${PW_LOG}" == 1 ]] \
     || [[ -n "$PW_DEBUG" ]]
     then
@@ -3044,6 +3045,18 @@ start_portwine () {
         check_variables WINEFSYNC_FUTEX2 0
     fi
 
+    # export WINE_SIMULATE_ASYNC_READ=1
+    # export WINE_FSYNC_SIMULATE_SCHED_QUANTUM=1
+    # export WINE_ALERT_SIMULATE_SCHED_QUANTUM=1
+    # export WINE_FSYNC_YIELD_TO_WAITERS=1
+    # export WINE_KERNEL_STACK_SIZE=64
+    # export WINE_DISABLE_KERNEL_WRITEWATCH=1
+    # export WINE_SIMULATE_WRITECOPY="1"
+
+    if [[ "${PW_NO_WRITE_WATCH}" == 1 ]] ; then
+        export WINE_DISABLE_WRITE_WATCH="1"
+    fi
+
     if [[ "${PW_FORCE_LARGE_ADDRESS_AWARE}" == 1 ]]
     then export WINE_LARGE_ADDRESS_AWARE="1"
     else export WINE_LARGE_ADDRESS_AWARE="0"
@@ -3054,13 +3067,11 @@ start_portwine () {
         export __GL_ExtensionStringVersion="17700" #nvidia override
     fi
 
-    if [[ "${PW_NO_WRITE_WATCH}" == 1 ]] ; then
-        export WINE_DISABLE_WRITE_WATCH="1"
-    fi
-
     if [[ "${PW_VULKAN_NO_ASYNC}" == 1 ]] ; then
         export RADV_DEBUG+="llvm "
         var_vkd3d_config_update single_queue
+    else
+        export DXVK_ASYNC="1"
     fi
 
     enabled_fake_nvidia_videocard ()
