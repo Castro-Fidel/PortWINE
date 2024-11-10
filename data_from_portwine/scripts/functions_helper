@@ -406,129 +406,34 @@ try_copy_file_with_checksums () {
 }
 export -f try_copy_file_with_checksums
 
-mega_bash_function () {
-    local grep_with_i grep_with_s sed_with_r find_name directory find_file found_successfully
-    local sed_with_r_before sed_with_r_after sed_view variable sed grep_use sed_use sed_global
-    local find_file_old first_command sed_with_circumflex sed_with_dollar
-    if [[ -n $1 && $1 =~ ^--ls$ ]] ; then
-        shift
-        if [[ $1 =~ \/ ]] ; then
-            directory=$1 ; shift
-        else
-            directory=$PWD
-        fi
-    elif [[ -n $1 && $1 =~ ^--echo$ ]] ; then
-        shift
-        variable=$(eval "echo \$1")
-        find_file=$variable ; shift
+lsbash () {
+    local grep_with_i find_name directory find_file found_successfully find_file_old
+    if [[ $1 =~ \/ ]] ; then
+        directory=$1 ; shift
     else
-        return 1
+        directory=$PWD
     fi
-    sed_grep_on_bash () {
-        [[ $first_command == grep ]] && find_file_old=$find_file
-        if [[ -n $sed_with_r ]] ; then
-            if [[ $sed_with_r =~ ^s\| ]] ; then
-                sed_view='|'
-            elif [[ $sed_with_r =~ ^s\/ ]] ; then
-                sed_view='/'
-            fi
-            sed_with_r=${sed_with_r/s${sed_view}/}
-            sed_with_r_before=${sed_with_r/${sed_view}*/}
-            if [[ $sed_with_r_before =~ ^('(^'|'^') ]] ; then
-                sed_with_r_before=${sed_with_r_before//^/}
-                sed_with_circumflex='^'
-            fi
-            if [[ $sed_with_r_before =~ ('$)'|'$')$ ]] ; then
-                sed_with_r_before=${sed_with_r_before//$/}
-                sed_with_dollar='$'
-            fi
-            sed_with_r_after=${sed_with_r/${sed_view}/#@_@#}
-            sed_with_r_after=${sed_with_r_after/*#@_@#}
-            sed_with_r_after=${sed_with_r_after/${sed_view}*/}
-            [[ ${sed_with_r//*${sed_view}g/true} == true ]] && sed_global=1
-            if [[ $sed_with_r_before == \(*\) ]] ; then
-                sed_with_r_before=${sed_with_r_before//\(/}
-                sed_with_r_before=${sed_with_r_before//\)/}
-                IFS='|'
-                for sed in $sed_with_r_before ; do
-                    if [[ $find_file =~ ${sed_with_circumflex}${sed}${sed_with_dollar} ]] ; then
-                        if [[ $sed_global == 1 ]] ; then
-                            find_file=${find_file//$sed/$sed_with_r_after}
-                        else
-                            find_file=${find_file/$sed/$sed_with_r_after}
-                        fi
-                    fi
-                done
-                IFS="$orig_IFS"
-            else
-                if [[ $sed_global == 1 ]] ; then
-                    find_file=${find_file//$sed_with_r_before/$sed_with_r_after}
-                else
-                    find_file=${find_file/$sed_with_r_before/$sed_with_r_after}
-                fi
-            fi
+    if [[ $1 == --grep ]] ; then
+        shift
+        # аналог grep -i
+        if [[ $1 == "-i" ]] ; then
+            grep_with_i=true ; shift
         fi
-
+        find_name=$1
+    fi
+    for find_file in "$directory"/* ; do
+        find_file=${find_file//*\//}
+        find_file_old=$find_file
         if [[ $grep_with_i == true ]] ; then
-            [[ $first_command == grep ]] && find_file_old=${find_file_old,,}
             find_file=${find_file,,}
             find_name=${find_name,,}
         fi
-        if [[ -n $find_file_old && $find_file_old =~ $find_name ]] \
-        || [[ $first_command == sed && $find_file =~ $find_name ]] \
+        if [[ $find_file =~ $find_name ]] \
         || [[ -z $find_name ]] ; then
-            [[ $grep_with_s != true ]] && echo "$find_file"
+            echo "$find_file_old"
             found_successfully=1
         fi
-    }
-    while true ; do
-        unset grep_use sed_use
-        if [[ $1 == --grep ]] ; then
-            shift
-            [[ -n $1 ]] && grep_use=1
-            while true ; do
-                # аналог grep -i
-                if [[ $1 == "-i" ]] ; then
-                    grep_with_i=true ; shift ; continue
-                fi
-                # не выводить найденные файлы (silent)
-                if [[ $1 == "-s" ]] ; then
-                    grep_with_s=true ; shift ; continue
-                fi
-                break
-            done
-            find_name=$1 ; shift
-        fi
-        if [[ $1 == --sed ]] ; then
-            shift
-            [[ -n $1 ]] && sed_use=1
-            while true ; do
-                # аналог sed -r
-                if [[ $1 == "-r" ]] ; then
-                    shift
-                    sed_with_r=$1 ; shift ; continue
-                fi
-                break
-            done
-        fi
-        if [[ $grep_use == 1 ]] ; then
-            readonly first_command=grep 2>/dev/null
-            continue
-        fi
-        if [[ $sed_use == 1 ]] ; then
-            readonly first_command=sed 2>/dev/null
-            continue
-        fi
-        break
     done
-    if [[ -n $directory ]] ; then
-        for find_file in "$directory"/* ; do
-            find_file=${find_file//*\//}
-            sed_grep_on_bash
-        done
-    elif [[ -n $variable ]] ; then
-        sed_grep_on_bash
-    fi
     if [[ $found_successfully == 1 ]] ; then
         return 0
     else
@@ -1623,7 +1528,7 @@ init_wine_ver () {
     else
         if [[ -d "${PORT_WINE_PATH}/data/dist" ]] ; then
         IFS=$'\n'
-        for dist_dir in $(ls -1 "${PORT_WINE_PATH}/data/dist/") ; do
+        for dist_dir in $(lsbash "${PORT_WINE_PATH}/data/dist/") ; do
             dist_dir_new=$(echo "${dist_dir}" | awk '$1=$1' | sed -e s/[[:blank:]]/_/g)
             if [[ ! -d "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}" ]] ; then
                 mv -- "${PORT_WINE_PATH}/data/dist/$dist_dir" "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}"
@@ -1631,7 +1536,7 @@ init_wine_ver () {
         done
         IFS="$orig_IFS"
         fi
-        if [[ -z $(ls "${PORT_WINE_PATH}/data/dist/" | grep "${PW_WINE_USE}") ]] ; then
+        if [[ -z $(lsbash "${PORT_WINE_PATH}/data/dist/" --grep "${PW_WINE_USE}") ]] ; then
             if [[ "$PW_WINE_USE" =~ PROTON_LG* ]]
             then export PW_WINE_USE=PROTON_LG
             else export PW_WINE_USE=WINE_LG
@@ -1648,20 +1553,20 @@ init_wine_ver () {
         export WINELOADER="${WINEDIR}/bin/wine"
         export WINESERVER="${WINEDIR}/bin/wineserver"
         if [[ -d "${WINEDIR}/files" && ! -d "${WINEDIR}/dist" ]] ; then
-            for clear_dist_files in $(mega_bash_function --ls "$WINEDIR" --sed -r "s/^(files|version)$//g") ; do
+            for clear_dist_files in $(lsbash "$WINEDIR" | sed -r "s/^(files|version)$//g") ; do
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
             mv -f "${WINEDIR}/files"/* "${WINEDIR}/"
             rm -fr "${WINEDIR}/files"
         elif [[ ! -d "${WINEDIR}/files" && -d "${WINEDIR}/dist" ]] ; then
-            for clear_dist_files in $(mega_bash_function --ls "$WINEDIR" --sed -r "s/^(dist|version)$//g") ; do
+            for clear_dist_files in $(lsbash "$WINEDIR" | sed -r "s/^(dist|version)$//g") ; do
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
             mv -f "${WINEDIR}/dist"/* "${WINEDIR}/"
             rm -fr "${WINEDIR}/dist"
         elif [[ -f "${WINEDIR}/proton_dist.tar" ]] ; then
             unpack "${WINEDIR}/proton_dist.tar" "${WINEDIR}/"
-            for clear_dist_files in $(mega_bash_function --ls "$WINEDIR" --sed -r "s/^(bin|lib|lib64|share|version)$//g") ; do
+            for clear_dist_files in $(lsbash "$WINEDIR" | sed -r "s/^(bin|lib|lib64|share|version)$//g") ; do
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
         fi
@@ -1942,7 +1847,7 @@ pw_kill_autostart () {
         fi
     done
 
-    if [[ -n "$(ls "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/ | grep -m 1 ".tmp")" ]] ; then
+    if [[ -n "$(lsbash "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/ | grep -m 1 ".tmp")" ]] ; then
         rm -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/*.tmp
     fi
 
@@ -2033,8 +1938,8 @@ pw_download_libs () {
                         "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" ; then
             if unpack "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/" ; then
                 try_remove_file "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz"
-                if ls "${PORT_WINE_TMP_PATH}" | grep libs_v | grep -v libs"${PW_LIBS_VER}" ; then
-                    for RM_LIBS in $(ls "${PORT_WINE_TMP_PATH}" | grep libs_v | grep -v libs"${PW_LIBS_VER}")
+                if lsbash "${PORT_WINE_TMP_PATH}" --grep libs_v | grep -v libs"${PW_LIBS_VER}" ; then
+                    for RM_LIBS in $(lsbash "${PORT_WINE_TMP_PATH}" --grep libs_v | grep -v libs"${PW_LIBS_VER}")
                     do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_LIBS}"
                     done
                 fi
@@ -2184,9 +2089,9 @@ pw_check_and_download_plugins () {
                     try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz"
                     # TODO: drop clear prefix, and add update prefix from new plugins
                     pw_clear_pfx
-                    if ls "${PORT_WINE_TMP_PATH}" | grep plugins_v | grep -v "plugins${PW_PLUGINS_VER}"
+                    if lsbash "${PORT_WINE_TMP_PATH}" --grep plugins_v | grep -v "plugins${PW_PLUGINS_VER}"
                     then
-                        for RM_PLUGINS in $(ls "${PORT_WINE_TMP_PATH}" | grep plugins_v | grep -v "plugins${PW_PLUGINS_VER}")
+                        for RM_PLUGINS in $(lsbash "${PORT_WINE_TMP_PATH}" --grep plugins_v | grep -v "plugins${PW_PLUGINS_VER}")
                         do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_PLUGINS}"
                         done
                     fi
@@ -2217,9 +2122,9 @@ pw_check_and_download_plugins () {
                     try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz"
                     # TODO: drop clear prefix, and add update prefix from new plugins
                     pw_clear_pfx
-                    if ls "${PORT_WINE_TMP_PATH}" | grep plugins_v | grep -v "plugins${PW_PLUGINS_VER}"
+                    if lsbash "${PORT_WINE_TMP_PATH}" --grep plugins_v | grep -v "plugins${PW_PLUGINS_VER}"
                     then
-                        for RM_PLUGINS in $(ls "${PORT_WINE_TMP_PATH}" | grep plugins_v | grep -v "plugins${PW_PLUGINS_VER}")
+                        for RM_PLUGINS in $(lsbash "${PORT_WINE_TMP_PATH}" --grep plugins_v | grep -v "plugins${PW_PLUGINS_VER}")
                         do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_PLUGINS}"
                         done
                     fi
@@ -2346,7 +2251,7 @@ pw_init_db () {
             # shellcheck source=/dev/null
             source "${PORTWINE_DB_FILE}"
             if echo "${portwine_exe}" | grep "/prefixes/" &>/dev/null ; then
-                if [[ -z $(ls "${PORT_WINE_PATH}/prefixes/" | grep -e ^"${PW_PREFIX_NAME}"$) ]] \
+                if [[ -z $(lsbash "${PORT_WINE_PATH}/prefixes/" --grep ^"${PW_PREFIX_NAME}"$) ]] \
                 || [[ -z $(grep -e ^"export PW_PREFIX_NAME=" "${PORTWINE_DB_FILE}" 2>/dev/null) ]]
                 then
                     PW_PREFIX_NAME=$(echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
@@ -2386,7 +2291,7 @@ pw_init_db () {
                 try_copy_file "${PW_FIND_DB_FILE}" "${portwine_exe}".ppdb
                 PORTWINE_DB_FILE="${portwine_exe}".ppdb
                 if echo "${portwine_exe}" | grep "/prefixes/" &>/dev/null ; then
-                    if [[ -z $(ls "${PORT_WINE_PATH}/prefixes/" | grep -e ^"${PW_PREFIX_NAME}"$) ]] \
+                    if [[ -z $(lsbash "${PORT_WINE_PATH}/prefixes/" --grep ^"${PW_PREFIX_NAME}"$) ]] \
                     || [[ -z $(grep -e ^"export PW_PREFIX_NAME=" "${PORTWINE_DB_FILE}" 2>/dev/null) ]]
                     then
                         PW_PREFIX_NAME=$(echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
@@ -2435,7 +2340,7 @@ pw_init_db () {
         if [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] && [[ -n "${WINE_CPU_TOPOLOGY}" ]] ; then
             export PW_WINE_CPU_TOPOLOGY="${WINE_CPU_TOPOLOGY}"
         fi
-        if ls "${PATH_TO_GAME}"/*_Data/Resources/ 2>/dev/null | grep "unity" &>/dev/null \
+        if lsbash "${PATH_TO_GAME}"/*_Data/Resources/ --grep "unity" &>/dev/null \
         && [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] \
         && [[ $(grep -c ^"processor" /proc/cpuinfo) -gt "8" ]]
         then
@@ -2893,7 +2798,7 @@ pw_create_gui_png () {
 
             if [[ "$PW_PRODUCTNAME" =~ (Launcher|RU) ]]
             then
-                mega_bash_function --echo "$PW_PRODUCTNAME" --sed -r "s/(Launcher|RU)//g/"
+                PW_PRODUCTNAME=$(echo "$PW_PRODUCTNAME" | sed -r "s/(Launcher|RU)//g")
             fi
 
             if [[ -n "$PW_PRODUCTNAME" ]] \
@@ -2905,7 +2810,7 @@ pw_create_gui_png () {
             fi
         fi
 
-        mega_bash_function --echo "$PW_PRODUCTNAME" --sed -r "s/(\`|\"|\'|\!)//g/"
+        PW_PRODUCTNAME=$(echo "$PW_PRODUCTNAME" | sed -r "s/(\`|\"|'|\!)//g")
         export PORTPROTON_NAME
         edit_db_from_gui PORTPROTON_NAME FILE_DESCRIPTION
     fi
