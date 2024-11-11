@@ -407,32 +407,65 @@ try_copy_file_with_checksums () {
 export -f try_copy_file_with_checksums
 
 lsbash () {
-    local grep_with_i find_name directory find_file found_successfully find_file_old
+    local grep_with_i grep_with_v find_name directory find_file found_successfully find_file_old find_file_old_array
     if [[ $1 =~ \/ ]] ; then
         directory=$1 ; shift
     else
         directory=$PWD
     fi
-    if [[ $1 == --grep ]] ; then
-        shift
-        # аналог grep -i
-        if [[ $1 == "-i" ]] ; then
-            grep_with_i=true ; shift
-        fi
-        find_name=$1
-    fi
-    for find_file in "$directory"/* ; do
-        find_file=${find_file//*\//}
+    grep_find_file1 () {
         find_file_old=$find_file
         if [[ $grep_with_i == true ]] ; then
             find_file=${find_file,,}
             find_name=${find_name,,}
         fi
-        if [[ $find_file =~ $find_name ]] \
-        || [[ -z $find_name ]] ; then
-            echo "$find_file_old"
-            found_successfully=1
+        grep_find_file2 () {
+            if [[ -z $1 ]] ; then
+                echo "$find_file_old"
+                found_successfully=1
+            else
+                find_file_old_array+=("$find_file_old")
+            fi
+        }
+        if [[ $grep_with_v == true ]] ; then
+            if [[ ! $find_file =~ $find_name ]] ; then
+                grep_find_file2 "$@"
+            fi
+        else
+            if [[ $find_file =~ $find_name ]] \
+            || [[ -z $find_name ]] ; then
+                grep_find_file2 "$@"
+            fi
         fi
+    }
+    while true ; do
+        unset grep_with_i grep_with_v
+        if [[ $1 == --grep ]] ; then
+            shift
+            while true ; do
+                # аналог grep -i
+                if [[ $1 == "-i" ]] ; then
+                    grep_with_i=true ; shift ; continue
+                fi
+                # аналог grep -v
+                if [[ $1 == "-v" ]] ; then
+                    grep_with_v=true ; shift ; continue
+                fi
+                find_name=$1 ; shift ; break
+            done
+        fi
+        if [[ -n ${find_file_old_array[0]} ]] ; then
+            for find_file in "${find_file_old_array[@]}" ; do
+                unset find_file_old_array
+                grep_find_file1 "$@"
+            done
+        else
+            for find_file in "$directory"/* ; do
+                find_file=${find_file//*\//}
+                grep_find_file1 "$@"
+            done
+        fi
+        if [[ -n $1 ]] ; then continue ; else break ; fi
     done
     if [[ $found_successfully == 1 ]] ; then
         return 0
@@ -1429,7 +1462,7 @@ restart_pp () {
         --userconf) export RESTART_PP_USED="userconf" ;;
         --edit_db) export RESTART_PP_USED="edit_db" ;;
     esac
-    /usr/bin/env bash -c ${pw_full_command_line[@]} &
+    /usr/bin/env bash -c "${pw_full_command_line[@]}" &
     exit 0
 }
 
@@ -1938,8 +1971,8 @@ pw_download_libs () {
                         "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" ; then
             if unpack "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/" ; then
                 try_remove_file "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz"
-                if lsbash "${PORT_WINE_TMP_PATH}" --grep libs_v | grep -v libs"${PW_LIBS_VER}" ; then
-                    for RM_LIBS in $(lsbash "${PORT_WINE_TMP_PATH}" --grep libs_v | grep -v libs"${PW_LIBS_VER}")
+                if lsbash "${PORT_WINE_TMP_PATH}" --grep libs_v --grep -v libs"${PW_LIBS_VER}" ; then
+                    for RM_LIBS in $(lsbash "${PORT_WINE_TMP_PATH}" --grep libs_v --grep -v libs"${PW_LIBS_VER}")
                     do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_LIBS}"
                     done
                 fi
@@ -2089,9 +2122,9 @@ pw_check_and_download_plugins () {
                     try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz"
                     # TODO: drop clear prefix, and add update prefix from new plugins
                     pw_clear_pfx
-                    if lsbash "${PORT_WINE_TMP_PATH}" --grep plugins_v | grep -v "plugins${PW_PLUGINS_VER}"
+                    if lsbash "${PORT_WINE_TMP_PATH}" --grep plugins_v --grep -v "plugins${PW_PLUGINS_VER}"
                     then
-                        for RM_PLUGINS in $(lsbash "${PORT_WINE_TMP_PATH}" --grep plugins_v | grep -v "plugins${PW_PLUGINS_VER}")
+                        for RM_PLUGINS in $(lsbash "${PORT_WINE_TMP_PATH}" --grep plugins_v --grep -v "plugins${PW_PLUGINS_VER}")
                         do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_PLUGINS}"
                         done
                     fi
@@ -2122,9 +2155,9 @@ pw_check_and_download_plugins () {
                     try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz"
                     # TODO: drop clear prefix, and add update prefix from new plugins
                     pw_clear_pfx
-                    if lsbash "${PORT_WINE_TMP_PATH}" --grep plugins_v | grep -v "plugins${PW_PLUGINS_VER}"
+                    if lsbash "${PORT_WINE_TMP_PATH}" --grep plugins_v --grep -v "plugins${PW_PLUGINS_VER}"
                     then
-                        for RM_PLUGINS in $(lsbash "${PORT_WINE_TMP_PATH}" --grep plugins_v | grep -v "plugins${PW_PLUGINS_VER}")
+                        for RM_PLUGINS in $(lsbash "${PORT_WINE_TMP_PATH}" --grep plugins_v --grep -v "plugins${PW_PLUGINS_VER}")
                         do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_PLUGINS}"
                         done
                     fi
@@ -6044,16 +6077,15 @@ pw_auto_create_shortcut () {
     fi
 
     unset LINKS
-    for link_file in "${PORT_WINE_PATH}"/data/prefixes/*/drive_c/users/*/Desktop/*.lnk
-    do
-        link_file=$(readlink -f "${link_file}")
-        IFS=' ' read -r -a LINKS <<< "${LINKS[*]} ${link_file// /@_@}"
+    for link_file in "${PORT_WINE_PATH}"/data/prefixes/*/drive_c/users/*/Desktop/*.lnk ; do
+        link_file=$(readlink -f "$link_file")
+        LINKS+=("${link_file// /#@_@#}")
     done
 
     [[ -z "${LINKS[0]}" ]] && return 0
     IFS=' ' read -r -a SORTED_LINKS <<< "$(echo "${LINKS[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ')"
 
-    for link_file in "${SORTED_LINKS[@]//@_@/ }" ; do
+    for link_file in "${SORTED_LINKS[@]//#@_@#/ }" ; do
         if command -v exiftool &>/dev/null ; then
             if timeout 3 exiftool "$link_file" &> "${PW_TMPFS_PATH}/exiftool.tmp" ; then
                 prefix_name=$(echo "$link_file" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
@@ -6147,22 +6179,22 @@ portwine_change_shortcut () {
 portwine_search_shortcut () {
     unset PW_DELETE_SHORTCUT_MENU PW_DELETE_SHORTCUT_DESKTOP
     PW_DELETE_MENU="$(grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop 2>/dev/null)"
-    read -r -d '' -a PW_DELETE_SHORTCUT_MENU <<< "${PW_DELETE_SHORTCUT_MENU[*]} ${PW_DELETE_MENU// /@_@}"
+    read -r -d '' -a PW_DELETE_SHORTCUT_MENU <<< "${PW_DELETE_SHORTCUT_MENU[*]}${PW_DELETE_MENU// /#@_@#} "
 
     PW_DELETE_PP="$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop 2>/dev/null)"
-    read -r -d '' -a PW_DELETE_SHORTCUT_MENU <<< "${PW_DELETE_SHORTCUT_MENU[*]} ${PW_DELETE_PP// /@_@}"
+    read -r -d '' -a PW_DELETE_SHORTCUT_MENU <<< "${PW_DELETE_SHORTCUT_MENU[*]}${PW_DELETE_PP// /#@_@#} "
 
     if [[ -d "${HOME}/Desktop" ]] ; then
         PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "${HOME}/Desktop"/*.desktop 2>/dev/null)"
-        read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]} ${PW_DELETE_DESKTOP// /@_@}"
+        read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]}${PW_DELETE_DESKTOP// /#@_@#} "
     fi
     if [[ -d "${HOME}/Рабочий стол" ]] ; then
         PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "${HOME}/Рабочий стол"/*.desktop 2>/dev/null)"
-        read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]} ${PW_DELETE_DESKTOP// /@_@}"
+        read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]}${PW_DELETE_DESKTOP// /#@_@#} "
     fi
     if [[ $(xdg-user-dir DESKTOP) ]] ; then
         PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "$(xdg-user-dir DESKTOP)"/*.desktop 2>/dev/null)"
-        read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]} ${PW_DELETE_DESKTOP// /@_@}"
+        read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]}${PW_DELETE_DESKTOP// /#@_@#} "
     fi
 }
 
@@ -6173,7 +6205,7 @@ portwine_delete_shortcut () {
     unset PORTWINE_CHANGE_SHORTCUT
 
     for delete_shortcut in "${PW_DELETE_SHORTCUT_MENU[@]}" "${PW_DELETE_SHORTCUT_DESKTOP[@]}" ; do
-        rm -f "${delete_shortcut//@_@/ }"
+        rm -f "${delete_shortcut//#@_@#/ }"
     done
 }
 

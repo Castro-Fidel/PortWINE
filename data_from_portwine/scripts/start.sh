@@ -643,9 +643,9 @@ else
                 done < "$PORT_WINE_TMP_PATH/statistics"
                 if [[ $SORT_WITH_TIME == enabled ]] && [[ ${line2[3]} == NEW_DESKTOP ]] ; then
                     sed -i "s/${line2[1]} ${line2[2]} NEW_DESKTOP/${line2[1]} ${line2[2]} OLD_DESKTOP/" "$PORT_WINE_TMP_PATH/statistics"
-                    IFS=' ' read -r -a PW_AMOUNT_NEW_DESKTOP <<< "${PW_AMOUNT_NEW_DESKTOP[*]} $AMOUNT_GENERATE_BUTTONS"
+                    PW_AMOUNT_NEW_DESKTOP+=("$AMOUNT_GENERATE_BUTTONS")
                 else
-                    IFS=' ' read -r -a PW_AMOUNT_OLD_DESKTOP <<< "${PW_AMOUNT_OLD_DESKTOP[*]} $AMOUNT_GENERATE_BUTTONS"
+                    PW_AMOUNT_OLD_DESKTOP+=("$AMOUNT_GENERATE_BUTTONS")
                 fi
                 (( AMOUNT_GENERATE_BUTTONS++ ))
             fi
@@ -771,14 +771,14 @@ else
             done < "$ai_file"
             AI_FILE="${ai_file//"$PORT_SCRIPTS_PATH/pw_autoinstall/"/}"
             AI_FILE_CHECK="$AI_FILE=$AI_AMOUNT_ARRAY"
-            IFS=' ' read -r -a AI_FILE_ARRAY <<< "${AI_FILE_ARRAY[*]} $AI_FILE"
+            AI_FILE_ARRAY+=("$AI_FILE")
             if [[ $AI_TOP_GAMES =~ ${AI_FILE_CHECK//=*/} ]] ; then
-                IFS=' ' read -r -a AI_TRUE_FILE <<< "${AI_TRUE_FILE[*]} $AI_FILE_CHECK"
+                AI_TRUE_FILE+=("$AI_FILE_CHECK")
             else
                 if [[ ${AI_NAME["$AI_AMOUNT_ARRAY"]} =~ \(ENG\) ]] ; then
-                    IFS=' ' read -r -a AI_FILE_ENG <<< "${AI_FILE_ENG[*]} $AI_AMOUNT_ARRAY"
+                    AI_FILE_ENG+=("$AI_AMOUNT_ARRAY")
                 else
-                    IFS=' ' read -r -a AI_FILE_UNSORTED <<< "${AI_FILE_UNSORTED[*]} $AI_AMOUNT_ARRAY"
+                    AI_FILE_UNSORTED+=("$AI_AMOUNT_ARRAY")
                 fi
             fi
             (( AI_AMOUNT_ARRAY++ ))
@@ -786,8 +786,9 @@ else
 
         for ai_sort in $AI_TOP_GAMES ; do
             if [[ ${AI_TRUE_FILE[*]} =~ $ai_sort ]] ; then
-                AI_TRUE_FILE_NEW=(${AI_TRUE_FILE[@]//$ai_sort=/})
-                AI_FILE_SORTED+=(${AI_TRUE_FILE_NEW[@]//*=*/})
+                AI_TRUE_FILE_NEW=("${AI_TRUE_FILE[@]//$ai_sort=/}")
+                AI_TRUE_FILE_NEW=("${AI_TRUE_FILE_NEW[*]//*=*/}")
+                AI_FILE_SORTED+=("${AI_TRUE_FILE_NEW[*]// /}")
             fi
         done
 
