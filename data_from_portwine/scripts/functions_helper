@@ -40,7 +40,7 @@ export -f print_wrapped
 
 make_acronym () {
     local words acronym i
-    IFS=' ' read -r -a words <<< "$1"
+    read -r -a words <<< "$1"
     acronym="${words[0]:0:1}"
     for ((i=1 ; i<${#words[@]} ; i++)) ; do
         acronym+="${words[$i]:0:1}"
@@ -265,7 +265,7 @@ EOF
         po_file="${PORT_WINE_PATH}/data/locales/$LANGUAGE/LC_MESSAGES/PortProton.po"
     fi
 
-    while IFS= read -r line ; do
+    while read -r line ; do
         while [[ $line =~ msgid ]] ; do
                 unset msgid
                 msgid="$line"
@@ -606,9 +606,9 @@ try_download () {
     && [[ "$no_mirror" != "true" ]]
     then
         FIRST_URL=("$url_cloud/$filename")
-        IFS=' ' read -r -a SECOND_URL <<< "$1"
+        read -r -a SECOND_URL <<< "$1"
     else
-        IFS=' ' read -r -a FIRST_URL <<< "$1"
+        read -r -a FIRST_URL <<< "$1"
         SECOND_URL=("$url_cloud/$filename")
     fi
 
@@ -951,7 +951,7 @@ search_desktop_file () {
         desktop_file_new="${desktop_file//"$PORT_WINE_PATH/"/}"
         if [[ $desktop_file_new =~ .desktop$ ]] ; then
             if [[ ! $desktop_file_new =~ (PortProton|readme) ]] ; then
-                while IFS= read -r line1 ; do
+                while read -r line1 ; do
                     if [[ $line1 =~ ^Exec= ]] ; then
                         if check_flatpak ; then
                             EXEC_DESKTOP=${line1//Exec=flatpak run ru.linux_gaming.PortProton /}
@@ -968,7 +968,7 @@ search_desktop_file () {
         fi
     done
     if [[ $DESKTOP_WITH_TIME == enabled ]] || [[ $SORT_WITH_TIME == enabled ]] ; then
-        while IFS=' ' read -r -a line2 ; do
+        while read -r -a line2 ; do
             if [[ -z ${line2[0]} ]] \
             || [[ ! ${line2[0],,} =~ .(bat|exe|msi|reg)$ ]] ; then
                 BROKEN_LINE=1
@@ -990,7 +990,7 @@ search_desktop_file () {
         ## Ремонты:
         # Ремонт, проверяет чтобы длинна хеш суммы была равна 64 символам, в ином случае удалит битые
         if [[ $FILE_SHA256SUM_NOT_FOUND == 1 ]] && [[ ${#line2[1]} != "64" ]] ; then
-            while IFS=' ' read -r -a line3 ; do
+            while read -r -a line3 ; do
                 if [[ ${#line3[1]} == "64" ]]
                 then echo "${line3[*]}"
                 fi
@@ -1002,7 +1002,7 @@ search_desktop_file () {
 
         # Ремонт, если есть пустые строки и непонятные строки без .exe, .bat, .msi, .reg
         if [[ $BROKEN_LINE == 1 ]] ; then
-            while IFS=' ' read -r -a line4 ; do
+            while read -r -a line4 ; do
                 if [[ -n ${line4[0]} ]] && [[ ${line4[0],,} =~ .(bat|exe|msi|reg)$ ]]
                 then echo "${line4[*]}"
                 fi
@@ -1374,7 +1374,7 @@ get_and_set_reg_file () {
             find_line=${find_line//:*/}
         fi
         count=-1
-        while IFS= read -r line_reg ; do
+        while read -r line_reg ; do
             ((count++))
             if [[ $line_reg =~ $name_for_find ]] ; then
                 if [[ $line_reg == $name_for_find$name_for_set ]] ; then
@@ -1386,7 +1386,7 @@ get_and_set_reg_file () {
                 break
             fi
             [[ -z $line_reg ]] && break
-        done <<< "$(sed -n "$find_line"',$p' "$find_file")"
+        done < <(sed -n "$find_line"',$p' "$find_file")
     fi
     if [[ $name_add_or_del == --add ]] ; then
         if [[ -z $find_block ]] ; then
@@ -1448,7 +1448,7 @@ fixes_after_update () {
     fixes_path="$PORT_WINE_TMP_PATH/fixes_apply"
     [[ ! -f $fixes_path ]] && touch "$fixes_path"
 
-    while IFS= read -r line ; do
+    while read -r line ; do
         if [[ $line == "$fixes_info" ]] ; then
             return 1
         fi
@@ -2441,7 +2441,7 @@ pw_port_update () {
             return 1
         fi
 
-        IFS=' ' read -r -a PW_UPDATE_ALL_LIST <<< "$UPDATE_ETERFUND $UPDATE_GITHUB $UPDATE_PP_GITEA"
+        read -r -a PW_UPDATE_ALL_LIST <<< "$UPDATE_ETERFUND $UPDATE_GITHUB $UPDATE_PP_GITEA"
 
         UPDATE_MIN=${PW_UPDATE_ALL_LIST[0]}
         for i in "${!PW_UPDATE_ALL_LIST[@]}"; do
@@ -2887,8 +2887,8 @@ pw_find_exe () {
     --button="${translations[CANCEL]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
     --button="${translations[OK]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)"
     YAD_STATUS="$?"
-
     IFS="$orig_IFS"
+
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
         print_info "Restarting..."
         restart_pp
@@ -4542,7 +4542,7 @@ gui_proton_downloader () {
     pw_start_progress_bar_block "${translations[Check new version WINE...]}"
 
     # PROTON_GE
-    read -r -d '' -a PROTON_GE_GIT <<< "$(curl -s "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases" | grep "browser_download_url.*\.tar\.gz" | cut -d \" -f 4)"
+    read -r -d '' -a PROTON_GE_GIT < <(curl -s "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases" | grep "browser_download_url.*\.tar\.gz" | cut -d \" -f 4)
     if [[ -n "${PROTON_GE_GIT[0]}" ]] ; then
         for PGEGIT in "${PROTON_GE_GIT[@]}" ; do
             echo "${PGEGIT}" | awk -F/ '{print $NF}' | sed 's/.tar.gz//' >> "${PW_TMPFS_PATH}/tmp_proton_ge_git"
@@ -4551,7 +4551,7 @@ gui_proton_downloader () {
     fi
 
     # WINE_KRON4EK
-    read -r -d '' -a WINE_KRON4EK <<< "$(curl -s "https://api.github.com/repos/Kron4ek/Wine-Builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4)"
+    read -r -d '' -a WINE_KRON4EK < <(curl -s "https://api.github.com/repos/Kron4ek/Wine-Builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4)
     if [[ -n "${WINE_KRON4EK[0]}" ]] ; then
         for PGEGIT in "${WINE_KRON4EK[@]}" ; do
             echo "${PGEGIT}" | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
@@ -4560,7 +4560,7 @@ gui_proton_downloader () {
     fi
 
     # WINE_GE_CUSTOM
-    read -r -d '' -a WINE_GE_CUSTOM <<< "$(curl -s "https://api.github.com/repos/GloriousEggroll/wine-ge-custom/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4)"
+    read -r -d '' -a WINE_GE_CUSTOM < <(curl -s "https://api.github.com/repos/GloriousEggroll/wine-ge-custom/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4)
     if [[ -n "${WINE_GE_CUSTOM[0]}" ]] ; then
         for PGEGIT in "${WINE_GE_CUSTOM[@]}" ; do
             echo "${PGEGIT}" | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git"
@@ -4569,7 +4569,7 @@ gui_proton_downloader () {
     fi
 
     # PROTON_LG
-    read -r -d '' -a PROTON_PW_GIT <<< "$(curl -s "https://api.github.com/repos/Castro-Fidel/wine_builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4 | sort -r)"
+    read -r -d '' -a PROTON_PW_GIT < <(curl -s "https://api.github.com/repos/Castro-Fidel/wine_builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4 | sort -r)
     if [[ -n "${PROTON_PW_GIT[0]}" ]] ; then
         for PPWGIT in "${PROTON_PW_GIT[@]}" ; do
             echo "${PPWGIT}" | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_proton_pw_git"
@@ -4934,7 +4934,7 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
             ;;
     esac
 
-    IFS=' ' read -r -a output_yad_edit_db <"${PW_TMPFS_PATH}/tmp_output_yad_edit_db"
+    read -r -a output_yad_edit_db <"${PW_TMPFS_PATH}/tmp_output_yad_edit_db"
     bool_from_yad="0"
     for boole_to_int in "${PW_EDIT_DB_LIST[@]}" ; do
         export "${boole_to_int}"="${output_yad_edit_db[$bool_from_yad]}"
@@ -4988,8 +4988,8 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
 gui_vkbasalt () {
     KEY_FX_GUI=$RANDOM
     FILE_VKBASALT_CONF="${PORT_WINE_PATH}/data/vkBasalt.conf"
-    read -r -d '' -a LIST_FX <<< "$(grep -E '.fx$|.fxh$' "$FILE_VKBASALT_CONF" | awk '{print $1}')"
-    IFS=' ' read -r -a GET_FX_IN_FILE <<< "$(echo "$PW_VKBASALT_EFFECTS" | sed -e s/"cas:"// -e s/":"/" "/g)"
+    read -r -d '' -a LIST_FX < <(grep -E '.fx$|.fxh$' "$FILE_VKBASALT_CONF" | awk '{print $1}')
+    read -r -a GET_FX_IN_FILE < <(echo "$PW_VKBASALT_EFFECTS" | sed -e s/"cas:"// -e s/":"/" "/g)
 
     PW_3DFX_INFO=${translations[Simulation of an old 3dfx graphics accelerator (adds horizontal stripes)]}
     PW_AdaptiveSharpen_INFO=${translations[Sharpness increase, can be used with CAS]}
@@ -5493,7 +5493,7 @@ gui_dgvoodoo2 () {
             ;;
     esac
 
-    IFS=' ' read -r -a output_yad_dgv2 <"${PW_TMPFS_PATH}/tmp_yad_dgv2_set"
+    read -r -a output_yad_dgv2 <"${PW_TMPFS_PATH}/tmp_yad_dgv2_set"
     bool_from_yad=0
     for boole_to_int in "${PW_DGV2_LIST[@]}" ; do
         export "${boole_to_int}"="${output_yad_dgv2[$bool_from_yad]}"
@@ -5661,7 +5661,7 @@ gui_gamescope () {
             ;;
     esac
 
-    IFS=' ' read -r -a output_yad_gs <"${PW_TMPFS_PATH}/tmp_yad_gs_set"
+    read -r -a output_yad_gs <"${PW_TMPFS_PATH}/tmp_yad_gs_set"
     bool_from_yad="0"
     for boole_to_int in "${PW_GS_LIST[@]}" ; do
         export "${boole_to_int}"="${output_yad_gs[$bool_from_yad]}"
@@ -5998,7 +5998,7 @@ portwine_output_yad_shortcut () {
             if [[ -f "${SLUF}" ]]; then
                 SLUFUB=false
                 STUID64=""
-                while IFS= read -r line; do
+                while read -r line; do
                     if [[ "${line}" =~ ^[[:space:]]*\"([0-9]+)\"$ ]]; then
                         STUIDCUR="${BASH_REMATCH[1]}"
                         SLUFUB=true
@@ -6083,7 +6083,7 @@ pw_auto_create_shortcut () {
     done
 
     [[ -z "${LINKS[0]}" ]] && return 0
-    IFS=' ' read -r -a SORTED_LINKS <<< "$(echo "${LINKS[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ')"
+    read -r -a SORTED_LINKS < <(echo "${LINKS[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
 
     for link_file in "${SORTED_LINKS[@]//#@_@#/ }" ; do
         if command -v exiftool &>/dev/null ; then
@@ -6841,7 +6841,7 @@ See the License for details.]}" 2>/dev/null &
 Developer assistants and testers:]}
 $(credits_devel)" 2>/dev/null &
 
-    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=3 --text-info --scroll <<< "$(eval_translations "MIT License
+    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=3 --text-info --scroll < <(eval_translations "MIT License
 
 Copyright © \$%DATE% Castro-Fidel (linux-gaming.ru)
 
@@ -6861,7 +6861,7 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE." "DATE=$(date +%Y)")" 2>/dev/null &
+SOFTWARE." "DATE=$(date +%Y)") 2>/dev/null &
 
     "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=4 \
     --text-info --show-uri --scroll \

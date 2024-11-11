@@ -40,7 +40,7 @@ source "$PORT_SCRIPTS_PATH/functions_helper"
 export PW_START_PID="$$"
 export NO_AT_BRIDGE="1"
 export GDK_BACKEND="x11"
-IFS=' ' read -r -a pw_full_command_line <<< "$0 $*"
+read -r -a pw_full_command_line <<< "$0 $*"
 export pw_full_command_line
 export orig_IFS="$IFS"
 
@@ -358,7 +358,7 @@ EOF
     else
         try_remove_file "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack.sh
         if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut" ]] ; then
-            while IFS= read -r line
+            while read -r line
             do
                 export portwine_exe="$PORT_WINE_PATH/data/prefixes/$PW_PREFIX_NAME/$line"
                 portwine_create_shortcut
@@ -614,7 +614,7 @@ else
         desktop_file_new="${desktop_file//"$PORT_WINE_PATH/"/}"
         if [[ $desktop_file_new =~ .desktop$ ]] ; then
             if [[ ! $desktop_file_new =~ (PortProton|readme) ]] ; then
-                while IFS= read -r line1 ; do
+                while read -r line1 ; do
                     if [[ $line1 =~ ^Exec= ]] ; then
                         if check_flatpak ; then
                             PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${line1//Exec=flatpak run ru.linux_gaming.PortProton /}
@@ -633,7 +633,7 @@ else
                     PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]=${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]//Exec=env \"$PORT_SCRIPTS_PATH\/start.sh\" /}
                     sed -i "s|Exec=env \"$PORT_SCRIPTS_PATH/start.sh\"|Exec=flatpak run ru.linux_gaming.PortProton|" "$desktop_file"
                 fi
-                while IFS=' ' read -r -a line2 ; do
+                while read -r -a line2 ; do
                     if [[ \"${line2[0]//#@_@#/ }\" == "${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]}" ]] ; then
                         PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=${line2[2]}
                         break
@@ -758,7 +758,7 @@ else
         # AI_TOP_GAMES используется для сортировки автоинсталлов (работает на эмуляторы тоже)
         AI_AMOUNT_GAMES="0" && AI_AMOUNT_EMULS="0" && AI_AMOUNT_ARRAY="0"
         for ai_file in "$PORT_SCRIPTS_PATH"/pw_autoinstall/* ; do
-            while IFS= read -r line ; do
+            while read -r line ; do
                 [[ $line =~ "##########" ]] && break
                 [[ $line =~ "# type: " ]] && AI_TYPE["$AI_AMOUNT_ARRAY"]="${line//# type: /}"
                 [[ $line =~ "# name: " ]] && AI_NAME["$AI_AMOUNT_ARRAY"]="${line//# name: /}"
