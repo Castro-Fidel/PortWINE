@@ -73,8 +73,7 @@ set_several_variables () {
         key=${1//=*/}
         value=${1//*=/}
         keys_all+="$key "
-        export "$key"="$value"
-        shift
+        export "$key"="$value" ; shift
     done
 }
 
@@ -720,17 +719,14 @@ var_ld_library_path_update () {
 # GUI NOTIFY SEND
 pw_notify_send () {
     if command -v gdbus &>/dev/null ; then
-        local app="PortProton"
-        local icon=""
-        local timeout="5000"
-        local title=""
-        local body=""
-
-        local OPTIND="1"
+        local icon title body app timeout OPTIND
+        app="PortProton"
+        timeout="5000"
+        OPTIND="1"
         while getopts a:i:t: opt ; do
             case "$opt" in
                 a)
-                    local app=$OPTARG
+                    app=$OPTARG
                     ;;
                 i)
                     case "$OPTARG" in
@@ -738,10 +734,10 @@ pw_notify_send () {
                         warning) local OPTARG="${PORT_WINE_PATH}/data/img/gui/notify_warning.svg";;
                         error) local OPTARG="${PORT_WINE_PATH}/data/img/gui/notify_error.svg";;
                     esac
-                    local icon=$OPTARG
+                    icon=$OPTARG
                     ;;
                 t)
-                    local timeout=$OPTARG
+                    timeout=$OPTARG
                     ;;
                 *)
                     echo "usage: $0
@@ -754,10 +750,8 @@ pw_notify_send () {
         done
         shift $(( OPTIND - 1 ))
         [[ "$1" == "--" ]] && shift
-
-        local title="$1"
-        shift
-        local body="$*"
+        title="$1" ; shift
+        body="$*"
 
         gdbus call --session --dest org.freedesktop.Notifications \
             --object-path /org/freedesktop/Notifications \
@@ -1438,7 +1432,7 @@ recommend_dpi () {
         return 1
     fi
     local dpi=$(( height / 11 ))
-    (( dpi < 96 )) && local dpi="96"
+    (( dpi < 96 )) && dpi="96"
     echo "$dpi"
 }
 
@@ -5332,7 +5326,7 @@ gui_mangohud () {
     fi
 
     if [[ "${GUI_MH_RESULT}" =~ "fps_only" ]] ; then
-        local GUI_MH_RESULT="fps_only"
+        GUI_MH_RESULT="fps_only"
         print_info "In the MangoHud config fps_only is detected all settings are reseted"
     fi
 
