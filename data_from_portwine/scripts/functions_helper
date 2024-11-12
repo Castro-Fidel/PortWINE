@@ -40,7 +40,7 @@ export -f print_wrapped
 
 make_acronym () {
     local words acronym i
-    IFS=' ' read -r -a words <<< "$1"
+    read -r -a words <<< "$1"
     acronym="${words[0]:0:1}"
     for ((i=1 ; i<${#words[@]} ; i++)) ; do
         acronym+="${words[$i]:0:1}"
@@ -73,8 +73,7 @@ set_several_variables () {
         key=${1//=*/}
         value=${1//*=/}
         keys_all+="$key "
-        export "$key"="$value"
-        shift
+        export "$key"="$value" ; shift
     done
 }
 
@@ -265,7 +264,7 @@ EOF
         po_file="${PORT_WINE_PATH}/data/locales/$LANGUAGE/LC_MESSAGES/PortProton.po"
     fi
 
-    while IFS= read -r line ; do
+    while read -r line ; do
         while [[ $line =~ msgid ]] ; do
                 unset msgid
                 msgid="$line"
@@ -406,6 +405,74 @@ try_copy_file_with_checksums () {
 }
 export -f try_copy_file_with_checksums
 
+lsbash () {
+    local grep_with_i grep_with_v find_name directory find_file found_successfully find_file_old find_file_old_array
+    if [[ $1 =~ \/ ]] ; then
+        directory=$1 ; shift
+    else
+        directory=$PWD
+    fi
+    grep_find_file1 () {
+        find_file_old=$find_file
+        if [[ $grep_with_i == true ]] ; then
+            find_file=${find_file,,}
+            find_name=${find_name,,}
+        fi
+        grep_find_file2 () {
+            if [[ -z $1 ]] ; then
+                echo "$find_file_old"
+                found_successfully=1
+            else
+                find_file_old_array+=("$find_file_old")
+            fi
+        }
+        if [[ $grep_with_v == true ]] ; then
+            if [[ ! $find_file =~ $find_name ]] ; then
+                grep_find_file2 "$@"
+            fi
+        else
+            if [[ $find_file =~ $find_name ]] \
+            || [[ -z $find_name ]] ; then
+                grep_find_file2 "$@"
+            fi
+        fi
+    }
+    while true ; do
+        unset grep_with_i grep_with_v
+        if [[ $1 == --grep ]] ; then
+            shift
+            while true ; do
+                # аналог grep -i
+                if [[ $1 == "-i" ]] ; then
+                    grep_with_i=true ; shift ; continue
+                fi
+                # аналог grep -v
+                if [[ $1 == "-v" ]] ; then
+                    grep_with_v=true ; shift ; continue
+                fi
+                find_name=$1 ; shift ; break
+            done
+        fi
+        if [[ -n ${find_file_old_array[0]} ]] ; then
+            for find_file in "${find_file_old_array[@]}" ; do
+                unset find_file_old_array
+                grep_find_file1 "$@"
+            done
+        else
+            for find_file in "$directory"/* ; do
+                find_file=${find_file//*\//}
+                grep_find_file1 "$@"
+            done
+        fi
+        if [[ -n $1 ]] ; then continue ; else break ; fi
+    done
+    if [[ $found_successfully == 1 ]] ; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 try_copy_dir () {
     if [[ ! -d "$1" ]] ; then print_info "directory $1 not found for copy"
     elif [[ -z "$2" ]] ; then print_error "no way to copy directory $1"
@@ -538,9 +605,9 @@ try_download () {
     && [[ "$no_mirror" != "true" ]]
     then
         FIRST_URL=("$url_cloud/$filename")
-        IFS=' ' read -r -a SECOND_URL <<< "$1"
+        read -r -a SECOND_URL <<< "$1"
     else
-        IFS=' ' read -r -a FIRST_URL <<< "$1"
+        read -r -a FIRST_URL <<< "$1"
         SECOND_URL=("$url_cloud/$filename")
     fi
 
@@ -652,17 +719,14 @@ var_ld_library_path_update () {
 # GUI NOTIFY SEND
 pw_notify_send () {
     if command -v gdbus &>/dev/null ; then
-        local app="PortProton"
-        local icon=""
-        local timeout="5000"
-        local title=""
-        local body=""
-
-        local OPTIND="1"
+        local icon title body app timeout OPTIND
+        app="PortProton"
+        timeout="5000"
+        OPTIND="1"
         while getopts a:i:t: opt ; do
             case "$opt" in
                 a)
-                    local app=$OPTARG
+                    app=$OPTARG
                     ;;
                 i)
                     case "$OPTARG" in
@@ -670,10 +734,10 @@ pw_notify_send () {
                         warning) local OPTARG="${PORT_WINE_PATH}/data/img/gui/notify_warning.svg";;
                         error) local OPTARG="${PORT_WINE_PATH}/data/img/gui/notify_error.svg";;
                     esac
-                    local icon=$OPTARG
+                    icon=$OPTARG
                     ;;
                 t)
-                    local timeout=$OPTARG
+                    timeout=$OPTARG
                     ;;
                 *)
                     echo "usage: $0
@@ -686,10 +750,8 @@ pw_notify_send () {
         done
         shift $(( OPTIND - 1 ))
         [[ "$1" == "--" ]] && shift
-
-        local title="$1"
-        shift
-        local body="$*"
+        title="$1" ; shift
+        body="$*"
 
         gdbus call --session --dest org.freedesktop.Notifications \
             --object-path /org/freedesktop/Notifications \
@@ -883,7 +945,7 @@ search_desktop_file () {
         desktop_file_new="${desktop_file//"$PORT_WINE_PATH/"/}"
         if [[ $desktop_file_new =~ .desktop$ ]] ; then
             if [[ ! $desktop_file_new =~ (PortProton|readme) ]] ; then
-                while IFS= read -r line1 ; do
+                while read -r line1 ; do
                     if [[ $line1 =~ ^Exec= ]] ; then
                         if check_flatpak ; then
                             EXEC_DESKTOP=${line1//Exec=flatpak run ru.linux_gaming.PortProton /}
@@ -900,7 +962,7 @@ search_desktop_file () {
         fi
     done
     if [[ $DESKTOP_WITH_TIME == enabled ]] || [[ $SORT_WITH_TIME == enabled ]] ; then
-        while IFS=' ' read -r -a line2 ; do
+        while read -r -a line2 ; do
             if [[ -z ${line2[0]} ]] \
             || [[ ! ${line2[0],,} =~ .(bat|exe|msi|reg)$ ]] ; then
                 BROKEN_LINE=1
@@ -922,7 +984,7 @@ search_desktop_file () {
         ## Ремонты:
         # Ремонт, проверяет чтобы длинна хеш суммы была равна 64 символам, в ином случае удалит битые
         if [[ $FILE_SHA256SUM_NOT_FOUND == 1 ]] && [[ ${#line2[1]} != "64" ]] ; then
-            while IFS=' ' read -r -a line3 ; do
+            while read -r -a line3 ; do
                 if [[ ${#line3[1]} == "64" ]]
                 then echo "${line3[*]}"
                 fi
@@ -934,7 +996,7 @@ search_desktop_file () {
 
         # Ремонт, если есть пустые строки и непонятные строки без .exe, .bat, .msi, .reg
         if [[ $BROKEN_LINE == 1 ]] ; then
-            while IFS=' ' read -r -a line4 ; do
+            while read -r -a line4 ; do
                 if [[ -n ${line4[0]} ]] && [[ ${line4[0],,} =~ .(bat|exe|msi|reg)$ ]]
                 then echo "${line4[*]}"
                 fi
@@ -1306,7 +1368,7 @@ get_and_set_reg_file () {
             find_line=${find_line//:*/}
         fi
         count=-1
-        while IFS= read -r line_reg ; do
+        while read -r line_reg ; do
             ((count++))
             if [[ $line_reg =~ $name_for_find ]] ; then
                 if [[ $line_reg == $name_for_find$name_for_set ]] ; then
@@ -1318,7 +1380,7 @@ get_and_set_reg_file () {
                 break
             fi
             [[ -z $line_reg ]] && break
-        done <<< "$(sed -n "$find_line"',$p' "$find_file")"
+        done < <(sed -n "$find_line"',$p' "$find_file")
     fi
     if [[ $name_add_or_del == --add ]] ; then
         if [[ -z $find_block ]] ; then
@@ -1370,7 +1432,7 @@ recommend_dpi () {
         return 1
     fi
     local dpi=$(( height / 11 ))
-    (( dpi < 96 )) && local dpi="96"
+    (( dpi < 96 )) && dpi="96"
     echo "$dpi"
 }
 
@@ -1380,7 +1442,7 @@ fixes_after_update () {
     fixes_path="$PORT_WINE_TMP_PATH/fixes_apply"
     [[ ! -f $fixes_path ]] && touch "$fixes_path"
 
-    while IFS= read -r line ; do
+    while read -r line ; do
         if [[ $line == "$fixes_info" ]] ; then
             return 1
         fi
@@ -1394,7 +1456,7 @@ restart_pp () {
         --userconf) export RESTART_PP_USED="userconf" ;;
         --edit_db) export RESTART_PP_USED="edit_db" ;;
     esac
-    /usr/bin/env bash -c ${pw_full_command_line[@]} &
+    /usr/bin/env bash -c "${pw_full_command_line[@]}" &
     exit 0
 }
 
@@ -1493,7 +1555,7 @@ init_wine_ver () {
     else
         if [[ -d "${PORT_WINE_PATH}/data/dist" ]] ; then
         IFS=$'\n'
-        for dist_dir in $(ls -1 "${PORT_WINE_PATH}/data/dist/") ; do
+        for dist_dir in $(lsbash "${PORT_WINE_PATH}/data/dist/") ; do
             dist_dir_new=$(echo "${dist_dir}" | awk '$1=$1' | sed -e s/[[:blank:]]/_/g)
             if [[ ! -d "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}" ]] ; then
                 mv -- "${PORT_WINE_PATH}/data/dist/$dist_dir" "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}"
@@ -1501,7 +1563,7 @@ init_wine_ver () {
         done
         IFS="$orig_IFS"
         fi
-        if [[ -z $(ls "${PORT_WINE_PATH}/data/dist/" | grep "${PW_WINE_USE}") ]] ; then
+        if [[ -z $(lsbash "${PORT_WINE_PATH}/data/dist/" --grep "${PW_WINE_USE}") ]] ; then
             if [[ "$PW_WINE_USE" =~ PROTON_LG* ]]
             then export PW_WINE_USE=PROTON_LG
             else export PW_WINE_USE=WINE_LG
@@ -1518,20 +1580,20 @@ init_wine_ver () {
         export WINELOADER="${WINEDIR}/bin/wine"
         export WINESERVER="${WINEDIR}/bin/wineserver"
         if [[ -d "${WINEDIR}/files" && ! -d "${WINEDIR}/dist" ]] ; then
-            for clear_dist_files in $(ls "${WINEDIR}" | sed -r "s/^(files|version)$//g") ; do
+            for clear_dist_files in $(lsbash "$WINEDIR" | sed -r "s/^(files|version)$//g") ; do
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
             mv -f "${WINEDIR}/files"/* "${WINEDIR}/"
             rm -fr "${WINEDIR}/files"
         elif [[ ! -d "${WINEDIR}/files" && -d "${WINEDIR}/dist" ]] ; then
-            for clear_dist_files in $(ls "${WINEDIR}" | sed -r "s/^(dist|version)$//g") ; do
+            for clear_dist_files in $(lsbash "$WINEDIR" | sed -r "s/^(dist|version)$//g") ; do
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
             mv -f "${WINEDIR}/dist"/* "${WINEDIR}/"
             rm -fr "${WINEDIR}/dist"
         elif [[ -f "${WINEDIR}/proton_dist.tar" ]] ; then
             unpack "${WINEDIR}/proton_dist.tar" "${WINEDIR}/"
-            for clear_dist_files in $(ls "${WINEDIR}" | sed -r "s/^(bin|lib|lib64|share|version)$//g") ; do
+            for clear_dist_files in $(lsbash "$WINEDIR" | sed -r "s/^(bin|lib|lib64|share|version)$//g") ; do
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
         fi
@@ -1814,7 +1876,7 @@ pw_kill_autostart () {
         fi
     done
 
-    if [[ -n "$(ls "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/ | grep -m 1 ".tmp")" ]] ; then
+    if [[ -n "$(lsbash "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/ | grep -m 1 ".tmp")" ]] ; then
         rm -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/*.tmp
     fi
 
@@ -1905,8 +1967,8 @@ pw_download_libs () {
                         "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" ; then
             if unpack "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/" ; then
                 try_remove_file "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz"
-                if ls "${PORT_WINE_TMP_PATH}" | grep libs_v | grep -v libs"${PW_LIBS_VER}" ; then
-                    for RM_LIBS in $(ls "${PORT_WINE_TMP_PATH}" | grep libs_v | grep -v libs"${PW_LIBS_VER}")
+                if lsbash "${PORT_WINE_TMP_PATH}" --grep libs_v --grep -v libs"${PW_LIBS_VER}" ; then
+                    for RM_LIBS in $(lsbash "${PORT_WINE_TMP_PATH}" --grep libs_v --grep -v libs"${PW_LIBS_VER}")
                     do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_LIBS}"
                     done
                 fi
@@ -2056,9 +2118,9 @@ pw_check_and_download_plugins () {
                     try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz"
                     # TODO: drop clear prefix, and add update prefix from new plugins
                     pw_clear_pfx
-                    if ls "${PORT_WINE_TMP_PATH}" | grep plugins_v | grep -v "plugins${PW_PLUGINS_VER}"
+                    if lsbash "${PORT_WINE_TMP_PATH}" --grep plugins_v --grep -v "plugins${PW_PLUGINS_VER}"
                     then
-                        for RM_PLUGINS in $(ls "${PORT_WINE_TMP_PATH}" | grep plugins_v | grep -v "plugins${PW_PLUGINS_VER}")
+                        for RM_PLUGINS in $(lsbash "${PORT_WINE_TMP_PATH}" --grep plugins_v --grep -v "plugins${PW_PLUGINS_VER}")
                         do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_PLUGINS}"
                         done
                     fi
@@ -2089,9 +2151,9 @@ pw_check_and_download_plugins () {
                     try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz"
                     # TODO: drop clear prefix, and add update prefix from new plugins
                     pw_clear_pfx
-                    if ls "${PORT_WINE_TMP_PATH}" | grep plugins_v | grep -v "plugins${PW_PLUGINS_VER}"
+                    if lsbash "${PORT_WINE_TMP_PATH}" --grep plugins_v --grep -v "plugins${PW_PLUGINS_VER}"
                     then
-                        for RM_PLUGINS in $(ls "${PORT_WINE_TMP_PATH}" | grep plugins_v | grep -v "plugins${PW_PLUGINS_VER}")
+                        for RM_PLUGINS in $(lsbash "${PORT_WINE_TMP_PATH}" --grep plugins_v --grep -v "plugins${PW_PLUGINS_VER}")
                         do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_PLUGINS}"
                         done
                     fi
@@ -2218,7 +2280,7 @@ pw_init_db () {
             # shellcheck source=/dev/null
             source "${PORTWINE_DB_FILE}"
             if echo "${portwine_exe}" | grep "/prefixes/" &>/dev/null ; then
-                if [[ -z $(ls "${PORT_WINE_PATH}/prefixes/" | grep -e ^"${PW_PREFIX_NAME}"$) ]] \
+                if [[ -z $(lsbash "${PORT_WINE_PATH}/prefixes/" --grep ^"${PW_PREFIX_NAME}"$) ]] \
                 || [[ -z $(grep -e ^"export PW_PREFIX_NAME=" "${PORTWINE_DB_FILE}" 2>/dev/null) ]]
                 then
                     PW_PREFIX_NAME=$(echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
@@ -2258,7 +2320,7 @@ pw_init_db () {
                 try_copy_file "${PW_FIND_DB_FILE}" "${portwine_exe}".ppdb
                 PORTWINE_DB_FILE="${portwine_exe}".ppdb
                 if echo "${portwine_exe}" | grep "/prefixes/" &>/dev/null ; then
-                    if [[ -z $(ls "${PORT_WINE_PATH}/prefixes/" | grep -e ^"${PW_PREFIX_NAME}"$) ]] \
+                    if [[ -z $(lsbash "${PORT_WINE_PATH}/prefixes/" --grep ^"${PW_PREFIX_NAME}"$) ]] \
                     || [[ -z $(grep -e ^"export PW_PREFIX_NAME=" "${PORTWINE_DB_FILE}" 2>/dev/null) ]]
                     then
                         PW_PREFIX_NAME=$(echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
@@ -2307,7 +2369,7 @@ pw_init_db () {
         if [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] && [[ -n "${WINE_CPU_TOPOLOGY}" ]] ; then
             export PW_WINE_CPU_TOPOLOGY="${WINE_CPU_TOPOLOGY}"
         fi
-        if ls "${PATH_TO_GAME}"/*_Data/Resources/ 2>/dev/null | grep "unity" &>/dev/null \
+        if lsbash "${PATH_TO_GAME}"/*_Data/Resources/ --grep "unity" &>/dev/null \
         && [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] \
         && [[ $(grep -c ^"processor" /proc/cpuinfo) -gt "8" ]]
         then
@@ -2375,7 +2437,7 @@ pw_port_update () {
             return 1
         fi
 
-        IFS=' ' read -r -a PW_UPDATE_ALL_LIST <<< "$UPDATE_ETERFUND $UPDATE_GITHUB $UPDATE_PP_GITEA"
+        read -r -a PW_UPDATE_ALL_LIST <<< "$UPDATE_ETERFUND $UPDATE_GITHUB $UPDATE_PP_GITEA"
 
         UPDATE_MIN=${PW_UPDATE_ALL_LIST[0]}
         for i in "${!PW_UPDATE_ALL_LIST[@]}"; do
@@ -2765,7 +2827,7 @@ pw_create_gui_png () {
 
             if [[ "$PW_PRODUCTNAME" =~ (Launcher|RU) ]]
             then
-                PW_PRODUCTNAME="${PW_PRODUCTNAME//(Launcher|RU)/}"
+                PW_PRODUCTNAME=$(echo "$PW_PRODUCTNAME" | sed -r "s/(Launcher|RU)//g")
             fi
 
             if [[ -n "$PW_PRODUCTNAME" ]] \
@@ -2777,7 +2839,7 @@ pw_create_gui_png () {
             fi
         fi
 
-        PORTPROTON_NAME="${PORTPROTON_NAME//(\`|\"|\'|\!)/}"
+        PW_PRODUCTNAME=$(echo "$PW_PRODUCTNAME" | sed -r "s/(\`|\"|'|\!)//g")
         export PORTPROTON_NAME
         edit_db_from_gui PORTPROTON_NAME FILE_DESCRIPTION
     fi
@@ -2821,8 +2883,8 @@ pw_find_exe () {
     --button="${translations[CANCEL]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":1 \
     --button="${translations[OK]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)"
     YAD_STATUS="$?"
-
     IFS="$orig_IFS"
+
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
         print_info "Restarting..."
         restart_pp
@@ -4499,7 +4561,7 @@ gui_proton_downloader () {
     pw_start_progress_bar_block "${translations[Check new version WINE...]}"
 
     # PROTON_GE
-    read -r -d '' -a PROTON_GE_GIT <<< "$(curl -s "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases" | grep "browser_download_url.*\.tar\.gz" | cut -d \" -f 4)"
+    read -r -d '' -a PROTON_GE_GIT < <(curl -s "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases" | grep "browser_download_url.*\.tar\.gz" | cut -d \" -f 4)
     if [[ -n "${PROTON_GE_GIT[0]}" ]] ; then
         for PGEGIT in "${PROTON_GE_GIT[@]}" ; do
             echo "${PGEGIT}" | awk -F/ '{print $NF}' | sed 's/.tar.gz//' >> "${PW_TMPFS_PATH}/tmp_proton_ge_git"
@@ -4508,7 +4570,7 @@ gui_proton_downloader () {
     fi
 
     # WINE_KRON4EK
-    read -r -d '' -a WINE_KRON4EK <<< "$(curl -s "https://api.github.com/repos/Kron4ek/Wine-Builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4)"
+    read -r -d '' -a WINE_KRON4EK < <(curl -s "https://api.github.com/repos/Kron4ek/Wine-Builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4)
     if [[ -n "${WINE_KRON4EK[0]}" ]] ; then
         for PGEGIT in "${WINE_KRON4EK[@]}" ; do
             echo "${PGEGIT}" | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
@@ -4517,7 +4579,7 @@ gui_proton_downloader () {
     fi
 
     # WINE_GE_CUSTOM
-    read -r -d '' -a WINE_GE_CUSTOM <<< "$(curl -s "https://api.github.com/repos/GloriousEggroll/wine-ge-custom/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4)"
+    read -r -d '' -a WINE_GE_CUSTOM < <(curl -s "https://api.github.com/repos/GloriousEggroll/wine-ge-custom/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4)
     if [[ -n "${WINE_GE_CUSTOM[0]}" ]] ; then
         for PGEGIT in "${WINE_GE_CUSTOM[@]}" ; do
             echo "${PGEGIT}" | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git"
@@ -4526,7 +4588,7 @@ gui_proton_downloader () {
     fi
 
     # PROTON_LG
-    read -r -d '' -a PROTON_PW_GIT <<< "$(curl -s "https://api.github.com/repos/Castro-Fidel/wine_builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4 | sort -r)"
+    read -r -d '' -a PROTON_PW_GIT < <(curl -s "https://api.github.com/repos/Castro-Fidel/wine_builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4 | sort -r)
     if [[ -n "${PROTON_PW_GIT[0]}" ]] ; then
         for PPWGIT in "${PROTON_PW_GIT[@]}" ; do
             echo "${PPWGIT}" | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_proton_pw_git"
@@ -4891,7 +4953,7 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
             ;;
     esac
 
-    IFS=' ' read -r -a output_yad_edit_db <"${PW_TMPFS_PATH}/tmp_output_yad_edit_db"
+    read -r -a output_yad_edit_db <"${PW_TMPFS_PATH}/tmp_output_yad_edit_db"
     bool_from_yad="0"
     for boole_to_int in "${PW_EDIT_DB_LIST[@]}" ; do
         export "${boole_to_int}"="${output_yad_edit_db[$bool_from_yad]}"
@@ -4945,8 +5007,8 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
 gui_vkbasalt () {
     KEY_FX_GUI=$RANDOM
     FILE_VKBASALT_CONF="${PORT_WINE_PATH}/data/vkBasalt.conf"
-    read -r -d '' -a LIST_FX <<< "$(grep -E '.fx$|.fxh$' "$FILE_VKBASALT_CONF" | awk '{print $1}')"
-    IFS=' ' read -r -a GET_FX_IN_FILE <<< "$(echo "$PW_VKBASALT_EFFECTS" | sed -e s/"cas:"// -e s/":"/" "/g)"
+    read -r -d '' -a LIST_FX < <(grep -E '.fx$|.fxh$' "$FILE_VKBASALT_CONF" | awk '{print $1}')
+    read -r -a GET_FX_IN_FILE < <(echo "$PW_VKBASALT_EFFECTS" | sed -e s/"cas:"// -e s/":"/" "/g)
 
     PW_3DFX_INFO=${translations[Simulation of an old 3dfx graphics accelerator (adds horizontal stripes)]}
     PW_AdaptiveSharpen_INFO=${translations[Sharpness increase, can be used with CAS]}
@@ -5289,7 +5351,7 @@ gui_mangohud () {
     fi
 
     if [[ "${GUI_MH_RESULT}" =~ "fps_only" ]] ; then
-        local GUI_MH_RESULT="fps_only"
+        GUI_MH_RESULT="fps_only"
         print_info "In the MangoHud config fps_only is detected all settings are reseted"
     fi
 
@@ -5450,7 +5512,7 @@ gui_dgvoodoo2 () {
             ;;
     esac
 
-    IFS=' ' read -r -a output_yad_dgv2 <"${PW_TMPFS_PATH}/tmp_yad_dgv2_set"
+    read -r -a output_yad_dgv2 <"${PW_TMPFS_PATH}/tmp_yad_dgv2_set"
     bool_from_yad=0
     for boole_to_int in "${PW_DGV2_LIST[@]}" ; do
         export "${boole_to_int}"="${output_yad_dgv2[$bool_from_yad]}"
@@ -5618,7 +5680,7 @@ gui_gamescope () {
             ;;
     esac
 
-    IFS=' ' read -r -a output_yad_gs <"${PW_TMPFS_PATH}/tmp_yad_gs_set"
+    read -r -a output_yad_gs <"${PW_TMPFS_PATH}/tmp_yad_gs_set"
     bool_from_yad="0"
     for boole_to_int in "${PW_GS_LIST[@]}" ; do
         export "${boole_to_int}"="${output_yad_gs[$bool_from_yad]}"
@@ -5955,7 +6017,7 @@ portwine_output_yad_shortcut () {
             if [[ -f "${SLUF}" ]]; then
                 SLUFUB=false
                 STUID64=""
-                while IFS= read -r line; do
+                while read -r line; do
                     if [[ "${line}" =~ ^[[:space:]]*\"([0-9]+)\"$ ]]; then
                         STUIDCUR="${BASH_REMATCH[1]}"
                         SLUFUB=true
@@ -6034,16 +6096,15 @@ pw_auto_create_shortcut () {
     fi
 
     unset LINKS
-    for link_file in "${PORT_WINE_PATH}"/data/prefixes/*/drive_c/users/*/Desktop/*.lnk
-    do
-        link_file=$(readlink -f "${link_file}")
-        IFS=' ' read -r -a LINKS <<< "${LINKS[*]} ${link_file// /@_@}"
+    for link_file in "${PORT_WINE_PATH}"/data/prefixes/*/drive_c/users/*/Desktop/*.lnk ; do
+        link_file=$(readlink -f "$link_file")
+        LINKS+=("${link_file// /#@_@#}")
     done
 
     [[ -z "${LINKS[0]}" ]] && return 0
-    IFS=' ' read -r -a SORTED_LINKS <<< "$(echo "${LINKS[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ')"
+    read -r -a SORTED_LINKS < <(echo "${LINKS[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
 
-    for link_file in "${SORTED_LINKS[@]//@_@/ }" ; do
+    for link_file in "${SORTED_LINKS[@]//#@_@#/ }" ; do
         if command -v exiftool &>/dev/null ; then
             if timeout 3 exiftool "$link_file" &> "${PW_TMPFS_PATH}/exiftool.tmp" ; then
                 prefix_name=$(echo "$link_file" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
@@ -6137,22 +6198,22 @@ portwine_change_shortcut () {
 portwine_search_shortcut () {
     unset PW_DELETE_SHORTCUT_MENU PW_DELETE_SHORTCUT_DESKTOP
     PW_DELETE_MENU="$(grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop 2>/dev/null)"
-    read -r -d '' -a PW_DELETE_SHORTCUT_MENU <<< "${PW_DELETE_SHORTCUT_MENU[*]} ${PW_DELETE_MENU// /@_@}"
+    read -r -d '' -a PW_DELETE_SHORTCUT_MENU <<< "${PW_DELETE_SHORTCUT_MENU[*]}${PW_DELETE_MENU// /#@_@#} "
 
     PW_DELETE_PP="$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop 2>/dev/null)"
-    read -r -d '' -a PW_DELETE_SHORTCUT_MENU <<< "${PW_DELETE_SHORTCUT_MENU[*]} ${PW_DELETE_PP// /@_@}"
+    read -r -d '' -a PW_DELETE_SHORTCUT_MENU <<< "${PW_DELETE_SHORTCUT_MENU[*]}${PW_DELETE_PP// /#@_@#} "
 
     if [[ -d "${HOME}/Desktop" ]] ; then
         PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "${HOME}/Desktop"/*.desktop 2>/dev/null)"
-        read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]} ${PW_DELETE_DESKTOP// /@_@}"
+        read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]}${PW_DELETE_DESKTOP// /#@_@#} "
     fi
     if [[ -d "${HOME}/Рабочий стол" ]] ; then
         PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "${HOME}/Рабочий стол"/*.desktop 2>/dev/null)"
-        read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]} ${PW_DELETE_DESKTOP// /@_@}"
+        read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]}${PW_DELETE_DESKTOP// /#@_@#} "
     fi
     if [[ $(xdg-user-dir DESKTOP) ]] ; then
         PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "$(xdg-user-dir DESKTOP)"/*.desktop 2>/dev/null)"
-        read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]} ${PW_DELETE_DESKTOP// /@_@}"
+        read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]}${PW_DELETE_DESKTOP// /#@_@#} "
     fi
 }
 
@@ -6163,7 +6224,7 @@ portwine_delete_shortcut () {
     unset PORTWINE_CHANGE_SHORTCUT
 
     for delete_shortcut in "${PW_DELETE_SHORTCUT_MENU[@]}" "${PW_DELETE_SHORTCUT_DESKTOP[@]}" ; do
-        rm -f "${delete_shortcut//@_@/ }"
+        rm -f "${delete_shortcut//#@_@#/ }"
     done
 }
 
@@ -6799,7 +6860,7 @@ See the License for details.]}" 2>/dev/null &
 Developer assistants and testers:]}
 $(credits_devel)" 2>/dev/null &
 
-    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=3 --text-info --scroll <<< "$(eval_translations "MIT License
+    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=3 --text-info --scroll < <(eval_translations "MIT License
 
 Copyright © \$%DATE% Castro-Fidel (linux-gaming.ru)
 
@@ -6819,7 +6880,7 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE." "DATE=$(date +%Y)")" 2>/dev/null &
+SOFTWARE." "DATE=$(date +%Y)") 2>/dev/null &
 
     "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=4 \
     --text-info --show-uri --scroll \
