@@ -3095,7 +3095,7 @@ start_portwine () {
                 sed -i /'dxgi.hideNvidiaGpu =/c dxgi.hideNvidiaGpu = False' "${DXVK_CONFIG_FILE}"
                 export WINE_HIDE_NVIDIA_GPU="0"
                 export WINE_HIDE_AMD_GPU="1"
-                export DXVK_NVAPI_DRIVER_VERSION="53713"
+                export DXVK_NVAPI_DRIVER_VERSION="99999"
                 export DXVK_NVAPI_ALLOW_OTHER_DRIVERS="1"
                 export WINEHAGS="1"
                 ;;
@@ -3131,7 +3131,6 @@ start_portwine () {
         try_copy_file_with_checksums "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
         try_copy_file_with_checksums "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.ini" "${WINEPREFIX}/drive_c/windows/system32/nvngx.ini"
         enabled_fake_nvidia_videocard old
-        var_winedlloverride_update "nvapi,nvapi64,nvngx=n;_nvngx=;nvcuda=b"
     elif [[ "${PW_USE_NVAPI_AND_DLSS}" == 1 ]] ; then
         DXVK_ENABLE_NVAPI="1"
         try_remove_file "${WINEPREFIX}/drive_c/windows/system32/nvngx.ini"
@@ -3139,12 +3138,14 @@ start_portwine () {
         if [[ -n "$FIND_NVNGX" ]] ; then
             try_copy_file_with_checksums "${FIND_NVNGX}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
             try_copy_file_with_checksums "${FIND_NVNGX}/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll"
+            export NVIDIA_WINE_DLL_DIR="${FIND_NVNGX}"
         else
             try_copy_file_with_checksums "${PW_PLUGINS_PATH}/nvngx/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
             try_copy_file_with_checksums "${PW_PLUGINS_PATH}/nvngx/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll"
+            export NVIDIA_WINE_DLL_DIR="${PW_PLUGINS_PATH}/nvngx"
         fi
         enabled_fake_nvidia_videocard 0
-        var_winedlloverride_update "nvngx,_nvngx,nvapi,nvapi64=n;nvcuda=b"
+        var_winedlloverride_update "nvngx,_nvngx=n"
     else
         DXVK_ENABLE_NVAPI="0"
         for rm_dll in "nvngx.ini" "nvngx.dll" "_nvngx.dll" ; do
@@ -3654,6 +3655,12 @@ start_portwine () {
         print_info "Try create symlink NVAPI files..."
         try_force_link_file "${PATH_TO_DXVK_FILES}/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/nvapi.dll"
         try_force_link_file "${PATH_TO_DXVK_FILES}/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvapi64.dll"
+        try_force_link_file "${PATH_TO_DXVK_FILES}/x64/nvofapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvofapi64.dll"
+        var_winedlloverride_update "nvapi64,nvofapi64,nvapi=n;nvcuda=b"
+    else
+        try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/nvapi.dll"
+        try_remove_file "${WINEPREFIX}/drive_c/windows/system32/nvapi64.dll"
+        try_remove_file "${WINEPREFIX}/drive_c/windows/system32/nvofapi64.dll"
     fi
 
     if [[ -n "$CP_VKD3D_FILES" ]] ; then
