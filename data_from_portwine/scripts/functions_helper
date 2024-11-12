@@ -1601,7 +1601,9 @@ pw_init_runtime () {
 
     if grep -i "altlinux" "/etc/os-release" &>/dev/null ; then
         export LIBGL_DRIVERS_PATH="/usr/lib/X11/modules/dri:/usr/lib64/X11/modules/dri"
-        if [[ -f "/usr/share/vulkan/icd.d/nvidia_icd.json" ]] ; then
+        if [[ -f "/usr/share/vulkan/icd.d/nvidia_icd.json" ]] \
+        && [[ "$LSPCI_VGA" == *nvidia* ]]
+        then
             VK_ADD_DRIVER_FILES="$(realpath /usr/share/vulkan/icd.d/nvidia_icd.json)"
             export VK_ADD_DRIVER_FILES
         fi
@@ -2191,7 +2193,7 @@ check_dirs_and_files_in_pfx () {
     }
 
 check_nvidia_rtx () {
-    if [[ -n $(echo "$LSPCI_VGA" | grep -i "nvidia") ]] ; then
+    if [[ "$LSPCI_VGA" == *nvidia* ]] ; then
         # Turing (without nvidia 16XX)
         [[ "$LSPCI_VGA" == *TU[0-9]* ]] && [[ "$LSPCI_VGA" != *TU11[6-7]* ]] && return 0
         # Ampere
