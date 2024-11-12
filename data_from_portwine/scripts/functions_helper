@@ -307,7 +307,7 @@ EOF
         msgid=${msgid//\"\"/}
         msgid=${msgid//#*/}
         msgid=${msgid//"*"/#_#}
-        if [[ $msgid != "" ]] ; then
+        if [[ -n $msgid ]] ; then
             if [[ -z $msgstr ]] ; then
                 msgstr="$msgid"
             fi
@@ -1230,8 +1230,10 @@ combobox_fix () {
         name3="!${name3//${name1}\!/\!}"
         name3="${name3//\!\!/\!}"
         name4="${name3//*\!/}"
-        if [[ ${name1} == "${name4}" ]] || [[ ${name1} == "\\${name4}" ]]
-        then name3="${name3%\!"${name1}"}"
+        if [[ ${name1} == "${name4}" ]] ; then
+            name3="${name3%\!"${name1}"}"
+        elif [[ ${name1} == "\\${name4}" ]] ; then
+            name3="${name3%\!"${name1//\\/}"}"
         fi
         if [[ "$1" == "--disabled" ]] ; then
             if [[ ${name1} == "disabled" ]] ; then
@@ -1246,12 +1248,10 @@ combobox_fix () {
                 fi
             fi
             echo "${name1}${name3}${fix_disabled}"
-        elif [[ "$1" == "--empty" ]] ; then
-            if [[ ${name1} != "" ]] ; then
-                if [[ ${name1} == "\\" ]]
-                then fix_empty=""
-                else fix_empty="!"
-                fi
+        elif [[ "$1" == "--empty" && -n ${name1} ]] ; then
+            if [[ ${name1} == "\\" ]]
+            then fix_empty=""
+            else fix_empty="!"
             fi
             echo "${name1}${name3}${fix_empty}"
         else
@@ -4042,7 +4042,7 @@ pw_run () {
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
-            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
+            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS} &>>"${PW_LOG_TO_FILE}"
         else
             if [[ "$PW_USE_TERMINAL" == 1 ]] ; then
                 PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
@@ -4061,7 +4061,7 @@ pw_run () {
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
-            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
+            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS} &>>"${PW_LOG_TO_FILE}"
             print_info "Update prefix log:"
             [[ -f "${PW_TMPFS_PATH}/update_pfx_log" ]] && cat "${PW_TMPFS_PATH}/update_pfx_log"
             echo
@@ -4089,7 +4089,7 @@ pw_run () {
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
             ${PW_INHIBIT_SLR}\
-            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]} &>>"${PW_LOG_TO_FILE}"
+            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS} &>>"${PW_LOG_TO_FILE}"
             wait_wineserver
         else
             print_info "Update prefix log:"
@@ -4108,7 +4108,7 @@ pw_run () {
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
             ${PW_INHIBIT_SLR}\
-            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS[@]}
+            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS}
             wait_wineserver
         fi
     fi
@@ -4116,7 +4116,7 @@ pw_run () {
 export -f pw_run
 
 pw_yad_set_form () {
-    if [[ $(<"${PW_TMPFS_PATH}/tmp_yad_form") != "" ]] ; then
+    if [[ -n $(<"${PW_TMPFS_PATH}/tmp_yad_form") ]] ; then
         pw_skip_get_info
         PW_YAD_SET=$(head -n 1 "${PW_TMPFS_PATH}/tmp_yad_form" | awk '{print $1}')
         export PW_YAD_SET
@@ -4124,7 +4124,7 @@ pw_yad_set_form () {
 }
 
 pw_yad_form_vulkan () {
-    if [[ "$(<"${PW_TMPFS_PATH}/tmp_yad_form_vulkan")" != "" ]] ; then
+    if [[ -n "$(<"${PW_TMPFS_PATH}/tmp_yad_form_vulkan")" ]] ; then
         if [[ -n "${KEY_START}" ]] ; then
             YAD_FORM_VULKAN=$(sed 's/$/\;/' "${PW_TMPFS_PATH}/tmp_yad_form_vulkan")
             VULKAN_MOD=$(echo "${YAD_FORM_VULKAN}" | grep \;\; | awk -F";" '{print $1}')
@@ -4843,9 +4843,7 @@ A brief instruction:
     * library=n,b - use <b>WINDOWS</b> library and then <b>WINE</b>
     * library=b,n - use <b>WINE</b> library and then <b>WINDOWS</b>
     * library= - disable the use of this library]} :CBE" "$(combobox_fix --empty "${WINEDLLOVERRIDES}" "libglesv2=!d3dx9_36,d3dx9_42=n,b;mfc120=b,n")" \
-    --field=":LBLH" "" \
-    --field="${translations[ADD ARGUMENTS FOR .EXE FILE]}!${translations[Adding an argument after the <b>.exe</b> file, just like you would add an argument in a shortcut on a <b>WINDOWS </b> system]} :CBE" "$(combobox_fix --empty "\\${LAUNCH_PARAMETERS[@]}" "-dx11 -skipintro 1")" \
-    --field=":LBLH" "" \
+    --field="${translations[ADD ARGUMENTS FOR .EXE FILE]}!${translations[Adding an argument after the <b>.exe</b> file, just like you would add an argument in a shortcut on a <b>WINDOWS </b> system]} :CBE" "$(combobox_fix --empty "\\${LAUNCH_PARAMETERS}" "-dx11 -skipintro 1")" \
     --field="${translations[Limit the use of processor cores]}!${translations[Limiting the number of CPU cores is useful for Unity games (It is recommended to set the value equal to 8)]} :CB" "$(combobox_fix --disabled "${CPU_LIMIT_VAR}" "${GET_LOGICAL_CORE}")" \
     --field="${translations[Forcibly select the OpenGL version for the game]}!${translations[You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)]} :CB" "$(combobox_fix --disabled "${PW_MESA_GL_VERSION_OVERRIDE}" "4.6COMPAT!4.5COMPAT!4.3COMPAT!4.1COMPAT!3.3COMPAT!3.2COMPAT")" \
     --field="${translations[Forcibly select the VKD3D feature level]}!${translations[You can set a forced feature level VKD3D for games on DirectX12]} :$VKD3D_CB" "$(combobox_fix --disabled "${PW_VKD3D_FEATURE_LEVEL}" "12_2!12_1!12_0!11_1!11_0")" \
@@ -4897,12 +4895,12 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
     PW_WINDOWS_VER="${PW_ADD_SETTINGS[0]}"
     PW_DLL_INSTALL="${PW_ADD_SETTINGS[1]}"
     WINEDLLOVERRIDES="${PW_ADD_SETTINGS[2]}"
-    LAUNCH_PARAMETERS="${PW_ADD_SETTINGS[4]}"
-    CPU_LIMIT="${PW_ADD_SETTINGS[6]}"
-    PW_MESA_GL_VERSION_OVERRIDE="${PW_ADD_SETTINGS[7]}"
-    PW_VKD3D_FEATURE_LEVEL="${PW_ADD_SETTINGS[8]}"
-    PW_LOCALE_SELECT="${PW_ADD_SETTINGS[9]}"
-    PW_MESA_VK_WSI_PRESENT_MODE="${PW_ADD_SETTINGS[10]}"
+    LAUNCH_PARAMETERS="${PW_ADD_SETTINGS[3]}"
+    CPU_LIMIT="${PW_ADD_SETTINGS[4]}"
+    PW_MESA_GL_VERSION_OVERRIDE="${PW_ADD_SETTINGS[5]}"
+    PW_VKD3D_FEATURE_LEVEL="${PW_ADD_SETTINGS[6]}"
+    PW_LOCALE_SELECT="${PW_ADD_SETTINGS[7]}"
+    PW_MESA_VK_WSI_PRESENT_MODE="${PW_ADD_SETTINGS[8]}"
 
     if [[ "${CPU_LIMIT}" =~ ^[0-9]+$ ]] ; then
         PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $(( CPU_LIMIT - 1 )))"
