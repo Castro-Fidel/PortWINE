@@ -1350,10 +1350,11 @@ get_and_set_reg_file () {
                     return 1
                 fi ;;
     esac
+    name_block=${name_block//\\/\\\\\\\\}
     if [[ -n $name_for_new_block ]] ; then
-        find_block=$(grep -n "${name_block//\\/\\\\\\\\}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg")
+        find_block=$(grep -n "$name_block" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg")
     else
-        find_block=$(grep -n "${name_block//\\/\\\\\\\\}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/"*.reg)
+        find_block=$(grep -n "$name_block" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/"*.reg)
     fi
     if [[ -n $find_block ]] ; then
         if [[ -n $name_for_new_block ]] ; then
@@ -1382,7 +1383,7 @@ get_and_set_reg_file () {
     if [[ $name_add_or_del == --add ]] ; then
         if [[ -z $find_block ]] ; then
             if [[ -n $name_for_new_block ]] ; then
-                sed -i '$a\\n'\["${name_block//\\/\\\\\\\\}"\] "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg"
+                sed -i '$a\\n'\["$name_block"\] "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg"
                 find_file="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg"
                 find_line=$(wc -l "$find_file" | awk -F" " '{print $1}')
                 find_line=$(( find_line - 1 ))
@@ -2763,8 +2764,8 @@ edit_db_from_gui () {
 edit_user_conf_from_gui () {
     for mod_db in "$@" ; do
         if [[ -z "${!mod_db}" ]] ; then
-            sed -i "/^export ${mod_db}=.*/d" "${USER_CONF}"
-            return 0
+            sed -i "/^export ${mod_db}=/d" "${USER_CONF}"
+            continue
         fi
         proxy_mod_db="${!mod_db}"
         if [[ $proxy_mod_db =~ (${translations[Disabled]}|${translations[Disable]}) ]] ; then
@@ -5794,15 +5795,8 @@ gui_userconf () {
     fi
 
     if command -v gsettings &>/dev/null ; then
-        YAD_GTK_THEME_CHECK=$(gsettings get org.gnome.desktop.interface gtk-theme)
-        YAD_GTK_THEME_CHECK=${YAD_GTK_THEME_CHECK//\'/}
-        if [[ -n $YAD_GTK_THEME_CHECK ]] ; then
-            if [[ ! ${YAD_GTK_THEME_CHECK,,} == adwaita ]] ; then
-                YAD_GTK_THEME="$YAD_GTK_THEME_CHECK:${translations[light]}!$YAD_GTK_THEME_CHECK:${translations[dark]}!"
-            elif [[ ${YAD_GTK_THEME_CHECK,,} == breeze ]] ; then
-                YAD_GTK_THEME="$YAD_GTK_THEME_CHECK!"
-            fi
-        fi
+        YAD_GTK_THEME=$(gsettings get org.gnome.desktop.interface gtk-theme)
+        [[ -n $YAD_GTK_THEME ]] && YAD_GTK_THEME="${YAD_GTK_THEME//\'/}!"
     fi
     if [[ -z $GTK_THEME ]] ; then GTK_THEME=${translations[default]}
     elif [[ $GTK_THEME =~ light$ ]] ; then GTK_THEME="${GTK_THEME//light/${translations[light]}}"
@@ -5851,22 +5845,24 @@ gui_userconf () {
             IFS='%' read -r -a PW_ADD_SETTINGS_UC <"${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb"
             PW_GPU_USE="${PW_ADD_SETTINGS_UC[0]}"
             PW_WINE_DPI_VALUE="${PW_ADD_SETTINGS_UC[1]}"
+            PW_SOUND_DRIVER_USE="${PW_ADD_SETTINGS_UC[2]}"
+            GUI_THEME="${PW_ADD_SETTINGS_UC[3]}"
+            GTK_THEME="${PW_ADD_SETTINGS_UC[4]}"
+            DESKTOP_WITH_TIME="${PW_ADD_SETTINGS_UC[5]}"
+            SORT_WITH_TIME="${PW_ADD_SETTINGS_UC[6]}"
+
             if [[ $PW_WINE_DPI_VALUE == "${translations[Recommended value]}" ]] ; then
                 PW_WINE_DPI_VALUE="recommended"
             fi
-            PW_SOUND_DRIVER_USE="${PW_ADD_SETTINGS_UC[2]}"
-            GUI_THEME="${PW_ADD_SETTINGS_UC[3]}"
             if [[ $GUI_THEME == "${translations[default]}" ]] ; then GUI_THEME=default
             elif [[ $GUI_THEME == "${translations[compact]}" ]] ; then GUI_THEME=compact
             elif [[ $GUI_THEME == "${translations[classic]}" ]] ; then GUI_THEME=classic
             fi
-            GTK_THEME="${PW_ADD_SETTINGS_UC[4]}"
             if [[ $GTK_THEME == "${translations[default]}" ]] ; then unset GTK_THEME
-            elif [[ $GTK_THEME =~ ${translations[light]} ]] ; then GTK_THEME="${GTK_THEME//${translations[light]}/light}"
-            elif [[ $GTK_THEME =~ ${translations[dark]} ]] ; then GTK_THEME="${GTK_THEME//${translations[dark]}/dark}"
+            elif [[ $GTK_THEME =~ ${translations[light]} ]] ; then GTK_THEME=${GTK_THEME//${translations[light]}/light}
+            elif [[ $GTK_THEME =~ ${translations[dark]} ]] ; then GTK_THEME=${GTK_THEME//${translations[dark]}/dark}
             fi
-            DESKTOP_WITH_TIME="${PW_ADD_SETTINGS_UC[5]}"
-            SORT_WITH_TIME="${PW_ADD_SETTINGS_UC[6]}"
+
             edit_user_conf_from_gui PW_GPU_USE PW_WINE_DPI_VALUE PW_SOUND_DRIVER_USE GUI_THEME GTK_THEME DESKTOP_WITH_TIME SORT_WITH_TIME
             restart_pp
             ;;
