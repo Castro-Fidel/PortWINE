@@ -73,7 +73,7 @@ exit
 ```
 
 * **Ubuntu 24.04**, **Debian 12**, **Linux Mint 21.x** **Deepin** :
-  [portproton_1.7-3_amd64.deb](https://github.com/Castro-Fidel/PortProton_dpkg/releases/download/portproton_1.7-3_amd64/portproton_1.7-3_amd64.deb)
+  [portproton_amd64.deb](https://github.com/Castro-Fidel/PortProton_dpkg/releases/download/portproton_amd64/portproton_amd64.deb)
 
 * **Arch Linux** и производные (Manjaro, Garuda, и т.д.) :
   [AUR](https://aur.archlinux.org/packages/portproton)
