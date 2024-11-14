@@ -1385,7 +1385,7 @@ get_and_set_reg_file () {
     if [[ $name_add_or_del == --add ]] ; then
         if [[ -z $find_block ]] ; then
             if [[ -n $name_for_new_block ]] ; then
-                sed -i '$a\\n'"$name_block\n" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg"
+                sed -i '$a\\n'"$name_block" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg"
                 find_file="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg"
                 find_line=$(wc -l "$find_file" | awk -F" " '{print $1}')
                 find_line=$(( find_line - 1 ))
@@ -1396,7 +1396,7 @@ get_and_set_reg_file () {
         fi
         if [[ $find_check_file == 1 ]] ; then
             print_info "Change $name_for_find_old to reg file"
-            sed -i "${find_number_line}s/$name_for_find.*/$name_for_find$name_for_set/" "$find_file"
+            sed -i "${find_number_line}s|$name_for_find.*|$name_for_find$name_for_set|" "$find_file"
         else
             print_info "Added $name_for_find_old to reg file"
             sed -i "$(( find_line + 1 ))a$name_for_find$name_for_set" "$find_file"
@@ -3874,7 +3874,7 @@ start_portwine () {
     if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" ]] \
     && [[ -z $(grep "Windows $PW_WINDOWS_VER" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg") ]]
     then
-        if [[ -n "${PW_WINDOWS_VER}" ]] \
+        if [[ -n $PW_WINDOWS_VER ]] \
         && [[ $(echo "$PW_WINDOWS_VER" | sed 's/.*/\L&/') == "xp" ]]
         then
             export PW_WINDOWS_VER="xp64"
@@ -3886,12 +3886,12 @@ start_portwine () {
         echo "Set to win${PW_WINDOWS_VER}"
     fi
 
-    if [[ "$portwine_exe" == *-Shipping.exe ]] ; then
+    if [[ $portwine_exe == *-Shipping.exe ]] ; then
         echo "Disable EAC"
         [[ -z "$LAUNCH_PARAMETERS" ]] && export LAUNCH_PARAMETERS+=" -eac-nop-loaded "
     fi
 
-    if [[ "$PW_DINPUT_PROTOCOL" == "1" ]] ; then
+    if [[ $PW_DINPUT_PROTOCOL == "1" ]] ; then
         get_and_set_reg_file --add 'System\CurrentControlSet\Services\winebus' 'DisableHidraw' 'REG_DWORD' "0" "system"
         get_and_set_reg_file --add 'System\CurrentControlSet\Services\winebus' 'Enable SDL' 'REG_DWORD' "0" "system"
     else
@@ -3899,8 +3899,8 @@ start_portwine () {
         get_and_set_reg_file --add 'System\CurrentControlSet\Services\winebus' 'Enable SDL' 'REG_DWORD' "1" "system"
     fi
 
-    if [[ "$PW_WINE_DPI_VALUE" != "disabled" ]] ; then
-        if [[ "$PW_WINE_DPI_VALUE" == "recommended" ]] ; then
+    if [[ $PW_WINE_DPI_VALUE != "disabled" ]] ; then
+        if [[ $PW_WINE_DPI_VALUE == "recommended" ]] ; then
             PW_RECOMMENDED_DPI=$(recommend_dpi "${PW_SCREEN_RESOLUTION:5:8}")
             get_and_set_reg_file --add 'Control Panel\Desktop' 'LogPixels' 'REG_DWORD' "$PW_RECOMMENDED_DPI" "user"
         else
@@ -3908,7 +3908,7 @@ start_portwine () {
         fi
     fi
 
-    if [[ "$PW_USE_NATIVE_WAYLAND" == "1" ]] ; then
+    if [[ $PW_USE_NATIVE_WAYLAND == "1" ]] ; then
         export PW_DISPLAY="env DISPLAY="
         export PW_USE_RUNTIME="0"
         get_and_set_reg_file --add 'Software\Wine\Drivers' 'Graphics' 'REG_SZ' "x11,wayland" "user"
@@ -3917,7 +3917,7 @@ start_portwine () {
         get_and_set_reg_file --delete 'Software\Wine\Drivers' 'Graphics'
     fi
 
-    if [[ "$PW_SOUND_DRIVER_USE" != "disabled" ]] ; then
+    if [[ $PW_SOUND_DRIVER_USE != "disabled" ]] ; then
         get_and_set_reg_file --add 'Software\Wine\Drivers' 'Audio' 'REG_SZ' "$PW_SOUND_DRIVER_USE" "user"
     fi
 
@@ -3926,7 +3926,7 @@ start_portwine () {
         pw_tray_icon
     fi
 
-    if [[ "${PW_CHECK_AUTOINSTALL}" != "1" ]] ; then
+    if [[ $PW_CHECK_AUTOINSTALL != "1" ]] ; then
         pw_start_progress_bar_cover "${COVERS_PATH}/loading_${LANGUAGE_GIF}.gif"
     fi
     add_in_start_portwine
