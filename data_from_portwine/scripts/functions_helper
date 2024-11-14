@@ -1337,26 +1337,23 @@ get_and_set_reg_file () {
 
     case $name_type_reg in
             REG_DWORD)
-                name_for_find='"'"$name_for_find"'"'"=dword:"
+                name_for_find="\"$name_for_find\"=dword:"
                 name_for_set=$(convert_dec_and_hex --dec "$name_for_set") ;;
             REG_SZ)
-                name_for_find='"'"$name_for_find"'"'"="
-                name_for_set='"'"$name_for_set"'"' ;;
+                name_for_find="\"$name_for_find\"="
+                name_for_set="\"$name_for_set\"" ;;
             *)
                 if [[ $name_add_or_del == --delete ]] ; then
-                    name_for_find='"'"$name_for_find"'"'
+                    name_for_find="\"$name_for_find\""
                 else
                     print_error "Name type reg not set for $name_fatal"
                     return 1
                 fi ;;
     esac
-    name_block=${name_block//\\/\\\\\\\\\\\\\\}
-    name_block=${name_block//*/\\[$name_block}
-    name_block="${name_block//*/${name_block//\\/\\\\}\\]}"
     if [[ -n $name_for_new_block ]] ; then
-        find_block=$(grep -n "$name_block" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg")
+        find_block=$(grep -n "${name_block//\\/\\\\\\\\}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg")
     else
-        find_block=$(grep -n "$name_block" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/"*.reg)
+        find_block=$(grep -n "${name_block//\\/\\\\\\\\}" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/"*.reg)
     fi
     if [[ -n $find_block ]] ; then
         if [[ -n $name_for_new_block ]] ; then
@@ -1385,7 +1382,7 @@ get_and_set_reg_file () {
     if [[ $name_add_or_del == --add ]] ; then
         if [[ -z $find_block ]] ; then
             if [[ -n $name_for_new_block ]] ; then
-                sed -i '$a\\n'"$name_block" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg"
+                sed -i '$a\\n'\["${name_block//\\/\\\\\\\\}"\] "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg"
                 find_file="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg"
                 find_line=$(wc -l "$find_file" | awk -F" " '{print $1}')
                 find_line=$(( find_line - 1 ))
@@ -3318,7 +3315,7 @@ start_portwine () {
     if command -v systemd-inhibit &>/dev/null \
     && [[ "$GAMEMODERUN" != "1" ]]
     then
-        PW_INHIBIT_SLR="eval systemd-inhibit --mode=block --who=ru.linux_gaming.PortProton --why=\"${translations[Launched]} $PW_NAME_DESKTOP_PROXY\""
+        PW_INHIBIT_SLR="systemd-inhibit --mode=block --who=ru.linux_gaming.PortProton --why=${translations[Launched]}"
         print_info "Screensaver will be inhibit"
     fi
     pw_other_fixes
