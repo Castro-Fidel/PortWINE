@@ -1352,9 +1352,9 @@ get_and_set_reg_file () {
     esac
     name_block=${name_block//\\/\\\\\\\\}
     if [[ -n $name_for_new_block ]] ; then
-        find_block=$(grep -n "$name_block" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg")
+        find_block=$(grep -n "\[$name_block\]" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg")
     else
-        find_block=$(grep -n "$name_block" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/"*.reg)
+        find_block=$(grep -n "\[$name_block\]" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/"*.reg)
     fi
     if [[ -n $find_block ]] ; then
         if [[ -n $name_for_new_block ]] ; then
@@ -1378,7 +1378,7 @@ get_and_set_reg_file () {
                 break
             fi
             [[ -z $line_reg ]] && break
-        done < <(sed -n "$find_line"',$p' "$find_file")
+        done <<< "$(sed -n "$find_line"',$p' "$find_file")"
     fi
     if [[ $name_add_or_del == --add ]] ; then
         if [[ -z $find_block ]] ; then
@@ -5796,6 +5796,7 @@ gui_userconf () {
 
     if command -v gsettings &>/dev/null ; then
         YAD_GTK_THEME=$(gsettings get org.gnome.desktop.interface gtk-theme)
+        [[ $YAD_GTK_THEME == \'Adwaita\' ]] && unset YAD_GTK_THEME
         [[ -n $YAD_GTK_THEME ]] && YAD_GTK_THEME="${YAD_GTK_THEME//\'/}!"
     fi
     if [[ -z $GTK_THEME ]] ; then GTK_THEME=${translations[default]}
