@@ -3915,9 +3915,13 @@ start_portwine () {
         get_and_set_reg_file --delete 'Software\Wine\Drivers' 'Graphics'
     fi
 
-    if [[ $PW_SOUND_DRIVER_USE != "disabled" ]] ; then
-        get_and_set_reg_file --add 'Software\Wine\Drivers' 'Audio' 'REG_SZ' "$PW_SOUND_DRIVER_USE" "user"
-    fi
+
+    case "$PW_SOUND_DRIVER_USE" in
+        pulse) get_and_set_reg_file --add 'Software\Wine\Drivers' 'Audio' 'REG_SZ' "pulse" "user" ;;
+         alsa) get_and_set_reg_file --add 'Software\Wine\Drivers' 'Audio' 'REG_SZ' "alsa" "user" ;;
+          oss) get_and_set_reg_file --add 'Software\Wine\Drivers' 'Audio' 'REG_SZ' "oss" "user" ;;
+            *) get_and_set_reg_file --delete 'Software\Wine\Drivers' 'Audio' ;;
+    esac
 
     pw_stop_progress_bar
     if ! check_start_from_steam ; then
