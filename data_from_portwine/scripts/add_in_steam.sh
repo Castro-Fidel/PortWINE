@@ -281,15 +281,15 @@ addNonSteamGame() {
 				printf '\x00%s\x00' "tags"
 				printf '\x08\x08\x08\x08'
 			} >> "${SCPATH}"
-		fi
 
-		if [[ "${DOWNLOAD_STEAM_GRID}" == "1" ]] ; then
-			pw_start_progress_bar_block "${translations[Please wait. downloading covers for]} ${NOSTAPPNAME}"
-			addGrids
-			pw_stop_progress_bar
-		fi
+			if [[ "${DOWNLOAD_STEAM_GRID}" == "1" ]] ; then
+				pw_start_progress_bar_block "${translations[Please wait. downloading covers for]} ${NOSTAPPNAME}"
+				addGrids
+				pw_stop_progress_bar
+			fi
 
-		restartSteam
+			restartSteam
+		fi
 	else
 		return 1
 	fi
