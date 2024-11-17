@@ -344,7 +344,6 @@ if [[ $(basename "${portwine_exe,,}") =~ .ppack$ ]] ; then
     PW_PREFIX_NAME=$(basename "${1^^}" .PPACK)
 cat << EOF > "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack.sh
     #!/usr/bin/env bash
-    ${TMP_ALL_PATH} unsquashfs -f -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" "$1" \
     ${TMP_ALL_PATH} unsquashfs $NO_XATTRS_NEED -f -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" "$1" \
     || echo "ERROR" > "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack_error
 EOF
