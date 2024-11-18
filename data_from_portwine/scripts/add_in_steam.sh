@@ -2,11 +2,11 @@
 # GPL-3.0 license
 # based on https://github.com/sonic2kk/steamtinkerlaunch/blob/master/steamtinkerlaunch
 PROGNAME="PortProton"
-NOSTAPPNAME="$name_desktop"
+NOSTAPPNAME="${name_desktop}"
 NOSTSHPATH="${STEAM_SCRIPTS}/${name_desktop}.sh"
 NOSTEXEPATH="\"${NOSTSHPATH}\""
-NOSTICONPATH="${PORT_WINE_PATH}/data/img/$name_desktop_png.png"
-if [[ -z "${NOSTSTDIR}" ]] ; then
+NOSTICONPATH="${PORT_WINE_PATH}/data/img/${name_desktop_png}.png"
+if [[ -z "${NOSTSTDIR}" ]]; then
 	NOSTSTDIR="\"${STEAM_SCRIPTS}\""
 fi
 
@@ -66,6 +66,11 @@ getSteamShortcutEntryHex() {
 	SHORTCUTSVDFINPUTHEX="$1"  # The hex block representing the shortcut
 	SHORTCUTSVDFMATCHPATTERN="$2"  # The pattern to match against in the block
 	printf "%s" "${SHORTCUTSVDFINPUTHEX}" | grep -oP "${SHORTCUTSVDFMATCHPATTERN}\K.*?(?=${SHORTCUTVDFENDPAT})"
+}
+
+getAppTarget() {
+	exe=$(listNonSteamGames | jq -r --arg id "$1" 'map(select(.id == $id)) | first(.[].exe)')
+	[[ -n "${exe}" ]] && parseSteamTargetExe "${exe}"
 }
 
 getAppId() {
@@ -156,6 +161,10 @@ parseSteamShortcutEntryAppName() {
 
 parseSteamShortcutEntryAppID() {
 	convertSteamShortcutAppID "$(printf "%s" "$1" | grep -oP "${SHORTCUTVDFAPPIDHEXPAT}\K.{8}")"
+}
+
+parseSteamTargetExe() {
+	grep -E 'flatpak|start\.sh' "$1" | head -n 1 | awk -F'"' '{print $(NF-1)}'
 }
 
 restartSteam() {
