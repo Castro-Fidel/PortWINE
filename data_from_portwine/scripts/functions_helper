@@ -6081,6 +6081,34 @@ portwine_output_yad_shortcut () {
     fi
 }
 
+parse_lnk () {
+    prefix_name=$(echo "$1" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
+    if fix_icon_name=$(grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" 2>/dev/null) \
+    && [[ "${fix_icon_name//*.exe/true}" == "true" ]] ; then
+        link_drive=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
+        link_path=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/${prefix_name:-DEFAULT}/dosdevices/$link_drive|g" | sed 's/\\/\//g')
+    else
+        link_drive=$(sed -n 's/^Local Base Path\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
+        link_path=$(sed -n 's/^Local Base Path\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/${prefix_name:-DEFAULT}/dosdevices/$link_drive|g" | sed 's/\\/\//g')
+    fi
+    link_name=$(sed -n 's/^File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|\.lnk||')
+    link_cmd=$(sed -n 's/^Command Line Arguments\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
+}
+
+get_lnk () {
+    if command -v exiftool &>/dev/null ; then
+        if timeout 3 exiftool "$1" &> "${PW_TMPFS_PATH}/exiftool.tmp" ; then
+            parse_lnk "$1"
+        else
+            print_error "exiftool - broken!"
+        fi
+    else
+        print_warning "use portable exiftool"
+        env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" "$1" &> "${PW_TMPFS_PATH}/exiftool.tmp"
+        parse_lnk "$1"
+    fi
+}
+
 pw_auto_create_shortcut () {
     if [[ "${PW_CHECK_AUTOINSTALL}" == "1" ]] \
     || [[ "${PW_NO_AUTO_CREATE_SHORTCUT}" == "1" ]] \
@@ -6101,38 +6129,7 @@ pw_auto_create_shortcut () {
     read -r -a SORTED_LINKS < <(echo "${LINKS[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
 
     for link_file in "${SORTED_LINKS[@]//#@_@#/ }" ; do
-        if command -v exiftool &>/dev/null ; then
-            if timeout 3 exiftool "$link_file" &> "${PW_TMPFS_PATH}/exiftool.tmp" ; then
-                prefix_name=$(echo "$link_file" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
-                if fix_icon_name=$(grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" 2>/dev/null) \
-                && [[ "${fix_icon_name//*.exe/true}" == "true" ]] ; then
-                    link_drive=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
-                    link_path=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/$prefix_name/dosdevices/$link_drive|g" | sed 's/\\/\//g')
-                else
-                    link_drive=$(sed -n 's/^Local Base Path\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
-                    link_path=$(sed -n 's/^Local Base Path\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/$prefix_name/dosdevices/$link_drive|g" | sed 's/\\/\//g')
-                fi
-                link_name=$(sed -n 's/^File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|\.lnk||')
-                link_cmd=$(sed -n 's/^Command Line Arguments\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
-            else
-                print_error "exiftool - broken!"
-            fi
-        else
-            print_warning "use portable exiftool"
-            env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" "$link_file" &> "${PW_TMPFS_PATH}/exiftool.tmp"
-            prefix_name=$(echo "$link_file" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
-            if fix_icon_name=$(grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" 2>/dev/null) \
-            && [[ "${fix_icon_name//*.exe/true}" == "true" ]] ; then
-                link_drive=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
-                link_path=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/$prefix_name/dosdevices/$link_drive|g" | sed 's/\\/\//g')
-            else
-                link_drive=$(sed -n 's/^Local Base Path\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
-                link_path=$(sed -n 's/^Local Base Path\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/$prefix_name/dosdevices/$link_drive|g" | sed 's/\\/\//g')
-            fi
-            link_name=$(sed -n 's/^File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|\.lnk||')
-            link_cmd=$(sed -n 's/^Command Line Arguments\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
-        fi
-
+        get_lnk "${link_file}"
         if ! exe_path="$(realpath "${link_path}" 2>/dev/null)" ; then
             print_warning "Link broken for: $link_name"
         else

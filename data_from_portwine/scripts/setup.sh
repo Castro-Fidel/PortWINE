@@ -19,7 +19,7 @@ Type=Application
 Terminal=False
 Categories=Game
 StartupNotify=true
-MimeType=application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program;text/win-bat;
+MimeType=application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program;application/x-ms-shortcut;text/win-bat;
 Path=${PORT_SCRIPTS_PATH}
 Icon=${PORT_WINE_PATH}/data/img/w.png
 EOF
