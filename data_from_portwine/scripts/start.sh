@@ -905,6 +905,7 @@ case "$PW_YAD_SET" in
 esac
 
 case "$PW_YAD_SET" in
+    '') ;;
     98) portwine_change_shortcut ;;
     100) portwine_create_shortcut ;;
     DEBUG|102) portwine_start_debug ;;
