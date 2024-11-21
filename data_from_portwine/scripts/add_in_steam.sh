@@ -91,25 +91,32 @@ getAppId() {
 }
 
 getSteamId() {
-	if [[ -n "${1:-}" ]]; then
-		getSteamGridDBId "$1"
+	unset SteamAppId
+	NOSTAPPNAME="$1"
+	if [[ -n "${NOSTAPPNAME}" ]]; then
+		getSteamGridDBId "${NOSTAPPNAME}" > /dev/null
 	fi
 	if [[ $SteamGridDBTypeSteam == true ]]; then
 		SRES=$(curl -Ls -e "https://www.steamgriddb.com/game/${SteamGridDBId}" "https://www.steamgriddb.com/api/public/game/${SteamGridDBId}")
 		if jq -e ".success == true" <<< "${SRES}" > /dev/null 2>&1; then
 			SteamAppId="$(jq -r '.data.platforms.steam.id' <<< "${SRES}")"
+			echo ${SteamAppId}
 		fi
 	fi
 }
 
 getSteamGridDBId() {
+	unset SteamGridDBId
 	NOSTAPPNAME="$1"
 	SGDBRES=$(curl -Ls -H "Authorization: Bearer ${SGDBAPIKEY}" "${BASESTEAMGRIDDBAPI}/search/autocomplete/${NOSTAPPNAME// /_}")
 	if jq -e ".success == true and (.data | length > 0)" <<< "${SGDBRES}" > /dev/null 2>&1; then
 		if jq -e '.data[0].types | contains(["steam"])' <<< "${SGDBRES}" > /dev/null; then
 			SteamGridDBTypeSteam=true
+		else
+			SteamGridDBTypeSteam=false
 		fi
 		SteamGridDBId="$(jq '.data[0].id' <<< "${SGDBRES}")"
+		echo ${SteamGridDBId}
 	fi
 }
 
@@ -147,10 +154,13 @@ listInstalledSteamGames() {
 		jq -n '[]'
 	else
 		for manifest_file in "${manifests[@]}"; do
-			jq -n \
-				--arg id "$(grep -Po '"appid"\s+"\K\d+' "$manifest_file")" \
-				--arg name "$(grep -Po '"name"\s+"\K[^"]+' "$manifest_file")" \
-				'{id: $id, name: $name}'
+			name="$(grep -Po '"name"\s+"\K[^"]+' "$manifest_file")";
+			if [[ ! "${name}" =~ ^(Proton |Steam Linux Runtime|Steamworks Common) ]]; then
+				jq -n \
+					--arg id "$(grep -Po '"appid"\s+"\K\d+' "$manifest_file")" \
+					--arg name "${name}" \
+					'{id: $id, name: $name}'
+			fi
 		done | jq -s '.'
 	fi
 }
@@ -163,6 +173,20 @@ listNonSteamGames() {
 			--arg exe "$(parseSteamShortcutEntryExe "${SCVDFE}")" \
 			'{id: $id, name: $name, exe: $exe}'
 	done | jq -s '.'
+}
+
+listSteamGames() {
+	(
+	 	jq -r 'map({AppId: .id, SteamAppId: .id, SteamGameId: .id, Name: .name}) | .[] | tostring' <<< "$(listInstalledSteamGames)"
+		jq -r '.[] | tostring' <<< "$(listNonSteamGames)" | while read game; do
+			id=$(jq -r '.id' <<< "${game}")
+			name=$(jq -r '.name' <<< "${game}")
+			jq -r \
+				--arg SteamAppId "$(getSteamId "${name}")" \
+				--arg SteamGameId "$(getSteamGameId $id)" \
+				'{AppId: .id, SteamAppId: ($SteamAppId | if . == "" then "0" else . end), SteamGameId: $SteamGameId, Name: .name} | tostring' <<< "${game}"
+		done
+	) | jq -s '.'
 }
 
 convertSteamShortcutAppID() {
@@ -226,7 +250,7 @@ downloadImage() {
 
 downloadImageSteam() {
 	if [[ -z "${SteamAppId}" ]]; then
-		getSteamId
+		getSteamId > /dev/null
 	fi
 	if [[ -n "${SteamAppId}" ]]; then
 		downloadImage "https://cdn.cloudflare.steamstatic.com/steam/apps/${SteamAppId}/$1" "$2"
@@ -252,7 +276,7 @@ downloadImageSteamGridDB() {
 
 addGrids() {
 	if [[ -n "${SGDBAPIKEY}" ]]; then
-		getSteamGridDBId "${name_desktop}"
+		getSteamGridDBId "${name_desktop}" > /dev/null
 	fi
 	if [[ -n "${SteamGridDBId}" ]]; then
 		create_new_dir "${STCFGPATH}/grid"
