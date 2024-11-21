@@ -2,13 +2,6 @@
 # GPL-3.0 license
 # based on https://github.com/sonic2kk/steamtinkerlaunch/blob/master/steamtinkerlaunch
 PROGNAME="PortProton"
-NOSTAPPNAME="${name_desktop}"
-NOSTSHPATH="${STEAM_SCRIPTS}/${name_desktop}.sh"
-NOSTEXEPATH="\"${NOSTSHPATH}\""
-NOSTICONPATH="${PORT_WINE_PATH}/data/img/${name_desktop_png}.png"
-if [[ -z "${NOSTSTDIR}" ]]; then
-	NOSTSTDIR="\"${STEAM_SCRIPTS}\""
-fi
 
 ## How Non-Steam AppIDs work, because it took me almost a year to figure this out
 ## ----------------------
@@ -55,22 +48,42 @@ generateShortcutGridAppId() {
 ### END MAGIC APPID FUNCTIONS
 
 getSteamShortcutsVdfFileHex() {
-	LC_ALL=C perl -0777 -ne 'print unpack("H*", $_)' "${SCPATH}"
+	STCFGPATH="$(getUserPath)"
+	if [[ -n "${STCFGPATH}" ]]; then
+		SCPATH="${STCFGPATH}/shortcuts.vdf"
+		if [[ -f "${SCPATH}" ]]; then
+			LC_ALL=C perl -0777 -ne 'print unpack("H*", $_)' "${SCPATH}"
+		fi
+	fi
 }
 
 getSteamShortcutHex() {
+	SHORTCUTVDFFILESTARTHEXPAT="0073686f7274637574730000300002"  # Bytes for beginning of the shortcuts.vdf file
+	SHORTCUTVDFENTRYBEGINHEXPAT="00080800.*?0002"  # Pattern for beginning of shortcut entry in shortcuts.vdf -- Beginning of file has a different pattern, but every other pattern begins like this
+	SHORTCUTSVDFENTRYENDHEXPAT="000808"  # Pattern for how shortcuts.vdf blocks end
 	getSteamShortcutsVdfFileHex | grep -oP "(${SHORTCUTVDFFILESTARTHEXPAT}|${SHORTCUTVDFENTRYBEGINHEXPAT})\K.*?(?=${SHORTCUTSVDFENTRYENDHEXPAT})"  # Get entire shortcuts.vdf as hex, then grep each entry using the begin and end patterns for each block
 }
 
 getSteamShortcutEntryHex() {
 	SHORTCUTSVDFINPUTHEX="$1"  # The hex block representing the shortcut
 	SHORTCUTSVDFMATCHPATTERN="$2"  # The pattern to match against in the block
+	SHORTCUTVDFENDPAT="0001"  # Generic end pattern for each shortcut.vdf column
 	printf "%s" "${SHORTCUTSVDFINPUTHEX}" | grep -oP "${SHORTCUTSVDFMATCHPATTERN}\K.*?(?=${SHORTCUTVDFENDPAT})"
 }
 
 getAppTarget() {
 	exe=$(listNonSteamGames | jq -r --arg id "$1" 'map(select(.id == $id)) | first(.[].exe)')
-	[[ -n "${exe}" ]] && parseSteamTargetExe "${exe}"
+	if [[ -n "${exe}" ]]; then
+		if [[ "${exe}" =~ .sh$ ]] ; then
+			parseSteamTargetExe "${exe}"
+		else
+			echo "${exe}";
+		fi
+	fi
+}
+
+getSteamGameId() {
+	printf "%u\n" $(($1 << 32 | 0x02000000))
 }
 
 getAppId() {
@@ -78,6 +91,9 @@ getAppId() {
 }
 
 getSteamId() {
+	if [[ -n "${1:-}" ]]; then
+		getSteamGridDBId "$1"
+	fi
 	if [[ $SteamGridDBTypeSteam == true ]]; then
 		SRES=$(curl -Ls -e "https://www.steamgriddb.com/game/${SteamGridDBId}" "https://www.steamgriddb.com/api/public/game/${SteamGridDBId}")
 		if jq -e ".success == true" <<< "${SRES}" > /dev/null 2>&1; then
@@ -87,6 +103,7 @@ getSteamId() {
 }
 
 getSteamGridDBId() {
+	NOSTAPPNAME="$1"
 	SGDBRES=$(curl -Ls -H "Authorization: Bearer ${SGDBAPIKEY}" "${BASESTEAMGRIDDBAPI}/search/autocomplete/${NOSTAPPNAME// /_}")
 	if jq -e ".success == true and (.data | length > 0)" <<< "${SGDBRES}" > /dev/null 2>&1; then
 		if jq -e '.data[0].types | contains(["steam"])' <<< "${SGDBRES}" > /dev/null; then
@@ -124,6 +141,20 @@ getUserPath() {
 	fi
 }
 
+listInstalledSteamGames() {
+	manifests=("${HOME}/.local/share/Steam/steamapps"/appmanifest_*.acf)
+	if [ ! -e "${manifests[0]}" ]; then
+		jq -n '[]'
+	else
+		for manifest_file in "${manifests[@]}"; do
+			jq -n \
+				--arg id "$(grep -Po '"appid"\s+"\K\d+' "$manifest_file")" \
+				--arg name "$(grep -Po '"name"\s+"\K[^"]+' "$manifest_file")" \
+				'{id: $id, name: $name}'
+		done | jq -s '.'
+	fi
+}
+
 listNonSteamGames() {
 	getSteamShortcutHex | while read -r SCVDFE; do
 		jq -n \
@@ -152,14 +183,17 @@ parseSteamShortcutEntryHex() {
 }
 
 parseSteamShortcutEntryExe() {
+	SHORTCUTVDFEXEHEXPAT="000145786500"  # 'Exe' ('exe' is 6578650a if we ever need it)
 	parseSteamShortcutEntryHex "$1" "${SHORTCUTVDFEXEHEXPAT}" | tr -d '"'
 }
 
 parseSteamShortcutEntryAppName() {
+	SHORTCUTVDFNAMEHEXPAT="(014170704e616d6500|6170706e616d6500)"  # 'AppName' and 'appname'
 	parseSteamShortcutEntryHex "$1" "${SHORTCUTVDFNAMEHEXPAT}"
 }
 
 parseSteamShortcutEntryAppID() {
+	SHORTCUTVDFAPPIDHEXPAT="617070696400"  # 'appid'
 	convertSteamShortcutAppID "$(printf "%s" "$1" | grep -oP "${SHORTCUTVDFAPPIDHEXPAT}\K.{8}")"
 }
 
@@ -218,7 +252,7 @@ downloadImageSteamGridDB() {
 
 addGrids() {
 	if [[ -n "${SGDBAPIKEY}" ]]; then
-		getSteamGridDBId
+		getSteamGridDBId "${name_desktop}"
 	fi
 	if [[ -n "${SteamGridDBId}" ]]; then
 		create_new_dir "${STCFGPATH}/grid"
@@ -232,6 +266,17 @@ addGrids() {
 }
 
 addNonSteamGame() {
+	NOSTAPPNAME="${name_desktop}"
+	NOSTSHPATH="${STEAM_SCRIPTS}/${name_desktop}.sh"
+	NOSTEXEPATH="\"${NOSTSHPATH}\""
+	NOSTICONPATH="${PORT_WINE_PATH}/data/img/${name_desktop_png}.png"
+	if [[ -z "${NOSTSTDIR}" ]]; then
+		NOSTSTDIR="\"${STEAM_SCRIPTS}\""
+	fi
+	STCFGPATH="$(getUserPath)"
+	if [[ -n "${STCFGPATH}" ]]; then
+		SCPATH="${STCFGPATH}/shortcuts.vdf"
+	fi
 	if [[ -n "${SCPATH}" ]]; then
 		NOSTAIDGRID=$(getAppId "${NOSTSHPATH}")
 		if [[ -z "${NOSTAIDGRID}" ]]; then
@@ -303,15 +348,3 @@ addNonSteamGame() {
 		return 1
 	fi
 }
-
-SHORTCUTVDFFILESTARTHEXPAT="0073686f7274637574730000300002"  # Bytes for beginning of the shortcuts.vdf file
-SHORTCUTVDFENTRYBEGINHEXPAT="00080800.*?0002"  # Pattern for beginning of shortcut entry in shortcuts.vdf -- Beginning of file has a different pattern, but every other pattern begins like this
-SHORTCUTSVDFENTRYENDHEXPAT="000808"  # Pattern for how shortcuts.vdf blocks end
-SHORTCUTVDFAPPIDHEXPAT="617070696400"  # 'appid'
-SHORTCUTVDFNAMEHEXPAT="(014170704e616d6500|6170706e616d6500)"  # 'AppName' and 'appname'
-SHORTCUTVDFENDPAT="0001"  # Generic end pattern for each shortcut.vdf column
-SHORTCUTVDFEXEHEXPAT="000145786500"  # 'Exe' ('exe' is 6578650a if we ever need it)
-STCFGPATH="$(getUserPath)"
-if [[ -n "${STCFGPATH}" ]]; then
-	SCPATH="${STCFGPATH}/shortcuts.vdf"
-fi
