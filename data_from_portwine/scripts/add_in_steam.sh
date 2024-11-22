@@ -92,16 +92,28 @@ getAppId() {
 
 getSteamId() {
 	unset SteamAppId
-	NOSTAPPNAME="$1"
-	if [[ -n "${NOSTAPPNAME}" ]]; then
-		getSteamGridDBId "${NOSTAPPNAME}" > /dev/null
+	local cache_file="${PORT_WINE_TMP_PATH:-/tmp}/steamid_cache.json"
+	[[ -n "${1:-}" ]] && NOSTAPPNAME="$1"
+	if [[ -z "${SteamIds:-}" ]] && [[ -f "${cache_file}" ]]; then
+		SteamIds=$(<"${cache_file}")
 	fi
-	if [[ $SteamGridDBTypeSteam == true ]]; then
-		SRES=$(curl -Ls -e "https://www.steamgriddb.com/game/${SteamGridDBId}" "https://www.steamgriddb.com/api/public/game/${SteamGridDBId}")
-		if jq -e ".success == true" <<< "${SRES}" > /dev/null 2>&1; then
-			SteamAppId="$(jq -r '.data.platforms.steam.id' <<< "${SRES}")"
-			echo ${SteamAppId}
+	if [[ -n "${SteamIds:-}" ]] && jq -e --arg key "$NOSTAPPNAME" 'has($key)' <<< "${SteamIds}" > /dev/null; then
+		SteamAppId=$(jq -r --arg key "${NOSTAPPNAME}" '.[$key]' <<< "${SteamIds}")
+	else
+		if [[ -n "${1:-}" ]]; then
+			getSteamGridDBId "${NOSTAPPNAME}" > /dev/null
 		fi
+		if [[ $SteamGridDBTypeSteam == true ]]; then
+			SRES=$(curl -Ls -e "https://www.steamgriddb.com/game/${SteamGridDBId}" "https://www.steamgriddb.com/api/public/game/${SteamGridDBId}")
+			if jq -e ".success == true" <<< "${SRES}" > /dev/null 2>&1; then
+				SteamAppId="$(jq -r '.data.platforms.steam.id' <<< "${SRES}")"
+			fi
+		fi
+		SteamIds=$(jq --arg key "${NOSTAPPNAME}" --arg value "${SteamAppId:-}" '. + {($key): $value}' <<< "${SteamIds:-$(jq -n '{}')}")
+		echo "${SteamIds}" > "${cache_file}"
+	fi
+	if [[ -n "${SteamAppId:-}" ]]; then
+		echo "${SteamAppId}"
 	fi
 }
 
@@ -116,7 +128,7 @@ getSteamGridDBId() {
 			SteamGridDBTypeSteam=false
 		fi
 		SteamGridDBId="$(jq '.data[0].id' <<< "${SGDBRES}")"
-		echo ${SteamGridDBId}
+		echo "${SteamGridDBId}"
 	fi
 }
 
