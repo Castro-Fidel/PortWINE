@@ -372,8 +372,26 @@ fi
 
 case "$1" in
     --help)
-        # shellcheck source=/dev/null
-        source "${PORT_SCRIPTS_PATH}/help_info"
+        help_info () {
+            files_from_autoinstall=$(ls "${PORT_SCRIPTS_PATH}/pw_autoinstall")
+            echo -e "${translations[use]}: [--repair] [--reinstall] [--autoinstall]
+
+--repair                                            ${translations[Forces all scripts to be updated to a working state
+                                                    (helps if PortProton is not working)]}
+--reinstall                                         ${translations[Reinstalls PortProton and resets all settings to default]}
+--generate-pot                                      ${translations[Creates a files with translations .pot and .po]}
+--debug                                             ${translations[Debug scripts for PortProton
+                                                    (saved log in]} $PORT_WINE_PATH/scripts-debug.log)
+--update                                            ${translations[Check update scripts for PortProton]}
+--launch                                            ${translations[Launches the application immediately, requires the path to the .exe file]}
+--edit-db                                           ${translations[After the variable, the path to the .exe file is required and then the variables.
+                                                    (List their variables and values for example PW_MANGOHUD=1 PW_VKBASALT=0, etc.)]}
+--autoinstall                                       ${translations[--autoinstall and the name of what needs to be installed is given in the list below:]}
+
+$(echo $files_from_autoinstall | awk '{for (i = 1; i <= NF; i++) {if (i % 10 == 0) {print ""} printf "%s ", $i}}')
+            "
+        }
+        help_info
         exit 0
         ;;
     --reinstall)
