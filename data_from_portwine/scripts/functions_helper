@@ -1638,8 +1638,11 @@ init_wine_ver () {
             export WINEDLLPATH+=":${PATH_TO_GAME}"
         fi
     fi
+    
+	if ! check_flatpak ; then
+		export WINE_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib"
+	fi
 
-    export WINE_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib"
     export MEDIACONV_BLANK_VIDEO_FILE="${WINEDIR}"/share/media/blank.mkv
     export MEDIACONV_BLANK_AUDIO_FILE="${WINEDIR}"/share/media/blank.ptna
     return 0
@@ -1673,15 +1676,18 @@ pw_init_runtime () {
 
     PW_PV_OVERRIDES="/usr/lib/pressure-vessel/overrides/lib"
 
-    export PW_LD_LIBRARY_PATH="\
-${PW_PLUGINS_PATH}/portable/lib/lib64:\
-${PW_PLUGINS_PATH}/portable/lib/lib32:\
-${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:\
-${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:\
-/overrides/lib/x86_64-linux-gnu:\
-/overrides/lib/i386-linux-gnu:\
-/lib/x86_64-linux-gnu:\
-/lib/i386-linux-gnu"
+	if ! check_flatpak; then
+	  export PW_LD_LIBRARY_PATH="\
+	  ${PW_PLUGINS_PATH}/portable/lib/lib64:\
+	  ${PW_PLUGINS_PATH}/portable/lib/lib32:\
+	  ${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:\
+	  ${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:\
+	  /overrides/lib/x86_64-linux-gnu:\
+	  /overrides/lib/i386-linux-gnu:\
+	  /lib/x86_64-linux-gnu:\
+	  /lib/i386-linux-gnu"
+	fi
+
 
     if [[ -n "${PATH}" ]]
     then export PW_PATH="${PATH}:${PW_PLUGINS_PATH}/portable/bin"
