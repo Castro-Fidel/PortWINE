@@ -700,9 +700,16 @@ else
     IFS=$'\n'
     PW_GENERATE_BUTTONS="--field=   ${translations[Create shortcut...]}!${PW_GUI_ICON_PATH}/find_48.svg!:FBTNR%@bash -c \"button_click --normal pw_find_exe\"%"
     for dp in "${PW_AMOUNT_NEW_DESKTOP[@]}" "${PW_AMOUNT_OLD_DESKTOP[@]}" ; do
-        PW_NAME_D_ICON_48="${PW_ICON_PATH[dp]%.png}_48"
-        PW_NAME_D_ICON_128="${PW_ICON_PATH[dp]%.png}"
-        PW_NAME_D_ICON_NEW="${PW_NAME_D_ICON[dp]//\"/}"
+        PW_NAME_D_ICON_CHECK="${PW_ICON_PATH[dp]%?.png}"
+        if [ "${PW_ICON_PATH[dp]#$PW_NAME_D_ICON_CHECK}" == "!.png" ] ; then
+            PW_NAME_D_ICON_48="${PW_ICON_PATH[dp]%?.png}_48"
+            PW_NAME_D_ICON_128="${PW_ICON_PATH[dp]%?.png}"
+            PW_NAME_D_ICON_NEW="${PW_NAME_D_ICON[dp]//\"/}"
+        else
+            PW_NAME_D_ICON_48="${PW_ICON_PATH[dp]%.png}_48"
+            PW_NAME_D_ICON_128="${PW_ICON_PATH[dp]%.png}"
+            PW_NAME_D_ICON_NEW="${PW_NAME_D_ICON[dp]//\"/}"
+        fi
         resize_png "$PW_NAME_D_ICON_NEW" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
         resize_png "$PW_NAME_D_ICON_NEW" "${PW_NAME_D_ICON_128//"${PORT_WINE_PATH}/data/img/"/}" "128"
 
