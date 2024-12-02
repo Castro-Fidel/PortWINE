@@ -833,6 +833,51 @@ check_selinux () {
 }
 export -f check_selinux
 
+check_vendor_gpu () {
+    unset VENDOR_GPU_USE
+    if [[ $PW_GPU_USE != disabled ]] ; then
+        case "${PW_GPU_USE,,}" in
+            *nvidia*)
+                [[ -d /sys/bus/pci/drivers/nvidia ]] && VENDOR_GPU_USE+=("nvidia")
+                [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE+=("nouveau")
+            ;;
+            *amd*)
+                [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE+=("amd")
+            ;;
+            *intel*)
+                [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE+=("intel")
+            ;;
+        esac
+    fi
+
+    if command -v glxinfo &>/dev/null ; then
+        if [[ ! -f "${PW_TMPFS_PATH}/glxinfo.tmp" ]] ; then
+            glxinfo -B &> "${PW_TMPFS_PATH}/glxinfo.tmp"
+        fi
+        case "$(<"${PW_TMPFS_PATH}/glxinfo.tmp" tr '[:upper:]' '[:lower:]')" in
+            *nvidia*)
+                [[ -d /sys/bus/pci/drivers/nvidia ]] && VENDOR_GPU_USE+=("nvidia")
+                [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE+=("nouveau")
+            ;;
+            *amd*)
+                [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE+=("amd")
+            ;;
+            *intel*)
+                [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE+=("intel")
+            ;;
+        esac
+    fi
+
+    if [[ -z ${VENDOR_GPU_USE[0]} ]] ; then
+        [[ -d /sys/bus/pci/drivers/nvidia ]] && VENDOR_GPU_USE+=("nvidia")
+        [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE+=("nouveau")
+        [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE+=("amd")
+        [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE+=("intel")
+    fi
+
+    echo "${VENDOR_GPU_USE[*]}"
+}
+
 background_pid () {
     local arg1 arg2 arg3 PID
     arg1=$1 # --start или --end
@@ -3265,11 +3310,7 @@ start_portwine () {
     fi
 
     #https://github.com/flathub/net.lutris.Lutris/pull/368#issuecomment-1751381312
-    if [[ "${PW_GPU_USE,,}" =~ nvidia ]] \
-    || [[ $(glxinfo | grep "OpenGL renderer" | grep -i nvidia) ]]
-    then
-    	export WEBKIT_DISABLE_DMABUF_RENDERER=1
-    fi
+    [[ $(check_vendor_gpu) =~ nvidia ]] && export WEBKIT_DISABLE_DMABUF_RENDERER=1
 
     if check_gamescope_session ; then
         export PW_GAMEMODERUN_SLR=""
@@ -3462,7 +3503,7 @@ start_portwine () {
             then
                 export LIBGL_KOPPER_DRI2="1"
             fi
-            if [[ -d /sys/bus/pci/drivers/nouveau ]] ; then
+            if [[ $(check_vendor_gpu) =~ nouveau ]] ; then
                 export NOUVEAU_USE_ZINK="1"
             fi
             ;;
@@ -3979,7 +4020,7 @@ start_portwine () {
     || check_gamescope_session
     then
         export vk_xwayland_wait_ready="false"
-        if [[ -d /sys/bus/pci/drivers/amdgpu ]] ; then
+        if [[ $(check_vendor_gpu) =~ amd ]] ; then
             export RADV_DEBUG+="nodcc "
             export AMD_DEBUG="nodcc"
             if [[ ! $(<"${PW_TMPFS_PATH}/vulkaninfo.tmp") =~ VK_EXT_image_drm_format_modifier ]] ; then
@@ -3987,10 +4028,10 @@ start_portwine () {
                 grep -e '--backend' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null && PW_GS_BACKEND_SDL="1"
             fi
         fi
-        if [[ -d /sys/bus/pci/drivers/i915 ]] ; then
+        if [[ $(check_vendor_gpu) =~ intel ]] ; then
             export INTEL_DEBUG="norbc"
         fi
-        if [[ -d /sys/bus/pci/drivers/nvidia ]] ; then
+        if [[ $(check_vendor_gpu) =~ nvidia ]] ; then
             PW_GAMESCOPE_VARIABLES_BEFORE+="__GL_THREADED_OPTIMIZATIONS=0 "
             PW_GAMESCOPE_VARIABLES_AFTER+="__GL_THREADED_OPTIMIZATIONS=1 "
         fi
