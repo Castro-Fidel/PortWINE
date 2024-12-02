@@ -700,28 +700,32 @@ else
     IFS=$'\n'
     PW_GENERATE_BUTTONS="--field=   ${translations[Create shortcut...]}!${PW_GUI_ICON_PATH}/find_48.svg!:FBTNR%@bash -c \"button_click --normal pw_find_exe\"%"
     for dp in "${PW_AMOUNT_NEW_DESKTOP[@]}" "${PW_AMOUNT_OLD_DESKTOP[@]}" ; do
-        PW_NAME_D_ICON_48="${PW_ICON_PATH[dp]%.png}_48"
-        PW_NAME_D_ICON_128="${PW_ICON_PATH[dp]%.png}"
-        PW_NAME_D_ICON_NEW="${PW_NAME_D_ICON[dp]//\"/}"
-        resize_png "$PW_NAME_D_ICON_NEW" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
-        resize_png "$PW_NAME_D_ICON_NEW" "${PW_NAME_D_ICON_128//"${PORT_WINE_PATH}/data/img/"/}" "128"
-
         PW_DESKTOP_FILES="${PW_ALL_DF[$dp]}"
         PW_DESKTOP_FILES_SHOW="$PW_DESKTOP_FILES"
-        if [[ $PW_DESKTOP_FILES =~ [\(\)\!\$\%\&\`\'\"\>\<\\\|\;] ]] ; then
-            PW_DESKTOP_FILES_SHOW_REGEX=(\! % \$ \& \<)
-            PW_DESKTOP_FILES_REGEX=(\( \) \! \$ % \& \` \' \" \> \< \\ \| \;)
+        PW_ICON_PATH[dp]=${PW_ICON_PATH[dp]%.png}
+        PW_NAME_D_ICON_NEW="${PW_NAME_D_ICON[dp]//\"/}"
 
+        PW_NAME_D_ICON_128="${PW_ICON_PATH[dp]}"
+        resize_png "$PW_NAME_D_ICON_NEW" "${PW_NAME_D_ICON_128//"${PORT_WINE_PATH}/data/img/"/}" "128"
+        if [[ $PW_DESKTOP_FILES =~ [\!\%\$\&\<] || ${PW_ICON_PATH[dp]} =~ [\!\%\$\&\<] ]] ; then
+            PW_DESKTOP_FILES_SHOW_REGEX=(\! % \$ \& \<)
             for i in "${PW_DESKTOP_FILES_SHOW_REGEX[@]}" ; do
                 PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//$i/}"
+                PW_ICON_PATH[dp]="${PW_ICON_PATH[dp]//$i/}"
             done
+        fi
+        PW_NAME_D_ICON_48="${PW_ICON_PATH[dp]}_48"
+        resize_png "$PW_NAME_D_ICON_NEW" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
 
+        if [[ $PW_DESKTOP_FILES =~ [\(\)\!\$\%\&\`\'\"\>\<\\\|\;] ]] ; then
+            PW_DESKTOP_FILES_REGEX=(\( \) \! \$ % \& \` \' \" \> \< \\ \| \;)
             count=1
             for j in "${PW_DESKTOP_FILES_REGEX[@]}" ; do
                 PW_DESKTOP_FILES="${PW_DESKTOP_FILES//$j/#+_$count#}"
                 (( count++ ))
             done
         fi
+
         PW_GENERATE_BUTTONS+="--field=   $(print_wrapped "${PW_DESKTOP_FILES_SHOW//".desktop"/""}" "25" "...")!${PW_NAME_D_ICON_48}.png!:FBTNR%@bash -c \"button_click --desktop "${PW_DESKTOP_FILES// /#@_@#}"\"%"
     done
 
