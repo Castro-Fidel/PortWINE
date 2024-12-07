@@ -544,7 +544,7 @@ try_force_link_dir () {
     if [[ ! -d "$1" ]] ; then print_info "directory $1 not found for link"
     elif [[ -z "$2" ]] ; then print_error "no way to link directory $1"
     else
-        if ln -s -f -r "$1" "$2" ; then 
+        if ln -s -f -r "$1" "$2" ; then
             return 0
         else
             print_error "failed to link directory $1 to $2"
@@ -584,7 +584,7 @@ try_download () {
     export dest="$2"
     local silent="false"
     export no_mirror="false"
- 
+
     case "$3" in
            silent)
                 silent=true ;;
@@ -1638,7 +1638,7 @@ init_wine_ver () {
             export WINEDLLPATH+=":${PATH_TO_GAME}"
         fi
     fi
-    
+
 	if ! check_flatpak ; then
 		export WINE_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib"
 	fi
@@ -1954,7 +1954,7 @@ stop_portwine () {
     case "$1" in
         --restart)
             restart_pp ;;
-        *) 
+        *)
             unset SKIP_CHECK_UPDATES
             exit 0 ;;
     esac
@@ -2381,9 +2381,45 @@ pw_init_db () {
         fi
     fi
 
+	case "${PW_AMD_VULKAN_USE}" in
+		"amdvlk")
+		    PW_VK_ICD_FILENAMES=""
+		    for dir in /opt/amdgpu/etc/vulkan/icd.d /etc/vulkan/icd.d /usr/share/vulkan/icd.d; do
+		        for file in "$dir"/amd_icd*.json; do
+		            [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
+		        done
+		    done
+		    export PW_VK_ICD_FILENAMES
+		    ;;
+
+		"amdgpupro")
+		    PW_VK_ICD_FILENAMES=""
+		    for dir in /opt/amdgpu-pro/etc/vulkan/icd.d /usr/share/vulkan/icd.d; do
+		        for file in "$dir"/amd_pro_icd*.json; do
+		            [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
+		        done
+		    done
+
+			# add libs from https://github.com/CosmicFusion/fedora-amdgpu-pro/tree/main/x86_64/libdrm-pro to ld_library_path (this repo is deprecated and archived but why not)
+		    echo "$PW_VK_ICD_FILENAMES" | grep -qi "/opt/amdgpu-pro/etc/vulkan/icd.d/amd_icd.*.json" && \
+            var_ld_library_path_update "/opt/amdgpu/libdrm/lib64:/opt/amdgpu/libdrm/lib32"
+            
+		    export PW_VK_ICD_FILENAMES
+		    ;;
+
+		"radv")
+		    PW_VK_ICD_FILENAMES=""
+		    for file in /usr/share/vulkan/icd.d/radeon_icd.{i686,x86_64}.json; do
+		        [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
+		    done
+		    export PW_VK_ICD_FILENAMES
+		    ;;
+	esac
+
+
     [[ "${START_FROM_STEAM}" == 1 ]] && export PW_GUI_DISABLED_CS=1
     [[ "${START_FROM_PP_GUI}" == 1 ]] && export PW_GUI_DISABLED_CS=0 && unset START_FROM_PP_GUI
-
+	
     return 0
 }
 
@@ -2704,6 +2740,49 @@ pw_skip_get_info () {
             export LOCALE_LIST
         fi
 
+        GET_AMD_VULKAN_DRIVER_LIST="amdvlk amdgpupro radv"
+        unset AMD_VULKAN_DRIVER_LIST
+
+    for DRIVER in $GET_AMD_VULKAN_DRIVER_LIST; do
+        case "$DRIVER" in
+            "amdvlk")
+                for file in /opt/amdgpu/etc/vulkan/icd.d/amd_icd*.json \
+                            /etc/vulkan/icd.d/amd_icd*.json \
+                            /usr/share/vulkan/icd.d/amd_icd*.json ; do
+                    if [ -f "$file" ]; then
+                        AMD_VULKAN_DRIVER_LIST+="amdvlk"
+                        break
+                    fi
+                done
+                ;;
+            "amdgpupro")
+                for file in /opt/amdgpu-pro/etc/vulkan/icd.d/amd_icd*.json \
+                            /usr/share/vulkan/icd.d/amd_pro_icd*.json; do
+                    if [ -f "$file" ]; then
+                        AMD_VULKAN_DRIVER_LIST+="!amdgpupro"
+                        break
+                    fi
+                done
+                ;;
+            "radv")
+                for file in /usr/share/vulkan/icd.d/radeon_icd.*.json ; do
+                    if [ -f "$file" ]; then
+                        AMD_VULKAN_DRIVER_LIST+="!radv"
+                        break
+                    fi
+                done
+                ;;
+        esac
+    done
+        export AMD_VULKAN_DRIVER_LIST
+
+        if [[ -z "$AMD_VULKAN_DRIVER_LIST"  ]] || check_flatpak ; then
+            AMD_VULKAN_CB=":DCB"
+        else
+            AMD_VULKAN_CB=":CB"
+        fi
+        export AMD_VULKAN_CB
+
         logical_cores=$(grep -c ^"processor" /proc/cpuinfo)
         if [[ "${logical_cores}" -le "4" ]] ; then
             GET_LOGICAL_CORE="1!$(seq -s! 1 $(( logical_cores - 1 )))"
@@ -2760,7 +2839,7 @@ edit_db_from_gui () {
             if [[ $(<"${PORTWINE_DB_FILE}") =~ export\ ${mod_db}= ]]
             then sed -i "s|export ${mod_db}=.*|export ${mod_db}=\"$proxy_mod_db\"|g" "${PORTWINE_DB_FILE}"
             else echo "export ${mod_db}=\"$proxy_mod_db\"" >> "${PORTWINE_DB_FILE}"
-            fi            
+            fi
         done
     fi
     return 0
@@ -2964,7 +3043,7 @@ start_portwine () {
                 then touch "${WINEPREFIX}/.${FILE_NAME_PFX}"
                 else
                     try_remove_file "${PFX_TMP}/${FILE_NAME_PFX}.tar.xz"
-                    yad_error_download && exit 1 
+                    yad_error_download && exit 1
                 fi
             fi
         fi
@@ -3166,7 +3245,7 @@ start_portwine () {
                 export DXVK_NVAPI_ALLOW_OTHER_DRIVERS="1"
                 export WINEHAGS="1"
                 ;;
-                
+
             *)
                 sed -i /'dxgi.customDeviceDesc =/c # dxgi.customDeviceDesc =' "${DXVK_CONFIG_FILE}"
                 sed -i /'dxgi.customDeviceId =/c # dxgi.customDeviceId =' "${DXVK_CONFIG_FILE}"
@@ -3181,7 +3260,7 @@ start_portwine () {
 
     # NVAPI, DLSS AND FAKE DLSS
     if [[ "${PW_USE_FAKE_DLSS_3}" == "1" ]] ; then
-        FAKE_DLSS_3_FILES="amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll dlss-enabler.dll dlss-enabler-upscaler.dll 
+        FAKE_DLSS_3_FILES="amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll dlss-enabler.dll dlss-enabler-upscaler.dll
         dlssg_to_fsr3_amd_is_better-3.0.dll dlssg_to_fsr3_amd_is_better.dll libxess.dll nvapi64-proxy.dll winmm.dll
         _nvngx.dll nvngx-wrapper.dll nvngx.ini"
         DXVK_ENABLE_NVAPI="1"
@@ -3251,7 +3330,7 @@ start_portwine () {
         var_vkd3d_config_update nodxr
     fi
 
-    if [[ "${PW_GPU_USE}" != "disabled" ]] ; then
+    if [[ "${PW_GPU_USE}" != "disabled" ]] && [[ "${PW_AMD_VULKAN_USE}" == "disabled" ]] ; then
         export DXVK_FILTER_DEVICE_NAME="${PW_GPU_USE}"
         export VKD3D_FILTER_DEVICE_NAME="${PW_GPU_USE}"
     fi
@@ -3813,6 +3892,11 @@ start_portwine () {
         export WINE_CPU_TOPOLOGY="${PW_WINE_CPU_TOPOLOGY}"
     fi
 
+    if [[ ! -z "${PW_VK_ICD_FILENAMES}" ]] ; then
+        export VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES}"
+        export VK_DRIVER_FILES="${PW_VK_ICD_FILENAMES}"
+    fi
+
     if [[ "${PW_MESA_GL_VERSION_OVERRIDE}" != "disabled" ]] ; then
         export MESA_GL_VERSION_OVERRIDE="${PW_MESA_GL_VERSION_OVERRIDE}"
         if [[ $PW_MESA_GL_VERSION_OVERRIDE = 3.2COMPAT ]] ; then
@@ -3840,7 +3924,7 @@ start_portwine () {
     fi
 
     #run_winetricks_from_db
-    if [[ -n "${PW_MUST_HAVE_DLL}" ]] ; then 
+    if [[ -n "${PW_MUST_HAVE_DLL}" ]] ; then
         PW_DLL_INSTALL="$(echo "${PW_MUST_HAVE_DLL} ${PW_DLL_INSTALL}" | awk '{ for(i=1;i<=NF;i++){a[$i]++} }END{ for(i in a){printf("%s ",i)} }' )"
         export PW_DLL_INSTALL
     fi
@@ -4104,7 +4188,7 @@ pw_run () {
     PW_LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}"
     print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VULKAN_DRIVER_NAME"
     print_var "VKD3D_CONFIG" "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2"
-    print_var "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH"
+    print_var "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH" "PW_VK_ICD_FILENAMES"
     if [[ "$PW_USE_RUNTIME" == 1 ]] \
     && [[ "$PW_WINE_USE" != "USE_SYSTEM_WINE" ]]
     then
@@ -4915,6 +4999,14 @@ gui_edit_db () {
         CPU_LIMIT_VAR="disabled"
     fi
 
+    if [[ ! -z "${PW_AMD_VULKAN_USE}" ]] && \
+    [[ "${PW_AMD_VULKAN_USE}" != "disabled" ]] ; then
+        AMD_VULKAN_VAR="${PW_AMD_VULKAN_USE}"
+        export DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1=1
+    else
+        AMD_VULKAN_VAR="disabled"
+    fi
+
     "${pw_yad}" --plug=$KEY_EDIT_DB_GUI --tabnum="2" --form --separator="%" --columns=1 \
     --field="${translations[Change the version of <b>WINDOWS</b> emulation]}!${translations[Changing the <b>WINDOWS</b> emulation version may be required to run older games. <b>WINDOWS</b> versions below 10 do not support new games with DirectX 12]} :CB" "${ADD_WINVER_EDIT_DB}" \
     --field="${translations[AUTOINSTALL WITH <b>WINETRICKS</b>]}!${translations[Automatically install with <b>WINETRICKS</b> additional libraries required to run the game/program. List of libraries separated by spaces]} :CBE" "$(combobox_fix --empty "${PW_DLL_INSTALL}" "vcrun2019 corefonts lucida")" \
@@ -4937,6 +5029,7 @@ A brief instruction:
 immediate - Unlimited frame rate + tearing.
 mailbox - Triple buffering. Unlimited frame rate + no tearing.
 relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]} :CB" "$(combobox_fix --disabled "${PW_MESA_VK_WSI_PRESENT_MODE}" "fifo!immediate!mailbox!relaxed")" \
+    --field="${translations[Select needed AMD vulkan implementation]}!${translations[Choosing which implementation of vulkan will be used to run the game]} $AMD_VULKAN_CB" "$(combobox_fix --disabled "$AMD_VULKAN_VAR" "$AMD_VULKAN_DRIVER_LIST")" \
     1> "$PW_TMPFS_PATH/tmp_output_yad_fps_limit" 2>/dev/null &
 
     "${pw_yad}" --notebook --key="$KEY_EDIT_DB_GUI" --title "${translations[EDIT DB]}" --text-align=center \
@@ -4986,6 +5079,7 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
     PW_VKD3D_FEATURE_LEVEL="${PW_ADD_SETTINGS[6]}"
     PW_LOCALE_SELECT="${PW_ADD_SETTINGS[7]}"
     PW_MESA_VK_WSI_PRESENT_MODE="${PW_ADD_SETTINGS[8]}"
+    PW_AMD_VULKAN_USE="${PW_ADD_SETTINGS[9]}"
 
     if [[ "${CPU_LIMIT}" =~ ^[0-9]+$ ]] ; then
         PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $(( CPU_LIMIT - 1 )))"
@@ -4995,7 +5089,7 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
     export PW_WINE_CPU_TOPOLOGY
 
     edit_db_from_gui "${PW_EDIT_DB_LIST[@]}" LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY \
-    PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PW_LOCALE_SELECT PW_MESA_VK_WSI_PRESENT_MODE
+    PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PW_LOCALE_SELECT PW_MESA_VK_WSI_PRESENT_MODE PW_AMD_VULKAN_USE
 
     if [[ -z "$MANGOHUD_CONFIG" ]] ; then
         MONITOR_HEIGHT="$(echo "$PW_SCREEN_RESOLUTION" | awk -F'x' '{print $2}')"
