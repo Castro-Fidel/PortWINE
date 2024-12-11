@@ -1503,6 +1503,17 @@ pw_reinstall_pp () {
         then
             echo ""
             exit 1
+        else
+            pw_clear_pfx
+            try_remove_dir "${PORT_WINE_PATH}/data/dist"
+            create_new_dir "${PORT_WINE_PATH}/data/dist"
+            try_remove_dir "${PORT_WINE_TMP_PATH}/VULKAN"
+            try_remove_file "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
+            try_remove_file "${PORT_WINE_PATH}/data/user.conf"
+            try_remove_file "${PORT_WINE_TMP_PATH}/scripts_ver"
+            echo ""
+            unset SKIP_CHECK_UPDATES
+            print_info "Restarting PP for reinstall files..."
         fi
     elif yad_question "${translations[Do you really want to reinstall PortProton?\\nFor this, an internet connection will be required.]}" ; then
         pw_clear_pfx
