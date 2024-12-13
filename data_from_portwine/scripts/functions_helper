@@ -4237,24 +4237,64 @@ portwine_launch () {
     fi
 
     [[ $PW_LOG != 1 ]] && debug_timer --start -s "PW_TIME_IN_GAME"
-    case "${portwine_exe,,}" in
-        *.exe)
-            pw_run "${PW_VD_TMP[@]}" ${WINE_WIN_START} "$portwine_exe"
-        ;;
-        *.bat)
-            PW_USE_TERMINAL=1
-            pw_run "${PW_VD_TMP[@]}" "$portwine_exe"
-        ;;
-        *.msi)
-            pw_run "${PW_VD_TMP[@]}" msiexec /i "$portwine_exe"
-        ;;
-        *.reg)
-            pw_run "${PW_VD_TMP[@]}" regedit "$portwine_exe"
-        ;;
-        *)
-            pw_run "${PW_VD_TMP[@]}" winefile
-        ;;
-    esac
+    if [[ -n "${LAUNCH_URI}" ]]; then
+        WINEPROCESSES="^(start|winedbg|conhost|explorer|tabtip|services|rpcss|svchost|plugplay|winedevice).exe$"
+        if [[ "${LAUNCH_URI}" =~ ^com.epicgames.launcher ]]; then
+            WINEPROCESSES+="|^EOSOverlayRenderer|(EpicGamesLauncher|EpicWebHelper).exe$"
+        fi
+        pw_run start /high /b "${LAUNCH_URI}" &
+        while true; do
+            sleep 5
+             if [[ -z "${exe_pid}" || ! -e "/proc/${exe_pid}" ]]; then
+                processes=$("${WINEDIR}/bin/winedbg" --command "info proc" 2>/dev/null)
+                exe_path=$(echo "${processes}" | grep -oP "(?<=\s)'[^']+'" | sed "s/^'//;s/'$//" | grep -Ev "${WINEPROCESSES}" | head -n 1)
+                echo "${processes}" > "${PORT_WINE_TMP_PATH}/processes"
+                if [[ -n "${exe_path}" ]]; then
+                    unset exe_pid
+                    isCmdline=FALSE
+                    isMaps=FALSE
+                    for pid in $(ls -lr /proc/*/exe | grep -E 'wine(64)?-preloader' | awk -F/ '{print $3}'); do
+                        if [[ "$(tr '\0' ' ' < "/proc/${pid}/cmdline" 2>/dev/null)" == *"${exe_path}"* ]]; then
+                            exe_pid="${pid}"
+                            isCmdline=TRUE
+                        elif grep -q "${exe_path}" "/proc/${pid}/maps" 2>/dev/null; then
+                            exe_pid="${pid}"
+                            isMaps=TRUE
+                        else
+                            continue
+                        fi
+                        break
+                    done
+                    echo "find proc: ${exe_path} [${exe_pid}|${isCmdline}|${isMaps}]"
+                elif [[ -n "${exe_pid}" ]]; then
+                    echo "end proc: ${exe_pid}"
+                    break;
+                fi
+                echo "update processes list"
+            else
+                echo "process isset: ${exe_pid}"
+            fi
+        done
+    else
+        case "${portwine_exe,,}" in
+            *.exe)
+                pw_run "${PW_VD_TMP[@]}" ${WINE_WIN_START} "$portwine_exe"
+            ;;
+            *.bat)
+                PW_USE_TERMINAL=1
+                pw_run "${PW_VD_TMP[@]}" "$portwine_exe"
+            ;;
+            *.msi)
+                pw_run "${PW_VD_TMP[@]}" msiexec /i "$portwine_exe"
+            ;;
+            *.reg)
+                pw_run "${PW_VD_TMP[@]}" regedit "$portwine_exe"
+            ;;
+            *)
+                pw_run "${PW_VD_TMP[@]}" winefile
+            ;;
+        esac
+    fi
 }
 
 pw_winecfg () {
@@ -6043,16 +6083,19 @@ portwine_output_yad_shortcut () {
 
 parse_lnk () {
     prefix_name=$(echo "$1" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
-    if fix_icon_name=$(grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" 2>/dev/null) \
-    && [[ "${fix_icon_name//*.exe/true}" == "true" ]] ; then
-        link_drive=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
-        link_path=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/${prefix_name:-DEFAULT}/dosdevices/$link_drive|g" | sed 's/\\/\//g')
+    if fix_icon_name=$(grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" 2>/dev/null) && [[ "${fix_icon_name//*.exe/true}" == "true" ]] ; then
+        exe_path=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
     else
-        link_drive=$(sed -n 's/^Local Base Path\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
-        link_path=$(sed -n 's/^Local Base Path\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/${prefix_name:-DEFAULT}/dosdevices/$link_drive|g" | sed 's/\\/\//g')
+        exe_path=$(sed -n 's/^Local Base Path\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
     fi
+    get_lnk_path "${exe_path}"
     link_name=$(sed -n 's/^File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|\.lnk||')
     link_cmd=$(sed -n 's/^Command Line Arguments\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
+}
+
+get_lnk_path () {
+    link_drive=$(echo "$1" | cut -d: -f1 | awk '{print tolower($0)}')
+    link_path=$(echo "$1" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/${prefix_name:-${PW_PREFIX_NAME:-DEFAULT}}/dosdevices/${link_drive}|g" | sed 's/\\/\//g')
 }
 
 get_lnk () {
@@ -6076,6 +6119,29 @@ pw_auto_create_shortcut () {
     || echo "${portwine_exe}" | grep -i "gc_api.exe\|vkplay\|pulseonline" &>/dev/null
     then
         print_warning "Skipping auto create shortcut"
+        return 0
+    fi
+
+    if [[ "${portwine_exe}" =~ EpicGamesLauncher.exe$ ]]; then
+        for item_file in "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/ProgramData/Epic/EpicGamesLauncher/Data/Manifests/"*".item"; do
+            if [[ -f "${item_file}" ]]; then
+                exe_path=$(jq -r '.InstallLocation + "\\" + .LaunchExecutable' "${item_file}")
+                get_lnk_path "${exe_path}"
+                PORTWINE_CREATE_SHORTCUT_NAME=$(jq -r '.DisplayName' "${item_file}")
+                if ! exe_path="$(realpath "${link_path}" 2>/dev/null)" || [[ ! -f "${exe_path}" ]]; then
+                    print_warning "Link broken for: ${PORTWINE_CREATE_SHORTCUT_NAME}"
+                elif [[ ! -f "${exe_path}.ppdb" ]]; then
+                    unset FILE_SHA256SUM DESKTOP_NAME_FILE DESKTOP_CORRECT_FILE
+                    item_id=$(jq -r '.AppName' "${item_file}")
+                    portwine_exe="${exe_path}"
+                    PORTWINE_DB_FILE="${portwine_exe}.ppdb"
+                    LAUNCH_URI="com.epicgames.launcher://apps/${item_id}?action=launch&silent=true"
+                    pw_init_db
+                    edit_db_from_gui PW_PREFIX_NAME LAUNCH_URI
+                    portwine_create_shortcut
+                fi
+            fi
+        done
         return 0
     fi
 
