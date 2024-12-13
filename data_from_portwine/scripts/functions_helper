@@ -4248,6 +4248,7 @@ portwine_launch () {
             if [[ -z "${exe_pid}" || ! -e "/proc/${exe_pid}" ]]; then
                 processes=$("${WINEDIR}/bin/winedbg" --command "info proc" 2>/dev/null)
                 exe_path=$(echo "${processes}" | grep -oP "(?<=\s)'[^']+'" | sed "s/^'//;s/'$//" | grep -Ev "${WINEPROCESSES}" | head -n 1)
+                echo "${processes}" > "${PORT_WINE_TMP_PATH}/processes"
                 if [[ -n "${exe_path}" ]]; then
                     unset exe_pid
                     for pid in $(ls -lr /proc/*/exe | grep -E 'wine(64)?-preloader' | awk -F/ '{print $3}'); do
