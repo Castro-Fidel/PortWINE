@@ -4245,34 +4245,24 @@ portwine_launch () {
         pw_run start /high /b "${LAUNCH_URI}" &
         while true; do
             sleep 5
-             if [[ -z "${exe_pid}" || ! -e "/proc/${exe_pid}" ]]; then
+            if [[ -z "${exe_pid}" || ! -e "/proc/${exe_pid}" ]]; then
                 processes=$("${WINEDIR}/bin/winedbg" --command "info proc" 2>/dev/null)
                 exe_path=$(echo "${processes}" | grep -oP "(?<=\s)'[^']+'" | sed "s/^'//;s/'$//" | grep -Ev "${WINEPROCESSES}" | head -n 1)
-                echo "${processes}" > "${PORT_WINE_TMP_PATH}/processes"
                 if [[ -n "${exe_path}" ]]; then
                     unset exe_pid
-                    isCmdline=FALSE
-                    isMaps=FALSE
                     for pid in $(ls -lr /proc/*/exe | grep -E 'wine(64)?-preloader' | awk -F/ '{print $3}'); do
                         if [[ "$(tr '\0' ' ' < "/proc/${pid}/cmdline" 2>/dev/null)" == *"${exe_path}"* ]]; then
                             exe_pid="${pid}"
-                            isCmdline=TRUE
                         elif grep -q "${exe_path}" "/proc/${pid}/maps" 2>/dev/null; then
                             exe_pid="${pid}"
-                            isMaps=TRUE
                         else
                             continue
                         fi
                         break
                     done
-                    echo "find proc: ${exe_path} [${exe_pid}|${isCmdline}|${isMaps}]"
                 elif [[ -n "${exe_pid}" ]]; then
-                    echo "end proc: ${exe_pid}"
-                    break;
+                    break
                 fi
-                echo "update processes list"
-            else
-                echo "process isset: ${exe_pid}"
             fi
         done
     else
