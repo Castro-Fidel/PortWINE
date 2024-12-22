@@ -2793,6 +2793,7 @@ edit_user_conf_from_gui () {
 }
 
 pw_create_gui_png () {
+    unset PORTPROTON_NAME name_desktop_png
     basename_portwine_exe="$(basename "${portwine_exe}")"
     if echo "$basename_portwine_exe" | grep -ie 'setup\|install\|\.msi$' &>/dev/null ; then
         export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/setup.png"
@@ -5946,7 +5947,6 @@ portwine_create_shortcut () {
     pw_stop_progress_bar
     pw_exit_tray
     [[ ! -e ${portwine_exe} ]] && return 1
-    unset PORTPROTON_NAME name_desktop_png
     pw_create_gui_png
 
     [[ -z "${PW_SHORTCUT_MENU}" ]] && PW_SHORTCUT_MENU="TRUE"
@@ -6124,6 +6124,7 @@ portwine_change_shortcut () {
     create_name_desktop
     export name_desktop="$PW_NAME_DESKTOP_PROXY"
 
+    pw_create_gui_png
     [[ -z "${name_desktop_png}" ]] && name_desktop_png="${PORTPROTON_NAME// /_}"
 
     OUTPUT=$("${pw_yad}" --title="${translations[Choices]}" --form \
