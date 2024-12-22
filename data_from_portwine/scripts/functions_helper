@@ -3411,14 +3411,16 @@ start_portwine () {
     then
         if command -v systemctl &>/dev/null \
         && (systemctl is-active --quiet ananicy.service \
-        || systemctl is-active --quiet ananicy-cpp.service)
+        || systemctl is-active --quiet ananicy-cpp.service \
+        || systemctl is-active --quiet scx.service \
+        || systemctl is-active --quiet scx_loader.service)
         then
             export GAMEMODERUN=0
             export PW_GAMEMODERUN_SLR=""
             if command -v powerprofilesctl &>/dev/null ; then
                 if powerprofilesctl list | grep -q 'performance:' ; then
                     export PW_POWERPROFILECTL_SLR="powerprofilesctl launch -p performance --"
-                    print_info "Gamemode replaced by powerprofilectl to avoid conflict with ananicy."
+                    print_info "Gamemode replaced by powerprofilectl to avoid conflict with ananicy and sched-ext."
                 else
                     export PW_POWERPROFILECTL_SLR=""
                 fi
