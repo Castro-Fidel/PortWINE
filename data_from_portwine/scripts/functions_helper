@@ -2799,45 +2799,45 @@ pw_skip_get_info () {
         GET_AMD_VULKAN_DRIVER_LIST="amdvlk amdgpupro radv"
         unset AMD_VULKAN_DRIVER_LIST
 
-    for DRIVER in $GET_AMD_VULKAN_DRIVER_LIST; do
-        case "$DRIVER" in
-            "amdvlk")
-                for file in /opt/amdgpu/etc/vulkan/icd.d/amd_icd*.json \
-                            /etc/vulkan/icd.d/amd_icd*.json \
-                            /usr/share/vulkan/icd.d/amd_icd*.json ; do
-                    if [ -f "$file" ]; then
-                        AMD_VULKAN_DRIVER_LIST+="amdvlk"
-                        break
-                    fi
-                done
-                ;;
-            "amdgpupro")
-                for file in /opt/amdgpu-pro/etc/vulkan/icd.d/amd_icd*.json \
-                            /usr/share/vulkan/icd.d/amd_pro_icd*.json; do
-                    if [ -f "$file" ]; then
-                        AMD_VULKAN_DRIVER_LIST+="!amdgpupro"
-                        break
-                    fi
-                done
-                ;;
-            "radv")
-                for file in /usr/share/vulkan/icd.d/radeon_icd.*.json ; do
-                    if [ -f "$file" ]; then
-                        AMD_VULKAN_DRIVER_LIST+="!radv"
-                        break
-                    fi
-                done
-                ;;
-        esac
-    done
-        export AMD_VULKAN_DRIVER_LIST
-
-        if [[ -z "$AMD_VULKAN_DRIVER_LIST"  ]] || check_flatpak ; then
-            AMD_VULKAN_CB=":DCB"
+        if ! check_flatpak \
+        && [[ $(check_vendor_gpu) =~ amd ]]
+        then
+            for DRIVER in $GET_AMD_VULKAN_DRIVER_LIST; do
+                case "$DRIVER" in
+                    "amdvlk")
+                        for file in /opt/amdgpu/etc/vulkan/icd.d/amd_icd*.json \
+                                    /etc/vulkan/icd.d/amd_icd*.json \
+                                    /usr/share/vulkan/icd.d/amd_icd*.json ; do
+                            if [ -f "$file" ]; then
+                                AMD_VULKAN_DRIVER_LIST+="amdvlk"
+                                break
+                            fi
+                        done
+                        ;;
+                    "amdgpupro")
+                        for file in /opt/amdgpu-pro/etc/vulkan/icd.d/amd_icd*.json \
+                                    /usr/share/vulkan/icd.d/amd_pro_icd*.json; do
+                            if [ -f "$file" ]; then
+                                AMD_VULKAN_DRIVER_LIST+="!amdgpupro"
+                                break
+                            fi
+                        done
+                        ;;
+                    "radv")
+                        for file in /usr/share/vulkan/icd.d/radeon_icd.*.json ; do
+                            if [ -f "$file" ]; then
+                                AMD_VULKAN_DRIVER_LIST+="!radv"
+                                break
+                            fi
+                        done
+                        ;;
+                esac
+            done
+            export AMD_VULKAN_DRIVER_LIST
+            export AMD_VULKAN_CB=":CB"
         else
-            AMD_VULKAN_CB=":CB"
+            export AMD_VULKAN_CB=":DCB"
         fi
-        export AMD_VULKAN_CB
 
         logical_cores=$(grep -c ^"processor" /proc/cpuinfo)
         if [[ "${logical_cores}" -le "4" ]] ; then
