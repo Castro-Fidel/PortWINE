@@ -4375,24 +4375,17 @@ portwine_launch () {
     [[ $PW_LOG != 1 ]] && debug_timer --start -s "PW_TIME_IN_GAME"
     if [[ -n "${LAUNCH_URI}" ]] ; then
         pw_run start /high /b "${LAUNCH_URI}" &
-        unset portwine_eg
+        unset GAMEPID
         while true ; do
-            if [[ -z $portwine_eg ]] ; then
-                if [[ $portwine_exe =~ .bat$ ]] ; then
-                    portwine_eg=$(grep .exe "$portwine_exe" | tail -n 1)
-                    portwine_eg=${portwine_eg//.exe/}
-                    portwine_eg=${portwine_eg//[[:blank:]]*/}
-                    portwine_eg=${portwine_eg//*[[:punct:]]/}
-                    portwine_eg=${portwine_eg}.exe
-                else
-                    portwine_eg=$(basename "$portwine_exe")
-                fi
-            fi
-            sleep 1
-            if [[ -z $GAMEPID ]] ; then
-                GAMEPID="$(pgrep -fa "$portwine_eg" | grep -v "start.sh" | awk '{print $1}')"
+            sleep 5
+            if [[ -z "$GAMEPID" ]] ; then
+                GAMEPID="$(pgrep -fa 'EpicPortal|epicusername|epiclocale|AUTH_LOGIN' | awk '{print $1}')"
             else
-                waitpid "$GAMEPID" && break
+                if waitpid "$GAMEPID" ; then
+                    sleep 1
+                    GAMEPID="$(pgrep -fa 'EpicPortal|epicusername|epiclocale|AUTH_LOGIN' | awk '{print $1}')"
+                    [[ -z "$GAMEPID" ]] && break || continue
+                fi
             fi
         done
     else
