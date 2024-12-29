@@ -1699,6 +1699,9 @@ init_wine_ver () {
 
     export MEDIACONV_BLANK_VIDEO_FILE="${WINEDIR}"/share/media/blank.mkv
     export MEDIACONV_BLANK_AUDIO_FILE="${WINEDIR}"/share/media/blank.ptna
+    if  [[ -d "${WINEDIR}"/share/espeak-ng-data ]] ; then
+        export ESPEAK_DATA_PATH="${WINEDIR}"/share/
+    fi
     return 0
 }
 
@@ -3146,7 +3149,7 @@ start_portwine () {
     if [[ "${PW_LOG}" == 1 ]] \
     || [[ -n "$PW_DEBUG" ]]
     then
-        export WINEDEBUG="fixme-all,err+loaddll,err+dll,err+file,err+reg"
+        export WINEDEBUG="+loaddll,+gstreamer"
         export WINE_MONO_TRACE="E:System.NotImplementedException"
         export VKBASALT_LOG_LEVEL="error"
     else

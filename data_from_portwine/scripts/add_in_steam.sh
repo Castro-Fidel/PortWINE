@@ -372,6 +372,10 @@ addNonSteamGame() {
 				printf '\x08\x08\x08\x08'
 			} >> "${SCPATH}"
 
+			# TODO: замень использование steamgriddb на steam так как сайт steamgriddb у многих без VPN не работает
+			# а пока просто блочим использование
+			export DOWNLOAD_STEAM_GRID="0"
+
 			if [[ "${DOWNLOAD_STEAM_GRID}" == "1" ]] ; then
 				pw_start_progress_bar_block "${translations[Please wait. downloading covers for]} ${NOSTAPPNAME}"
 				addGrids
