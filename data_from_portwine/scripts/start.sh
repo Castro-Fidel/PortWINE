@@ -52,7 +52,7 @@ if [[ "${1,,}" =~ .ppack$ ]] ; then
     export PW_NO_RESTART_PPDB="1"
     export PW_DISABLED_CREATE_DB="1"
     portwine_exe="$1"
-elif [[ "${1,,}" =~ .(exe|bat|msi|reg)$ ]] ; then
+elif [[ "${1,,}" =~ .(exe|bat|msi|reg|lnk)$ ]] ; then
     if [[ -f "$1" ]] ; then
         portwine_exe="$(realpath -s "$1")"
     elif [[ -f "$OLDPWD/$1" ]] ; then
@@ -60,6 +60,10 @@ elif [[ "${1,,}" =~ .(exe|bat|msi|reg)$ ]] ; then
     elif [[ ! -f "$1" ]] ; then
         portwine_exe="$1"
         MISSING_DESKTOP_FILE="1"
+    fi
+    if [[ -n "${portwine_exe}" && "${1,,}" =~ .lnk$ ]] ; then
+        get_lnk "${portwine_exe}"
+        portwine_exe="$(realpath "${link_path}" 2>/dev/null)"
     fi
 elif [[ "$1" =~ ^--(debug|launch|edit-db)$ && "${2,,}" =~ .(exe|bat|msi|reg)$ ]] ; then
     if [[ -f "$2" ]] ; then
@@ -92,10 +96,10 @@ fi
 unset MANGOHUD MANGOHUD_DLSYM PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_YAD_SET PW_ICON_FOR_YAD
 unset PW_CHECK_AUTOINSTALL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PORTWINE_DB_FILE RADV_PERFTEST
 unset CHK_SYMLINK_FILE PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME PW_PATH
-unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD PW_WINE_CPU_TOPOLOGY
+unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR PW_WINE_CPU_TOPOLOGY
 unset MANGOHUD_CONFIG FPS_LIMIT PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME PORTWINE_CREATE_SHORTCUT_NAME MIRROR
 unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NOSTSTDIR RADV_DEBUG PW_NO_AUTO_CREATE_SHORTCUT
-unset PW_TERM PW_EXEC_FROM_DESKTOP
+unset PW_TERM PW_EXEC_FROM_DESKTOP WEBKIT_DISABLE_DMABUF_RENDERER PW_AMD_VULKAN_USE PW_VK_ICD_FILENAMES LAUNCH_URI
 
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 rm -f "$PORT_WINE_TMP_PATH"/*{exe,msi,tar}*
@@ -372,8 +376,26 @@ fi
 
 case "$1" in
     --help)
-        # shellcheck source=/dev/null
-        source "${PORT_SCRIPTS_PATH}/help_info"
+        help_info () {
+            files_from_autoinstall=$(ls "${PORT_SCRIPTS_PATH}/pw_autoinstall")
+            echo -e "${translations[use]}: [--repair] [--reinstall] [--autoinstall]
+
+--repair                                            ${translations[Forces all scripts to be updated to a working state
+                                                    (helps if PortProton is not working)]}
+--reinstall                                         ${translations[Reinstalls PortProton and resets all settings to default]}
+--generate-pot                                      ${translations[Creates a files with translations .pot and .po]}
+--debug                                             ${translations[Debug scripts for PortProton
+                                                    (saved log in]} $PORT_WINE_PATH/scripts-debug.log)
+--update                                            ${translations[Check update scripts for PortProton]}
+--launch                                            ${translations[Launches the application immediately, requires the path to the .exe file]}
+--edit-db                                           ${translations[After the variable, the path to the .exe file is required and then the variables.
+                                                    (List their variables and values for example PW_MANGOHUD=1 PW_VKBASALT=0, etc.)]}
+--autoinstall                                       ${translations[--autoinstall and the name of what needs to be installed is given in the list below:]}
+
+$(echo $files_from_autoinstall | awk '{for (i = 1; i <= NF; i++) {if (i % 10 == 0) {print ""} printf "%s ", $i}}')
+            "
+        }
+        help_info
         exit 0
         ;;
     --reinstall)
@@ -678,28 +700,32 @@ else
     IFS=$'\n'
     PW_GENERATE_BUTTONS="--field=   ${translations[Create shortcut...]}!${PW_GUI_ICON_PATH}/find_48.svg!:FBTNR%@bash -c \"button_click --normal pw_find_exe\"%"
     for dp in "${PW_AMOUNT_NEW_DESKTOP[@]}" "${PW_AMOUNT_OLD_DESKTOP[@]}" ; do
-        PW_NAME_D_ICON_48="${PW_ICON_PATH[dp]%.png}_48"
-        PW_NAME_D_ICON_128="${PW_ICON_PATH[dp]%.png}"
-        PW_NAME_D_ICON_NEW="${PW_NAME_D_ICON[dp]//\"/}"
-        resize_png "$PW_NAME_D_ICON_NEW" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
-        resize_png "$PW_NAME_D_ICON_NEW" "${PW_NAME_D_ICON_128//"${PORT_WINE_PATH}/data/img/"/}" "128"
-
         PW_DESKTOP_FILES="${PW_ALL_DF[$dp]}"
         PW_DESKTOP_FILES_SHOW="$PW_DESKTOP_FILES"
-        if [[ $PW_DESKTOP_FILES =~ [\(\)\!\$\%\&\`\'\"\>\<\\\|\;] ]] ; then
-            PW_DESKTOP_FILES_SHOW_REGEX=(\! % \$ \& \<)
-            PW_DESKTOP_FILES_REGEX=(\( \) \! \$ % \& \` \' \" \> \< \\ \| \;)
+        PW_ICON_PATH[dp]=${PW_ICON_PATH[dp]%.png}
+        PW_NAME_D_ICON_NEW="${PW_NAME_D_ICON[dp]//\"/}"
 
+        PW_NAME_D_ICON_128="${PW_ICON_PATH[dp]}"
+        resize_png "$PW_NAME_D_ICON_NEW" "${PW_NAME_D_ICON_128//"${PORT_WINE_PATH}/data/img/"/}" "128"
+        if [[ $PW_DESKTOP_FILES =~ [\!\%\$\&\<] || ${PW_ICON_PATH[dp]} =~ [\!\%\$\&\<] ]] ; then
+            PW_DESKTOP_FILES_SHOW_REGEX=(\! % \$ \& \<)
             for i in "${PW_DESKTOP_FILES_SHOW_REGEX[@]}" ; do
                 PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//$i/}"
+                PW_ICON_PATH[dp]="${PW_ICON_PATH[dp]//$i/}"
             done
+        fi
+        PW_NAME_D_ICON_48="${PW_ICON_PATH[dp]}_48"
+        resize_png "$PW_NAME_D_ICON_NEW" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
 
+        if [[ $PW_DESKTOP_FILES =~ [\(\)\!\$\%\&\`\'\"\>\<\\\|\;] ]] ; then
+            PW_DESKTOP_FILES_REGEX=(\( \) \! \$ % \& \` \' \" \> \< \\ \| \;)
             count=1
             for j in "${PW_DESKTOP_FILES_REGEX[@]}" ; do
                 PW_DESKTOP_FILES="${PW_DESKTOP_FILES//$j/#+_$count#}"
                 (( count++ ))
             done
         fi
+
         PW_GENERATE_BUTTONS+="--field=   $(print_wrapped "${PW_DESKTOP_FILES_SHOW//".desktop"/""}" "25" "...")!${PW_NAME_D_ICON_48}.png!:FBTNR%@bash -c \"button_click --desktop "${PW_DESKTOP_FILES// /#@_@#}"\"%"
     done
 
@@ -905,6 +931,7 @@ case "$PW_YAD_SET" in
 esac
 
 case "$PW_YAD_SET" in
+    '') ;;
     98) portwine_change_shortcut ;;
     100) portwine_create_shortcut ;;
     DEBUG|102) portwine_start_debug ;;

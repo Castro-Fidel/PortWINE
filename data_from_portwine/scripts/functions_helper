@@ -200,7 +200,7 @@ export -f change_locale
 
 generate_pot () {
     local FILES_FOR_GETTEXT i
-    FILES_FOR_GETTEXT=(functions_helper start.sh setup.sh add_in_steam.sh help_info)
+    FILES_FOR_GETTEXT=(functions_helper start.sh setup.sh add_in_steam.sh)
     for i in "${FILES_FOR_GETTEXT[@]}" ; do
         sed -e 's/{translations\[/(gettext \"/g' -e 's/]}/")/g' -e 's/eval_translations/gettext/g' \
         "${PORT_SCRIPTS_PATH}/$i" > "${PORT_SCRIPTS_PATH}/${i}_tmp"
@@ -220,7 +220,6 @@ generate_pot () {
         "data/scripts/setup.sh_tmp" \
         "data/scripts/functions_helper_tmp" \
         "data/scripts/add_in_steam.sh_tmp" \
-        "data/scripts/help_info_tmp" \
         -o "$TEMPLATE_POT"
         popd 1>/dev/null || fatal
         if [[ -f "$LANG_PO" ]] ; then
@@ -236,7 +235,6 @@ generate_pot () {
     try_remove_file "${PORT_SCRIPTS_PATH}/setup.sh_tmp"
     try_remove_file "${PORT_SCRIPTS_PATH}/functions_helper_tmp"
     try_remove_file "${PORT_SCRIPTS_PATH}/add_in_steam.sh_tmp"
-    try_remove_file "${PORT_SCRIPTS_PATH}/help_info_tmp"
     try_remove_dir "${PW_CACHE_LANG_PATH}"
 }
 export -f generate_pot
@@ -544,7 +542,7 @@ try_force_link_dir () {
     if [[ ! -d "$1" ]] ; then print_info "directory $1 not found for link"
     elif [[ -z "$2" ]] ; then print_error "no way to link directory $1"
     else
-        if ln -s -f -r "$1" "$2" ; then 
+        if ln -s -f -r "$1" "$2" ; then
             return 0
         else
             print_error "failed to link directory $1 to $2"
@@ -584,7 +582,7 @@ try_download () {
     export dest="$2"
     local silent="false"
     export no_mirror="false"
- 
+
     case "$3" in
            silent)
                 silent=true ;;
@@ -832,6 +830,51 @@ check_selinux () {
     return 1
 }
 export -f check_selinux
+
+check_vendor_gpu () {
+    unset VENDOR_GPU_USE
+    if [[ $PW_GPU_USE != disabled ]] ; then
+        case "${PW_GPU_USE,,}" in
+            *nvidia*)
+                [[ -d /sys/bus/pci/drivers/nvidia ]] && VENDOR_GPU_USE+=("nvidia")
+                [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE+=("nouveau")
+            ;;
+            *amd*)
+                [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE+=("amd")
+            ;;
+            *intel*)
+                [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE+=("intel")
+            ;;
+        esac
+    fi
+
+    if command -v glxinfo &>/dev/null ; then
+        if [[ ! -f "${PW_TMPFS_PATH}/glxinfo.tmp" ]] ; then
+            glxinfo -B &> "${PW_TMPFS_PATH}/glxinfo.tmp"
+        fi
+        case "$(<"${PW_TMPFS_PATH}/glxinfo.tmp" tr '[:upper:]' '[:lower:]')" in
+            *nvidia*)
+                [[ -d /sys/bus/pci/drivers/nvidia ]] && VENDOR_GPU_USE+=("nvidia")
+                [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE+=("nouveau")
+            ;;
+            *amd*)
+                [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE+=("amd")
+            ;;
+            *intel*)
+                [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE+=("intel")
+            ;;
+        esac
+    fi
+
+    if [[ -z ${VENDOR_GPU_USE[0]} ]] ; then
+        [[ -d /sys/bus/pci/drivers/nvidia ]] && VENDOR_GPU_USE+=("nvidia")
+        [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE+=("nouveau")
+        [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE+=("amd")
+        [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE+=("intel")
+    fi
+
+    echo "${VENDOR_GPU_USE[*]}"
+}
 
 background_pid () {
     local arg1 arg2 arg3 PID
@@ -1503,6 +1546,17 @@ pw_reinstall_pp () {
         then
             echo ""
             exit 1
+        else
+            pw_clear_pfx
+            try_remove_dir "${PORT_WINE_PATH}/data/dist"
+            create_new_dir "${PORT_WINE_PATH}/data/dist"
+            try_remove_dir "${PORT_WINE_TMP_PATH}/VULKAN"
+            try_remove_file "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
+            try_remove_file "${PORT_WINE_PATH}/data/user.conf"
+            try_remove_file "${PORT_WINE_TMP_PATH}/scripts_ver"
+            echo ""
+            unset SKIP_CHECK_UPDATES
+            print_info "Restarting PP for reinstall files..."
         fi
     elif yad_question "${translations[Do you really want to reinstall PortProton?\\nFor this, an internet connection will be required.]}" ; then
         pw_clear_pfx
@@ -1639,9 +1693,15 @@ init_wine_ver () {
         fi
     fi
 
-    export WINE_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib"
+	if ! check_flatpak ; then
+		export WINE_LIBRARY_PATH="${WINEDIR}/lib64:${WINEDIR}/lib"
+	fi
+
     export MEDIACONV_BLANK_VIDEO_FILE="${WINEDIR}"/share/media/blank.mkv
     export MEDIACONV_BLANK_AUDIO_FILE="${WINEDIR}"/share/media/blank.ptna
+    if  [[ -d "${WINEDIR}"/share/espeak-ng-data ]] ; then
+        export ESPEAK_DATA_PATH="${WINEDIR}"/share/
+    fi
     return 0
 }
 
@@ -1673,7 +1733,8 @@ pw_init_runtime () {
 
     PW_PV_OVERRIDES="/usr/lib/pressure-vessel/overrides/lib"
 
-    export PW_LD_LIBRARY_PATH="\
+	if ! check_flatpak; then
+	  export PW_LD_LIBRARY_PATH="\
 ${PW_PLUGINS_PATH}/portable/lib/lib64:\
 ${PW_PLUGINS_PATH}/portable/lib/lib32:\
 ${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:\
@@ -1682,6 +1743,7 @@ ${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:\
 /overrides/lib/i386-linux-gnu:\
 /lib/x86_64-linux-gnu:\
 /lib/i386-linux-gnu"
+	fi
 
     if [[ -n "${PATH}" ]]
     then export PW_PATH="${PATH}:${PW_PLUGINS_PATH}/portable/bin"
@@ -1829,8 +1891,7 @@ export -f wait_wineserver
 
 kill_portwine () {
     if [[ "${PW_WINE_USE}" != "USE_SYSTEM_WINE" ]] ; then
-        check_flatpak
-        if [[ "$ALPINE_FP" == "1" ]] ; then
+        if check_flatpak && [[ "$ALPINE_FP" == "1" ]] ; then
             wine_pids=$(ls -l /proc/*/exe >/dev/null 2>&1 | grep -ie PortProton | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}')
             bwrap_pids=$(pgrep -f wrap | grep PortProton | head -n 1)
         else
@@ -1847,7 +1908,6 @@ kill_portwine () {
             kill -n 9 "${pw_kill_pids}" &>/dev/null
         fi
     done
-
     return 0
 }
 export -f kill_portwine
@@ -1949,7 +2009,7 @@ stop_portwine () {
     case "$1" in
         --restart)
             restart_pp ;;
-        *) 
+        *)
             unset SKIP_CHECK_UPDATES
             exit 0 ;;
     esac
@@ -2376,9 +2436,45 @@ pw_init_db () {
         fi
     fi
 
+	case "${PW_AMD_VULKAN_USE}" in
+		"amdvlk")
+		    PW_VK_ICD_FILENAMES=""
+		    for dir in /opt/amdgpu/etc/vulkan/icd.d /etc/vulkan/icd.d /usr/share/vulkan/icd.d; do
+		        for file in "$dir"/amd_icd*.json; do
+		            [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
+		        done
+		    done
+		    export PW_VK_ICD_FILENAMES
+		    ;;
+
+		"amdgpupro")
+		    PW_VK_ICD_FILENAMES=""
+		    for dir in /opt/amdgpu-pro/etc/vulkan/icd.d /usr/share/vulkan/icd.d; do
+		        for file in "$dir"/amd_pro_icd*.json; do
+		            [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
+		        done
+		    done
+
+			# add libs from https://github.com/CosmicFusion/fedora-amdgpu-pro/tree/main/x86_64/libdrm-pro to ld_library_path (this repo is deprecated and archived but why not)
+		    echo "$PW_VK_ICD_FILENAMES" | grep -qi "/opt/amdgpu-pro/etc/vulkan/icd.d/amd_icd.*.json" && \
+            var_ld_library_path_update "/opt/amdgpu/libdrm/lib64:/opt/amdgpu/libdrm/lib32"
+            
+		    export PW_VK_ICD_FILENAMES
+		    ;;
+
+		"radv")
+		    PW_VK_ICD_FILENAMES=""
+		    for file in /usr/share/vulkan/icd.d/radeon_icd.{i686,x86_64}.json; do
+		        [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
+		    done
+		    export PW_VK_ICD_FILENAMES
+		    ;;
+	esac
+
+
     [[ "${START_FROM_STEAM}" == 1 ]] && export PW_GUI_DISABLED_CS=1
     [[ "${START_FROM_PP_GUI}" == 1 ]] && export PW_GUI_DISABLED_CS=0 && unset START_FROM_PP_GUI
-
+	
     return 0
 }
 
@@ -2699,6 +2795,49 @@ pw_skip_get_info () {
             export LOCALE_LIST
         fi
 
+        GET_AMD_VULKAN_DRIVER_LIST="amdvlk amdgpupro radv"
+        unset AMD_VULKAN_DRIVER_LIST
+
+        if ! check_flatpak \
+        && [[ $(check_vendor_gpu) =~ amd ]]
+        then
+            for DRIVER in $GET_AMD_VULKAN_DRIVER_LIST; do
+                case "$DRIVER" in
+                    "amdvlk")
+                        for file in /opt/amdgpu/etc/vulkan/icd.d/amd_icd*.json \
+                                    /etc/vulkan/icd.d/amd_icd*.json \
+                                    /usr/share/vulkan/icd.d/amd_icd*.json ; do
+                            if [ -f "$file" ]; then
+                                AMD_VULKAN_DRIVER_LIST+="amdvlk"
+                                break
+                            fi
+                        done
+                        ;;
+                    "amdgpupro")
+                        for file in /opt/amdgpu-pro/etc/vulkan/icd.d/amd_icd*.json \
+                                    /usr/share/vulkan/icd.d/amd_pro_icd*.json; do
+                            if [ -f "$file" ]; then
+                                AMD_VULKAN_DRIVER_LIST+="!amdgpupro"
+                                break
+                            fi
+                        done
+                        ;;
+                    "radv")
+                        for file in /usr/share/vulkan/icd.d/radeon_icd.*.json ; do
+                            if [ -f "$file" ]; then
+                                AMD_VULKAN_DRIVER_LIST+="!radv"
+                                break
+                            fi
+                        done
+                        ;;
+                esac
+            done
+            export AMD_VULKAN_DRIVER_LIST
+            export AMD_VULKAN_CB=":CB"
+        else
+            export AMD_VULKAN_CB=":DCB"
+        fi
+
         logical_cores=$(grep -c ^"processor" /proc/cpuinfo)
         if [[ "${logical_cores}" -le "4" ]] ; then
             GET_LOGICAL_CORE="1!$(seq -s! 1 $(( logical_cores - 1 )))"
@@ -2755,7 +2894,7 @@ edit_db_from_gui () {
             if [[ $(<"${PORTWINE_DB_FILE}") =~ export\ ${mod_db}= ]]
             then sed -i "s|export ${mod_db}=.*|export ${mod_db}=\"$proxy_mod_db\"|g" "${PORTWINE_DB_FILE}"
             else echo "export ${mod_db}=\"$proxy_mod_db\"" >> "${PORTWINE_DB_FILE}"
-            fi            
+            fi
         done
     fi
     return 0
@@ -2788,6 +2927,7 @@ edit_user_conf_from_gui () {
 }
 
 pw_create_gui_png () {
+    unset PORTPROTON_NAME name_desktop_png
     basename_portwine_exe="$(basename "${portwine_exe}")"
     if echo "$basename_portwine_exe" | grep -ie 'setup\|install\|\.msi$' &>/dev/null ; then
         export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/setup.png"
@@ -2959,7 +3099,7 @@ start_portwine () {
                 then touch "${WINEPREFIX}/.${FILE_NAME_PFX}"
                 else
                     try_remove_file "${PFX_TMP}/${FILE_NAME_PFX}.tar.xz"
-                    yad_error_download && exit 1 
+                    yad_error_download && exit 1
                 fi
             fi
         fi
@@ -3009,7 +3149,7 @@ start_portwine () {
     if [[ "${PW_LOG}" == 1 ]] \
     || [[ -n "$PW_DEBUG" ]]
     then
-        export WINEDEBUG="fixme-all,err+loaddll,err+dll,err+file,err+reg"
+        export WINEDEBUG="+loaddll,+gstreamer"
         export WINE_MONO_TRACE="E:System.NotImplementedException"
         export VKBASALT_LOG_LEVEL="error"
     else
@@ -3032,6 +3172,7 @@ start_portwine () {
 
         LIST_ICU_DLL_LINKS="icuin68 icuuc68 icudt68"
         for dll in $LIST_ICU_DLL_LINKS ; do
+            try_force_link_file "${WINEDIR}/lib/icu/${dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${dll}.dll"
             try_force_link_file "${WINEDIR}/lib64/icu/${dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${dll}.dll"
         done
 
@@ -3161,7 +3302,7 @@ start_portwine () {
                 export DXVK_NVAPI_ALLOW_OTHER_DRIVERS="1"
                 export WINEHAGS="1"
                 ;;
-                
+
             *)
                 sed -i /'dxgi.customDeviceDesc =/c # dxgi.customDeviceDesc =' "${DXVK_CONFIG_FILE}"
                 sed -i /'dxgi.customDeviceId =/c # dxgi.customDeviceId =' "${DXVK_CONFIG_FILE}"
@@ -3176,7 +3317,7 @@ start_portwine () {
 
     # NVAPI, DLSS AND FAKE DLSS
     if [[ "${PW_USE_FAKE_DLSS_3}" == "1" ]] ; then
-        FAKE_DLSS_3_FILES="amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll dlss-enabler.dll dlss-enabler-upscaler.dll 
+        FAKE_DLSS_3_FILES="amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll dlss-enabler.dll dlss-enabler-upscaler.dll
         dlssg_to_fsr3_amd_is_better-3.0.dll dlssg_to_fsr3_amd_is_better.dll libxess.dll nvapi64-proxy.dll winmm.dll
         _nvngx.dll nvngx-wrapper.dll nvngx.ini"
         DXVK_ENABLE_NVAPI="1"
@@ -3246,7 +3387,7 @@ start_portwine () {
         var_vkd3d_config_update nodxr
     fi
 
-    if [[ "${PW_GPU_USE}" != "disabled" ]] ; then
+    if [[ "${PW_GPU_USE}" != "disabled" ]] && [[ "${PW_AMD_VULKAN_USE}" == "disabled" ]] ; then
         export DXVK_FILTER_DEVICE_NAME="${PW_GPU_USE}"
         export VKD3D_FILTER_DEVICE_NAME="${PW_GPU_USE}"
     fi
@@ -3259,6 +3400,9 @@ start_portwine () {
         export int_xneur=1
     fi
 
+    #https://github.com/flathub/net.lutris.Lutris/pull/368#issuecomment-1751381312
+    [[ $(check_vendor_gpu) =~ nvidia ]] && export WEBKIT_DISABLE_DMABUF_RENDERER=1
+
     if check_gamescope_session ; then
         export PW_GAMEMODERUN_SLR=""
     elif [[ "$PW_USE_GAMEMODE" = "1" ]] \
@@ -3266,14 +3410,16 @@ start_portwine () {
     then
         if command -v systemctl &>/dev/null \
         && (systemctl is-active --quiet ananicy.service \
-        || systemctl is-active --quiet ananicy-cpp.service)
+        || systemctl is-active --quiet ananicy-cpp.service \
+        || systemctl is-active --quiet scx.service \
+        || systemctl is-active --quiet scx_loader.service)
         then
             export GAMEMODERUN=0
             export PW_GAMEMODERUN_SLR=""
             if command -v powerprofilesctl &>/dev/null ; then
                 if powerprofilesctl list | grep -q 'performance:' ; then
                     export PW_POWERPROFILECTL_SLR="powerprofilesctl launch -p performance --"
-                    print_info "Gamemode replaced by powerprofilectl to avoid conflict with ananicy."
+                    print_info "Gamemode replaced by powerprofilectl to avoid conflict with ananicy and sched-ext."
                 else
                     export PW_POWERPROFILECTL_SLR=""
                 fi
@@ -3450,7 +3596,7 @@ start_portwine () {
             then
                 export LIBGL_KOPPER_DRI2="1"
             fi
-            if [[ -d /sys/bus/pci/drivers/nouveau ]] ; then
+            if [[ $(check_vendor_gpu) =~ nouveau ]] ; then
                 export NOUVEAU_USE_ZINK="1"
             fi
             ;;
@@ -3801,6 +3947,11 @@ start_portwine () {
         export WINE_CPU_TOPOLOGY="${PW_WINE_CPU_TOPOLOGY}"
     fi
 
+    if [[ -n "${PW_VK_ICD_FILENAMES}" ]] ; then
+        export VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES}"
+        export VK_DRIVER_FILES="${PW_VK_ICD_FILENAMES}"
+    fi
+
     if [[ "${PW_MESA_GL_VERSION_OVERRIDE}" != "disabled" ]] ; then
         export MESA_GL_VERSION_OVERRIDE="${PW_MESA_GL_VERSION_OVERRIDE}"
         if [[ $PW_MESA_GL_VERSION_OVERRIDE = 3.2COMPAT ]] ; then
@@ -3828,7 +3979,7 @@ start_portwine () {
     fi
 
     #run_winetricks_from_db
-    if [[ -n "${PW_MUST_HAVE_DLL}" ]] ; then 
+    if [[ -n "${PW_MUST_HAVE_DLL}" ]] ; then
         PW_DLL_INSTALL="$(echo "${PW_MUST_HAVE_DLL} ${PW_DLL_INSTALL}" | awk '{ for(i=1;i<=NF;i++){a[$i]++} }END{ for(i in a){printf("%s ",i)} }' )"
         export PW_DLL_INSTALL
     fi
@@ -3967,7 +4118,7 @@ start_portwine () {
     || check_gamescope_session
     then
         export vk_xwayland_wait_ready="false"
-        if [[ -d /sys/bus/pci/drivers/amdgpu ]] ; then
+        if [[ $(check_vendor_gpu) =~ amd ]] ; then
             export RADV_DEBUG+="nodcc "
             export AMD_DEBUG="nodcc"
             if [[ ! $(<"${PW_TMPFS_PATH}/vulkaninfo.tmp") =~ VK_EXT_image_drm_format_modifier ]] ; then
@@ -3975,10 +4126,10 @@ start_portwine () {
                 grep -e '--backend' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null && PW_GS_BACKEND_SDL="1"
             fi
         fi
-        if [[ -d /sys/bus/pci/drivers/i915 ]] ; then
+        if [[ $(check_vendor_gpu) =~ intel ]] ; then
             export INTEL_DEBUG="norbc"
         fi
-        if [[ -d /sys/bus/pci/drivers/nvidia ]] ; then
+        if [[ $(check_vendor_gpu) =~ nvidia ]] ; then
             PW_GAMESCOPE_VARIABLES_BEFORE+="__GL_THREADED_OPTIMIZATIONS=0 "
             PW_GAMESCOPE_VARIABLES_AFTER+="__GL_THREADED_OPTIMIZATIONS=1 "
         fi
@@ -4092,7 +4243,7 @@ pw_run () {
     PW_LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}"
     print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VULKAN_DRIVER_NAME"
     print_var "VKD3D_CONFIG" "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2"
-    print_var "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH"
+    print_var "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH" "PW_VK_ICD_FILENAMES"
     if [[ "$PW_USE_RUNTIME" == 1 ]] \
     && [[ "$PW_WINE_USE" != "USE_SYSTEM_WINE" ]]
     then
@@ -4225,24 +4376,41 @@ portwine_launch () {
     fi
 
     [[ $PW_LOG != 1 ]] && debug_timer --start -s "PW_TIME_IN_GAME"
-    case "${portwine_exe,,}" in
-        *.exe)
-            pw_run "${PW_VD_TMP[@]}" ${WINE_WIN_START} "$portwine_exe"
-        ;;
-        *.bat)
-            PW_USE_TERMINAL=1
-            pw_run "${PW_VD_TMP[@]}" "$portwine_exe"
-        ;;
-        *.msi)
-            pw_run "${PW_VD_TMP[@]}" msiexec /i "$portwine_exe"
-        ;;
-        *.reg)
-            pw_run "${PW_VD_TMP[@]}" regedit "$portwine_exe"
-        ;;
-        *)
-            pw_run "${PW_VD_TMP[@]}" winefile
-        ;;
-    esac
+    if [[ -n "${LAUNCH_URI}" ]] ; then
+        pw_run start /high /b "${LAUNCH_URI}" &
+        unset GAMEPID
+        while true ; do
+            sleep 5
+            if [[ -z "$GAMEPID" ]] ; then
+                GAMEPID="$(pgrep -fa 'EpicPortal|epicusername|epiclocale|AUTH_LOGIN' | awk '{print $1}')"
+            else
+                if waitpid "$GAMEPID" ; then
+                    sleep 1
+                    GAMEPID="$(pgrep -fa 'EpicPortal|epicusername|epiclocale|AUTH_LOGIN' | awk '{print $1}')"
+                    [[ -z "$GAMEPID" ]] && break || continue
+                fi
+            fi
+        done
+    else
+        case "${portwine_exe,,}" in
+            *.exe)
+                pw_run "${PW_VD_TMP[@]}" ${WINE_WIN_START} "$portwine_exe"
+            ;;
+            *.bat)
+                PW_USE_TERMINAL=1
+                pw_run "${PW_VD_TMP[@]}" "$portwine_exe"
+            ;;
+            *.msi)
+                pw_run "${PW_VD_TMP[@]}" msiexec /i "$portwine_exe"
+            ;;
+            *.reg)
+                pw_run "${PW_VD_TMP[@]}" regedit "$portwine_exe"
+            ;;
+            *)
+                pw_run "${PW_VD_TMP[@]}" winefile
+            ;;
+        esac
+    fi
 }
 
 pw_winecfg () {
@@ -4355,7 +4523,7 @@ pw_start_progress_bar_cover () {
     [[ "$2" != "--block" ]] && local AUTOCLOUSE="--close-on-unfocus"
     if check_gamescope_session ; then
         PW_GIF_FILE="${COVERS_PATH}/loading_deck.gif"
-        "${pw_yad}" --picture --filename="${PW_GIF_FILE}" $AUTOCLOUSE --no-buttons --undecorated --fullscreen --skip-taskbar > /dev/null 2>&1 &
+        "${pw_yad}" --picture --filename="${PW_GIF_FILE}" $AUTOCLOUSE --borders=0 --no-buttons --undecorated --fullscreen --skip-taskbar > /dev/null 2>&1 &
         PW_YAD_PID_PROGRESS_BAR+=($!)
     elif ! check_start_from_steam ; then
         PW_GIF_FILE="$1"
@@ -4903,6 +5071,14 @@ gui_edit_db () {
         CPU_LIMIT_VAR="disabled"
     fi
 
+    if [[ -n "${PW_AMD_VULKAN_USE}" ]] && \
+    [[ "${PW_AMD_VULKAN_USE}" != "disabled" ]] ; then
+        AMD_VULKAN_VAR="${PW_AMD_VULKAN_USE}"
+        export DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1=1
+    else
+        AMD_VULKAN_VAR="disabled"
+    fi
+
     "${pw_yad}" --plug=$KEY_EDIT_DB_GUI --tabnum="2" --form --separator="%" --columns=1 \
     --field="${translations[Change the version of <b>WINDOWS</b> emulation]}!${translations[Changing the <b>WINDOWS</b> emulation version may be required to run older games. <b>WINDOWS</b> versions below 10 do not support new games with DirectX 12]} :CB" "${ADD_WINVER_EDIT_DB}" \
     --field="${translations[AUTOINSTALL WITH <b>WINETRICKS</b>]}!${translations[Automatically install with <b>WINETRICKS</b> additional libraries required to run the game/program. List of libraries separated by spaces]} :CBE" "$(combobox_fix --empty "${PW_DLL_INSTALL}" "vcrun2019 corefonts lucida")" \
@@ -4925,6 +5101,7 @@ A brief instruction:
 immediate - Unlimited frame rate + tearing.
 mailbox - Triple buffering. Unlimited frame rate + no tearing.
 relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]} :CB" "$(combobox_fix --disabled "${PW_MESA_VK_WSI_PRESENT_MODE}" "fifo!immediate!mailbox!relaxed")" \
+    --field="${translations[Select needed AMD vulkan implementation]}!${translations[Choosing which implementation of vulkan will be used to run the game]} $AMD_VULKAN_CB" "$(combobox_fix --disabled "$AMD_VULKAN_VAR" "$AMD_VULKAN_DRIVER_LIST")" \
     1> "$PW_TMPFS_PATH/tmp_output_yad_fps_limit" 2>/dev/null &
 
     "${pw_yad}" --notebook --key="$KEY_EDIT_DB_GUI" --title "${translations[EDIT DB]}" --text-align=center \
@@ -4974,6 +5151,7 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
     PW_VKD3D_FEATURE_LEVEL="${PW_ADD_SETTINGS[6]}"
     PW_LOCALE_SELECT="${PW_ADD_SETTINGS[7]}"
     PW_MESA_VK_WSI_PRESENT_MODE="${PW_ADD_SETTINGS[8]}"
+    PW_AMD_VULKAN_USE="${PW_ADD_SETTINGS[9]}"
 
     if [[ "${CPU_LIMIT}" =~ ^[0-9]+$ ]] ; then
         PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $(( CPU_LIMIT - 1 )))"
@@ -4983,7 +5161,7 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
     export PW_WINE_CPU_TOPOLOGY
 
     edit_db_from_gui "${PW_EDIT_DB_LIST[@]}" LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY \
-    PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PW_LOCALE_SELECT PW_MESA_VK_WSI_PRESENT_MODE
+    PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PW_LOCALE_SELECT PW_MESA_VK_WSI_PRESENT_MODE PW_AMD_VULKAN_USE
 
     if [[ -z "$MANGOHUD_CONFIG" ]] ; then
         MONITOR_HEIGHT="$(echo "$PW_SCREEN_RESOLUTION" | awk -F'x' '{print $2}')"
@@ -5933,7 +6111,6 @@ portwine_create_shortcut () {
     pw_stop_progress_bar
     pw_exit_tray
     [[ ! -e ${portwine_exe} ]] && return 1
-    unset PORTPROTON_NAME name_desktop_png
     pw_create_gui_png
 
     [[ -z "${PW_SHORTCUT_MENU}" ]] && PW_SHORTCUT_MENU="TRUE"
@@ -6009,66 +6186,13 @@ portwine_output_yad_shortcut () {
         fi
 
         if [[ "${PW_SHORTCUT_STEAM}" == "TRUE" ]] ; then
-            SLUF="${HOME}/.local/share/Steam/config/loginusers.vdf"
-            if [[ -f "${SLUF}" ]]; then
-                SLUFUB=false
-                STUID64=""
-                while read -r line; do
-                    if [[ "${line}" =~ ^[[:space:]]*\"([0-9]+)\"$ ]]; then
-                        STUIDCUR="${BASH_REMATCH[1]}"
-                        SLUFUB=true
-                    elif [[ "${line}" == *'"MostRecent"'*'"1"' && ${SLUFUB} = true ]]; then
-                        STUID64="${STUIDCUR}"
-                        break
-                    elif [[ "${line}" == "}" ]]; then
-                        SLUFUB=false
-                    fi
-                done < "${SLUF}"
-                if [ -n "${STUID64}" ]; then
-                    STUID32=$((STUID64 - 76561197960265728))
-                    STUIDPATH="${HOME}/.local/share/Steam/userdata/${STUID32}"
-                    if [[ -d "${STUIDPATH}" ]]; then
-                        export SCPATH="${STUIDPATH}/config/shortcuts.vdf"
-                        if [[ -f "${SCPATH}" ]]; then
-                            export STEAM_SCRIPTS="${PORT_WINE_PATH}/steam_scripts"
-                            create_new_dir "${STEAM_SCRIPTS}"
-                            echo "#!/usr/bin/env bash" > "${STEAM_SCRIPTS}/${name_desktop}.sh"
-                            echo "export START_FROM_STEAM=1" >> "${STEAM_SCRIPTS}/${name_desktop}.sh"
-                            echo "export LD_PRELOAD=" >> "${STEAM_SCRIPTS}/${name_desktop}.sh"
-                            if check_flatpak
-                            then echo "flatpak run ru.linux_gaming.PortProton \"${portwine_exe}\" " >> "${STEAM_SCRIPTS}/${name_desktop}.sh"
-                            else echo "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" " >> "${STEAM_SCRIPTS}/${name_desktop}.sh"
-                            fi
-                            chmod u+x "${STEAM_SCRIPTS}/${name_desktop}.sh"
-                            create_new_dir "${STUIDPATH}/config/"
-                            create_new_dir "${STUIDPATH}/config/grid"
-                            export SGGRIDDIR="${STUIDPATH}/config/grid"
-                            # shellcheck source=/dev/null
-                            source "${PORT_SCRIPTS_PATH}/add_in_steam.sh"
-                            if [[ "${PW_SKIP_RESTART_STEAM}" != 1 ]] && pgrep -i steam &>/dev/null ; then
-                                if yad_question "${translations[For adding shortcut to STEAM, needed restart.\\n\\nRestart STEAM now?]}" ; then
-                                    pw_start_progress_bar_block "${translations[Restarting STEAM... Please wait.]}"
-                                    kill -s SIGTERM $(pgrep -a steam) &>/dev/null
-                                    while pgrep -i steam &>/dev/null ; do
-                                        sleep 0.5
-                                    done
-                                    steam &
-                                    sleep 5
-                                    pw_stop_progress_bar
-                                    exit 0
-                                fi
-                            fi
-                            unset PW_SKIP_RESTART_STEAM
-                        fi
-                    fi
-                fi
-            fi
+            source "${PORT_SCRIPTS_PATH}/add_in_steam.sh"
+            addNonSteamGame
         fi
 
         export PW_NEW_DESKTOP="1"
 
-        if [[ "$PW_NO_RESTART_PPDB" != "1" ]] \
-        || [[ -z ${LINKS[1]} ]] ; then
+        if [[ "$PW_NO_RESTART_PPDB" != "1" ]] ; then
             print_info "Restarting PP..."
             [[ "$PW_GUI_START" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
             restart_pp
@@ -6078,6 +6202,37 @@ portwine_output_yad_shortcut () {
         [[ -n $KEY_MENU ]] && unset portwine_exe
         [[ "$PW_GUI_START" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
         [[ -z ${LINKS[0]} ]] && restart_pp
+    fi
+}
+
+parse_lnk () {
+    prefix_name=$(echo "$1" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
+    if fix_icon_name=$(grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" 2>/dev/null) && [[ "${fix_icon_name//*.exe/true}" == "true" ]] ; then
+        exe_path=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
+    else
+        exe_path=$(sed -n 's/^Local Base Path\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
+    fi
+    get_lnk_path "${exe_path}"
+    link_name=$(sed -n 's/^File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|\.lnk||')
+    link_cmd=$(sed -n 's/^Command Line Arguments\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
+}
+
+get_lnk_path () {
+    link_drive=$(echo "$1" | cut -d: -f1 | awk '{print tolower($0)}')
+    link_path=$(echo "$1" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/${prefix_name:-${PW_PREFIX_NAME:-DEFAULT}}/dosdevices/${link_drive}|g" | sed 's/\\/\//g')
+}
+
+get_lnk () {
+    if command -v exiftool &>/dev/null ; then
+        if timeout 3 exiftool "$1" &> "${PW_TMPFS_PATH}/exiftool.tmp" ; then
+            parse_lnk "$1"
+        else
+            print_error "exiftool - broken!"
+        fi
+    else
+        print_warning "use portable exiftool"
+        env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" "$1" &> "${PW_TMPFS_PATH}/exiftool.tmp"
+        parse_lnk "$1"
     fi
 }
 
@@ -6091,6 +6246,30 @@ pw_auto_create_shortcut () {
         return 0
     fi
 
+    if [[ "${portwine_exe}" =~ EpicGamesLauncher.exe$ ]]; then
+        for item_file in "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/ProgramData/Epic/EpicGamesLauncher/Data/Manifests/"*".item"; do
+            if [[ -f "${item_file}" ]]; then
+                exe_path=$(jq -r '.InstallLocation + "\\" + .LaunchExecutable' "${item_file}")
+                get_lnk_path "${exe_path}"
+                PORTWINE_CREATE_SHORTCUT_NAME=$(jq -r '.DisplayName' "${item_file}")
+                if ! exe_path="$(realpath "${link_path}" 2>/dev/null)" || [[ ! -f "${exe_path}" ]]; then
+                    print_warning "Link broken for: ${PORTWINE_CREATE_SHORTCUT_NAME}"
+                elif [[ ! -f "${exe_path}.ppdb" ]]; then
+                    unset FILE_SHA256SUM DESKTOP_NAME_FILE DESKTOP_CORRECT_FILE
+                    item_id=$(jq -r '.AppName' "${item_file}")
+                    portwine_exe="${exe_path}"
+                    PORTWINE_DB_FILE="${portwine_exe}.ppdb"
+                    LAUNCH_URI="com.epicgames.launcher://apps/${item_id}?action=launch&silent=true"
+                    pw_init_db
+                    export PW_NO_RESTART_PPDB="1"
+                    edit_db_from_gui PW_PREFIX_NAME LAUNCH_URI
+                    portwine_create_shortcut
+                fi
+            fi
+        done
+        return 0
+    fi
+
     unset LINKS
     for link_file in "${PORT_WINE_PATH}"/data/prefixes/*/drive_c/users/*/Desktop/*.lnk ; do
         link_file=$(readlink -f "$link_file")
@@ -6101,38 +6280,7 @@ pw_auto_create_shortcut () {
     read -r -a SORTED_LINKS < <(echo "${LINKS[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
 
     for link_file in "${SORTED_LINKS[@]//#@_@#/ }" ; do
-        if command -v exiftool &>/dev/null ; then
-            if timeout 3 exiftool "$link_file" &> "${PW_TMPFS_PATH}/exiftool.tmp" ; then
-                prefix_name=$(echo "$link_file" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
-                if fix_icon_name=$(grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" 2>/dev/null) \
-                && [[ "${fix_icon_name//*.exe/true}" == "true" ]] ; then
-                    link_drive=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
-                    link_path=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/$prefix_name/dosdevices/$link_drive|g" | sed 's/\\/\//g')
-                else
-                    link_drive=$(sed -n 's/^Local Base Path\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
-                    link_path=$(sed -n 's/^Local Base Path\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/$prefix_name/dosdevices/$link_drive|g" | sed 's/\\/\//g')
-                fi
-                link_name=$(sed -n 's/^File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|\.lnk||')
-                link_cmd=$(sed -n 's/^Command Line Arguments\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
-            else
-                print_error "exiftool - broken!"
-            fi
-        else
-            print_warning "use portable exiftool"
-            env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" "$link_file" &> "${PW_TMPFS_PATH}/exiftool.tmp"
-            prefix_name=$(echo "$link_file" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
-            if fix_icon_name=$(grep -i "Icon File Name" "${PW_TMPFS_PATH}/exiftool.tmp" 2>/dev/null) \
-            && [[ "${fix_icon_name//*.exe/true}" == "true" ]] ; then
-                link_drive=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
-                link_path=$(sed -n 's/^Icon File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/$prefix_name/dosdevices/$link_drive|g" | sed 's/\\/\//g')
-            else
-                link_drive=$(sed -n 's/^Local Base Path\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | cut -d: -f1 | awk '{print tolower($0)}')
-                link_path=$(sed -n 's/^Local Base Path\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/$prefix_name/dosdevices/$link_drive|g" | sed 's/\\/\//g')
-            fi
-            link_name=$(sed -n 's/^File Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp" | sed 's|\.lnk||')
-            link_cmd=$(sed -n 's/^Command Line Arguments\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
-        fi
-
+        get_lnk "${link_file}"
         if ! exe_path="$(realpath "${link_path}" 2>/dev/null)" ; then
             print_warning "Link broken for: $link_name"
         else
@@ -6166,6 +6314,7 @@ portwine_change_shortcut () {
     create_name_desktop
     export name_desktop="$PW_NAME_DESKTOP_PROXY"
 
+    pw_create_gui_png
     [[ -z "${name_desktop_png}" ]] && name_desktop_png="${PORTPROTON_NAME// /_}"
 
     OUTPUT=$("${pw_yad}" --title="${translations[Choices]}" --form \
