@@ -100,7 +100,7 @@ getSteamId() {
 	if [[ -n "${SteamIds:-}" ]] && jq -e --arg key "$NOSTAPPNAME" 'has($key)' <<< "${SteamIds}" > /dev/null; then
 		SteamAppId=$(jq -r --arg key "${NOSTAPPNAME}" '.[$key]' <<< "${SteamIds}")
 	else
-		if [[ -n "${1:-}" ]]; then
+		if [[ -n "${1:-}" ]] && [[ -z "${SGDBNOTAVAILABLE}" ]]; then
 			getSteamGridDBId "${NOSTAPPNAME}" > /dev/null
 		fi
 		if [[ $SteamGridDBTypeSteam == true ]]; then
@@ -108,6 +108,8 @@ getSteamId() {
 			if jq -e ".success == true" <<< "${SRES}" > /dev/null 2>&1; then
 				SteamAppId="$(jq -r '.data.platforms.steam.id' <<< "${SRES}")"
 			fi
+		elif [[ -n "${SGDBNOTAVAILABLE}" ]]; then
+			SteamAppId="$(curl -s "https://api.steampowered.com/ISteamApps/GetAppList/v2/" | jq --arg name "${NOSTAPPNAME}" '.applist.apps[] | select(.name == $name) | .appid')"
 		fi
 		SteamIds=$(jq --arg key "${NOSTAPPNAME}" --arg value "${SteamAppId:-}" '. + {($key): $value}' <<< "${SteamIds:-$(jq -n '{}')}")
 		echo "${SteamIds}" > "${cache_file}"
@@ -120,15 +122,19 @@ getSteamId() {
 getSteamGridDBId() {
 	unset SteamGridDBId
 	NOSTAPPNAME="$1"
-	SGDBRES=$(curl -Ls -H "Authorization: Bearer ${SGDBAPIKEY}" "${BASESTEAMGRIDDBAPI}/search/autocomplete/${NOSTAPPNAME// /_}")
-	if jq -e ".success == true and (.data | length > 0)" <<< "${SGDBRES}" > /dev/null 2>&1; then
-		if jq -e '.data[0].types | contains(["steam"])' <<< "${SGDBRES}" > /dev/null; then
-			SteamGridDBTypeSteam=true
-		else
-			SteamGridDBTypeSteam=false
+	if [[ -z "${SGDBNOTAVAILABLE}" ]] && [[ -n "${SGDBAPIKEY}" ]] && [[ -n "${BASESTEAMGRIDDBAPI}" ]] && curl -fs -o /dev/null "${BASESTEAMGRIDDBAPI}"; then
+		SGDBRES=$(curl -Ls -H "Authorization: Bearer ${SGDBAPIKEY}" "${BASESTEAMGRIDDBAPI}/search/autocomplete/${NOSTAPPNAME// /_}")
+		if jq -e ".success == true and (.data | length > 0)" <<< "${SGDBRES}" > /dev/null 2>&1; then
+			if jq -e '.data[0].types | contains(["steam"])' <<< "${SGDBRES}" > /dev/null; then
+				SteamGridDBTypeSteam=true
+			else
+				SteamGridDBTypeSteam=false
+			fi
+			SteamGridDBId="$(jq '.data[0].id' <<< "${SGDBRES}")"
+			echo "${SteamGridDBId}"
 		fi
-		SteamGridDBId="$(jq '.data[0].id' <<< "${SGDBRES}")"
-		echo "${SteamGridDBId}"
+	else
+		SGDBNOTAVAILABLE="1"
 	fi
 }
 
@@ -272,25 +278,30 @@ downloadImageSteam() {
 }
 
 downloadImageSteamGridDB() {
-	SGDBIMGAPI="${BASESTEAMGRIDDBAPI}/$1/game/${SteamGridDBId}?limit=1"
-	[[ -n "$3" ]] && SGDBIMGAPI+="&$3"
-	[[ -n "$4" ]] && SGDBIMGAPI+="&$4"
-	SGDBIMGRES=$(curl -Ls -H "Authorization: Bearer ${SGDBAPIKEY}" "${SGDBIMGAPI}")
-	if jq -e ".success == true and (.data | length > 0)" <<< "${SGDBIMGRES}" > /dev/null 2>&1; then
-		SGDBIMGURL=$(jq -r '.data[0].url' <<< "${SGDBIMGRES}")
-		downloadImage "${SGDBIMGURL}" "$2"
-	elif [[ -n "$3" ]]; then
-		downloadImageSteamGridDB "$1" "$2" "" "$4"
+	if [[ -n "${SteamGridDBId}" ]]; then
+		SGDBIMGAPI="${BASESTEAMGRIDDBAPI}/$1/game/${SteamGridDBId}?limit=1"
+		[[ -n "$3" ]] && SGDBIMGAPI+="&$3"
+		[[ -n "$4" ]] && SGDBIMGAPI+="&$4"
+		SGDBIMGRES=$(curl -Ls -H "Authorization: Bearer ${SGDBAPIKEY}" "${SGDBIMGAPI}")
+		if jq -e ".success == true and (.data | length > 0)" <<< "${SGDBIMGRES}" > /dev/null 2>&1; then
+			SGDBIMGURL=$(jq -r '.data[0].url' <<< "${SGDBIMGRES}")
+			downloadImage "${SGDBIMGURL}" "$2"
+		elif [[ -n "$3" ]]; then
+			downloadImageSteamGridDB "$1" "$2" "" "$4"
+		else
+			return 1
+		fi
 	else
 		return 1
 	fi
 }
 
 addGrids() {
-	if [[ -n "${SGDBAPIKEY}" ]]; then
-		getSteamGridDBId "${name_desktop}" > /dev/null
+	getSteamGridDBId "${name_desktop}" > /dev/null
+	if [[ -n "${SGDBNOTAVAILABLE}" ]]; then
+		getSteamId > /dev/null
 	fi
-	if [[ -n "${SteamGridDBId}" ]]; then
+	if [[ -n "${SteamGridDBId}" ]] || [[ -n "${SteamAppId}" ]]; then
 		create_new_dir "${STCFGPATH}/grid"
 		downloadImageSteamGridDB "grids" "${NOSTAIDGRID}.jpg" "mimes=image/jpeg" "dimensions=460x215,920x430" || downloadImageSteam "header.jpg" "${NOSTAIDGRID}.jpg" || echo "Failed to load header.jpg"
 		downloadImageSteamGridDB "grids" "${NOSTAIDGRID}p.jpg" "mimes=image/jpeg" "dimensions=600x900,660x930" || downloadImageSteam "library_600x900_2x.jpg" "${NOSTAIDGRID}p.jpg" || echo "Failed to load library_600x900_2x.jpg"
@@ -371,10 +382,6 @@ addNonSteamGame() {
 				printf '\x00%s\x00' "tags"
 				printf '\x08\x08\x08\x08'
 			} >> "${SCPATH}"
-
-			# TODO: замень использование steamgriddb на steam так как сайт steamgriddb у многих без VPN не работает
-			# а пока просто блочим использование
-			export DOWNLOAD_STEAM_GRID="0"
 
 			if [[ "${DOWNLOAD_STEAM_GRID}" == "1" ]] ; then
 				pw_start_progress_bar_block "${translations[Please wait. downloading covers for]} ${NOSTAPPNAME}"
