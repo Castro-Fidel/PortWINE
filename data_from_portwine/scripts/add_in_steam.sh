@@ -104,12 +104,12 @@ getSteamId() {
 			getSteamGridDBId "${NOSTAPPNAME}" > /dev/null
 		fi
 		if [[ $SteamGridDBTypeSteam == true ]]; then
-			SRES=$(curl -Ls -e "https://www.steamgriddb.com/game/${SteamGridDBId}" "https://www.steamgriddb.com/api/public/game/${SteamGridDBId}")
+			SRES=$(curl -Ls --connect-timeout 5 -m 10 -e "https://www.steamgriddb.com/game/${SteamGridDBId}" "https://www.steamgriddb.com/api/public/game/${SteamGridDBId}")
 			if jq -e ".success == true" <<< "${SRES}" > /dev/null 2>&1; then
 				SteamAppId="$(jq -r '.data.platforms.steam.id' <<< "${SRES}")"
 			fi
 		elif [[ "${USE_STEABGRIDDB:-1}" == "0" ]]; then
-			SteamAppId="$(curl -s "https://api.steampowered.com/ISteamApps/GetAppList/v2/" | jq --arg name "${NOSTAPPNAME}" '.applist.apps[] | select(.name == $name) | .appid')"
+			SteamAppId="$(curl -s --connect-timeout 5 -m 10 "https://api.steampowered.com/ISteamApps/GetAppList/v2/" | jq --arg name "${NOSTAPPNAME}" '.applist.apps[] | select(.name == $name) | .appid')"
 		fi
 		SteamIds=$(jq --arg key "${NOSTAPPNAME}" --arg value "${SteamAppId:-}" '. + {($key): $value}' <<< "${SteamIds:-$(jq -n '{}')}")
 		echo "${SteamIds}" > "${cache_file}"
@@ -122,8 +122,8 @@ getSteamId() {
 getSteamGridDBId() {
 	unset SteamGridDBId
 	NOSTAPPNAME="$1"
-	if [[ "${USE_STEABGRIDDB:-1}" == "1" ]] && [[ -n "${SGDBAPIKEY}" ]] && [[ -n "${BASESTEAMGRIDDBAPI}" ]] && curl -fs -o /dev/null "${BASESTEAMGRIDDBAPI}"; then
-		SGDBRES=$(curl -Ls -H "Authorization: Bearer ${SGDBAPIKEY}" "${BASESTEAMGRIDDBAPI}/search/autocomplete/${NOSTAPPNAME// /_}")
+	if [[ "${USE_STEABGRIDDB:-1}" == "1" ]] && [[ -n "${SGDBAPIKEY}" ]] && [[ -n "${BASESTEAMGRIDDBAPI}" ]] && curl -fs --connect-timeout 5 -m 10 -o /dev/null "${BASESTEAMGRIDDBAPI}"; then
+		SGDBRES=$(curl -Ls --connect-timeout 5 -m 10 -H "Authorization: Bearer ${SGDBAPIKEY}" "${BASESTEAMGRIDDBAPI}/search/autocomplete/${NOSTAPPNAME// /_}")
 		if jq -e ".success == true and (.data | length > 0)" <<< "${SGDBRES}" > /dev/null 2>&1; then
 			if jq -e '.data[0].types | contains(["steam"])' <<< "${SGDBRES}" > /dev/null; then
 				SteamGridDBTypeSteam=true
@@ -261,7 +261,7 @@ restartSteam() {
 }
 
 downloadImage() {
-	if ! curl -Lf# -o "${STCFGPATH}/grid/$2" "$1"; then
+	if ! curl -Lf# --connect-timeout 5 -m 10 -o "${STCFGPATH}/grid/$2" "$1"; then
 		return 1
 	fi
 }
@@ -282,7 +282,7 @@ downloadImageSteamGridDB() {
 		SGDBIMGAPI="${BASESTEAMGRIDDBAPI}/$1/game/${SteamGridDBId}?limit=1"
 		[[ -n "$3" ]] && SGDBIMGAPI+="&$3"
 		[[ -n "$4" ]] && SGDBIMGAPI+="&$4"
-		SGDBIMGRES=$(curl -Ls -H "Authorization: Bearer ${SGDBAPIKEY}" "${SGDBIMGAPI}")
+		SGDBIMGRES=$(curl -Ls --connect-timeout 5 -m 10 -H "Authorization: Bearer ${SGDBAPIKEY}" "${SGDBIMGAPI}")
 		if jq -e ".success == true and (.data | length > 0)" <<< "${SGDBIMGRES}" > /dev/null 2>&1; then
 			SGDBIMGURL=$(jq -r '.data[0].url' <<< "${SGDBIMGRES}")
 			downloadImage "${SGDBIMGURL}" "$2"
@@ -298,15 +298,15 @@ downloadImageSteamGridDB() {
 
 addGrids() {
 	getSteamGridDBId "${name_desktop}" > /dev/null
-	if [[ "${USE_STEABGRIDDB:-1}" == "1" ]]; then
+	if [[ "${USE_STEABGRIDDB:-1}" == "0" ]]; then
 		getSteamId > /dev/null
 	fi
 	if [[ -n "${SteamGridDBId}" ]] || [[ -n "${SteamAppId}" ]]; then
 		create_new_dir "${STCFGPATH}/grid"
-		downloadImageSteamGridDB "grids" "${NOSTAIDGRID}.jpg" "mimes=image/jpeg" "dimensions=460x215,920x430" || downloadImageSteam "header.jpg" "${NOSTAIDGRID}.jpg" || echo "Failed to load header.jpg"
-		downloadImageSteamGridDB "grids" "${NOSTAIDGRID}p.jpg" "mimes=image/jpeg" "dimensions=600x900,660x930" || downloadImageSteam "library_600x900_2x.jpg" "${NOSTAIDGRID}p.jpg" || echo "Failed to load library_600x900_2x.jpg"
-		downloadImageSteamGridDB "heroes" "${NOSTAIDGRID}_hero.jpg" "mimes=image/jpeg" || downloadImageSteam "library_hero.jpg" "${NOSTAIDGRID}_hero.jpg" || echo "Failed to load library_hero.jpg"
-		downloadImageSteamGridDB "logos" "${NOSTAIDGRID}_logo.png" "mimes=image/png" || downloadImageSteam "logo.png" "${NOSTAIDGRID}_logo.png" || echo "Failed to load logo.png"
+		downloadImageSteamGridDB "grids" "${NOSTAIDGRID:-0}.jpg" "mimes=image/jpeg" "dimensions=460x215,920x430" || downloadImageSteam "header.jpg" "${NOSTAIDGRID:-0}.jpg" || echo "Failed to load header.jpg"
+		downloadImageSteamGridDB "grids" "${NOSTAIDGRID:-0}p.jpg" "mimes=image/jpeg" "dimensions=600x900,660x930" || downloadImageSteam "library_600x900_2x.jpg" "${NOSTAIDGRID:-0}p.jpg" || echo "Failed to load library_600x900_2x.jpg"
+		downloadImageSteamGridDB "heroes" "${NOSTAIDGRID:-0}_hero.jpg" "mimes=image/jpeg" || downloadImageSteam "library_hero.jpg" "${NOSTAIDGRID:-0}_hero.jpg" || echo "Failed to load library_hero.jpg"
+		downloadImageSteamGridDB "logos" "${NOSTAIDGRID:-0}_logo.png" "mimes=image/png" || downloadImageSteam "logo.png" "${NOSTAIDGRID:-0}_logo.png" || echo "Failed to load logo.png"
 	else
 		echo "Game is not found"
 	fi
