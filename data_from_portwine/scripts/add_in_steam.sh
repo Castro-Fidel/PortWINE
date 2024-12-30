@@ -100,7 +100,7 @@ getSteamId() {
 	if [[ -n "${SteamIds:-}" ]] && jq -e --arg key "$NOSTAPPNAME" 'has($key)' <<< "${SteamIds}" > /dev/null; then
 		SteamAppId=$(jq -r --arg key "${NOSTAPPNAME}" '.[$key]' <<< "${SteamIds}")
 	else
-		if [[ -n "${1:-}" ]] && [[ -z "${SGDBNOTAVAILABLE}" ]]; then
+		if [[ -n "${1:-}" ]] && [[ "${USE_STEABGRIDDB:-1}" == "1" ]]; then
 			getSteamGridDBId "${NOSTAPPNAME}" > /dev/null
 		fi
 		if [[ $SteamGridDBTypeSteam == true ]]; then
@@ -108,7 +108,7 @@ getSteamId() {
 			if jq -e ".success == true" <<< "${SRES}" > /dev/null 2>&1; then
 				SteamAppId="$(jq -r '.data.platforms.steam.id' <<< "${SRES}")"
 			fi
-		elif [[ -n "${SGDBNOTAVAILABLE}" ]]; then
+		elif [[ "${USE_STEABGRIDDB:-1}" == "0" ]]; then
 			SteamAppId="$(curl -s "https://api.steampowered.com/ISteamApps/GetAppList/v2/" | jq --arg name "${NOSTAPPNAME}" '.applist.apps[] | select(.name == $name) | .appid')"
 		fi
 		SteamIds=$(jq --arg key "${NOSTAPPNAME}" --arg value "${SteamAppId:-}" '. + {($key): $value}' <<< "${SteamIds:-$(jq -n '{}')}")
@@ -122,7 +122,7 @@ getSteamId() {
 getSteamGridDBId() {
 	unset SteamGridDBId
 	NOSTAPPNAME="$1"
-	if [[ -z "${SGDBNOTAVAILABLE}" ]] && [[ -n "${SGDBAPIKEY}" ]] && [[ -n "${BASESTEAMGRIDDBAPI}" ]] && curl -fs -o /dev/null "${BASESTEAMGRIDDBAPI}"; then
+	if [[ "${USE_STEABGRIDDB:-1}" == "1" ]] && [[ -n "${SGDBAPIKEY}" ]] && [[ -n "${BASESTEAMGRIDDBAPI}" ]] && curl -fs -o /dev/null "${BASESTEAMGRIDDBAPI}"; then
 		SGDBRES=$(curl -Ls -H "Authorization: Bearer ${SGDBAPIKEY}" "${BASESTEAMGRIDDBAPI}/search/autocomplete/${NOSTAPPNAME// /_}")
 		if jq -e ".success == true and (.data | length > 0)" <<< "${SGDBRES}" > /dev/null 2>&1; then
 			if jq -e '.data[0].types | contains(["steam"])' <<< "${SGDBRES}" > /dev/null; then
@@ -134,7 +134,7 @@ getSteamGridDBId() {
 			echo "${SteamGridDBId}"
 		fi
 	else
-		SGDBNOTAVAILABLE="1"
+		USE_STEABGRIDDB="0"
 	fi
 }
 
@@ -298,7 +298,7 @@ downloadImageSteamGridDB() {
 
 addGrids() {
 	getSteamGridDBId "${name_desktop}" > /dev/null
-	if [[ -n "${SGDBNOTAVAILABLE}" ]]; then
+	if [[ "${USE_STEABGRIDDB:-1}" == "1" ]]; then
 		getSteamId > /dev/null
 	fi
 	if [[ -n "${SteamGridDBId}" ]] || [[ -n "${SteamAppId}" ]]; then
