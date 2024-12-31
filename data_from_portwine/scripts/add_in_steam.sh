@@ -48,12 +48,14 @@ generateShortcutGridAppId() {
 ### END MAGIC APPID FUNCTIONS
 
 getSteamShortcutsVdfFileHex() {
-	STCFGPATH="$(getUserPath)"
-	if [[ -n "${STCFGPATH}" ]]; then
+	if [[ -z "${STCFGPATH}" ]]; then
+		STCFGPATH="$(getUserPath)"
+	fi
+	if [[ -n "${STCFGPATH}" ]] && [[ -z "${SCPATH}" ]]; then
 		SCPATH="${STCFGPATH}/shortcuts.vdf"
-		if [[ -f "${SCPATH}" ]]; then
-			LC_ALL=C perl -0777 -ne 'print unpack("H*", $_)' "${SCPATH}"
-		fi
+	fi
+	if [[ -n "${SCPATH}" ]] && [[ -f "${SCPATH}" ]]; then
+		LC_ALL=C perl -0777 -ne 'print unpack("H*", $_)' "${SCPATH}"
 	fi
 }
 
@@ -301,21 +303,54 @@ addGrids() {
 	fi
 }
 
-addNonSteamGame() {
-	NOSTAPPNAME="${name_desktop}"
-	NOSTSHPATH="${STEAM_SCRIPTS}/${name_desktop}.sh"
-	NOSTEXEPATH="\"${NOSTSHPATH}\""
-	NOSTICONPATH="${PORT_WINE_PATH}/data/img/${name_desktop_png}.png"
-	if [[ -z "${NOSTSTDIR}" ]]; then
-		NOSTSTDIR="\"${STEAM_SCRIPTS}\""
+removeNonSteamGame() {
+	if [[ -z "${STCFGPATH}" ]]; then
+		STCFGPATH="$(getUserPath)"
 	fi
-	STCFGPATH="$(getUserPath)"
-	if [[ -n "${STCFGPATH}" ]]; then
+	if [[ -n "${STCFGPATH}" ]] && [[ -z "${SCPATH}" ]]; then
+		SCPATH="${STCFGPATH}/shortcuts.vdf"
+	fi
+	if [[ -n "${SCPATH}" ]] && [[ -f "${SCPATH}" ]]; then
+		cp "${SCPATH}" "${SCPATH//.vdf}_${PROGNAME}_backup.vdf" 2>/dev/null
+	fi
+	[[ -n "${1:-}" ]] && appid="$1"
+	if [[ -n "${appid}" ]]; then
+		NOSTAIDVDFHEX=$(bigToLittleEndian $(printf '%08x' "${appid}"))
+		LC_ALL=C perl -pe '
+			$hex = pack("H*", shift);
+			$pos = index($_, $hex);
+			if ($pos != -1) {
+				$start_pos = rindex($_, "\x00", $pos - 1);
+				$end_pos = index($_, "ppid", $pos);
+				$end_pos = index($_, "\x08\x08", $pos) if $end_pos == -1;
+				if ($start_pos != -1 && $end_pos != -1) {
+					$end_pos += 4;
+					$_ = substr($_, 0, $start_pos) . substr($_, $end_pos);
+				}
+			}
+		' "${SCPATH}" "${NOSTAIDVDFHEX}" > "${SCPATH}~"
+		mv "${SCPATH}~" "${SCPATH}"
+		rm -f "${STCFGPATH}/grid/${appid}.jpg" "${STCFGPATH}/grid/${appid}p.jpg" "${STCFGPATH}/grid/${appid}_hero.jpg" "${STCFGPATH}/grid/${appid}_logo.png"
+	fi
+}
+
+addNonSteamGame() {
+	if [[ -z "${STCFGPATH}" ]]; then
+		STCFGPATH="$(getUserPath)"
+	fi
+	if [[ -n "${STCFGPATH}" ]] && [[ -z "${SCPATH}" ]]; then
 		SCPATH="${STCFGPATH}/shortcuts.vdf"
 	fi
 	if [[ -n "${SCPATH}" ]]; then
+		NOSTAPPNAME="${name_desktop}"
+		NOSTSHPATH="${STEAM_SCRIPTS}/${name_desktop}.sh"
 		NOSTAIDGRID=$(getAppId "${NOSTSHPATH}")
 		if [[ -z "${NOSTAIDGRID}" ]]; then
+			NOSTEXEPATH="\"${NOSTSHPATH}\""
+			if [[ -z "${NOSTSTDIR}" ]]; then
+				NOSTSTDIR="\"${STEAM_SCRIPTS}\""
+			fi
+			NOSTICONPATH="${PORT_WINE_PATH}/data/img/${name_desktop_png}.png"
 			NOSTAIDVDF="$(generateShortcutVDFAppId "${NOSTAPPNAME}${NOSTEXEPATH}")"  # signed integer AppID, stored in the VDF as hexidecimal - ex: -598031679
 			NOSTAIDVDFHEX="$(generateShortcutVDFHexAppId "$NOSTAIDVDF")"  # 4byte little-endian hexidecimal of above 32bit signed integer, which we write out to the binary VDF - ex: c1c25adc
 			NOSTAIDVDFHEXFMT="\x$(awk '{$1=$1}1' FPAT='.{2}' OFS="\\\x" <<< "$NOSTAIDVDFHEX")"  # binary-formatted string hex of the above which we actually write out - ex: \xc1\xc2\x5a\xdc
