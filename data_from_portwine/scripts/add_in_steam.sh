@@ -41,7 +41,8 @@ generateShortcutVDFHexAppId() {
 }
 
 # Takes an signed 32bit integer and converts it to an unsigned 32bit integer
-generateShortcutGridAppId() {
+extractSteamId32() {
+# 	STUID32=$((STUID64 - 76561197960265728))
 	echo $(($1 & 0xFFFFFFFF))
 }
 ## ----------
@@ -134,29 +135,55 @@ getSteamGridDBId() {
 	fi
 }
 
-getUserPath() {
+getUserIds() {
+	SLUF="${HOME}/.local/share/Steam/config/loginusers.vdf"
+	if [[ -f "${SLUF}" ]]; then
+		STUIDS=()
+		while read -r line; do
+			if [[ "${line}" =~ ^[[:space:]]*\"([0-9]+)\"$ ]]; then
+				STUID=$(extractSteamId32 "${BASH_REMATCH[1]}")
+				STUIDS+=("${STUID}")
+			fi
+		done < "${SLUF}"
+		if [[ ${#STUIDS[@]} -gt 0 ]]; then
+			echo "${STUIDS[@]}"
+		fi
+	fi
+}
+
+getUserId() {
 	SLUF="${HOME}/.local/share/Steam/config/loginusers.vdf"
 	if [[ -f "${SLUF}" ]]; then
 		SLUFUB=false
-		STUID64=""
+		STUID=""
 		while read -r line; do
 			if [[ "${line}" =~ ^[[:space:]]*\"([0-9]+)\"$ ]]; then
 				STUIDCUR="${BASH_REMATCH[1]}"
 				SLUFUB=true
 			elif [[ "${line}" == *'"MostRecent"'*'"1"' && ${SLUFUB} = true ]]; then
-				STUID64="${STUIDCUR}"
+				STUID=$(extractSteamId32 "${STUIDCUR}")
 				break
 			elif [[ "${line}" == "}" ]]; then
 				SLUFUB=false
 			fi
 		done < "${SLUF}"
-		if [ -n "${STUID64}" ]; then
-			STUID32=$((STUID64 - 76561197960265728))
-			STUIDPATH="${HOME}/.local/share/Steam/userdata/${STUID32}"
-			if [[ -d "${STUIDPATH}" ]]; then
-				if [[ -f "${STUIDPATH}/config/shortcuts.vdf" ]]; then
-					echo "${STUIDPATH}/config"
-				fi
+	fi
+	if [ -n "${STUID}" ]; then
+		echo "${STUID}"
+	fi
+}
+
+getUserPath() {
+	if [[ -n "${1:-}" ]]; then
+		STUID="$1"
+	else
+		STUID="$(getUserId)"
+	fi
+	if [ -n "${STUID}" ]; then
+		STUIDPATH="${HOME}/.local/share/Steam/userdata/${STUID}"
+		if [[ -d "${STUIDPATH}" ]]; then
+			if [[ -f "${STUIDPATH}/config/shortcuts.vdf" ]]; then
+				echo "${STUIDPATH}/config"
 			fi
 		fi
 	fi
@@ -304,17 +331,15 @@ addGrids() {
 }
 
 removeNonSteamGame() {
+	[[ -n "${1:-}" ]] && appid="$1"
 	if [[ -z "${STCFGPATH}" ]]; then
 		STCFGPATH="$(getUserPath)"
 	fi
 	if [[ -n "${STCFGPATH}" ]] && [[ -z "${SCPATH}" ]]; then
 		SCPATH="${STCFGPATH}/shortcuts.vdf"
 	fi
-	if [[ -n "${SCPATH}" ]] && [[ -f "${SCPATH}" ]]; then
+	if [[ -n "${appid}" ]] && [[ -n "${SCPATH}" ]] && [[ -f "${SCPATH}" ]]; then
 		cp "${SCPATH}" "${SCPATH//.vdf}_${PROGNAME}_backup.vdf" 2>/dev/null
-	fi
-	[[ -n "${1:-}" ]] && appid="$1"
-	if [[ -n "${appid}" ]]; then
 		NOSTAIDVDFHEX=$(bigToLittleEndian $(printf '%08x' "${appid}"))
 		LC_ALL=C perl -pe '
 			$hex = pack("H*", shift);
@@ -354,7 +379,7 @@ addNonSteamGame() {
 			NOSTAIDVDF="$(generateShortcutVDFAppId "${NOSTAPPNAME}${NOSTEXEPATH}")"  # signed integer AppID, stored in the VDF as hexidecimal - ex: -598031679
 			NOSTAIDVDFHEX="$(generateShortcutVDFHexAppId "$NOSTAIDVDF")"  # 4byte little-endian hexidecimal of above 32bit signed integer, which we write out to the binary VDF - ex: c1c25adc
 			NOSTAIDVDFHEXFMT="\x$(awk '{$1=$1}1' FPAT='.{2}' OFS="\\\x" <<< "$NOSTAIDVDFHEX")"  # binary-formatted string hex of the above which we actually write out - ex: \xc1\xc2\x5a\xdc
-			NOSTAIDGRID="$(generateShortcutGridAppId "$NOSTAIDVDF")"  # unsigned 32bit ingeger version of "$NOSTAIDVDF", which is used as the AppID for Steam artwork ("grids"), as well as for our shortcuts
+			NOSTAIDGRID="$(extractSteamId32 "$NOSTAIDVDF")"  # unsigned 32bit ingeger version of "$NOSTAIDVDF", which is used as the AppID for Steam artwork ("grids"), as well as for our shortcuts
 
 			create_new_dir "${STEAM_SCRIPTS}"
 			echo "#!/usr/bin/env bash" > "${NOSTSHPATH}"
