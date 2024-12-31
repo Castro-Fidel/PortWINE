@@ -74,10 +74,14 @@ getSteamShortcutEntryHex() {
 	printf "%s" "${SHORTCUTSVDFINPUTHEX}" | grep -oP "${SHORTCUTSVDFMATCHPATTERN}\K.*?(?=${SHORTCUTVDFENDPAT})"
 }
 
+getAppExe() {
+	[[ -n "$1" ]] && listNonSteamGames | jq -r --arg id "$1" 'map(select(.id == $id)) | first(.[].exe)'
+}
+
 getAppTarget() {
-	exe=$(listNonSteamGames | jq -r --arg id "$1" 'map(select(.id == $id)) | first(.[].exe)')
+	exe=$(getAppExe "$1")
 	if [[ -n "${exe}" ]]; then
-		if [[ "${exe}" =~ .sh$ ]] ; then
+		if [[ "${exe}" =~ .sh$ ]]; then
 			parseSteamTargetExe "${exe}"
 		else
 			echo "${exe}";
@@ -90,7 +94,7 @@ getSteamGameId() {
 }
 
 getAppId() {
-	listNonSteamGames | jq -r --arg exe "$1" 'map(select(.exe == $exe)) | first(.[]?.id)'
+	[[ -n "$1" ]] && listNonSteamGames | jq -r --arg exe "$1" 'map(select(.exe == $exe)) | first(.[]?.id)'
 }
 
 getSteamId() {
@@ -141,8 +145,7 @@ getUserIds() {
 		STUIDS=()
 		while read -r line; do
 			if [[ "${line}" =~ ^[[:space:]]*\"([0-9]+)\"$ ]]; then
-				STUID=$(extractSteamId32 "${BASH_REMATCH[1]}")
-				STUIDS+=("${STUID}")
+				STUIDS+=("$(extractSteamId32 "${BASH_REMATCH[1]}")")
 			fi
 		done < "${SLUF}"
 		if [[ ${#STUIDS[@]} -gt 0 ]]; then
@@ -332,13 +335,14 @@ addGrids() {
 
 removeNonSteamGame() {
 	[[ -n "${1:-}" ]] && appid="$1"
-	if [[ -z "${STCFGPATH}" ]]; then
-		STCFGPATH="$(getUserPath)"
-	fi
+	[[ -n "${2:-}" ]] && NOSTSHPATH="$2"
+	[[ -z "${STUID}" ]] && STUID=$(getUserId)
+	[[ -z "${STCFGPATH}" ]] && STCFGPATH="$(getUserPath ${STUID})"
 	if [[ -n "${STCFGPATH}" ]] && [[ -z "${SCPATH}" ]]; then
 		SCPATH="${STCFGPATH}/shortcuts.vdf"
 	fi
 	if [[ -n "${appid}" ]] && [[ -n "${SCPATH}" ]] && [[ -f "${SCPATH}" ]]; then
+		[[ -z "${NOSTSHPATH}" ]] && NOSTSHPATH=$(getAppExe ${appid})
 		cp "${SCPATH}" "${SCPATH//.vdf}_${PROGNAME}_backup.vdf" 2>/dev/null
 		NOSTAIDVDFHEX=$(bigToLittleEndian $(printf '%08x' "${appid}"))
 		LC_ALL=C perl -pe '
@@ -356,6 +360,21 @@ removeNonSteamGame() {
 		' "${SCPATH}" "${NOSTAIDVDFHEX}" > "${SCPATH}~"
 		mv "${SCPATH}~" "${SCPATH}"
 		rm -f "${STCFGPATH}/grid/${appid}.jpg" "${STCFGPATH}/grid/${appid}p.jpg" "${STCFGPATH}/grid/${appid}_hero.jpg" "${STCFGPATH}/grid/${appid}_logo.png"
+	fi
+	if [[ -n "${STUID}" ]] && [[ -n "${NOSTSHPATH}" ]] && [[ -f "${NOSTSHPATH}" ]]; then
+		isInstallGame=false
+		for STUIDCUR in $(getUserIds); do
+			[[ "${STUIDCUR}" == "${STUID}" ]] && continue
+			STCFGPATH="$(getUserPath ${STUIDCUR})"
+			SCPATH="${STCFGPATH}/shortcuts.vdf"
+			if [[ -n "$(getAppId "${NOSTSHPATH}")" ]]; then
+				isInstallGame=true
+				break
+			fi
+		done
+		if [[ ${isInstallGame} == false ]]; then
+			rm "${NOSTSHPATH}"
+		fi
 	fi
 }
 
