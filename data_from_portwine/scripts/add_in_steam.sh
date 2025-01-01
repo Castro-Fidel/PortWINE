@@ -210,19 +210,22 @@ listInstalledSteamGames() {
 }
 
 listNonSteamGames() {
-	getSteamShortcutHex | while read -r SCVDFE; do
-		jq -n \
-			--arg id "$(parseSteamShortcutEntryAppID "${SCVDFE}")" \
-			--arg name "$(parseSteamShortcutEntryAppName "${SCVDFE}")" \
-			--arg exe "$(parseSteamShortcutEntryExe "${SCVDFE}")" \
-			'{id: $id, name: $name, exe: $exe}'
-	done | jq -s '.'
+    getSteamShortcutHex | while read -r SCVDFE; do
+        jq -n \
+            --arg id "$(parseSteamShortcutEntryAppID "${SCVDFE}")" \
+            --arg name "$(parseSteamShortcutEntryAppName "${SCVDFE}")" \
+            --arg exe "$(parseSteamShortcutEntryExe "${SCVDFE}")" \
+            --arg dir "$(parseSteamShortcutEntryStartDir "${SCVDFE}")" \
+            --arg icon "$(parseSteamShortcutEntryIcon "${SCVDFE}")" \
+            --arg args "$(parseSteamShortcutEntryLaunchOptions "${SCVDFE}")" \
+            '{id: $id, name: $name, exe: $exe, dir: $dir, icon: $icon, args: $args}'
+    done | jq -s '.'
 }
 
 listSteamGames() {
 	(
 	 	jq -r 'map({AppId: .id, SteamAppId: .id, SteamGameId: .id, Name: .name}) | .[] | tostring' <<< "$(listInstalledSteamGames)"
-		jq -r '.[] | tostring' <<< "$(listNonSteamGames)" | while read game; do
+		jq -r '.[] | tostring' <<< "$(listNonSteamGames)" | while read -r game; do
 			id=$(jq -r '.id' <<< "${game}")
 			name=$(jq -r '.name' <<< "${game}")
 			jq -r \
@@ -240,8 +243,11 @@ convertSteamShortcutAppID() {
 }
 
 convertSteamShortcutHex() {
-	# printf "%s" "$1" | xxd -r -p | tr -d '\0'
 	LC_ALL=C perl -le 'print pack "H*", $ARGV[0]' "$1" | tr -d '\0'
+}
+
+convertStringToSteamShortcutHex() {
+	LC_ALL=C perl -e 'print unpack "H*", "$ARGV[0]" . "\x00"' "$(echo "$1" | tr -cd '[:alpha:]')"
 }
 
 parseSteamShortcutEntryHex() {
@@ -250,9 +256,9 @@ parseSteamShortcutEntryHex() {
 	convertSteamShortcutHex "$(getSteamShortcutEntryHex "${SHORTCUTSVDFINPUTHEX}" "${SHORTCUTSVDFMATCHPATTERN}")"
 }
 
-parseSteamShortcutEntryExe() {
-	SHORTCUTVDFEXEHEXPAT="000145786500"  # 'Exe' ('exe' is 6578650a if we ever need it)
-	parseSteamShortcutEntryHex "$1" "${SHORTCUTVDFEXEHEXPAT}" | tr -d '"'
+parseSteamShortcutEntryAppID() {
+	SHORTCUTVDFAPPIDHEXPAT="617070696400"  # 'appid'
+	convertSteamShortcutAppID "$(printf "%s" "$1" | grep -oP "${SHORTCUTVDFAPPIDHEXPAT}\K.{8}")"
 }
 
 parseSteamShortcutEntryAppName() {
@@ -260,9 +266,24 @@ parseSteamShortcutEntryAppName() {
 	parseSteamShortcutEntryHex "$1" "${SHORTCUTVDFNAMEHEXPAT}"
 }
 
-parseSteamShortcutEntryAppID() {
-	SHORTCUTVDFAPPIDHEXPAT="617070696400"  # 'appid'
-	convertSteamShortcutAppID "$(printf "%s" "$1" | grep -oP "${SHORTCUTVDFAPPIDHEXPAT}\K.{8}")"
+parseSteamShortcutEntryExe() {
+	SHORTCUTVDFEXEHEXPAT="000145786500"  # 'Exe' ('exe' is 6578650a if we ever need it)
+	parseSteamShortcutEntryHex "$1" "${SHORTCUTVDFEXEHEXPAT}" | tr -d '"'
+}
+
+parseSteamShortcutEntryStartDir() {
+	SHORTCUTVDFSTARTDIRHEXPAT="0001537461727444697200"
+	parseSteamShortcutEntryHex "$1" "${SHORTCUTVDFSTARTDIRHEXPAT}" | tr -d '"'
+}
+
+parseSteamShortcutEntryIcon() {
+	SHORTCUTVDFICONHEXPAT="000169636f6e00"
+	parseSteamShortcutEntryHex "$1" "${SHORTCUTVDFICONHEXPAT}"
+}
+
+parseSteamShortcutEntryLaunchOptions() {
+	SHORTCUTVDFARGHEXPAT="00014c61756e63684f7074696f6e7300" # echo "0001$(convertStringToSteamShortcutHex "LaunchOptions")"
+	parseSteamShortcutEntryHex "$1" "${SHORTCUTVDFARGHEXPAT}" | tr '\002' '\n' | head -n 1 | tr -d '\000'
 }
 
 parseSteamTargetExe() {
@@ -333,47 +354,90 @@ addGrids() {
 	fi
 }
 
+addEntry() {
+	if [[ -n "${SCPATH}" ]]; then
+		if [[ -f "${SCPATH}" ]] ; then
+			truncate -s-2 "${SCPATH}"
+			OLDSET="$(grep -aPo '\x00[0-9]\x00\x02appid' "${SCPATH}" | tail -n1 | tr -dc '0-9')"
+			NEWSET=$((OLDSET + 1))
+		else
+			printf '\x00%s\x00' "shortcuts" > "${SCPATH}"
+			NEWSET=0
+		fi
+		NOSTAIDVDFHEXFMT="\x$(awk '{$1=$1}1' FPAT='.{2}' OFS="\\\x" <<< "$NOSTAIDVDFHEX")"  # binary-formatted string hex of the above which we actually write out - ex: \xc1\xc2\x5a\xdc
+
+		{
+			printf '\x00%s\x00' "${NEWSET}"
+			printf '\x02%s\x00%b' "appid" "${NOSTAIDVDFHEXFMT}"
+			printf '\x01%s\x00%s\x00' "AppName" "${NOSTAPPNAME}"
+			printf '\x01%s\x00%s\x00' "Exe" "\"${NOSTEXEPATH}\""
+			printf '\x01%s\x00%s\x00' "StartDir" "\"${NOSTSTDIR}\""
+			printf '\x01%s\x00%s\x00' "icon" "${NOSTICONPATH}"
+			printf '\x01%s\x00%s\x00' "ShortcutPath" ""
+			printf '\x01%s\x00%s\x00' "LaunchOptions" "${NOSTARGS:-}"
+
+			printf '\x02%s\x00%b\x00\x00\x00' "IsHidden" "\x00"
+			printf '\x02%s\x00%b\x00\x00\x00' "AllowDesktopConfig" "\x00"
+
+			# These values are now stored in localconfig.vdf under the "Apps" section,
+			# under a block using the Non-Steam Game Signed 32bit AppID. (i.e., -223056321)
+			# This is handled by `updateLocalConfigAppsValue` below
+			#
+			# Unsure if required, but still write these to the shortcuts.vdf file for consistency
+			printf '\x02%s\x00%b\x00\x00\x00' "AllowOverlay" "\x00"
+			printf '\x02%s\x00%b\x00\x00\x00' "OpenVR" "\x00"
+
+			printf '\x02%s\x00\x00\x00\x00\x00' "Devkit"
+			printf '\x01%s\x00\x00' "DevkitGameID"
+			printf '\x02%s\x00\x00\x00\x00\x00' "DevkitOverrideAppID"
+			printf '\x02%s\x00\x00\x00\x00\x00' "LastPlayTime"
+			printf '\x01%s\x00\x00' "FlatpakAppID"
+			printf '\x00%s\x00' "tags"
+			printf '\x08\x08\x08\x08'
+		} >> "${SCPATH}"
+	fi
+}
+
 removeNonSteamGame() {
-	[[ -n "${1:-}" ]] && appid="$1"
-	[[ -n "${2:-}" ]] && NOSTSHPATH="$2"
+	[[ -n "$1" ]] && appid="$1"
 	[[ -z "${STUID}" ]] && STUID=$(getUserId)
 	[[ -z "${STCFGPATH}" ]] && STCFGPATH="$(getUserPath ${STUID})"
 	if [[ -n "${STCFGPATH}" ]] && [[ -z "${SCPATH}" ]]; then
 		SCPATH="${STCFGPATH}/shortcuts.vdf"
 	fi
-	if [[ -n "${appid}" ]] && [[ -n "${SCPATH}" ]] && [[ -f "${SCPATH}" ]]; then
-		[[ -z "${NOSTSHPATH}" ]] && NOSTSHPATH=$(getAppExe ${appid})
-		cp "${SCPATH}" "${SCPATH//.vdf}_${PROGNAME}_backup.vdf" 2>/dev/null
-		NOSTAIDVDFHEX=$(bigToLittleEndian $(printf '%08x' "${appid}"))
-		LC_ALL=C perl -pe '
-			$hex = pack("H*", shift);
-			$pos = index($_, $hex);
-			if ($pos != -1) {
-				$start_pos = rindex($_, "\x00", $pos - 1);
-				$end_pos = index($_, "ppid", $pos);
-				$end_pos = index($_, "\x08\x08", $pos) if $end_pos == -1;
-				if ($start_pos != -1 && $end_pos != -1) {
-					$end_pos += 4;
-					$_ = substr($_, 0, $start_pos) . substr($_, $end_pos);
-				}
-			}
-		' "${SCPATH}" "${NOSTAIDVDFHEX}" > "${SCPATH}~"
-		mv "${SCPATH}~" "${SCPATH}"
-		rm -f "${STCFGPATH}/grid/${appid}.jpg" "${STCFGPATH}/grid/${appid}p.jpg" "${STCFGPATH}/grid/${appid}_hero.jpg" "${STCFGPATH}/grid/${appid}_logo.png"
-	fi
-	if [[ -n "${STUID}" ]] && [[ -n "${NOSTSHPATH}" ]] && [[ -f "${NOSTSHPATH}" ]]; then
-		isInstallGame=false
-		for STUIDCUR in $(getUserIds); do
-			[[ "${STUIDCUR}" == "${STUID}" ]] && continue
-			STCFGPATH="$(getUserPath ${STUIDCUR})"
-			SCPATH="${STCFGPATH}/shortcuts.vdf"
-			if [[ -n "$(getAppId "${NOSTSHPATH}")" ]]; then
-				isInstallGame=true
-				break
+	if [[ -n "${appid}" ]]; then
+		games=$(listNonSteamGames)
+		NOSTSHPATH=$(jq -r --arg id "${appid}" 'map(select(.id == $id)) | first(.[].exe)' <<< "${games}")
+		if [[ -n "${NOSTSHPATH}" ]]; then
+			mv "${SCPATH}" "${SCPATH//.vdf}_${PROGNAME}_backup.vdf" 2>/dev/null
+			jq --arg id "${appid}" 'map(select(.id != $id))' <<< "${games}" | jq -c '.[]' | while read -r game; do
+				NOSTAIDGRID=$(jq -r '.id' <<< "${game}")
+				NOSTAPPNAME=$(jq -r '.name' <<< "${game}")
+				NOSTEXEPATH=$(jq -r '.exe' <<< "${game}")
+				NOSTSTDIR=$(jq -r '.dir' <<< "${game}")
+				NOSTICONPATH=$(jq -r '.icon' <<< "${game}")
+				NOSTARGS=$(jq -r '.args' <<< "${game}")
+				NOSTAIDVDFHEX=$(bigToLittleEndian $(printf '%08x' "${NOSTAIDGRID}"))
+				addEntry
+			done
+			rm -f "${STCFGPATH}/grid/${appid}.jpg" "${STCFGPATH}/grid/${appid}p.jpg" "${STCFGPATH}/grid/${appid}_hero.jpg" "${STCFGPATH}/grid/${appid}_logo.png"
+			if [[ -f "${NOSTSHPATH}" ]]; then
+				isInstallGame=false
+				for STUIDCUR in $(getUserIds); do
+					[[ "${STUIDCUR}" == "${STUID}" ]] && continue
+					STCFGPATH="$(getUserPath ${STUIDCUR})"
+					SCPATH="${STCFGPATH}/shortcuts.vdf"
+					if [[ -n "$(getAppId "${NOSTSHPATH}")" ]]; then
+						isInstallGame=true
+						break
+					fi
+				done
+				unset STCFGPATH SCPATH
+				if [[ ${isInstallGame} == false ]]; then
+					rm "${NOSTSHPATH}"
+				fi
 			fi
-		done
-		if [[ ${isInstallGame} == false ]]; then
-			rm "${NOSTSHPATH}"
+			restartSteam
 		fi
 	fi
 }
@@ -390,14 +454,13 @@ addNonSteamGame() {
 		NOSTSHPATH="${STEAM_SCRIPTS}/${name_desktop}.sh"
 		NOSTAIDGRID=$(getAppId "${NOSTSHPATH}")
 		if [[ -z "${NOSTAIDGRID}" ]]; then
-			NOSTEXEPATH="\"${NOSTSHPATH}\""
+			NOSTEXEPATH="${NOSTSHPATH}"
 			if [[ -z "${NOSTSTDIR}" ]]; then
-				NOSTSTDIR="\"${STEAM_SCRIPTS}\""
+				NOSTSTDIR="${STEAM_SCRIPTS}"
 			fi
 			NOSTICONPATH="${PORT_WINE_PATH}/data/img/${name_desktop_png}.png"
 			NOSTAIDVDF="$(generateShortcutVDFAppId "${NOSTAPPNAME}${NOSTEXEPATH}")"  # signed integer AppID, stored in the VDF as hexidecimal - ex: -598031679
 			NOSTAIDVDFHEX="$(generateShortcutVDFHexAppId "$NOSTAIDVDF")"  # 4byte little-endian hexidecimal of above 32bit signed integer, which we write out to the binary VDF - ex: c1c25adc
-			NOSTAIDVDFHEXFMT="\x$(awk '{$1=$1}1' FPAT='.{2}' OFS="\\\x" <<< "$NOSTAIDVDFHEX")"  # binary-formatted string hex of the above which we actually write out - ex: \xc1\xc2\x5a\xdc
 			NOSTAIDGRID="$(extractSteamId32 "$NOSTAIDVDF")"  # unsigned 32bit ingeger version of "$NOSTAIDVDF", which is used as the AppID for Steam artwork ("grids"), as well as for our shortcuts
 
 			create_new_dir "${STEAM_SCRIPTS}"
@@ -413,43 +476,9 @@ addNonSteamGame() {
 
 			if [[ -f "${SCPATH}" ]] ; then
 				cp "${SCPATH}" "${SCPATH//.vdf}_${PROGNAME}_backup.vdf" 2>/dev/null
-				truncate -s-2 "${SCPATH}"
-				OLDSET="$(grep -aPo '\x00[0-9]\x00\x02appid' "${SCPATH}" | tail -n1 | tr -dc '0-9')"
-				NEWSET=$((OLDSET + 1))
-			else
-				printf '\x00%s\x00' "shortcuts" > "${SCPATH}"
-				NEWSET=0
 			fi
 
-			{
-				printf '\x00%s\x00' "${NEWSET}"
-				printf '\x02%s\x00%b' "appid" "${NOSTAIDVDFHEXFMT}"
-				printf '\x01%s\x00%s\x00' "AppName" "${NOSTAPPNAME}"
-				printf '\x01%s\x00%s\x00' "Exe" "${NOSTEXEPATH}"
-				printf '\x01%s\x00%s\x00' "StartDir" "${NOSTSTDIR}"
-				printf '\x01%s\x00%s\x00' "icon" "${NOSTICONPATH}"
-				printf '\x01%s\x00%s\x00' "ShortcutPath" ""
-				printf '\x01%s\x00%s\x00' "LaunchOptions" ""
-
-				printf '\x02%s\x00%b\x00\x00\x00' "IsHidden" "\x00"
-				printf '\x02%s\x00%b\x00\x00\x00' "AllowDesktopConfig" "\x00"
-
-				# These values are now stored in localconfig.vdf under the "Apps" section,
-				# under a block using the Non-Steam Game Signed 32bit AppID. (i.e., -223056321)
-				# This is handled by `updateLocalConfigAppsValue` below
-				#
-				# Unsure if required, but still write these to the shortcuts.vdf file for consistency
-				printf '\x02%s\x00%b\x00\x00\x00' "AllowOverlay" "\x00"
-				printf '\x02%s\x00%b\x00\x00\x00' "OpenVR" "\x00"
-
-				printf '\x02%s\x00\x00\x00\x00\x00' "Devkit"
-				printf '\x01%s\x00\x00' "DevkitGameID"
-				printf '\x02%s\x00\x00\x00\x00\x00' "DevkitOverrideAppID"
-				printf '\x02%s\x00\x00\x00\x00\x00' "LastPlayTime"
-				printf '\x01%s\x00\x00' "FlatpakAppID"
-				printf '\x00%s\x00' "tags"
-				printf '\x08\x08\x08\x08'
-			} >> "${SCPATH}"
+			addEntry
 
 			# TODO: замень использование steamgriddb на steam так как сайт steamgriddb у многих без VPN не работает
 			# а пока просто блочим использование
