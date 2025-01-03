@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Author: chal55rus
+# type: games
+# name: Last Chaos
+# image: lastchaos
+# info_en: Last Chaos is a classic MMORPG with six classes, castle sieges, a Korean grind and kilometers of dungeons. The confrontation between Apollo and Eres is gaining momentum, so hurry up to take one of the sides.
+# info_ru: Last Chaos – классическая MMORPG с шестью классами, осадами замков, корейским гриндом и километрами подземелий. Противостояние Апполона и Эреса набирает обороты, так что спешите принять одну из сторон.
+########################################################################
+export PW_PREFIX_NAME="LAST_CHAOS"
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/Last Chaos.zip"
+export PORTWINE_CREATE_SHORTCUT_NAME="Last Chaos"
+
+start_portwine
+if try_download "https://last-chaos.ru/download/Last%20Chaos.zip" "${PW_AUTOINSTALL_EXE}" no_mirror
+then
+    pw_start_progress_bar_install_game "Last Chaos."
+    "$pw_7z" x -y "${PW_AUTOINSTALL_EXE}" -o"${WINEPREFIX}/drive_c/Program Files/"
+    portwine_exe="${WINEPREFIX}/drive_c/Program Files/Last Chaos/LC.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    kill_portwine
+    pw_stop_progress_bar
+    portwine_create_shortcut
+fi
+stop_portwine
