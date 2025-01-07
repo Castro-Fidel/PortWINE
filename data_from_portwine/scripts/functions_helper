@@ -6308,7 +6308,18 @@ portwine_change_shortcut () {
     then PW_SHORTCUT_DESKTOP="TRUE"
     else PW_SHORTCUT_DESKTOP="FALSE"
     fi
-    PW_SHORTCUT_STEAM="FALSE"
+    if [[ -n $PW_DELETE_STEAM ]]; then
+        source "${PORT_SCRIPTS_PATH}/add_in_steam.sh"
+        NOSTSHPATH="${PW_DELETE_SHORTCUT_STEAM[0]//#@_@#/ }"
+        NOSTAIDGRID=$(getAppId "${NOSTSHPATH}")
+        if [[ -n "${NOSTSHPATH}" ]] && [[ -n "${NOSTAIDGRID}" ]]; then
+            PW_SHORTCUT_STEAM="TRUE"
+        else
+            PW_SHORTCUT_STEAM="FALSE"
+        fi
+    else
+        PW_SHORTCUT_STEAM="FALSE"
+    fi
 
     unset name_desktop
     create_name_desktop
@@ -6334,6 +6345,7 @@ portwine_change_shortcut () {
     PORTWINE_CHANGE_SHORTCUT=1
     if [[ $PW_YAD_OUT == 1 ]] ; then
         [[ "$PW_GUI_START" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
+        PW_SHORTCUT_STEAM="FALSE"
         portwine_delete_shortcut
         restart_pp
     fi
@@ -6341,24 +6353,29 @@ portwine_change_shortcut () {
 }
 
 portwine_search_shortcut () {
-    unset PW_DELETE_SHORTCUT_MENU PW_DELETE_SHORTCUT_DESKTOP
-    PW_DELETE_MENU="$(grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop 2>/dev/null)"
-    read -r -d '' -a PW_DELETE_SHORTCUT_MENU <<< "${PW_DELETE_SHORTCUT_MENU[*]} ${PW_DELETE_MENU// /#@_@#}"
+    unset PW_DELETE_SHORTCUT_MENU PW_DELETE_SHORTCUT_STEAM PW_DELETE_SHORTCUT_DESKTOP
+    if [[ -n "${portwine_exe}" ]]; then
+        PW_DELETE_MENU="$(grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop 2>/dev/null)"
+        read -r -d '' -a PW_DELETE_SHORTCUT_MENU <<< "${PW_DELETE_SHORTCUT_MENU[*]} ${PW_DELETE_MENU// /#@_@#}"
 
-    PW_DELETE_PP="$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop 2>/dev/null)"
-    read -r -d '' -a PW_DELETE_SHORTCUT_MENU <<< "${PW_DELETE_SHORTCUT_MENU[*]} ${PW_DELETE_PP// /#@_@#}"
+        PW_DELETE_PP="$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop 2>/dev/null)"
+        read -r -d '' -a PW_DELETE_SHORTCUT_MENU <<< "${PW_DELETE_SHORTCUT_MENU[*]} ${PW_DELETE_PP// /#@_@#}"
 
-    if [[ -d "${HOME}/Desktop" ]] ; then
-        PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "${HOME}/Desktop"/*.desktop 2>/dev/null)"
-        read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]} ${PW_DELETE_DESKTOP// /#@_@#}"
-    fi
-    if [[ -d "${HOME}/Рабочий стол" ]] ; then
-        PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "${HOME}/Рабочий стол"/*.desktop 2>/dev/null)"
-        read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]} ${PW_DELETE_DESKTOP// /#@_@#}"
-    fi
-    if [[ $(xdg-user-dir DESKTOP) ]] ; then
-        PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "$(xdg-user-dir DESKTOP)"/*.desktop 2>/dev/null)"
-        read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]} ${PW_DELETE_DESKTOP// /#@_@#}"
+        PW_DELETE_STEAM="$(grep -il "${portwine_exe}" "${STEAM_SCRIPTS}"/*.sh 2>/dev/null)"
+        read -r -d '' -a PW_DELETE_SHORTCUT_STEAM <<< "${PW_DELETE_SHORTCUT_STEAM[*]} ${PW_DELETE_STEAM// /#@_@#}"
+
+        if [[ -d "${HOME}/Desktop" ]] ; then
+            PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "${HOME}/Desktop"/*.desktop 2>/dev/null)"
+            read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]} ${PW_DELETE_DESKTOP// /#@_@#}"
+        fi
+        if [[ -d "${HOME}/Рабочий стол" ]] ; then
+            PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "${HOME}/Рабочий стол"/*.desktop 2>/dev/null)"
+            read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]} ${PW_DELETE_DESKTOP// /#@_@#}"
+        fi
+        if [[ $(xdg-user-dir DESKTOP) ]] ; then
+            PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "$(xdg-user-dir DESKTOP)"/*.desktop 2>/dev/null)"
+            read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]} ${PW_DELETE_DESKTOP// /#@_@#}"
+        fi
     fi
 }
 
@@ -6371,6 +6388,11 @@ portwine_delete_shortcut () {
     for delete_shortcut in "${PW_DELETE_SHORTCUT_MENU[@]}" "${PW_DELETE_SHORTCUT_DESKTOP[@]}" ; do
         rm -f "${delete_shortcut//#@_@#/ }"
     done
+
+    if [[ "${PW_SHORTCUT_STEAM}" == "FALSE" ]] && [[ -n "${NOSTSHPATH}" ]] && [[ -n "${NOSTAIDGRID}" ]]; then
+        source "${PORT_SCRIPTS_PATH}/add_in_steam.sh"
+        removeNonSteamGame "${NOSTAIDGRID}" "${NOSTSHPATH}"
+    fi
 }
 
 portwine_missing_shortcut () {

@@ -400,6 +400,7 @@ addEntry() {
 
 removeNonSteamGame() {
 	[[ -n "$1" ]] && appid="$1"
+	[[ -n "$2" ]] && NOSTSHPATH="$2"
 	[[ -z "${STUID}" ]] && STUID=$(getUserId)
 	[[ -z "${STCFGPATH}" ]] && STCFGPATH="$(getUserPath ${STUID})"
 	if [[ -n "${STCFGPATH}" ]] && [[ -z "${SCPATH}" ]]; then
@@ -407,7 +408,7 @@ removeNonSteamGame() {
 	fi
 	if [[ -n "${appid}" ]]; then
 		games=$(listNonSteamGames)
-		NOSTSHPATH=$(jq -r --arg id "${appid}" 'map(select(.id == $id)) | first(.[].exe)' <<< "${games}")
+		[[ -z "${NOSTSHPATH}" ]] && NOSTSHPATH=$(jq -r --arg id "${appid}" 'map(select(.id == $id)) | first(.[].exe)' <<< "${games}")
 		if [[ -n "${NOSTSHPATH}" ]]; then
 			mv "${SCPATH}" "${SCPATH//.vdf}_${PROGNAME}_backup.vdf" 2>/dev/null
 			jq --arg id "${appid}" 'map(select(.id != $id))' <<< "${games}" | jq -c '.[]' | while read -r game; do
@@ -450,8 +451,8 @@ addNonSteamGame() {
 		SCPATH="${STCFGPATH}/shortcuts.vdf"
 	fi
 	if [[ -n "${SCPATH}" ]]; then
+		[[ -z "${NOSTSHPATH}" ]] && NOSTSHPATH="${STEAM_SCRIPTS}/${name_desktop}.sh"
 		NOSTAPPNAME="${name_desktop}"
-		NOSTSHPATH="${STEAM_SCRIPTS}/${name_desktop}.sh"
 		NOSTAIDGRID=$(getAppId "${NOSTSHPATH}")
 		if [[ -z "${NOSTAIDGRID}" ]]; then
 			NOSTEXEPATH="${NOSTSHPATH}"
