@@ -293,7 +293,9 @@ parseSteamShortcutEntryLaunchOptions() {
 }
 
 parseSteamTargetExe() {
-	grep -E 'flatpak|start\.sh' "$1" | head -n 1 | awk -F'"' '{print $(NF-1)}'
+	exe=$(sed -n 's/^export portwine_exe="\([^"]*\)"/\1/p' "$1")
+	[[ -z "${exe}" ]] && exe=$(grep -E 'flatpak|start\.sh' "$1" | head -n 1 | awk -F'"' '{print $(NF-1)}')
+	[[ -n "${exe}" ]] && echo "${exe}"
 }
 
 restartSteam() {
@@ -356,10 +358,10 @@ addGrids() {
 	fi
 	if [[ -n "${SteamGridDBId}" ]] || [[ -n "${SteamAppId}" ]]; then
 		create_new_dir "${STCFGPATH}/grid"
-		downloadImageSteamGridDB "grids" "${NOSTAIDGRID:-0}.jpg" "mimes=image/jpeg" "dimensions=460x215,920x430" || downloadImageSteam "header.jpg" "${NOSTAIDGRID:-0}.jpg" || echo "Failed to load header.jpg"
-		downloadImageSteamGridDB "grids" "${NOSTAIDGRID:-0}p.jpg" "mimes=image/jpeg" "dimensions=600x900,660x930" || downloadImageSteam "library_600x900_2x.jpg" "${NOSTAIDGRID:-0}p.jpg" || echo "Failed to load library_600x900_2x.jpg"
-		downloadImageSteamGridDB "heroes" "${NOSTAIDGRID:-0}_hero.jpg" "mimes=image/jpeg" || downloadImageSteam "library_hero.jpg" "${NOSTAIDGRID:-0}_hero.jpg" || echo "Failed to load library_hero.jpg"
-		downloadImageSteamGridDB "logos" "${NOSTAIDGRID:-0}_logo.png" "mimes=image/png" || downloadImageSteam "logo.png" "${NOSTAIDGRID:-0}_logo.png" || echo "Failed to load logo.png"
+		downloadImageSteamGridDB "grids" "${NOSTAPPID:-0}.jpg" "mimes=image/jpeg" "dimensions=460x215,920x430" || downloadImageSteam "header.jpg" "${NOSTAPPID:-0}.jpg" || echo "Failed to load header.jpg"
+		downloadImageSteamGridDB "grids" "${NOSTAPPID:-0}p.jpg" "mimes=image/jpeg" "dimensions=600x900,660x930" || downloadImageSteam "library_600x900_2x.jpg" "${NOSTAPPID:-0}p.jpg" || echo "Failed to load library_600x900_2x.jpg"
+		downloadImageSteamGridDB "heroes" "${NOSTAPPID:-0}_hero.jpg" "mimes=image/jpeg" || downloadImageSteam "library_hero.jpg" "${NOSTAPPID:-0}_hero.jpg" || echo "Failed to load library_hero.jpg"
+		downloadImageSteamGridDB "logos" "${NOSTAPPID:-0}_logo.png" "mimes=image/png" || downloadImageSteam "logo.png" "${NOSTAPPID:-0}_logo.png" || echo "Failed to load logo.png"
 	else
 		echo "Game is not found"
 	fi
@@ -423,16 +425,18 @@ removeNonSteamGame() {
 		if [[ -n "${NOSTSHPATH}" ]]; then
 			mv "${SCPATH}" "${SCPATH//.vdf}_${PROGNAME}_backup.vdf" 2>/dev/null
 			jq --arg id "${appid}" 'map(select(.id != $id))' <<< "${games}" | jq -c '.[]' | while read -r game; do
-				NOSTAIDGRID=$(jq -r '.id' <<< "${game}")
+				NOSTAPPID=$(jq -r '.id' <<< "${game}")
 				NOSTAPPNAME=$(jq -r '.name' <<< "${game}")
 				NOSTEXEPATH=$(jq -r '.exe' <<< "${game}")
 				NOSTSTDIR=$(jq -r '.dir' <<< "${game}")
 				NOSTICONPATH=$(jq -r '.icon' <<< "${game}")
 				NOSTARGS=$(jq -r '.args' <<< "${game}")
-				NOSTAIDVDFHEX=$(bigToLittleEndian $(printf '%08x' "${NOSTAIDGRID}"))
+				NOSTAIDVDFHEX=$(bigToLittleEndian $(printf '%08x' "${NOSTAPPID}"))
 				addEntry
 			done
 			rm -f "${STCFGPATH}/grid/${appid}.jpg" "${STCFGPATH}/grid/${appid}p.jpg" "${STCFGPATH}/grid/${appid}_hero.jpg" "${STCFGPATH}/grid/${appid}_logo.png"
+			rm -rf "${HOME}/.local/share/Steam/steamapps/compatdata/${appid}"
+			rm -rf "${HOME}/.local/share/Steam/steamapps/shadercache/${appid}"
 			if [[ -f "${NOSTSHPATH}" ]]; then
 				isInstallGame=false
 				for STUIDCUR in $(getUserIds); do
@@ -464,8 +468,8 @@ addNonSteamGame() {
 	if [[ -n "${SCPATH}" ]]; then
 		[[ -z "${NOSTSHPATH}" ]] && NOSTSHPATH="${STEAM_SCRIPTS}/${name_desktop}.sh"
 		NOSTAPPNAME="${name_desktop}"
-		NOSTAIDGRID=$(getAppId "${NOSTSHPATH}")
-		if [[ -z "${NOSTAIDGRID}" ]]; then
+		NOSTAPPID=$(getAppId "${NOSTSHPATH}")
+		if [[ -z "${NOSTAPPID}" ]]; then
 			NOSTEXEPATH="${NOSTSHPATH}"
 			if [[ -z "${NOSTSTDIR}" ]]; then
 				NOSTSTDIR="${STEAM_SCRIPTS}"
@@ -473,17 +477,18 @@ addNonSteamGame() {
 			NOSTICONPATH="${PORT_WINE_PATH}/data/img/${name_desktop_png}.png"
 			NOSTAIDVDF="$(generateShortcutVDFAppId "${NOSTAPPNAME}${NOSTEXEPATH}")"  # signed integer AppID, stored in the VDF as hexidecimal - ex: -598031679
 			NOSTAIDVDFHEX="$(generateShortcutVDFHexAppId "$NOSTAIDVDF")"  # 4byte little-endian hexidecimal of above 32bit signed integer, which we write out to the binary VDF - ex: c1c25adc
-			NOSTAIDGRID="$(extractSteamId32 "$NOSTAIDVDF")"  # unsigned 32bit ingeger version of "$NOSTAIDVDF", which is used as the AppID for Steam artwork ("grids"), as well as for our shortcuts
+			NOSTAPPID="$(extractSteamId32 "$NOSTAIDVDF")"  # unsigned 32bit ingeger version of "$NOSTAIDVDF", which is used as the AppID for Steam artwork ("grids"), as well as for our shortcuts
 
 			create_new_dir "${STEAM_SCRIPTS}"
-			echo "#!/usr/bin/env bash" > "${NOSTSHPATH}"
-			echo "export START_FROM_STEAM=1" >> "${NOSTSHPATH}"
-			echo "export LD_PRELOAD=" >> "${NOSTSHPATH}"
-			if check_flatpak; then
-				echo "flatpak run ru.linux_gaming.PortProton \"${portwine_exe}\" " >> "${NOSTSHPATH}"
-			else
-				echo "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" " >> "${NOSTSHPATH}"
-			fi
+			cat <<-EOF > "${NOSTSHPATH}"
+				#!/usr/bin/env bash
+				export FLATPAK_IN_USE=$(check_flatpak && echo 1 || echo 0)
+				export portwine_exe="${portwine_exe}"
+				export PORT_WINE_PATH="${PORT_WINE_PATH}"
+				export PORT_SCRIPTS_PATH="\${PORT_WINE_PATH}/data/scripts"
+				source "\${PORT_SCRIPTS_PATH}/add_in_steam.sh"
+				rungame "\$@"
+			EOF
 			chmod u+x "${NOSTSHPATH}"
 
 			if [[ -f "${SCPATH}" ]] ; then
@@ -502,5 +507,31 @@ addNonSteamGame() {
 		fi
 	else
 		return 1
+	fi
+}
+
+rungame() {
+	export START_FROM_STEAM=1
+	if [[ -n "${STEAM_COMPAT_DATA_PATH:-}" ]]; then
+		cd "$(dirname "${portwine_exe}")"
+		PORTWINE_DB_FILE="${portwine_exe}.ppdb"
+		if [[ -f "${PORTWINE_DB_FILE}" ]]; then
+			source "${PORTWINE_DB_FILE}"
+		fi
+		for path in "ProgramData" "users/Public" "users/steamuser"; do
+			if [[ ! -L "${WINEPREFIX}/drive_c/${path}" ]]; then
+				mkdir -p "${WINEPREFIX}/drive_c/users/"
+				rm -rf "${WINEPREFIX}/drive_c/${path}"
+				ln -sr "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME:-DEFAULT}/drive_c/${path}" "${WINEPREFIX}/drive_c/${path}"
+			fi
+		done
+		"${STEAM_COMPAT_TOOL_PATHS%%:*}/proton" "run" "${portwine_exe}"
+	else
+		export LD_PRELOAD=
+		if [[ "${FLATPAK_IN_USE:-0}" == 1 ]]; then
+			flatpak run ru.linux_gaming.PortProton "${portwine_exe}"
+		else
+			"${PORT_SCRIPTS_PATH}/start.sh" "${portwine_exe}"
+		fi
 	fi
 }
