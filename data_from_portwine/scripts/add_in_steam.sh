@@ -512,26 +512,37 @@ addNonSteamGame() {
 
 rungame() {
 	export START_FROM_STEAM=1
-	if [[ -n "${STEAM_COMPAT_DATA_PATH:-}" ]]; then
-		cd "$(dirname "${portwine_exe}")"
-		PORTWINE_DB_FILE="${portwine_exe}.ppdb"
-		if [[ -f "${PORTWINE_DB_FILE}" ]]; then
-			source "${PORTWINE_DB_FILE}"
-		fi
-		for path in "ProgramData" "users/Public" "users/steamuser"; do
-			if [[ ! -L "${WINEPREFIX}/drive_c/${path}" ]]; then
-				mkdir -p "${WINEPREFIX}/drive_c/users/"
-				rm -rf "${WINEPREFIX}/drive_c/${path}"
-				ln -sr "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME:-DEFAULT}/drive_c/${path}" "${WINEPREFIX}/drive_c/${path}"
+	if [[ -n "${portwine_exe:-}" ]]; then
+		if [[ -n "${STEAM_COMPAT_DATA_PATH:-}" ]]; then
+			cd "$(dirname "${portwine_exe}")"
+			PORTWINE_DB_FILE="${portwine_exe}.ppdb"
+			export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
+			source "${PORT_WINE_PATH}/data/user.conf"
+			source "${PORT_SCRIPTS_PATH}/functions_helper"
+			if [[ -f "${PORTWINE_DB_FILE}" ]]; then
+				source "${PORTWINE_DB_FILE}"
 			fi
-		done
-		"${STEAM_COMPAT_TOOL_PATHS%%:*}/proton" "run" "${portwine_exe}"
-	else
-		export LD_PRELOAD=
-		if [[ "${FLATPAK_IN_USE:-0}" == 1 ]]; then
-			flatpak run ru.linux_gaming.PortProton "${portwine_exe}"
+			for path in "ProgramData" "users/Public" "users/steamuser"; do
+				if [[ ! -L "${WINEPREFIX}/drive_c/${path}" ]]; then
+					mkdir -p "${WINEPREFIX}/drive_c/users/"
+					rm -rf "${WINEPREFIX}/drive_c/${path}"
+					ln -sr "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME:-DEFAULT}/drive_c/${path}" "${WINEPREFIX}/drive_c/${path}"
+				fi
+			done
+			[[ $PW_LOG != 1 ]] && debug_timer --start -s "PW_TIME_IN_GAME"
+			"${STEAM_COMPAT_TOOL_PATHS%%:*}/proton" "run" "${portwine_exe}"
+			if [[ $PW_LOG != 1 ]] && [[ -n $START_PW_TIME_IN_GAME ]] ; then
+				debug_timer --end -s "PW_TIME_IN_GAME"
+				PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 )) # в секундах
+				search_desktop_file
+			fi
 		else
-			"${PORT_SCRIPTS_PATH}/start.sh" "${portwine_exe}"
+			export LD_PRELOAD=
+			if [[ "${FLATPAK_IN_USE:-0}" == 1 ]]; then
+				flatpak run ru.linux_gaming.PortProton "${portwine_exe}"
+			else
+				"${PORT_SCRIPTS_PATH}/start.sh" "${portwine_exe}"
+			fi
 		fi
 	fi
 }

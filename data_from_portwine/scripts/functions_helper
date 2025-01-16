@@ -2886,10 +2886,12 @@ edit_db_from_gui () {
     then
         for mod_db in "$@" ; do
             proxy_mod_db="${!mod_db}"
-            if [[ $proxy_mod_db =~ (${translations[Disabled]}|${translations[Disable]}) ]] ; then
-                proxy_mod_db=disabled
-            elif [[ $proxy_mod_db =~ (${translations[Enabled]}|${translations[Enable]}) ]] ; then
-                proxy_mod_db=enabled
+            if (( ${#translations[@]} > 0 )); then
+                if [[ $proxy_mod_db =~ (${translations[Disabled]}|${translations[Disable]}) ]] ; then
+                    proxy_mod_db=disabled
+                elif [[ $proxy_mod_db =~ (${translations[Enabled]}|${translations[Enable]}) ]] ; then
+                    proxy_mod_db=enabled
+                fi
             fi
             if [[ $(<"${PORTWINE_DB_FILE}") =~ export\ ${mod_db}= ]]
             then sed -i "s|export ${mod_db}=.*|export ${mod_db}=\"$proxy_mod_db\"|g" "${PORTWINE_DB_FILE}"
