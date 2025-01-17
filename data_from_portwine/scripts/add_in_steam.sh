@@ -480,7 +480,8 @@ addNonSteamGame() {
 			create_new_dir "${STEAM_SCRIPTS}"
 			cat <<-EOF > "${NOSTSHPATH}"
 				#!/usr/bin/env bash
-				export FLATPAK_IN_USE=$(check_flatpak && echo 1 || echo 0)
+				export START_FROM_STEAM=1
+				export START_FROM_FLATPAK=$(check_flatpak && echo 1 || echo 0)
 				source "${PORT_SCRIPTS_PATH}/add_in_steam.sh"
 				rungame "${portwine_exe}" "\$@"
 			EOF
@@ -506,7 +507,6 @@ addNonSteamGame() {
 }
 
 rungame() {
-	export START_FROM_STEAM=1
 	export portwine_exe="${1:-}"
 	if [[ -n "${portwine_exe:-}" ]]; then
 		if [[ -n "${STEAM_COMPAT_DATA_PATH:-}" ]]; then
@@ -536,7 +536,7 @@ rungame() {
 			fi
 		else
 			export LD_PRELOAD=
-			if [[ "${FLATPAK_IN_USE:-0}" == 1 ]] && command -v "flatpak" &>/dev/null; then
+			if [[ "${START_FROM_FLATPAK:-0}" == 1 ]] && command -v "flatpak" &>/dev/null; then
 				flatpak run ru.linux_gaming.PortProton "${portwine_exe}"
 			else
 				"${PORT_SCRIPTS_PATH}/start.sh" "${portwine_exe}"
