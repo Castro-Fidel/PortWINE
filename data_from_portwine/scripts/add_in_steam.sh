@@ -536,7 +536,7 @@ rungame() {
 			fi
 		else
 			export LD_PRELOAD=
-			if [[ "${FLATPAK_IN_USE:-0}" == 1 ]]; then
+			if [[ "${FLATPAK_IN_USE:-0}" == 1 ]] && command -v "flatpak" &>/dev/null; then
 				flatpak run ru.linux_gaming.PortProton "${portwine_exe}"
 			else
 				"${PORT_SCRIPTS_PATH}/start.sh" "${portwine_exe}"
