@@ -293,9 +293,7 @@ parseSteamShortcutEntryLaunchOptions() {
 }
 
 parseSteamTargetExe() {
-	exe=$(sed -n 's/^export portwine_exe="\([^"]*\)"/\1/p' "$1")
-	[[ -z "${exe}" ]] && exe=$(grep -E 'flatpak|start\.sh' "$1" | head -n 1 | awk -F'"' '{print $(NF-1)}')
-	[[ -n "${exe}" ]] && echo "${exe}"
+ 	grep -E '^[^# ]*?(rungame|flatpak|start\.sh)' "$1" | head -n 1 | sed 's/ "\$@"//' | awk -F'"' '{print $(NF-1)}'
 }
 
 restartSteam() {
@@ -483,11 +481,8 @@ addNonSteamGame() {
 			cat <<-EOF > "${NOSTSHPATH}"
 				#!/usr/bin/env bash
 				export FLATPAK_IN_USE=$(check_flatpak && echo 1 || echo 0)
-				export portwine_exe="${portwine_exe}"
-				export PORT_WINE_PATH="${PORT_WINE_PATH}"
-				export PORT_SCRIPTS_PATH="\${PORT_WINE_PATH}/data/scripts"
-				source "\${PORT_SCRIPTS_PATH}/add_in_steam.sh"
-				rungame "\$@"
+				source "${PORT_SCRIPTS_PATH}/add_in_steam.sh"
+				rungame "${portwine_exe}" "\$@"
 			EOF
 			chmod u+x "${NOSTSHPATH}"
 
@@ -512,28 +507,31 @@ addNonSteamGame() {
 
 rungame() {
 	export START_FROM_STEAM=1
+	export portwine_exe="${1:-}"
 	if [[ -n "${portwine_exe:-}" ]]; then
 		if [[ -n "${STEAM_COMPAT_DATA_PATH:-}" ]]; then
 			cd "$(dirname "${portwine_exe}")"
-			PORTWINE_DB_FILE="${portwine_exe}.ppdb"
+			export PORTWINE_DB_FILE="${portwine_exe}.ppdb"
+			export PORT_SCRIPTS_PATH=$(readlink -f "${BASH_SOURCE[0]%/*}")
+			export PORT_WINE_PATH=${PORT_SCRIPTS_PATH%/*/*}
 			export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
-			source "${PORT_WINE_PATH}/data/user.conf"
+			[[ -f "${PORT_WINE_PATH}/data/user.conf" ]] && source "${PORT_WINE_PATH}/data/user.conf"
+			[[ -f "${PORTWINE_DB_FILE}" ]] && source "${PORTWINE_DB_FILE}"
 			source "${PORT_SCRIPTS_PATH}/functions_helper"
-			if [[ -f "${PORTWINE_DB_FILE}" ]]; then
-				source "${PORTWINE_DB_FILE}"
-			fi
+			PORT_WINE_PREFIX="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME:-DEFAULT}"
 			for path in "ProgramData" "users/Public" "users/steamuser"; do
+				mkdir -p "${PORT_WINE_PREFIX}/drive_c/${path}"
 				if [[ ! -L "${WINEPREFIX}/drive_c/${path}" ]]; then
 					mkdir -p "${WINEPREFIX}/drive_c/users/"
 					rm -rf "${WINEPREFIX}/drive_c/${path}"
-					ln -sr "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME:-DEFAULT}/drive_c/${path}" "${WINEPREFIX}/drive_c/${path}"
+					ln -sr "${PORT_WINE_PREFIX}/drive_c/${path}" "${WINEPREFIX}/drive_c/${path}"
 				fi
 			done
 			[[ $PW_LOG != 1 ]] && debug_timer --start -s "PW_TIME_IN_GAME"
-			"${STEAM_COMPAT_TOOL_PATHS%%:*}/proton" "run" "${portwine_exe}"
+			"${STEAM_COMPAT_TOOL_PATHS%%:*}/proton" "run" "${portwine_exe}" "${@:2}"
 			if [[ $PW_LOG != 1 ]] && [[ -n $START_PW_TIME_IN_GAME ]] ; then
 				debug_timer --end -s "PW_TIME_IN_GAME"
-				PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 )) # в секундах
+				PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 ))
 				search_desktop_file
 			fi
 		else
