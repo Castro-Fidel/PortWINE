@@ -6,6 +6,10 @@ export url_site="https://linux-gaming.ru/portproton/"
 export url_cloud="https://cloud.linux-gaming.ru/portproton"
 export url_git="https://git.linux-gaming.ru/CastroFidel/PortWINE"
 ########################################################################
+if [[ "${START_FROM_FLATPAK:-0}" == 1 ]] && command -v "flatpak" &>/dev/null; then
+    flatpak run ru.linux_gaming.PortProton "$@"
+    exit
+fi
 echo '
             █░░ █ █▄░█ █░█ ▀▄▀ ▄▄ █▀▀ ▄▀█ █▀▄▀█ █ █▄░█ █▀▀ ░ █▀█ █░█
             █▄▄ █ █░▀█ █▄█ █░█ ░░ █▄█ █▀█ █░▀░█ █ █░▀█ █▄█ ▄ █▀▄ █▄█
@@ -189,6 +193,11 @@ if [[ $TRANSLATIONS_VER != "$scripts_install_ver" ]] ; then
     create_translations
     # shellcheck source=/dev/null
     source "$PW_CACHE_LANG_PATH/$LANGUAGE"
+fi
+
+if [[ -n "${STEAM_COMPAT_DATA_PATH:-}" ]]; then
+    steamplay_launch "${@:2}"
+    exit
 fi
 
 # check PortProton theme

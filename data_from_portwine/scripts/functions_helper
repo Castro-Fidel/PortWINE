@@ -4370,6 +4370,30 @@ pw_yad_form_vulkan () {
     fi
 }
 
+steamplay_launch () {
+    if [[ -n "${portwine_exe:-}" ]]; then
+        cd "$(dirname "${portwine_exe}")"
+        export PORTWINE_DB_FILE="${portwine_exe}.ppdb"
+        [[ -f "${PORTWINE_DB_FILE}" ]] && source "${PORTWINE_DB_FILE}"
+        PORT_WINE_PREFIX="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME:-DEFAULT}"
+        for path in "ProgramData" "users/Public" "users/steamuser"; do
+            mkdir -p "${PORT_WINE_PREFIX}/drive_c/${path}"
+            if [[ ! -L "${WINEPREFIX}/drive_c/${path}" ]]; then
+                mkdir -p "${WINEPREFIX}/drive_c/users/"
+                rm -rf "${WINEPREFIX}/drive_c/${path}"
+                ln -sr "${PORT_WINE_PREFIX}/drive_c/${path}" "${WINEPREFIX}/drive_c/${path}"
+            fi
+        done
+        [[ $PW_LOG != 1 ]] && debug_timer --start -s "PW_TIME_IN_GAME"
+        echo "${STEAM_COMPAT_TOOL_PATHS%%:*}/proton" "run" "${portwine_exe}" "$@"
+        if [[ $PW_LOG != 1 ]] && [[ -n $START_PW_TIME_IN_GAME ]] ; then
+            debug_timer --end -s "PW_TIME_IN_GAME"
+            PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 ))
+            search_desktop_file
+        fi
+    fi
+}
+
 portwine_launch () {
     start_portwine
     unset PW_VD_TMP

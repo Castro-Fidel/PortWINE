@@ -293,7 +293,7 @@ parseSteamShortcutEntryLaunchOptions() {
 }
 
 parseSteamTargetExe() {
- 	grep -E '^[^# ]*?(rungame|flatpak|start\.sh)' "$1" | head -n 1 | sed 's/ "\$@"//' | awk -F'"' '{print $(NF-1)}'
+ 	grep -E '^[^# ]*?(flatpak|start\.sh)' "$1" | head -n 1 | sed 's/ "\$@"//' | awk -F'"' '{print $(NF-1)}'
 }
 
 restartSteam() {
@@ -480,10 +480,10 @@ addNonSteamGame() {
 			create_new_dir "${STEAM_SCRIPTS}"
 			cat <<-EOF > "${NOSTSHPATH}"
 				#!/usr/bin/env bash
+				export LD_PRELOAD=
 				export START_FROM_STEAM=1
 				export START_FROM_FLATPAK=$(check_flatpak && echo 1 || echo 0)
-				source "${PORT_SCRIPTS_PATH}/add_in_steam.sh"
-				rungame "${portwine_exe}" "\$@"
+				"${PORT_SCRIPTS_PATH}/start.sh" "${portwine_exe}" "\$@"
 			EOF
 			chmod u+x "${NOSTSHPATH}"
 
@@ -503,44 +503,5 @@ addNonSteamGame() {
 		fi
 	else
 		return 1
-	fi
-}
-
-rungame() {
-	export portwine_exe="${1:-}"
-	if [[ -n "${portwine_exe:-}" ]]; then
-		if [[ -n "${STEAM_COMPAT_DATA_PATH:-}" ]]; then
-			cd "$(dirname "${portwine_exe}")"
-			export PORTWINE_DB_FILE="${portwine_exe}.ppdb"
-			export PORT_SCRIPTS_PATH=$(readlink -f "${BASH_SOURCE[0]%/*}")
-			export PORT_WINE_PATH=${PORT_SCRIPTS_PATH%/*/*}
-			export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
-			[[ -f "${PORT_WINE_PATH}/data/user.conf" ]] && source "${PORT_WINE_PATH}/data/user.conf"
-			[[ -f "${PORTWINE_DB_FILE}" ]] && source "${PORTWINE_DB_FILE}"
-			source "${PORT_SCRIPTS_PATH}/functions_helper"
-			PORT_WINE_PREFIX="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME:-DEFAULT}"
-			for path in "ProgramData" "users/Public" "users/steamuser"; do
-				mkdir -p "${PORT_WINE_PREFIX}/drive_c/${path}"
-				if [[ ! -L "${WINEPREFIX}/drive_c/${path}" ]]; then
-					mkdir -p "${WINEPREFIX}/drive_c/users/"
-					rm -rf "${WINEPREFIX}/drive_c/${path}"
-					ln -sr "${PORT_WINE_PREFIX}/drive_c/${path}" "${WINEPREFIX}/drive_c/${path}"
-				fi
-			done
-			[[ $PW_LOG != 1 ]] && debug_timer --start -s "PW_TIME_IN_GAME"
-			"${STEAM_COMPAT_TOOL_PATHS%%:*}/proton" "run" "${portwine_exe}" "${@:2}"
-			if [[ $PW_LOG != 1 ]] && [[ -n $START_PW_TIME_IN_GAME ]] ; then
-				debug_timer --end -s "PW_TIME_IN_GAME"
-				PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 ))
-				search_desktop_file
-			fi
-		else
-			export LD_PRELOAD=
-			if [[ "${START_FROM_FLATPAK:-0}" == 1 ]] && command -v "flatpak" &>/dev/null; then
-				flatpak run ru.linux_gaming.PortProton "${portwine_exe}"
-			else
-				"${PORT_SCRIPTS_PATH}/start.sh" "${portwine_exe}"
-			fi
-		fi
 	fi
 }
