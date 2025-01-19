@@ -975,10 +975,25 @@ debug_timer () {
     fi
 }
 
+fix_icon_name_png () {
+    if [[ $1 =~ [\!\%\$\&\<] ]] ; then
+        local ICON_NAME_OLD=$1
+        local ICON_NAME_NEW=$ICON_NAME_OLD
+        local ICON_NAME_REGEX=(\! % \$ \& \<)
+        for i in "${ICON_NAME_REGEX[@]}" ; do
+            ICON_NAME_NEW="${ICON_NAME_NEW//$i/}"
+        done
+        sed -i "s|Icon=$ICON_NAME_OLD|Icon=$ICON_NAME_NEW|" "$2"
+        return 0
+    else
+        return 1
+    fi
+}
+
 # Поиск нужного .desktop файла по $portwine_exe (для показа в комментариях нужного времени)
 # Параллельное создание базы по времени после завершения приложения
 search_desktop_file () {
-    local desktop_file desktop_file_new line1 line2 FILE_SHA256SUM_ARRAY EXEC_DESKTOP BROKEN_LINE FILE_SHA256SUM_FOUND FILE_SHA256SUM_NOT_FOUND
+    local desktop_file desktop_file_new line1 line2 FILE_SHA256SUM_ARRAY EXEC_DESKTOP ICON_NAME BROKEN_LINE FILE_SHA256SUM_FOUND FILE_SHA256SUM_NOT_FOUND
     if [[ -z $FILE_SHA256SUM ]] ; then
         read -r -a FILE_SHA256SUM_ARRAY < <(sha256sum "$portwine_exe")
         FILE_SHA256SUM=${FILE_SHA256SUM_ARRAY[0]}
@@ -996,7 +1011,9 @@ search_desktop_file () {
                             EXEC_DESKTOP=${line1//Exec=env \"$PORT_SCRIPTS_PATH\/start.sh\" /}
                         fi
                     fi
+                    [[ $line1 =~ ^Icon= ]] && ICON_NAME=${line1//Icon=/}
                 done < "$desktop_file"
+                fix_icon_name_png "$ICON_NAME" "$desktop_file"
                 if [[ $portwine_exe == "${EXEC_DESKTOP//\"/}" ]] ; then
                     DESKTOP_CORRECT_FILE="$desktop_file"
                     break
@@ -2982,9 +2999,15 @@ pw_create_gui_png () {
         edit_db_from_gui PORTPROTON_NAME FILE_DESCRIPTION
     fi
 
-    resize_png "$portwine_exe" "${PORTPROTON_NAME}" "128"
+    resize_png "$portwine_exe" "${PORTPROTON_NAME}" "48" "128"
 
     PORTPROTON_NAME_PNG="${PORTPROTON_NAME// /_}"
+    if [[ $PORTPROTON_NAME_PNG =~ [\!\%\$\&\<] ]] ; then
+        local ICON_NAME_REGEX=(\! % \$ \& \<)
+        for i in "${ICON_NAME_REGEX[@]}" ; do
+            PORTPROTON_NAME_PNG="${PORTPROTON_NAME_PNG//$i/}"
+        done
+    fi
     if [[ -z "${PW_ICON_FOR_YAD}" ]] ; then
         if [[ -n "$(file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME_PNG}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}")" ]] ; then
             export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME_PNG}.png"
@@ -6074,35 +6097,49 @@ resize_png () {
         print_error "no argument specified for resize_png"
         return 1
     else
-        local RESIZE_FILE="$1"
-        local RESIZE_NAME_PNG="${2// /_}"
-        local RESIZE_TO="$3"
+        local RESIZE_FILE RESIZE_NAME_PNG resize_to resize_to_helper
+        RESIZE_FILE="$1"
+        RESIZE_NAME_PNG="${2// /_}"
     fi
 
-    if [[ -f "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png" ]] \
-    || [[ ! -f "${RESIZE_FILE}" ]] \
-    || [[ ! ${RESIZE_FILE,,} =~ .exe$ ]]
-    then
-        return 0
-    fi
-    try_remove_file "${PORT_WINE_PATH}/data/img/launcher.png"
-    try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
-
-    if check_flatpak ; then
-        if ! timeout 3 \
-        exe-thumbnailer --force-resize -s "$RESIZE_TO" "$(readlink -f "${RESIZE_FILE}")" "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png" \
-        && [[ "$ALPINE_FP" != "1" ]]
-        then
-            print_error "exe-thumbnailer - broken!"
+    for resize_to in "${@:3}" ; do
+        if [[ $resize_to == 128 ]]
+        then resize_to_helper=""
+        else resize_to_helper="_$resize_to"
         fi
-    else
-        print_warning "use portable exe-thumbnailer"
-        env PYTHONPATH="${PW_PLUGINS_PATH}/portable/lib/python3.9/site-packages/" \
-        LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" \
-        "${PW_WINELIB}/runtime/files/bin/python3.9"  \
-        "${PW_PLUGINS_PATH}/portable/bin/exe-thumbnailer" --force-resize -s "$RESIZE_TO" "$(readlink -f "${RESIZE_FILE}")" "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png"
-    fi
-    return 0
+
+        if [[ $RESIZE_NAME_PNG =~ [\!\%\$\&\<] ]] ; then
+            local ICON_NAME_REGEX=(\! % \$ \& \<)
+            for i in "${ICON_NAME_REGEX[@]}" ; do
+                RESIZE_NAME_PNG="${RESIZE_NAME_PNG//$i/}"
+            done
+        fi
+
+        if [[ -f "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}${resize_to_helper}.png" ]] \
+        || [[ ! -f "${RESIZE_FILE}" ]] \
+        || [[ ! ${RESIZE_FILE,,} =~ .exe$ ]]
+        then
+            return 0
+        fi
+
+        try_remove_file "${PORT_WINE_PATH}/data/img/launcher.png"
+        try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
+
+        if check_flatpak ; then
+            if ! timeout 3 \
+            exe-thumbnailer --force-resize -s "$resize_to" "$(readlink -f "${RESIZE_FILE}")" "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}${resize_to_helper}.png" \
+            && [[ "$ALPINE_FP" != "1" ]]
+            then
+                print_error "exe-thumbnailer - broken!"
+            fi
+        else
+            print_warning "use portable exe-thumbnailer"
+            env PYTHONPATH="${PW_PLUGINS_PATH}/portable/lib/python3.9/site-packages/" \
+            LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" \
+            "${PW_WINELIB}/runtime/files/bin/python3.9"  \
+            "${PW_PLUGINS_PATH}/portable/bin/exe-thumbnailer" --force-resize -s "$resize_to" "$(readlink -f "${RESIZE_FILE}")" "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}${resize_to_helper}.png"
+        fi
+    done
 }
 
 # GUI CREATE SHORTCUT
@@ -6122,6 +6159,12 @@ portwine_create_shortcut () {
     export name_desktop="$PW_NAME_DESKTOP_PROXY"
 
     [[ -z "${name_desktop_png}" ]] && name_desktop_png="${PORTPROTON_NAME// /_}"
+    if [[ $name_desktop_png =~ [\!\%\$\&\<] ]] ; then
+        local ICON_NAME_REGEX=(\! % \$ \& \<)
+        for i in "${ICON_NAME_REGEX[@]}" ; do
+            name_desktop_png="${name_desktop_png//$i/}"
+        done
+    fi
 
     OUTPUT=$("${pw_yad}" --title="${translations[Choices]}" --form \
     --gui-type="settings-shortcut" \
@@ -6287,7 +6330,7 @@ pw_auto_create_shortcut () {
             print_info "Created link for: $link_name"
             PORTPROTON_NAME="$link_name"
             export portwine_exe="$exe_path"
-            resize_png "$portwine_exe" "${PORTPROTON_NAME}" "128"
+            resize_png "$portwine_exe" "${PORTPROTON_NAME}" "48" "128"
             export PW_NO_RESTART_PPDB=1
             portwine_create_shortcut
         fi
@@ -6327,6 +6370,12 @@ portwine_change_shortcut () {
 
     pw_create_gui_png
     [[ -z "${name_desktop_png}" ]] && name_desktop_png="${PORTPROTON_NAME// /_}"
+    if [[ $name_desktop_png =~ [\!\%\$\&\<] ]] ; then
+        local ICON_NAME_REGEX=(\! % \$ \& \<)
+        for i in "${ICON_NAME_REGEX[@]}" ; do
+            name_desktop_png="${name_desktop_png//$i/}"
+        done
+    fi
 
     OUTPUT=$("${pw_yad}" --title="${translations[Choices]}" --form \
     --gui-type="settings-shortcut" \
