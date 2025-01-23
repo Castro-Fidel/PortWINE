@@ -4384,6 +4384,11 @@ steamplay_launch () {
                 ln -sr "${PORT_WINE_PREFIX}/drive_c/${path}" "${WINEPREFIX}/drive_c/${path}"
             fi
         done
+        if [[ -n "${PW_DLL_INSTALL:-}" ]] ; then
+            update_winetricks
+            PATH="${PATH}:${PW_PLUGINS_PATH}/portable/bin" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32" \
+                "${PORT_WINE_TMP_PATH}/winetricks" -q ${PW_DLL_INSTALL}
+        fi
         [[ $PW_LOG != 1 ]] && debug_timer --start -s "PW_TIME_IN_GAME"
         "${STEAM_COMPAT_TOOL_PATHS%%:*}/proton" "run" "${portwine_exe}" "$@"
         if [[ $PW_LOG != 1 ]] && [[ -n $START_PW_TIME_IN_GAME ]] ; then
