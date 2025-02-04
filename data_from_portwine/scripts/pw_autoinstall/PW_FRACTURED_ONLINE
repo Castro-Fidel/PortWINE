@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Author: chal55rus
+# type: games
+# name: Fractured Online (ENG)
+# image: fracturedonline
+# info_en: Fractured Online is the first open-world sandbox MMORPG mixing action combat with fully interactable environments, appealing equally to lovers of competitive and cooperative gameplay. Jump right into the fray from day one. Defeat your enemies through your own skill and cleverness, not equipment or level. Gather resources, craft, trade and venture into legendary travels as a solitary hero, or start a settlement with your guild and grow it into the next empire.
+# info_ru: Fractured Online — это первая массовая многопользовательская ролевая онлайн-игра с открытым миром, сочетающая динамичные сражения с полностью интерактивным окружением. Она одинаково понравится любителям соревновательного и кооперативного игрового процесса. С самого первого дня погрузитесь в бой. Побеждайте врагов благодаря собственным навыкам и смекалке, а не снаряжению или уровню. Собирайте ресурсы, создавайте предметы, торгуйте и отправляйтесь в легендарные путешествия в одиночку или создайте поселение со своей гильдией и превратите его в следующую империю.
+########################################################################
+export PW_PREFIX_NAME="FRACTURED_ONLINE"
+export LAUNCH_PARAMETERS="/S"
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/fractured-online-setup.exe"
+export PORTWINE_CREATE_SHORTCUT_NAME="Fractured Online"
+
+start_portwine
+if try_download "https://assets.fracturedmmo.com/clients/3f990010d1afb2cabadc44c6c849116c/fractured-online-setup.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
+then
+    pw_start_progress_bar_install_game "Fractured Online."
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files/Fractured Online/FracturedOnline.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    kill_portwine
+    pw_stop_progress_bar
+    portwine_create_shortcut
+fi
+stop_portwine

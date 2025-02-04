@@ -6,6 +6,11 @@ export url_site="https://linux-gaming.ru/portproton/"
 export url_cloud="https://cloud.linux-gaming.ru/portproton"
 export url_git="https://git.linux-gaming.ru/CastroFidel/PortWINE"
 ########################################################################
+if [[ "${START_FROM_FLATPAK:-0}" == 1 ]] && [[ -z "${STEAM_COMPAT_DATA_PATH:-}" ]] && command -v "flatpak" &>/dev/null; then
+    unset START_FROM_FLATPAK
+    flatpak run ru.linux_gaming.PortProton "$@"
+    exit
+fi
 echo '
             █░░ █ █▄░█ █░█ ▀▄▀ ▄▄ █▀▀ ▄▀█ █▀▄▀█ █ █▄░█ █▀▀ ░ █▀█ █░█
             █▄▄ █ █░▀█ █▄█ █░█ ░░ █▄█ █▀█ █░▀░█ █ █░▀█ █▄█ ▄ █▀▄ █▄█
@@ -96,7 +101,7 @@ fi
 unset MANGOHUD MANGOHUD_DLSYM PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_YAD_SET PW_ICON_FOR_YAD
 unset PW_CHECK_AUTOINSTALL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PORTWINE_DB_FILE RADV_PERFTEST
 unset CHK_SYMLINK_FILE PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME PW_PATH
-unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR PW_WINE_CPU_TOPOLOGY
+unset PW_PREFIX_NAME VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR PW_WINE_CPU_TOPOLOGY
 unset MANGOHUD_CONFIG FPS_LIMIT PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME PORTWINE_CREATE_SHORTCUT_NAME MIRROR
 unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NOSTSTDIR RADV_DEBUG PW_NO_AUTO_CREATE_SHORTCUT
 unset PW_TERM PW_EXEC_FROM_DESKTOP WEBKIT_DISABLE_DMABUF_RENDERER PW_AMD_VULKAN_USE PW_VK_ICD_FILENAMES LAUNCH_URI
@@ -115,15 +120,14 @@ echo "" > "${PW_TMPFS_PATH}/tmp_yad_form"
 echo "" > "${PW_TMPFS_PATH}/tmp_yad_form_vulkan"
 
 create_new_dir "${PORT_WINE_PATH}/data/dist"
-pushd "${PORT_WINE_PATH}/data/dist/" 1>/dev/null || fatal
-for dist_dir in ./* ; do
-    [[ -d "$dist_dir" ]] || continue
-    dist_dir_new="${dist_dir//[[:blank:]]/_}"
+IFS=$'\n'
+for dist_dir in $(ls -1 "${PORT_WINE_PATH}/data/dist") ; do
+    dist_dir_new=$(echo "${dist_dir}" | awk '$1=$1' | sed -e s/[[:blank:]]/_/g)
     if [[ ! -d "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}" ]] ; then
         mv -- "${PORT_WINE_PATH}/data/dist/$dist_dir" "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}"
     fi
 done
-popd 1>/dev/null || fatal
+IFS="$orig_IFS"
 
 create_new_dir "${PORT_WINE_PATH}/data/prefixes/DEFAULT"
 create_new_dir "${PORT_WINE_PATH}/data/prefixes/DOTNET"
@@ -163,7 +167,10 @@ export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
 try_remove_dir "${PW_WINELIB}/var"
 install_ver="$(<"${PORT_WINE_TMP_PATH}/PortProton_ver")"
 export install_ver
-scripts_install_ver="$(<"${PORT_WINE_TMP_PATH}/scripts_ver")"
+if [[ -f "${PORT_WINE_TMP_PATH}/scripts_ver" ]]
+then scripts_install_ver="$(<"${PORT_WINE_TMP_PATH}/scripts_ver")"
+else scripts_install_ver="2025"
+fi
 export scripts_install_ver
 export WINETRICKS_DOWNLOADER="curl"
 export USER_CONF="${PORT_WINE_PATH}/data/user.conf"
@@ -190,6 +197,12 @@ if [[ $TRANSLATIONS_VER != "$scripts_install_ver" ]] ; then
     # shellcheck source=/dev/null
     source "$PW_CACHE_LANG_PATH/$LANGUAGE"
 fi
+
+if [[ -n "${STEAM_COMPAT_DATA_PATH:-}" ]]; then
+    steamplay_launch "${@:2}"
+    exit
+fi
+unset WINEPREFIX
 
 # check PortProton theme
 if [[ -n "$GUI_THEME" ]] \
@@ -645,6 +658,12 @@ else
                     fi
                     [[ $line1 =~ ^Icon= ]] && PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]=${line1//Icon=/}
                 done < "$desktop_file"
+                if fix_icon_name_png "${PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]}" "$desktop_file" ; then
+                    ICON_NAME_REGEX=(\! % \$ \& \<)
+                    for i in "${ICON_NAME_REGEX[@]}" ; do
+                        PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]="${PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]//$i/}"
+                    done
+                fi
                 PW_ALL_DF["$AMOUNT_GENERATE_BUTTONS"]="$desktop_file_new"
                 # Для конвертации существующих .desktop файлов flatpak в натив и наоборот
                 if [[ ${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]} =~ ^"Exec=flatpak run ru.linux_gaming.PortProton " ]] ; then
@@ -702,20 +721,6 @@ else
     for dp in "${PW_AMOUNT_NEW_DESKTOP[@]}" "${PW_AMOUNT_OLD_DESKTOP[@]}" ; do
         PW_DESKTOP_FILES="${PW_ALL_DF[$dp]}"
         PW_DESKTOP_FILES_SHOW="$PW_DESKTOP_FILES"
-        PW_ICON_PATH[dp]=${PW_ICON_PATH[dp]%.png}
-        PW_NAME_D_ICON_NEW="${PW_NAME_D_ICON[dp]//\"/}"
-
-        PW_NAME_D_ICON_128="${PW_ICON_PATH[dp]}"
-        resize_png "$PW_NAME_D_ICON_NEW" "${PW_NAME_D_ICON_128//"${PORT_WINE_PATH}/data/img/"/}" "128"
-        if [[ $PW_DESKTOP_FILES =~ [\!\%\$\&\<] || ${PW_ICON_PATH[dp]} =~ [\!\%\$\&\<] ]] ; then
-            PW_DESKTOP_FILES_SHOW_REGEX=(\! % \$ \& \<)
-            for i in "${PW_DESKTOP_FILES_SHOW_REGEX[@]}" ; do
-                PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//$i/}"
-                PW_ICON_PATH[dp]="${PW_ICON_PATH[dp]//$i/}"
-            done
-        fi
-        PW_NAME_D_ICON_48="${PW_ICON_PATH[dp]}_48"
-        resize_png "$PW_NAME_D_ICON_NEW" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
 
         if [[ $PW_DESKTOP_FILES =~ [\(\)\!\$\%\&\`\'\"\>\<\\\|\;] ]] ; then
             PW_DESKTOP_FILES_REGEX=(\( \) \! \$ % \& \` \' \" \> \< \\ \| \;)
@@ -726,7 +731,19 @@ else
             done
         fi
 
-        PW_GENERATE_BUTTONS+="--field=   $(print_wrapped "${PW_DESKTOP_FILES_SHOW//".desktop"/""}" "25" "...")!${PW_NAME_D_ICON_48}.png!:FBTNR%@bash -c \"button_click --desktop "${PW_DESKTOP_FILES// /#@_@#}"\"%"
+        if [[ $PW_DESKTOP_FILES_SHOW =~ [\!\%\$\&\<] ]] ; then
+            PW_DESKTOP_FILES_SHOW_REGEX=(\! % \$ \& \<)
+            for i in "${PW_DESKTOP_FILES_SHOW_REGEX[@]}" ; do
+                PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//$i/}"
+            done
+        fi
+
+        PW_ICON_PATH[dp]=${PW_ICON_PATH[dp]%.png}
+        PW_NAME_D_ICON_NEW="${PW_NAME_D_ICON[dp]//\"/}"
+
+        resize_png "$PW_NAME_D_ICON_NEW" "${PW_ICON_PATH[dp]//"${PORT_WINE_PATH}/data/img/"/}" "48" "128"
+
+        PW_GENERATE_BUTTONS+="--field=   $(print_wrapped "${PW_DESKTOP_FILES_SHOW//".desktop"/""}" "25" "...")!${PW_ICON_PATH[dp]}_48.png!:FBTNR%@bash -c \"button_click --desktop "${PW_DESKTOP_FILES// /#@_@#}"\"%"
     done
 
     if [[ $AMOUNT_GENERATE_BUTTONS == 1 ]] ; then

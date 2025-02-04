@@ -41,19 +41,22 @@ generateShortcutVDFHexAppId() {
 }
 
 # Takes an signed 32bit integer and converts it to an unsigned 32bit integer
-generateShortcutGridAppId() {
+extractSteamId32() {
+# 	STUID32=$((STUID64 - 76561197960265728))
 	echo $(($1 & 0xFFFFFFFF))
 }
 ## ----------
 ### END MAGIC APPID FUNCTIONS
 
 getSteamShortcutsVdfFileHex() {
-	STCFGPATH="$(getUserPath)"
-	if [[ -n "${STCFGPATH}" ]]; then
+	if [[ -z "${STCFGPATH}" ]]; then
+		STCFGPATH="$(getUserPath)"
+	fi
+	if [[ -n "${STCFGPATH}" ]] && [[ -z "${SCPATH}" ]]; then
 		SCPATH="${STCFGPATH}/shortcuts.vdf"
-		if [[ -f "${SCPATH}" ]]; then
-			LC_ALL=C perl -0777 -ne 'print unpack("H*", $_)' "${SCPATH}"
-		fi
+	fi
+	if [[ -n "${SCPATH}" ]] && [[ -f "${SCPATH}" ]]; then
+		LC_ALL=C perl -0777 -ne 'print unpack("H*", $_)' "${SCPATH}"
 	fi
 }
 
@@ -71,10 +74,14 @@ getSteamShortcutEntryHex() {
 	printf "%s" "${SHORTCUTSVDFINPUTHEX}" | grep -oP "${SHORTCUTSVDFMATCHPATTERN}\K.*?(?=${SHORTCUTVDFENDPAT})"
 }
 
+getAppExe() {
+	[[ -n "$1" ]] && listNonSteamGames | jq -r --arg id "$1" 'map(select(.id == $id)) | first(.[].exe)'
+}
+
 getAppTarget() {
-	exe=$(listNonSteamGames | jq -r --arg id "$1" 'map(select(.id == $id)) | first(.[].exe)')
+	exe=$(getAppExe "$1")
 	if [[ -n "${exe}" ]]; then
-		if [[ "${exe}" =~ .sh$ ]] ; then
+		if [[ "${exe}" =~ .sh$ ]]; then
 			parseSteamTargetExe "${exe}"
 		else
 			echo "${exe}";
@@ -87,7 +94,7 @@ getSteamGameId() {
 }
 
 getAppId() {
-	listNonSteamGames | jq -r --arg exe "$1" 'map(select(.exe == $exe)) | first(.[]?.id)'
+	[[ -n "$1" ]] && listNonSteamGames | jq -r --arg exe "$1" 'map(select(.exe == $exe)) | first(.[]?.id)'
 }
 
 getSteamId() {
@@ -100,14 +107,16 @@ getSteamId() {
 	if [[ -n "${SteamIds:-}" ]] && jq -e --arg key "$NOSTAPPNAME" 'has($key)' <<< "${SteamIds}" > /dev/null; then
 		SteamAppId=$(jq -r --arg key "${NOSTAPPNAME}" '.[$key]' <<< "${SteamIds}")
 	else
-		if [[ -n "${1:-}" ]]; then
+		if [[ -n "${1:-}" ]] && [[ "${USE_STEABGRIDDB:-1}" == "1" ]]; then
 			getSteamGridDBId "${NOSTAPPNAME}" > /dev/null
 		fi
 		if [[ $SteamGridDBTypeSteam == true ]]; then
-			SRES=$(curl -Ls -e "https://www.steamgriddb.com/game/${SteamGridDBId}" "https://www.steamgriddb.com/api/public/game/${SteamGridDBId}")
+			SRES=$(curl -Ls --connect-timeout 5 -m 10 -e "https://www.steamgriddb.com/game/${SteamGridDBId}" "https://www.steamgriddb.com/api/public/game/${SteamGridDBId}")
 			if jq -e ".success == true" <<< "${SRES}" > /dev/null 2>&1; then
 				SteamAppId="$(jq -r '.data.platforms.steam.id' <<< "${SRES}")"
 			fi
+		elif [[ "${USE_STEABGRIDDB:-1}" == "0" ]]; then
+			SteamAppId="$(curl -s --connect-timeout 5 -m 10 "https://api.steampowered.com/ISteamApps/GetAppList/v2/" | jq --arg name "${NOSTAPPNAME}" '.applist.apps[] | select(.name == $name) | .appid')"
 		fi
 		SteamIds=$(jq --arg key "${NOSTAPPNAME}" --arg value "${SteamAppId:-}" '. + {($key): $value}' <<< "${SteamIds:-$(jq -n '{}')}")
 		echo "${SteamIds}" > "${cache_file}"
@@ -120,41 +129,70 @@ getSteamId() {
 getSteamGridDBId() {
 	unset SteamGridDBId
 	NOSTAPPNAME="$1"
-	SGDBRES=$(curl -Ls -H "Authorization: Bearer ${SGDBAPIKEY}" "${BASESTEAMGRIDDBAPI}/search/autocomplete/${NOSTAPPNAME// /_}")
-	if jq -e ".success == true and (.data | length > 0)" <<< "${SGDBRES}" > /dev/null 2>&1; then
-		if jq -e '.data[0].types | contains(["steam"])' <<< "${SGDBRES}" > /dev/null; then
-			SteamGridDBTypeSteam=true
-		else
-			SteamGridDBTypeSteam=false
+	if [[ "${USE_STEABGRIDDB:-1}" == "1" ]] && [[ -n "${SGDBAPIKEY}" ]] && [[ -n "${BASESTEAMGRIDDBAPI}" ]] && curl -fs --connect-timeout 5 -m 10 -o /dev/null "${BASESTEAMGRIDDBAPI}"; then
+		SGDBRES=$(curl -Ls --connect-timeout 5 -m 10 -H "Authorization: Bearer ${SGDBAPIKEY}" "${BASESTEAMGRIDDBAPI}/search/autocomplete/${NOSTAPPNAME// /_}")
+		if jq -e ".success == true and (.data | length > 0)" <<< "${SGDBRES}" > /dev/null 2>&1; then
+			if jq -e '.data[0].types | contains(["steam"])' <<< "${SGDBRES}" > /dev/null; then
+				SteamGridDBTypeSteam=true
+			else
+				SteamGridDBTypeSteam=false
+			fi
+			SteamGridDBId="$(jq '.data[0].id' <<< "${SGDBRES}")"
+			echo "${SteamGridDBId}"
 		fi
-		SteamGridDBId="$(jq '.data[0].id' <<< "${SGDBRES}")"
-		echo "${SteamGridDBId}"
+	else
+		USE_STEABGRIDDB="0"
 	fi
 }
 
-getUserPath() {
+getUserIds() {
+	SLUF="${HOME}/.local/share/Steam/config/loginusers.vdf"
+	if [[ -f "${SLUF}" ]]; then
+		STUIDS=()
+		while read -r line; do
+			if [[ "${line}" =~ ^[[:space:]]*\"([0-9]+)\"$ ]]; then
+				STUIDS+=("$(extractSteamId32 "${BASH_REMATCH[1]}")")
+			fi
+		done < "${SLUF}"
+		if [[ ${#STUIDS[@]} -gt 0 ]]; then
+			echo "${STUIDS[@]}"
+		fi
+	fi
+}
+
+getUserId() {
 	SLUF="${HOME}/.local/share/Steam/config/loginusers.vdf"
 	if [[ -f "${SLUF}" ]]; then
 		SLUFUB=false
-		STUID64=""
+		STUID=""
 		while read -r line; do
 			if [[ "${line}" =~ ^[[:space:]]*\"([0-9]+)\"$ ]]; then
 				STUIDCUR="${BASH_REMATCH[1]}"
 				SLUFUB=true
 			elif [[ "${line}" == *'"MostRecent"'*'"1"' && ${SLUFUB} = true ]]; then
-				STUID64="${STUIDCUR}"
+				STUID=$(extractSteamId32 "${STUIDCUR}")
 				break
 			elif [[ "${line}" == "}" ]]; then
 				SLUFUB=false
 			fi
 		done < "${SLUF}"
-		if [ -n "${STUID64}" ]; then
-			STUID32=$((STUID64 - 76561197960265728))
-			STUIDPATH="${HOME}/.local/share/Steam/userdata/${STUID32}"
-			if [[ -d "${STUIDPATH}" ]]; then
-				if [[ -f "${STUIDPATH}/config/shortcuts.vdf" ]]; then
-					echo "${STUIDPATH}/config"
-				fi
+	fi
+	if [ -n "${STUID}" ]; then
+		echo "${STUID}"
+	fi
+}
+
+getUserPath() {
+	if [[ -n "${1:-}" ]]; then
+		STUID="$1"
+	else
+		STUID="$(getUserId)"
+	fi
+	if [ -n "${STUID}" ]; then
+		STUIDPATH="${HOME}/.local/share/Steam/userdata/${STUID}"
+		if [[ -d "${STUIDPATH}" ]]; then
+			if [[ -f "${STUIDPATH}/config/shortcuts.vdf" ]]; then
+				echo "${STUIDPATH}/config"
 			fi
 		fi
 	fi
@@ -178,19 +216,22 @@ listInstalledSteamGames() {
 }
 
 listNonSteamGames() {
-	getSteamShortcutHex | while read -r SCVDFE; do
-		jq -n \
-			--arg id "$(parseSteamShortcutEntryAppID "${SCVDFE}")" \
-			--arg name "$(parseSteamShortcutEntryAppName "${SCVDFE}")" \
-			--arg exe "$(parseSteamShortcutEntryExe "${SCVDFE}")" \
-			'{id: $id, name: $name, exe: $exe}'
-	done | jq -s '.'
+    getSteamShortcutHex | while read -r SCVDFE; do
+        jq -n \
+            --arg id "$(parseSteamShortcutEntryAppID "${SCVDFE}")" \
+            --arg name "$(parseSteamShortcutEntryAppName "${SCVDFE}")" \
+            --arg exe "$(parseSteamShortcutEntryExe "${SCVDFE}")" \
+            --arg dir "$(parseSteamShortcutEntryStartDir "${SCVDFE}")" \
+            --arg icon "$(parseSteamShortcutEntryIcon "${SCVDFE}")" \
+            --arg args "$(parseSteamShortcutEntryLaunchOptions "${SCVDFE}")" \
+            '{id: $id, name: $name, exe: $exe, dir: $dir, icon: $icon, args: $args}'
+    done | jq -s '.'
 }
 
 listSteamGames() {
 	(
 	 	jq -r 'map({AppId: .id, SteamAppId: .id, SteamGameId: .id, Name: .name}) | .[] | tostring' <<< "$(listInstalledSteamGames)"
-		jq -r '.[] | tostring' <<< "$(listNonSteamGames)" | while read game; do
+		jq -r '.[] | tostring' <<< "$(listNonSteamGames)" | while read -r game; do
 			id=$(jq -r '.id' <<< "${game}")
 			name=$(jq -r '.name' <<< "${game}")
 			jq -r \
@@ -208,8 +249,11 @@ convertSteamShortcutAppID() {
 }
 
 convertSteamShortcutHex() {
-	# printf "%s" "$1" | xxd -r -p | tr -d '\0'
 	LC_ALL=C perl -le 'print pack "H*", $ARGV[0]' "$1" | tr -d '\0'
+}
+
+convertStringToSteamShortcutHex() {
+	LC_ALL=C perl -e 'print unpack "H*", "$ARGV[0]" . "\x00"' "$(echo "$1" | tr -cd '[:alpha:]')"
 }
 
 parseSteamShortcutEntryHex() {
@@ -218,9 +262,9 @@ parseSteamShortcutEntryHex() {
 	convertSteamShortcutHex "$(getSteamShortcutEntryHex "${SHORTCUTSVDFINPUTHEX}" "${SHORTCUTSVDFMATCHPATTERN}")"
 }
 
-parseSteamShortcutEntryExe() {
-	SHORTCUTVDFEXEHEXPAT="000145786500"  # 'Exe' ('exe' is 6578650a if we ever need it)
-	parseSteamShortcutEntryHex "$1" "${SHORTCUTVDFEXEHEXPAT}" | tr -d '"'
+parseSteamShortcutEntryAppID() {
+	SHORTCUTVDFAPPIDHEXPAT="617070696400"  # 'appid'
+	convertSteamShortcutAppID "$(printf "%s" "$1" | grep -oP "${SHORTCUTVDFAPPIDHEXPAT}\K.{8}")"
 }
 
 parseSteamShortcutEntryAppName() {
@@ -228,13 +272,28 @@ parseSteamShortcutEntryAppName() {
 	parseSteamShortcutEntryHex "$1" "${SHORTCUTVDFNAMEHEXPAT}"
 }
 
-parseSteamShortcutEntryAppID() {
-	SHORTCUTVDFAPPIDHEXPAT="617070696400"  # 'appid'
-	convertSteamShortcutAppID "$(printf "%s" "$1" | grep -oP "${SHORTCUTVDFAPPIDHEXPAT}\K.{8}")"
+parseSteamShortcutEntryExe() {
+	SHORTCUTVDFEXEHEXPAT="000145786500"  # 'Exe' ('exe' is 6578650a if we ever need it)
+	parseSteamShortcutEntryHex "$1" "${SHORTCUTVDFEXEHEXPAT}" | tr -d '"'
+}
+
+parseSteamShortcutEntryStartDir() {
+	SHORTCUTVDFSTARTDIRHEXPAT="0001537461727444697200"
+	parseSteamShortcutEntryHex "$1" "${SHORTCUTVDFSTARTDIRHEXPAT}" | tr -d '"'
+}
+
+parseSteamShortcutEntryIcon() {
+	SHORTCUTVDFICONHEXPAT="000169636f6e00"
+	parseSteamShortcutEntryHex "$1" "${SHORTCUTVDFICONHEXPAT}"
+}
+
+parseSteamShortcutEntryLaunchOptions() {
+	SHORTCUTVDFARGHEXPAT="00014c61756e63684f7074696f6e7300" # echo "0001$(convertStringToSteamShortcutHex "LaunchOptions")"
+	parseSteamShortcutEntryHex "$1" "${SHORTCUTVDFARGHEXPAT}" | tr '\002' '\n' | head -n 1 | tr -d '\000'
 }
 
 parseSteamTargetExe() {
-	grep -E 'flatpak|start\.sh' "$1" | head -n 1 | awk -F'"' '{print $(NF-1)}'
+ 	grep -E '^[^# ]*?(flatpak|start\.sh)' "$1" | head -n 1 | sed 's/ "\$@"//' | awk -F'"' '{print $(NF-1)}'
 }
 
 restartSteam() {
@@ -255,7 +314,7 @@ restartSteam() {
 }
 
 downloadImage() {
-	if ! curl -Lf# -o "${STCFGPATH}/grid/$2" "$1"; then
+	if ! curl -Lf# --connect-timeout 5 -m 10 -o "${STCFGPATH}/grid/$2" "$1"; then
 		return 1
 	fi
 }
@@ -272,109 +331,167 @@ downloadImageSteam() {
 }
 
 downloadImageSteamGridDB() {
-	SGDBIMGAPI="${BASESTEAMGRIDDBAPI}/$1/game/${SteamGridDBId}?limit=1"
-	[[ -n "$3" ]] && SGDBIMGAPI+="&$3"
-	[[ -n "$4" ]] && SGDBIMGAPI+="&$4"
-	SGDBIMGRES=$(curl -Ls -H "Authorization: Bearer ${SGDBAPIKEY}" "${SGDBIMGAPI}")
-	if jq -e ".success == true and (.data | length > 0)" <<< "${SGDBIMGRES}" > /dev/null 2>&1; then
-		SGDBIMGURL=$(jq -r '.data[0].url' <<< "${SGDBIMGRES}")
-		downloadImage "${SGDBIMGURL}" "$2"
-	elif [[ -n "$3" ]]; then
-		downloadImageSteamGridDB "$1" "$2" "" "$4"
+	if [[ -n "${SteamGridDBId}" ]]; then
+		SGDBIMGAPI="${BASESTEAMGRIDDBAPI}/$1/game/${SteamGridDBId}?limit=1"
+		[[ -n "$3" ]] && SGDBIMGAPI+="&$3"
+		[[ -n "$4" ]] && SGDBIMGAPI+="&$4"
+		SGDBIMGRES=$(curl -Ls --connect-timeout 5 -m 10 -H "Authorization: Bearer ${SGDBAPIKEY}" "${SGDBIMGAPI}")
+		if jq -e ".success == true and (.data | length > 0)" <<< "${SGDBIMGRES}" > /dev/null 2>&1; then
+			SGDBIMGURL=$(jq -r '.data[0].url' <<< "${SGDBIMGRES}")
+			downloadImage "${SGDBIMGURL}" "$2"
+		elif [[ -n "$3" ]]; then
+			downloadImageSteamGridDB "$1" "$2" "" "$4"
+		else
+			return 1
+		fi
 	else
 		return 1
 	fi
 }
 
 addGrids() {
-	if [[ -n "${SGDBAPIKEY}" ]]; then
-		getSteamGridDBId "${name_desktop}" > /dev/null
+	getSteamGridDBId "${name_desktop}" > /dev/null
+	if [[ "${USE_STEABGRIDDB:-1}" == "0" ]]; then
+		getSteamId > /dev/null
 	fi
-	if [[ -n "${SteamGridDBId}" ]]; then
+	if [[ -n "${SteamGridDBId}" ]] || [[ -n "${SteamAppId}" ]]; then
 		create_new_dir "${STCFGPATH}/grid"
-		downloadImageSteamGridDB "grids" "${NOSTAIDGRID}.jpg" "mimes=image/jpeg" "dimensions=460x215,920x430" || downloadImageSteam "header.jpg" "${NOSTAIDGRID}.jpg" || echo "Failed to load header.jpg"
-		downloadImageSteamGridDB "grids" "${NOSTAIDGRID}p.jpg" "mimes=image/jpeg" "dimensions=600x900,660x930" || downloadImageSteam "library_600x900_2x.jpg" "${NOSTAIDGRID}p.jpg" || echo "Failed to load library_600x900_2x.jpg"
-		downloadImageSteamGridDB "heroes" "${NOSTAIDGRID}_hero.jpg" "mimes=image/jpeg" || downloadImageSteam "library_hero.jpg" "${NOSTAIDGRID}_hero.jpg" || echo "Failed to load library_hero.jpg"
-		downloadImageSteamGridDB "logos" "${NOSTAIDGRID}_logo.png" "mimes=image/png" || downloadImageSteam "logo.png" "${NOSTAIDGRID}_logo.png" || echo "Failed to load logo.png"
+		downloadImageSteamGridDB "grids" "${NOSTAPPID:-0}.jpg" "mimes=image/jpeg" "dimensions=460x215,920x430" || downloadImageSteam "header.jpg" "${NOSTAPPID:-0}.jpg" || echo "Failed to load header.jpg"
+		downloadImageSteamGridDB "grids" "${NOSTAPPID:-0}p.jpg" "mimes=image/jpeg" "dimensions=600x900,660x930" || downloadImageSteam "library_600x900_2x.jpg" "${NOSTAPPID:-0}p.jpg" || echo "Failed to load library_600x900_2x.jpg"
+		downloadImageSteamGridDB "heroes" "${NOSTAPPID:-0}_hero.jpg" "mimes=image/jpeg" || downloadImageSteam "library_hero.jpg" "${NOSTAPPID:-0}_hero.jpg" || echo "Failed to load library_hero.jpg"
+		downloadImageSteamGridDB "logos" "${NOSTAPPID:-0}_logo.png" "mimes=image/png" || downloadImageSteam "logo.png" "${NOSTAPPID:-0}_logo.png" || echo "Failed to load logo.png"
 	else
 		echo "Game is not found"
 	fi
 }
 
-addNonSteamGame() {
-	NOSTAPPNAME="${name_desktop}"
-	NOSTSHPATH="${STEAM_SCRIPTS}/${name_desktop}.sh"
-	NOSTEXEPATH="\"${NOSTSHPATH}\""
-	NOSTICONPATH="${PORT_WINE_PATH}/data/img/${name_desktop_png}.png"
-	if [[ -z "${NOSTSTDIR}" ]]; then
-		NOSTSTDIR="\"${STEAM_SCRIPTS}\""
+addEntry() {
+	if [[ -n "${SCPATH}" ]]; then
+		if [[ -f "${SCPATH}" ]] ; then
+			truncate -s-2 "${SCPATH}"
+			OLDSET="$(grep -aPo '\x00[0-9]\x00\x02appid' "${SCPATH}" | tail -n1 | tr -dc '0-9')"
+			NEWSET=$((OLDSET + 1))
+		else
+			printf '\x00%s\x00' "shortcuts" > "${SCPATH}"
+			NEWSET=0
+		fi
+		NOSTAIDVDFHEXFMT="\x$(awk '{$1=$1}1' FPAT='.{2}' OFS="\\\x" <<< "$NOSTAIDVDFHEX")"  # binary-formatted string hex of the above which we actually write out - ex: \xc1\xc2\x5a\xdc
+
+		{
+			printf '\x00%s\x00' "${NEWSET}"
+			printf '\x02%s\x00%b' "appid" "${NOSTAIDVDFHEXFMT}"
+			printf '\x01%s\x00%s\x00' "AppName" "${NOSTAPPNAME}"
+			printf '\x01%s\x00%s\x00' "Exe" "\"${NOSTEXEPATH}\""
+			printf '\x01%s\x00%s\x00' "StartDir" "\"${NOSTSTDIR}\""
+			printf '\x01%s\x00%s\x00' "icon" "${NOSTICONPATH}"
+			printf '\x01%s\x00%s\x00' "ShortcutPath" ""
+			printf '\x01%s\x00%s\x00' "LaunchOptions" "${NOSTARGS:-}"
+
+			printf '\x02%s\x00%b\x00\x00\x00' "IsHidden" "\x00"
+			printf '\x02%s\x00%b\x00\x00\x00' "AllowDesktopConfig" "\x00"
+
+			# These values are now stored in localconfig.vdf under the "Apps" section,
+			# under a block using the Non-Steam Game Signed 32bit AppID. (i.e., -223056321)
+			# This is handled by `updateLocalConfigAppsValue` below
+			#
+			# Unsure if required, but still write these to the shortcuts.vdf file for consistency
+			printf '\x02%s\x00%b\x00\x00\x00' "AllowOverlay" "\x00"
+			printf '\x02%s\x00%b\x00\x00\x00' "OpenVR" "\x00"
+
+			printf '\x02%s\x00\x00\x00\x00\x00' "Devkit"
+			printf '\x01%s\x00\x00' "DevkitGameID"
+			printf '\x02%s\x00\x00\x00\x00\x00' "DevkitOverrideAppID"
+			printf '\x02%s\x00\x00\x00\x00\x00' "LastPlayTime"
+			printf '\x01%s\x00\x00' "FlatpakAppID"
+			printf '\x00%s\x00' "tags"
+			printf '\x08\x08\x08\x08'
+		} >> "${SCPATH}"
 	fi
-	STCFGPATH="$(getUserPath)"
-	if [[ -n "${STCFGPATH}" ]]; then
+}
+
+removeNonSteamGame() {
+	[[ -n "$1" ]] && appid="$1"
+	[[ -n "$2" ]] && NOSTSHPATH="$2"
+	[[ -z "${STUID}" ]] && STUID=$(getUserId)
+	[[ -z "${STCFGPATH}" ]] && STCFGPATH="$(getUserPath ${STUID})"
+	if [[ -n "${STCFGPATH}" ]] && [[ -z "${SCPATH}" ]]; then
+		SCPATH="${STCFGPATH}/shortcuts.vdf"
+	fi
+	if [[ -n "${appid}" ]]; then
+		games=$(listNonSteamGames)
+		[[ -z "${NOSTSHPATH}" ]] && NOSTSHPATH=$(jq -r --arg id "${appid}" 'map(select(.id == $id)) | first(.[].exe)' <<< "${games}")
+		if [[ -n "${NOSTSHPATH}" ]]; then
+			mv "${SCPATH}" "${SCPATH//.vdf}_${PROGNAME}_backup.vdf" 2>/dev/null
+			jq --arg id "${appid}" 'map(select(.id != $id))' <<< "${games}" | jq -c '.[]' | while read -r game; do
+				NOSTAPPID=$(jq -r '.id' <<< "${game}")
+				NOSTAPPNAME=$(jq -r '.name' <<< "${game}")
+				NOSTEXEPATH=$(jq -r '.exe' <<< "${game}")
+				NOSTSTDIR=$(jq -r '.dir' <<< "${game}")
+				NOSTICONPATH=$(jq -r '.icon' <<< "${game}")
+				NOSTARGS=$(jq -r '.args' <<< "${game}")
+				NOSTAIDVDFHEX=$(bigToLittleEndian $(printf '%08x' "${NOSTAPPID}"))
+				addEntry
+			done
+			rm -f "${STCFGPATH}/grid/${appid}.jpg" "${STCFGPATH}/grid/${appid}p.jpg" "${STCFGPATH}/grid/${appid}_hero.jpg" "${STCFGPATH}/grid/${appid}_logo.png"
+			rm -rf "${HOME}/.local/share/Steam/steamapps/compatdata/${appid}"
+			rm -rf "${HOME}/.local/share/Steam/steamapps/shadercache/${appid}"
+			if [[ -f "${NOSTSHPATH}" ]]; then
+				isInstallGame=false
+				for STUIDCUR in $(getUserIds); do
+					[[ "${STUIDCUR}" == "${STUID}" ]] && continue
+					STCFGPATH="$(getUserPath ${STUIDCUR})"
+					SCPATH="${STCFGPATH}/shortcuts.vdf"
+					if [[ -n "$(getAppId "${NOSTSHPATH}")" ]]; then
+						isInstallGame=true
+						break
+					fi
+				done
+				unset STCFGPATH SCPATH
+				if [[ ${isInstallGame} == false ]]; then
+					rm "${NOSTSHPATH}"
+				fi
+			fi
+			restartSteam
+		fi
+	fi
+}
+
+addNonSteamGame() {
+	if [[ -z "${STCFGPATH}" ]]; then
+		STCFGPATH="$(getUserPath)"
+	fi
+	if [[ -n "${STCFGPATH}" ]] && [[ -z "${SCPATH}" ]]; then
 		SCPATH="${STCFGPATH}/shortcuts.vdf"
 	fi
 	if [[ -n "${SCPATH}" ]]; then
-		NOSTAIDGRID=$(getAppId "${NOSTSHPATH}")
-		if [[ -z "${NOSTAIDGRID}" ]]; then
+		[[ -z "${NOSTSHPATH}" ]] && NOSTSHPATH="${STEAM_SCRIPTS}/${name_desktop}.sh"
+		NOSTAPPNAME="${name_desktop}"
+		NOSTAPPID=$(getAppId "${NOSTSHPATH}")
+		if [[ -z "${NOSTAPPID}" ]]; then
+			NOSTEXEPATH="${NOSTSHPATH}"
+			if [[ -z "${NOSTSTDIR}" ]]; then
+				NOSTSTDIR="${STEAM_SCRIPTS}"
+			fi
+			NOSTICONPATH="${PORT_WINE_PATH}/data/img/${name_desktop_png}.png"
 			NOSTAIDVDF="$(generateShortcutVDFAppId "${NOSTAPPNAME}${NOSTEXEPATH}")"  # signed integer AppID, stored in the VDF as hexidecimal - ex: -598031679
 			NOSTAIDVDFHEX="$(generateShortcutVDFHexAppId "$NOSTAIDVDF")"  # 4byte little-endian hexidecimal of above 32bit signed integer, which we write out to the binary VDF - ex: c1c25adc
-			NOSTAIDVDFHEXFMT="\x$(awk '{$1=$1}1' FPAT='.{2}' OFS="\\\x" <<< "$NOSTAIDVDFHEX")"  # binary-formatted string hex of the above which we actually write out - ex: \xc1\xc2\x5a\xdc
-			NOSTAIDGRID="$(generateShortcutGridAppId "$NOSTAIDVDF")"  # unsigned 32bit ingeger version of "$NOSTAIDVDF", which is used as the AppID for Steam artwork ("grids"), as well as for our shortcuts
+			NOSTAPPID="$(extractSteamId32 "$NOSTAIDVDF")"  # unsigned 32bit ingeger version of "$NOSTAIDVDF", which is used as the AppID for Steam artwork ("grids"), as well as for our shortcuts
 
 			create_new_dir "${STEAM_SCRIPTS}"
-			echo "#!/usr/bin/env bash" > "${NOSTSHPATH}"
-			echo "export START_FROM_STEAM=1" >> "${NOSTSHPATH}"
-			echo "export LD_PRELOAD=" >> "${NOSTSHPATH}"
-			if check_flatpak; then
-				echo "flatpak run ru.linux_gaming.PortProton \"${portwine_exe}\" " >> "${NOSTSHPATH}"
-			else
-				echo "\"${PORT_SCRIPTS_PATH}/start.sh\" \"${portwine_exe}\" " >> "${NOSTSHPATH}"
-			fi
+			cat <<-EOF > "${NOSTSHPATH}"
+				#!/usr/bin/env bash
+				export LD_PRELOAD=
+				export START_FROM_STEAM=1
+				export START_FROM_FLATPAK=$(check_flatpak && echo 1 || echo 0)
+				"${PORT_SCRIPTS_PATH}/start.sh" "${portwine_exe}" "\$@"
+			EOF
 			chmod u+x "${NOSTSHPATH}"
 
 			if [[ -f "${SCPATH}" ]] ; then
 				cp "${SCPATH}" "${SCPATH//.vdf}_${PROGNAME}_backup.vdf" 2>/dev/null
-				truncate -s-2 "${SCPATH}"
-				OLDSET="$(grep -aPo '\x00[0-9]\x00\x02appid' "${SCPATH}" | tail -n1 | tr -dc '0-9')"
-				NEWSET=$((OLDSET + 1))
-			else
-				printf '\x00%s\x00' "shortcuts" > "${SCPATH}"
-				NEWSET=0
 			fi
 
-			{
-				printf '\x00%s\x00' "${NEWSET}"
-				printf '\x02%s\x00%b' "appid" "${NOSTAIDVDFHEXFMT}"
-				printf '\x01%s\x00%s\x00' "AppName" "${NOSTAPPNAME}"
-				printf '\x01%s\x00%s\x00' "Exe" "${NOSTEXEPATH}"
-				printf '\x01%s\x00%s\x00' "StartDir" "${NOSTSTDIR}"
-				printf '\x01%s\x00%s\x00' "icon" "${NOSTICONPATH}"
-				printf '\x01%s\x00%s\x00' "ShortcutPath" ""
-				printf '\x01%s\x00%s\x00' "LaunchOptions" ""
-
-				printf '\x02%s\x00%b\x00\x00\x00' "IsHidden" "\x00"
-				printf '\x02%s\x00%b\x00\x00\x00' "AllowDesktopConfig" "\x00"
-
-				# These values are now stored in localconfig.vdf under the "Apps" section,
-				# under a block using the Non-Steam Game Signed 32bit AppID. (i.e., -223056321)
-				# This is handled by `updateLocalConfigAppsValue` below
-				#
-				# Unsure if required, but still write these to the shortcuts.vdf file for consistency
-				printf '\x02%s\x00%b\x00\x00\x00' "AllowOverlay" "\x00"
-				printf '\x02%s\x00%b\x00\x00\x00' "OpenVR" "\x00"
-
-				printf '\x02%s\x00\x00\x00\x00\x00' "Devkit"
-				printf '\x01%s\x00\x00' "DevkitGameID"
-				printf '\x02%s\x00\x00\x00\x00\x00' "DevkitOverrideAppID"
-				printf '\x02%s\x00\x00\x00\x00\x00' "LastPlayTime"
-				printf '\x01%s\x00\x00' "FlatpakAppID"
-				printf '\x00%s\x00' "tags"
-				printf '\x08\x08\x08\x08'
-			} >> "${SCPATH}"
-
-			# TODO: замень использование steamgriddb на steam так как сайт steamgriddb у многих без VPN не работает
-			# а пока просто блочим использование
-			export DOWNLOAD_STEAM_GRID="0"
+			addEntry
 
 			if [[ "${DOWNLOAD_STEAM_GRID}" == "1" ]] ; then
 				pw_start_progress_bar_block "${translations[Please wait. downloading covers for]} ${NOSTAPPNAME}"

@@ -410,6 +410,7 @@ lsbash () {
     else
         directory=$PWD
     fi
+
     grep_find_file1 () {
         find_file_old=$find_file
         if [[ $grep_with_i == true ]] ; then
@@ -975,10 +976,25 @@ debug_timer () {
     fi
 }
 
+fix_icon_name_png () {
+    if [[ $1 =~ [\!\%\$\&\<] ]] ; then
+        local ICON_NAME_OLD=$1
+        local ICON_NAME_NEW=$ICON_NAME_OLD
+        local ICON_NAME_REGEX=(\! % \$ \& \<)
+        for i in "${ICON_NAME_REGEX[@]}" ; do
+            ICON_NAME_NEW="${ICON_NAME_NEW//$i/}"
+        done
+        sed -i "s|Icon=$ICON_NAME_OLD|Icon=$ICON_NAME_NEW|" "$2"
+        return 0
+    else
+        return 1
+    fi
+}
+
 # Поиск нужного .desktop файла по $portwine_exe (для показа в комментариях нужного времени)
 # Параллельное создание базы по времени после завершения приложения
 search_desktop_file () {
-    local desktop_file desktop_file_new line1 line2 FILE_SHA256SUM_ARRAY EXEC_DESKTOP BROKEN_LINE FILE_SHA256SUM_FOUND FILE_SHA256SUM_NOT_FOUND
+    local desktop_file desktop_file_new line1 line2 FILE_SHA256SUM_ARRAY EXEC_DESKTOP ICON_NAME BROKEN_LINE FILE_SHA256SUM_FOUND FILE_SHA256SUM_NOT_FOUND
     if [[ -z $FILE_SHA256SUM ]] ; then
         read -r -a FILE_SHA256SUM_ARRAY < <(sha256sum "$portwine_exe")
         FILE_SHA256SUM=${FILE_SHA256SUM_ARRAY[0]}
@@ -996,7 +1012,9 @@ search_desktop_file () {
                             EXEC_DESKTOP=${line1//Exec=env \"$PORT_SCRIPTS_PATH\/start.sh\" /}
                         fi
                     fi
+                    [[ $line1 =~ ^Icon= ]] && ICON_NAME=${line1//Icon=/}
                 done < "$desktop_file"
+                fix_icon_name_png "$ICON_NAME" "$desktop_file"
                 if [[ $portwine_exe == "${EXEC_DESKTOP//\"/}" ]] ; then
                     DESKTOP_CORRECT_FILE="$desktop_file"
                     break
@@ -1607,7 +1625,7 @@ init_wine_ver () {
     else
         if [[ -d "${PORT_WINE_PATH}/data/dist" ]] ; then
         IFS=$'\n'
-        for dist_dir in $(lsbash "${PORT_WINE_PATH}/data/dist/") ; do
+        for dist_dir in $(ls -1 "${PORT_WINE_PATH}/data/dist") ; do
             dist_dir_new=$(echo "${dist_dir}" | awk '$1=$1' | sed -e s/[[:blank:]]/_/g)
             if [[ ! -d "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}" ]] ; then
                 mv -- "${PORT_WINE_PATH}/data/dist/$dist_dir" "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}"
@@ -1615,7 +1633,7 @@ init_wine_ver () {
         done
         IFS="$orig_IFS"
         fi
-        if [[ -z $(lsbash "${PORT_WINE_PATH}/data/dist/" --grep "${PW_WINE_USE}") ]] ; then
+        if [[ -z $(ls "${PORT_WINE_PATH}/data/dist/" | grep "${PW_WINE_USE}") ]] ; then
             if [[ "$PW_WINE_USE" =~ PROTON_LG* ]]
             then export PW_WINE_USE=PROTON_LG
             else export PW_WINE_USE=WINE_LG
@@ -1632,20 +1650,20 @@ init_wine_ver () {
         export WINELOADER="${WINEDIR}/bin/wine"
         export WINESERVER="${WINEDIR}/bin/wineserver"
         if [[ -d "${WINEDIR}/files" && ! -d "${WINEDIR}/dist" ]] ; then
-            for clear_dist_files in $(lsbash "$WINEDIR" | sed -r "s/^(files|version)$//g") ; do
+            for clear_dist_files in $(ls "${WINEDIR}" | sed -r "s/^(files|version)$//g") ; do
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
             mv -f "${WINEDIR}/files"/* "${WINEDIR}/"
             rm -fr "${WINEDIR}/files"
         elif [[ ! -d "${WINEDIR}/files" && -d "${WINEDIR}/dist" ]] ; then
-            for clear_dist_files in $(lsbash "$WINEDIR" | sed -r "s/^(dist|version)$//g") ; do
+            for clear_dist_files in $(ls "${WINEDIR}" | sed -r "s/^(dist|version)$//g") ; do
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
             mv -f "${WINEDIR}/dist"/* "${WINEDIR}/"
             rm -fr "${WINEDIR}/dist"
         elif [[ -f "${WINEDIR}/proton_dist.tar" ]] ; then
             unpack "${WINEDIR}/proton_dist.tar" "${WINEDIR}/"
-            for clear_dist_files in $(lsbash "$WINEDIR" | sed -r "s/^(bin|lib|lib64|share|version)$//g") ; do
+            for clear_dist_files in $(ls "${WINEDIR}" | sed -r "s/^(bin|lib|lib64|share|version)$//g") ; do
                 rm -fr "${WINEDIR}/$clear_dist_files"
             done
         fi
@@ -1934,7 +1952,7 @@ pw_kill_autostart () {
         fi
     done
 
-    if [[ -n "$(lsbash "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/ | grep -m 1 ".tmp")" ]] ; then
+    if [[ -n "$(ls "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/ | grep -m 1 ".tmp")" ]] ; then
         rm -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"/drive_c/*.tmp
     fi
 
@@ -2025,8 +2043,8 @@ pw_download_libs () {
                         "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" ; then
             if unpack "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/" ; then
                 try_remove_file "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz"
-                if lsbash "${PORT_WINE_TMP_PATH}" --grep libs_v --grep -v libs"${PW_LIBS_VER}" ; then
-                    for RM_LIBS in $(lsbash "${PORT_WINE_TMP_PATH}" --grep libs_v --grep -v libs"${PW_LIBS_VER}")
+                if ls "${PORT_WINE_TMP_PATH}" | grep libs_v | grep -v libs"${PW_LIBS_VER}" ; then
+                    for RM_LIBS in $(ls "${PORT_WINE_TMP_PATH}" | grep libs_v | grep -v libs"${PW_LIBS_VER}")
                     do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_LIBS}"
                     done
                 fi
@@ -2176,9 +2194,9 @@ pw_check_and_download_plugins () {
                     try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz"
                     # TODO: drop clear prefix, and add update prefix from new plugins
                     pw_clear_pfx
-                    if lsbash "${PORT_WINE_TMP_PATH}" --grep plugins_v --grep -v "plugins${PW_PLUGINS_VER}"
+                    if ls "${PORT_WINE_TMP_PATH}" | grep plugins_v | grep -v "plugins${PW_PLUGINS_VER}"
                     then
-                        for RM_PLUGINS in $(lsbash "${PORT_WINE_TMP_PATH}" --grep plugins_v --grep -v "plugins${PW_PLUGINS_VER}")
+                        for RM_PLUGINS in $(ls "${PORT_WINE_TMP_PATH}" | grep plugins_v | grep -v "plugins${PW_PLUGINS_VER}")
                         do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_PLUGINS}"
                         done
                     fi
@@ -2209,9 +2227,9 @@ pw_check_and_download_plugins () {
                     try_remove_file "${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}.tar.xz"
                     # TODO: drop clear prefix, and add update prefix from new plugins
                     pw_clear_pfx
-                    if lsbash "${PORT_WINE_TMP_PATH}" --grep plugins_v --grep -v "plugins${PW_PLUGINS_VER}"
+                    if ls "${PORT_WINE_TMP_PATH}" | grep plugins_v | grep -v "plugins${PW_PLUGINS_VER}"
                     then
-                        for RM_PLUGINS in $(lsbash "${PORT_WINE_TMP_PATH}" --grep plugins_v --grep -v "plugins${PW_PLUGINS_VER}")
+                        for RM_PLUGINS in $(ls "${PORT_WINE_TMP_PATH}" | grep plugins_v | grep -v "plugins${PW_PLUGINS_VER}")
                         do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_PLUGINS}"
                         done
                     fi
@@ -2338,7 +2356,7 @@ pw_init_db () {
             # shellcheck source=/dev/null
             source "${PORTWINE_DB_FILE}"
             if echo "${portwine_exe}" | grep "/prefixes/" &>/dev/null ; then
-                if [[ -z $(lsbash "${PORT_WINE_PATH}/prefixes/" --grep ^"${PW_PREFIX_NAME}"$) ]] \
+                if [[ -z $(ls "${PORT_WINE_PATH}/prefixes/" | grep -e ^"${PW_PREFIX_NAME}"$) ]] \
                 || [[ -z $(grep -e ^"export PW_PREFIX_NAME=" "${PORTWINE_DB_FILE}" 2>/dev/null) ]]
                 then
                     PW_PREFIX_NAME=$(echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
@@ -2378,7 +2396,7 @@ pw_init_db () {
                 try_copy_file "${PW_FIND_DB_FILE}" "${portwine_exe}".ppdb
                 PORTWINE_DB_FILE="${portwine_exe}".ppdb
                 if echo "${portwine_exe}" | grep "/prefixes/" &>/dev/null ; then
-                    if [[ -z $(lsbash "${PORT_WINE_PATH}/prefixes/" --grep ^"${PW_PREFIX_NAME}"$) ]] \
+                    if [[ -z $(ls "${PORT_WINE_PATH}/prefixes/" | grep -e ^"${PW_PREFIX_NAME}"$) ]] \
                     || [[ -z $(grep -e ^"export PW_PREFIX_NAME=" "${PORTWINE_DB_FILE}" 2>/dev/null) ]]
                     then
                         PW_PREFIX_NAME=$(echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
@@ -2427,7 +2445,7 @@ pw_init_db () {
         if [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] && [[ -n "${WINE_CPU_TOPOLOGY}" ]] ; then
             export PW_WINE_CPU_TOPOLOGY="${WINE_CPU_TOPOLOGY}"
         fi
-        if lsbash "${PATH_TO_GAME}"/*_Data/Resources/ --grep "unity" &>/dev/null \
+        if ls "${PATH_TO_GAME}"/*_Data/Resources/ 2>/dev/null | grep "unity" &>/dev/null \
         && [[ "${PW_WINE_CPU_TOPOLOGY}" == "disabled" ]] \
         && [[ $(grep -c ^"processor" /proc/cpuinfo) -gt "8" ]]
         then
@@ -2886,11 +2904,17 @@ edit_db_from_gui () {
     then
         for mod_db in "$@" ; do
             proxy_mod_db="${!mod_db}"
-            if [[ $proxy_mod_db =~ (${translations[Disabled]}|${translations[Disable]}) ]] ; then
-                proxy_mod_db=disabled
-            elif [[ $proxy_mod_db =~ (${translations[Enabled]}|${translations[Enable]}) ]] ; then
-                proxy_mod_db=enabled
+            if (( ${#translations[@]} > 0 )); then
+                if [[ $proxy_mod_db =~ (${translations[Disabled]}|${translations[Disable]}) ]] ; then
+                    proxy_mod_db=disabled
+                elif [[ $proxy_mod_db =~ (${translations[Enabled]}|${translations[Enable]}) ]] ; then
+                    proxy_mod_db=enabled
+                fi
             fi
+
+            # Escaping backslashes and quotes for Windows paths
+            proxy_mod_db=$(echo "$proxy_mod_db" | sed 's/\\/\\\\\\\\/g; s/"/\\"/g')
+
             if [[ $(<"${PORTWINE_DB_FILE}") =~ export\ ${mod_db}= ]]
             then sed -i "s|export ${mod_db}=.*|export ${mod_db}=\"$proxy_mod_db\"|g" "${PORTWINE_DB_FILE}"
             else echo "export ${mod_db}=\"$proxy_mod_db\"" >> "${PORTWINE_DB_FILE}"
@@ -2982,9 +3006,15 @@ pw_create_gui_png () {
         edit_db_from_gui PORTPROTON_NAME FILE_DESCRIPTION
     fi
 
-    resize_png "$portwine_exe" "${PORTPROTON_NAME}" "128"
+    resize_png "$portwine_exe" "${PORTPROTON_NAME}" "48" "128"
 
     PORTPROTON_NAME_PNG="${PORTPROTON_NAME// /_}"
+    if [[ $PORTPROTON_NAME_PNG =~ [\!\%\$\&\<] ]] ; then
+        local ICON_NAME_REGEX=(\! % \$ \& \<)
+        for i in "${ICON_NAME_REGEX[@]}" ; do
+            PORTPROTON_NAME_PNG="${PORTPROTON_NAME_PNG//$i/}"
+        done
+    fi
     if [[ -z "${PW_ICON_FOR_YAD}" ]] ; then
         if [[ -n "$(file "${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME_PNG}.png" | grep "${PW_RESIZE_TO} x ${PW_RESIZE_TO}")" ]] ; then
             export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/${PORTPROTON_NAME_PNG}.png"
@@ -3140,18 +3170,18 @@ start_portwine () {
         var_winedlloverride_update "winegstreamer="
     fi
 
-    check_variables VKD3D_DEBUG none
-    check_variables VKD3D_SHADER_DEBUG none
-    check_variables DXVK_LOG_LEVEL none
-    check_variables DXVK_NVAPI_LOG_LEVEL none
-    check_variables VK_LOADER_DEBUG none
-    check_variables VKBASALT_LOG_LEVEL none
+    check_variables VKD3D_DEBUG "none"
+    check_variables VKD3D_SHADER_DEBUG "none"
+    check_variables DXVK_LOG_LEVEL "none"
+    check_variables DXVK_NVAPI_LOG_LEVEL "none"
+    check_variables VK_LOADER_DEBUG "none"
+    check_variables VKBASALT_LOG_LEVEL "none"
     if [[ "${PW_LOG}" == 1 ]] \
     || [[ -n "$PW_DEBUG" ]]
     then
-        export WINEDEBUG="+loaddll,+gstreamer"
-        export WINE_MONO_TRACE="E:System.NotImplementedException"
-        export VKBASALT_LOG_LEVEL="error"
+        check_variables WINEDEBUG "+loaddll"
+        check_variables WINE_MONO_TRACE "E:System.NotImplementedException"
+        check_variables VKBASALT_LOG_LEVEL "error"
     else
         export WINEDEBUG="-all"
         unset WINE_MONO_TRACE
@@ -4365,6 +4395,35 @@ pw_yad_form_vulkan () {
         else PW_PREFIX_NAME="${PW_PREFIX_NAME^^}"
         fi
         export PW_PREFIX_NAME PW_WINE_VER VULKAN_MOD
+    fi
+}
+
+steamplay_launch () {
+    if [[ -n "${portwine_exe:-}" ]]; then
+        cd "$(dirname "${portwine_exe}")"
+        export PORTWINE_DB_FILE="${portwine_exe}.ppdb"
+        [[ -f "${PORTWINE_DB_FILE}" ]] && source "${PORTWINE_DB_FILE}"
+        PORT_WINE_PREFIX="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME:-DEFAULT}"
+        for path in "ProgramData" "users/Public" "users/steamuser"; do
+            mkdir -p "${PORT_WINE_PREFIX}/drive_c/${path}"
+            if [[ ! -L "${WINEPREFIX}/drive_c/${path}" ]]; then
+                mkdir -p "${WINEPREFIX}/drive_c/users/"
+                rm -rf "${WINEPREFIX}/drive_c/${path}"
+                ln -sr "${PORT_WINE_PREFIX}/drive_c/${path}" "${WINEPREFIX}/drive_c/${path}"
+            fi
+        done
+        if [[ -n "${PW_DLL_INSTALL:-}" ]] ; then
+            update_winetricks
+            PATH="${PATH}:${PW_PLUGINS_PATH}/portable/bin" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32" \
+                "${PORT_WINE_TMP_PATH}/winetricks" -q ${PW_DLL_INSTALL}
+        fi
+        [[ $PW_LOG != 1 ]] && debug_timer --start -s "PW_TIME_IN_GAME"
+        "${STEAM_COMPAT_TOOL_PATHS%%:*}/proton" "run" "${portwine_exe}" "$@"
+        if [[ $PW_LOG != 1 ]] && [[ -n $START_PW_TIME_IN_GAME ]] ; then
+            debug_timer --end -s "PW_TIME_IN_GAME"
+            PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 ))
+            search_desktop_file
+        fi
     fi
 }
 
@@ -6074,35 +6133,49 @@ resize_png () {
         print_error "no argument specified for resize_png"
         return 1
     else
-        local RESIZE_FILE="$1"
-        local RESIZE_NAME_PNG="${2// /_}"
-        local RESIZE_TO="$3"
+        local RESIZE_FILE RESIZE_NAME_PNG resize_to resize_to_helper
+        RESIZE_FILE="$1"
+        RESIZE_NAME_PNG="${2// /_}"
     fi
 
-    if [[ -f "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png" ]] \
-    || [[ ! -f "${RESIZE_FILE}" ]] \
-    || [[ ! ${RESIZE_FILE,,} =~ .exe$ ]]
-    then
-        return 0
-    fi
-    try_remove_file "${PORT_WINE_PATH}/data/img/launcher.png"
-    try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
-
-    if check_flatpak ; then
-        if ! timeout 3 \
-        exe-thumbnailer --force-resize -s "$RESIZE_TO" "$(readlink -f "${RESIZE_FILE}")" "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png" \
-        && [[ "$ALPINE_FP" != "1" ]]
-        then
-            print_error "exe-thumbnailer - broken!"
+    for resize_to in "${@:3}" ; do
+        if [[ $resize_to == 128 ]]
+        then resize_to_helper=""
+        else resize_to_helper="_$resize_to"
         fi
-    else
-        print_warning "use portable exe-thumbnailer"
-        env PYTHONPATH="${PW_PLUGINS_PATH}/portable/lib/python3.9/site-packages/" \
-        LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" \
-        "${PW_WINELIB}/runtime/files/bin/python3.9"  \
-        "${PW_PLUGINS_PATH}/portable/bin/exe-thumbnailer" --force-resize -s "$RESIZE_TO" "$(readlink -f "${RESIZE_FILE}")" "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}.png"
-    fi
-    return 0
+
+        if [[ $RESIZE_NAME_PNG =~ [\!\%\$\&\<] ]] ; then
+            local ICON_NAME_REGEX=(\! % \$ \& \<)
+            for i in "${ICON_NAME_REGEX[@]}" ; do
+                RESIZE_NAME_PNG="${RESIZE_NAME_PNG//$i/}"
+            done
+        fi
+
+        if [[ -f "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}${resize_to_helper}.png" ]] \
+        || [[ ! -f "${RESIZE_FILE}" ]] \
+        || [[ ! ${RESIZE_FILE,,} =~ .exe$ ]]
+        then
+            return 0
+        fi
+
+        try_remove_file "${PORT_WINE_PATH}/data/img/launcher.png"
+        try_remove_file "${PORT_WINE_PATH}/data/img/Launcher.png"
+
+        if check_flatpak ; then
+            if ! timeout 3 \
+            exe-thumbnailer --force-resize -s "$resize_to" "$(readlink -f "${RESIZE_FILE}")" "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}${resize_to_helper}.png" \
+            && [[ "$ALPINE_FP" != "1" ]]
+            then
+                print_error "exe-thumbnailer - broken!"
+            fi
+        else
+            print_warning "use portable exe-thumbnailer"
+            env PYTHONPATH="${PW_PLUGINS_PATH}/portable/lib/python3.9/site-packages/" \
+            LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64" \
+            "${PW_WINELIB}/runtime/files/bin/python3.9"  \
+            "${PW_PLUGINS_PATH}/portable/bin/exe-thumbnailer" --force-resize -s "$resize_to" "$(readlink -f "${RESIZE_FILE}")" "${PORT_WINE_PATH}/data/img/${RESIZE_NAME_PNG}${resize_to_helper}.png"
+        fi
+    done
 }
 
 # GUI CREATE SHORTCUT
@@ -6122,6 +6195,12 @@ portwine_create_shortcut () {
     export name_desktop="$PW_NAME_DESKTOP_PROXY"
 
     [[ -z "${name_desktop_png}" ]] && name_desktop_png="${PORTPROTON_NAME// /_}"
+    if [[ $name_desktop_png =~ [\!\%\$\&\<] ]] ; then
+        local ICON_NAME_REGEX=(\! % \$ \& \<)
+        for i in "${ICON_NAME_REGEX[@]}" ; do
+            name_desktop_png="${name_desktop_png//$i/}"
+        done
+    fi
 
     OUTPUT=$("${pw_yad}" --title="${translations[Choices]}" --form \
     --gui-type="settings-shortcut" \
@@ -6168,7 +6247,7 @@ portwine_output_yad_shortcut () {
             echo "Path=${PORT_SCRIPTS_PATH}/"
             echo "Icon=${PORT_WINE_PATH}/data/img/${name_desktop_png}.png"
         } >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
-        chmod u+x "${PORT_WINE_PATH}/${name_desktop}.desktop"
+        chmod +x "${PORT_WINE_PATH}/${name_desktop}.desktop"
 
         if [[ "${PW_SHORTCUT_MENU}" == "TRUE" ]] ; then
             try_remove_file "${HOME}/.local/share/applications/${name_desktop}.desktop"
@@ -6287,7 +6366,7 @@ pw_auto_create_shortcut () {
             print_info "Created link for: $link_name"
             PORTPROTON_NAME="$link_name"
             export portwine_exe="$exe_path"
-            resize_png "$portwine_exe" "${PORTPROTON_NAME}" "128"
+            resize_png "$portwine_exe" "${PORTPROTON_NAME}" "48" "128"
             export PW_NO_RESTART_PPDB=1
             portwine_create_shortcut
         fi
@@ -6308,7 +6387,18 @@ portwine_change_shortcut () {
     then PW_SHORTCUT_DESKTOP="TRUE"
     else PW_SHORTCUT_DESKTOP="FALSE"
     fi
-    PW_SHORTCUT_STEAM="FALSE"
+    if [[ -n $PW_DELETE_STEAM ]]; then
+        source "${PORT_SCRIPTS_PATH}/add_in_steam.sh"
+        NOSTSHPATH="${PW_DELETE_SHORTCUT_STEAM[0]//#@_@#/ }"
+        NOSTAIDGRID=$(getAppId "${NOSTSHPATH}")
+        if [[ -n "${NOSTSHPATH}" ]] && [[ -n "${NOSTAIDGRID}" ]]; then
+            PW_SHORTCUT_STEAM="TRUE"
+        else
+            PW_SHORTCUT_STEAM="FALSE"
+        fi
+    else
+        PW_SHORTCUT_STEAM="FALSE"
+    fi
 
     unset name_desktop
     create_name_desktop
@@ -6316,6 +6406,12 @@ portwine_change_shortcut () {
 
     pw_create_gui_png
     [[ -z "${name_desktop_png}" ]] && name_desktop_png="${PORTPROTON_NAME// /_}"
+    if [[ $name_desktop_png =~ [\!\%\$\&\<] ]] ; then
+        local ICON_NAME_REGEX=(\! % \$ \& \<)
+        for i in "${ICON_NAME_REGEX[@]}" ; do
+            name_desktop_png="${name_desktop_png//$i/}"
+        done
+    fi
 
     OUTPUT=$("${pw_yad}" --title="${translations[Choices]}" --form \
     --gui-type="settings-shortcut" \
@@ -6334,6 +6430,7 @@ portwine_change_shortcut () {
     PORTWINE_CHANGE_SHORTCUT=1
     if [[ $PW_YAD_OUT == 1 ]] ; then
         [[ "$PW_GUI_START" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
+        PW_SHORTCUT_STEAM="FALSE"
         portwine_delete_shortcut
         restart_pp
     fi
@@ -6341,24 +6438,29 @@ portwine_change_shortcut () {
 }
 
 portwine_search_shortcut () {
-    unset PW_DELETE_SHORTCUT_MENU PW_DELETE_SHORTCUT_DESKTOP
-    PW_DELETE_MENU="$(grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop 2>/dev/null)"
-    read -r -d '' -a PW_DELETE_SHORTCUT_MENU <<< "${PW_DELETE_SHORTCUT_MENU[*]} ${PW_DELETE_MENU// /#@_@#}"
+    unset PW_DELETE_SHORTCUT_MENU PW_DELETE_SHORTCUT_STEAM PW_DELETE_SHORTCUT_DESKTOP
+    if [[ -n "${portwine_exe}" ]]; then
+        PW_DELETE_MENU="$(grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop 2>/dev/null)"
+        read -r -d '' -a PW_DELETE_SHORTCUT_MENU <<< "${PW_DELETE_SHORTCUT_MENU[*]} ${PW_DELETE_MENU// /#@_@#}"
 
-    PW_DELETE_PP="$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop 2>/dev/null)"
-    read -r -d '' -a PW_DELETE_SHORTCUT_MENU <<< "${PW_DELETE_SHORTCUT_MENU[*]} ${PW_DELETE_PP// /#@_@#}"
+        PW_DELETE_PP="$(grep -il "${portwine_exe}" "${PORT_WINE_PATH}"/*.desktop 2>/dev/null)"
+        read -r -d '' -a PW_DELETE_SHORTCUT_MENU <<< "${PW_DELETE_SHORTCUT_MENU[*]} ${PW_DELETE_PP// /#@_@#}"
 
-    if [[ -d "${HOME}/Desktop" ]] ; then
-        PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "${HOME}/Desktop"/*.desktop 2>/dev/null)"
-        read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]} ${PW_DELETE_DESKTOP// /#@_@#}"
-    fi
-    if [[ -d "${HOME}/Рабочий стол" ]] ; then
-        PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "${HOME}/Рабочий стол"/*.desktop 2>/dev/null)"
-        read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]} ${PW_DELETE_DESKTOP// /#@_@#}"
-    fi
-    if [[ $(xdg-user-dir DESKTOP) ]] ; then
-        PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "$(xdg-user-dir DESKTOP)"/*.desktop 2>/dev/null)"
-        read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]} ${PW_DELETE_DESKTOP// /#@_@#}"
+        PW_DELETE_STEAM="$(grep -il "${portwine_exe}" "${STEAM_SCRIPTS}"/*.sh 2>/dev/null)"
+        read -r -d '' -a PW_DELETE_SHORTCUT_STEAM <<< "${PW_DELETE_SHORTCUT_STEAM[*]} ${PW_DELETE_STEAM// /#@_@#}"
+
+        if [[ -d "${HOME}/Desktop" ]] ; then
+            PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "${HOME}/Desktop"/*.desktop 2>/dev/null)"
+            read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]} ${PW_DELETE_DESKTOP// /#@_@#}"
+        fi
+        if [[ -d "${HOME}/Рабочий стол" ]] ; then
+            PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "${HOME}/Рабочий стол"/*.desktop 2>/dev/null)"
+            read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]} ${PW_DELETE_DESKTOP// /#@_@#}"
+        fi
+        if [[ $(xdg-user-dir DESKTOP) ]] ; then
+            PW_DELETE_DESKTOP="$(grep -il "${portwine_exe}" "$(xdg-user-dir DESKTOP)"/*.desktop 2>/dev/null)"
+            read -r -d '' -a PW_DELETE_SHORTCUT_DESKTOP <<< "${PW_DELETE_SHORTCUT_DESKTOP[*]} ${PW_DELETE_DESKTOP// /#@_@#}"
+        fi
     fi
 }
 
@@ -6371,6 +6473,11 @@ portwine_delete_shortcut () {
     for delete_shortcut in "${PW_DELETE_SHORTCUT_MENU[@]}" "${PW_DELETE_SHORTCUT_DESKTOP[@]}" ; do
         rm -f "${delete_shortcut//#@_@#/ }"
     done
+
+    if [[ "${PW_SHORTCUT_STEAM}" == "FALSE" ]] && [[ -n "${NOSTSHPATH}" ]] && [[ -n "${NOSTAIDGRID}" ]]; then
+        source "${PORT_SCRIPTS_PATH}/add_in_steam.sh"
+        removeNonSteamGame "${NOSTAIDGRID}" "${NOSTSHPATH}"
+    fi
 }
 
 portwine_missing_shortcut () {
@@ -6965,7 +7072,7 @@ gui_edit_db_file () {
 }
 
 gui_open_scripts_from_backup () {
-    cd "${PORT_WINE_TMP_PATH}/scripts_backup/" || fatal
+    [[ -d "${PORT_WINE_TMP_PATH}/scripts_backup/" ]] && cd "${PORT_WINE_TMP_PATH}/scripts_backup/" || cd "$HOME"
     PW_SCRIPT_FROM_BACKUP=$("${pw_yad}" --file --width=650 --height=500 \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "SCRIPTS FROM BACKUP" --file-filter="backup_scripts|scripts_v*.tar.gz" 2>/dev/null )
     YAD_STATUS="$?"
