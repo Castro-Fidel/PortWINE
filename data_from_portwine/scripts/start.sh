@@ -120,15 +120,14 @@ echo "" > "${PW_TMPFS_PATH}/tmp_yad_form"
 echo "" > "${PW_TMPFS_PATH}/tmp_yad_form_vulkan"
 
 create_new_dir "${PORT_WINE_PATH}/data/dist"
-pushd "${PORT_WINE_PATH}/data/dist/" 1>/dev/null || fatal
-for dist_dir in ./* ; do
-    [[ -d "$dist_dir" ]] || continue
-    dist_dir_new="${dist_dir//[[:blank:]]/_}"
+IFS=$'\n'
+for dist_dir in $(ls -1 "${PORT_WINE_PATH}/data/dist") ; do
+    dist_dir_new=$(echo "${dist_dir}" | awk '$1=$1' | sed -e s/[[:blank:]]/_/g)
     if [[ ! -d "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}" ]] ; then
         mv -- "${PORT_WINE_PATH}/data/dist/$dist_dir" "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}"
     fi
 done
-popd 1>/dev/null || fatal
+IFS="$orig_IFS"
 
 create_new_dir "${PORT_WINE_PATH}/data/prefixes/DEFAULT"
 create_new_dir "${PORT_WINE_PATH}/data/prefixes/DOTNET"
