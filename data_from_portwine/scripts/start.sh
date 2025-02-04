@@ -645,6 +645,12 @@ else
                     fi
                     [[ $line1 =~ ^Icon= ]] && PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]=${line1//Icon=/}
                 done < "$desktop_file"
+                if fix_icon_name_png "${PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]}" "$desktop_file" ; then
+                    ICON_NAME_REGEX=(\! % \$ \& \<)
+                    for i in "${ICON_NAME_REGEX[@]}" ; do
+                        PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]="${PW_ICON_PATH["$AMOUNT_GENERATE_BUTTONS"]//$i/}"
+                    done
+                fi
                 PW_ALL_DF["$AMOUNT_GENERATE_BUTTONS"]="$desktop_file_new"
                 # Для конвертации существующих .desktop файлов flatpak в натив и наоборот
                 if [[ ${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]} =~ ^"Exec=flatpak run ru.linux_gaming.PortProton " ]] ; then
@@ -702,20 +708,6 @@ else
     for dp in "${PW_AMOUNT_NEW_DESKTOP[@]}" "${PW_AMOUNT_OLD_DESKTOP[@]}" ; do
         PW_DESKTOP_FILES="${PW_ALL_DF[$dp]}"
         PW_DESKTOP_FILES_SHOW="$PW_DESKTOP_FILES"
-        PW_ICON_PATH[dp]=${PW_ICON_PATH[dp]%.png}
-        PW_NAME_D_ICON_NEW="${PW_NAME_D_ICON[dp]//\"/}"
-
-        PW_NAME_D_ICON_128="${PW_ICON_PATH[dp]}"
-        resize_png "$PW_NAME_D_ICON_NEW" "${PW_NAME_D_ICON_128//"${PORT_WINE_PATH}/data/img/"/}" "128"
-        if [[ $PW_DESKTOP_FILES =~ [\!\%\$\&\<] || ${PW_ICON_PATH[dp]} =~ [\!\%\$\&\<] ]] ; then
-            PW_DESKTOP_FILES_SHOW_REGEX=(\! % \$ \& \<)
-            for i in "${PW_DESKTOP_FILES_SHOW_REGEX[@]}" ; do
-                PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//$i/}"
-                PW_ICON_PATH[dp]="${PW_ICON_PATH[dp]//$i/}"
-            done
-        fi
-        PW_NAME_D_ICON_48="${PW_ICON_PATH[dp]}_48"
-        resize_png "$PW_NAME_D_ICON_NEW" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
 
         if [[ $PW_DESKTOP_FILES =~ [\(\)\!\$\%\&\`\'\"\>\<\\\|\;] ]] ; then
             PW_DESKTOP_FILES_REGEX=(\( \) \! \$ % \& \` \' \" \> \< \\ \| \;)
@@ -726,7 +718,19 @@ else
             done
         fi
 
-        PW_GENERATE_BUTTONS+="--field=   $(print_wrapped "${PW_DESKTOP_FILES_SHOW//".desktop"/""}" "25" "...")!${PW_NAME_D_ICON_48}.png!:FBTNR%@bash -c \"button_click --desktop "${PW_DESKTOP_FILES// /#@_@#}"\"%"
+        if [[ $PW_DESKTOP_FILES_SHOW =~ [\!\%\$\&\<] ]] ; then
+            PW_DESKTOP_FILES_SHOW_REGEX=(\! % \$ \& \<)
+            for i in "${PW_DESKTOP_FILES_SHOW_REGEX[@]}" ; do
+                PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//$i/}"
+            done
+        fi
+
+        PW_ICON_PATH[dp]=${PW_ICON_PATH[dp]%.png}
+        PW_NAME_D_ICON_NEW="${PW_NAME_D_ICON[dp]//\"/}"
+
+        resize_png "$PW_NAME_D_ICON_NEW" "${PW_ICON_PATH[dp]//"${PORT_WINE_PATH}/data/img/"/}" "48" "128"
+
+        PW_GENERATE_BUTTONS+="--field=   $(print_wrapped "${PW_DESKTOP_FILES_SHOW//".desktop"/""}" "25" "...")!${PW_ICON_PATH[dp]}_48.png!:FBTNR%@bash -c \"button_click --desktop "${PW_DESKTOP_FILES// /#@_@#}"\"%"
     done
 
     if [[ $AMOUNT_GENERATE_BUTTONS == 1 ]] ; then
