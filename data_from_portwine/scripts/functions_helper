@@ -2891,6 +2891,10 @@ edit_db_from_gui () {
             elif [[ $proxy_mod_db =~ (${translations[Enabled]}|${translations[Enable]}) ]] ; then
                 proxy_mod_db=enabled
             fi
+
+            # Escaping backslashes and quotes for Windows paths
+            proxy_mod_db=$(echo "$proxy_mod_db" | sed 's/\\/\\\\\\\\/g; s/"/\\"/g')
+
             if [[ $(<"${PORTWINE_DB_FILE}") =~ export\ ${mod_db}= ]]
             then sed -i "s|export ${mod_db}=.*|export ${mod_db}=\"$proxy_mod_db\"|g" "${PORTWINE_DB_FILE}"
             else echo "export ${mod_db}=\"$proxy_mod_db\"" >> "${PORTWINE_DB_FILE}"
