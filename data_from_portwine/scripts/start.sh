@@ -168,7 +168,10 @@ export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
 try_remove_dir "${PW_WINELIB}/var"
 install_ver="$(<"${PORT_WINE_TMP_PATH}/PortProton_ver")"
 export install_ver
-scripts_install_ver="$(<"${PORT_WINE_TMP_PATH}/scripts_ver")"
+if [[ -f "${PORT_WINE_TMP_PATH}/scripts_ver" ]]
+then scripts_install_ver="$(<"${PORT_WINE_TMP_PATH}/scripts_ver")"
+else scripts_install_ver="2025"
+fi
 export scripts_install_ver
 export WINETRICKS_DOWNLOADER="curl"
 export USER_CONF="${PORT_WINE_PATH}/data/user.conf"
