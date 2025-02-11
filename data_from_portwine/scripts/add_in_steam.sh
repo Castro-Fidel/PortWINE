@@ -107,7 +107,7 @@ getSteamId() {
 	if [[ -n "${SteamIds:-}" ]] && jq -e --arg key "${NOSTAPPNAME}" 'has($key)' <<< "${SteamIds}" > /dev/null; then
 		SteamAppId=$(jq -r --arg key "${NOSTAPPNAME}" '.[$key]' <<< "${SteamIds}")
 	else
-		if [[ -n "${1:-}" ]] && [[ "${USE_STEABGRIDDB:-1}" == "1" ]]; then
+		if [[ -n "${1:-}" ]] && [[ "${USE_STEAMGRIDDB:-1}" == "1" ]]; then
 			getSteamGridDBId "${NOSTAPPNAME}" > /dev/null
 		fi
 		if [[ ${SteamGridDBTypeSteam} == true ]]; then
@@ -115,7 +115,7 @@ getSteamId() {
 			if jq -e ".success == true" <<< "${SRES}" > /dev/null 2>&1; then
 				SteamAppId="$(jq -r '.data.platforms.steam.id' <<< "${SRES}")"
 			fi
-		elif [[ "${USE_STEABGRIDDB:-1}" == "0" ]]; then
+		elif [[ "${USE_STEAMGRIDDB:-1}" == "0" ]]; then
 			SteamAppId="$(curl -s --connect-timeout 5 -m 10 "https://api.steampowered.com/ISteamApps/GetAppList/v2/" | jq --arg name "${NOSTAPPNAME}" '.applist.apps[] | select(.name == $name) | .appid')"
 		fi
 		SteamIds=$(jq --arg key "${NOSTAPPNAME}" --arg value "${SteamAppId:-}" '. + {($key): $value}' <<< "${SteamIds:-$(jq -n '{}')}")
@@ -129,7 +129,7 @@ getSteamId() {
 getSteamGridDBId() {
 	unset SteamGridDBId
 	NOSTAPPNAME="$1"
-	if [[ "${USE_STEABGRIDDB:-1}" == "1" ]] && [[ -n "${SGDBAPIKEY}" ]] && [[ -n "${BASESTEAMGRIDDBAPI}" ]] && curl -fs --connect-timeout 5 -m 10 -o /dev/null "${BASESTEAMGRIDDBAPI}"; then
+	if [[ "${USE_STEAMGRIDDB:-1}" == "1" ]] && [[ -n "${SGDBAPIKEY}" ]] && [[ -n "${BASESTEAMGRIDDBAPI}" ]] && curl -fs --connect-timeout 5 -m 10 -o /dev/null "${BASESTEAMGRIDDBAPI}"; then
 		SGDBRES=$(curl -Ls --connect-timeout 5 -m 10 -H "Authorization: Bearer ${SGDBAPIKEY}" "${BASESTEAMGRIDDBAPI}/search/autocomplete/${NOSTAPPNAME// /_}")
 		if jq -e ".success == true and (.data | length > 0)" <<< "${SGDBRES}" > /dev/null 2>&1; then
 			if jq -e '.data[0].types | contains(["steam"])' <<< "${SGDBRES}" > /dev/null; then
@@ -141,7 +141,7 @@ getSteamGridDBId() {
 			echo "${SteamGridDBId}"
 		fi
 	else
-		USE_STEABGRIDDB="0"
+		USE_STEAMGRIDDB="0"
 	fi
 }
 
@@ -351,7 +351,7 @@ downloadImageSteamGridDB() {
 
 addGrids() {
 	[[ -z "${SteamGridDBId}" ]] && getSteamGridDBId "${name_desktop}" > /dev/null
-	if [[ -z "${SteamAppId}" ]] && [[ "${USE_STEABGRIDDB:-1}" == "0" ]]; then
+	if [[ -z "${SteamAppId}" ]] && [[ "${USE_STEAMGRIDDB:-1}" == "0" ]]; then
 		getSteamId > /dev/null
 	fi
 	if [[ -n "${SteamGridDBId}" ]] || [[ -n "${SteamAppId}" ]]; then
