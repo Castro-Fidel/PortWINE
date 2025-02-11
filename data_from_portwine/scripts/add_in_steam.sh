@@ -104,13 +104,13 @@ getSteamId() {
 	if [[ -z "${SteamIds:-}" ]] && [[ -f "${cache_file}" ]]; then
 		SteamIds=$(<"${cache_file}")
 	fi
-	if [[ -n "${SteamIds:-}" ]] && jq -e --arg key "$NOSTAPPNAME" 'has($key)' <<< "${SteamIds}" > /dev/null; then
+	if [[ -n "${SteamIds:-}" ]] && jq -e --arg key "${NOSTAPPNAME}" 'has($key)' <<< "${SteamIds}" > /dev/null; then
 		SteamAppId=$(jq -r --arg key "${NOSTAPPNAME}" '.[$key]' <<< "${SteamIds}")
 	else
 		if [[ -n "${1:-}" ]] && [[ "${USE_STEABGRIDDB:-1}" == "1" ]]; then
 			getSteamGridDBId "${NOSTAPPNAME}" > /dev/null
 		fi
-		if [[ $SteamGridDBTypeSteam == true ]]; then
+		if [[ ${SteamGridDBTypeSteam} == true ]]; then
 			SRES=$(curl -Ls --connect-timeout 5 -m 10 -e "https://www.steamgriddb.com/game/${SteamGridDBId}" "https://www.steamgriddb.com/api/public/game/${SteamGridDBId}")
 			if jq -e ".success == true" <<< "${SRES}" > /dev/null 2>&1; then
 				SteamAppId="$(jq -r '.data.platforms.steam.id' <<< "${SRES}")"
@@ -350,8 +350,8 @@ downloadImageSteamGridDB() {
 }
 
 addGrids() {
-	getSteamGridDBId "${name_desktop}" > /dev/null
-	if [[ "${USE_STEABGRIDDB:-1}" == "0" ]]; then
+	[[ -z "${SteamGridDBId}" ]] && getSteamGridDBId "${name_desktop}" > /dev/null
+	if [[ -z "${SteamAppId}" ]] && [[ "${USE_STEABGRIDDB:-1}" == "0" ]]; then
 		getSteamId > /dev/null
 	fi
 	if [[ -n "${SteamGridDBId}" ]] || [[ -n "${SteamAppId}" ]]; then
@@ -467,6 +467,8 @@ addNonSteamGame() {
 		[[ -z "${NOSTSHPATH}" ]] && NOSTSHPATH="${STEAM_SCRIPTS}/${name_desktop}.sh"
 		NOSTAPPNAME="${name_desktop}"
 		NOSTAPPID=$(getAppId "${NOSTSHPATH}")
+		echo "NOSTAPPNAME: ${NOSTAPPNAME}"
+		echo "NOSTAPPID: ${NOSTAPPID}"
 		if [[ -z "${NOSTAPPID}" ]]; then
 			NOSTEXEPATH="${NOSTSHPATH}"
 			if [[ -z "${NOSTSTDIR}" ]]; then
@@ -474,8 +476,8 @@ addNonSteamGame() {
 			fi
 			NOSTICONPATH="${PORT_WINE_PATH}/data/img/${name_desktop_png}.png"
 			NOSTAIDVDF="$(generateShortcutVDFAppId "${NOSTAPPNAME}${NOSTEXEPATH}")"  # signed integer AppID, stored in the VDF as hexidecimal - ex: -598031679
-			NOSTAIDVDFHEX="$(generateShortcutVDFHexAppId "$NOSTAIDVDF")"  # 4byte little-endian hexidecimal of above 32bit signed integer, which we write out to the binary VDF - ex: c1c25adc
-			NOSTAPPID="$(extractSteamId32 "$NOSTAIDVDF")"  # unsigned 32bit ingeger version of "$NOSTAIDVDF", which is used as the AppID for Steam artwork ("grids"), as well as for our shortcuts
+			NOSTAIDVDFHEX="$(generateShortcutVDFHexAppId "${NOSTAIDVDF}")"  # 4byte little-endian hexidecimal of above 32bit signed integer, which we write out to the binary VDF - ex: c1c25adc
+			NOSTAPPID="$(extractSteamId32 "${NOSTAIDVDF}")"  # unsigned 32bit ingeger version of "$NOSTAIDVDF", which is used as the AppID for Steam artwork ("grids"), as well as for our shortcuts
 
 			create_new_dir "${STEAM_SCRIPTS}"
 			cat <<-EOF > "${NOSTSHPATH}"
@@ -491,9 +493,15 @@ addNonSteamGame() {
 				cp "${SCPATH}" "${SCPATH//.vdf}_${PROGNAME}_backup.vdf" 2>/dev/null
 			fi
 
+			if [[ "${USE_STEAMAPPID_AS_NAME:-0}" == "1" ]]; then
+				getSteamId "${NOSTAPPNAME}"
+				[[ -n "${SteamAppId}" ]] && NOSTAPPNAME="${SteamAppId}"
+			fi
+
 			addEntry
 
 			if [[ "${DOWNLOAD_STEAM_GRID}" == "1" ]] ; then
+				NOSTAPPNAME="${name_desktop}"
 				pw_start_progress_bar_block "${translations[Please wait. downloading covers for]} ${NOSTAPPNAME}"
 				addGrids
 				pw_stop_progress_bar
