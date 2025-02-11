@@ -204,10 +204,12 @@ listInstalledSteamGames() {
 		jq -n '[]'
 	else
 		for manifest_file in "${manifests[@]}"; do
-			name="$(grep -Po '"name"\s+"\K[^"]+' "$manifest_file")";
-			if [[ ! "${name}" =~ ^(Proton |Steam Linux Runtime|Steamworks Common) ]]; then
+			name="$(grep -Po '"name"\s+"\K[^"]+' "${manifest_file}")";
+			stateflags="$(grep -Po '"StateFlags"\s+"\K\d+' "${manifest_file}")"
+# 			if [[ ! "${name}" =~ ^(Proton |Steam Linux Runtime|Steamworks Common) ]]; then
+			if ((stateflags & 4)) && grep -q '"SharedDepots"' "${manifest_file}"; then
 				jq -n \
-					--arg id "$(grep -Po '"appid"\s+"\K\d+' "$manifest_file")" \
+					--arg id "$(grep -Po '"appid"\s+"\K\d+' "${manifest_file}")" \
 					--arg name "${name}" \
 					'{id: $id, name: $name}'
 			fi
