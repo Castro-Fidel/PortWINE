@@ -225,36 +225,47 @@ listInstalledSteamGames() {
 }
 
 listNonSteamGames() {
-    getSteamShortcutHex | while read -r SCVDFE; do
-        jq -n \
-            --arg id "$(parseSteamShortcutEntryAppID "${SCVDFE}")" \
-            --arg name "$(parseSteamShortcutEntryAppName "${SCVDFE}")" \
-            --arg exe "$(parseSteamShortcutEntryExe "${SCVDFE}")" \
-            --arg dir "$(parseSteamShortcutEntryStartDir "${SCVDFE}")" \
-            --arg icon "$(parseSteamShortcutEntryIcon "${SCVDFE}")" \
-            --arg args "$(parseSteamShortcutEntryLaunchOptions "${SCVDFE}")" \
-            '{id: $id, name: $name, exe: $exe, dir: $dir, icon: $icon, args: $args}'
-    done | jq -s '.'
+	getSteamShortcutHex | while read -r SCVDFE; do
+		jq -n \
+			--arg id "$(parseSteamShortcutEntryAppID "${SCVDFE}")" \
+			--arg name "$(parseSteamShortcutEntryAppName "${SCVDFE}")" \
+			--arg exe "$(parseSteamShortcutEntryExe "${SCVDFE}")" \
+			--arg dir "$(parseSteamShortcutEntryStartDir "${SCVDFE}")" \
+			--arg icon "$(parseSteamShortcutEntryIcon "${SCVDFE}")" \
+			--arg args "$(parseSteamShortcutEntryLaunchOptions "${SCVDFE}")" \
+			'{id: $id, name: $name, exe: $exe, dir: $dir, icon: $icon, args: $args}'
+	done | jq -s '.'
 }
 
 listSteamGames() {
 	(
-	 	jq -r 'map({AppId: .id, SteamAppId: .id, SteamGameId: .id, Name: .name}) | .[] | tostring' <<< "$(listInstalledSteamGames)"
+		jq -r 'map({AppId: .id, SteamAppId: .id, SteamGameId: .id, Name: .name}) | .[] | tostring' <<< "$(listInstalledSteamGames)"
 		jq -r '.[] | tostring' <<< "$(listNonSteamGames)" | while read -r game; do
 			id=$(jq -r '.id' <<< "${game}")
 			name=$(jq -r '.name' <<< "${game}")
-			jq -r \
-				--arg SteamAppId "$(getSteamId "${name}")" \
-				--arg SteamGameId "$(getSteamGameId $id)" \
-				'{AppId: .id, SteamAppId: ($SteamAppId | if . == "" then "0" else . end), SteamGameId: $SteamGameId, Name: .name} | tostring' <<< "${game}"
+			exe=$(jq -r '.exe' <<< "${game}")
+			if [[ "${name}" =~ ^[0-9]+$ ]] && [[ "${exe}" =~ .sh$ ]]; then
+				appid="${name}"
+				name=$(basename "${exe}" .sh)
+			else
+				appid="$(getSteamId "${name}")"
+				[[ -z "${appid}" ]] && appid="0"
+			fi
+			gid="$(getSteamGameId $id)"
+			jq -n \
+				--arg id "${id}" \
+				--arg appid "${appid}" \
+				--arg gid "${gid}" \
+				--arg name "${name}" \
+				'{AppId: $id, SteamAppId: $appid, SteamGameId: $gid, Name: $name}'
 		done
 	) | jq -s '.'
 }
 
 convertSteamShortcutAppID() {
-    SHORTCUTAPPIDHEX="$1"
-    SHORTCUTAPPIDLITTLEENDIAN="$( echo "${SHORTCUTAPPIDHEX}" | tac -rs .. | tr -d '\n' )"
-    echo "$((16#${SHORTCUTAPPIDLITTLEENDIAN}))"
+	SHORTCUTAPPIDHEX="$1"
+	SHORTCUTAPPIDLITTLEENDIAN="$( echo "${SHORTCUTAPPIDHEX}" | tac -rs .. | tr -d '\n' )"
+	echo "$((16#${SHORTCUTAPPIDLITTLEENDIAN}))"
 }
 
 convertSteamShortcutHex() {
