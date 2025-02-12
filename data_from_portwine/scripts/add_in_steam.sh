@@ -487,8 +487,6 @@ addNonSteamGame() {
 		[[ -z "${NOSTSHPATH}" ]] && NOSTSHPATH="${STEAM_SCRIPTS}/${name_desktop}.sh"
 		NOSTAPPNAME="${name_desktop}"
 		NOSTAPPID=$(getAppId "${NOSTSHPATH}")
-		echo "NOSTAPPNAME: ${NOSTAPPNAME}"
-		echo "NOSTAPPID: ${NOSTAPPID}"
 		if [[ -z "${NOSTAPPID}" ]]; then
 			NOSTEXEPATH="${NOSTSHPATH}"
 			if [[ -z "${NOSTSTDIR}" ]]; then
@@ -514,7 +512,7 @@ addNonSteamGame() {
 			fi
 
 			if [[ "${USE_STEAMAPPID_AS_NAME:-0}" == "1" ]]; then
-				getSteamId "${NOSTAPPNAME}"
+				SteamAppId=$(getSteamId "${NOSTAPPNAME}")
 				[[ -n "${SteamAppId}" ]] && NOSTAPPNAME="${SteamAppId}"
 			fi
 
