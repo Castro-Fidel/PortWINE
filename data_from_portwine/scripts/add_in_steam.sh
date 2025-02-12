@@ -100,6 +100,7 @@ getAppId() {
 getSteamId() {
 	unset SteamAppId
 	local cache_file="${PORT_WINE_TMP_PATH:-/tmp}/steamid_cache.json"
+	local applist_cache_file="${PORT_WINE_TMP_PATH:-/tmp}/steamapplist_cache.json"
 	[[ -n "${1:-}" ]] && NOSTAPPNAME="$1"
 	if [[ -z "${SteamIds:-}" ]] && [[ -f "${cache_file}" ]]; then
 		SteamIds=$(<"${cache_file}")
@@ -116,7 +117,13 @@ getSteamId() {
 				SteamAppId="$(jq -r '.data.platforms.steam.id' <<< "${SRES}")"
 			fi
 		elif [[ "${USE_STEAMGRIDDB:-1}" == "0" ]]; then
-			SteamAppId="$(curl -s --connect-timeout 5 -m 10 "https://api.steampowered.com/ISteamApps/GetAppList/v2/" | jq --arg name "${NOSTAPPNAME}" '.applist.apps[] | select(.name == $name) | .appid')"
+			if [[ ! -f "${applist_cache_file}" ]] || [[ $(find "${applist_cache_file}" -mmin +1440) ]]; then
+				applist_data=$(curl -s --connect-timeout 5 "https://api.steampowered.com/ISteamApps/GetAppList/v2/")
+				[[ -n "${applist_data}" ]] && echo "${applist_data}" > "${applist_cache_file}"
+			else
+				applist_data=$(<"${applist_cache_file}")
+			fi
+			[[ -n "${applist_data}" ]] && SteamAppId=$(jq --arg name "${NOSTAPPNAME,,}" '.applist.apps[] | select(.name == $name) | .appid' <<< "${applist_data,,}")
 		fi
 		SteamIds=$(jq --arg key "${NOSTAPPNAME}" --arg value "${SteamAppId:-}" '. + {($key): $value}' <<< "${SteamIds:-$(jq -n '{}')}")
 		echo "${SteamIds}" > "${cache_file}"
