@@ -3160,14 +3160,16 @@ start_portwine () {
             export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/gstreamer-1.0:${WINEDIR}/lib/gstreamer-1.0"
         fi
         export GST_GL_WINDOW="surfaceless"
-        create_new_dir "${PORT_WINE_TMP_PATH}"/gstreamer_tmp/
-        export WINE_GST_REGISTRY_DIR="${PORT_WINE_TMP_PATH}"/gstreamer_tmp/
-        export MEDIACONV_AUDIO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/gstreamer_tmp/audiov2.foz
-        export MEDIACONV_AUDIO_TRANSCODED_FILE="${PORT_WINE_TMP_PATH}"/gstreamer_tmp/transcoded_audio.foz
-        export MEDIACONV_VIDEO_DUMP_FILE="${PORT_WINE_TMP_PATH}"/gstreamer_tmp/video.foz
-        export MEDIACONV_VIDEO_TRANSCODED_FILE="${PORT_WINE_TMP_PATH}"/gstreamer_tmp/transcoded_video.foz
-    else
-        var_winedlloverride_update "winegstreamer="
+        create_new_dir "${PORT_WINE_TMP_PATH}/gstreamer_tmp"
+        export WINE_GST_REGISTRY_DIR="${PORT_WINE_TMP_PATH}/gstreamer_tmp"
+
+        export STEAM_COMPAT_MEDIA_PATH="${PORT_WINE_TMP_PATH}/gstreamer_tmp"
+        export MEDIACONV_AUDIO_TRANSCODED_FILE="$STEAM_COMPAT_MEDIA_PATH/transcoded_audio.foz"
+        export MEDIACONV_VIDEO_TRANSCODED_FILE="$STEAM_COMPAT_MEDIA_PATH/transcoded_video.foz"
+
+        export STEAM_COMPAT_TRANSCODED_MEDIA_PATH="${PORT_WINE_TMP_PATH}/gstreamer_tmp"
+        export MEDIACONV_AUDIO_DUMP_FILE="$STEAM_COMPAT_TRANSCODED_MEDIA_PATH/audiov2.foz"
+        export MEDIACONV_VIDEO_DUMP_FILE="$STEAM_COMPAT_TRANSCODED_MEDIA_PATH/video.foz"
     fi
 
     check_variables VKD3D_DEBUG "none"
@@ -3179,7 +3181,7 @@ start_portwine () {
     if [[ "${PW_LOG}" == 1 ]] \
     || [[ -n "$PW_DEBUG" ]]
     then
-        check_variables WINEDEBUG "+loaddll"
+        check_variables WINEDEBUG "+loaddll,+dll"
         check_variables WINE_MONO_TRACE "E:System.NotImplementedException"
         check_variables VKBASALT_LOG_LEVEL "error"
     else
