@@ -3348,7 +3348,7 @@ start_portwine () {
     }
 
     # NVAPI, DLSS AND FAKE DLSS
-    FAKE_DLSS_3_PATH="$PW_PLUGINS_PATH/Decky-Framegen-Plus/bin/"
+    FAKE_DLSS_3_PATH="$PW_PLUGINS_PATH/fake_dlss/DeckyFramegen_$PW_FAKE_DLSS_3_VER/bin/"
     FAKE_DLSS_3_FILES="amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll d3dcompiler_47.dll dlss-enabler.dll 
     dlss-enabler-upscaler.dll dlssg_to_fsr3_amd_is_better-3.0.dll dlssg_to_fsr3_amd_is_better.dll 
     dlssg_to_fsr3.ini fakenvapi.ini libxess.dll nvapi64.dll _nvngx.dll nvngx.ini nvngx-wrapper.dll dxgi.dll"
@@ -3375,6 +3375,16 @@ start_portwine () {
     fi
 
     if [[ "${PW_USE_FAKE_DLSS_3}" == "1" ]] ; then
+        if [[ ! -d "$FAKE_DLSS_3_PATH" ]] ; then
+            if try_download "github.com/Castro-Fidel/vulkan/releases/download/DeckyFramegen_${PW_FAKE_DLSS_3_VER}/DeckyFramegen_${PW_FAKE_DLSS_3_VER}.tar.xz" \
+                            "${PORT_WINE_PATH}/data/tmp/DeckyFramegen_${PW_FAKE_DLSS_3_VER}.tar.xz" ; then
+                if ! unpack "${PORT_WINE_PATH}/data/tmp/DeckyFramegen_${PW_FAKE_DLSS_3_VER}.tar.xz" "$PW_PLUGINS_PATH/fake_dlss/"
+                then try_remove_dir "$FAKE_DLSS_3_PATH"
+                fi
+                try_remove_file "${PORT_WINE_PATH}/data/tmp/DeckyFramegen_${PW_FAKE_DLSS_3_VER}.tar.xz"
+            fi
+        fi
+
         export PW_WINE_FULLSCREEN_FSR="0"
         export DXVK_ENABLE_NVAPI="1"
         export PW_USE_RAY_TRACING="1"
