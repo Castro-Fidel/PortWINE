@@ -2,6 +2,7 @@
 # Author: Castro-Fidel (linux-gaming.ru)
 # shellcheck disable=SC2034
 ########################################################################
+
 $PW_DEBUG
 print_error () { printf "\E[31m%s Error: $@ %s\e[0m\n" ;}
 export -f print_error
@@ -4768,6 +4769,7 @@ gui_proton_downloader () {
     unset VERSION_WINE_GIT VERSION_INSTALLED_WINE URL_VERSION_PROTON_GIT GIVE_WINE_URL
     try_remove_file "${PW_TMPFS_PATH}/tmp_proton_pw_git"
     try_remove_file "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
+    try_remove_file "${PW_TMPFS_PATH}/tmp_proton_cachyos_git"
     try_remove_file "${PW_TMPFS_PATH}/tmp_proton_ge_git"
     try_remove_file "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git"
     try_remove_file "${PW_TMPFS_PATH}/tmp_installed_wine"
@@ -4824,6 +4826,15 @@ gui_proton_downloader () {
         done
         sed -i -e "/${PW_WINE_LG_VER}/d" -e '/plugins/d' -e '/^$/d' "${PW_TMPFS_PATH}/tmp_proton_pw_git"
     fi
+ 
+     # PROTON_CACHYOS
+    read -r -d '' -a PROTON_CACHYOS_GIT < <(curl -s "https://api.github.com/repos/CachyOS/proton-cachyos/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4 | grep -v "v3" | grep -v "znver4")
+    if [[ -n "${PROTON_CACHYOS_GIT[0]}" ]] ; then
+        for PGEGIT in "${PROTON_CACHYOS_GIT[@]}" ; do
+            echo "${PGEGIT}" | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_proton_cachyos_git"
+        done
+    fi
+    
     pw_stop_progress_bar
 
     if [[ -z "${PROTON_PW_GIT}" ]] ; then
@@ -4835,7 +4846,7 @@ gui_proton_downloader () {
     for INSTALLING_VERSION_IN_DIST in * ; do
         sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PW_TMPFS_PATH}/tmp_proton_pw_git" \
         "${PW_TMPFS_PATH}/tmp_proton_ge_git" "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git" \
-        "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git"
+        "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git" "${PW_TMPFS_PATH}/tmp_proton_cachyos_git"
     done
     popd 1>/dev/null || fatal
 
@@ -4843,6 +4854,7 @@ gui_proton_downloader () {
     TMP_PROTON_GE_GIT="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_proton_ge_git" | tr '\n' ' ')"
     TMP_PROTON_KR_GIT="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git" | tr '\n' ' ')"
     TMP_PROTON_CU_GIT="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git" | tr '\n' ' ')"
+    TMP_PROTON_CACHYOS_GIT="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_proton_cachyos_git" | tr '\n' ' ')"
 
     ls -l ${PORT_WINE_PATH}/data/dist | awk '{print $9}' | sed -e "/$PW_PROTON_LG_VER/d" -e "/$PW_WINE_LG_VER/d" -e '/^$/d' 1>"${PW_TMPFS_PATH}/tmp_installed_wine"
     TMP_INSTALLED_WINE="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_installed_wine" | tr '\n' ' ')"
@@ -4886,6 +4898,14 @@ gui_proton_downloader () {
         "${pw_yad}" --plug=$KEY_WINE --tabnum=5 --list --checklist --separator="" \
         --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" \
         --column "${translations[Set]}" \
+        --column "${translations[Select WINE for download:]}" \
+        $TMP_PROTON_CACHYOS_GIT \
+        1>> "${PW_TMPFS_PATH}/tmp_set_wine" \
+        2>/dev/null &
+
+        "${pw_yad}" --plug=$KEY_WINE --tabnum=6 --list --checklist --separator="" \
+        --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" \
+        --column "${translations[Set]}" \
         --column "${translations[Select installed WINE for delete:]}" \
         $TMP_INSTALLED_WINE \
         1> "${PW_TMPFS_PATH}/tmp_installed_wine_set" \
@@ -4899,6 +4919,7 @@ gui_proton_downloader () {
         --tab="WINE-KRON4EK!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
         --tab="PROTON-GE!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
         --tab="WINE-GE-CUSTOM!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+        --tab="PROTON-CACHYOS!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
         --tab="${translations[INSTALLED]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
         --button="${translations[CANCEL]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!":1 \
         --button="${translations[OK]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!":0 2>/dev/null
@@ -4969,7 +4990,7 @@ gui_proton_downloader () {
 
     if [[ "$1" != "silent" ]] ; then
         for GIVE_ALL_WINE in ${VERSION_WINE_GIT} ; do
-            for GIVE_WINE_URL in "${WINE_GE_CUSTOM[@]}" "${PROTON_GE_GIT[@]}" "${WINE_KRON4EK[@]}" "${PROTON_PW_GIT[@]}" ; do
+            for GIVE_WINE_URL in "${WINE_GE_CUSTOM[@]}" "${PROTON_GE_GIT[@]}" "${WINE_KRON4EK[@]}" "${PROTON_PW_GIT[@]}" "${PROTON_CACHYOS_GIT[@]}" ; do
                 if [[ ${GIVE_WINE_URL^^} =~ ${GIVE_ALL_WINE^^} ]] ; then
                     export URL_VERSION_PROTON_GIT=$GIVE_WINE_URL
                 fi
@@ -4980,7 +5001,7 @@ gui_proton_downloader () {
         restart_pp
     else
         print_error "$PW_WINE_USE"
-        for GIVE_WINE_URL in "${WINE_GE_CUSTOM[@]}" "${PROTON_GE_GIT[@]}" "${WINE_KRON4EK[@]}" "${PROTON_PW_GIT[@]}" ; do
+        for GIVE_WINE_URL in "${WINE_GE_CUSTOM[@]}" "${PROTON_GE_GIT[@]}" "${WINE_KRON4EK[@]}" "${PROTON_PW_GIT[@]}" "${PROTON_CACHYOS_GIT[@]}" ; do
             if [[ ${GIVE_WINE_URL^^} =~ ${PW_WINE_USE^^} ]] ; then
                 export URL_VERSION_PROTON_GIT=$GIVE_WINE_URL
             fi
