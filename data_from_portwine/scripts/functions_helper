@@ -3348,18 +3348,57 @@ start_portwine () {
     }
 
     # NVAPI, DLSS AND FAKE DLSS
-    if [[ "${PW_USE_FAKE_DLSS_3}" == "1" ]] ; then
-        FAKE_DLSS_3_FILES="amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll dlss-enabler.dll dlss-enabler-upscaler.dll
-        dlssg_to_fsr3_amd_is_better-3.0.dll dlssg_to_fsr3_amd_is_better.dll libxess.dll nvapi64-proxy.dll winmm.dll
-        _nvngx.dll nvngx-wrapper.dll nvngx.ini"
-        DXVK_ENABLE_NVAPI="1"
-        for cp_fdlls3 in $FAKE_DLSS_3_FILES ; do
-            try_copy_file_with_checksums "${PW_PLUGINS_PATH}/fake_dlss_3/$cp_fdlls3" "${WINEPREFIX}/drive_c/windows/system32/$cp_fdlls3"
-            [[ "$cp_fdlls3" == *.dll ]] && var_winedlloverride_update "${cp_fdlls3//.dll}=n"
+    FAKE_DLSS_3_PATH="$PW_PLUGINS_PATH/Decky-Framegen-Plus/bin/"
+    FAKE_DLSS_3_FILES="amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll d3dcompiler_47.dll dlss-enabler.dll 
+    dlss-enabler-upscaler.dll dlssg_to_fsr3_amd_is_better-3.0.dll dlssg_to_fsr3_amd_is_better.dll 
+    dlssg_to_fsr3.ini fakenvapi.ini libxess.dll nvapi64.dll _nvngx.dll nvngx.ini nvngx-wrapper.dll dxgi.dll"
+    ORIGINAL_GAME_DLLS="d3dcompiler_47.dll amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll libxess.dll nvapi64.dll _nvngx.dll"
+    PATH_TO_GAME_EXEC="$PATH_TO_GAME"
+
+    if [[ -d "$PATH_TO_GAME_EXEC/Engine" ]]; then
+        ue_exe_path=$(find "$PATH_TO_GAME_EXEC" -maxdepth 4 -mindepth 4 -path "*Binaries/Win64/*.exe" -not -path "*/Engine/*" | head -1)
+        PATH_TO_GAME_EXEC=$(dirname "$ue_exe_path")
+    fi
+
+    if [[ "${PW_USE_FAKE_DLSS_3}" != "1" ]] \
+    && [[ -f "$PATH_TO_GAME_EXEC/dlss-enabler.dll" ]]
+    then
+        try_remove_file "$PATH_TO_GAME_EXEC/nvngx.dll"
+        for dll in $FAKE_DLSS_3_FILES ; do
+            try_remove_file "$PATH_TO_GAME_EXEC/$dll"
         done
-        try_remove_file "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
-        # try_copy_file_with_checksums "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
-        enabled_fake_nvidia_videocard new
+        for dll in $ORIGINAL_GAME_DLLS ; do
+            if [[ -f "$PATH_TO_GAME_EXEC/${dll}.b" ]] ; then
+                mv -f "$PATH_TO_GAME_EXEC/${dll}.b" "$PATH_TO_GAME_EXEC/${dll}" 2>/dev/null
+            fi
+        done
+    fi
+
+    if [[ "${PW_USE_FAKE_DLSS_3}" == "1" ]] ; then
+        export PW_WINE_FULLSCREEN_FSR="0"
+        export DXVK_ENABLE_NVAPI="1"
+        export PW_USE_RAY_TRACING="1"
+        enabled_fake_nvidia_videocard 0
+
+        if [[ ! -f "$PATH_TO_GAME_EXEC/dlss-enabler.dll" ]] ; then
+            if [[ -f "$PATH_TO_GAME_EXEC/dxgi.dll" ]] ; then
+                yad_error 'dxgi.dll is already present in the game folder!\nThis script uses dxgi.dll to load required files.\nRemove the mod using dxgi.dll.'
+                fatal "Force exit..."
+            fi
+            for dll in $ORIGINAL_GAME_DLLS ; do
+                if [[ -f "$PATH_TO_GAME_EXEC/$dll" ]] \
+                && [[ ! -f "$PATH_TO_GAME_EXEC/${dll}.b" ]]
+                then
+                    mv -f "$PATH_TO_GAME_EXEC/$dll" "$PATH_TO_GAME_EXEC/${dll}.b" 2>/dev/null
+                fi
+            done
+            for dll in $FAKE_DLSS_3_FILES ; do
+                try_force_link_file "$FAKE_DLSS_3_PATH/$dll" "$PATH_TO_GAME_EXEC/$dll"
+            done
+        fi
+        for rm_dll in "nvngx.ini" "nvngx.dll" "_nvngx.dll" ; do
+            try_remove_file "${WINEPREFIX}/drive_c/windows/system32/$rm_dll"
+        done
     elif [[ "${PW_USE_FAKE_DLSS}" == "1" ]] ; then
         DXVK_ENABLE_NVAPI="1"
         try_remove_file "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll"
@@ -3374,10 +3413,6 @@ start_portwine () {
             try_copy_file_with_checksums "${FIND_NVNGX}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
             try_copy_file_with_checksums "${FIND_NVNGX}/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll"
             export NVIDIA_WINE_DLL_DIR="${FIND_NVNGX}"
-        else
-            try_copy_file_with_checksums "${PW_PLUGINS_PATH}/nvngx/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
-            try_copy_file_with_checksums "${PW_PLUGINS_PATH}/nvngx/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll"
-            export NVIDIA_WINE_DLL_DIR="${PW_PLUGINS_PATH}/nvngx"
         fi
         enabled_fake_nvidia_videocard 0
         var_winedlloverride_update "nvngx,_nvngx=n"
@@ -3387,7 +3422,6 @@ start_portwine () {
             try_remove_file "${WINEPREFIX}/drive_c/windows/system32/$rm_dll"
         done
         enabled_fake_nvidia_videocard 0
-        var_winedlloverride_update "nvngx,_nvngx="
     fi
     export DXVK_ENABLE_NVAPI
 
@@ -3529,7 +3563,7 @@ start_portwine () {
     d3dcompiler_47 d3dx10_33 d3dx10_34 d3dx10_35 d3dx10_36 d3dx10_37 d3dx10_38 d3dx10_39 d3dx10_40 d3dx10_41
     d3dx10_42 d3dx10_43 d3dx10 d3dx11_42 d3dx11_43 d3dx9_24 d3dx9_25 d3dx9_26 d3dx9_27 d3dx9_28 d3dx9_29 d3dx9_30
     d3dx9_31 d3dx9_32 d3dx9_33 d3dx9_34 d3dx9_35 d3dx9_36 d3dx9_37 d3dx9_38 d3dx9_39 d3dx9_40 d3dx9_41 d3dx9_42 d3dx9_43"
-    if [[ "${PW_USE_D3D_EXTRAS}" == 1 ]] ; then
+    if [[ "${PW_USE_D3D_EXTRAS}" == "1" ]] ; then
         if [[ ! -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ]] \
         || [[ -z "$(grep d3dx9 "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log")" ]]
         then
@@ -3883,7 +3917,10 @@ start_portwine () {
             if [[ -f "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" ]] ; then
                 try_force_link_file "${PATH_TO_DXVK_FILES}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
                 try_force_link_file "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
-                var_winedlloverride_update "${wine_dxvk_dll}=n"
+                if [[ "$PW_USE_FAKE_DLSS_3" == "1" ]] && [[ "$wine_dxvk_dll" == dxgi ]]
+                then var_winedlloverride_update "dxgi=n,b"
+                else var_winedlloverride_update "${wine_dxvk_dll}=n"
+                fi
             fi
         done
         create_new_dir "${PATH_TO_DXVK_FILES}/dxvk_cache"
@@ -4998,13 +5035,12 @@ export -f gui_proton_downloader
 gui_edit_db () {
     KEY_EDIT_DB_GUI=$RANDOM
     PW_EDIT_DB_LIST=(PW_MANGOHUD PW_MANGOHUD_USER_CONF PW_VKBASALT PW_VKBASALT_USER_CONF PW_DGVOODOO2 PW_GAMESCOPE
-    PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_WINE_FULLSCREEN_FSR
+    PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_USE_FAKE_DLSS_3 PW_WINE_FULLSCREEN_FSR
     PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS
     PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE
     PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE
     PW_DISABLE_COMPOSITING PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_NATIVE_WAYLAND
     )
-    # PW_USE_FAKE_DLSS_3
 
     if check_wayland_session ; then
         rm_from_array "PW_EDIT_DB_LIST" PW_USE_US_LAYOUT
