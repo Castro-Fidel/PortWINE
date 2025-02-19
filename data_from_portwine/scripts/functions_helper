@@ -4120,14 +4120,16 @@ start_portwine () {
         export DXVK_CONFIG_FILE="${PATH_TO_GAME}/dxvk.conf"
     fi
 
-    for chk_lang_and_uname in "steam_emu.ini" "steam_api.ini" "steam_api64.ini" "SteamConfig.ini" ; do
-        if [[ -f "${PATH_TO_GAME}/${chk_lang_and_uname}" ]] ; then
-            sed -i "/^Language/c\Language=${FULL_LN}" "${PATH_TO_GAME}/${chk_lang_and_uname}"
-            sed -i "/^UserName/c\UserName=${USER}" "${PATH_TO_GAME}/${chk_lang_and_uname}"
-            sed -i "/^PlayerName/c\PlayerName=${USER}" "${PATH_TO_GAME}/${chk_lang_and_uname}"
-        fi
-    done
-
+    if [[ "$LANGUAGE" == ru ]] ; then
+        for chk_lang_and_uname in "steam_emu.ini" "steam_api.ini" "steam_api64.ini" "SteamConfig.ini" ; do
+            if [[ -f "${PATH_TO_GAME}/${chk_lang_and_uname}" ]] ; then
+                sed -i "/^Language/c\Language=${FULL_LN}" "${PATH_TO_GAME}/${chk_lang_and_uname}"
+                sed -i "/^UserName/c\UserName=${USER}" "${PATH_TO_GAME}/${chk_lang_and_uname}"
+                sed -i "/^PlayerName/c\PlayerName=${USER}" "${PATH_TO_GAME}/${chk_lang_and_uname}"
+            fi
+        done
+    fi
+    
     if [[ "${PW_DISABLE_COMPOSITING}" == "1" ]] \
     && ! check_gamescope_session
     then
