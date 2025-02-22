@@ -3352,7 +3352,7 @@ start_portwine () {
     # NVAPI, DLSS AND FAKE DLSS
     FAKE_DLSS_3_PATH="$PW_PLUGINS_PATH/fake_dlss/DeckyFramegen_$PW_FAKE_DLSS_3_VER/bin/"
     FAKE_DLSS_3_FILES="amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll d3dcompiler_47.dll dlss-enabler.dll 
-    dlss-enabler-upscaler.dll dlssg_to_fsr3_amd_is_better-3.0.dll dlssg_to_fsr3_amd_is_better.dll 
+    dlss-enabler-upscaler.dll dlssg_to_fsr3_amd_is_better-3.0.dll dlssg_to_fsr3_amd_is_better.dll dxvk.conf
     dlssg_to_fsr3.ini fakenvapi.ini libxess.dll nvapi64.dll _nvngx.dll nvngx.ini nvngx-wrapper.dll dxgi.dll"
     ORIGINAL_GAME_DLLS="d3dcompiler_47.dll amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll libxess.dll nvapi64.dll _nvngx.dll"
     PATH_TO_GAME_EXEC="$PATH_TO_GAME"
@@ -3411,6 +3411,10 @@ start_portwine () {
         for rm_dll in "nvngx.ini" "nvngx.dll" "_nvngx.dll" ; do
             try_remove_file "${WINEPREFIX}/drive_c/windows/system32/$rm_dll"
         done
+
+        if [[ -f "$PATH_TO_GAME_EXEC/dxvk.conf" ]] ; then
+            export DXVK_CONFIG_FILE="$PATH_TO_GAME_EXEC/dxvk.conf"
+        fi
     elif [[ "${PW_USE_FAKE_DLSS}" == "1" ]] ; then
         DXVK_ENABLE_NVAPI="1"
         try_remove_file "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll"
@@ -4164,10 +4168,6 @@ start_portwine () {
         pw_start_progress_bar_cover "${COVERS_PATH}/loading_${LANGUAGE_GIF}.gif"
     fi
     add_in_start_portwine
-
-    if [[ -f "${PATH_TO_GAME}/dxvk.conf" ]] ; then
-        export DXVK_CONFIG_FILE="${PATH_TO_GAME}/dxvk.conf"
-    fi
 
     if [[ "$LANGUAGE" == ru ]] ; then
         for chk_lang_and_uname in "steam_emu.ini" "steam_api.ini" "steam_api64.ini" "SteamConfig.ini" ; do
