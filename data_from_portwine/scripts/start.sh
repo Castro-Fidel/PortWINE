@@ -121,7 +121,7 @@ echo "" > "${PW_TMPFS_PATH}/tmp_yad_form_vulkan"
 
 create_new_dir "${PORT_WINE_PATH}/data/dist"
 IFS=$'\n'
-for dist_dir in $(ls -1 "${PORT_WINE_PATH}/data/dist") ; do
+for dist_dir in $(lsbash "${PORT_WINE_PATH}/data/dist/") ; do
     dist_dir_new=$(echo "${dist_dir}" | awk '$1=$1' | sed -e s/[[:blank:]]/_/g)
     if [[ ! -d "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}" ]] ; then
         mv -- "${PORT_WINE_PATH}/data/dist/$dist_dir" "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}"
