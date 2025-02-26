@@ -2915,12 +2915,13 @@ edit_db_from_gui () {
                 fi
             fi
 
-            # Escaping backslashes and quotes for Windows paths
+            # HACK: Escaping backslashes and quotes for Windows paths
             proxy_mod_db=$(echo "$proxy_mod_db" | sed 's/\\/\\\\\\\\/g; s/"/\\"/g')
+            proxy_mod_db_escaped=$(printf '%s\n' "$proxy_mod_db" | sed 's/[\/&]/\\&/g')
 
             if [[ $(<"${PORTWINE_DB_FILE}") =~ export\ ${mod_db}= ]]
-            then sed -i "s|export ${mod_db}=.*|export ${mod_db}=\"$proxy_mod_db\"|g" "${PORTWINE_DB_FILE}"
-            else echo "export ${mod_db}=\"$proxy_mod_db\"" >> "${PORTWINE_DB_FILE}"
+            then sed -i "s|export ${mod_db}=.*|export ${mod_db}=\"${proxy_mod_db_escaped}\"|g" "${PORTWINE_DB_FILE}"
+            else echo "export ${mod_db}=\"${proxy_mod_db}\"" >> "${PORTWINE_DB_FILE}"
             fi
         done
     fi
@@ -3543,6 +3544,8 @@ start_portwine () {
         export PW_GAMEMODERUN_SLR=""
     fi
 
+    # TODO: Add org.freedesktop.ScreenSaver.SimulateUserActivity for Flatpak support
+    # org.freedesktop.ScreenSaver.Inhibit doesn`t work because the Inhibit method is released as soon as the D-Bus connection is released
     if command -v systemd-inhibit &>/dev/null \
     && [[ "$GAMEMODERUN" != "1" ]]
     then
@@ -4329,6 +4332,7 @@ pw_run () {
     print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VULKAN_DRIVER_NAME"
     print_var "VKD3D_CONFIG" "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2"
     print_var "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH" "PW_VK_ICD_FILENAMES"
+    proxy_launch_parameters=${LAUNCH_PARAMETERS//\\\\/\\}
     if [[ "$PW_USE_RUNTIME" == 1 ]] \
     && [[ "$PW_WINE_USE" != "USE_SYSTEM_WINE" ]]
     then
@@ -4351,7 +4355,7 @@ pw_run () {
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
-            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS} &>>"${PW_LOG_TO_FILE}"
+            "${WINELOADER}" "$@" ${proxy_launch_parameters} &>>"${PW_LOG_TO_FILE}"
         else
             if [[ "$PW_USE_TERMINAL" == 1 ]] ; then
                 PW_ADD_TO_ARGS_IN_RUNTIME="--xterm"
@@ -4370,7 +4374,7 @@ pw_run () {
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
-            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS} &>>"${PW_LOG_TO_FILE}"
+            "${WINELOADER}" "$@" ${proxy_launch_parameters} &>>"${PW_LOG_TO_FILE}"
             print_info "Update prefix log:"
             [[ -f "${PW_TMPFS_PATH}/update_pfx_log" ]] && cat "${PW_TMPFS_PATH}/update_pfx_log"
             echo
@@ -4398,7 +4402,7 @@ pw_run () {
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
             ${PW_INHIBIT_SLR}\
-            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS} &>>"${PW_LOG_TO_FILE}"
+            "${WINELOADER}" "$@" ${proxy_launch_parameters} &>>"${PW_LOG_TO_FILE}"
             wait_wineserver
         else
             print_info "Update prefix log:"
@@ -4417,7 +4421,7 @@ pw_run () {
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
             ${PW_INHIBIT_SLR}\
-            "${WINELOADER}" "$@" ${LAUNCH_PARAMETERS}
+            "${WINELOADER}" "$@" ${proxy_launch_parameters}
             wait_wineserver
         fi
     fi
