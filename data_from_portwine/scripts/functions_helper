@@ -3297,11 +3297,6 @@ start_portwine () {
         export WINE_DISABLE_WRITE_WATCH="1"
     fi
 
-    if [[ "${PW_FORCE_LARGE_ADDRESS_AWARE}" == 1 ]]
-    then export WINE_LARGE_ADDRESS_AWARE="1"
-    else export WINE_LARGE_ADDRESS_AWARE="0"
-    fi
-
     if [[ "${PW_OLD_GL_STRING}" == 1 ]] ; then
         export MESA_EXTENSION_MAX_YEAR="2003" #mesa override
         export __GL_ExtensionStringVersion="17700" #nvidia override
@@ -4278,6 +4273,15 @@ pw_run () {
     else
         cd "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c" || :
     fi
+
+    if file "$portwine_exe" | grep -q "x86-64" ; then
+        print_info "file: $portwine_exe is x86-64, force set WINE_LARGE_ADDRESS_AWARE to 0"
+        export WINE_LARGE_ADDRESS_AWARE="0"
+    else
+        print_info "file: $portwine_exe not x86-64, force set WINE_LARGE_ADDRESS_AWARE to 1"
+        export WINE_LARGE_ADDRESS_AWARE="1"
+    fi
+
     PW_LOG_TO_FILE="${PORT_WINE_PATH}/PortProton.log"
     PW_LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}"
     print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VULKAN_DRIVER_NAME"
@@ -5024,9 +5028,9 @@ export -f gui_proton_downloader
 gui_edit_db () {
     KEY_EDIT_DB_GUI=$RANDOM
     PW_EDIT_DB_LIST=(PW_MANGOHUD PW_MANGOHUD_USER_CONF PW_VKBASALT PW_VKBASALT_USER_CONF PW_DGVOODOO2 PW_GAMESCOPE
-    PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_USE_FAKE_DLSS_3 PW_WINE_FULLSCREEN_FSR
-    PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE PW_USE_D3D_EXTRAS
-    PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER PW_FORCE_LARGE_ADDRESS_AWARE
+    PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_USE_FAKE_DLSS_3
+    PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE
+    PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER
     PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE
     PW_DISABLE_COMPOSITING PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_NATIVE_WAYLAND
     )
@@ -5060,7 +5064,6 @@ gui_edit_db () {
     PW_NO_WRITE_WATCH_INFO=${translations[A very dangerous way to hack the memory write timer in ntdll. This improves the performance of some very specific games. (It is recommended not to change the value.)]}
     PW_GUI_DISABLED_CS_INFO=${translations[Disable the window for selecting startup modes and WINE versions]}
     PW_USE_GSTREAMER_INFO=${translations[Use Gstreamer to output clips in games (WMF support)]}
-    PW_FORCE_LARGE_ADDRESS_AWARE_INFO=${translations[Increases RAM usage limits for 32-bit applications from two to four gigabytes]}
     PW_USE_RUNTIME_INFO=${translations[Use container launch mode (It is recommended not to change the value)]}
     PW_MANGOHUD_INFO=${translations[Using FPS and system load monitoring (Turns on and off by the key combination - right Shift + F12)]}
     PW_USE_GAMEMODE_INFO=${translations[Using automatic system optimization to improve performance in games (provided the gamemode package is installed on the system, doesn\'t work with ananicy)]}
@@ -6872,7 +6875,6 @@ EOF
 
 pw_autoinstall_from_db () {
     export PW_USER_TEMP="${PORT_WINE_TMP_PATH}"
-    export PW_FORCE_LARGE_ADDRESS_AWARE=1
     export PW_USE_GAMEMODE=0
     export PW_CHECK_AUTOINSTALL=1
     export PW_GUI_DISABLED_CS=1
