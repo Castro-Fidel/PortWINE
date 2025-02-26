@@ -3617,8 +3617,7 @@ start_portwine () {
     try_force_link_file "${PHYSX_PATH}/cudart64_65.dll" "${WINEPREFIX}/drive_c/windows/system32/cudart64_65.dll"
 
     # 3D API
-    unset CP_VKD3D_FILES CP_DXVK_FILES CP_DGV2_FILES CP_WINE_FILES
-    unset CP_GALLIUM_NINE_FILES PATH_TO_DXVK_FILES PATH_TO_VKD3D_FILES
+    unset CP_VKD3D_FILES CP_DXVK_FILES CP_DGV2_FILES CP_WINE_FILES PATH_TO_DXVK_FILES PATH_TO_VKD3D_FILES
     case "${PW_VULKAN_USE}" in
         0)
             # WINED3D OPENGL
@@ -3650,20 +3649,6 @@ start_portwine () {
             CP_DXVK_FILES="d3d11 d3d10core d3d9 d3d8 dxgi" openvr_api_dxvk
             CP_VKD3D_FILES="d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1"
             CP_WINE_FILES="d3d10_1 d3d10"
-            ;;
-        3)
-            # GALLIUM NINE
-            print_info "Use GALLIUM-NINE (Native DX9 on MESA drivers)"
-            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
-            CP_GALLIUM_NINE_FILES="d3d9"
-            CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
-            CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d8 dxgi"
-            export __GL_YIELD="NOTHING"
-            export mesa_glthread="true"
-            export WINE_D3D_CONFIG="renderer=gl"
-            export PW_VKBASALT="0"
-            export PW_MANGOHUD="0"
-            export PW_WINE_FULLSCREEN_FSR="0"
             ;;
         4)
             # GALLIUM ZINK
@@ -3729,10 +3714,6 @@ start_portwine () {
                     ;;
                 2)
                     rm_from_var CP_DXVK_FILES "d3d9 d3d8"
-                    ;;
-                3)
-                    rm_from_var CP_GALLIUM_NINE_FILES "d3d9"
-                    rm_from_var CP_WINE_FILES "d3d8"
                     ;;
                 4)
                     rm_from_var CP_WINE_FILES "d3d9 d3d8"
@@ -3972,36 +3953,6 @@ start_portwine () {
         done
         create_new_dir "${PATH_TO_VKD3D_FILES}/vkd3d_cache"
         export VKD3D_SHADER_CACHE_PATH="${PATH_TO_VKD3D_FILES}/vkd3d_cache"
-    fi
-
-    if [[ "$CP_GALLIUM_NINE_FILES" == "d3d9" ]] ; then
-        print_info "Try create symlink GALLIUM_NINE files..."
-        PATH_TO_GALLIUM_NINE_FILES="${PW_PLUGINS_PATH}/gallium_nine_v.${PW_GALLIUM_NINE_VER}"
-        try_force_link_file "${PATH_TO_GALLIUM_NINE_FILES}/lib32/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/syswow64/d3d9.dll"
-        try_force_link_file "${PATH_TO_GALLIUM_NINE_FILES}/lib64/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/system32/d3d9.dll"
-        unset FIND_D3D_MODULE D3D_MODULE_PATH
-        if ! check_flatpak ; then
-            FIND_D3D_MODULE=$(dirname $(find /usr/ -maxdepth 4 -type f -name "d3dadapter9.so.*") 2>/dev/null)
-            if [[ -n "$FIND_D3D_MODULE" ]] ; then
-                IFS=$'\n'
-                for D3D_MP in $FIND_D3D_MODULE ; do
-                    if [[ -n "$D3D_MODULE_PATH" ]]
-                    then export D3D_MODULE_PATH="$D3D_MODULE_PATH:/run/host${D3D_MP}"
-                    else export D3D_MODULE_PATH="/run/host${D3D_MP}"
-                    fi
-                done
-                IFS="$orig_IFS"
-                print_info "D3D_MODULE_PATH=${D3D_MODULE_PATH}"
-            else
-                pw_stop_progress_bar
-                yad_error "${translations[d3dadapter9.so.1.0.0 - Not found in the system.\\nInstall the missing package: <b>d3dadapter9</b>]}"
-                stop_portwine
-            fi
-        else
-            export D3D_MODULE_PATH="/app/lib/i386-linux-gnu/GL/default/lib/d3d:/usr/lib/x86_64-linux-gnu/GL/default/lib/d3d"
-            print_info "D3D_MODULE_PATH=${D3D_MODULE_PATH}"
-        fi
-        var_winedlloverride_update "d3d9=n"
     fi
 
     if [[ ! -d "${WINEPREFIX}/drive_c/vrclient/bin" ]] ; then
@@ -5149,13 +5100,6 @@ gui_edit_db () {
         1|2)
             # Stable, Newest
             VKD3D_CB="CB"
-            ;;
-        3)
-            # Gallium Nine
-            VKD3D_CB="DCB"
-            DISABLE_EDIT_DB_LIST="PW_MANGOHUD PW_MANGOHUD_USER_CONF PW_VKBASALT PW_VKBASALT_USER_CONF PW_USE_RAY_TRACING PW_WINE_FULLSCREEN_FSR
-            PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE
-            "
             ;;
         4|5|6)
             # Galliun Zink, Legacy, WineD3D Vulkan
@@ -6596,7 +6540,7 @@ pw_prefix_manager () {
         IFS=$'\n'
         try_remove_file "${PW_TMPFS_PATH}/dll_list_tmp"
         while read -r PW_BOOL_IN_DLL_LIST ; do
-            if [[ ! ${PW_BOOL_IN_DLL_LIST} =~ (d3d|directx9|dont_use|dxvk|vkd3d|galliumnine|faudio1|Foundation) ]] ; then
+            if [[ ! ${PW_BOOL_IN_DLL_LIST} =~ (d3d|directx9|dont_use|dxvk|vkd3d|faudio1|Foundation) ]] ; then
                 if grep ^"$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{print $1}')"$ "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
                     echo -e "true\n$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{print $1}')\n$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PW_TMPFS_PATH}/dll_list_tmp"
                 else
