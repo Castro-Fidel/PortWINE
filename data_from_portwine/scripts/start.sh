@@ -6,7 +6,10 @@ export url_site="https://linux-gaming.ru/portproton/"
 export url_cloud="https://cloud.linux-gaming.ru/portproton"
 export url_git="https://git.linux-gaming.ru/CastroFidel/PortWINE"
 ########################################################################
-if [[ "${START_FROM_FLATPAK:-0}" == 1 ]] && [[ -z "${STEAM_COMPAT_DATA_PATH:-}" ]] && command -v "flatpak" &>/dev/null; then
+if [[ "${START_FROM_FLATPAK:-0}" == 1 ]] \
+&& [[ -z "${STEAM_COMPAT_DATA_PATH:-}" ]] \
+&& command -v "flatpak" &>/dev/null
+then
     unset START_FROM_FLATPAK
     flatpak run ru.linux_gaming.PortProton "$@"
     exit
@@ -250,9 +253,7 @@ if [[ -z "$DOWNLOAD_STEAM_GRID" ]] ; then
     export DOWNLOAD_STEAM_GRID="1"
 fi
 
-if [[ "${INSTALLING_PORT}" == 1 ]] ; then
-    return 0
-fi
+[[ "${INSTALLING_PORT}" == 1 ]] && return 0
 
 # choose gui start
 if [[ ! $PW_GUI_START =~ (PANED|NOTEBOOK) ]] ; then
@@ -692,7 +693,6 @@ else
         fi
     done
     # Переопределение элементов в массивах в зависимости от PW_GAME_TIME, от большего значения к меньшему.
-    # 10 миллисекунд на 40 .desktop файлов, работает быстро
     if [[ $SORT_WITH_TIME == enabled ]] && [[ -n ${PW_GAME_TIME[1]} ]] ; then
         for i in "${PW_AMOUNT_OLD_DESKTOP[@]}" ; do
             for j in "${PW_AMOUNT_OLD_DESKTOP[@]}" ; do
