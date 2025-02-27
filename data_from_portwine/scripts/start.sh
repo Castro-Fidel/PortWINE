@@ -364,6 +364,7 @@ cat << EOF > "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack.sh
     #!/usr/bin/env bash
     ${TMP_ALL_PATH} unsquashfs $NO_XATTRS_NEED -f -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" "$1" \
     || echo "ERROR" > "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack_error
+    sleep 3
 EOF
     chmod u+x "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack.sh
     ${pw_runtime} ${PW_TERM} "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack.sh
