@@ -3628,6 +3628,46 @@ start_portwine () {
                 export WINE_D3D_CONFIG="renderer=gl"
                 export PW_VKBASALT="0"
                 export PW_USE_GALLIUM_ZINK="0"
+                if [[ $PW_USE_GALLIUM_NINE == "1" ]] ; then
+                    # GALLIUM NINE
+                    print_info "Use GALLIUM-NINE (Native DX9 on MESA drivers)"
+                    rm_from_var CP_WINE_FILES "d3d9"
+                    PATH_TO_GALLIUM_NINE_FILES="$PW_PLUGINS_PATH/gallium_nine_v.${PW_GALLIUM_NINE_VER}"
+                    if [[ ! -d $PATH_TO_GALLIUM_NINE_FILES ]] ; then
+                        if try_download "github.com/Castro-Fidel/vulkan/releases/download/gallium_nine_v.${PW_GALLIUM_NINE_VER}/gallium_nine_v.${PW_GALLIUM_NINE_VER}.tar.xz" \
+                                        "${PORT_WINE_PATH}/data/tmp/gallium_nine_v.${PW_GALLIUM_NINE_VER}.tar.xz" ; then
+                            if ! unpack "${PORT_WINE_PATH}/data/tmp/gallium_nine_v.${PW_GALLIUM_NINE_VER}.tar.xz" "$PW_PLUGINS_PATH"
+                            then try_remove_dir "$PATH_TO_GALLIUM_NINE_FILES"
+                            fi
+                            try_remove_file "${PORT_WINE_PATH}/data/tmp/gallium_nine_v.${PW_GALLIUM_NINE_VER}.tar.xz"
+                        fi
+                    fi
+                    try_force_link_file "${PATH_TO_GALLIUM_NINE_FILES}/lib32/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/syswow64/d3d9.dll"
+                    try_force_link_file "${PATH_TO_GALLIUM_NINE_FILES}/lib64/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/system32/d3d9.dll"
+                    unset FIND_D3D_MODULE D3D_MODULE_PATH
+                    if ! check_flatpak ; then
+                        FIND_D3D_MODULE=$(dirname $(find /usr/ -maxdepth 4 -type f -name "d3dadapter9.so.*") 2>/dev/null)
+                        if [[ -n "$FIND_D3D_MODULE" ]] ; then
+                            IFS=$'\n'
+                            for D3D_MP in $FIND_D3D_MODULE ; do
+                                if [[ -n "$D3D_MODULE_PATH" ]]
+                                then export D3D_MODULE_PATH="$D3D_MODULE_PATH:/run/host${D3D_MP}"
+                                else export D3D_MODULE_PATH="/run/host${D3D_MP}"
+                                fi
+                            done
+                            IFS="$orig_IFS"
+                            print_info "D3D_MODULE_PATH=${D3D_MODULE_PATH}"
+                        else
+                            pw_stop_progress_bar
+                            yad_error "${translations[d3dadapter9.so.1.0.0 - Not found in the system.\\nInstall the missing package: <b>d3dadapter9</b>]}"
+                            stop_portwine
+                        fi
+                    else
+                        export D3D_MODULE_PATH="/app/lib/i386-linux-gnu/GL/default/lib/d3d:/usr/lib/x86_64-linux-gnu/GL/default/lib/d3d"
+                        print_info "D3D_MODULE_PATH=${D3D_MODULE_PATH}"
+                    fi
+                    var_winedlloverride_update "d3d9=n"
+                fi
                 ;;
             1)
                 # STABLE DXVK AND VKD3D
@@ -5038,6 +5078,11 @@ gui_edit_db () {
 
     if check_flatpak ; then
         rm_from_array "PW_EDIT_DB_LIST" PW_USE_RUNTIME
+    fi
+
+    if [[ $PW_VULKAN_USE == "0" ]] ; then
+        add_to_array "PW_EDIT_DB_LIST" PW_USE_GALLIUM_NINE
+        PW_USE_GALLIUM_NINE_INFO=${translations[Instead of WineD3D, use gallium nine to implement DirectX9]}
     fi
 
     PW_MANGOHUD_INFO=${translations[Using FPS and system load monitoring (Turns on and off by the key combination - right Shift + F12)]}
