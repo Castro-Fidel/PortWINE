@@ -3608,80 +3608,79 @@ start_portwine () {
 
     # 3D API
     unset CP_VKD3D_FILES CP_DXVK_FILES CP_DGV2_FILES CP_WINE_FILES PATH_TO_DXVK_FILES PATH_TO_VKD3D_FILES
-    case "${PW_VULKAN_USE}" in
-        0)
-            # WINED3D OPENGL
-            print_info "Use WINED3D OpenGL"
-            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
-            CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
-            CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d9 d3d8 dxgi"
-            export __GL_YIELD="NOTHING"
-            export mesa_glthread="true"
-            export WINE_D3D_CONFIG="renderer=gl"
-            export PW_VKBASALT="0"
-            ;;
-        1)
-            # STABLE DXVK AND VKD3D
-            print_info "DXVK v.${DXVK_STABLE_VER} in use"
-            print_info "VKD3D-PROTON v.${VKD3D_STABLE_VER} in use"
-            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
-            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
-            CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
-            [[ "$PW_USE_VRCLIENT" = "1" ]] && add_to_var CP_DXVK_FILES "openvr_api_dxvk"
-            CP_VKD3D_FILES="d3d12 libvkd3d-shader-1"
-            CP_WINE_FILES="d3d12core d3d8"
-            ;;
-        2)
-            # NEWEST DXVK AND VKD3D
-            print_info "DXVK v.${DXVK_GIT_VER} in use"
-            print_info "VKD3D-PROTON v.${VKD3D_GIT_VER} in use"
-            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}"
-            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
-            CP_DXVK_FILES="d3d11 d3d10core d3d9 d3d8 dxgi"
-            [[ "$PW_USE_VRCLIENT" = "1" ]] && add_to_var CP_DXVK_FILES "openvr_api_dxvk"
-            CP_VKD3D_FILES="d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1"
-            CP_WINE_FILES="d3d10_1 d3d10"
-            ;;
-        4)
-            # GALLIUM ZINK
-            print_info "Use GALLIUM-ZINK (OpenGL on MESA vulkan drivers)"
-            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
-            CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
-            CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d9 d3d8 dxgi"
-            export __GL_YIELD="NOTHING"
-            export mesa_glthread="true"
-            export WINE_D3D_CONFIG="renderer=gl"
-            export  __GLX_VENDOR_LIBRARY_NAME="mesa"
-            export MESA_LOADER_DRIVER_OVERRIDE="zink"
-            export GALLIUM_DRIVER="zink"
-            if ! check_wayland_session \
-            && ! check_gamescope_session \
-            && [[ "${PW_GAMESCOPE}" != "1" ]]
-            then
-                export LIBGL_KOPPER_DRI2="1"
-            fi
-            if [[ $(check_vendor_gpu) =~ nouveau ]] ; then
-                export NOUVEAU_USE_ZINK="1"
-            fi
-            ;;
-        5)
-            # LEGACY DXVK
-            print_info "DXVK v.${DXVK_LEGACY_VER} in use"
-            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_LEGACY_VER}"
-            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
-            CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
-            CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
-            CP_WINE_FILES="d3d12 d3d12core d3d8"
-            ;;
-        6)
-            # WINED3D VULKAN (DAMAVAND)
-            print_info "Use DAMAVAND (DirectX to wined3d vulkan)"
-            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
-            CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
-            CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d9 d3d8 dxgi"
-            export WINE_D3D_CONFIG="renderer=vulkan"
-            ;;
-    esac
+    if [[ $PW_USE_DAMAVAND == "1" ]] && [[ $PW_VULKAN_USE != "0" ]] ; then
+        # WINED3D VULKAN (DAMAVAND)
+        print_info "Use DAMAVAND (DirectX to wined3d vulkan)"
+        PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
+        CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
+        CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d9 d3d8 dxgi"
+        export WINE_D3D_CONFIG="renderer=vulkan"
+    else
+        case "${PW_VULKAN_USE}" in
+            0)
+                # WINED3D OPENGL
+                print_info "Use WINED3D OpenGL"
+                PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
+                CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
+                CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d9 d3d8 dxgi"
+                export __GL_YIELD="NOTHING"
+                export mesa_glthread="true"
+                export WINE_D3D_CONFIG="renderer=gl"
+                export PW_VKBASALT="0"
+                export PW_USE_GALLIUM_ZINK="0"
+                ;;
+            1)
+                # STABLE DXVK AND VKD3D
+                print_info "DXVK v.${DXVK_STABLE_VER} in use"
+                print_info "VKD3D-PROTON v.${VKD3D_STABLE_VER} in use"
+                PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
+                PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
+                CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
+                [[ "$PW_USE_VRCLIENT" = "1" ]] && add_to_var CP_DXVK_FILES "openvr_api_dxvk"
+                CP_VKD3D_FILES="d3d12 libvkd3d-shader-1"
+                CP_WINE_FILES="d3d12core d3d8"
+                ;;
+            2)
+                # NEWEST DXVK AND VKD3D
+                print_info "DXVK v.${DXVK_GIT_VER} in use"
+                print_info "VKD3D-PROTON v.${VKD3D_GIT_VER} in use"
+                PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}"
+                PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
+                CP_DXVK_FILES="d3d11 d3d10core d3d9 d3d8 dxgi"
+                [[ "$PW_USE_VRCLIENT" = "1" ]] && add_to_var CP_DXVK_FILES "openvr_api_dxvk"
+                CP_VKD3D_FILES="d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1"
+                CP_WINE_FILES="d3d10_1 d3d10"
+                ;;
+            5)
+                # LEGACY DXVK
+                print_info "DXVK v.${DXVK_LEGACY_VER} in use"
+                PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_LEGACY_VER}"
+                PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
+                CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
+                CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
+                CP_WINE_FILES="d3d12 d3d12core d3d8"
+                ;;
+        esac
+    fi
+
+    if [[ $PW_USE_GALLIUM_ZINK == "1" ]] ; then
+        # GALLIUM ZINK
+        print_info "Use GALLIUM-ZINK (OpenGL on MESA vulkan drivers)"
+        export __GL_YIELD="NOTHING"
+        export mesa_glthread="true"
+        export  __GLX_VENDOR_LIBRARY_NAME="mesa"
+        export MESA_LOADER_DRIVER_OVERRIDE="zink"
+        export GALLIUM_DRIVER="zink"
+        if ! check_wayland_session \
+        && ! check_gamescope_session \
+        && [[ "${PW_GAMESCOPE}" != "1" ]]
+        then
+            export LIBGL_KOPPER_DRI2="1"
+        fi
+        if [[ $(check_vendor_gpu) =~ nouveau ]] ; then
+            export NOUVEAU_USE_ZINK="1"
+        fi
+    fi
 
     # DGVOODOO2 enable:
     if [[ "${PW_DGVOODOO2}" == "1" ]] ; then
@@ -3707,15 +3706,9 @@ start_portwine () {
                 2)
                     rm_from_var CP_DXVK_FILES "d3d9 d3d8"
                     ;;
-                4)
-                    rm_from_var CP_WINE_FILES "d3d9 d3d8"
-                    ;;
                 5)
                     rm_from_var CP_DXVK_FILES "d3d9"
                     rm_from_var CP_WINE_FILES "d3d8"
-                    ;;
-                6)
-                    rm_from_var CP_WINE_FILES "d3d9 d3d8"
                     ;;
             esac
         fi
@@ -5034,7 +5027,7 @@ gui_edit_db () {
     PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE
     PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER
     PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE
-    PW_DISABLE_COMPOSITING PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_NATIVE_WAYLAND
+    PW_DISABLE_COMPOSITING PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_NATIVE_WAYLAND PW_USE_GALLIUM_ZINK PW_USE_DAMAVAND
     )
 
     if check_wayland_session ; then
@@ -5046,45 +5039,12 @@ gui_edit_db () {
     if check_flatpak ; then
         rm_from_array "PW_EDIT_DB_LIST" PW_USE_RUNTIME
     fi
-    # PW_HEAP_DELAY_FREE
 
-    PW_DGVOODOO2_INFO=${translations[Enable dgVoodoo2. Forced use all dgVoodoo2 libs (Glide 2.11-3.1, DirectDraw 1-7, Direct3D 2-9) on all 3D API. For WineD3D OpenGL need use WineLG (For Gallium Nine and Zink use too)]}
-    PW_DINPUT_PROTOCOL_INFO=${translations[Force use DirectInput protocol instead of XInput]}
-    PW_USE_NATIVE_WAYLAND_INFO=${translations[Enable experemental native Wayland support (need special wine build to work)]}
-    PW_VKBASALT_INFO=${translations[Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)]}
-    PW_NO_ESYNC_INFO=${translations[Do not use in-process synchronization primitives based on eventfd. (It is recommended not to change the value.)]}
-    PW_NO_FSYNC_INFO=${translations[Do not use futex-based in-process synchronization primitives. (Automatically disabled on systems without FUTEX_WAIT_MULTIPLE support) (It is recommended not to change the value)]}
-    PW_USE_RAY_TRACING_INFO=${translations[Enable vkd3d support - Ray Tracing]}
-    PW_FIX_VIDEO_IN_GAME_INFO=${translations[Required for video playback in some games so that it is not distorted (usually colored pink)]}
-    PW_VULKAN_NO_ASYNC_INFO=${translations[Disable asynchronous calls for VULKAN and DXVK modes]}
-    PW_USE_NVAPI_AND_DLSS_INFO=${translations[Enable DLSS on supported NVIDIA graphics cards]}
-    PW_OLD_GL_STRING_INFO=${translations[Forced use of older versions of OpenGL]}
-    PW_HIDE_NVIDIA_GPU_INFO=${translations[Disguise all features used for NVIDIA graphics cards]}
-    PW_VIRTUAL_DESKTOP_INFO=${translations[Enable the application to run in the WINE virtual desktop]}
-    PW_USE_TERMINAL_INFO=${translations[Run the application in the terminal]}
-    PW_HEAP_DELAY_FREE_INFO=${translations[Include a delay in releasing some memory to bypass errors associated with using the application after the memory is released]}
-    PW_NO_WRITE_WATCH_INFO=${translations[A very dangerous way to hack the memory write timer in ntdll. This improves the performance of some very specific games. (It is recommended not to change the value.)]}
-    PW_GUI_DISABLED_CS_INFO=${translations[Disable the window for selecting startup modes and WINE versions]}
-    PW_USE_GSTREAMER_INFO=${translations[Use Gstreamer to output clips in games (WMF support)]}
-    PW_USE_RUNTIME_INFO=${translations[Use container launch mode (It is recommended not to change the value)]}
     PW_MANGOHUD_INFO=${translations[Using FPS and system load monitoring (Turns on and off by the key combination - right Shift + F12)]}
-    PW_USE_GAMEMODE_INFO=${translations[Using automatic system optimization to improve performance in games (provided the gamemode package is installed on the system, doesn\'t work with ananicy)]}
-    PW_USE_WINE_DXGI_INFO=${translations[Forced use of built-in DXGI library (in rare cases it solves problems with DX12 games)]}
     PW_MANGOHUD_USER_CONF_INFO=${translations[Forced use of MANGOHUD system settings (GOverlay, etc.)]}
+    PW_VKBASALT_INFO=${translations[Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)]}
     PW_VKBASALT_USER_CONF_INFO=${translations[Forced use of VKBASALT system settings (GOverlay, etc.)]}
-    PW_USE_D3D_EXTRAS_INFO=${translations[Enable forced use of third-party DirectX libraries]}
-    PW_USE_WINDOWS_7_INFO=${translations[Change the version of WINDOWS 10 to WINDOWS 7 in the prefix]}
-    PW_USE_SHADER_CACHE_INFO=${translations[Use WINE shader caching (disable only if there are microfreezes in the game)]}
-    PW_WINE_FULLSCREEN_FSR_INFO=${translations[Works while using any version of ProtonGE in full screen mode at a resolution below the standard screen]}
-    PW_USE_FAKE_DLSS_INFO=${translations[Enable DLSS translator in FSR 2 in DirectX 12 games (CyberFSR2)]}
-    PW_USE_FAKE_DLSS_3_INFO=${translations[Enable DLSS 3 with FG translator in FSR 3 in DirectX 12 games (based on Decky-Framegen) Do not use in multiplayer games]}
-    PW_USE_EAC_AND_BE_INFO=${translations[Enable Easy Anti-Cheat and BattlEye Anti-Cheat runtimes (required if game used this anti-cheats)]}
-    PW_REDUCE_PULSE_LATENCY_INFO=${translations[Reduce pulseaudio latency to fix intermittent sound]}
-    PW_USE_US_LAYOUT_INFO=${translations[Forced use of the us layout (useful for games in which the control works correctly only on the us layout)]}
-    PW_RESTORE_RESOLUTION_INFO=${translations[Remember the screen resolution when starting the game and return it when closing (useful for games that change the screen resolution when closing)]}
-    PW_USE_SYSTEM_VK_LAYERS_INFO=${translations[Use system mangohud, vkBasalt, obs-vkcapture and other applications using vulkan layers]}
-    PW_USE_OBS_VKCAPTURE_INFO=${translations[Enable the ability to write to OBS Studio using obs-vkcapture (ATTENTION: the forced use of system mangohud, vkBasalt, obs-vkcapture and other applications using vulkan layers will be enabled)]}
-    PW_DISABLE_COMPOSITING_INFO=${translations[Disable desktop compositing (effects). It often improves performance.]}
+    PW_DGVOODOO2_INFO=${translations[Enable dgVoodoo2. Forced use all dgVoodoo2 libs (Glide 2.11-3.1, DirectDraw 1-7, Direct3D 2-9) on all 3D API. For WineD3D OpenGL need use WineLG (For Gallium Nine and Zink use too)]}
     PW_GAMESCOPE_INFO=${translations[<b>Super + F :</b> Toggle fullscreen
 <b>Super + N :</b> Toggle nearest neighbour filtering
 <b>Super + U :</b> Toggle FSR upscaling
@@ -5094,20 +5054,53 @@ gui_edit_db () {
 <b>Super + S :</b> Take screenshot (currently goes to /tmp/gamescope_DATE.png)
 <b>Super + G :</b> Toggle keyboard grab
 <b>Super + C :</b> Update clipboard]}
+    PW_NO_ESYNC_INFO=${translations[Do not use in-process synchronization primitives based on eventfd. (It is recommended not to change the value.)]}
+    PW_NO_FSYNC_INFO=${translations[Do not use futex-based in-process synchronization primitives. (Automatically disabled on systems without FUTEX_WAIT_MULTIPLE support) (It is recommended not to change the value)]}
+    PW_USE_RAY_TRACING_INFO=${translations[Enable vkd3d support - Ray Tracing]}
+    PW_USE_NVAPI_AND_DLSS_INFO=${translations[Enable DLSS on supported NVIDIA graphics cards]}
+    PW_USE_FAKE_DLSS_INFO=${translations[Enable DLSS translator in FSR 2 in DirectX 12 games (CyberFSR2)]}
+    PW_USE_FAKE_DLSS_3_INFO=${translations[Enable DLSS 3 with FG translator in FSR 3 in DirectX 12 games (based on Decky-Framegen) Do not use in multiplayer games]}
+    PW_WINE_FULLSCREEN_FSR_INFO=${translations[Works while using any version of ProtonGE in full screen mode at a resolution below the standard screen]}
+    PW_HIDE_NVIDIA_GPU_INFO=${translations[Disguise all features used for NVIDIA graphics cards]}
+    PW_VIRTUAL_DESKTOP_INFO=${translations[Enable the application to run in the WINE virtual desktop]}
+    PW_USE_TERMINAL_INFO=${translations[Run the application in the terminal]}
+    PW_GUI_DISABLED_CS_INFO=${translations[Disable the window for selecting startup modes and WINE versions]}
+    PW_USE_GAMEMODE_INFO=${translations[Using automatic system optimization to improve performance in games (provided the gamemode package is installed on the system, doesn\'t work with ananicy)]}
+    PW_USE_D3D_EXTRAS_INFO=${translations[Enable forced use of third-party DirectX libraries]}
+    PW_FIX_VIDEO_IN_GAME_INFO=${translations[Required for video playback in some games so that it is not distorted (usually colored pink)]}
+    PW_REDUCE_PULSE_LATENCY_INFO=${translations[Reduce pulseaudio latency to fix intermittent sound]}
+    PW_USE_US_LAYOUT_INFO=${translations[Forced use of the us layout (useful for games in which the control works correctly only on the us layout)]}
+    PW_USE_GSTREAMER_INFO=${translations[Use Gstreamer to output clips in games (WMF support)]}
+    PW_USE_SHADER_CACHE_INFO=${translations[Use WINE shader caching (disable only if there are microfreezes in the game)]}
+    PW_USE_WINE_DXGI_INFO=${translations[Forced use of built-in DXGI library (in rare cases it solves problems with DX12 games)]}
+    PW_USE_EAC_AND_BE_INFO=${translations[Enable Easy Anti-Cheat and BattlEye Anti-Cheat runtimes (required if game used this anti-cheats)]}
+    PW_USE_SYSTEM_VK_LAYERS_INFO=${translations[Use system mangohud, vkBasalt, obs-vkcapture and other applications using vulkan layers]}
+    PW_USE_OBS_VKCAPTURE_INFO=${translations[Enable the ability to write to OBS Studio using obs-vkcapture (ATTENTION: the forced use of system mangohud, vkBasalt, obs-vkcapture and other applications using vulkan layers will be enabled)]}
+    PW_DISABLE_COMPOSITING_INFO=${translations[Disable desktop compositing (effects). It often improves performance.]}
+    PW_USE_RUNTIME_INFO=${translations[Use container launch mode (It is recommended not to change the value)]}
+    PW_DINPUT_PROTOCOL_INFO=${translations[Force use DirectInput protocol instead of XInput]}
+    PW_USE_NATIVE_WAYLAND_INFO=${translations[Enable experemental native Wayland support (need special wine build to work)]}
+    PW_USE_GALLIUM_ZINK_INFO=${translations[Use Gallium Zink (OpenGL driver is implemented via Vulkan)]}
+    PW_USE_DAMAVAND_INFO=${translations[Instead of DXVK, use WineD3D vulkan (Damavand). Experimental function.]}
+
+#     PW_VULKAN_NO_ASYNC_INFO=${translations[Disable asynchronous calls for VULKAN and DXVK modes]}
+#     PW_OLD_GL_STRING_INFO=${translations[Forced use of older versions of OpenGL]}
+#     PW_HEAP_DELAY_FREE_INFO=${translations[Include a delay in releasing some memory to bypass errors associated with using the application after the memory is released]}
+#     PW_NO_WRITE_WATCH_INFO=${translations[A very dangerous way to hack the memory write timer in ntdll. This improves the performance of some very specific games. (It is recommended not to change the value.)]}
 
     case "${PW_VULKAN_USE}" in
         0)
             # WineD3D OpenGL
             VKD3D_CB="DCB"
-            DISABLE_EDIT_DB_LIST="PW_VKBASALT PW_VKBASALT_USER_CONF PW_USE_RAY_TRACING PW_USE_OBS_VKCAPTURE
+            DISABLE_EDIT_DB_LIST="PW_VKBASALT PW_VKBASALT_USER_CONF PW_USE_RAY_TRACING PW_USE_OBS_VKCAPTURE PW_USE_GALLIUM_ZINK PW_USE_DAMAVAND
             "
             ;;
         1|2)
             # Stable, Newest
             VKD3D_CB="CB"
             ;;
-        4|5|6)
-            # Galliun Zink, Legacy, WineD3D Vulkan
+        5)
+            # Legacy
             VKD3D_CB="DCB"
             DISABLE_EDIT_DB_LIST="PW_USE_RAY_TRACING
             "
@@ -5673,7 +5666,7 @@ gui_dgvoodoo2 () {
     [[ "${PW_DGV2_ANTIALIASING}" == "0" ]] && export PW_DGV2_ANTIALIASING="disabled" && edit_db_from_gui PW_DGV2_ANTIALIASING
 
     case "${PW_VULKAN_USE}" in
-        0|3|4|5|6)
+        0|5)
             DISABLE_DGV2_LIST="PW_DGV2_USE_DX12
             "
             ;;
@@ -6687,9 +6680,7 @@ portwine_start_debug () {
         0) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DirectX to wined3d opengl" >> "${PORT_WINE_PATH}/PortProton.log" ;;
         1) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_STABLE_VER}, VKD3D-PROTON v.${VKD3D_STABLE_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
         2) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_GIT_VER}, VKD3D-PROTON v.${VKD3D_GIT_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
-        4) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - OpenGL on MESA vulkan drivers" >> "${PORT_WINE_PATH}/PortProton.log" ;;
         5) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_LEGACY_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
-        6) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DirectX to wined3d vulkan" >> "${PORT_WINE_PATH}/PortProton.log" ;;
         *) echo "PW_VULKAN_USE=${PW_VULKAN_USE}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
     esac
     echo "--------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
