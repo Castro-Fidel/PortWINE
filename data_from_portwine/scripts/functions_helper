@@ -671,51 +671,36 @@ try_download () {
 }
 
 var_winedlloverride_update () {
-    if [[ "$WINEDLLOVERRIDES" ]]
-    then export WINEDLLOVERRIDES="$1;$WINEDLLOVERRIDES"
-    else export WINEDLLOVERRIDES="$1"
-    fi
-    return 0
+    export WINEDLLOVERRIDES="${1}${WINEDLLOVERRIDES:+;$WINEDLLOVERRIDES}"
 }
+
 
 var_vkd3d_config_update () {
     if echo "$VKD3D_CONFIG" | grep "$1"
     then return 0
-    elif [[ "$VKD3D_CONFIG" ]]
-    then export VKD3D_CONFIG="$1;$VKD3D_CONFIG"
-    else export VKD3D_CONFIG="$1"
+    else export VKD3D_CONFIG="${1}${VKD3D_CONFIG:+;$VKD3D_CONFIG}"
     fi
-    return 0
 }
 
 var_radv_perftest_config_update () {
     if echo "$RADV_PERFTEST" | grep "$1"
     then return 0
-    elif [[ "$RADV_PERFTEST" ]]
-    then export RADV_PERFTEST="$1;$RADV_PERFTEST"
-    else export RADV_PERFTEST="$1"
+    else export RADV_PERFTEST="${1}${RADV_PERFTEST:+;$RADV_PERFTEST}"
     fi
-    return 0
 }
 
 var_pw_vk_istance_layers_config_update () {
     if echo "$PW_VK_INSTANCE_LAYERS" | grep "$1"
     then return 0
-    elif [[ "$PW_VK_INSTANCE_LAYERS" ]]
-    then export PW_VK_INSTANCE_LAYERS="$1:$PW_VK_INSTANCE_LAYERS"
-    else export PW_VK_INSTANCE_LAYERS="$1"
+    else export PW_VK_INSTANCE_LAYERS="${1}${PW_VK_INSTANCE_LAYERS:+:$PW_VK_INSTANCE_LAYERS}"
     fi
-    return 0
 }
 
 var_ld_library_path_update () {
     if echo "$LD_LIBRARY_PATH" | grep "$1"
     then return 0
-    elif [[ "$LD_LIBRARY_PATH" ]]
-    then export LD_LIBRARY_PATH="$1:$LD_LIBRARY_PATH"
-    else export LD_LIBRARY_PATH="$1"
+    else export LD_LIBRARY_PATH="${1}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
     fi
-    return 0
 }
 
 # GUI NOTIFY SEND
@@ -1766,10 +1751,7 @@ ${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:\
 /lib/i386-linux-gnu"
 	fi
 
-    if [[ -n "${PATH}" ]]
-    then export PW_PATH="${PATH}:${PW_PLUGINS_PATH}/portable/bin"
-    else export PW_PATH="${PW_PLUGINS_PATH}/portable/bin"
-    fi
+    export PW_PATH="${PW_PLUGINS_PATH}/portable/bin${PATH:+:$PATH}"
 
     if [[ -n "${PW_SANDBOX_HOME_PATH}" && -d "${PW_SANDBOX_HOME_PATH}" ]] ; then
         export pw_runtime="${PW_WINELIB}/pressure-vessel/bin/pressure-vessel-unruntime \
@@ -1809,16 +1791,10 @@ ${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:\
 
     unset PRESSURE_VESSEL_FILESYSTEMS_RO PRESSURE_VESSEL_FILESYSTEMS_RW
     for PWRTMRO in "${PW_RT_MOUNT_RO[@]}" ; do
-        if [[ -n "${PRESSURE_VESSEL_FILESYSTEMS_RO}" ]]
-        then export PRESSURE_VESSEL_FILESYSTEMS_RO="${PRESSURE_VESSEL_FILESYSTEMS_RO}:${PWRTMRO}"
-        else export PRESSURE_VESSEL_FILESYSTEMS_RO="${PWRTMRO}"
-        fi
+        export PRESSURE_VESSEL_FILESYSTEMS_RO="${PRESSURE_VESSEL_FILESYSTEMS_RO:+$PRESSURE_VESSEL_FILESYSTEMS_RO:}${PWRTMRO}"
     done
     for PWRTMRW in "${PW_RT_MOUNT_RW[@]}" ; do
-        if [[ -n "${PRESSURE_VESSEL_FILESYSTEMS_RW}" ]]
-        then export PRESSURE_VESSEL_FILESYSTEMS_RW="${PRESSURE_VESSEL_FILESYSTEMS_RW}:${PWRTMRW}"
-        else export PRESSURE_VESSEL_FILESYSTEMS_RW="${PWRTMRW}"
-        fi
+        export PRESSURE_VESSEL_FILESYSTEMS_RW="${PRESSURE_VESSEL_FILESYSTEMS_RW:+$PRESSURE_VESSEL_FILESYSTEMS_RW:}${PWRTMRW}"
     done
 
     export PW_TERM="env LD_LIBRARY_PATH=\"${PW_LD_LIBRARY_PATH}\" ${PW_PLUGINS_PATH}/portable/bin/xterm -bg black -fg white -e"
