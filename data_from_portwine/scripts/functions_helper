@@ -3180,14 +3180,18 @@ start_portwine () {
 
         LIST_ICU_DLL_LINKS="icuin68 icuuc68 icudt68"
         for dll in $LIST_ICU_DLL_LINKS ; do
-            try_force_link_file "${WINEDIR}/lib/icu/${dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${dll}.dll"
-            try_force_link_file "${WINEDIR}/lib64/icu/${dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${dll}.dll"
+            if [[ -f "${WINEDIR}/lib/icu/${dll}.dll" ]] ; then
+                try_force_link_file "${WINEDIR}/lib/icu/${dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${dll}.dll"
+                try_force_link_file "${WINEDIR}/lib64/icu/${dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${dll}.dll"
+            else
+                try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/${dll}.dll"
+                try_remove_file "${WINEPREFIX}/drive_c/windows/system32/${dll}.dll"
+            fi
         done
 
         print_info "Used wineboot $@ for prefix: ${PW_PREFIX_NAME}"
         ${pw_runtime} GST_PLUGIN_SYSTEM_PATH_1_0="" LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}" \
-        WINEDEBUG="fixme-all,err+loaddll,err+dll,err+file,err+reg" \
-        "${WINELOADER}" wineboot $@ &>>"${PW_TMPFS_PATH}/update_pfx_log"
+        WINEDEBUG="err+all" "${WINELOADER}" wineboot $@ &>>"${PW_TMPFS_PATH}/update_pfx_log"
         wait_wineserver
         print_info "The prefix has been updated."
     }
