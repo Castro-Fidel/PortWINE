@@ -39,6 +39,24 @@ print_wrapped () {
 }
 export -f print_wrapped
 
+pw_screensaver_inihibit() {
+    if command -v systemd-inhibit &>/dev/null && [[ "$GAMEMODERUN" != "1" ]]; then
+        systemd-inhibit --mode=block --who=ru.linux_gaming.PortProton --why=${translations[Launched]}
+        print_info "Screensaver will be inhibited using systemd-inhibit."
+    elif command -v dbus-send &>/dev/null && [ -n "$FLATPAK_ID" ] && [[ "$GAMEMODERUN" != "1" ]]; then
+        print_info "Screensaver will be inhibited using org.freedesktop.ScreenSaver.SimulateUserActivity DBUS method"
+        while true; do
+            dbus-send --session --dest=org.freedesktop.ScreenSaver \
+                --type=method_call --print-reply /org/freedesktop/ScreenSaver \
+                org.freedesktop.ScreenSaver.SimulateUserActivity
+            sleep 29
+        done
+    else
+        print_info "No valid screensaver inhibition method found."
+    fi
+}
+export -f pw_screensaver_inihibit
+
 make_acronym () {
     local words acronym i
     read -r -a words <<< "$1"
@@ -3534,14 +3552,6 @@ start_portwine () {
         export PW_GAMEMODERUN_SLR=""
     fi
 
-    # TODO: Add org.freedesktop.ScreenSaver.SimulateUserActivity for Flatpak support
-    # org.freedesktop.ScreenSaver.Inhibit doesn`t work because the Inhibit method is released as soon as the D-Bus connection is released
-    if command -v systemd-inhibit &>/dev/null \
-    && [[ "$GAMEMODERUN" != "1" ]]
-    then
-        PW_INHIBIT_SLR="systemd-inhibit --mode=block --who=ru.linux_gaming.PortProton --why=${translations[Launched]}"
-        print_info "Screensaver will be inhibit"
-    fi
     pw_other_fixes
 
     # enabled BattleEye_Runtime and EasyAntiCheat_Runtime
@@ -4283,6 +4293,10 @@ pw_run () {
     print_var "VKD3D_CONFIG" "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2"
     print_var "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH" "PW_VK_ICD_FILENAMES"
     proxy_launch_parameters=${LAUNCH_PARAMETERS//\\\\/\\}
+    bash -c 'pw_screensaver_inihibit' &
+    SCREENSAVER_PID=$!
+    trap 'kill $SCREENSAVER_PID' EXIT
+
     if [[ "$PW_USE_RUNTIME" == 1 ]] \
     && [[ "$PW_WINE_USE" != "USE_SYSTEM_WINE" ]]
     then
@@ -4296,7 +4310,6 @@ pw_run () {
             print_info "Log from RUNTIME and WINE:"
             ${PW_RUN_GAMESCOPE} \
             ${PW_POWERPROFILECTL_SLR} \
-            ${PW_INHIBIT_SLR}\
             ${pw_runtime} \
             LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             LD_PRELOAD="${PW_LD_PRELOAD}" \
@@ -4315,7 +4328,6 @@ pw_run () {
             echo "Log WINE:" > "${PW_LOG_TO_FILE}"
             ${PW_RUN_GAMESCOPE} \
             ${PW_POWERPROFILECTL_SLR} \
-            ${PW_INHIBIT_SLR}\
             ${pw_runtime} \
             LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             LD_PRELOAD="${PW_LD_PRELOAD}" \
@@ -4351,7 +4363,6 @@ pw_run () {
             ${PW_POWERPROFILECTL_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
-            ${PW_INHIBIT_SLR}\
             "${WINELOADER}" "$@" ${proxy_launch_parameters} &>>"${PW_LOG_TO_FILE}"
             wait_wineserver
         else
@@ -4370,11 +4381,12 @@ pw_run () {
             ${PW_POWERPROFILECTL_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
-            ${PW_INHIBIT_SLR}\
             "${WINELOADER}" "$@" ${proxy_launch_parameters}
             wait_wineserver
         fi
     fi
+    kill $SCREENSAVER_PID
+    trap - EXIT
 }
 export -f pw_run
 
