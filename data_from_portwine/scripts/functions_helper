@@ -1248,13 +1248,15 @@ create_name_desktop () {
 
 # Конвертация секунд в дни, часы, минуты
 seconds_to_time () {
-    [[ ! $DESKTOP_WITH_TIME == enabled ]] && return 0
+    [[ $DESKTOP_WITH_TIME == "disabled" ]] && return 0
     [[ -z $1 ]] && return 0
     local seconds days hours minutes
     seconds=$1
 
-    days=$((seconds / (60 * 60 * 24)))
-    seconds=$((seconds % (60 * 60 * 24)))
+    if [[ $DESKTOP_WITH_TIME == "posnumber2" ]] ; then
+        days=$((seconds / (60 * 60 * 24)))
+        seconds=$((seconds % (60 * 60 * 24)))
+    fi
 
     hours=$((seconds / (60 * 60)))
     seconds=$((seconds % (60 * 60)))
@@ -1262,8 +1264,8 @@ seconds_to_time () {
     minutes=$((seconds / 60))
     seconds=$((seconds % 60))
 
-    if [[ $days =~ ^0$ ]] ; then
-        days=
+    if [[ $days == "0" ]] ; then
+        days=""
     elif [[ $days =~ ^1$ ]] ; then
         days="$days ${translations[day]}, "
     elif [[ $days =~ ^([2-9]1|[1-9][0-9]+1)$ ]] && [[ $LANGUAGE == ru ]] ; then
@@ -1274,26 +1276,29 @@ seconds_to_time () {
         days="$days ${translations[days]}, "
     fi
 
-    if [[ $hours =~ ^0$ ]] ; then
-        hours=
+    if [[ $hours == "0" ]] ; then
+        hours=""
     elif [[ $hours =~ ^1$ ]] ; then
         hours="$hours ${translations[hour]} ${translations[and]} "
-    elif [[ $hours =~ ^([2-4]|2[2-4])$ ]] && [[ $LANGUAGE == ru ]] ; then
+    elif [[ $hours =~ [2-4]$ && ! $hours =~ ^1[2-4]$ ]] && [[ $LANGUAGE == ru ]] ; then
         hours="$hours часа ${translations[and]} "
-    elif [[ $hours =~ ^21$ ]] && [[ $LANGUAGE == ru ]] ; then
+    elif [[ $hours =~ 1$ && ! $hours =~ 11$ ]] && [[ $LANGUAGE == ru ]] ; then
         hours="$hours ${translations[hour]} ${translations[and]} "
     else
         hours="$hours ${translations[hours]} ${translations[and]} "
     fi
 
-    if [[ $minutes =~ ^0$ ]] ; then
-        hours=${hours//" ${translations[and]} "/}
-        minutes=
-        if [[ -z $days ]] || [[ -z $hours ]] ; then
-            days=${days//","/}
-        fi
-        if [[ -z $days ]] && [[ -z $hours ]] ; then
+    if [[ $minutes == "0" ]] ; then
+        minutes=""
+        if [[ $DESKTOP_WITH_TIME == "posnumber1" && -z $hours ]] \
+        || [[ $DESKTOP_WITH_TIME == "posnumber2" && -z $days && -z $hours ]]; then
             minutes="${translations[less than a minute]}"
+        else
+            hours=${hours//" ${translations[and]} "/}
+            if [[ $DESKTOP_WITH_TIME == "posnumber2" ]] \
+            && [[ -z $days || -z $hours ]] ; then
+                days=${days//","/}
+            fi
         fi
     elif [[ $minutes =~ ^1$ ]] ; then
         minutes="$minutes ${translations[minute]}"
@@ -1305,7 +1310,11 @@ seconds_to_time () {
         minutes="$minutes ${translations[minutes]}"
     fi
 
-    echo -e "<b>\n${translations[Time spent]}: $days$hours$minutes</b>"
+    if [[ $DESKTOP_WITH_TIME == "posnumber1" ]] ; then
+        echo -e "<b>\n${translations[Time spent]}: $hours$minutes</b>"
+    elif [[ $DESKTOP_WITH_TIME == "posnumber2" ]] ; then
+        echo -e "<b>\n${translations[Time spent]}: $days$hours$minutes</b>"
+    fi
 }
 
 combobox_fix () {
@@ -6015,10 +6024,10 @@ gui_userconf () {
         GPU_VAR="disabled"
     fi
 
-    if [[ -n "$DESKTOP_WITH_TIME" ]] \
-    && [[ "$DESKTOP_WITH_TIME" != "disabled" ]]
-    then
-        DESKTOP_WITH_TIME="enabled"
+    if [[ $DESKTOP_WITH_TIME == "posnumber1" ]] ; then
+        DESKTOP_WITH_TIME=${translations[Show in hours and minutes]}
+    elif [[ $DESKTOP_WITH_TIME == "posnumber2" ]] ; then
+        DESKTOP_WITH_TIME=${translations[Show in days, hours, minutes]}
     else
         DESKTOP_WITH_TIME="disabled"
     fi
@@ -6042,9 +6051,9 @@ gui_userconf () {
         YAD_DPI_VAR="disabled"
     fi
 
-    if [[ $GUI_THEME == default ]] ; then GUI_THEME=${translations[default]}
-    elif [[ $GUI_THEME == compact ]] ; then GUI_THEME=${translations[compact]}
-    elif [[ $GUI_THEME == classic ]] ; then GUI_THEME=${translations[classic]}
+    if [[ $GUI_THEME == "default" ]] ; then GUI_THEME=${translations[default]}
+    elif [[ $GUI_THEME == "compact" ]] ; then GUI_THEME=${translations[compact]}
+    elif [[ $GUI_THEME == "classic" ]] ; then GUI_THEME=${translations[classic]}
     fi
 
     if command -v gsettings &>/dev/null ; then
@@ -6064,7 +6073,7 @@ gui_userconf () {
     --field="${translations[Choice wine audio driver]}!${translations[Fixes sound popling if choice alsa]} :CB" "$(combobox_fix --disabled "$SOUND_DRIVER_VAR" "alsa!oss!pulse")" \
     --field="${translations[Select PortProton theme]}!${translations[Allows you to select a theme for PortProton]} :CB" "$(combobox_fix "$GUI_THEME" "${translations[default]}!${translations[compact]}!${translations[classic]}")" \
     --field="${translations[Select gtk theme]}!${translations[Allows you to select a theme for GTK.]} :CB" "$(combobox_fix "$GTK_THEME" "${YAD_GTK_THEME}Adwaita:${translations[light]}!Adwaita:${translations[dark]}!${translations[default]}")" \
-    --field="${translations[Time display]}!${translations[Displays time spent in an application or game]} :CB" "$(combobox_fix --disabled "$DESKTOP_WITH_TIME" "enabled")" \
+    --field="${translations[Time display]}!${translations[Displays time spent in an application or game]} :CB" "$(combobox_fix --disabled "$DESKTOP_WITH_TIME" "${translations[Show in hours and minutes]}!${translations[Show in days, hours, minutes]}")" \
     --field="${translations[Sort shortcuts by time]}!${translations[This setting sorts the shortcuts in the main menu depending on the time spent in the application or game]} :CB" "$(combobox_fix --disabled "$SORT_WITH_TIME" "enabled")" \
     1> "${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb" 2>/dev/null &
 
@@ -6115,6 +6124,9 @@ gui_userconf () {
             if [[ $GTK_THEME == "${translations[default]}" ]] ; then unset GTK_THEME
             elif [[ $GTK_THEME =~ ${translations[light]} ]] ; then GTK_THEME=${GTK_THEME//${translations[light]}/light}
             elif [[ $GTK_THEME =~ ${translations[dark]} ]] ; then GTK_THEME=${GTK_THEME//${translations[dark]}/dark}
+            fi
+            if [[ $DESKTOP_WITH_TIME == "${translations[Show in hours and minutes]}" ]] ; then DESKTOP_WITH_TIME="posnumber1"
+            elif [[ $DESKTOP_WITH_TIME == "${translations[Show in days, hours, minutes]}" ]] ; then DESKTOP_WITH_TIME="posnumber2"
             fi
 
             edit_user_conf_from_gui PW_GPU_USE PW_WINE_DPI_VALUE PW_SOUND_DRIVER_USE GUI_THEME GTK_THEME DESKTOP_WITH_TIME SORT_WITH_TIME
