@@ -158,6 +158,8 @@ cd "${PORT_SCRIPTS_PATH}" || fatal
 source "${PORT_SCRIPTS_PATH}/var"
 
 export STEAM_SCRIPTS="${PORT_WINE_PATH}/steam_scripts"
+create_new_dir "$STEAM_SCRIPTS"
+
 export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
 export PW_CACHE_LANG_PATH="${PORT_WINE_TMP_PATH}/cache_lang/"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
