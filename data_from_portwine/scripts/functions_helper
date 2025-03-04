@@ -2928,23 +2928,31 @@ edit_user_conf_from_gui () {
 }
 
 pw_create_gui_png () {
-    unset PORTPROTON_NAME name_desktop_png
-    basename_portwine_exe="$(basename "${portwine_exe}")"
-    if echo "$basename_portwine_exe" | grep -ie 'setup\|install\|\.msi$' &>/dev/null ; then
-        export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/setup.png"
-        export name_desktop_png="setup"
-        return 0
-    elif echo "$basename_portwine_exe" | grep -ie '\.reg$' &>/dev/null ; then
-        export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/reg.png"
-        export name_desktop_png="reg"
-        return 0
-    elif echo "$basename_portwine_exe"| grep -ie '\.bat$' &>/dev/null ; then
-        export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/bat.png"
-        export name_desktop_png="bat"
-        return 0
+    if [[ -z $name_desktop_png ]] ; then
+        basename_portwine_exe="$(basename "${portwine_exe}")"
+        if echo "$basename_portwine_exe" | grep -ie 'setup\|install\|\.msi$' &>/dev/null ; then
+            export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/setup.png"
+            export name_desktop_png="setup"
+            return 0
+        elif echo "$basename_portwine_exe" | grep -ie '\.reg$' &>/dev/null ; then
+            export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/reg.png"
+            export name_desktop_png="reg"
+            return 0
+        elif echo "$basename_portwine_exe"| grep -ie '\.bat$' &>/dev/null ; then
+            export PW_ICON_FOR_YAD="${PORT_WINE_PATH}/data/img/bat.png"
+            export name_desktop_png="bat"
+            return 0
+        fi
+        name_desktop_png="${PORTPROTON_NAME// /_}"
+        if [[ $name_desktop_png =~ [\!\%\$\&\<] ]] ; then
+            local ICON_NAME_REGEX=(\! % \$ \& \<)
+            for i in "${ICON_NAME_REGEX[@]}" ; do
+                name_desktop_png="${name_desktop_png//$i/}"
+            done
+        fi
     fi
+
     if [[ -z "$PORTPROTON_NAME" ]] \
-    || [[ -z "$FILE_DESCRIPTION" ]] \
     || [[ "$PW_NO_RESTART_PPDB" == "1" ]]
     then
         if [[ -n "${PORTWINE_CREATE_SHORTCUT_NAME}" ]] ; then
@@ -6198,14 +6206,6 @@ portwine_create_shortcut () {
     create_name_desktop
     export name_desktop="$PW_NAME_DESKTOP_PROXY"
 
-    [[ -z "${name_desktop_png}" ]] && name_desktop_png="${PORTPROTON_NAME// /_}"
-    if [[ $name_desktop_png =~ [\!\%\$\&\<] ]] ; then
-        local ICON_NAME_REGEX=(\! % \$ \& \<)
-        for i in "${ICON_NAME_REGEX[@]}" ; do
-            name_desktop_png="${name_desktop_png//$i/}"
-        done
-    fi
-
     OUTPUT=$("${pw_yad}" --title="${translations[Choices]}" --form \
     --gui-type="settings-shortcut" \
     --gui-type-box="${NOTEBOOK_GUI_TYPE_BOX}" --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" \
@@ -6409,13 +6409,6 @@ portwine_change_shortcut () {
     export name_desktop="$PW_NAME_DESKTOP_PROXY"
 
     pw_create_gui_png
-    [[ -z "${name_desktop_png}" ]] && name_desktop_png="${PORTPROTON_NAME// /_}"
-    if [[ $name_desktop_png =~ [\!\%\$\&\<] ]] ; then
-        local ICON_NAME_REGEX=(\! % \$ \& \<)
-        for i in "${ICON_NAME_REGEX[@]}" ; do
-            name_desktop_png="${name_desktop_png//$i/}"
-        done
-    fi
 
     OUTPUT=$("${pw_yad}" --title="${translations[Choices]}" --form \
     --gui-type="settings-shortcut" \

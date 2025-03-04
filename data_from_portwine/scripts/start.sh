@@ -101,7 +101,7 @@ else
     unset PW_GUI_DISABLED_CS
 fi
 
-unset MANGOHUD PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_YAD_SET PW_ICON_FOR_YAD
+unset MANGOHUD PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_YAD_SET
 unset PW_CHECK_AUTOINSTALL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PORTWINE_DB_FILE RADV_PERFTEST
 unset CHK_SYMLINK_FILE PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME PW_PATH
 unset PW_PREFIX_NAME VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR PW_WINE_CPU_TOPOLOGY
@@ -617,7 +617,7 @@ if [[ -f "$portwine_exe" ]] ; then
                 for db_unset in $PORTWINE_DB_FOR_UNSET ; do
                     unset "$db_unset"
                 done
-                unset portwine_exe KEY_START
+                unset portwine_exe KEY_START name_desktop_png PW_ICON_FOR_YAD
                 print_info "Restarting..."
                 restart_pp
                 ;;
