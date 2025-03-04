@@ -1264,8 +1264,8 @@ seconds_to_time () {
     minutes=$((seconds / 60))
     seconds=$((seconds % 60))
 
-    if [[ $days =~ ^0$ ]] ; then
-        days=
+    if [[ $days == "0" ]] ; then
+        days=""
     elif [[ $days =~ ^1$ ]] ; then
         days="$days ${translations[day]}, "
     elif [[ $days =~ ^([2-9]1|[1-9][0-9]+1)$ ]] && [[ $LANGUAGE == ru ]] ; then
@@ -1276,8 +1276,8 @@ seconds_to_time () {
         days="$days ${translations[days]}, "
     fi
 
-    if [[ $hours =~ ^0$ ]] ; then
-        hours=
+    if [[ $hours == "0" ]] ; then
+        hours=""
     elif [[ $hours =~ ^1$ ]] ; then
         hours="$hours ${translations[hour]} ${translations[and]} "
     elif [[ $hours =~ ^([2-4]|2[2-4])$ ]] && [[ $LANGUAGE == ru ]] ; then
@@ -1288,14 +1288,17 @@ seconds_to_time () {
         hours="$hours ${translations[hours]} ${translations[and]} "
     fi
 
-    if [[ $minutes =~ ^0$ ]] ; then
-        hours=${hours//" ${translations[and]} "/}
-        minutes=
-        if [[ -z $days ]] || [[ -z $hours ]] ; then
-            days=${days//","/}
-        fi
-        if [[ -z $minutes ]] ; then
+    if [[ $minutes == "0" ]] ; then
+        minutes=""
+        if [[ $DESKTOP_WITH_TIME == "posnumber1" && -z $hours ]] \
+        || [[ $DESKTOP_WITH_TIME == "posnumber2" && -z $days && -z $hours ]]; then
             minutes="${translations[less than a minute]}"
+        else
+            hours=${hours//" ${translations[and]} "/}
+            if [[ $DESKTOP_WITH_TIME == "posnumber2" ]] \
+            && [[ -z $days || -z $hours ]] ; then
+                days=${days//","/}
+            fi
         fi
     elif [[ $minutes =~ ^1$ ]] ; then
         minutes="$minutes ${translations[minute]}"
