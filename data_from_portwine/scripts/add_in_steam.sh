@@ -153,7 +153,8 @@ getSteamGridDBId() {
 }
 
 getUserIds() {
-	SLUF="${HOME}/.local/share/Steam/config/loginusers.vdf"
+	[[ -z "${STEAM_BASE_FOLDER}" ]] && STEAM_BASE_FOLDER="$(getSteamPath)"
+	SLUF="${STEAM_BASE_FOLDER}/config/loginusers.vdf"
 	if [[ -f "${SLUF}" ]]; then
 		STUIDS=()
 		while read -r line; do
@@ -168,7 +169,8 @@ getUserIds() {
 }
 
 getUserId() {
-	SLUF="${HOME}/.local/share/Steam/config/loginusers.vdf"
+	[[ -z "${STEAM_BASE_FOLDER}" ]] && STEAM_BASE_FOLDER="$(getSteamPath)"
+	SLUF="${STEAM_BASE_FOLDER}/config/loginusers.vdf"
 	if [[ -f "${SLUF}" ]]; then
 		SLUFUB=false
 		STUID=""
@@ -196,17 +198,33 @@ getUserPath() {
 		STUID="$(getUserId)"
 	fi
 	if [ -n "${STUID}" ]; then
-		STUIDPATH="${HOME}/.local/share/Steam/userdata/${STUID}"
-		if [[ -d "${STUIDPATH}" ]]; then
-			if [[ -f "${STUIDPATH}/config/shortcuts.vdf" ]]; then
-				echo "${STUIDPATH}/config"
-			fi
+		[[ -z "${STEAM_BASE_FOLDER}" ]] && STEAM_BASE_FOLDER="$(getSteamPath)"
+		STUIDPATH="${STEAM_BASE_FOLDER}/userdata/${STUID}"
+		if [[ -d "${STUIDPATH}/config/" ]]; then
+			echo "${STUIDPATH}/config"
 		fi
 	fi
 }
 
+getSteamPath() {
+	local paths=(
+		"${HOME}/.steam/steam"
+		"${HOME}/.local/share/Steam"
+		"${HOME}/.var/app/com.valvesoftware.Steam/.steam/steam"
+	)
+	for path in "${paths[@]}"; do
+		if [[ -d "${path}" ]]; then
+			STEAM_BASE_FOLDER="${path}"
+			echo "${STEAM_BASE_FOLDER}"
+			return 0
+		fi
+	done
+	return 1
+}
+
 listInstalledSteamGames() {
-	manifests=("${HOME}/.local/share/Steam/steamapps"/appmanifest_*.acf)
+	[[ -z "${STEAM_BASE_FOLDER}" ]] && STEAM_BASE_FOLDER="$(getSteamPath)"
+	manifests=("${STEAM_BASE_FOLDER}/steamapps"/appmanifest_*.acf)
 	if [ ! -e "${manifests[0]}" ]; then
 		jq -n '[]'
 	else
@@ -324,7 +342,11 @@ restartSteam() {
 			while pgrep -i steam &>/dev/null ; do
 				sleep 0.5
 			done
-			steam &
+			if command -v steam &>/dev/null; then
+				steam &
+			elif command -v flatpak >/dev/null 2>&1 && flatpak list | grep -q com.valvesoftware.Steam; then
+				flatpak run com.valvesoftware.Steam &
+			fi
 			sleep 5
 			pw_stop_progress_bar
 			exit 0
@@ -395,36 +417,38 @@ addEntry() {
 			printf '\x00%s\x00' "shortcuts" > "${SCPATH}"
 			NEWSET=0
 		fi
-		NOSTAIDVDFHEXFMT="\x$(awk '{$1=$1}1' FPAT='.{2}' OFS="\\\x" <<< "$NOSTAIDVDFHEX")"  # binary-formatted string hex of the above which we actually write out - ex: \xc1\xc2\x5a\xdc
+		NOSTAIDVDFHEXFMT="\x$(awk '{$1=$1}1' FPAT='.{2}' OFS="\\\x" <<< "${NOSTAIDVDFHEX}")"  # binary-formatted string hex of the above which we actually write out - ex: \xc1\xc2\x5a\xdc
 
 		{
 			printf '\x00%s\x00' "${NEWSET}"
-			printf '\x02%s\x00%b' "appid" "${NOSTAIDVDFHEXFMT}"
-			printf '\x01%s\x00%s\x00' "AppName" "${NOSTAPPNAME}"
+			printf '\x02%s\x00%b' "appid" "${NOSTAIDVDFHEXFMT}" # printf '\x01%s\x00%b' "appid" "${NOSTAIDVDFHEX}"
+#			printf '\x01%s\x00%s\x00' "AppName" "${NOSTAPPNAME}"
+			printf '\x00\x01%s\x00%s\x00' "AppName" "${NOSTAPPNAME}"
 			printf '\x01%s\x00%s\x00' "Exe" "\"${NOSTEXEPATH}\""
 			printf '\x01%s\x00%s\x00' "StartDir" "\"${NOSTSTDIR}\""
 			printf '\x01%s\x00%s\x00' "icon" "${NOSTICONPATH}"
-			printf '\x01%s\x00%s\x00' "ShortcutPath" ""
+#			printf '\x01%s\x00%s\x00' "ShortcutPath" ""
 			printf '\x01%s\x00%s\x00' "LaunchOptions" "${NOSTARGS:-}"
 
-			printf '\x02%s\x00%b\x00\x00\x00' "IsHidden" "\x00"
-			printf '\x02%s\x00%b\x00\x00\x00' "AllowDesktopConfig" "\x00"
+#			printf '\x02%s\x00%b\x00\x00\x00' "IsHidden" "\x00"
+#			printf '\x02%s\x00%b\x00\x00\x00' "AllowDesktopConfig" "\x00"
 
 			# These values are now stored in localconfig.vdf under the "Apps" section,
 			# under a block using the Non-Steam Game Signed 32bit AppID. (i.e., -223056321)
 			# This is handled by `updateLocalConfigAppsValue` below
 			#
 			# Unsure if required, but still write these to the shortcuts.vdf file for consistency
-			printf '\x02%s\x00%b\x00\x00\x00' "AllowOverlay" "\x00"
-			printf '\x02%s\x00%b\x00\x00\x00' "OpenVR" "\x00"
+#			printf '\x02%s\x00%b\x00\x00\x00' "AllowOverlay" "\x00"
+#			printf '\x02%s\x00%b\x00\x00\x00' "OpenVR" "\x00"
 
-			printf '\x02%s\x00\x00\x00\x00\x00' "Devkit"
-			printf '\x01%s\x00\x00' "DevkitGameID"
-			printf '\x02%s\x00\x00\x00\x00\x00' "DevkitOverrideAppID"
-			printf '\x02%s\x00\x00\x00\x00\x00' "LastPlayTime"
-			printf '\x01%s\x00\x00' "FlatpakAppID"
-			printf '\x00%s\x00' "tags"
-			printf '\x08\x08\x08\x08'
+#			printf '\x02%s\x00\x00\x00\x00\x00' "Devkit"
+#			printf '\x01%s\x00\x00' "DevkitGameID"
+#			printf '\x02%s\x00\x00\x00\x00\x00' "DevkitOverrideAppID"
+#			printf '\x02%s\x00\x00\x00\x00\x00' "LastPlayTime"
+#			printf '\x01%s\x00\x00' "FlatpakAppID"
+#			printf '\x00%s\x00' "tags"
+#			printf '\x08\x08\x08\x08'
+			printf '\x08\x08\x08'
 		} >> "${SCPATH}"
 	fi
 }
@@ -434,6 +458,7 @@ removeNonSteamGame() {
 	[[ -n "$2" ]] && NOSTSHPATH="$2"
 	[[ -z "${STUID}" ]] && STUID=$(getUserId)
 	[[ -z "${STCFGPATH}" ]] && STCFGPATH="$(getUserPath ${STUID})"
+	[[ -z "${STEAM_BASE_FOLDER}" ]] && STEAM_BASE_FOLDER="$(getSteamPath)"
 	if [[ -n "${STCFGPATH}" ]] && [[ -z "${SCPATH}" ]]; then
 		SCPATH="${STCFGPATH}/shortcuts.vdf"
 	fi
@@ -453,8 +478,8 @@ removeNonSteamGame() {
 				addEntry
 			done
 			rm -f "${STCFGPATH}/grid/${appid}.jpg" "${STCFGPATH}/grid/${appid}p.jpg" "${STCFGPATH}/grid/${appid}_hero.jpg" "${STCFGPATH}/grid/${appid}_logo.png"
-			rm -rf "${HOME}/.local/share/Steam/steamapps/compatdata/${appid}"
-			rm -rf "${HOME}/.local/share/Steam/steamapps/shadercache/${appid}"
+			rm -rf "${STEAM_BASE_FOLDER}/steamapps/compatdata/${appid}"
+			rm -rf "${STEAM_BASE_FOLDER}/steamapps/shadercache/${appid}"
 			if [[ -f "${NOSTSHPATH}" ]]; then
 				isInstallGame=false
 				for STUIDCUR in $(getUserIds); do
