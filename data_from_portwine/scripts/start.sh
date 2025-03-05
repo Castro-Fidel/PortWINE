@@ -264,10 +264,16 @@ if [[ ! $PW_GUI_START =~ (PANED|NOTEBOOK) ]] ; then
     export PW_GUI_START="NOTEBOOK"
 fi
 
+# DESKTOP_WITH_TIME by default displays hours and minutes
+if [[ -z $DESKTOP_WITH_TIME ]] ; then
+    echo 'export DESKTOP_WITH_TIME="posnumber1"' >> "$USER_CONF"
+    export DESKTOP_WITH_TIME="posnumber1"
+fi
+
 # TODO:fixes_after_update
-if fixes_after_update "2372: Reset PW_WINE_DPI_VALUE in user.conf" ; then
-    sed -i '/export PW_WINE_DPI_VALUE=/d' "$USER_CONF"
-    unset PW_WINE_DPI_VALUE
+if fixes_after_update "2395: DESKTOP_WITH_TIME by default displays hours and minutes" ; then
+    DESKTOP_WITH_TIME="posnumber1"
+    edit_user_conf_from_gui DESKTOP_WITH_TIME
 fi
 
 # choose wine dpi default
