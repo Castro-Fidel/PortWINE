@@ -270,10 +270,20 @@ if [[ -z $DESKTOP_WITH_TIME ]] ; then
     export DESKTOP_WITH_TIME="posnumber1"
 fi
 
-# TODO:fixes_after_update
+# SORT_WITH_TIME by default sorts from the last run
+if [[ -z $SORT_WITH_TIME ]] ; then
+    echo 'export SORT_WITH_TIME="lastlaunch"' >> "$USER_CONF"
+    export SORT_WITH_TIME="lastlaunch"
+fi
+
+# TODO:fixes_after_update (со временем можно будет дропнуть)
 if fixes_after_update "2395: DESKTOP_WITH_TIME by default displays hours and minutes" ; then
     DESKTOP_WITH_TIME="posnumber1"
     edit_user_conf_from_gui DESKTOP_WITH_TIME
+fi
+if fixes_after_update "2398: SORT_WITH_TIME by default sorts from the last run" ; then
+    SORT_WITH_TIME="lastlaunch"
+    edit_user_conf_from_gui SORT_WITH_TIME
 fi
 
 # choose wine dpi default
@@ -645,7 +655,7 @@ else
     fi
 
     unset PW_NAME_D_ICON PW_ICON_PATH PW_GAME_TIME PW_ALL_DF PW_AMOUNT_NEW_DESKTOP 
-    unset PW_DESKTOP_FILES_REGEX PW_AMOUNT_OLD_DESKTOP PW_DESKTOP_FILES
+    unset PW_DESKTOP_FILES_REGEX PW_AMOUNT_OLD_DESKTOP PW_DESKTOP_FILES PW_LAST_LAUNCH
     # Поиск .desktop файлов
     AMOUNT_GENERATE_BUTTONS="0"
     for desktop_file in "$PORT_WINE_PATH"/* ; do
@@ -679,13 +689,17 @@ else
                 fi
                 while read -r -a line2 ; do
                     if [[ \"${line2[0]//#@_@#/ }\" == "${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]}" ]] ; then
-                        PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=${line2[2]}
+                        [[ $SORT_WITH_TIME == "bytime" ]] && PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=${line2[2]}
+                        if [[ $SORT_WITH_TIME == "lastlaunch" ]] ; then
+                            [[ -n ${line2[5]} ]] && PW_LAST_LAUNCH["$AMOUNT_GENERATE_BUTTONS"]=${line2[5]//L5-/}
+                        fi
                         break
                     else
-                        PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=0
+                        [[ $SORT_WITH_TIME == "bytime" ]] && PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=0
+                        [[ $SORT_WITH_TIME == "lastlaunch" ]] && PW_LAST_LAUNCH["$AMOUNT_GENERATE_BUTTONS"]=0
                     fi
                 done < "$PORT_WINE_TMP_PATH/statistics"
-                if [[ $SORT_WITH_TIME == enabled ]] && [[ ${line2[3]} == NEW_DESKTOP ]] ; then
+                if [[ $SORT_WITH_TIME != "disabled" ]] && [[ ${line2[3]} == "NEW_DESKTOP" ]] ; then
                     sed -i "s/${line2[1]} ${line2[2]} NEW_DESKTOP/${line2[1]} ${line2[2]} OLD_DESKTOP/" "$PORT_WINE_TMP_PATH/statistics"
                     PW_AMOUNT_NEW_DESKTOP+=("$AMOUNT_GENERATE_BUTTONS")
                 else
@@ -696,7 +710,7 @@ else
         fi
     done
     # Переопределение элементов в массивах в зависимости от PW_GAME_TIME, от большего значения к меньшему.
-    if [[ $SORT_WITH_TIME == enabled ]] && [[ -n ${PW_GAME_TIME[1]} ]] ; then
+    if [[ $SORT_WITH_TIME == "bytime" ]] && [[ -n ${PW_GAME_TIME[1]} ]] ; then
         for i in "${PW_AMOUNT_OLD_DESKTOP[@]}" ; do
             for j in "${PW_AMOUNT_OLD_DESKTOP[@]}" ; do
                 if (( ${PW_GAME_TIME[$i]} > ${PW_GAME_TIME[$j]} )) ; then
@@ -711,6 +725,29 @@ else
                     PW_ICON_PATH[i]=${PW_ICON_PATH[$j]}
 
                     PW_GAME_TIME[j]=$tmp_0
+                    PW_ALL_DF[j]=$tmp_1
+                    PW_NAME_D_ICON[j]=$tmp_2
+                    PW_ICON_PATH[j]=$tmp_4
+                fi
+            done
+        done
+    fi
+    # Переопределение элементов в массивах в зависимости от того, какое приложение в последний раз использовалось
+    if [[ $SORT_WITH_TIME == "lastlaunch" ]] && [[ -n ${PW_LAST_LAUNCH[1]} ]] ; then
+        for i in "${PW_AMOUNT_OLD_DESKTOP[@]}" ; do
+            for j in "${PW_AMOUNT_OLD_DESKTOP[@]}" ; do
+                if (( ${PW_LAST_LAUNCH[$i]} > ${PW_LAST_LAUNCH[$j]} )) ; then
+                    tmp_0=${PW_LAST_LAUNCH[$i]}
+                    tmp_1=${PW_ALL_DF[$i]}
+                    tmp_2=${PW_NAME_D_ICON[$i]}
+                    tmp_4=${PW_ICON_PATH[$i]}
+
+                    PW_LAST_LAUNCH[i]=${PW_LAST_LAUNCH[$j]}
+                    PW_ALL_DF[i]=${PW_ALL_DF[$j]}
+                    PW_NAME_D_ICON[i]=${PW_NAME_D_ICON[$j]}
+                    PW_ICON_PATH[i]=${PW_ICON_PATH[$j]}
+
+                    PW_LAST_LAUNCH[j]=$tmp_0
                     PW_ALL_DF[j]=$tmp_1
                     PW_NAME_D_ICON[j]=$tmp_2
                     PW_ICON_PATH[j]=$tmp_4
