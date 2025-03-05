@@ -3,23 +3,6 @@
 # based on https://github.com/sonic2kk/steamtinkerlaunch/blob/master/steamtinkerlaunch
 PROGNAME="PortProton"
 
-## How Non-Steam AppIDs work, because it took me almost a year to figure this out
-## ----------------------
-## Steam stores shortcuts in a binary 'shortcuts.vdf', at SROOT/userdata/<id>/config
-##
-## Non-Steam AppIDs are 32bit little-endian (reverse byte order) signed integers, stored as hexidecimal
-## This is probably generated using a crc32 generated from AppName + Exe, but it can actually be anything
-## Steam likely does this to ensure "uniqueness" among entries, tools like Steam-ROM-Manager do the same thing likely for similar reasons
-##
-## For simplicity we generate a random 32bit signed integer using an md5, which we'll then convert to hex to store in the AppID file
-## Though we can write any AppID we want, Steam will reject invalid ones (i.e. big endian hex) it will overwrite our AppID
-## We can also convert this to an unsigned 32bit integer to get the AppID used for grids and other things, the unsigned int is just what Steam stores
-##
-## We can later re-use these functions to do several things:
-## - Check for and remove stray STL configs for no longer stored Non-Steam Game AppIDs (if we had Non-Steam Games we previously used with STL that we no longer use, we can remove these configs in case there is a conflict in future)
-
-### BEGIN MAGIC APPID FUNCTIONS
-## ----------
 # Generate random signed 32bit integer which can be converted into hex, using the first argument (AppName and Exe fields) as seed (in an attempt to reduce the chances of the same AppID being generated twice)
 generateShortcutVDFAppId() {
 	seed="$(echo -n "$1" | md5sum | cut -c1-8)"
@@ -30,23 +13,11 @@ dec2hex() {
 	printf '%x\n' "$1" | cut -c 9-  # cut removes the 'ffffffff' from the string (represents the sign) and starts from the 9th character
 }
 
-# Takes big-endian ("normal") hexidecimal number and converts to little-endian
-bigToLittleEndian() {
-	echo -n "$1" | tac -rs .. | tr -d '\n'
-}
-
-# Takes an signed 32bit integer and converts it to a 4byte little-endian hex number
-generateShortcutVDFHexAppId() {
-	bigToLittleEndian "$(dec2hex "$1")"
-}
-
 # Takes an signed 32bit integer and converts it to an unsigned 32bit integer
 extractSteamId32() {
 # 	STUID32=$((STUID64 - 76561197960265728))
 	echo $(($1 & 0xFFFFFFFF))
 }
-## ----------
-### END MAGIC APPID FUNCTIONS
 
 getSteamShortcutsVdfFileHex() {
 	if [[ -z "${STCFGPATH}" ]]; then
@@ -417,38 +388,31 @@ addEntry() {
 			printf '\x00%s\x00' "shortcuts" > "${SCPATH}"
 			NEWSET=0
 		fi
-		NOSTAIDVDFHEXFMT="\x$(awk '{$1=$1}1' FPAT='.{2}' OFS="\\\x" <<< "${NOSTAIDVDFHEX}")"  # binary-formatted string hex of the above which we actually write out - ex: \xc1\xc2\x5a\xdc
-
+		NOSTAIDVDFHEXFMT=$(printf '\\x%02x\\x%02x\\x%02x\\x%02x' \
+			$((${NOSTAPPID} & 0xFF)) \
+			$(((${NOSTAPPID} >> 8) & 0xFF)) \
+			$(((${NOSTAPPID} >> 16) & 0xFF)) \
+			$(((${NOSTAPPID} >> 24) & 0xFF)))
 		{
 			printf '\x00%s\x00' "${NEWSET}"
-			printf '\x02%s\x00%b' "appid" "${NOSTAIDVDFHEXFMT}" # printf '\x01%s\x00%b' "appid" "${NOSTAIDVDFHEX}"
-#			printf '\x01%s\x00%s\x00' "AppName" "${NOSTAPPNAME}"
-			printf '\x00\x01%s\x00%s\x00' "AppName" "${NOSTAPPNAME}"
+			printf '\x02%s\x00%b' "appid" "${NOSTAIDVDFHEXFMT}"
+			printf '\x01%s\x00%s\x00' "AppName" "${NOSTAPPNAME}"
 			printf '\x01%s\x00%s\x00' "Exe" "\"${NOSTEXEPATH}\""
 			printf '\x01%s\x00%s\x00' "StartDir" "\"${NOSTSTDIR}\""
 			printf '\x01%s\x00%s\x00' "icon" "${NOSTICONPATH}"
-#			printf '\x01%s\x00%s\x00' "ShortcutPath" ""
+			printf '\x01%s\x00%s\x00' "ShortcutPath" ""
 			printf '\x01%s\x00%s\x00' "LaunchOptions" "${NOSTARGS:-}"
-
-#			printf '\x02%s\x00%b\x00\x00\x00' "IsHidden" "\x00"
-#			printf '\x02%s\x00%b\x00\x00\x00' "AllowDesktopConfig" "\x00"
-
-			# These values are now stored in localconfig.vdf under the "Apps" section,
-			# under a block using the Non-Steam Game Signed 32bit AppID. (i.e., -223056321)
-			# This is handled by `updateLocalConfigAppsValue` below
-			#
-			# Unsure if required, but still write these to the shortcuts.vdf file for consistency
-#			printf '\x02%s\x00%b\x00\x00\x00' "AllowOverlay" "\x00"
-#			printf '\x02%s\x00%b\x00\x00\x00' "OpenVR" "\x00"
-
-#			printf '\x02%s\x00\x00\x00\x00\x00' "Devkit"
-#			printf '\x01%s\x00\x00' "DevkitGameID"
-#			printf '\x02%s\x00\x00\x00\x00\x00' "DevkitOverrideAppID"
-#			printf '\x02%s\x00\x00\x00\x00\x00' "LastPlayTime"
-#			printf '\x01%s\x00\x00' "FlatpakAppID"
-#			printf '\x00%s\x00' "tags"
-#			printf '\x08\x08\x08\x08'
-			printf '\x08\x08\x08'
+			printf '\x02%s\x00\x00\x00\x00\x00' "IsHidden"
+			printf '\x02%s\x00\x01\x00\x00\x00' "AllowDesktopConfig"
+			printf '\x02%s\x00\x01\x00\x00\x00' "AllowOverlay"
+			printf '\x02%s\x00\x00\x00\x00\x00' "OpenVR"
+			printf '\x02%s\x00\x00\x00\x00\x00' "Devkit"
+			printf '\x01%s\x00\x00' "DevkitGameID"
+			printf '\x02%s\x00\x00\x00\x00\x00' "DevkitOverrideAppID"
+			printf '\x02%s\x00\x00\x00\x00\x00' "LastPlayTime"
+			printf '\x01%s\x00\x00' "FlatpakAppID"
+			printf '\x00%s\x00' "tags"
+			printf '\x08\x08\x08\x08'
 		} >> "${SCPATH}"
 	fi
 }
@@ -474,7 +438,6 @@ removeNonSteamGame() {
 				NOSTSTDIR=$(jq -r '.dir' <<< "${game}")
 				NOSTICONPATH=$(jq -r '.icon' <<< "${game}")
 				NOSTARGS=$(jq -r '.args' <<< "${game}")
-				NOSTAIDVDFHEX=$(bigToLittleEndian $(printf '%08x' "${NOSTAPPID}"))
 				addEntry
 			done
 			rm -f "${STCFGPATH}/grid/${appid}.jpg" "${STCFGPATH}/grid/${appid}p.jpg" "${STCFGPATH}/grid/${appid}_hero.jpg" "${STCFGPATH}/grid/${appid}_logo.png"
@@ -519,7 +482,6 @@ addNonSteamGame() {
 			fi
 			NOSTICONPATH="${PORT_WINE_PATH}/data/img/${name_desktop_png}.png"
 			NOSTAIDVDF="$(generateShortcutVDFAppId "${NOSTAPPNAME}${NOSTEXEPATH}")"  # signed integer AppID, stored in the VDF as hexidecimal - ex: -598031679
-			NOSTAIDVDFHEX="$(generateShortcutVDFHexAppId "${NOSTAIDVDF}")"  # 4byte little-endian hexidecimal of above 32bit signed integer, which we write out to the binary VDF - ex: c1c25adc
 			NOSTAPPID="$(extractSteamId32 "${NOSTAIDVDF}")"  # unsigned 32bit ingeger version of "$NOSTAIDVDF", which is used as the AppID for Steam artwork ("grids"), as well as for our shortcuts
 
 			create_new_dir "${STEAM_SCRIPTS}"
