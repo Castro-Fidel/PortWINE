@@ -475,15 +475,7 @@ addNonSteamGame() {
 		[[ -z "${NOSTSHPATH}" ]] && NOSTSHPATH="${STEAM_SCRIPTS}/${name_desktop}.sh"
 		NOSTAPPNAME="${name_desktop}"
 		NOSTAPPID=$(getAppId "${NOSTSHPATH}")
-		if [[ -z "${NOSTAPPID}" ]]; then
-			NOSTEXEPATH="${NOSTSHPATH}"
-			if [[ -z "${NOSTSTDIR}" ]]; then
-				NOSTSTDIR="${STEAM_SCRIPTS}"
-			fi
-			NOSTICONPATH="${PORT_WINE_PATH}/data/img/${name_desktop_png}.png"
-			NOSTAIDVDF="$(generateShortcutVDFAppId "${NOSTAPPNAME}${NOSTEXEPATH}")"  # signed integer AppID, stored in the VDF as hexidecimal - ex: -598031679
-			NOSTAPPID="$(extractSteamId32 "${NOSTAIDVDF}")"  # unsigned 32bit ingeger version of "$NOSTAIDVDF", which is used as the AppID for Steam artwork ("grids"), as well as for our shortcuts
-
+		if [[ ! -f "${NOSTSHPATH}" ]]; then
 			create_new_dir "${STEAM_SCRIPTS}"
 			cat <<-EOF > "${NOSTSHPATH}"
 				#!/usr/bin/env bash
@@ -493,6 +485,13 @@ addNonSteamGame() {
 				"${PORT_SCRIPTS_PATH}/start.sh" "${portwine_exe}" "\$@"
 			EOF
 			chmod u+x "${NOSTSHPATH}"
+		fi
+		if [[ -z "${NOSTAPPID}" ]]; then
+			[[ -z "${NOSTSTDIR}" ]] && NOSTSTDIR="${STEAM_SCRIPTS}"
+			NOSTEXEPATH="${NOSTSHPATH}"
+			NOSTICONPATH="${PORT_WINE_PATH}/data/img/${name_desktop_png}.png"
+			NOSTAIDVDF="$(generateShortcutVDFAppId "${NOSTAPPNAME}${NOSTEXEPATH}")"  # signed integer AppID, stored in the VDF as hexidecimal - ex: -598031679
+			NOSTAPPID="$(extractSteamId32 "${NOSTAIDVDF}")"  # unsigned 32bit ingeger version of "$NOSTAIDVDF", which is used as the AppID for Steam artwork ("grids"), as well as for our shortcuts
 
 			if [[ -f "${SCPATH}" ]] ; then
 				cp "${SCPATH}" "${SCPATH//.vdf}_${PROGNAME}_backup.vdf" 2>/dev/null
