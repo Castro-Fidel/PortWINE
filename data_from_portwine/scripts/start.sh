@@ -1005,10 +1005,6 @@ case "$PW_YAD_SET" in
     gui_open_scripts_from_backup) gui_open_scripts_from_backup ;;
     open_changelog) open_changelog ;;
     change_loc) change_loc ;;
-    change_mirror) change_mirror ;;
-    change_branch) change_branch ;;
-    change_gui_start) change_gui_start ;;
-    change_download_grid) change_download_grid ;;
     open_game_folder) open_game_folder ;;
     118) gui_edit_db ;;
     120) gui_vkbasalt ;;
