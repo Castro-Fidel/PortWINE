@@ -5967,41 +5967,55 @@ gui_gamescope () {
 
 # GUI USERCONF
 gui_userconf () {
-    if [[ -f "${portwine_exe}" ]] ; then
+    if [[ -f $portwine_exe ]] ; then
         export PW_YAD_FORM_TAB="1"
         export TAB_START="2"
     fi
 
-    if [[ "$MIRROR" == "CLOUD" ]]
+    if [[ $MIRROR == "CLOUD" ]]
     then NEW_MIRROR="GITHUB"
     else NEW_MIRROR="CLOUD"
     fi
 
-    if [[ "$BRANCH" == "master" ]]
-    then NEW_BRANCH="DEVEL"
-    else NEW_BRANCH="STABLE"
+    if [[ $BRANCH == "master" ]] ; then
+        BRANCH="STABLE"
+        NEW_BRANCH="DEVEL"
+    else
+        BRANCH="DEVEL"
+        NEW_BRANCH="STABLE"
     fi
 
-    if [[ "$DOWNLOAD_STEAM_GRID" == "1" ]]
-    then NEW_STEAM_BEHAVIOR="${translations[Disable]}"
-    else NEW_STEAM_BEHAVIOR="${translations[Enable]}"
-    fi
-
-    if [[ "$PW_GUI_START" == "NOTEBOOK" ]]
+    if [[ $PW_GUI_START == "NOTEBOOK" ]]
     then NEW_START_GUI="PANED"
     else NEW_START_GUI="NOTEBOOK"
     fi
 
-    KEY_USERCONF_GUI=$RANDOM
+    if [[ $DOWNLOAD_STEAM_GRID == "1" ]] ; then
+        DOWNLOAD_STEAM_GRID="${translations[Enabled]}"
+        NEW_STEAM_BEHAVIOR="${translations[Disable]}"
+    else
+        DOWNLOAD_STEAM_GRID="${translations[Disabled]}"
+        NEW_STEAM_BEHAVIOR="${translations[Enable]}"
+    fi
 
-    "${pw_yad}" --plug=$KEY_USERCONF_GUI --tabnum="1" --form --columns=2 --separator=" " --text-align=center \
-    --text "${translations[Change global settings]} <b>(edit user.conf)</b>\n ${translations[<b>NOTE:</b> To display help for each item, simply hover your mouse over the text]}" \
-    --align-buttons --homogeneous-column --gui-type-text="${PANED_GUI_TYPE_TEXT_UP}" --gui-type-layout="${PANED_GUI_TYPE_LAYOUT_UP}" \
-    --field="   ${translations[Change mirror to]} $NEW_MIRROR!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[Depending on which mirror is selected, updates will be downloaded from there.]}":"FBTN" '@bash -c "button_click --userconf change_mirror"' \
-    --field="   ${translations[Change branch to]} $NEW_BRANCH!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[Depending on the version of the scripts, PortProton will receive the latest changes first (the DEVEL branch), the STABLE branch is updated later and is stable.]}":"FBTN" '@bash -c "button_click --userconf change_branch"' \
-    --field="   ${translations[Change start gui to]} $NEW_START_GUI!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[When using PANED in the game start menu, additional buttons are located on one large page; if NOTEBOOK, then they are divided into several.]}":"FBTN" '@bash -c "button_click --userconf change_gui_start"' \
-    --field="   $NEW_STEAM_BEHAVIOR ${translations[steam covers download]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[If downloading steam covers is enabled, they will be downloaded and created. (Disablement is provided in cases where their downloading is unavailable for some reason)]}":"FBTN" '@bash -c "button_click --userconf change_download_grid"' \
-    2>/dev/null &
+    if [[ -n $PW_GPU_USE ]] \
+    && [[ $PW_GPU_USE != "disabled" ]]
+    then
+        GPU_VAR="$PW_GPU_USE"
+    else
+        GPU_VAR="disabled"
+    fi
+
+    if [[ $PW_WINE_DPI_VALUE == "recommended" ]] ; then
+        PW_WINE_DPI_VALUE="${translations[Recommended value]}"
+    fi
+    if [[ -n $PW_WINE_DPI_VALUE ]] \
+    && [[ $PW_WINE_DPI_VALUE != "disabled" ]]
+    then
+        YAD_DPI_VAR="$PW_WINE_DPI_VALUE"
+    else
+        YAD_DPI_VAR="disabled"
+    fi
 
     if [[ -n "$PW_SOUND_DRIVER_USE" ]] \
     && [[ "$PW_SOUND_DRIVER_USE" != "disabled" ]]
@@ -6011,12 +6025,19 @@ gui_userconf () {
         SOUND_DRIVER_VAR="disabled"
     fi
 
-    if [[ -n "$PW_GPU_USE" ]] \
-    && [[ "$PW_GPU_USE" != "disabled" ]]
-    then
-        GPU_VAR="$PW_GPU_USE"
-    else
-        GPU_VAR="disabled"
+    if [[ $GUI_THEME == "default" ]] ; then GUI_THEME=${translations[default]}
+    elif [[ $GUI_THEME == "compact" ]] ; then GUI_THEME=${translations[compact]}
+    elif [[ $GUI_THEME == "classic" ]] ; then GUI_THEME=${translations[classic]}
+    fi
+
+    if command -v gsettings &>/dev/null ; then
+        YAD_GTK_THEME=$(gsettings get org.gnome.desktop.interface gtk-theme)
+        [[ $YAD_GTK_THEME == \'Adwaita\' ]] && unset YAD_GTK_THEME
+        [[ -n $YAD_GTK_THEME ]] && YAD_GTK_THEME="${YAD_GTK_THEME//\'/}!"
+    fi
+    if [[ -z $GTK_THEME ]] ; then GTK_THEME=${translations[default]}
+    elif [[ $GTK_THEME =~ light$ ]] ; then GTK_THEME="${GTK_THEME//light/${translations[light]}}"
+    elif [[ $GTK_THEME =~ dark$ ]] ; then GTK_THEME="${GTK_THEME//dark/${translations[dark]}}"
     fi
 
     if [[ $DESKTOP_WITH_TIME == "posnumber1" ]] ; then
@@ -6035,34 +6056,15 @@ gui_userconf () {
         SORT_WITH_TIME="disabled"
     fi
 
-    if [[ $PW_WINE_DPI_VALUE == "recommended" ]] ; then
-        PW_WINE_DPI_VALUE="${translations[Recommended value]}"
-    fi
-    if [[ -n "$PW_WINE_DPI_VALUE" ]] \
-    && [[ "$PW_WINE_DPI_VALUE" != "disabled" ]]
-    then
-        YAD_DPI_VAR="$PW_WINE_DPI_VALUE"
-    else
-        YAD_DPI_VAR="disabled"
-    fi
-
-    if [[ $GUI_THEME == "default" ]] ; then GUI_THEME=${translations[default]}
-    elif [[ $GUI_THEME == "compact" ]] ; then GUI_THEME=${translations[compact]}
-    elif [[ $GUI_THEME == "classic" ]] ; then GUI_THEME=${translations[classic]}
-    fi
-
-    if command -v gsettings &>/dev/null ; then
-        YAD_GTK_THEME=$(gsettings get org.gnome.desktop.interface gtk-theme)
-        [[ $YAD_GTK_THEME == \'Adwaita\' ]] && unset YAD_GTK_THEME
-        [[ -n $YAD_GTK_THEME ]] && YAD_GTK_THEME="${YAD_GTK_THEME//\'/}!"
-    fi
-    if [[ -z $GTK_THEME ]] ; then GTK_THEME=${translations[default]}
-    elif [[ $GTK_THEME =~ light$ ]] ; then GTK_THEME="${GTK_THEME//light/${translations[light]}}"
-    elif [[ $GTK_THEME =~ dark$ ]] ; then GTK_THEME="${GTK_THEME//dark/${translations[dark]}}"
-    fi
-
-    "${pw_yad}" --plug=$KEY_USERCONF_GUI --tabnum="2" --form --columns=1 --separator="%" --homogeneous-row \
-    --gui-type-text="$PANED_GUI_TYPE_TEXT_DOWN" --gui-type-layout="$PANED_GUI_TYPE_LAYOUT_DOWN" \
+    "${pw_yad}" --title="${translations[GLOBAL SETTINGS (USER.CONF)]}" --form \
+    --gui-type="settings-shortcut" --separator="%" \
+    --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
+    --text-align="center" --homogeneous-row \
+    --text "${translations[Change global settings]} <b>(edit user.conf)</b>\n ${translations[<b>NOTE:</b> To display help for each item, simply hover your mouse over the text]}" \
+    --field="${translations[Change mirror to]}!${translations[Depending on which mirror is selected, updates will be downloaded from there.]} :CB" "$(combobox_fix "$MIRROR" "$NEW_MIRROR")" \
+    --field="${translations[Change branch to]}!${translations[Depending on the version of the scripts, PortProton will receive the latest changes first (the DEVEL branch), the STABLE branch is updated later and is stable.]} :CB" "$(combobox_fix "$BRANCH" "$NEW_BRANCH")" \
+    --field="${translations[Change start gui to]}!${translations[When using PANED in the game start menu, additional buttons are located on one large page; if NOTEBOOK, then they are divided into several.]} :CB" "$(combobox_fix "$PW_GUI_START" "$NEW_START_GUI")" \
+    --field="${translations[Steam covers download]}!${translations[If downloading steam covers is enabled, they will be downloaded and created. (Disablement is provided in cases where their downloading is unavailable for some reason)]} :CB" "$(combobox_fix "$DOWNLOAD_STEAM_GRID" "$NEW_STEAM_BEHAVIOR")" \
     --field="${translations[Choose a graphics card to run the game]}!${translations[Select which video card will be used to run the game (used for all running games and programs in PortProton)]} :CB" "$(combobox_fix --disabled "$GPU_VAR" "$GET_GPU_NAMES")" \
     --field="${translations[Force dpi]}!${translations[Here you can set forced dpi for applications wine]} :CB" "$(combobox_fix --disabled "$YAD_DPI_VAR" "${translations[Recommended value]}!80!96!120!144!168!192!216!240")" \
     --field="${translations[Choice wine audio driver]}!${translations[Fixes sound popling if choice alsa]} :CB" "$(combobox_fix --disabled "$SOUND_DRIVER_VAR" "alsa!oss!pulse")" \
@@ -6070,17 +6072,11 @@ gui_userconf () {
     --field="${translations[Select gtk theme]}!${translations[Allows you to select a theme for GTK.]} :CB" "$(combobox_fix "$GTK_THEME" "${YAD_GTK_THEME}Adwaita:${translations[light]}!Adwaita:${translations[dark]}!${translations[default]}")" \
     --field="${translations[Time display]}!${translations[Displays time spent in an application or game]} :CB" "$(combobox_fix --disabled "$DESKTOP_WITH_TIME" "${translations[Show in hours and minutes]}!${translations[Show in days, hours, minutes]}")" \
     --field="${translations[Sort shortcuts by]}!${translations[This setting sorts the shortcuts in the main menu]} :CB" "$(combobox_fix --disabled "$SORT_WITH_TIME" "${translations[According to last launch]}!${translations[By time]}")" \
-    1> "${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb" 2>/dev/null &
-
-    "${pw_yad}" --key=$KEY_USERCONF_GUI --paned --sensitive \
-    --title="${translations[GLOBAL SETTINGS (USER.CONF)]}" \
-    --separator=" " --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-    --gui-type="settings-paned" \
     --button="${translations[CANCEL THE CHANGES]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Cancel the current changes and return to the previous menu]}":1 \
     --button="${translations[RESET]} USER.CONF!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Restore default settings for]} user.conf":2 \
     --button="${translations[OPEN THE SETTINGS FILE]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Open the <b>user.conf</b> settings file in a system text editor to view and change variables manually]}":164 \
     --button="${translations[SAVE CHANGES]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Save the current changes, and go to the previous menu]}":166 \
-    2>/dev/null
+    1> "${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb" 2>/dev/null
     YAD_USERCONF_STATUS="$?"
 
     case "$YAD_USERCONF_STATUS" in
@@ -6101,14 +6097,44 @@ gui_userconf () {
             ;;
         166)
             IFS='%' read -r -a PW_ADD_SETTINGS_UC <"${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb"
-            PW_GPU_USE="${PW_ADD_SETTINGS_UC[0]}"
-            PW_WINE_DPI_VALUE="${PW_ADD_SETTINGS_UC[1]}"
-            PW_SOUND_DRIVER_USE="${PW_ADD_SETTINGS_UC[2]}"
-            GUI_THEME="${PW_ADD_SETTINGS_UC[3]}"
-            GTK_THEME="${PW_ADD_SETTINGS_UC[4]}"
-            DESKTOP_WITH_TIME="${PW_ADD_SETTINGS_UC[5]}"
-            SORT_WITH_TIME="${PW_ADD_SETTINGS_UC[6]}"
+            MIRROR="${PW_ADD_SETTINGS_UC[0]}"
+            if [[ $BRANCH != "${PW_ADD_SETTINGS_UC[1]}" ]] ; then
+                if [[ ${PW_ADD_SETTINGS_UC[1]} == "DEVEL" ]] ; then
+                    if yad_question "${translations[Do you actually want to change the scripts version to:]} <b>DEVEL?</b>" ; then
+                        export MIRROR="GITHUB"
+                        pw_notify_send -i info \
+                        "${translations[Branch changed to:]}" "<b>DEVEL</b>"
+                        BRANCH="devel"
+                    else
+                        BRANCH="master"
+                    fi
+                else
+                    if yad_question "${translations[Do you actually want to change the scripts version to:]} <b>STABLE?</b>" ; then
+                        echo "2024" > "${PORT_WINE_TMP_PATH}/scripts_ver"
+                        pw_notify_send -i info \
+                        "${translations[Branch changed to:]}" "<b>STABLE</b>"
+                        BRANCH="master"
+                    else
+                        BRANCH="devel"
+                    fi
+                fi
+                unset SKIP_CHECK_UPDATES
+                export PW_CHANGE_BRANCH="1"
+                export PW_FORCE_UPDATE="1"
+            fi
+            PW_GUI_START="${PW_ADD_SETTINGS_UC[2]}"
+            DOWNLOAD_STEAM_GRID="${PW_ADD_SETTINGS_UC[3]}"
+            PW_GPU_USE="${PW_ADD_SETTINGS_UC[4]}"
+            PW_WINE_DPI_VALUE="${PW_ADD_SETTINGS_UC[5]}"
+            PW_SOUND_DRIVER_USE="${PW_ADD_SETTINGS_UC[6]}"
+            GUI_THEME="${PW_ADD_SETTINGS_UC[7]}"
+            GTK_THEME="${PW_ADD_SETTINGS_UC[8]}"
+            DESKTOP_WITH_TIME="${PW_ADD_SETTINGS_UC[9]}"
+            SORT_WITH_TIME="${PW_ADD_SETTINGS_UC[10]}"
 
+            if [[ $DOWNLOAD_STEAM_GRID =~ (${translations[Enabled]}|${translations[Enable]}) ]] ; then DOWNLOAD_STEAM_GRID="1"
+            elif [[ $DOWNLOAD_STEAM_GRID =~ (${translations[Disabled]}|${translations[Disable]}) ]] ; then DOWNLOAD_STEAM_GRID="0"
+            fi
             if [[ $PW_WINE_DPI_VALUE == "${translations[Recommended value]}" ]] ; then
                 PW_WINE_DPI_VALUE="recommended"
             fi
@@ -6127,24 +6153,9 @@ gui_userconf () {
             elif [[ $SORT_WITH_TIME == "${translations[By time]}" ]] ; then SORT_WITH_TIME="bytime"
             fi
 
-            edit_user_conf_from_gui PW_GPU_USE PW_WINE_DPI_VALUE PW_SOUND_DRIVER_USE GUI_THEME GTK_THEME DESKTOP_WITH_TIME SORT_WITH_TIME
+            edit_user_conf_from_gui MIRROR BRANCH PW_GUI_START DOWNLOAD_STEAM_GRID PW_GPU_USE PW_WINE_DPI_VALUE PW_SOUND_DRIVER_USE \
+            GUI_THEME GTK_THEME DESKTOP_WITH_TIME SORT_WITH_TIME
             restart_pp
-            ;;
-    esac
-
-    pw_yad_set_form
-    case "$PW_YAD_SET" in
-        change_mirror)
-            change_mirror
-            ;;
-        change_branch)
-            change_branch
-            ;;
-        change_gui_start)
-            change_gui_start
-            ;;
-        change_download_grid)
-            change_download_grid
             ;;
     esac
 }
@@ -6949,83 +6960,12 @@ change_loc () {
 }
 export -f change_loc
 
-change_mirror () {
-    if [[ "$MIRROR" == "CLOUD" ]] ; then
-        sed -i 's/="CLOUD"/="GITHUB"/g' "$USER_CONF"
-        pw_notify_send -i info \
-        "${translations[Mirror changed to:]}" "<b>https://github.com/Castro-Fidel</b>"
-    else
-        sed -i 's/="GITHUB"/="CLOUD"/g' "$USER_CONF"
-        pw_notify_send -i info \
-        "${translations[Mirror changed to:]}" "<b>https://cloud.linux-gaming.ru</b>"
-    fi
-    print_info "Restarting PP for change mirror..."
-    restart_pp --userconf
-}
-export -f change_mirror
-
-change_branch () {
-    if [[ "$BRANCH" == "master" ]] ; then
-        if yad_question "${translations[Do you actually want to change the scripts version to:]} <b>DEVEL?</b>" ; then
-            sed -i 's/="master"/="devel"/g' "$USER_CONF"
-            export MIRROR="GITHUB"
-            pw_notify_send -i info \
-            "${translations[Branch changed to:]}" "<b>DEVEL</b>"
-            unset SKIP_CHECK_UPDATES
-            export PW_FORCE_UPDATE="1"
-        fi
-    else
-        if yad_question "${translations[Do you actually want to change the scripts version to:]} <b>STABLE?</b>" ; then
-            sed -i 's/="devel"/="master"/g' "$USER_CONF"
-            echo "2024" > "${PORT_WINE_TMP_PATH}/scripts_ver"
-            export PW_CHANGE_BRANCH="1"
-            pw_notify_send -i info \
-            "${translations[Branch changed to:]}" "<b>STABLE</b>"
-            unset SKIP_CHECK_UPDATES
-            export PW_FORCE_UPDATE="1"
-        fi
-    fi
-    print_info "Restarting PP for change branch..."
-    restart_pp --userconf
-}
-export -f change_branch
-
-change_download_grid () {
-    if [[ "$DOWNLOAD_STEAM_GRID" == "1" ]] ; then
-        sed -i 's/DOWNLOAD_STEAM_GRID=.*/DOWNLOAD_STEAM_GRID="0"/' "$USER_CONF"
-        pw_notify_send -i info \
-        "${translations[Cover downloads are disabled]}"
-    else
-        sed -i 's/DOWNLOAD_STEAM_GRID=.*/DOWNLOAD_STEAM_GRID="1"/' "$USER_CONF"
-        pw_notify_send -i info \
-        "${translations[Cover downloads are enabled]}"
-    fi
-    print_info "Restarting PP for change cover download behavior..."
-    restart_pp --userconf
-}
-export -f change_download_grid
-
 open_game_folder () {
     xdg-open "${PATH_TO_GAME}"
     print_info "Restarting PP after open game folder..."
     restart_pp
 }
 export -f open_game_folder
-
-change_gui_start () {
-    if [[ "$PW_GUI_START" == "NOTEBOOK" ]] ; then
-        sed -i 's/="NOTEBOOK"/="PANED"/g' "$USER_CONF"
-        pw_notify_send -i info \
-        "${translations[Gui start changed to:]}" "<b>PANED</b>"
-    else
-        sed -i 's/="PANED"/="NOTEBOOK"/g' "$USER_CONF"
-        pw_notify_send -i info \
-        "${translations[Gui start changed to:]}" "<b>NOTEBOOK</b>"
-    fi
-    print_info "Restarting PP for change gui start..."
-    restart_pp --userconf
-}
-export -f change_gui_start
 
 gui_wine_uninstaller () {
     start_portwine
