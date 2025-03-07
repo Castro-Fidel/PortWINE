@@ -2489,8 +2489,11 @@ pw_port_update () {
             ;;
     esac
 
-    if [[ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ]] ; then
+    if [[ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ]] \
+    || [[ ! $BRANCH =~ (devel|master) ]]; then
         echo "2024" > "${PORT_WINE_TMP_PATH}/scripts_ver"
+        BRANCH_VERSION_UPDATE="SCRIPTS_STABLE_VERSION"
+        BRANCH="master"
     fi
 
     URL_ETERFUND="https://gitlab.eterfund.ru/Castro-Fidel/PortWINE/raw/${BRANCH}/data_from_portwine/scripts/var"
@@ -6121,6 +6124,10 @@ gui_userconf () {
                 unset SKIP_CHECK_UPDATES
                 export PW_CHANGE_BRANCH="1"
                 export PW_FORCE_UPDATE="1"
+            else
+                if [[ $BRANCH == "DEVEL" ]] ; then BRANCH="devel"
+                elif [[ $BRANCH == "STABLE" ]] ; then BRANCH="master"
+                fi
             fi
             PW_GUI_START="${PW_ADD_SETTINGS_UC[2]}"
             DOWNLOAD_STEAM_GRID="${PW_ADD_SETTINGS_UC[3]}"
