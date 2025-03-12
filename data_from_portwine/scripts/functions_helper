@@ -6038,9 +6038,11 @@ gui_userconf () {
         [[ $YAD_GTK_THEME == \'Adwaita\' ]] && unset YAD_GTK_THEME
         [[ -n $YAD_GTK_THEME ]] && YAD_GTK_THEME="${YAD_GTK_THEME//\'/}!"
     fi
-    if [[ -z $GTK_THEME ]] ; then GTK_THEME_PROXY=${translations[default]}
-    elif [[ $GTK_THEME =~ light$ ]] ; then GTK_THEME_PROXY="${GTK_THEME//light/${translations[light]}}"
-    elif [[ $GTK_THEME =~ dark$ ]] ; then GTK_THEME_PROXY="${GTK_THEME//dark/${translations[dark]}}"
+    [[ -n $GTK_THEME ]] && GTK_THEME_PROXY="$GTK_THEME"
+    if [[ -z $GTK_THEME_PROXY ]] ; then GTK_THEME_PROXY="${translations[default]}"
+    elif [[ $GTK_THEME_PROXY =~ light$ ]] ; then GTK_THEME_PROXY="${GTK_THEME_PROXY//light/${translations[light]}}"
+    elif [[ $GTK_THEME_PROXY =~ dark$ ]] ; then GTK_THEME_PROXY="${GTK_THEME_PROXY//dark/${translations[dark]}}"
+    elif [[ $GTK_THEME_PROXY == "${YAD_GTK_THEME//\!/}" ]] ; then GTK_THEME_PROXY="${YAD_GTK_THEME//\!/}"
     fi
 
     if [[ $DESKTOP_WITH_TIME == "posnumber1" ]] ; then
