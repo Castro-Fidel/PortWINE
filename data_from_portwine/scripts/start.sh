@@ -34,13 +34,9 @@ then
     exit 1
 fi
 
-if PORT_SCRIPTS_PATH=$(readlink -f "${0%/*}") ; then
-    export PORT_SCRIPTS_PATH
-    export PORT_WINE_PATH=${PORT_SCRIPTS_PATH%/*/*}
-else
-    echo "The PORT_SCRIPTS_PATH directory was not found!"
-    exit 1
-fi
+PORT_SCRIPTS_PATH="$(dirname "$(realpath "$0")")"
+PORT_WINE_PATH="$(realpath "$PORT_SCRIPTS_PATH/../..")"
+export PORT_SCRIPTS_PATH PORT_WINE_PATH
 
 # shellcheck source=/dev/null
 source "$PORT_SCRIPTS_PATH/functions_helper"
