@@ -4270,15 +4270,19 @@ pw_run () {
     if file "$portwine_exe" | grep -q "x86-64" ; then
         print_info "file: $portwine_exe is x86-64, force set WINE_LARGE_ADDRESS_AWARE to 0"
         export WINE_LARGE_ADDRESS_AWARE="0"
+        export WINELOADER="${WINELOADER}64"
     else
         print_info "file: $portwine_exe not x86-64, force set WINE_LARGE_ADDRESS_AWARE to 1"
         export WINE_LARGE_ADDRESS_AWARE="1"
     fi
 
+    check_variables SteamAppId "0"
+    check_variables SteamGameId "0"
+
     PW_LOG_TO_FILE="${PORT_WINE_PATH}/PortProton.log"
     PW_LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}"
     print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VULKAN_DRIVER_NAME"
-    print_var "VKD3D_CONFIG" "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2"
+    print_var "WINELOADER" "VKD3D_CONFIG" "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2"
     print_var "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH" "PW_VK_ICD_FILENAMES"
     proxy_launch_parameters=${LAUNCH_PARAMETERS//\\\\/\\}
     if [[ "$PW_USE_RUNTIME" == 1 ]] \
