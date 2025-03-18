@@ -6,7 +6,10 @@ export url_site="https://linux-gaming.ru/portproton/"
 export url_cloud="https://cloud.linux-gaming.ru/portproton"
 export url_git="https://git.linux-gaming.ru/CastroFidel/PortWINE"
 ########################################################################
-if [[ "${START_FROM_FLATPAK:-0}" == 1 ]] && [[ -z "${STEAM_COMPAT_DATA_PATH:-}" ]] && command -v "flatpak" &>/dev/null; then
+if [[ "${START_FROM_FLATPAK:-0}" == 1 ]] \
+&& [[ -z "${STEAM_COMPAT_DATA_PATH:-}" ]] \
+&& command -v "flatpak" &>/dev/null
+then
     unset START_FROM_FLATPAK
     flatpak run ru.linux_gaming.PortProton "$@"
     exit
@@ -31,13 +34,9 @@ then
     exit 1
 fi
 
-if PORT_SCRIPTS_PATH=$(readlink -f "${0%/*}") ; then
-    export PORT_SCRIPTS_PATH
-    export PORT_WINE_PATH=${PORT_SCRIPTS_PATH%/*/*}
-else
-    echo "The PORT_SCRIPTS_PATH directory was not found!"
-    exit 1
-fi
+PORT_SCRIPTS_PATH="$(dirname "$(realpath "$0")")"
+PORT_WINE_PATH="$(realpath "$PORT_SCRIPTS_PATH/../..")"
+export PORT_SCRIPTS_PATH PORT_WINE_PATH
 
 # shellcheck source=/dev/null
 source "$PORT_SCRIPTS_PATH/functions_helper"
@@ -98,7 +97,7 @@ else
     unset PW_GUI_DISABLED_CS
 fi
 
-unset MANGOHUD MANGOHUD_DLSYM PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_YAD_SET PW_ICON_FOR_YAD
+unset MANGOHUD PW_NO_ESYNC PW_NO_FSYNC PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_YAD_SET
 unset PW_CHECK_AUTOINSTALL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PORTWINE_DB_FILE RADV_PERFTEST
 unset CHK_SYMLINK_FILE PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME PW_PATH
 unset PW_PREFIX_NAME VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR PW_WINE_CPU_TOPOLOGY
@@ -121,7 +120,7 @@ echo "" > "${PW_TMPFS_PATH}/tmp_yad_form_vulkan"
 
 create_new_dir "${PORT_WINE_PATH}/data/dist"
 IFS=$'\n'
-for dist_dir in $(ls -1 "${PORT_WINE_PATH}/data/dist") ; do
+for dist_dir in $(lsbash "${PORT_WINE_PATH}/data/dist/") ; do
     dist_dir_new=$(echo "${dist_dir}" | awk '$1=$1' | sed -e s/[[:blank:]]/_/g)
     if [[ ! -d "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}" ]] ; then
         mv -- "${PORT_WINE_PATH}/data/dist/$dist_dir" "${PORT_WINE_PATH}/data/dist/${dist_dir_new^^}"
@@ -155,6 +154,8 @@ cd "${PORT_SCRIPTS_PATH}" || fatal
 source "${PORT_SCRIPTS_PATH}/var"
 
 export STEAM_SCRIPTS="${PORT_WINE_PATH}/steam_scripts"
+create_new_dir "$STEAM_SCRIPTS"
+
 export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
 export PW_CACHE_LANG_PATH="${PORT_WINE_TMP_PATH}/cache_lang/"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
@@ -250,9 +251,7 @@ if [[ -z "$DOWNLOAD_STEAM_GRID" ]] ; then
     export DOWNLOAD_STEAM_GRID="1"
 fi
 
-if [[ "${INSTALLING_PORT}" == 1 ]] ; then
-    return 0
-fi
+[[ "${INSTALLING_PORT}" == 1 ]] && return 0
 
 # choose gui start
 if [[ ! $PW_GUI_START =~ (PANED|NOTEBOOK) ]] ; then
@@ -261,10 +260,26 @@ if [[ ! $PW_GUI_START =~ (PANED|NOTEBOOK) ]] ; then
     export PW_GUI_START="NOTEBOOK"
 fi
 
-# TODO:fixes_after_update
-if fixes_after_update "2372: Reset PW_WINE_DPI_VALUE in user.conf" ; then
-    sed -i '/export PW_WINE_DPI_VALUE=/d' "$USER_CONF"
-    unset PW_WINE_DPI_VALUE
+# DESKTOP_WITH_TIME by default displays hours and minutes
+if [[ -z $DESKTOP_WITH_TIME ]] ; then
+    echo 'export DESKTOP_WITH_TIME="posnumber1"' >> "$USER_CONF"
+    export DESKTOP_WITH_TIME="posnumber1"
+fi
+
+# SORT_WITH_TIME by default sorts from the last run
+if [[ -z $SORT_WITH_TIME ]] ; then
+    echo 'export SORT_WITH_TIME="lastlaunch"' >> "$USER_CONF"
+    export SORT_WITH_TIME="lastlaunch"
+fi
+
+# TODO:fixes_after_update (со временем можно будет дропнуть)
+if fixes_after_update "2395: DESKTOP_WITH_TIME by default displays hours and minutes" ; then
+    DESKTOP_WITH_TIME="posnumber1"
+    edit_user_conf_from_gui DESKTOP_WITH_TIME
+fi
+if fixes_after_update "2398: SORT_WITH_TIME by default sorts from the last run" ; then
+    SORT_WITH_TIME="lastlaunch"
+    edit_user_conf_from_gui SORT_WITH_TIME
 fi
 
 # choose wine dpi default
@@ -363,6 +378,7 @@ cat << EOF > "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack.sh
     #!/usr/bin/env bash
     ${TMP_ALL_PATH} unsquashfs $NO_XATTRS_NEED -f -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" "$1" \
     || echo "ERROR" > "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack_error
+    sleep 3
 EOF
     chmod u+x "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack.sh
     ${pw_runtime} ${PW_TERM} "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack.sh
@@ -479,21 +495,15 @@ then DIST_ADD_TO_GUI+="!${translations[USE_SYSTEM_WINE]}"
 fi
 
 SORT_OPENGL="${translations[WineD3D OpenGL (For video cards without Vulkan)]}"
-SORT_VULKAN="${translations[WineD3D Vulkan (Damavand experimental)]}"
 SORT_LEGACY="${translations[Legacy DXVK (Vulkan v1.1)]}"
 SORT_STABLE="${translations[Stable DXVK, VKD3D (Vulkan v1.2)]}"
 SORT_NEWEST="${translations[Newest DXVK, VKD3D, D8VK (Vulkan v1.3+)]}"
-SORT_G_NINE="${translations[Gallium Nine (DirectX 9 for MESA)]}"
-SORT_G_ZINK="${translations[Gallium Zink (OpenGL to Vulkan)]}"
 
 case "$PW_VULKAN_USE" in
-    0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY!$SORT_G_ZINK!$SORT_G_NINE!$SORT_VULKAN" ;;
-    6) PW_DEFAULT_VULKAN_USE="$SORT_VULKAN!$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY!$SORT_G_ZINK!$SORT_G_NINE!$SORT_OPENGL" ;;
-    1) PW_DEFAULT_VULKAN_USE="$SORT_STABLE!$SORT_NEWEST!$SORT_LEGACY!$SORT_G_ZINK!$SORT_G_NINE!$SORT_OPENGL!$SORT_VULKAN" ;;
-    5) PW_DEFAULT_VULKAN_USE="$SORT_LEGACY!$SORT_NEWEST!$SORT_STABLE!$SORT_G_ZINK!$SORT_G_NINE!$SORT_OPENGL!$SORT_VULKAN" ;;
-    4) PW_DEFAULT_VULKAN_USE="$SORT_G_ZINK!$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY!$SORT_G_NINE!$SORT_OPENGL!$SORT_VULKAN" ;;
-    3) PW_DEFAULT_VULKAN_USE="$SORT_G_NINE!$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY!$SORT_G_ZINK!$SORT_OPENGL!$SORT_VULKAN" ;;
-    *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY!$SORT_G_ZINK!$SORT_G_NINE!$SORT_OPENGL!$SORT_VULKAN" ;;
+    0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY" ;;
+    1) PW_DEFAULT_VULKAN_USE="$SORT_STABLE!$SORT_NEWEST!$SORT_LEGACY!$SORT_OPENGL" ;;
+    5) PW_DEFAULT_VULKAN_USE="$SORT_LEGACY!$SORT_NEWEST!$SORT_STABLE!$SORT_OPENGL" ;;
+    *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY!$SORT_OPENGL" ;;
 esac
 
 if [[ $PW_WINE_USE == PROTON_LG ]] ; then
@@ -621,7 +631,7 @@ if [[ -f "$portwine_exe" ]] ; then
                 for db_unset in $PORTWINE_DB_FOR_UNSET ; do
                     unset "$db_unset"
                 done
-                unset portwine_exe KEY_START
+                unset portwine_exe KEY_START name_desktop_png PW_ICON_FOR_YAD
                 print_info "Restarting..."
                 restart_pp
                 ;;
@@ -641,7 +651,7 @@ else
     fi
 
     unset PW_NAME_D_ICON PW_ICON_PATH PW_GAME_TIME PW_ALL_DF PW_AMOUNT_NEW_DESKTOP 
-    unset PW_DESKTOP_FILES_REGEX PW_AMOUNT_OLD_DESKTOP PW_DESKTOP_FILES
+    unset PW_DESKTOP_FILES_REGEX PW_AMOUNT_OLD_DESKTOP PW_DESKTOP_FILES PW_LAST_LAUNCH
     # Поиск .desktop файлов
     AMOUNT_GENERATE_BUTTONS="0"
     for desktop_file in "$PORT_WINE_PATH"/* ; do
@@ -675,13 +685,17 @@ else
                 fi
                 while read -r -a line2 ; do
                     if [[ \"${line2[0]//#@_@#/ }\" == "${PW_NAME_D_ICON["$AMOUNT_GENERATE_BUTTONS"]}" ]] ; then
-                        PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=${line2[2]}
+                        [[ $SORT_WITH_TIME == "bytime" ]] && PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=${line2[2]}
+                        if [[ $SORT_WITH_TIME == "lastlaunch" ]] ; then
+                            [[ -n ${line2[5]} ]] && PW_LAST_LAUNCH["$AMOUNT_GENERATE_BUTTONS"]=${line2[5]//L5-/}
+                        fi
                         break
                     else
-                        PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=0
+                        [[ $SORT_WITH_TIME == "bytime" ]] && PW_GAME_TIME["$AMOUNT_GENERATE_BUTTONS"]=0
+                        [[ $SORT_WITH_TIME == "lastlaunch" ]] && PW_LAST_LAUNCH["$AMOUNT_GENERATE_BUTTONS"]=0
                     fi
                 done < "$PORT_WINE_TMP_PATH/statistics"
-                if [[ $SORT_WITH_TIME == enabled ]] && [[ ${line2[3]} == NEW_DESKTOP ]] ; then
+                if [[ $SORT_WITH_TIME != "disabled" ]] && [[ ${line2[3]} == "NEW_DESKTOP" ]] ; then
                     sed -i "s/${line2[1]} ${line2[2]} NEW_DESKTOP/${line2[1]} ${line2[2]} OLD_DESKTOP/" "$PORT_WINE_TMP_PATH/statistics"
                     PW_AMOUNT_NEW_DESKTOP+=("$AMOUNT_GENERATE_BUTTONS")
                 else
@@ -692,8 +706,7 @@ else
         fi
     done
     # Переопределение элементов в массивах в зависимости от PW_GAME_TIME, от большего значения к меньшему.
-    # 10 миллисекунд на 40 .desktop файлов, работает быстро
-    if [[ $SORT_WITH_TIME == enabled ]] && [[ -n ${PW_GAME_TIME[1]} ]] ; then
+    if [[ $SORT_WITH_TIME == "bytime" ]] && [[ -n ${PW_GAME_TIME[1]} ]] ; then
         for i in "${PW_AMOUNT_OLD_DESKTOP[@]}" ; do
             for j in "${PW_AMOUNT_OLD_DESKTOP[@]}" ; do
                 if (( ${PW_GAME_TIME[$i]} > ${PW_GAME_TIME[$j]} )) ; then
@@ -708,6 +721,29 @@ else
                     PW_ICON_PATH[i]=${PW_ICON_PATH[$j]}
 
                     PW_GAME_TIME[j]=$tmp_0
+                    PW_ALL_DF[j]=$tmp_1
+                    PW_NAME_D_ICON[j]=$tmp_2
+                    PW_ICON_PATH[j]=$tmp_4
+                fi
+            done
+        done
+    fi
+    # Переопределение элементов в массивах в зависимости от того, какое приложение в последний раз использовалось
+    if [[ $SORT_WITH_TIME == "lastlaunch" ]] && [[ -n ${PW_LAST_LAUNCH[1]} ]] ; then
+        for i in "${PW_AMOUNT_OLD_DESKTOP[@]}" ; do
+            for j in "${PW_AMOUNT_OLD_DESKTOP[@]}" ; do
+                if (( ${PW_LAST_LAUNCH[$i]} > ${PW_LAST_LAUNCH[$j]} )) ; then
+                    tmp_0=${PW_LAST_LAUNCH[$i]}
+                    tmp_1=${PW_ALL_DF[$i]}
+                    tmp_2=${PW_NAME_D_ICON[$i]}
+                    tmp_4=${PW_ICON_PATH[$i]}
+
+                    PW_LAST_LAUNCH[i]=${PW_LAST_LAUNCH[$j]}
+                    PW_ALL_DF[i]=${PW_ALL_DF[$j]}
+                    PW_NAME_D_ICON[i]=${PW_NAME_D_ICON[$j]}
+                    PW_ICON_PATH[i]=${PW_ICON_PATH[$j]}
+
+                    PW_LAST_LAUNCH[j]=$tmp_0
                     PW_ALL_DF[j]=$tmp_1
                     PW_NAME_D_ICON[j]=$tmp_2
                     PW_ICON_PATH[j]=$tmp_4
@@ -906,10 +942,7 @@ case "${VULKAN_MOD}" in
     "$SORT_OPENGL" )     export PW_VULKAN_USE="0" ;;
     "$SORT_STABLE" )     export PW_VULKAN_USE="1" ;;
     "$SORT_NEWEST" )     export PW_VULKAN_USE="2" ;;
-    "$SORT_G_NINE" )     export PW_VULKAN_USE="3" ;;
-    "$SORT_G_ZINK" )     export PW_VULKAN_USE="4" ;;
     "$SORT_LEGACY" )     export PW_VULKAN_USE="5" ;;
-    "$SORT_VULKAN" )     export PW_VULKAN_USE="6" ;;
 esac
 
 init_wine_ver
@@ -968,10 +1001,6 @@ case "$PW_YAD_SET" in
     gui_open_scripts_from_backup) gui_open_scripts_from_backup ;;
     open_changelog) open_changelog ;;
     change_loc) change_loc ;;
-    change_mirror) change_mirror ;;
-    change_branch) change_branch ;;
-    change_gui_start) change_gui_start ;;
-    change_download_grid) change_download_grid ;;
     open_game_folder) open_game_folder ;;
     118) gui_edit_db ;;
     120) gui_vkbasalt ;;
