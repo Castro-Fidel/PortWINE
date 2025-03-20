@@ -2950,13 +2950,6 @@ pw_create_gui_png () {
             export name_desktop_png="bat"
             return 0
         fi
-        name_desktop_png="${PORTPROTON_NAME// /_}"
-        if [[ $name_desktop_png =~ [\!\%\$\&\<] ]] ; then
-            local ICON_NAME_REGEX=(\! % \$ \& \<)
-            for i in "${ICON_NAME_REGEX[@]}" ; do
-                name_desktop_png="${name_desktop_png//$i/}"
-            done
-        fi
     fi
 
     if [[ -z "$PORTPROTON_NAME" ]] \
@@ -2996,6 +2989,16 @@ pw_create_gui_png () {
         PW_PRODUCTNAME=$(echo "$PW_PRODUCTNAME" | sed -r "s/(\`|\"|'|\!)//g")
         export PORTPROTON_NAME
         edit_db_from_gui PORTPROTON_NAME FILE_DESCRIPTION
+    fi
+
+    if [[ -z $name_desktop_png ]] ; then
+        name_desktop_png="${PORTPROTON_NAME// /_}"
+        if [[ $name_desktop_png =~ [\!\%\$\&\<] ]] ; then
+            local ICON_NAME_REGEX=(\! % \$ \& \<)
+            for i in "${ICON_NAME_REGEX[@]}" ; do
+                name_desktop_png="${name_desktop_png//$i/}"
+            done
+        fi
     fi
 
     resize_png "$portwine_exe" "${PORTPROTON_NAME}" "48" "128"
