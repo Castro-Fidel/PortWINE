@@ -2950,13 +2950,6 @@ pw_create_gui_png () {
             export name_desktop_png="bat"
             return 0
         fi
-        name_desktop_png="${PORTPROTON_NAME// /_}"
-        if [[ $name_desktop_png =~ [\!\%\$\&\<] ]] ; then
-            local ICON_NAME_REGEX=(\! % \$ \& \<)
-            for i in "${ICON_NAME_REGEX[@]}" ; do
-                name_desktop_png="${name_desktop_png//$i/}"
-            done
-        fi
     fi
 
     if [[ -z "$PORTPROTON_NAME" ]] \
@@ -2996,6 +2989,16 @@ pw_create_gui_png () {
         PW_PRODUCTNAME=$(echo "$PW_PRODUCTNAME" | sed -r "s/(\`|\"|'|\!)//g")
         export PORTPROTON_NAME
         edit_db_from_gui PORTPROTON_NAME FILE_DESCRIPTION
+    fi
+
+    if [[ -z $name_desktop_png ]] ; then
+        name_desktop_png="${PORTPROTON_NAME// /_}"
+        if [[ $name_desktop_png =~ [\!\%\$\&\<] ]] ; then
+            local ICON_NAME_REGEX=(\! % \$ \& \<)
+            for i in "${ICON_NAME_REGEX[@]}" ; do
+                name_desktop_png="${name_desktop_png//$i/}"
+            done
+        fi
     fi
 
     resize_png "$portwine_exe" "${PORTPROTON_NAME}" "48" "128"
@@ -3605,7 +3608,9 @@ start_portwine () {
     try_force_link_file "${PHYSX_PATH}/cudart64_65.dll" "${WINEPREFIX}/drive_c/windows/system32/cudart64_65.dll"
 
     # 3D API
-    unset CP_VKD3D_FILES CP_DXVK_FILES CP_DGV2_FILES CP_WINE_FILES PATH_TO_DXVK_FILES PATH_TO_VKD3D_FILES
+    unset CP_VKD3D_FILES CP_DXVK_FILES CP_DGV2_FILES CP_WINE_FILES PATH_TO_DXVK_FILES PATH_TO_VKD3D_FILES CP_GALLIUM_NINE_FILES
+    [[ "$PW_USE_GALLIUM_NINE" == "1" ]] && PW_VULKAN_USE="3"
+
     if [[ $PW_USE_DAMAVAND == "1" ]] && [[ $PW_VULKAN_USE != "0" ]] ; then
         # WINED3D VULKAN (DAMAVAND)
         print_info "Use DAMAVAND (DirectX to wined3d vulkan)"
@@ -3648,6 +3653,23 @@ start_portwine () {
                 [[ "$PW_USE_VRCLIENT" = "1" ]] && add_to_var CP_DXVK_FILES "openvr_api_dxvk"
                 CP_VKD3D_FILES="d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1"
                 CP_WINE_FILES="d3d10_1 d3d10"
+                ;;
+            3)
+                # GALLIUM NINE
+                print_info "Use GALLIUM-NINE (Native DX9 on MESA drivers)"
+                PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
+                CP_GALLIUM_NINE_FILES="d3d9"
+                CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
+                CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d8 dxgi"
+                export __GL_YIELD="NOTHING"
+                export mesa_glthread="true"
+                export WINE_D3D_CONFIG="renderer=gl"
+                export PW_VKBASALT="0"
+                export PW_MANGOHUD="0"
+                export PW_WINE_FULLSCREEN_FSR="0"
+                export PW_USE_GALLIUM_ZINK="0"
+                export DXVK_ENABLE_NVAPI="0"
+                export PW_USE_VRCLIENT="0"
                 ;;
             5)
                 # LEGACY DXVK
@@ -3703,6 +3725,10 @@ start_portwine () {
                     ;;
                 2)
                     rm_from_var CP_DXVK_FILES "d3d9 d3d8"
+                    ;;
+                3)
+                    rm_from_var CP_GALLIUM_NINE_FILES "d3d9"
+                    rm_from_var CP_WINE_FILES "d3d8"
                     ;;
                 5)
                     rm_from_var CP_DXVK_FILES "d3d9"
@@ -3936,6 +3962,45 @@ start_portwine () {
         done
         create_new_dir "${PATH_TO_VKD3D_FILES}/vkd3d_cache"
         export VKD3D_SHADER_CACHE_PATH="${PATH_TO_VKD3D_FILES}/vkd3d_cache"
+    fi
+
+    if [[ "$CP_GALLIUM_NINE_FILES" == "d3d9" ]] ; then
+        PATH_TO_GALLIUM_NINE_FILES="${PW_PLUGINS_PATH}/gallium_nine_v.${PW_GALLIUM_NINE_VER}"
+        if [[ ! -d "$PATH_TO_GALLIUM_NINE_FILES" ]] ; then
+            if try_download "github.com/Castro-Fidel/vulkan/releases/download/gallium_nine_v.${PW_GALLIUM_NINE_VER}/gallium_nine_v.${PW_GALLIUM_NINE_VER}.tar.xz" \
+                            "${PORT_WINE_PATH}/data/tmp/gallium_nine_v.${PW_GALLIUM_NINE_VER}.tar.xz" ; then
+                if ! unpack "${PORT_WINE_PATH}/data/tmp/gallium_nine_v.${PW_GALLIUM_NINE_VER}.tar.xz" "$PW_PLUGINS_PATH/"
+                then try_remove_dir "$PATH_TO_GALLIUM_NINE_FILES"
+                fi
+                try_remove_file "${PORT_WINE_PATH}/data/tmp/gallium_nine_v.${PW_GALLIUM_NINE_VER}.tar.xz"
+            fi
+        fi
+        print_info "Try create symlink GALLIUM_NINE files..."
+        try_force_link_file "${PATH_TO_GALLIUM_NINE_FILES}/lib32/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/syswow64/d3d9.dll"
+        try_force_link_file "${PATH_TO_GALLIUM_NINE_FILES}/lib64/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/system32/d3d9.dll"
+        unset FIND_D3D_MODULE D3D_MODULE_PATH
+        if ! check_flatpak ; then
+            FIND_D3D_MODULE=$(dirname "$(find /usr/ -maxdepth 4 -type f -name "d3dadapter9.so.*" 2>/dev/null)")
+            if [[ -n "$FIND_D3D_MODULE" ]] ; then
+                IFS=$'\n'
+                for D3D_MP in $FIND_D3D_MODULE ; do
+                    if [[ -n "$D3D_MODULE_PATH" ]]
+                    then export D3D_MODULE_PATH="$D3D_MODULE_PATH:/run/host${D3D_MP}"
+                    else export D3D_MODULE_PATH="/run/host${D3D_MP}"
+                    fi
+                done
+                IFS="$orig_IFS"
+                print_info "D3D_MODULE_PATH=${D3D_MODULE_PATH}"
+            else
+                pw_stop_progress_bar
+                yad_error "${translations[d3dadapter9.so.1.0.0 - Not found in the system.\\nInstall the missing package: <b>d3dadapter9</b>]}"
+                stop_portwine
+            fi
+        else
+            export D3D_MODULE_PATH="/app/lib/i386-linux-gnu/GL/default/lib/d3d:/usr/lib/x86_64-linux-gnu/GL/default/lib/d3d"
+            print_info "D3D_MODULE_PATH=${D3D_MODULE_PATH}"
+        fi
+        var_winedlloverride_update "d3d9=n"
     fi
 
     if [[ "$PW_USE_VRCLIENT" = "1" ]] ; then
@@ -5029,7 +5094,8 @@ gui_edit_db () {
     PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE
     PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER
     PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE
-    PW_DISABLE_COMPOSITING PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_NATIVE_WAYLAND PW_USE_GALLIUM_ZINK PW_USE_DAMAVAND
+    PW_DISABLE_COMPOSITING PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_NATIVE_WAYLAND PW_USE_GALLIUM_ZINK PW_USE_GALLIUM_NINE
+    PW_USE_DAMAVAND
     )
 
     if check_wayland_session ; then
@@ -5083,6 +5149,7 @@ gui_edit_db () {
     PW_DINPUT_PROTOCOL_INFO=${translations[Force use DirectInput protocol instead of XInput]}
     PW_USE_NATIVE_WAYLAND_INFO=${translations[Enable experemental native Wayland support (need special wine build to work)]}
     PW_USE_GALLIUM_ZINK_INFO=${translations[Use Gallium Zink (OpenGL driver is implemented via Vulkan)]}
+    PW_USE_GALLIUM_NINE_INFO=${translations[Use Gallium Nine (native DirectX 9 for MESA)]}
     PW_USE_DAMAVAND_INFO=${translations[Instead of DXVK, use WineD3D vulkan (Damavand). Experimental function.]}
 
 #     PW_VULKAN_NO_ASYNC_INFO=${translations[Disable asynchronous calls for VULKAN and DXVK modes]}
@@ -6550,7 +6617,7 @@ pw_prefix_manager () {
         IFS=$'\n'
         try_remove_file "${PW_TMPFS_PATH}/dll_list_tmp"
         while read -r PW_BOOL_IN_DLL_LIST ; do
-            if [[ ! ${PW_BOOL_IN_DLL_LIST} =~ (d3d|directx9|dont_use|dxvk|vkd3d|faudio1|Foundation) ]] ; then
+            if [[ ! ${PW_BOOL_IN_DLL_LIST} =~ (d3d|directx9|dont_use|dxvk|vkd3d|galliumnine|faudio1|Foundation) ]] ; then
                 if grep ^"$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{print $1}')"$ "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ; then
                     echo -e "true\n$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{print $1}')\n$(echo "${PW_BOOL_IN_DLL_LIST}" | awk '{ $1 = ""; print substr($0, 2) }')" >> "${PW_TMPFS_PATH}/dll_list_tmp"
                 else
@@ -6692,6 +6759,7 @@ portwine_start_debug () {
         0) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DirectX to wined3d opengl" >> "${PORT_WINE_PATH}/PortProton.log" ;;
         1) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_STABLE_VER}, VKD3D-PROTON v.${VKD3D_STABLE_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
         2) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_GIT_VER}, VKD3D-PROTON v.${VKD3D_GIT_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
+        3) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - Native DX9 on MESA drivers" >> "${PORT_WINE_PATH}/PortProton.log" ;;
         5) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_LEGACY_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
         *) echo "PW_VULKAN_USE=${PW_VULKAN_USE}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
     esac
@@ -7056,24 +7124,15 @@ gui_credits () {
     # shellcheck source=/dev/null
     source "${PORT_WINE_PATH}/data/scripts/thanks"
 
-    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=1 --show-uri --scroll \
-    --text-align=center --text="${translations[PortProton v. \${install_ver}
-scripts v. \${scripts_install_ver}]}" --text-info <<< "https://linux-gaming.ru
-
-$(eval_translations "Copyright © \$%DATE% Castro-Fidel (linux-gaming.ru)" "DATE=$(date +%Y)")
-
-${translations[This program comes with absolutely no warranty.
-See the License for details.]}" 2>/dev/null &
-
-    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=2 --scroll \
+    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=1 --scroll \
     --text-info <<< "${translations[Author:   Casro-Fidel (Mikhail Tergoev)
 
 Developer assistants and testers:]}
 $(credits_devel)" 2>/dev/null &
 
-    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=3 --text-info --scroll < <(eval_translations "MIT License
+    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=2 --text-info --scroll <<< "MIT License
 
-Copyright © \$%DATE% Castro-Fidel (linux-gaming.ru)
+Copyright © $(date +%Y) Castro-Fidel (linux-gaming.ru)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the \"Software\"), to deal
@@ -7091,9 +7150,9 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE." "DATE=$(date +%Y)") 2>/dev/null &
+SOFTWARE." "DATE=$(date +%Y)" 2>/dev/null &
 
-    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=4 \
+    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=3 \
     --text-info --show-uri --scroll \
     <<< "${translations[The project was supported:
 https://boosty.to/portwine-linux.ru]}
@@ -7101,11 +7160,11 @@ $(credits_boosty)
 
 ${translations[The list will be updated...]}" 2>/dev/null &
 
-    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=5 \
+    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=4 \
     --text="${translations[Do you want to join and help in the development of the project:]}" \
     --image-path="$PW_GUI_ICON_PATH" --image="port_proton" \
     --uri-color=red --show-uri --text-info --scroll <<< "${translations[Website:  http://linux-gaming.ru
-Discord:  http://discord.gg/yJSEFjF
+TG:       https://t.me/linux_gaming_ru
 VK:       https://vk.com/linuxgamingru
 -------------------------------------------
 Become a paid subscriber:
@@ -7113,7 +7172,7 @@ boosty:  https://boosty.to/portwine-linux.ru
 Yandex wallet:   410012267513818
 -------------------------------------------]}" 2>/dev/null &
 
-    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=6 --show-uri --title="THIRD PARTY LIBRARIES" \
+    "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=5 --show-uri --title="THIRD PARTY LIBRARIES" \
     --text-info <<< "${translations[                               Third-party libraries that are used in PortProton
 
             PortProton is built on the basis of the following free software libraries:
@@ -7125,9 +7184,10 @@ YAD: https://github.com/v1cont/yad
 DGVOODOO2: https://dege.fw.hu/]}" 2>/dev/null &
 
     "${pw_yad}" --title "${translations[ABOUT US]}" --key="${KEY_CREDITS}" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-    --notebook --no-buttons  --tab-pos=bottom --expand --width=750 --height=400 \
-    --tab="${translations[ABOUT PORTPROTON]}" --tab="${translations[AUTORS]}" --tab="${translations[LICENSE]}" \
-    --tab="${translations[SPONSORS]}" --tab="${translations[JOIN]}" --tab="${translations[THIRD PARTY LIBRARIES]}"
+    --notebook --no-buttons  --tab-pos=bottom --expand --width=950 --height=500 \
+    --tab="${translations[AUTORS]}" --tab="${translations[LICENSE]}" \
+    --tab="${translations[SPONSORS]}" --tab="${translations[JOIN]}" \
+    --tab="${translations[THIRD PARTY LIBRARIES]}"
 
     restart_pp
 }
