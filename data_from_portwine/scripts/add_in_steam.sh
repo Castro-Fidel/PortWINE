@@ -382,7 +382,7 @@ addGrids() {
 	fi
 	if [[ -n "${SteamGridDBId}" ]] || [[ -n "${SteamAppId}" ]]; then
 		create_new_dir "${STCFGPATH}/grid"
-		for i in {0..3}; do
+		for i in "${!in[@]}"; do
 			downloadImageSteam "${in[${i}]}" "${out[${i}]}" || \
 				downloadImageSteamGridDB "${gtype[${i}]}" "${out[${i}]}" ${mimes[${i}]:+"mimes=${mimes[${i}]}"} ${dims[${i}]:+"dimensions=${dims[${i}]}"} || \
 				echo "Failed to load ${in[${i}]}"
