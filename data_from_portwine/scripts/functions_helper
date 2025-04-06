@@ -1941,7 +1941,7 @@ pw_kill_autostart () {
 export -f pw_kill_autostart
 
 pw_exit_tray () {
-    if [[ "$XDG_SESSION_TYPE" == "tty" ]] ; then
+    if [[ "$XDG_SESSION_TYPE" == "tty" || "$(readlink -f /bin/sh)" == *"/dash" ]] ; then
         if [[ -n "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')" ]] ; then
             kill -s SIGUSR1 "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')"
         fi
@@ -1949,9 +1949,6 @@ pw_exit_tray () {
         if [[ -n "$(pgrep -a tray_gui_pp)" ]] ; then
             kill -s SIGUSR1 $(pgrep -a tray_gui_pp) 2>/dev/null
         fi
-    fi
-    if [[ -n "$(pgrep -a yad_gui_pp)" ]] ; then
-        kill -s SIGUSR1 $(pgrep -a yad_gui_pp) 2>/dev/null
     fi
 }
 export -f pw_exit_tray
@@ -4793,7 +4790,7 @@ open_changelog () {
 export -f open_changelog
 
 pw_tray_icon () {
-    if [[ "$XDG_SESSION_TYPE" == "tty" ]] ; then
+    if [[ "$XDG_SESSION_TYPE" == "tty" || "$(readlink -f /bin/sh)" == *"/dash" ]] ; then
         if [[ -n "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')" ]] ; then
             kill -s SIGUSR1 "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')"
         fi
@@ -4819,7 +4816,7 @@ pw_tray_icon () {
     }
     export -f tray_icon_click_exit
 
-    if [[ "$XDG_SESSION_TYPE" == "tty" ]] ; then
+    if [[ "$XDG_SESSION_TYPE" == "tty" || "$(readlink -f /bin/sh)" == *"/dash" ]] ; then
         tray_icon_click () {
             echo ""
         }
