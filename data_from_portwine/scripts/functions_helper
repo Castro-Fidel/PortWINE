@@ -1931,15 +1931,10 @@ pw_kill_autostart () {
 export -f pw_kill_autostart
 
 pw_exit_tray () {
-    if [[ "$XDG_SESSION_TYPE" == "tty" || "$(readlink -f /bin/sh)" == *"/dash" ]] ; then
-        if [[ -n "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')" ]] ; then
-            kill -s SIGUSR1 "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')"
-        fi
-    else
-        if [[ -n "$(pgrep -a tray_gui_pp)" ]] ; then
-            kill -s SIGUSR1 $(pgrep -a tray_gui_pp) 2>/dev/null
-        fi
-    fi
+    read -r -a PGREP_TRAY_GUI_PP < <(pgrep -a tray_gui_pp)
+    [[ -n ${PGREP_TRAY_GUI_PP[0]} ]] && kill -s SIGUSR1 "${PGREP_TRAY_GUI_PP[0]}" 2>/dev/null
+    read -r -a PGREP_YAD_GUI_PP < <(pgrep -a yad_gui_pp)
+    [[ -n ${PGREP_YAD_GUI_PP[0]} ]] && kill -s SIGUSR1 "${PGREP_YAD_GUI_PP[0]}" 2>/dev/null
 }
 export -f pw_exit_tray
 
