@@ -203,8 +203,7 @@ generate_pot () {
     local FILES_FOR_GETTEXT i
     FILES_FOR_GETTEXT=(functions_helper start.sh setup.sh add_in_steam.sh)
     for i in "${FILES_FOR_GETTEXT[@]}" ; do
-        sed -e 's/{translations\[/(gettext \"/g' -e 's/]}/")/g' -e 's/eval_translations/gettext/g' \
-        "${PORT_SCRIPTS_PATH}/$i" > "${PORT_SCRIPTS_PATH}/${i}_tmp"
+        sed -e 's/{translations\[/(gettext \"/g' -e 's/]}/")/g' "${PORT_SCRIPTS_PATH}/$i" > "${PORT_SCRIPTS_PATH}/${i}_tmp"
     done
     #Когда присходит предупреждение: синтаксис $"..." запрещен по соображениям безопасности; используйте eval_gettext
     #и ругается на строку в которой нет перевода, можно использовать sed -i '//d' и убрать эту строку
@@ -239,15 +238,6 @@ generate_pot () {
     try_remove_dir "${PW_CACHE_LANG_PATH}"
 }
 export -f generate_pot
-
-eval_translations () {
-    # Для того чтобы раскрывать переменную уже после создания массива
-    # Вместо {translations[\$TEST text]} нужно (eval_translations "\$%TEST% text" "TEST=test"), перевод должен быть с %% тоже
-    # В остальных случаях можно использовать {translations[\$TEST text]} ,но переменную нужно обьявлять до создания массива
-    # до source "${PW_CACHE_LANG_PATH}/$LANGUAGE" или можно использовать команды {translations[\$(cat file.txt) text]}
-    # но тогда выполнение команды будет происходить во время создания массива всегда, а не там где это требуется
-    echo "${translations[$1]//\$*"%"/${2//*=/}}"
-}
 
 create_translations () {
     local po_file msgid msgstr
@@ -5881,19 +5871,21 @@ gui_gamescope () {
     PW_GS_EXPOSE_WAYLAND PW_GS_REALTIME_SCHEDULING
     )
 
-    [[ $(<"${PW_TMPFS_PATH}/gamescope.tmp") =~ '--mangoapp' ]] && add_to_array "PW_GS_LIST" PW_GS_MANGOAPP
-    [[ $(<"${PW_TMPFS_PATH}/gamescope.tmp") =~ '--backend' ]] && add_to_array "PW_GS_LIST" PW_GS_BACKEND_SDL
-    check_wayland_session && add_to_array "PW_GS_LIST" PW_GS_SDL_VIDEODRIVER_X11
-    [[ $(<"${PW_TMPFS_PATH}/gamescope.tmp") =~ '--cursor-scale-height' ]] && add_to_array "PW_GS_LIST" PW_GS_CURSOR_SCALE_HEIGHT
+    if [[ $GAMESCOPE_INSTALLED == "1" ]] ; then
+        [[ $(<"${PW_TMPFS_PATH}/gamescope.tmp") =~ '--mangoapp' ]] && add_to_array "PW_GS_LIST" PW_GS_MANGOAPP
+        [[ $(<"${PW_TMPFS_PATH}/gamescope.tmp") =~ '--backend' ]] && add_to_array "PW_GS_LIST" PW_GS_BACKEND_SDL
+        check_wayland_session && add_to_array "PW_GS_LIST" PW_GS_SDL_VIDEODRIVER_X11
+        [[ $(<"${PW_TMPFS_PATH}/gamescope.tmp") =~ '--cursor-scale-height' ]] && add_to_array "PW_GS_LIST" PW_GS_CURSOR_SCALE_HEIGHT
 
-    #debian bookworm fix
-    if [[ $(<"${PW_TMPFS_PATH}/gamescope.tmp") =~ '-U, --fsr-upscaling' ]] ; then
-        GS_FILTER_CB="fsr!nis"
-        export PW_GS_FILTER_MODE_OLD="true"
-        rm_from_array "PW_GS_LIST" PW_GS_FORCE_GRAB_CURSOR PW_GS_FORCE_GRAB_KEYBOARD PW_GS_HDR_ENABLE PW_GS_HDR_FORCE_SUPPORT \
-        PW_GS_HDR_FORCE_OUTPUT
-    else
-        GS_FILTER_CB="linear!nearest!fsr!nis!pixel"
+        #debian bookworm fix
+        if [[ $(<"${PW_TMPFS_PATH}/gamescope.tmp") =~ '-U, --fsr-upscaling' ]] ; then
+            GS_FILTER_CB="fsr!nis"
+            export PW_GS_FILTER_MODE_OLD="true"
+            rm_from_array "PW_GS_LIST" PW_GS_FORCE_GRAB_CURSOR PW_GS_FORCE_GRAB_KEYBOARD PW_GS_HDR_ENABLE PW_GS_HDR_FORCE_SUPPORT \
+            PW_GS_HDR_FORCE_OUTPUT
+        else
+            GS_FILTER_CB="linear!nearest!fsr!nis!pixel"
+        fi
     fi
 
     PW_GS_FULLSCREEN_INFO=${translations[Make the window fullscreen]}
@@ -5917,11 +5909,11 @@ gui_gamescope () {
     PW_GS_CURSOR_SCALE_HEIGHT_INFO=${translations[if specified, sets a base output height to linearly scale the cursor against.]}
 
     unset ADD_CHK_BOX_GS
-    if [[ "${GAMESCOPE_INSTALLED}" == 1 ]] ; then
+    if [[ $GAMESCOPE_INSTALLED == "1" ]] ; then
         GAMESCOPE_NEED_INSTALL="${translations[Change settings gamescope for]} <b>$PW_NAME_DESKTOP_PROXY</b>\n ${translations[<b>NOTE:</b> To display help for each item, simply hover your mouse over the text]}"
         GS_CB="CB" && GS_CBE="CBE" && GS_NUM="NUM" && GS_NUMN="NUMN"
         for int_to_boole in "${PW_GS_LIST[@]}" ; do
-            if [[ "${!int_to_boole}" == "1" ]]
+            if [[ ${!int_to_boole} == "1" ]]
             then export "$int_to_boole"="TRUE"
             else export "$int_to_boole"="FALSE"
             fi
@@ -5933,7 +5925,8 @@ gui_gamescope () {
     else
         if check_flatpak ; then
             GAMESCOPE_VERSION="$(grep 'VERSION_ID=' /etc/os-release)"
-            GAMESCOPE_NEED_INSTALL=$(eval_translations "<b>Gamescope is not detected on the system, to install it, run the command in the terminal:\\nflatpak install -y runtime/org.freedesktop.Platform.VulkanLayer.gamescope/x86_64/\$%{GAMESCOPE_VERSION}%\\n(Can be selected and copied)</b>" "GAMESCOPE_VERSION=${GAMESCOPE_VERSION//VERSION_ID=/}")
+            GAMESCOPE_VERSION="${GAMESCOPE_VERSION//VERSION_ID=/}"
+            GAMESCOPE_NEED_INSTALL="<b>${translations[Gamescope is not detected on the system, to install it, run the command in the terminal]}:\\nflatpak install -y runtime/org.freedesktop.Platform.VulkanLayer.gamescope/x86_64/$(echo "$GAMESCOPE_VERSION")\\n(${translations[Can be selected and copied]})</b>"
             YAD_TEXT_SELECTION="--selectable-labels"
         else
             GAMESCOPE_NEED_INSTALL="${translations[<b>Gamescope is not detected on the system, please contact the manufacturer of your distribution\\nor search the Internet for information on how to install gamescope on your system.</b>]}"
@@ -7150,7 +7143,7 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE." "DATE=$(date +%Y)" 2>/dev/null &
+SOFTWARE." 2>/dev/null &
 
     "${pw_yad}" --plug="${KEY_CREDITS}" --tabnum=3 \
     --text-info --show-uri --scroll \
