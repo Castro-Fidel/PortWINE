@@ -578,7 +578,6 @@ if [[ -f "$portwine_exe" ]] ; then
             "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="$START_GUI_NOTEBOOK_COLUMNS" --align-buttons --homogeneous-column \
             --gui-type-layout="$START_GUI_TYPE_LAYOUT_NOTEBOOK" \
             --field="   ${translations[Base settings]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Edit database file for]} ${PORTWINE_DB}":"FBTN" '@bash -c "button_click --start 118"' \
-            --field="   ${translations[Global settings]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Settings for user.conf]}":"FBTN" '@bash -c "button_click --start 128"' \
             --field="   ${translations[Open directory]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Open directory with <b>.ppdb</b> file]}":"FBTN" '@bash -c "button_click --start open_game_folder"' \
             --field="   vkBasalt!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)]}":"FBTN" '@bash -c "button_click --start 120"' \
             --field="   MangoHud!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)]}":"FBTN" '@bash -c "button_click --start 122"' \
@@ -623,7 +622,6 @@ if [[ -f "$portwine_exe" ]] ; then
             --gui-type-layout="$START_GUI_TYPE_LAYOUT_PANED" \
             --align-buttons --homogeneous-row --homogeneous-column \
             --field="   ${translations[Base settings]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Edit database file for]} ${PORTWINE_DB}":"FBTN" '@bash -c "button_click --start 118"' \
-            --field="   ${translations[Global settings]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Settings for user.conf]}":"FBTN" '@bash -c "button_click --start 128"' \
             --field="   ${translations[Open directory]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Open directory with <b>.ppdb</b> file]}":"FBTN" '@bash -c "button_click --start open_game_folder"' \
             --field="   vkBasalt!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)]}":"FBTN" '@bash -c "button_click --start 120"' \
             --field="   MangoHud!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)]}":"FBTN" '@bash -c "button_click --start 122"' \
