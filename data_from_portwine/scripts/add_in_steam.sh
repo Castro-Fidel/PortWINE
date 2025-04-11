@@ -55,7 +55,8 @@ getAppTarget() {
 }
 
 getSteamGameId() {
-	printf "%u\n" $(($1 << 32 | 0x02000000))
+	# printf "%u\n" $(($1 << 32 | 0x02000000))
+	printf "%u\n" $(($1 * 4294967296 + 0x02000000))
 }
 
 getAppId() {
@@ -318,8 +319,8 @@ parseSteamTargetExe() {
 
 restartSteam() {
 	if [[ "${PW_SKIP_RESTART_STEAM}" != 1 ]] && pgrep -i steam &>/dev/null ; then
-		if yad_question "${translations[For adding shortcut to STEAM, needed restart.\\n\\nRestart STEAM now?]}" ; then
-			pw_start_progress_bar_block "${translations[Restarting STEAM... Please wait.]}"
+		if yad_question "For adding shortcut to STEAM, needed restart.\\n\\nRestart STEAM now?" ; then
+			pw_start_progress_bar_block "Restarting STEAM... Please wait."
 			kill -s SIGTERM $(pgrep -a steam) &>/dev/null
 			while pgrep -i steam &>/dev/null ; do
 				sleep 0.5
@@ -521,7 +522,7 @@ addNonSteamGame() {
 
 			if [[ "${DOWNLOAD_STEAM_GRID}" == "1" ]] ; then
 				NOSTAPPNAME="${name_desktop}"
-				pw_start_progress_bar_block "${translations[Please wait. downloading covers for]} ${NOSTAPPNAME}"
+				pw_start_progress_bar_block "Please wait. downloading covers for ${NOSTAPPNAME}"
 				addGrids
 				pw_stop_progress_bar
 			fi
