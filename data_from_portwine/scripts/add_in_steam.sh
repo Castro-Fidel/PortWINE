@@ -51,17 +51,12 @@ getAppExe() {
 
 getAppTarget() {
 	exe=$(getAppExe "$1")
-	if [[ -n "${exe}" ]]; then
-		if [[ "${exe}" =~ .sh$ ]]; then
-			parseSteamTargetExe "${exe}"
-		else
-			echo "${exe}";
-		fi
-	fi
+	[[ -n "${exe}" ]] && parseSteamTargetExe "${exe}"
 }
 
 getSteamGameId() {
-	printf "%u\n" $(($1 << 32 | 0x02000000))
+	# printf "%u\n" $(($1 << 32 | 0x02000000))
+	printf "%u\n" $(($1 * 4294967296 + 0x02000000))
 }
 
 getAppId() {
@@ -73,28 +68,46 @@ getSteamId() {
 	local cache_file="${PORT_WINE_TMP_PATH:-/tmp}/steamid_cache.json"
 	local applist_cache_file="${PORT_WINE_TMP_PATH:-/tmp}/steamapplist_cache.json"
 	[[ -n "${1:-}" ]] && NOSTAPPNAME="$1"
+	[[ -z "${NOSTAPPNAME}" ]] && return 1
 	if [[ -z "${SteamIds:-}" ]] && [[ -f "${cache_file}" ]]; then
 		SteamIds=$(<"${cache_file}")
 	fi
-	if [[ -n "${SteamIds:-}" ]] && jq -e --arg key "${NOSTAPPNAME}" 'has($key)' <<< "${SteamIds}" > /dev/null; then
+	if [[ -n "${1:-}" ]] && [[ -n "${SteamIds:-}" ]] && jq -e --arg key "${NOSTAPPNAME}" 'has($key)' <<< "${SteamIds}" > /dev/null; then
 		SteamAppId=$(jq -r --arg key "${NOSTAPPNAME}" '.[$key]' <<< "${SteamIds}")
 	else
-		if [[ -n "${1:-}" ]] && [[ "${USE_STEAMGRIDDB:-1}" == "1" ]]; then
-			getSteamGridDBId "${NOSTAPPNAME}" > /dev/null
+		if [[ -n "${2:-}" ]]; then
+			NOSTAPPPATH="$2"
+			[[ -f "${NOSTAPPPATH}.ppdb" ]] && source "${NOSTAPPPATH}.ppdb"
 		fi
-		if [[ ${SteamGridDBTypeSteam} == true ]]; then
-			SRES=$(curl -Ls --connect-timeout 5 -m 10 -e "https://www.steamgriddb.com/game/${SteamGridDBId}" "https://www.steamgriddb.com/api/public/game/${SteamGridDBId}")
-			if jq -e ".success == true" <<< "${SRES}" > /dev/null 2>&1; then
-				SteamAppId="$(jq -r '.data.platforms.steam.id' <<< "${SRES}")"
+		[[ -n "${STEAM_APP_ID:-}" ]] && SteamAppId="${STEAM_APP_ID}"
+		if [[ -z "${SteamAppId:-}" ]] && [[ -n "${NOSTAPPPATH:-}" ]]; then
+			local paths=("steam_appid.txt" "steam_emu.ini" "steam_api.ini" "steam_api64.ini")
+			local conditions=$(printf " -o -name %q" "${paths[@]}")
+			local file=$(find "$(dirname "${NOSTAPPPATH}")" -type f \( ${conditions# -o} \) -print -quit 2>/dev/null)
+			if [[ -n "${file}" ]]; then
+				if [[ "${file}" == *"steam_appid.txt" ]]; then
+					SteamAppId=$(cat "${file}" | tr -d '\r\n')
+				else
+					SteamAppId=$(grep -i "^AppId=" "${file}" | cut -d'=' -f2 | head -1 | tr -d '\r\n')
+				fi
 			fi
-		elif [[ "${USE_STEAMGRIDDB:-1}" == "0" ]]; then
-			if [[ ! -f "${applist_cache_file}" ]] || [[ $(find "${applist_cache_file}" -mmin +1440) ]]; then
-				applist_data=$(curl -s --connect-timeout 5 "https://api.steampowered.com/ISteamApps/GetAppList/v2/")
-				[[ -n "${applist_data}" ]] && echo "${applist_data}" > "${applist_cache_file}"
-			else
-				applist_data=$(<"${applist_cache_file}")
+		fi
+		if [[ -z "${SteamAppId:-}" ]]; then
+			[[ "${USE_STEAMGRIDDB:-1}" == "1" ]] && getSteamGridDBId "${NOSTAPPNAME}" > /dev/null
+			if [[ ${SteamGridDBTypeSteam} == true ]]; then
+				SRES=$(curl -Ls --connect-timeout 5 -m 10 -e "https://www.steamgriddb.com/game/${SteamGridDBId}" "https://www.steamgriddb.com/api/public/game/${SteamGridDBId}")
+				if jq -e ".success == true" <<< "${SRES}" > /dev/null 2>&1; then
+					SteamAppId="$(jq -r '.data.platforms.steam.id' <<< "${SRES}")"
+				fi
+			elif [[ "${USE_STEAMGRIDDB:-1}" == "0" ]]; then
+				if [[ ! -f "${applist_cache_file}" ]] || [[ $(find "${applist_cache_file}" -mmin +1440) ]]; then
+					applist_data=$(curl -s --connect-timeout 5 "https://api.steampowered.com/ISteamApps/GetAppList/v2/")
+					[[ -n "${applist_data}" ]] && echo "${applist_data}" > "${applist_cache_file}"
+				else
+					applist_data=$(<"${applist_cache_file}")
+				fi
+				[[ -n "${applist_data}" ]] && SteamAppId=$(jq --arg name "${NOSTAPPNAME,,}" '.applist.apps[] | select(.name == $name) | .appid' <<< "${applist_data,,}")
 			fi
-			[[ -n "${applist_data}" ]] && SteamAppId=$(jq --arg name "${NOSTAPPNAME,,}" '.applist.apps[] | select(.name == $name) | .appid' <<< "${applist_data,,}")
 		fi
 		SteamIds=$(jq --arg key "${NOSTAPPNAME}" --arg value "${SteamAppId:-}" '. + {($key): $value}' <<< "${SteamIds:-$(jq -n '{}')}")
 		echo "${SteamIds}" > "${cache_file}"
@@ -178,11 +191,7 @@ getUserPath() {
 }
 
 getSteamPath() {
-	local paths=(
-		"${HOME}/.steam/steam"
-		"${HOME}/.local/share/Steam"
-		"${HOME}/.var/app/com.valvesoftware.Steam/.steam/steam"
-	)
+	local paths=("${HOME}/.steam/steam" "${HOME}/.local/share/Steam" "${HOME}/.var/app/com.valvesoftware.Steam/.steam/steam")
 	for path in "${paths[@]}"; do
 		if [[ -d "${path}" ]]; then
 			STEAM_BASE_FOLDER="${path}"
@@ -237,7 +246,8 @@ listSteamGames() {
 				appid="${name}"
 				name=$(basename "${exe}" .sh)
 			else
-				appid="$(getSteamId "${name}")"
+				path="$(parseSteamTargetExe "${exe}")"
+				appid="$(getSteamId "${name}" "${path}")"
 				[[ -z "${appid}" ]] && appid="0"
 			fi
 			gid="$(getSteamGameId $id)"
@@ -302,13 +312,15 @@ parseSteamShortcutEntryLaunchOptions() {
 }
 
 parseSteamTargetExe() {
- 	grep -E '^[^# ]*?(flatpak|start\.sh)' "$1" | head -n 1 | sed 's/ "\$@"//' | awk -F'"' '{print $(NF-1)}'
+	if [[ "$1" =~ .sh$ ]]; then
+		grep -E '^[^# ]*?(flatpak|start\.sh)' "$1" | head -n 1 | sed 's/ "\$@"//' | awk -F'"' '{print $(NF-1)}'
+	fi
 }
 
 restartSteam() {
 	if [[ "${PW_SKIP_RESTART_STEAM}" != 1 ]] && pgrep -i steam &>/dev/null ; then
-		if yad_question "${translations[For adding shortcut to STEAM, needed restart.\\n\\nRestart STEAM now?]}" ; then
-			pw_start_progress_bar_block "${translations[Restarting STEAM... Please wait.]}"
+		if yad_question "For adding shortcut to STEAM, needed restart.\\n\\nRestart STEAM now?" ; then
+			pw_start_progress_bar_block "Restarting STEAM... Please wait."
 			kill -s SIGTERM $(pgrep -a steam) &>/dev/null
 			while pgrep -i steam &>/dev/null ; do
 				sleep 0.5
@@ -333,9 +345,6 @@ downloadImage() {
 }
 
 downloadImageSteam() {
-	if [[ -z "${SteamAppId}" ]]; then
-		getSteamId > /dev/null
-	fi
 	if [[ -n "${SteamAppId}" ]]; then
 		downloadImage "https://cdn.cloudflare.steamstatic.com/steam/apps/${SteamAppId}/$1" "$2"
 	else
@@ -363,16 +372,22 @@ downloadImageSteamGridDB() {
 }
 
 addGrids() {
-	[[ -z "${SteamGridDBId}" ]] && getSteamGridDBId "${name_desktop}" > /dev/null
-	if [[ -z "${SteamAppId}" ]] && [[ "${USE_STEAMGRIDDB:-1}" == "0" ]]; then
+	local AppId="${NOSTAPPID:-0}"
+	local in=("header.jpg" "library_600x900_2x.jpg" "library_hero.jpg" "logo.png")
+	local out=("${AppId}.jpg" "${AppId}"p".jpg" "${AppId}"_hero".jpg" "${AppId}"_logo".png")
+	local gtype=("grids" "grids" "heroes" "logos")
+	local mimes=("image/jpeg" "image/jpeg" "image/jpeg" "image/png")
+	local dims=("460x215,920x430" "600x900,660x930" "" "")
+	if [[ -z "${SteamGridDBId}" ]] && [[ -z "${SteamAppId}" ]]; then
 		getSteamId > /dev/null
 	fi
 	if [[ -n "${SteamGridDBId}" ]] || [[ -n "${SteamAppId}" ]]; then
 		create_new_dir "${STCFGPATH}/grid"
-		downloadImageSteamGridDB "grids" "${NOSTAPPID:-0}.jpg" "mimes=image/jpeg" "dimensions=460x215,920x430" || downloadImageSteam "header.jpg" "${NOSTAPPID:-0}.jpg" || echo "Failed to load header.jpg"
-		downloadImageSteamGridDB "grids" "${NOSTAPPID:-0}p.jpg" "mimes=image/jpeg" "dimensions=600x900,660x930" || downloadImageSteam "library_600x900_2x.jpg" "${NOSTAPPID:-0}p.jpg" || echo "Failed to load library_600x900_2x.jpg"
-		downloadImageSteamGridDB "heroes" "${NOSTAPPID:-0}_hero.jpg" "mimes=image/jpeg" || downloadImageSteam "library_hero.jpg" "${NOSTAPPID:-0}_hero.jpg" || echo "Failed to load library_hero.jpg"
-		downloadImageSteamGridDB "logos" "${NOSTAPPID:-0}_logo.png" "mimes=image/png" || downloadImageSteam "logo.png" "${NOSTAPPID:-0}_logo.png" || echo "Failed to load logo.png"
+		for i in "${!in[@]}"; do
+			downloadImageSteam "${in[${i}]}" "${out[${i}]}" || \
+				downloadImageSteamGridDB "${gtype[${i}]}" "${out[${i}]}" ${mimes[${i}]:+"mimes=${mimes[${i}]}"} ${dims[${i}]:+"dimensions=${dims[${i}]}"} || \
+				echo "Failed to load ${in[${i}]}"
+		done
 	else
 		echo "Game is not found"
 	fi
@@ -474,6 +489,7 @@ addNonSteamGame() {
 	if [[ -n "${SCPATH}" ]]; then
 		[[ -z "${NOSTSHPATH}" ]] && NOSTSHPATH="${STEAM_SCRIPTS}/${name_desktop}.sh"
 		NOSTAPPNAME="${name_desktop}"
+		NOSTAPPPATH="${portwine_exe}"
 		NOSTAPPID=$(getAppId "${NOSTSHPATH}")
 		if [[ ! -f "${NOSTSHPATH}" ]]; then
 			create_new_dir "${STEAM_SCRIPTS}"
@@ -482,7 +498,7 @@ addNonSteamGame() {
 				export LD_PRELOAD=
 				export START_FROM_STEAM=1
 				export START_FROM_FLATPAK=$(check_flatpak && echo 1 || echo 0)
-				"${PORT_SCRIPTS_PATH}/start.sh" "${portwine_exe}" "\$@"
+				"${PORT_SCRIPTS_PATH}/start.sh" "${NOSTAPPPATH}" "\$@"
 			EOF
 			chmod u+x "${NOSTSHPATH}"
 		fi
@@ -498,7 +514,7 @@ addNonSteamGame() {
 			fi
 
 			if [[ "${USE_STEAMAPPID_AS_NAME:-0}" == "1" ]]; then
-				SteamAppId=$(getSteamId "${NOSTAPPNAME}")
+				getSteamId > /dev/null
 				[[ -n "${SteamAppId}" ]] && NOSTAPPNAME="${SteamAppId}"
 			fi
 
@@ -506,7 +522,7 @@ addNonSteamGame() {
 
 			if [[ "${DOWNLOAD_STEAM_GRID}" == "1" ]] ; then
 				NOSTAPPNAME="${name_desktop}"
-				pw_start_progress_bar_block "${translations[Please wait. downloading covers for]} ${NOSTAPPNAME}"
+				pw_start_progress_bar_block "Please wait. downloading covers for ${NOSTAPPNAME}"
 				addGrids
 				pw_stop_progress_bar
 			fi

@@ -103,7 +103,7 @@ unset CHK_SYMLINK_FILE PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PATH_T
 unset PW_PREFIX_NAME VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR PW_WINE_CPU_TOPOLOGY
 unset MANGOHUD_CONFIG FPS_LIMIT PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME PORTWINE_CREATE_SHORTCUT_NAME MIRROR
 unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NOSTSTDIR RADV_DEBUG PW_NO_AUTO_CREATE_SHORTCUT
-unset PW_TERM PW_EXEC_FROM_DESKTOP WEBKIT_DISABLE_DMABUF_RENDERER PW_AMD_VULKAN_USE PW_VK_ICD_FILENAMES LAUNCH_URI
+unset PW_TERM PW_EXEC_FROM_DESKTOP WEBKIT_DISABLE_DMABUF_RENDERER PW_AMD_VULKAN_USE PW_VK_ICD_FILENAMES LAUNCH_URI PW_USE_SETUP_FILE
 
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 rm -f "$PORT_WINE_TMP_PATH"/*{exe,msi,tar}*
@@ -326,6 +326,20 @@ if check_flatpak ; then
 else pw_download_libs
 fi
 
+if [[ ${portwine_exe,,} =~ (setup|install|.msi$) ]] ; then
+    export PW_DISABLED_CREATE_DB="1"
+    export PW_VULKAN_USE="1"
+    export PW_MANGOHUD="0"
+    export PW_NO_FSYNC="1"
+    export PW_NO_ESYNC="1"
+    export PW_USE_GAMEMODE="0"
+    export PW_DLL_INSTALL=""
+    # export WINEDLLOVERRIDES="mscoree,mshtml="
+    export PW_WINE_USE="WINE_LG"
+
+    export PW_USE_SETUP_FILE="1"
+fi
+
 pw_init_db
 
 if [[ ! -d "${HOME}/PortProton" ]] \
@@ -540,10 +554,14 @@ if [[ -f "$portwine_exe" ]] ; then
         fi
 
         create_name_desktop
-        if [[ -z $PW_COMMENT_DB ]] ; then
-            PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$PW_NAME_DESKTOP_PROXY" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
-        else
+        if [[ -n $PW_COMMENT_DB ]] ; then
             PW_COMMENT_DB="$PW_COMMENT_DB$(seconds_to_time "$TIME_CURRENT")"
+        else
+            if [[ $PW_USE_SETUP_FILE == "1" ]] ; then
+                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$PW_NAME_DESKTOP_PROXY" "50")</b>"
+            else
+                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$PW_NAME_DESKTOP_PROXY" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
+            fi
         fi
 
         export KEY_START="$RANDOM"
@@ -560,7 +578,6 @@ if [[ -f "$portwine_exe" ]] ; then
             "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="$START_GUI_NOTEBOOK_COLUMNS" --align-buttons --homogeneous-column \
             --gui-type-layout="$START_GUI_TYPE_LAYOUT_NOTEBOOK" \
             --field="   ${translations[Base settings]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Edit database file for]} ${PORTWINE_DB}":"FBTN" '@bash -c "button_click --start 118"' \
-            --field="   ${translations[Global settings]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Settings for user.conf]}":"FBTN" '@bash -c "button_click --start 128"' \
             --field="   ${translations[Open directory]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Open directory with <b>.ppdb</b> file]}":"FBTN" '@bash -c "button_click --start open_game_folder"' \
             --field="   vkBasalt!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)]}":"FBTN" '@bash -c "button_click --start 120"' \
             --field="   MangoHud!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)]}":"FBTN" '@bash -c "button_click --start 122"' \
@@ -605,7 +622,6 @@ if [[ -f "$portwine_exe" ]] ; then
             --gui-type-layout="$START_GUI_TYPE_LAYOUT_PANED" \
             --align-buttons --homogeneous-row --homogeneous-column \
             --field="   ${translations[Base settings]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Edit database file for]} ${PORTWINE_DB}":"FBTN" '@bash -c "button_click --start 118"' \
-            --field="   ${translations[Global settings]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Settings for user.conf]}":"FBTN" '@bash -c "button_click --start 128"' \
             --field="   ${translations[Open directory]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Open directory with <b>.ppdb</b> file]}":"FBTN" '@bash -c "button_click --start open_game_folder"' \
             --field="   vkBasalt!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)]}":"FBTN" '@bash -c "button_click --start 120"' \
             --field="   MangoHud!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)]}":"FBTN" '@bash -c "button_click --start 122"' \
