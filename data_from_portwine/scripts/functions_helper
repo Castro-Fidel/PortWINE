@@ -3057,6 +3057,7 @@ pw_create_unique_exe () {
         else
             print_warning "There are no arguments for creating a symbolic link! Skip it..."
         fi
+        try_remove_file "${portwine_exe}.ppdb"
         popd || fatal
     fi
 }
@@ -3183,6 +3184,7 @@ start_portwine () {
         done
 
         LIST_ICU_DLL_LINKS="icuin68 icuuc68 icudt68"
+        [[ -d "${WINEDIR}/lib/icu32" ]] && mv "${WINEDIR}/lib/icu32" "${WINEDIR}/lib/icu"
         for dll in $LIST_ICU_DLL_LINKS ; do
             if [[ -f "${WINEDIR}/lib/icu/${dll}.dll" ]] ; then
                 try_force_link_file "${WINEDIR}/lib/icu/${dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${dll}.dll"
