@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Author: if984 (Maksim K.)
+# type: emulators
+# name: Azahar
+# image: azahar
+# info_en: An open source Nintendo 3DS emulator based on Citra, designed to run games with support for enhanced resolutions and advanced emulation settings.
+# info_ru: Эмулятор Nintendo 3DS с открытым исходным кодом на основе Citra, созданный для запуска игр с поддержкой улучшенного разрешения и расширенных настроек эмуляции.
+##########################################################################
+# export LAUNCH_PARAMETERS="/VERYSILENT"
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/azahar-2120.3-windows-msys2-installer.exe"
+start_portwine
+if try_download "https://github.com/azahar-emu/azahar/releases/download/2120.3/azahar-2120.3-windows-msys2-installer.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
+then
+    pw_start_progress_bar_install_game "Azahar."
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files/Azahar/azahar.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    kill_portwine
+    pw_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="Azahar"
+    portwine_create_shortcut
+fi
+stop_portwine
