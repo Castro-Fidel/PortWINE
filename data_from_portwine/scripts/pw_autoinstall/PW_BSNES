@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Author: if984 (Maksim K.)
+# type: emulators
+# name: bsnes
+# image: bsnes
+# info_en: An open source Super Nintendo Entertainment System (SNES) emulator that focuses on performance, accuracy, user-friendly interface, and special features.
+# info_ru: Эмулятор Super Nintendo Entertainment System (SNES) с открытым исходным кодом, который фокусируется на производительности, точности, удобном пользовательском интерфейсе и специальных функциях.
+########################################################################
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/bsnes-windows.zip"
+start_portwine
+if try_download "https://github.com/bsnes-emu/bsnes/releases/download/nightly/bsnes-windows.zip" "${PW_AUTOINSTALL_EXE}" no_mirror 
+then
+    pw_start_progress_bar_install_game "bsnes."
+    "$pw_7z" x -y "${PW_AUTOINSTALL_EXE}" -o"$WINEPREFIX/drive_c/Program Files"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files/bsnes-nightly/bsnes.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    kill_portwine
+    pw_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="bsnes"
+    portwine_create_shortcut
+fi
+stop_portwine
