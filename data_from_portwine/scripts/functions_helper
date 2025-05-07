@@ -4328,11 +4328,12 @@ pw_run () {
     check_variables SteamAppId "0"
     check_variables SteamGameId "0"
 
+
     PW_LOG_TO_FILE="${PORT_WINE_PATH}/PortProton.log"
     PW_LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}"
     print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VULKAN_DRIVER_NAME"
     print_var "WINELOADER" "VKD3D_CONFIG" "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2"
-    print_var "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH" "PW_VK_ICD_FILENAMES"
+    print_var "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH" "PW_VK_ICD_FILENAMES" "PW_TASKSET_SLR"
     proxy_launch_parameters=${LAUNCH_PARAMETERS//\\\\/\\}
     if [[ "$PW_USE_RUNTIME" == 1 ]] \
     && [[ "$PW_WINE_USE" != "USE_SYSTEM_WINE" ]]
@@ -4347,7 +4348,8 @@ pw_run () {
             print_info "Log from RUNTIME and WINE:"
             ${PW_RUN_GAMESCOPE} \
             ${PW_POWERPROFILECTL_SLR} \
-            ${PW_INHIBIT_SLR}\
+            ${PW_INHIBIT_SLR} \
+            ${PW_TASKSET_SLR} \
             ${pw_runtime} \
             LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             LD_PRELOAD="${PW_LD_PRELOAD}" \
@@ -4366,7 +4368,8 @@ pw_run () {
             echo "Log WINE:" > "${PW_LOG_TO_FILE}"
             ${PW_RUN_GAMESCOPE} \
             ${PW_POWERPROFILECTL_SLR} \
-            ${PW_INHIBIT_SLR}\
+            ${PW_INHIBIT_SLR} \
+            ${PW_TASKSET_SLR} \
             ${pw_runtime} \
             LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             LD_PRELOAD="${PW_LD_PRELOAD}" \
@@ -4402,7 +4405,8 @@ pw_run () {
             ${PW_POWERPROFILECTL_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
-            ${PW_INHIBIT_SLR}\
+            ${PW_INHIBIT_SLR} \
+            ${PW_TASKSET_SLR} \
             "${WINELOADER}" "$@" ${proxy_launch_parameters} &>>"${PW_LOG_TO_FILE}"
             wait_wineserver
         else
@@ -4421,7 +4425,8 @@ pw_run () {
             ${PW_POWERPROFILECTL_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
-            ${PW_INHIBIT_SLR}\
+            ${PW_INHIBIT_SLR} \
+            ${PW_TASKSET_SLR} \
             "${WINELOADER}" "$@" ${proxy_launch_parameters}
             wait_wineserver
         fi
@@ -5204,6 +5209,23 @@ gui_edit_db () {
         CPU_LIMIT_VAR="disabled"
     fi
 
+    declare -A NODE_MAP
+    NUMA_NODE_LIST=""
+    INDEX=0
+    while read -r line; do
+        NODE_MAP[$INDEX]="$line"
+        NUMA_NODE_LIST+="$INDEX "
+        ((INDEX++))
+    done < <( lscpu | grep -Po "NUMA node\d+ CPU\(s\):\s+\K.*" )
+    # удаляем последний пробел, чтобы в combobox не было «0 »
+    NUMA_NODE_LIST="${NUMA_NODE_LIST% }"
+
+    if [[ -n "${PW_CPU_NUMA_NODE_INDEX}" ]] && [[ "${PW_CPU_NUMA_NODE_INDEX}" != "disabled" ]]; then
+        NUMA_NODE_INDEX="${PW_CPU_NUMA_NODE_INDEX}"
+    else
+        NUMA_NODE_INDEX="disabled"
+    fi
+
     if [[ -n "${PW_AMD_VULKAN_USE}" ]] && \
     [[ "${PW_AMD_VULKAN_USE}" != "disabled" ]] ; then
         AMD_VULKAN_VAR="${PW_AMD_VULKAN_USE}"
@@ -5235,6 +5257,8 @@ immediate - Unlimited frame rate + tearing.
 mailbox - Triple buffering. Unlimited frame rate + no tearing.
 relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]} :CB" "$(combobox_fix --disabled "${PW_MESA_VK_WSI_PRESENT_MODE}" "fifo!immediate!mailbox!relaxed")" \
     --field="${translations[Select needed AMD vulkan implementation]}!${translations[Choosing which implementation of vulkan will be used to run the game]} $AMD_VULKAN_CB" "$(combobox_fix --disabled "$AMD_VULKAN_VAR" "$AMD_VULKAN_DRIVER_LIST")" \
+    --field="${translations[NUMA node for CPU affinity]}!${translations[In multi‑core systems, CPUs are split into NUMA nodes, each with its own local memory and cores.
+Binding a game to a single node reduces memory‑access latency and limits costly core‑to‑core switches.)]} :CB" "$(combobox_fix --disabled "${NUMA_NODE_INDEX}" "${NUMA_NODE_LIST}")" \
     1> "$PW_TMPFS_PATH/tmp_output_yad_fps_limit" 2>/dev/null &
 
     "${pw_yad}" --notebook --key="$KEY_EDIT_DB_GUI" --title "${translations[EDIT DB]}" --text-align=center \
@@ -5285,6 +5309,17 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
     PW_LOCALE_SELECT="${PW_ADD_SETTINGS[7]}"
     PW_MESA_VK_WSI_PRESENT_MODE="${PW_ADD_SETTINGS[8]}"
     PW_AMD_VULKAN_USE="${PW_ADD_SETTINGS[9]}"
+    NUMA_NODE_INDEX="${PW_ADD_SETTINGS[10]//[[:space:]]/}"
+
+    if [[ "$NUMA_NODE_INDEX" =~ ^[0-9]+$ ]] && [[ -v NODE_MAP[$NUMA_NODE_INDEX] ]]; then
+        NUMA_CORES="${NODE_MAP[$NUMA_NODE_INDEX]}"
+        PW_CPU_NUMA_NODE_INDEX="$NUMA_NODE_INDEX"
+        PW_TASKSET_SLR="taskset -c $NUMA_CORES"
+    else
+        PW_CPU_NUMA_NODE_INDEX="disabled"
+        PW_TASKSET_SLR=""
+    fi
+    export PW_CPU_NUMA_NODE_INDEX PW_TASKSET_SLR
 
     if [[ "${CPU_LIMIT}" =~ ^[0-9]+$ ]] ; then
         PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $(( CPU_LIMIT - 1 )))"
@@ -5294,7 +5329,7 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
     export PW_WINE_CPU_TOPOLOGY
 
     edit_db_from_gui "${PW_EDIT_DB_LIST[@]}" LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY \
-    PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PW_LOCALE_SELECT PW_MESA_VK_WSI_PRESENT_MODE PW_AMD_VULKAN_USE
+    PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PW_LOCALE_SELECT PW_MESA_VK_WSI_PRESENT_MODE PW_AMD_VULKAN_USE PW_CPU_NUMA_NODE_INDEX PW_TASKSET_SLR
 
     if [[ -z "$MANGOHUD_CONFIG" ]] ; then
         MONITOR_HEIGHT="$(echo "$PW_SCREEN_RESOLUTION" | awk -F'x' '{print $2}')"
