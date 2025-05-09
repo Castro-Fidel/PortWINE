@@ -3692,9 +3692,28 @@ start_portwine () {
 
     if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "1" ]] \
     && [[ ! $PW_WINE_USE =~ (PROTON_LG|WINE_LG) ]] \
-    && [[ $PW_VULKAN_USE != "0" ]] ; then
-        CP_DXVK_FILES="d3d11 d3d10core d3d9 d3d8 dxgi"
-        CP_VKD3D_FILES="d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1"
+    && [[ ! $PW_VULKAN_USE =~ (0|3) ]] ; then
+        if [[ -f "${WINEDIR}/lib64/wine/dxvk/d3d10.dll" && -f "${WINEDIR}/lib64/wine/dxvk/d3d10_1.dll" ]] ; then
+            CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
+            CP_WINE_FILES=""
+        else
+            CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi"
+            CP_WINE_FILES="d3d10_1 d3d10"
+        fi
+        if [[ -f "${WINEDIR}/lib64/wine/d8vk/d3d8.dll" ]] ; then
+            try_force_link_file "${WINEDIR}/lib/wine/d8vk/d3d8.dll" "${WINEPREFIX}/drive_c/windows/syswow64/d3d8.dll"
+            try_force_link_file "${WINEDIR}/lib64/wine/d8vk/d3d8.dll" "${WINEPREFIX}/drive_c/windows/system32/d3d8.dll"
+            var_winedlloverride_update "d3d8=n"
+        elif [[ -f "${WINEDIR}/lib64/wine/dxvk/d3d8.dll" ]]
+        then add_to_var CP_DXVK_FILES "d3d8"
+        else add_to_var CP_WINE_FILES "d3d8"
+        fi
+        if [[ -f "${WINEDIR}/lib64/wine/vkd3d-proton/d3d12core.dll" && -f "${WINEDIR}/lib64/vkd3d/libvkd3d-1.dll" ]] ; then
+            CP_VKD3D_FILES="d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1"
+        else
+            CP_VKD3D_FILES="d3d12 libvkd3d-shader-1"
+            add_to_var CP_WINE_FILES "d3d12core"
+        fi
         PW_USE_SUPPLIED_DXVK_VKD3D="2"
     fi
 
@@ -3925,10 +3944,6 @@ start_portwine () {
             && [[ -f "${WINEDIR}/lib64/wine/dxvk/${wine_dxvk_dll}.dll" ]] ; then
                 try_force_link_file "${WINEDIR}/lib/wine/dxvk/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
                 try_force_link_file "${WINEDIR}/lib64/wine/dxvk/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
-            elif [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "2" ]] \
-            && [[ -f "${WINEDIR}/lib64/wine/d8vk/d3d8.dll" ]] && [[ $wine_dxvk_dll == "d3d8" ]] ; then
-                try_force_link_file "${WINEDIR}/lib/wine/d8vk/d3d8.dll" "${WINEPREFIX}/drive_c/windows/syswow64/d3d8.dll"
-                try_force_link_file "${WINEDIR}/lib64/wine/d8vk/d3d8.dll" "${WINEPREFIX}/drive_c/windows/system32/d3d8.dll"
             else
                 if [[ -f "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" ]] ; then
                     try_force_link_file "${PATH_TO_DXVK_FILES}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
