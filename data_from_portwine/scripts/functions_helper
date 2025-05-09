@@ -5179,8 +5179,7 @@ gui_edit_db () {
         0)
             # WineD3D OpenGL
             VKD3D_CB="DCB"
-            DISABLE_EDIT_DB_LIST="PW_VKBASALT PW_VKBASALT_USER_CONF PW_USE_RAY_TRACING PW_USE_OBS_VKCAPTURE PW_USE_GALLIUM_ZINK PW_USE_DAMAVAND
-            "
+            DISABLE_EDIT_DB_LIST="PW_VKBASALT PW_VKBASALT_USER_CONF PW_USE_RAY_TRACING PW_USE_OBS_VKCAPTURE PW_USE_GALLIUM_ZINK PW_USE_DAMAVAND"
             ;;
         1|2)
             # Stable, Newest
@@ -5189,10 +5188,11 @@ gui_edit_db () {
         5)
             # Legacy
             VKD3D_CB="DCB"
-            DISABLE_EDIT_DB_LIST="PW_USE_RAY_TRACING
-            "
+            DISABLE_EDIT_DB_LIST="PW_USE_RAY_TRACING"
             ;;
     esac
+
+    [[ $PW_WINE_USE =~ (PROTON_LG|WINE_LG) ]] && DISABLE_EDIT_DB_LIST+=" PW_USE_SUPPLIED_DXVK_VKD3D"
 
     unset ADD_CHK_BOX_EDIT_DB
     for int_to_boole in "${PW_EDIT_DB_LIST[@]}" ; do
@@ -5203,8 +5203,7 @@ gui_edit_db () {
         TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
         int_to_boole_non_pw="${int_to_boole//PW_/}"
         int_to_boole_non_pw="${int_to_boole_non_pw//"_"/" "}"
-        if [[ ! "${PW_VULKAN_USE}" =~ ^(1|2)$ ]] \
-        && [[ -n $DISABLE_EDIT_DB_LIST ]] ; then
+        if [[ -n $DISABLE_EDIT_DB_LIST ]] ; then
             unset CHECK_BOOLE_TRUE
             for check_boole in $DISABLE_EDIT_DB_LIST ; do
                 if [[ $check_boole == "$int_to_boole" ]] ; then
