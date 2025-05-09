@@ -3690,6 +3690,14 @@ start_portwine () {
         fi
     fi
 
+    if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "1" ]] \
+    && [[ ! $PW_WINE_USE =~ (PROTON_LG|WINE_LG) ]] \
+    && [[ $PW_VULKAN_USE != "0" ]] ; then
+        CP_DXVK_FILES="d3d11 d3d10core d3d9 d3d8 dxgi"
+        CP_VKD3D_FILES="d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1"
+        PW_USE_SUPPLIED_DXVK_VKD3D="2"
+    fi
+
     # DGVOODOO2 enable:
     if [[ "${PW_DGVOODOO2}" == "1" ]] ; then
         print_info "Try create symlink DGVOODOO2 files..."
@@ -3913,10 +3921,14 @@ start_portwine () {
     if [[ -n "$CP_DXVK_FILES" ]] ; then
         print_info "Try create symlink DXVK files..."
         for wine_dxvk_dll in $CP_DXVK_FILES ; do
-            if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "1" ]] \
+            if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "2" ]] \
             && [[ -f "${WINEDIR}/lib64/wine/dxvk/${wine_dxvk_dll}.dll" ]] ; then
                 try_force_link_file "${WINEDIR}/lib/wine/dxvk/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
                 try_force_link_file "${WINEDIR}/lib64/wine/dxvk/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
+            elif [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "2" ]] \
+            && [[ -f "${WINEDIR}/lib64/wine/d8vk/d3d8.dll" ]] && [[ $wine_dxvk_dll == "d3d8" ]] ; then
+                try_force_link_file "${WINEDIR}/lib/wine/d8vk/d3d8.dll" "${WINEPREFIX}/drive_c/windows/syswow64/d3d8.dll"
+                try_force_link_file "${WINEDIR}/lib64/wine/d8vk/d3d8.dll" "${WINEPREFIX}/drive_c/windows/system32/d3d8.dll"
             else
                 if [[ -f "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" ]] ; then
                     try_force_link_file "${PATH_TO_DXVK_FILES}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
@@ -3935,7 +3947,7 @@ start_portwine () {
 
     if [[ "$DXVK_ENABLE_NVAPI" == "1" ]] ; then
         print_info "Try create symlink NVAPI files..."
-        if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "1" ]] \
+        if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "2" ]] \
         && [[ -f "${WINEDIR}/lib64/wine/nvapi/nvapi64.dll" ]] ; then
             try_force_link_file "${WINEDIR}/lib/wine/nvapi/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/nvapi.dll"
             try_force_link_file "${WINEDIR}/lib64/wine/nvapi/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvapi64.dll"
@@ -3955,7 +3967,7 @@ start_portwine () {
     if [[ -n "$CP_VKD3D_FILES" ]] ; then
         print_info "Try create symlink VKD3D files..."
         for wine_vkd3d_dll in $CP_VKD3D_FILES ; do
-            if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "1" ]] \
+            if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "2" ]] \
             && [[ -f "${WINEDIR}/lib64/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" || -f "${WINEDIR}/lib64/vkd3d/${wine_vkd3d_dll}.dll" ]] ; then
                 if [[ -f "${WINEDIR}/lib64/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" ]] ; then
                     try_force_link_file "${WINEDIR}/lib/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
@@ -3970,8 +3982,8 @@ start_portwine () {
                     try_force_link_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
                     try_force_link_file "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
                 fi
-                var_winedlloverride_update "${wine_vkd3d_dll}=n"
             fi
+            var_winedlloverride_update "${wine_vkd3d_dll}=n"
         done
         create_new_dir "${PATH_TO_VKD3D_FILES}/vkd3d_cache"
         export VKD3D_SHADER_CACHE_PATH="${PATH_TO_VKD3D_FILES}/vkd3d_cache"
@@ -5797,8 +5809,7 @@ gui_dgvoodoo2 () {
         TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
         int_to_boole_non_pw="${int_to_boole//PW_DGV2/}"
         int_to_boole_non_pw="${int_to_boole_non_pw//"_"/" "}"
-        if [[ ! "${PW_VULKAN_USE}" =~ ^(1|2)$ ]] \
-        && [[ -n $DISABLE_DGV2_LIST ]] ; then
+        if [[ -n $DISABLE_DGV2_LIST ]] ; then
             unset CHECK_BOOLE_TRUE
             for check_boole in $DISABLE_DGV2_LIST ; do
                 if [[ $check_boole == "$int_to_boole" ]] ; then
