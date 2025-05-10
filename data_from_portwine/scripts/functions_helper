@@ -661,9 +661,10 @@ try_download () {
 }
 
 var_winedlloverride_update () {
-    export WINEDLLOVERRIDES="${1}${WINEDLLOVERRIDES:+;$WINEDLLOVERRIDES}"
+    if [[ ! $WINEDLLOVERRIDES =~ $1 ]] ; then
+        export WINEDLLOVERRIDES="${1}${WINEDLLOVERRIDES:+;$WINEDLLOVERRIDES}"
+    fi
 }
-
 
 var_vkd3d_config_update () {
     if echo "$VKD3D_CONFIG" | grep "$1"
@@ -2454,7 +2455,6 @@ pw_init_db () {
 		    ;;
 	esac
 
-
     [[ "${START_FROM_STEAM}" == 1 ]] && export PW_GUI_DISABLED_CS=1
     [[ "${START_FROM_PP_GUI}" == 1 ]] && export PW_GUI_DISABLED_CS=0 && unset START_FROM_PP_GUI
 	
@@ -3692,7 +3692,8 @@ start_portwine () {
 
     if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "1" ]] \
     && [[ ! $PW_WINE_USE =~ (PROTON_LG|WINE_LG) ]] \
-    && [[ ! $PW_VULKAN_USE =~ (0|3) ]] ; then
+    && [[ ! $PW_VULKAN_USE =~ (0|3) ]] \
+    && [[ -f "${WINEDIR}/lib64/wine/dxvk/d3d9.dll" ]] ; then
         if [[ -f "${WINEDIR}/lib64/wine/dxvk/d3d10.dll" && -f "${WINEDIR}/lib64/wine/dxvk/d3d10_1.dll" ]] ; then
             CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
             CP_WINE_FILES=""
@@ -3710,11 +3711,15 @@ start_portwine () {
         fi
         if [[ -f "${WINEDIR}/lib64/wine/vkd3d-proton/d3d12core.dll" && -f "${WINEDIR}/lib64/vkd3d/libvkd3d-1.dll" ]] ; then
             CP_VKD3D_FILES="d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1"
-        else
+        elif [[ -f "${WINEDIR}/lib64/wine/vkd3d-proton/d3d12.dll" && -f "${WINEDIR}/lib64/vkd3d/libvkd3d-shader-1.dll" ]] ; then
             CP_VKD3D_FILES="d3d12 libvkd3d-shader-1"
             add_to_var CP_WINE_FILES "d3d12core"
+        else
+            CP_VKD3D_FILES=""
+            add_to_var CP_WINE_FILES "d3d12 d3d12core"
         fi
-        PW_USE_SUPPLIED_DXVK_VKD3D="2"
+    else
+        PW_USE_SUPPLIED_DXVK_VKD3D="0"
     fi
 
     # DGVOODOO2 enable:
@@ -3940,15 +3945,12 @@ start_portwine () {
     if [[ -n "$CP_DXVK_FILES" ]] ; then
         print_info "Try create symlink DXVK files..."
         for wine_dxvk_dll in $CP_DXVK_FILES ; do
-            if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "2" ]] \
-            && [[ -f "${WINEDIR}/lib64/wine/dxvk/${wine_dxvk_dll}.dll" ]] ; then
+            if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "1" ]] ; then
                 try_force_link_file "${WINEDIR}/lib/wine/dxvk/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
                 try_force_link_file "${WINEDIR}/lib64/wine/dxvk/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
             else
-                if [[ -f "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" ]] ; then
-                    try_force_link_file "${PATH_TO_DXVK_FILES}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
-                    try_force_link_file "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
-                fi
+                try_force_link_file "${PATH_TO_DXVK_FILES}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
+                try_force_link_file "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
             fi
             if [[ $PW_USE_FAKE_DLSS_3 == "1" ]] && [[ $wine_dxvk_dll == "dxgi" ]]
             then var_winedlloverride_update "dxgi=n,b"
@@ -3962,8 +3964,7 @@ start_portwine () {
 
     if [[ "$DXVK_ENABLE_NVAPI" == "1" ]] ; then
         print_info "Try create symlink NVAPI files..."
-        if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "2" ]] \
-        && [[ -f "${WINEDIR}/lib64/wine/nvapi/nvapi64.dll" ]] ; then
+        if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "1" ]] && [[ -f "${WINEDIR}/lib64/wine/nvapi/nvapi64.dll" ]] ; then
             try_force_link_file "${WINEDIR}/lib/wine/nvapi/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/nvapi.dll"
             try_force_link_file "${WINEDIR}/lib64/wine/nvapi/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvapi64.dll"
             try_force_link_file "${WINEDIR}/lib64/wine/nvapi/nvofapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvofapi64.dll"
@@ -3982,8 +3983,7 @@ start_portwine () {
     if [[ -n "$CP_VKD3D_FILES" ]] ; then
         print_info "Try create symlink VKD3D files..."
         for wine_vkd3d_dll in $CP_VKD3D_FILES ; do
-            if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "2" ]] \
-            && [[ -f "${WINEDIR}/lib64/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" || -f "${WINEDIR}/lib64/vkd3d/${wine_vkd3d_dll}.dll" ]] ; then
+            if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "1" ]] ; then
                 if [[ -f "${WINEDIR}/lib64/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" ]] ; then
                     try_force_link_file "${WINEDIR}/lib/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
                     try_force_link_file "${WINEDIR}/lib64/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
@@ -3993,10 +3993,8 @@ start_portwine () {
                     try_force_link_file "${WINEDIR}/lib64/vkd3d/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
                 fi
             else
-                if [[ -f "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" ]] ; then
-                    try_force_link_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
-                    try_force_link_file "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
-                fi
+                try_force_link_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
+                try_force_link_file "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
             fi
             var_winedlloverride_update "${wine_vkd3d_dll}=n"
         done
@@ -4199,7 +4197,6 @@ start_portwine () {
         get_and_set_reg_file --delete 'Software\Wine\Drivers' 'Graphics'
     fi
 
-
     case "$PW_SOUND_DRIVER_USE" in
         pulse) get_and_set_reg_file --add 'Software\Wine\Drivers' 'Audio' 'REG_SZ' "pulse" "user" ;;
          alsa) get_and_set_reg_file --add 'Software\Wine\Drivers' 'Audio' 'REG_SZ' "alsa" "user" ;;
@@ -4382,7 +4379,6 @@ pw_run () {
 
     check_variables SteamAppId "0"
     check_variables SteamGameId "0"
-
 
     PW_LOG_TO_FILE="${PORT_WINE_PATH}/PortProton.log"
     PW_LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}"
