@@ -204,6 +204,7 @@ generate_pot () {
     FILES_FOR_GETTEXT=(functions_helper start.sh setup.sh add_in_steam.sh)
     for i in "${FILES_FOR_GETTEXT[@]}" ; do
         sed -e 's/{translations\[/(gettext \"/g' -e 's/]}/")/g' "${PORT_SCRIPTS_PATH}/$i" > "${PORT_SCRIPTS_PATH}/${i}_tmp"
+        sed -i '/\[\$/d' "${PORT_SCRIPTS_PATH}/${i}_tmp"
     done
     #Когда присходит предупреждение: синтаксис $"..." запрещен по соображениям безопасности; используйте eval_gettext
     #и ругается на строку в которой нет перевода, можно использовать sed -i '//d' и убрать эту строку
@@ -5314,7 +5315,7 @@ Binding a game to a single node reduces memory‑access latency and limits costl
     PW_AMD_VULKAN_USE="${PW_ADD_SETTINGS[9]}"
     NUMA_NODE_INDEX="${PW_ADD_SETTINGS[10]//[[:space:]]/}"
 
-    if [[ "$NUMA_NODE_INDEX" =~ ^[0-9]+$ ]] && [[ -v NODE_MAP[$NUMA_NODE_INDEX] ]]; then
+    if [[ $NUMA_NODE_INDEX =~ ^[0-9]+$ ]] && [[ -v NODE_MAP[$NUMA_NODE_INDEX] ]] ; then
         NUMA_CORES="${NODE_MAP[$NUMA_NODE_INDEX]}"
         PW_CPU_NUMA_NODE_INDEX="$NUMA_NODE_INDEX"
         PW_TASKSET_SLR="taskset -c $NUMA_CORES"
@@ -5324,7 +5325,7 @@ Binding a game to a single node reduces memory‑access latency and limits costl
     fi
     export PW_CPU_NUMA_NODE_INDEX PW_TASKSET_SLR
 
-    if [[ "${CPU_LIMIT}" =~ ^[0-9]+$ ]] ; then
+    if [[ $CPU_LIMIT =~ ^[0-9]+$ ]] ; then
         PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $(( CPU_LIMIT - 1 )))"
     else
         PW_WINE_CPU_TOPOLOGY="disabled"
