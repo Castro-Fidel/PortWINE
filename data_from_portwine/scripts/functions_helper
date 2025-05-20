@@ -3706,7 +3706,7 @@ start_portwine () {
                 try_force_link_file "${WINEDIR}/lib/wine/d8vk/d3d8.dll" "${WINEPREFIX}/drive_c/windows/syswow64/d3d8.dll"
                 try_force_link_file "${WINEDIR}/lib64/wine/d8vk/d3d8.dll" "${WINEPREFIX}/drive_c/windows/system32/d3d8.dll"
                 var_winedlloverride_update "d3d8=n"
-            elif [[ -f "${WINEDIR}/lib64/wine/dxvk/d3d8.dll" || "${WINEDIR}/lib/wine/dxvk/x86_64-windows/d3d8.dll" ]]
+            elif [[ -f "${WINEDIR}/lib64/wine/dxvk/d3d8.dll" || -f "${WINEDIR}/lib/wine/dxvk/x86_64-windows/d3d8.dll" ]]
             then add_to_var CP_DXVK_FILES "d3d8"
             else add_to_var CP_WINE_FILES "d3d8"
             fi
@@ -3740,7 +3740,7 @@ start_portwine () {
             try_remove_file "${WINEPREFIX}/drive_c/windows/system32/dgVoodoo.conf"
             try_force_link_file "${DGV2CONF}" "${WINEPREFIX}/drive_c/windows/system32/dgVoodoo.conf"
 
-            if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "1" ]] ; then
+            if [[ $PW_USE_SUPPLIED_DXVK_VKD3D != "0" ]] ; then
                 rm_from_var CP_DXVK_FILES "d3d9"
             else
                 case "${PW_VULKAN_USE}" in
@@ -4023,7 +4023,7 @@ start_portwine () {
                     try_force_link_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
                     try_force_link_file "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_vkd3d_dll}.dll" ;;
             esac
-            var_winedlloverride_update "${wine_vkd3d_dll}=n"
+            [[ ! $wine_vkd3d_dll =~ libvkd3d ]] && var_winedlloverride_update "${wine_vkd3d_dll}=n"
         done
         create_new_dir "${PATH_TO_VKD3D_FILES}/vkd3d_cache"
         export VKD3D_SHADER_CACHE_PATH="${PATH_TO_VKD3D_FILES}/vkd3d_cache"
