@@ -1694,7 +1694,11 @@ init_wine_ver () {
 
 	if ! check_flatpak ; then
         WINE_LIBRARY_PATH="${WINEDIR}/lib"
-        [[ -d "${WINEDIR}/lib64/gstreamer-1.0" ]] && WINE_LIBRARY_PATH+=":${WINEDIR}/lib64"
+        if [[ -d "${WINEDIR}/lib64/gstreamer-1.0" ]]
+        then WINE_LIBRARY_PATH+=":${WINEDIR}/lib64"
+        elif [[ -d "${WINEDIR}/lib/x86_64-linux-gnu/gstreamer-1.0" ]]
+        then WINE_LIBRARY_PATH+=":${WINEDIR}/lib/x86_64-linux-gnu:${WINEDIR}/lib/i386-linux-gnu"
+        fi
 		export WINE_LIBRARY_PATH
 	fi
 
@@ -3135,10 +3139,12 @@ start_portwine () {
     pw_init_runtime
 
     if [[ "${PW_USE_GSTREAMER}" == "1" ]] ; then
-        if [[ -d "${WINEDIR}/lib64/gstreamer-1.0" ]] \
-        && ! check_flatpak
-        then
-            export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/gstreamer-1.0:${WINEDIR}/lib/gstreamer-1.0"
+        if ! check_flatpak ; then
+            if [[ -d "${WINEDIR}/lib64/gstreamer-1.0" ]]
+            then export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/gstreamer-1.0:${WINEDIR}/lib/gstreamer-1.0"
+            elif  [[ -d "${WINEDIR}/lib/x86_64-linux-gnu/gstreamer-1.0" ]]
+            then export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib/x86_64-linux-gnu/gstreamer-1.0:${WINEDIR}/lib/i386-linux-gnu/gstreamer-1.0"
+            fi
         fi
         export GST_GL_WINDOW="surfaceless"
         unset GST_GL_WINDOW
