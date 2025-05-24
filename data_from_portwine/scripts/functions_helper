@@ -3716,24 +3716,25 @@ start_portwine () {
 
     if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "1" ]] \
     && [[ ! $PW_WINE_USE =~ (PROTON_LG|WINE_LG) ]] && [[ $PW_VULKAN_USE != "0" ]] \
-    && [[ $PW_USE_GALLIUM_NINE != "1" && $PW_USE_GALLIUM_ZINK != "1"  ]] \
     && [[ -f "${WINEDIR}/lib64/wine/dxvk/d3d9.dll" || -f "${WINEDIR}/lib/wine/dxvk/x86_64-windows/d3d9.dll" ]] ; then
-        export DXVK_ASYNC="1"
-        if [[ -f "${WINEDIR}/lib64/wine/dxvk/d3d10.dll" && -f "${WINEDIR}/lib64/wine/dxvk/d3d10_1.dll" ]] ; then
-            CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
-            CP_WINE_FILES=""
-        else
-            CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi"
-            CP_WINE_FILES="d3d10_1 d3d10"
-        fi
-        if [[ $PW_DGVOODOO2 != "1" ]] ; then
-            if [[ -f "${WINEDIR}/lib64/wine/d8vk/d3d8.dll" ]] ; then
-                try_force_link_file "${WINEDIR}/lib/wine/d8vk/d3d8.dll" "${WINEPREFIX}/drive_c/windows/syswow64/d3d8.dll"
-                try_force_link_file "${WINEDIR}/lib64/wine/d8vk/d3d8.dll" "${WINEPREFIX}/drive_c/windows/system32/d3d8.dll"
-                var_winedlloverride_update "d3d8=n"
-            elif [[ -f "${WINEDIR}/lib64/wine/dxvk/d3d8.dll" || -f "${WINEDIR}/lib/wine/dxvk/x86_64-windows/d3d8.dll" ]]
-            then add_to_var CP_DXVK_FILES "d3d8"
-            else add_to_var CP_WINE_FILES "d3d8"
+        if [[ $PW_USE_GALLIUM_NINE != "1" && $PW_USE_GALLIUM_ZINK != "1"  ]] ; then
+            export DXVK_ASYNC="1"
+            if [[ -f "${WINEDIR}/lib64/wine/dxvk/d3d10.dll" && -f "${WINEDIR}/lib64/wine/dxvk/d3d10_1.dll" ]] ; then
+                CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
+                CP_WINE_FILES=""
+            else
+                CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi"
+                CP_WINE_FILES="d3d10_1 d3d10"
+            fi
+            if [[ $PW_DGVOODOO2 != "1" ]] ; then
+                if [[ -f "${WINEDIR}/lib64/wine/d8vk/d3d8.dll" ]] ; then
+                    try_force_link_file "${WINEDIR}/lib/wine/d8vk/d3d8.dll" "${WINEPREFIX}/drive_c/windows/syswow64/d3d8.dll"
+                    try_force_link_file "${WINEDIR}/lib64/wine/d8vk/d3d8.dll" "${WINEPREFIX}/drive_c/windows/system32/d3d8.dll"
+                    var_winedlloverride_update "d3d8=n"
+                elif [[ -f "${WINEDIR}/lib64/wine/dxvk/d3d8.dll" || -f "${WINEDIR}/lib/wine/dxvk/x86_64-windows/d3d8.dll" ]]
+                then add_to_var CP_DXVK_FILES "d3d8"
+                else add_to_var CP_WINE_FILES "d3d8"
+                fi
             fi
         fi
         if [[ -f "${WINEDIR}/lib64/wine/vkd3d-proton/d3d12core.dll" && -f "${WINEDIR}/lib64/vkd3d/libvkd3d-1.dll" ]] \
@@ -3765,13 +3766,13 @@ start_portwine () {
             try_remove_file "${WINEPREFIX}/drive_c/windows/system32/dgVoodoo.conf"
             try_force_link_file "${DGV2CONF}" "${WINEPREFIX}/drive_c/windows/system32/dgVoodoo.conf"
 
-            if [[ $PW_USE_SUPPLIED_DXVK_VKD3D != "0" ]] ; then
-                rm_from_var CP_DXVK_FILES "d3d9"
-            elif [[ $PW_USE_GALLIUM_NINE == "1" ]] ; then
+            if [[ $PW_USE_GALLIUM_NINE == "1" ]] ; then
                 rm_from_var CP_GALLIUM_NINE_FILES "d3d9"
                 rm_from_var CP_WINE_FILES "d3d8"
             elif [[ $PW_USE_GALLIUM_ZINK == "1" ]] ; then
                 rm_from_var CP_WINE_FILES "d3d9 d3d8"
+            elif [[ $PW_USE_SUPPLIED_DXVK_VKD3D != "0" ]] ; then
+                rm_from_var CP_DXVK_FILES "d3d9"
             else
                 case "${PW_VULKAN_USE}" in
                     0)
