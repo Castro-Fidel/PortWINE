@@ -2737,6 +2737,28 @@ pw_get_tmp_files () {
         print_warning "use portable vulkaninfo"
         "$PW_PLUGINS_PATH"/portable/bin/x86_64-linux-gnu-vulkaninfo &> "${PW_TMPFS_PATH}/vulkaninfo.tmp"
     fi
+
+    # GALLIUM NINE
+    unset FIND_D3D_MODULE D3D_MODULE_PATH
+    if ! check_flatpak ; then
+        FIND_D3D_MODULE="$(find /usr/ -maxdepth 4 -type f -name "d3dadapter9.so.*" 2>/dev/null)"
+        if [[ -n "$FIND_D3D_MODULE" ]] ; then
+            FIND_D3D_MODULE="$(dirname "$FIND_D3D_MODULE")"
+            IFS=$'\n'
+            for D3D_MP in $FIND_D3D_MODULE ; do
+                if [[ -n "$D3D_MODULE_PATH" ]]
+                then export D3D_MODULE_PATH="$D3D_MODULE_PATH:/run/host${D3D_MP}"
+                else export D3D_MODULE_PATH="/run/host${D3D_MP}"
+                fi
+            done
+            IFS="$orig_IFS"
+        fi
+    else
+        if [[ -d "/app/lib/i386-linux-gnu/GL/default/lib/d3d" && -d "/usr/lib/x86_64-linux-gnu/GL/default/lib/d3d" ]] ; then
+            export D3D_MODULE_PATH="/app/lib/i386-linux-gnu/GL/default/lib/d3d:/usr/lib/x86_64-linux-gnu/GL/default/lib/d3d"
+        fi
+    fi
+    [[ -n $D3D_MODULE_PATH ]] && echo "$D3D_MODULE_PATH" > "${PW_TMPFS_PATH}/gallium_nine.tmp"
 }
 
 pw_skip_get_info () {
@@ -4038,7 +4060,8 @@ start_portwine () {
         export VKD3D_SHADER_CACHE_PATH="${PATH_TO_VKD3D_FILES}/vkd3d_cache"
     fi
 
-    if [[ "$CP_GALLIUM_NINE_FILES" == "d3d9" ]] ; then
+    # GALLIUM NINE
+    if [[ "$CP_GALLIUM_NINE_FILES" == "d3d9" ]] && [[ -f "${PW_TMPFS_PATH}/gallium_nine.tmp" ]] ; then
         PATH_TO_GALLIUM_NINE_FILES="${PW_PLUGINS_PATH}/gallium_nine_v.${PW_GALLIUM_NINE_VER}"
         if [[ ! -d "$PATH_TO_GALLIUM_NINE_FILES" ]] ; then
             if try_download "github.com/Castro-Fidel/vulkan/releases/download/gallium_nine_v.${PW_GALLIUM_NINE_VER}/gallium_nine_v.${PW_GALLIUM_NINE_VER}.tar.xz" \
@@ -4052,28 +4075,8 @@ start_portwine () {
         print_info "Try create symlink GALLIUM_NINE files..."
         try_force_link_file "${PATH_TO_GALLIUM_NINE_FILES}/lib32/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/syswow64/d3d9.dll"
         try_force_link_file "${PATH_TO_GALLIUM_NINE_FILES}/lib64/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/system32/d3d9.dll"
-        unset FIND_D3D_MODULE D3D_MODULE_PATH
-        if ! check_flatpak ; then
-            FIND_D3D_MODULE=$(dirname "$(find /usr/ -maxdepth 4 -type f -name "d3dadapter9.so.*" 2>/dev/null)")
-            if [[ -n "$FIND_D3D_MODULE" ]] ; then
-                IFS=$'\n'
-                for D3D_MP in $FIND_D3D_MODULE ; do
-                    if [[ -n "$D3D_MODULE_PATH" ]]
-                    then export D3D_MODULE_PATH="$D3D_MODULE_PATH:/run/host${D3D_MP}"
-                    else export D3D_MODULE_PATH="/run/host${D3D_MP}"
-                    fi
-                done
-                IFS="$orig_IFS"
-                print_info "D3D_MODULE_PATH=${D3D_MODULE_PATH}"
-            else
-                pw_stop_progress_bar
-                yad_error "${translations[d3dadapter9.so.1.0.0 - Not found in the system.\\nInstall the missing package: <b>d3dadapter9</b>]}"
-                stop_portwine
-            fi
-        else
-            export D3D_MODULE_PATH="/app/lib/i386-linux-gnu/GL/default/lib/d3d:/usr/lib/x86_64-linux-gnu/GL/default/lib/d3d"
-            print_info "D3D_MODULE_PATH=${D3D_MODULE_PATH}"
-        fi
+        export D3D_MODULE_PATH="$(<"${PW_TMPFS_PATH}/gallium_nine.tmp")"
+        print_info "D3D_MODULE_PATH=$D3D_MODULE_PATH"
         var_winedlloverride_update "d3d9=n"
     fi
 
@@ -5193,15 +5196,15 @@ gui_edit_db () {
     PW_USE_DAMAVAND PW_USE_SUPPLIED_DXVK_VKD3D
     )
 
-    if check_wayland_session ; then
-        rm_from_array "PW_EDIT_DB_LIST" PW_USE_US_LAYOUT
-    else
-        rm_from_array "PW_EDIT_DB_LIST" PW_USE_NATIVE_WAYLAND
+    if check_wayland_session
+    then rm_from_array "PW_EDIT_DB_LIST" PW_USE_US_LAYOUT
+    else rm_from_array "PW_EDIT_DB_LIST" PW_USE_NATIVE_WAYLAND
     fi
 
-    if check_flatpak ; then
-        rm_from_array "PW_EDIT_DB_LIST" PW_USE_RUNTIME
-    fi
+    check_flatpak && rm_from_array "PW_EDIT_DB_LIST" PW_USE_RUNTIME
+
+    # GALLIUM NINE
+    [[ ! -f "${PW_TMPFS_PATH}/gallium_nine.tmp" ]] && rm_from_array "PW_EDIT_DB_LIST" PW_USE_GALLIUM_NINE
 
     PW_MANGOHUD_INFO=${translations[Using FPS and system load monitoring (Turns on and off by the key combination - right Shift + F12)]}
     PW_MANGOHUD_USER_CONF_INFO=${translations[Forced use of MANGOHUD system settings (GOverlay, etc.)]}
