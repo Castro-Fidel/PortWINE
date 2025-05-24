@@ -3627,85 +3627,62 @@ start_portwine () {
 
     # 3D API
     unset CP_VKD3D_FILES CP_DXVK_FILES CP_DGV2_FILES CP_WINE_FILES PATH_TO_DXVK_FILES PATH_TO_VKD3D_FILES CP_GALLIUM_NINE_FILES
-    [[ "$PW_USE_GALLIUM_NINE" == "1" ]] && PW_VULKAN_USE="3"
+    case "${PW_VULKAN_USE}" in
+        0)
+            # WINED3D OPENGL
+            print_info "Use WINED3D OpenGL"
+            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
+            CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
+            CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d9 d3d8 dxgi"
+            export __GL_YIELD="NOTHING"
+            export mesa_glthread="true"
+            export WINE_D3D_CONFIG="renderer=gl"
+            export PW_VKBASALT="0"
+            ;;
+        1)
+            # STABLE DXVK AND VKD3D
+            print_info "DXVK v.${DXVK_STABLE_VER} in use"
+            print_info "VKD3D-PROTON v.${VKD3D_STABLE_VER} in use"
+            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
+            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
+            CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
+            [[ "$PW_USE_VRCLIENT" = "1" ]] && add_to_var CP_DXVK_FILES "openvr_api_dxvk"
+            CP_VKD3D_FILES="d3d12 libvkd3d-shader-1"
+            CP_WINE_FILES="d3d12core d3d8"
+            ;;
+        2)
+            # NEWEST DXVK AND VKD3D
+            print_info "DXVK v.${DXVK_GIT_VER} in use"
+            print_info "VKD3D-PROTON v.${VKD3D_GIT_VER} in use"
+            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}"
+            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
+            CP_DXVK_FILES="d3d11 d3d10core d3d9 d3d8 dxgi"
+            [[ "$PW_USE_VRCLIENT" = "1" ]] && add_to_var CP_DXVK_FILES "openvr_api_dxvk"
+            CP_VKD3D_FILES="d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1"
+            CP_WINE_FILES="d3d10_1 d3d10"
+            ;;
+        3)
+            # LEGACY DXVK
+            print_info "DXVK v.${DXVK_LEGACY_VER} in use"
+            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_LEGACY_VER}"
+            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
+            CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
+            CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
+            CP_WINE_FILES="d3d12 d3d12core d3d8"
+            ;;
+    esac
 
-    if [[ $PW_USE_DAMAVAND == "1" ]] && [[ $PW_VULKAN_USE != "0" ]] ; then
-        # WINED3D VULKAN (DAMAVAND)
+    # GALLIUM ZINK
+    if [[ $PW_USE_GALLIUM_ZINK == "1" ]] && [[ $PW_USE_GALLIUM_NINE != "1" && $PW_VULKAN_USE != "0" ]] ; then
+        print_info "Use GALLIUM-ZINK (OpenGL on MESA vulkan drivers)"
         print_info "Use DAMAVAND (DirectX to wined3d vulkan)"
+        unset PATH_TO_DXVK_FILES CP_DXVK_FILES
         PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
         CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
         CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d9 d3d8 dxgi"
-        export WINE_D3D_CONFIG="renderer=vulkan"
-    else
-        case "${PW_VULKAN_USE}" in
-            0)
-                # WINED3D OPENGL
-                print_info "Use WINED3D OpenGL"
-                PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
-                CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
-                CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d9 d3d8 dxgi"
-                export __GL_YIELD="NOTHING"
-                export mesa_glthread="true"
-                export WINE_D3D_CONFIG="renderer=gl"
-                export PW_VKBASALT="0"
-                export PW_USE_GALLIUM_ZINK="0"
-                ;;
-            1)
-                # STABLE DXVK AND VKD3D
-                print_info "DXVK v.${DXVK_STABLE_VER} in use"
-                print_info "VKD3D-PROTON v.${VKD3D_STABLE_VER} in use"
-                PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
-                PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
-                CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
-                [[ "$PW_USE_VRCLIENT" = "1" ]] && add_to_var CP_DXVK_FILES "openvr_api_dxvk"
-                CP_VKD3D_FILES="d3d12 libvkd3d-shader-1"
-                CP_WINE_FILES="d3d12core d3d8"
-                ;;
-            2)
-                # NEWEST DXVK AND VKD3D
-                print_info "DXVK v.${DXVK_GIT_VER} in use"
-                print_info "VKD3D-PROTON v.${VKD3D_GIT_VER} in use"
-                PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}"
-                PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
-                CP_DXVK_FILES="d3d11 d3d10core d3d9 d3d8 dxgi"
-                [[ "$PW_USE_VRCLIENT" = "1" ]] && add_to_var CP_DXVK_FILES "openvr_api_dxvk"
-                CP_VKD3D_FILES="d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1"
-                CP_WINE_FILES="d3d10_1 d3d10"
-                ;;
-            3)
-                # GALLIUM NINE
-                print_info "Use GALLIUM-NINE (Native DX9 on MESA drivers)"
-                PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
-                CP_GALLIUM_NINE_FILES="d3d9"
-                CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
-                CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d8 dxgi"
-                export __GL_YIELD="NOTHING"
-                export mesa_glthread="true"
-                export WINE_D3D_CONFIG="renderer=gl"
-                export PW_VKBASALT="0"
-                export PW_MANGOHUD="0"
-                export PW_WINE_FULLSCREEN_FSR="0"
-                export PW_USE_GALLIUM_ZINK="0"
-                export DXVK_ENABLE_NVAPI="0"
-                export PW_USE_VRCLIENT="0"
-                ;;
-            5)
-                # LEGACY DXVK
-                print_info "DXVK v.${DXVK_LEGACY_VER} in use"
-                PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_LEGACY_VER}"
-                PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
-                CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
-                CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
-                CP_WINE_FILES="d3d12 d3d12core d3d8"
-                ;;
-        esac
-    fi
-
-    if [[ $PW_USE_GALLIUM_ZINK == "1" ]] ; then
-        # GALLIUM ZINK
-        print_info "Use GALLIUM-ZINK (OpenGL on MESA vulkan drivers)"
         export __GL_YIELD="NOTHING"
         export mesa_glthread="true"
+        export WINE_D3D_CONFIG="renderer=vulkan"
         export  __GLX_VENDOR_LIBRARY_NAME="mesa"
         export MESA_LOADER_DRIVER_OVERRIDE="zink"
         export GALLIUM_DRIVER="zink"
@@ -3720,9 +3697,26 @@ start_portwine () {
         fi
     fi
 
+    # GALLIUM NINE
+    if [[ $PW_USE_GALLIUM_NINE == "1" ]] ; then
+        print_info "Use GALLIUM-NINE (Native DX9 on MESA drivers)"
+        PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
+        CP_GALLIUM_NINE_FILES="d3d9"
+        CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
+        CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d8 dxgi"
+        export __GL_YIELD="NOTHING"
+        export mesa_glthread="true"
+        export WINE_D3D_CONFIG="renderer=gl"
+        export PW_VKBASALT="0"
+        export PW_MANGOHUD="0"
+        export PW_WINE_FULLSCREEN_FSR="0"
+        export DXVK_ENABLE_NVAPI="0"
+        export PW_USE_VRCLIENT="0"
+    fi
+
     if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "1" ]] \
-    && [[ ! $PW_WINE_USE =~ (PROTON_LG|WINE_LG) ]] \
-    && [[ ! $PW_VULKAN_USE =~ (0|3) ]] \
+    && [[ ! $PW_WINE_USE =~ (PROTON_LG|WINE_LG) ]] && [[ $PW_VULKAN_USE != "0" ]] \
+    && [[ $PW_USE_GALLIUM_NINE != "1" && $PW_USE_GALLIUM_ZINK != "1"  ]] \
     && [[ -f "${WINEDIR}/lib64/wine/dxvk/d3d9.dll" || -f "${WINEDIR}/lib/wine/dxvk/x86_64-windows/d3d9.dll" ]] ; then
         export DXVK_ASYNC="1"
         if [[ -f "${WINEDIR}/lib64/wine/dxvk/d3d10.dll" && -f "${WINEDIR}/lib64/wine/dxvk/d3d10_1.dll" ]] ; then
@@ -3773,6 +3767,9 @@ start_portwine () {
 
             if [[ $PW_USE_SUPPLIED_DXVK_VKD3D != "0" ]] ; then
                 rm_from_var CP_DXVK_FILES "d3d9"
+            elif [[ $PW_USE_GALLIUM_NINE == "1" ]] ; then
+                rm_from_var CP_GALLIUM_NINE_FILES "d3d9"
+                rm_from_var CP_WINE_FILES "d3d8"
             else
                 case "${PW_VULKAN_USE}" in
                     0)
@@ -3786,10 +3783,6 @@ start_portwine () {
                         rm_from_var CP_DXVK_FILES "d3d9 d3d8"
                         ;;
                     3)
-                        rm_from_var CP_GALLIUM_NINE_FILES "d3d9"
-                        rm_from_var CP_WINE_FILES "d3d8"
-                        ;;
-                    5)
                         rm_from_var CP_DXVK_FILES "d3d9"
                         rm_from_var CP_WINE_FILES "d3d8"
                         ;;
@@ -5193,7 +5186,7 @@ gui_edit_db () {
     PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER
     PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE
     PW_DISABLE_COMPOSITING PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_NATIVE_WAYLAND PW_USE_GALLIUM_ZINK PW_USE_GALLIUM_NINE
-    PW_USE_DAMAVAND PW_USE_SUPPLIED_DXVK_VKD3D
+    PW_USE_SUPPLIED_DXVK_VKD3D
     )
 
     if check_wayland_session
@@ -5246,9 +5239,8 @@ gui_edit_db () {
     PW_USE_RUNTIME_INFO=${translations[Use container launch mode (It is recommended not to change the value)]}
     PW_DINPUT_PROTOCOL_INFO=${translations[Force use DirectInput protocol instead of XInput]}
     PW_USE_NATIVE_WAYLAND_INFO=${translations[Enable experemental native Wayland support (need special wine build to work)]}
-    PW_USE_GALLIUM_ZINK_INFO=${translations[Use Gallium Zink (OpenGL driver is implemented via Vulkan)]}
+    PW_USE_GALLIUM_ZINK_INFO=${translations[Use Gallium Zink (OpenGL driver is implemented via Vulkan), also instead of dxvk WineD3D vulkan (Damavand) is used. This function does not work with Gallium Nine.]}
     PW_USE_GALLIUM_NINE_INFO=${translations[Use Gallium Nine (native DirectX 9 for MESA)]}
-    PW_USE_DAMAVAND_INFO=${translations[Instead of DXVK, use WineD3D vulkan (Damavand). Experimental function.]}
     PW_USE_SUPPLIED_DXVK_VKD3D_INFO=${translations[Use dxvk and vkd3d which are bundled with wine or proton. (Does not work with PROTON_LG and WINE_LG)]}
 
 #     PW_VULKAN_NO_ASYNC_INFO=${translations[Disable asynchronous calls for VULKAN and DXVK modes]}
@@ -5260,13 +5252,13 @@ gui_edit_db () {
         0)
             # WineD3D OpenGL
             VKD3D_CB="DCB"
-            DISABLE_EDIT_DB_LIST="PW_VKBASALT PW_VKBASALT_USER_CONF PW_USE_RAY_TRACING PW_USE_OBS_VKCAPTURE PW_USE_GALLIUM_ZINK PW_USE_DAMAVAND"
+            DISABLE_EDIT_DB_LIST="PW_VKBASALT PW_VKBASALT_USER_CONF PW_USE_RAY_TRACING PW_USE_OBS_VKCAPTURE PW_USE_GALLIUM_ZINK"
             ;;
         1|2)
             # Stable, Newest
             VKD3D_CB="CB"
             ;;
-        5)
+        3)
             # Legacy
             VKD3D_CB="DCB"
             DISABLE_EDIT_DB_LIST="PW_USE_RAY_TRACING"
@@ -5863,7 +5855,7 @@ gui_dgvoodoo2 () {
     [[ "${PW_DGV2_ANTIALIASING}" == "0" ]] && export PW_DGV2_ANTIALIASING="disabled" && edit_db_from_gui PW_DGV2_ANTIALIASING
 
     case "${PW_VULKAN_USE}" in
-        0|5)
+        0|3)
             DISABLE_DGV2_LIST="PW_DGV2_USE_DX12
             "
             ;;
@@ -6889,8 +6881,7 @@ portwine_start_debug () {
         0) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DirectX to wined3d opengl" >> "${PORT_WINE_PATH}/PortProton.log" ;;
         1) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_STABLE_VER}, VKD3D-PROTON v.${VKD3D_STABLE_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
         2) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_GIT_VER}, VKD3D-PROTON v.${VKD3D_GIT_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
-        3) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - Native DX9 on MESA drivers" >> "${PORT_WINE_PATH}/PortProton.log" ;;
-        5) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_LEGACY_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
+        3) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_LEGACY_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
         *) echo "PW_VULKAN_USE=${PW_VULKAN_USE}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
     esac
     echo "--------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
