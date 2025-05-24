@@ -6,9 +6,11 @@
 # info_en: An interface for emulators that supports many game consoles and platforms, allowing users to run old games on modern devices. It offers a user-friendly interface, a rich library of emulation cores, and features for performance and graphics customization.
 # info_ru: Интерфейс для эмуляторов, который поддерживает множество игровых консолей и платформ, позволяя пользователям запускать старые игры на современных устройствах. Он предлагает удобный интерфейс, богатую библиотеку ядер эмуляции и функции для настройки производительности и графики.
 ########################################################################
+export PW_RETROARCH_VERSION=$(curl -s "https://buildbot.libretro.com/stable/" | grep -oP 'href="/stable/\K[0-9.]+(?=/")' | sort -V | tail -n1)
+
 export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/RetroArch.7z"
 start_portwine
-if try_download "https://buildbot.libretro.com/stable/1.16.0/windows/x86_64/RetroArch.7z" "${PW_AUTOINSTALL_EXE}" no_mirror
+if try_download "https://buildbot.libretro.com/stable/$PW_RETROARCH_VERSION/windows/x86_64/RetroArch.7z" "${PW_AUTOINSTALL_EXE}" no_mirror
 then
     pw_start_progress_bar_install_game "RetroArch."
     "$pw_7z" x -y "${PW_AUTOINSTALL_EXE}" -o"$WINEPREFIX/drive_c/Program Files (x86)"

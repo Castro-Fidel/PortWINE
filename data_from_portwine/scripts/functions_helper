@@ -204,6 +204,7 @@ generate_pot () {
     FILES_FOR_GETTEXT=(functions_helper start.sh setup.sh add_in_steam.sh)
     for i in "${FILES_FOR_GETTEXT[@]}" ; do
         sed -e 's/{translations\[/(gettext \"/g' -e 's/]}/")/g' "${PORT_SCRIPTS_PATH}/$i" > "${PORT_SCRIPTS_PATH}/${i}_tmp"
+        sed -i '/\[\$/d' "${PORT_SCRIPTS_PATH}/${i}_tmp"
     done
     #Когда присходит предупреждение: синтаксис $"..." запрещен по соображениям безопасности; используйте eval_gettext
     #и ругается на строку в которой нет перевода, можно использовать sed -i '//d' и убрать эту строку
@@ -663,7 +664,6 @@ try_download () {
 var_winedlloverride_update () {
     export WINEDLLOVERRIDES="${1}${WINEDLLOVERRIDES:+;$WINEDLLOVERRIDES}"
 }
-
 
 var_vkd3d_config_update () {
     if echo "$VKD3D_CONFIG" | grep "$1"
@@ -1694,7 +1694,11 @@ init_wine_ver () {
 
 	if ! check_flatpak ; then
         WINE_LIBRARY_PATH="${WINEDIR}/lib"
-        [[ -d "${WINEDIR}/lib64/gstreamer-1.0" ]] && WINE_LIBRARY_PATH+=":${WINEDIR}/lib64"
+        if [[ -d "${WINEDIR}/lib64/gstreamer-1.0" ]]
+        then WINE_LIBRARY_PATH+=":${WINEDIR}/lib64"
+        elif [[ -d "${WINEDIR}/lib/x86_64-linux-gnu/gstreamer-1.0" ]]
+        then WINE_LIBRARY_PATH+=":${WINEDIR}/lib/x86_64-linux-gnu:${WINEDIR}/lib/i386-linux-gnu"
+        fi
 		export WINE_LIBRARY_PATH
 	fi
 
@@ -2301,6 +2305,8 @@ check_nvidia_rtx () {
         [[ "$LSPCI_VGA" == *GA[0-9]* ]] && return 0
         # Ada_Lovelace
         [[ "$LSPCI_VGA" == *AD[0-9]* ]] || [[ "$LSPCI_VGA" == *2[6-8][0-9]* ]] && return 0
+        # Blackwell and Blackwell 2.0
+        [[ "$LSPCI_VGA" == *GB[0-9]* ]] && return 0
     fi
     return 1
 }
@@ -2451,7 +2457,6 @@ pw_init_db () {
 		    export PW_VK_ICD_FILENAMES
 		    ;;
 	esac
-
 
     [[ "${START_FROM_STEAM}" == 1 ]] && export PW_GUI_DISABLED_CS=1
     [[ "${START_FROM_PP_GUI}" == 1 ]] && export PW_GUI_DISABLED_CS=0 && unset START_FROM_PP_GUI
@@ -2753,6 +2758,7 @@ pw_skip_get_info () {
             export LSPCI_VGA
         fi
 
+        # TODO: Add NVIDIA Smooth Motion
         if check_nvidia_rtx ; then
             check_variables PW_USE_NVAPI_AND_DLSS "1"
             check_variables PW_USE_FAKE_DLSS "0"
@@ -3057,6 +3063,7 @@ pw_create_unique_exe () {
         else
             print_warning "There are no arguments for creating a symbolic link! Skip it..."
         fi
+        try_remove_file "${portwine_exe}.ppdb"
         popd || fatal
     fi
 }
@@ -3132,10 +3139,12 @@ start_portwine () {
     pw_init_runtime
 
     if [[ "${PW_USE_GSTREAMER}" == "1" ]] ; then
-        if [[ -d "${WINEDIR}/lib64/gstreamer-1.0" ]] \
-        && ! check_flatpak
-        then
-            export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/gstreamer-1.0:${WINEDIR}/lib/gstreamer-1.0"
+        if ! check_flatpak ; then
+            if [[ -d "${WINEDIR}/lib64/gstreamer-1.0" ]]
+            then export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib64/gstreamer-1.0:${WINEDIR}/lib/gstreamer-1.0"
+            elif  [[ -d "${WINEDIR}/lib/x86_64-linux-gnu/gstreamer-1.0" ]]
+            then export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib/x86_64-linux-gnu/gstreamer-1.0:${WINEDIR}/lib/i386-linux-gnu/gstreamer-1.0"
+            fi
         fi
         export GST_GL_WINDOW="surfaceless"
         unset GST_GL_WINDOW
@@ -3183,10 +3192,14 @@ start_portwine () {
         done
 
         LIST_ICU_DLL_LINKS="icuin68 icuuc68 icudt68"
+        [[ -d "${WINEDIR}/lib/icu32" ]] && mv "${WINEDIR}/lib/icu32" "${WINEDIR}/lib/icu"
         for dll in $LIST_ICU_DLL_LINKS ; do
             if [[ -f "${WINEDIR}/lib/icu/${dll}.dll" ]] ; then
                 try_force_link_file "${WINEDIR}/lib/icu/${dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${dll}.dll"
                 try_force_link_file "${WINEDIR}/lib64/icu/${dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${dll}.dll"
+            elif [[ -f "${WINEDIR}/lib/wine/icu/i386-windows/${dll}.dll" ]] ; then
+                try_force_link_file "${WINEDIR}/lib/wine/icu/i386-windows/${dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${dll}.dll"
+                try_force_link_file "${WINEDIR}/lib/wine/icu/x86_64-windows/${dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${dll}.dll"
             else
                 try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/${dll}.dll"
                 try_remove_file "${WINEPREFIX}/drive_c/windows/system32/${dll}.dll"
@@ -3685,6 +3698,43 @@ start_portwine () {
         fi
     fi
 
+    if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "1" ]] \
+    && [[ ! $PW_WINE_USE =~ (PROTON_LG|WINE_LG) ]] \
+    && [[ ! $PW_VULKAN_USE =~ (0|3) ]] \
+    && [[ -f "${WINEDIR}/lib64/wine/dxvk/d3d9.dll" || -f "${WINEDIR}/lib/wine/dxvk/x86_64-windows/d3d9.dll" ]] ; then
+        export DXVK_ASYNC="1"
+        if [[ -f "${WINEDIR}/lib64/wine/dxvk/d3d10.dll" && -f "${WINEDIR}/lib64/wine/dxvk/d3d10_1.dll" ]] ; then
+            CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
+            CP_WINE_FILES=""
+        else
+            CP_DXVK_FILES="d3d11 d3d10core d3d9 dxgi"
+            CP_WINE_FILES="d3d10_1 d3d10"
+        fi
+        if [[ $PW_DGVOODOO2 != "1" ]] ; then
+            if [[ -f "${WINEDIR}/lib64/wine/d8vk/d3d8.dll" ]] ; then
+                try_force_link_file "${WINEDIR}/lib/wine/d8vk/d3d8.dll" "${WINEPREFIX}/drive_c/windows/syswow64/d3d8.dll"
+                try_force_link_file "${WINEDIR}/lib64/wine/d8vk/d3d8.dll" "${WINEPREFIX}/drive_c/windows/system32/d3d8.dll"
+                var_winedlloverride_update "d3d8=n"
+            elif [[ -f "${WINEDIR}/lib64/wine/dxvk/d3d8.dll" || -f "${WINEDIR}/lib/wine/dxvk/x86_64-windows/d3d8.dll" ]]
+            then add_to_var CP_DXVK_FILES "d3d8"
+            else add_to_var CP_WINE_FILES "d3d8"
+            fi
+        fi
+        if [[ -f "${WINEDIR}/lib64/wine/vkd3d-proton/d3d12core.dll" && -f "${WINEDIR}/lib64/vkd3d/libvkd3d-1.dll" ]] \
+        || [[ -f "${WINEDIR}/lib/wine/vkd3d-proton/x86_64-windows/d3d12core.dll" && -f "${WINEDIR}/lib/vkd3d/x86_64-windows/libvkd3d-1.dll" ]] ; then
+            CP_VKD3D_FILES="d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1"
+        elif [[ -f "${WINEDIR}/lib64/wine/vkd3d-proton/d3d12.dll" && -f "${WINEDIR}/lib64/vkd3d/libvkd3d-shader-1.dll" ]] ; then
+            CP_VKD3D_FILES="d3d12 libvkd3d-1 libvkd3d-shader-1"
+            add_to_var CP_WINE_FILES "d3d12core"
+        else
+            CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
+            add_to_var CP_WINE_FILES "d3d12 d3d12core"
+        fi
+        [[ -f "${WINEDIR}/lib/wine/dxvk/x86_64-windows/d3d9.dll" ]] && PW_USE_SUPPLIED_DXVK_VKD3D="2"
+    else
+        PW_USE_SUPPLIED_DXVK_VKD3D="0"
+    fi
+
     # DGVOODOO2 enable:
     if [[ "${PW_DGVOODOO2}" == "1" ]] ; then
         print_info "Try create symlink DGVOODOO2 files..."
@@ -3698,26 +3748,31 @@ start_portwine () {
             try_force_link_file "${PATH_TO_DGV2_FILES}/x64/d3d9.dll" "${WINEPREFIX}/drive_c/windows/system32/d3d9.dll"
             try_remove_file "${WINEPREFIX}/drive_c/windows/system32/dgVoodoo.conf"
             try_force_link_file "${DGV2CONF}" "${WINEPREFIX}/drive_c/windows/system32/dgVoodoo.conf"
-            case "${PW_VULKAN_USE}" in
-                0)
-                    rm_from_var CP_WINE_FILES "d3d9 d3d8"
-                    ;;
-                1)
-                    rm_from_var CP_DXVK_FILES "d3d9"
-                    rm_from_var CP_WINE_FILES "d3d8"
-                    ;;
-                2)
-                    rm_from_var CP_DXVK_FILES "d3d9 d3d8"
-                    ;;
-                3)
-                    rm_from_var CP_GALLIUM_NINE_FILES "d3d9"
-                    rm_from_var CP_WINE_FILES "d3d8"
-                    ;;
-                5)
-                    rm_from_var CP_DXVK_FILES "d3d9"
-                    rm_from_var CP_WINE_FILES "d3d8"
-                    ;;
-            esac
+
+            if [[ $PW_USE_SUPPLIED_DXVK_VKD3D != "0" ]] ; then
+                rm_from_var CP_DXVK_FILES "d3d9"
+            else
+                case "${PW_VULKAN_USE}" in
+                    0)
+                        rm_from_var CP_WINE_FILES "d3d9 d3d8"
+                        ;;
+                    1)
+                        rm_from_var CP_DXVK_FILES "d3d9"
+                        rm_from_var CP_WINE_FILES "d3d8"
+                        ;;
+                    2)
+                        rm_from_var CP_DXVK_FILES "d3d9 d3d8"
+                        ;;
+                    3)
+                        rm_from_var CP_GALLIUM_NINE_FILES "d3d9"
+                        rm_from_var CP_WINE_FILES "d3d8"
+                        ;;
+                    5)
+                        rm_from_var CP_DXVK_FILES "d3d9"
+                        rm_from_var CP_WINE_FILES "d3d8"
+                        ;;
+                esac
+            fi
         fi
 
         if [[ "${PW_DGV2_GLIDE_NAPALM}" == "1" ]] ; then
@@ -3908,13 +3963,20 @@ start_portwine () {
     if [[ -n "$CP_DXVK_FILES" ]] ; then
         print_info "Try create symlink DXVK files..."
         for wine_dxvk_dll in $CP_DXVK_FILES ; do
-            if [[ -f "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" ]] ; then
-                try_force_link_file "${PATH_TO_DXVK_FILES}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
-                try_force_link_file "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_dxvk_dll}.dll"
-                if [[ "$PW_USE_FAKE_DLSS_3" == "1" ]] && [[ "$wine_dxvk_dll" == dxgi ]]
-                then var_winedlloverride_update "dxgi=n,b"
-                else var_winedlloverride_update "${wine_dxvk_dll}=n"
-                fi
+            case "$PW_USE_SUPPLIED_DXVK_VKD3D" in
+                2)
+                    try_force_link_file "${WINEDIR}/lib/wine/dxvk/i386-windows/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
+                    try_force_link_file "${WINEDIR}/lib/wine/dxvk/x86_64-windows/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_dxvk_dll}.dll" ;;
+                1)
+                    try_force_link_file "${WINEDIR}/lib/wine/dxvk/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
+                    try_force_link_file "${WINEDIR}/lib64/wine/dxvk/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_dxvk_dll}.dll" ;;
+                0)
+                    try_force_link_file "${PATH_TO_DXVK_FILES}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
+                    try_force_link_file "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_dxvk_dll}.dll" ;;
+            esac
+            if [[ $PW_USE_FAKE_DLSS_3 == "1" ]] && [[ $wine_dxvk_dll == "dxgi" ]]
+            then var_winedlloverride_update "dxgi=n,b"
+            else var_winedlloverride_update "${wine_dxvk_dll}=n"
             fi
         done
         create_new_dir "${PATH_TO_DXVK_FILES}/dxvk_cache"
@@ -3924,9 +3986,19 @@ start_portwine () {
 
     if [[ "$DXVK_ENABLE_NVAPI" == "1" ]] ; then
         print_info "Try create symlink NVAPI files..."
-        try_force_link_file "${PATH_TO_DXVK_FILES}/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/nvapi.dll"
-        try_force_link_file "${PATH_TO_DXVK_FILES}/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvapi64.dll"
-        try_force_link_file "${PATH_TO_DXVK_FILES}/x64/nvofapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvofapi64.dll"
+        if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "2" ]] && [[ -f "${WINEDIR}/lib/wine/nvapi/x86_64-windows/nvapi64.dll" ]] ; then
+            try_force_link_file "${WINEDIR}/lib/wine/nvapi/i386-windows/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/nvapi.dll"
+            try_force_link_file "${WINEDIR}/lib/wine/nvapi/x86_64-windows/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvapi64.dll"
+            try_force_link_file "${WINEDIR}/lib/wine/nvapi/x86_64-windows/nvofapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvofapi64.dll"
+        elif [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "1" ]] && [[ -f "${WINEDIR}/lib64/wine/nvapi/nvapi64.dll" ]] ; then
+            try_force_link_file "${WINEDIR}/lib/wine/nvapi/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/nvapi.dll"
+            try_force_link_file "${WINEDIR}/lib64/wine/nvapi/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvapi64.dll"
+            try_force_link_file "${WINEDIR}/lib64/wine/nvapi/nvofapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvofapi64.dll"
+        else
+            try_force_link_file "${PATH_TO_DXVK_FILES}/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/nvapi.dll"
+            try_force_link_file "${PATH_TO_DXVK_FILES}/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvapi64.dll"
+            try_force_link_file "${PATH_TO_DXVK_FILES}/x64/nvofapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvofapi64.dll"
+        fi
         var_winedlloverride_update "nvapi64,nvofapi64,nvapi=n;nvcuda=b"
     else
         try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/nvapi.dll"
@@ -3937,11 +4009,30 @@ start_portwine () {
     if [[ -n "$CP_VKD3D_FILES" ]] ; then
         print_info "Try create symlink VKD3D files..."
         for wine_vkd3d_dll in $CP_VKD3D_FILES ; do
-            if [[ -f "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" ]] ; then
-                try_force_link_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
-                try_force_link_file "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
-                var_winedlloverride_update "${wine_vkd3d_dll}=n"
-            fi
+            case "$PW_USE_SUPPLIED_DXVK_VKD3D" in
+                2)
+                    if [[ $wine_vkd3d_dll =~ d3d12 ]] ; then
+                        try_force_link_file "${WINEDIR}/lib/wine/vkd3d-proton/i386-windows/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
+                        try_force_link_file "${WINEDIR}/lib/wine/vkd3d-proton/x86_64-windows/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
+                    fi
+                    if [[ $wine_vkd3d_dll =~ libvkd3d ]] ; then
+                        try_force_link_file "${WINEDIR}/lib/vkd3d/i386-windows/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
+                        try_force_link_file "${WINEDIR}/lib/vkd3d/x86_64-windows/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
+                    fi ;;
+                1)
+                    if [[ $wine_vkd3d_dll =~ d3d12 ]] ; then
+                        try_force_link_file "${WINEDIR}/lib/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
+                        try_force_link_file "${WINEDIR}/lib64/wine/vkd3d-proton/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
+                    fi
+                    if [[ $wine_vkd3d_dll =~ libvkd3d ]] ; then
+                        try_force_link_file "${WINEDIR}/lib/vkd3d/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
+                        try_force_link_file "${WINEDIR}/lib64/vkd3d/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_vkd3d_dll}.dll"
+                    fi ;;
+                0)
+                    try_force_link_file "${PATH_TO_VKD3D_FILES}/x86/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_vkd3d_dll}.dll"
+                    try_force_link_file "${PATH_TO_VKD3D_FILES}/x64/${wine_vkd3d_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_vkd3d_dll}.dll" ;;
+            esac
+            [[ ! $wine_vkd3d_dll =~ libvkd3d ]] && var_winedlloverride_update "${wine_vkd3d_dll}=n"
         done
         create_new_dir "${PATH_TO_VKD3D_FILES}/vkd3d_cache"
         export VKD3D_SHADER_CACHE_PATH="${PATH_TO_VKD3D_FILES}/vkd3d_cache"
@@ -4090,7 +4181,7 @@ start_portwine () {
             echo "Try to install DLL in prefix: ${PW_DLL_NEED_INSTALL}" >> "${PW_TMPFS_PATH}/update_pfx_log"
             print_info "Try to install DLL in prefix: ${PW_DLL_NEED_INSTALL}"
             ${pw_runtime} LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" GST_PLUGIN_SYSTEM_PATH_1_0="" \
-            "${PORT_WINE_TMP_PATH}/winetricks" -q -r -f ${PW_DLL_NEED_INSTALL} | tee -a "${PW_TMPFS_PATH}/update_pfx_log"
+            "${PORT_WINE_TMP_PATH}/winetricks" -q -f ${PW_DLL_NEED_INSTALL} | tee -a "${PW_TMPFS_PATH}/update_pfx_log"
             wait_wineserver
             kill_portwine
         fi
@@ -4141,7 +4232,6 @@ start_portwine () {
         unset PW_DISPLAY
         get_and_set_reg_file --delete 'Software\Wine\Drivers' 'Graphics'
     fi
-
 
     case "$PW_SOUND_DRIVER_USE" in
         pulse) get_and_set_reg_file --add 'Software\Wine\Drivers' 'Audio' 'REG_SZ' "pulse" "user" ;;
@@ -4318,9 +4408,6 @@ pw_run () {
     if file "$portwine_exe" | grep -q "x86-64" ; then
         print_info "file: $portwine_exe is x86-64, force set WINE_LARGE_ADDRESS_AWARE to 0"
         export WINE_LARGE_ADDRESS_AWARE="0"
-        if [[ -f "${WINELOADER}64" ]]
-        then export WINELOADER="${WINELOADER}64"
-        fi
     else
         print_info "file: $portwine_exe not x86-64, force set WINE_LARGE_ADDRESS_AWARE to 1"
         export WINE_LARGE_ADDRESS_AWARE="1"
@@ -4333,7 +4420,7 @@ pw_run () {
     PW_LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}"
     print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VULKAN_DRIVER_NAME"
     print_var "WINELOADER" "VKD3D_CONFIG" "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2"
-    print_var "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH" "PW_VK_ICD_FILENAMES"
+    print_var "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH" "PW_VK_ICD_FILENAMES" "PW_TASKSET_SLR"
     proxy_launch_parameters=${LAUNCH_PARAMETERS//\\\\/\\}
     if [[ "$PW_USE_RUNTIME" == 1 ]] \
     && [[ "$PW_WINE_USE" != "USE_SYSTEM_WINE" ]]
@@ -4348,7 +4435,8 @@ pw_run () {
             print_info "Log from RUNTIME and WINE:"
             ${PW_RUN_GAMESCOPE} \
             ${PW_POWERPROFILECTL_SLR} \
-            ${PW_INHIBIT_SLR}\
+            ${PW_INHIBIT_SLR} \
+            ${PW_TASKSET_SLR} \
             ${pw_runtime} \
             LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             LD_PRELOAD="${PW_LD_PRELOAD}" \
@@ -4367,7 +4455,8 @@ pw_run () {
             echo "Log WINE:" > "${PW_LOG_TO_FILE}"
             ${PW_RUN_GAMESCOPE} \
             ${PW_POWERPROFILECTL_SLR} \
-            ${PW_INHIBIT_SLR}\
+            ${PW_INHIBIT_SLR} \
+            ${PW_TASKSET_SLR} \
             ${pw_runtime} \
             LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             LD_PRELOAD="${PW_LD_PRELOAD}" \
@@ -4403,7 +4492,8 @@ pw_run () {
             ${PW_POWERPROFILECTL_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
-            ${PW_INHIBIT_SLR}\
+            ${PW_INHIBIT_SLR} \
+            ${PW_TASKSET_SLR} \
             "${WINELOADER}" "$@" ${proxy_launch_parameters} &>>"${PW_LOG_TO_FILE}"
             wait_wineserver
         else
@@ -4422,7 +4512,8 @@ pw_run () {
             ${PW_POWERPROFILECTL_SLR} \
             ${PW_MANGOHUD_SLR} \
             ${PW_DISPLAY} \
-            ${PW_INHIBIT_SLR}\
+            ${PW_INHIBIT_SLR} \
+            ${PW_TASKSET_SLR} \
             "${WINELOADER}" "$@" ${proxy_launch_parameters}
             wait_wineserver
         fi
@@ -4830,6 +4921,7 @@ gui_proton_downloader () {
     try_remove_file "${PW_TMPFS_PATH}/tmp_proton_pw_git"
     try_remove_file "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
     try_remove_file "${PW_TMPFS_PATH}/tmp_proton_cachyos_git"
+    try_remove_file "${PW_TMPFS_PATH}/tmp_proton_sarek_git"
     try_remove_file "${PW_TMPFS_PATH}/tmp_proton_ge_git"
     try_remove_file "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git"
     try_remove_file "${PW_TMPFS_PATH}/tmp_installed_wine"
@@ -4894,6 +4986,14 @@ gui_proton_downloader () {
             echo "${PGEGIT}" | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_proton_cachyos_git"
         done
     fi
+
+     # PROTON_SAREK
+    read -r -d '' -a PROTON_SAREK_GIT < <(curl -s "https://api.github.com/repos/pythonlover02/Proton-Sarek/releases" | grep "browser_download_url.*\.tar\.gz" | cut -d \" -f 4)
+    if [[ -n "${PROTON_SAREK_GIT[0]}" ]] ; then
+        for PGEGIT in "${PROTON_SAREK_GIT[@]}" ; do
+            echo "${PGEGIT}" | awk -F/ '{print $NF}' | sed 's/.tar.gz//' >> "${PW_TMPFS_PATH}/tmp_proton_sarek_git"
+        done
+    fi
     
     pw_stop_progress_bar
 
@@ -4906,7 +5006,7 @@ gui_proton_downloader () {
     for INSTALLING_VERSION_IN_DIST in * ; do
         sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PW_TMPFS_PATH}/tmp_proton_pw_git" \
         "${PW_TMPFS_PATH}/tmp_proton_ge_git" "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git" \
-        "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git" "${PW_TMPFS_PATH}/tmp_proton_cachyos_git"
+        "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git" "${PW_TMPFS_PATH}/tmp_proton_cachyos_git" "${PW_TMPFS_PATH}/tmp_proton_sarek_git"
     done
     popd 1>/dev/null || fatal
 
@@ -4915,6 +5015,7 @@ gui_proton_downloader () {
     TMP_PROTON_KR_GIT="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git" | tr '\n' ' ')"
     TMP_PROTON_CU_GIT="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_wine_ge_custom_git" | tr '\n' ' ')"
     TMP_PROTON_CACHYOS_GIT="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_proton_cachyos_git" | tr '\n' ' ')"
+    TMP_PROTON_SAREK_GIT="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_proton_sarek_git" | tr '\n' ' ')"
 
     ls -l ${PORT_WINE_PATH}/data/dist | awk '{print $9}' | sed -e "/$PW_PROTON_LG_VER/d" -e "/$PW_WINE_LG_VER/d" -e '/^$/d' 1>"${PW_TMPFS_PATH}/tmp_installed_wine"
     TMP_INSTALLED_WINE="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_installed_wine" | tr '\n' ' ')"
@@ -4966,6 +5067,14 @@ gui_proton_downloader () {
         "${pw_yad}" --plug=$KEY_WINE --tabnum=6 --list --checklist --separator="" \
         --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" \
         --column "${translations[Set]}" \
+        --column "${translations[Select WINE for download:]}" \
+        $TMP_PROTON_SAREK_GIT \
+        1>> "${PW_TMPFS_PATH}/tmp_set_wine" \
+        2>/dev/null &
+
+        "${pw_yad}" --plug=$KEY_WINE --tabnum=7 --list --checklist --separator="" \
+        --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" \
+        --column "${translations[Set]}" \
         --column "${translations[Select installed WINE for delete:]}" \
         $TMP_INSTALLED_WINE \
         1> "${PW_TMPFS_PATH}/tmp_installed_wine_set" \
@@ -4980,6 +5089,7 @@ gui_proton_downloader () {
         --tab="PROTON-GE!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
         --tab="WINE-GE-CUSTOM!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
         --tab="PROTON-CACHYOS!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+        --tab="PROTON-SAREK!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
         --tab="${translations[INSTALLED]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
         --button="${translations[CANCEL]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!":1 \
         --button="${translations[OK]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!":0 2>/dev/null
@@ -5050,7 +5160,7 @@ gui_proton_downloader () {
 
     if [[ "$1" != "silent" ]] ; then
         for GIVE_ALL_WINE in ${VERSION_WINE_GIT} ; do
-            for GIVE_WINE_URL in "${WINE_GE_CUSTOM[@]}" "${PROTON_GE_GIT[@]}" "${WINE_KRON4EK[@]}" "${PROTON_PW_GIT[@]}" "${PROTON_CACHYOS_GIT[@]}" ; do
+            for GIVE_WINE_URL in "${WINE_GE_CUSTOM[@]}" "${PROTON_GE_GIT[@]}" "${WINE_KRON4EK[@]}" "${PROTON_PW_GIT[@]}" "${PROTON_CACHYOS_GIT[@]}" "${PROTON_SAREK_GIT[@]}" ; do
                 if [[ ${GIVE_WINE_URL^^} =~ ${GIVE_ALL_WINE^^}.TAR ]] ; then
                     export URL_VERSION_PROTON_GIT=$GIVE_WINE_URL
                 fi
@@ -5061,7 +5171,7 @@ gui_proton_downloader () {
         restart_pp
     else
         print_error "$PW_WINE_USE"
-        for GIVE_WINE_URL in "${WINE_GE_CUSTOM[@]}" "${PROTON_GE_GIT[@]}" "${WINE_KRON4EK[@]}" "${PROTON_PW_GIT[@]}" "${PROTON_CACHYOS_GIT[@]}" ; do
+        for GIVE_WINE_URL in "${WINE_GE_CUSTOM[@]}" "${PROTON_GE_GIT[@]}" "${WINE_KRON4EK[@]}" "${PROTON_PW_GIT[@]}" "${PROTON_CACHYOS_GIT[@]}" "${PROTON_SAREK_GIT[@]}" ; do
             if [[ ${GIVE_WINE_URL^^} =~ ${PW_WINE_USE^^} ]] ; then
                 export URL_VERSION_PROTON_GIT=$GIVE_WINE_URL
             fi
@@ -5080,7 +5190,7 @@ gui_edit_db () {
     PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER
     PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE
     PW_DISABLE_COMPOSITING PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_NATIVE_WAYLAND PW_USE_GALLIUM_ZINK PW_USE_GALLIUM_NINE
-    PW_USE_DAMAVAND
+    PW_USE_DAMAVAND PW_USE_SUPPLIED_DXVK_VKD3D
     )
 
     if check_wayland_session ; then
@@ -5136,6 +5246,7 @@ gui_edit_db () {
     PW_USE_GALLIUM_ZINK_INFO=${translations[Use Gallium Zink (OpenGL driver is implemented via Vulkan)]}
     PW_USE_GALLIUM_NINE_INFO=${translations[Use Gallium Nine (native DirectX 9 for MESA)]}
     PW_USE_DAMAVAND_INFO=${translations[Instead of DXVK, use WineD3D vulkan (Damavand). Experimental function.]}
+    PW_USE_SUPPLIED_DXVK_VKD3D_INFO=${translations[Use dxvk and vkd3d which are bundled with wine or proton. (Does not work with PROTON_LG and WINE_LG)]}
 
 #     PW_VULKAN_NO_ASYNC_INFO=${translations[Disable asynchronous calls for VULKAN and DXVK modes]}
 #     PW_OLD_GL_STRING_INFO=${translations[Forced use of older versions of OpenGL]}
@@ -5146,8 +5257,7 @@ gui_edit_db () {
         0)
             # WineD3D OpenGL
             VKD3D_CB="DCB"
-            DISABLE_EDIT_DB_LIST="PW_VKBASALT PW_VKBASALT_USER_CONF PW_USE_RAY_TRACING PW_USE_OBS_VKCAPTURE PW_USE_GALLIUM_ZINK PW_USE_DAMAVAND
-            "
+            DISABLE_EDIT_DB_LIST="PW_VKBASALT PW_VKBASALT_USER_CONF PW_USE_RAY_TRACING PW_USE_OBS_VKCAPTURE PW_USE_GALLIUM_ZINK PW_USE_DAMAVAND"
             ;;
         1|2)
             # Stable, Newest
@@ -5156,10 +5266,11 @@ gui_edit_db () {
         5)
             # Legacy
             VKD3D_CB="DCB"
-            DISABLE_EDIT_DB_LIST="PW_USE_RAY_TRACING
-            "
+            DISABLE_EDIT_DB_LIST="PW_USE_RAY_TRACING"
             ;;
     esac
+
+    [[ $PW_WINE_USE =~ (PROTON_LG|WINE_LG) ]] && DISABLE_EDIT_DB_LIST+=" PW_USE_SUPPLIED_DXVK_VKD3D"
 
     unset ADD_CHK_BOX_EDIT_DB
     for int_to_boole in "${PW_EDIT_DB_LIST[@]}" ; do
@@ -5170,8 +5281,7 @@ gui_edit_db () {
         TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
         int_to_boole_non_pw="${int_to_boole//PW_/}"
         int_to_boole_non_pw="${int_to_boole_non_pw//"_"/" "}"
-        if [[ ! "${PW_VULKAN_USE}" =~ ^(1|2)$ ]] \
-        && [[ -n $DISABLE_EDIT_DB_LIST ]] ; then
+        if [[ -n $DISABLE_EDIT_DB_LIST ]] ; then
             unset CHECK_BOOLE_TRUE
             for check_boole in $DISABLE_EDIT_DB_LIST ; do
                 if [[ $check_boole == "$int_to_boole" ]] ; then
@@ -5205,6 +5315,23 @@ gui_edit_db () {
         CPU_LIMIT_VAR="disabled"
     fi
 
+    declare -A NODE_MAP
+    NUMA_NODE_LIST=""
+    INDEX=0
+    while read -r line; do
+        NODE_MAP[$INDEX]="$line"
+        NUMA_NODE_LIST+="$INDEX "
+        ((INDEX++))
+    done < <( lscpu | grep -Po "NUMA node\d+ CPU\(s\):\s+\K.*" )
+    # удаляем последний пробел, чтобы в combobox не было «0 »
+    NUMA_NODE_LIST="${NUMA_NODE_LIST% }"
+
+    if [[ -n "${PW_CPU_NUMA_NODE_INDEX}" ]] && [[ "${PW_CPU_NUMA_NODE_INDEX}" != "disabled" ]]; then
+        NUMA_NODE_INDEX="${PW_CPU_NUMA_NODE_INDEX}"
+    else
+        NUMA_NODE_INDEX="disabled"
+    fi
+
     if [[ -n "${PW_AMD_VULKAN_USE}" ]] && \
     [[ "${PW_AMD_VULKAN_USE}" != "disabled" ]] ; then
         AMD_VULKAN_VAR="${PW_AMD_VULKAN_USE}"
@@ -5236,6 +5363,8 @@ immediate - Unlimited frame rate + tearing.
 mailbox - Triple buffering. Unlimited frame rate + no tearing.
 relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]} :CB" "$(combobox_fix --disabled "${PW_MESA_VK_WSI_PRESENT_MODE}" "fifo!immediate!mailbox!relaxed")" \
     --field="${translations[Select needed AMD vulkan implementation]}!${translations[Choosing which implementation of vulkan will be used to run the game]} $AMD_VULKAN_CB" "$(combobox_fix --disabled "$AMD_VULKAN_VAR" "$AMD_VULKAN_DRIVER_LIST")" \
+    --field="${translations[NUMA node for CPU affinity]}!${translations[In multi‑core systems, CPUs are split into NUMA nodes, each with its own local memory and cores.
+Binding a game to a single node reduces memory‑access latency and limits costly core‑to‑core switches.)]} :CB" "$(combobox_fix --disabled "${NUMA_NODE_INDEX}" "${NUMA_NODE_LIST}")" \
     1> "$PW_TMPFS_PATH/tmp_output_yad_fps_limit" 2>/dev/null &
 
     "${pw_yad}" --notebook --key="$KEY_EDIT_DB_GUI" --title "${translations[EDIT DB]}" --text-align=center \
@@ -5286,8 +5415,19 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
     PW_LOCALE_SELECT="${PW_ADD_SETTINGS[7]}"
     PW_MESA_VK_WSI_PRESENT_MODE="${PW_ADD_SETTINGS[8]}"
     PW_AMD_VULKAN_USE="${PW_ADD_SETTINGS[9]}"
+    NUMA_NODE_INDEX="${PW_ADD_SETTINGS[10]//[[:space:]]/}"
 
-    if [[ "${CPU_LIMIT}" =~ ^[0-9]+$ ]] ; then
+    if [[ $NUMA_NODE_INDEX =~ ^[0-9]+$ ]] && [[ -v NODE_MAP[$NUMA_NODE_INDEX] ]] ; then
+        NUMA_CORES="${NODE_MAP[$NUMA_NODE_INDEX]}"
+        PW_CPU_NUMA_NODE_INDEX="$NUMA_NODE_INDEX"
+        PW_TASKSET_SLR="taskset -c $NUMA_CORES"
+    else
+        PW_CPU_NUMA_NODE_INDEX="disabled"
+        PW_TASKSET_SLR=""
+    fi
+    export PW_CPU_NUMA_NODE_INDEX PW_TASKSET_SLR
+
+    if [[ $CPU_LIMIT =~ ^[0-9]+$ ]] ; then
         PW_WINE_CPU_TOPOLOGY="${CPU_LIMIT}:$(seq -s, 0 $(( CPU_LIMIT - 1 )))"
     else
         PW_WINE_CPU_TOPOLOGY="disabled"
@@ -5295,7 +5435,7 @@ relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]
     export PW_WINE_CPU_TOPOLOGY
 
     edit_db_from_gui "${PW_EDIT_DB_LIST[@]}" LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY \
-    PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PW_LOCALE_SELECT PW_MESA_VK_WSI_PRESENT_MODE PW_AMD_VULKAN_USE
+    PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PW_LOCALE_SELECT PW_MESA_VK_WSI_PRESENT_MODE PW_AMD_VULKAN_USE PW_CPU_NUMA_NODE_INDEX PW_TASKSET_SLR
 
     if [[ -z "$MANGOHUD_CONFIG" ]] ; then
         MONITOR_HEIGHT="$(echo "$PW_SCREEN_RESOLUTION" | awk -F'x' '{print $2}')"
@@ -5735,8 +5875,7 @@ gui_dgvoodoo2 () {
         TMP_HELP_FOR_GUI="${int_to_boole}_INFO"
         int_to_boole_non_pw="${int_to_boole//PW_DGV2/}"
         int_to_boole_non_pw="${int_to_boole_non_pw//"_"/" "}"
-        if [[ ! "${PW_VULKAN_USE}" =~ ^(1|2)$ ]] \
-        && [[ -n $DISABLE_DGV2_LIST ]] ; then
+        if [[ -n $DISABLE_DGV2_LIST ]] ; then
             unset CHECK_BOOLE_TRUE
             for check_boole in $DISABLE_DGV2_LIST ; do
                 if [[ $check_boole == "$int_to_boole" ]] ; then
@@ -6412,7 +6551,7 @@ pw_auto_create_shortcut () {
     if [[ "${PW_CHECK_AUTOINSTALL}" == "1" ]] \
     || [[ "${PW_NO_AUTO_CREATE_SHORTCUT}" == "1" ]] \
     || [[ -z "${portwine_exe}" ]] \
-    || echo "${portwine_exe}" | grep -i "gc_api.exe\|vkplay\|pulseonline" &>/dev/null
+    || echo "${portwine_exe}" | grep -i "gc_api.exe\|vkplay\|pulseonline\|hoyoplay_launcher_pp" &>/dev/null
     then
         print_warning "Skipping auto create shortcut"
         return 0

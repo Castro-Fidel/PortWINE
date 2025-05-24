@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Author: if984 (Maksim K.)
+# type: emulators
+# name: melonDS
+# image: melonds
+# info_en: An open-source Nintendo DS (NDS) emulator. Works with a wide range of Nintendo DS games, from popular classics to niche titles. Supports high resolutions, local multiplayer, and advanced emulation settings.
+# info_ru: Эмулятор Nintendo DS (NDS) с открытым исходным кодом. Работает с большим количеством игр Nintendo DS, от популярных классических до нишевых. Поддерживает высокое разрешение, локальный мультиплеер, а также расширенные настройки эмуляции.
+########################################################################
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/melonDS-windows-x86_64.zip"
+start_portwine
+if try_download "https://melonds.kuribo64.net/downloads/melonDS-windows-x86_64.zip" "${PW_AUTOINSTALL_EXE}" no_mirror 
+then
+    pw_start_progress_bar_install_game "melonDS."
+    "$pw_7z" x -y "${PW_AUTOINSTALL_EXE}" -o"$WINEPREFIX/drive_c/Program Files (x86)/melonDS"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/melonDS/melonDS.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    kill_portwine
+    pw_stop_progress_bar
+    export PORTWINE_CREATE_SHORTCUT_NAME="melonDS"
+    portwine_create_shortcut
+fi
+stop_portwine
