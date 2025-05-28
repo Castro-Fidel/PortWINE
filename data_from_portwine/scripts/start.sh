@@ -34,8 +34,8 @@ then
     exit 1
 fi
 
-PORT_SCRIPTS_PATH="$(dirname "$(realpath "$0")")"
-PORT_WINE_PATH="$(realpath "$PORT_SCRIPTS_PATH/../..")"
+PORT_SCRIPTS_PATH="$(cd "$(dirname "$0")" && pwd)"
+PORT_WINE_PATH="$(dirname "$(dirname "$PORT_SCRIPTS_PATH")")"
 export PORT_SCRIPTS_PATH PORT_WINE_PATH
 
 # shellcheck source=/dev/null
