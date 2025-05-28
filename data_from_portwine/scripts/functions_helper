@@ -3301,6 +3301,10 @@ start_portwine () {
         export DXVK_ASYNC="1"
     fi
 
+    if [[ -n "${PW_DXVK_FPS_LIMIT}" ]] && [[ "${PW_DXVK_FPS_LIMIT}" =~ ^[0-9]+$ ]] ; then
+        export DXVK_FRAME_RATE="${PW_DXVK_FPS_LIMIT}"
+    fi
+
     enabled_fake_nvidia_videocard ()
     {
         case "$1" in
@@ -5354,6 +5358,7 @@ A brief instruction:
     * library=b,n - use <b>WINE</b> library and then <b>WINDOWS</b>
     * library= - disable the use of this library]} :CBE" "$(combobox_fix --empty "${WINEDLLOVERRIDES}" "libglesv2=!d3dx9_36,d3dx9_42=n,b;mfc120=b,n")" \
     --field="${translations[ADD ARGUMENTS FOR .EXE FILE]}!${translations[Adding an argument after the <b>.exe</b> file, just like you would add an argument in a shortcut on a <b>WINDOWS </b> system]} :CBE" "$(combobox_fix --empty "\\${LAUNCH_PARAMETERS}" "-dx11 -skipintro 1")" \
+    --field="${translations[FPS LIMIT]}!${translations[Set a frame rate limit for DXVK. Useful for reducing GPU load or achieving smoother gameplay.]} :CBE" "$(combobox_fix --disabled "${PW_DXVK_FPS_LIMIT}" "30!40!45!48!60!75!90!120!144!165!175!240")" \
     --field="${translations[Limit the use of processor cores]}!${translations[Limiting the number of CPU cores is useful for Unity games (It is recommended to set the value equal to 8)]} :CB" "$(combobox_fix --disabled "${CPU_LIMIT_VAR}" "${GET_LOGICAL_CORE}")" \
     --field="${translations[Forcibly select the OpenGL version for the game]}!${translations[You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)]} :CB" "$(combobox_fix --disabled "${PW_MESA_GL_VERSION_OVERRIDE}" "4.6COMPAT!4.5COMPAT!4.3COMPAT!4.1COMPAT!3.3COMPAT!3.2COMPAT")" \
     --field="${translations[Forcibly select the VKD3D feature level]}!${translations[You can set a forced feature level VKD3D for games on DirectX12]} :$VKD3D_CB" "$(combobox_fix --disabled "${PW_VKD3D_FEATURE_LEVEL}" "12_2!12_1!12_0!11_1!11_0")" \
@@ -5409,13 +5414,14 @@ Binding a game to a single node reduces memory‑access latency and limits costl
     PW_DLL_INSTALL="${PW_ADD_SETTINGS[1]}"
     WINEDLLOVERRIDES="${PW_ADD_SETTINGS[2]}"
     LAUNCH_PARAMETERS="${PW_ADD_SETTINGS[3]}"
-    CPU_LIMIT="${PW_ADD_SETTINGS[4]}"
-    PW_MESA_GL_VERSION_OVERRIDE="${PW_ADD_SETTINGS[5]}"
-    PW_VKD3D_FEATURE_LEVEL="${PW_ADD_SETTINGS[6]}"
-    PW_LOCALE_SELECT="${PW_ADD_SETTINGS[7]}"
-    PW_MESA_VK_WSI_PRESENT_MODE="${PW_ADD_SETTINGS[8]}"
-    PW_AMD_VULKAN_USE="${PW_ADD_SETTINGS[9]}"
-    NUMA_NODE_INDEX="${PW_ADD_SETTINGS[10]//[[:space:]]/}"
+    PW_DXVK_FPS_LIMIT="${PW_ADD_SETTINGS[4]}"
+    CPU_LIMIT="${PW_ADD_SETTINGS[5]}"
+    PW_MESA_GL_VERSION_OVERRIDE="${PW_ADD_SETTINGS[6]}"
+    PW_VKD3D_FEATURE_LEVEL="${PW_ADD_SETTINGS[7]}"
+    PW_LOCALE_SELECT="${PW_ADD_SETTINGS[8]}"
+    PW_MESA_VK_WSI_PRESENT_MODE="${PW_ADD_SETTINGS[9]}"
+    PW_AMD_VULKAN_USE="${PW_ADD_SETTINGS[10]}"
+    NUMA_NODE_INDEX="${PW_ADD_SETTINGS[11]//[[:space:]]/}"
 
     if [[ $NUMA_NODE_INDEX =~ ^[0-9]+$ ]] && [[ -v NODE_MAP[$NUMA_NODE_INDEX] ]] ; then
         NUMA_CORES="${NODE_MAP[$NUMA_NODE_INDEX]}"
@@ -5434,7 +5440,7 @@ Binding a game to a single node reduces memory‑access latency and limits costl
     fi
     export PW_WINE_CPU_TOPOLOGY
 
-    edit_db_from_gui "${PW_EDIT_DB_LIST[@]}" LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY \
+    edit_db_from_gui "${PW_EDIT_DB_LIST[@]}" LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY PW_DXVK_FPS_LIMIT \
     PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PW_LOCALE_SELECT PW_MESA_VK_WSI_PRESENT_MODE PW_AMD_VULKAN_USE PW_CPU_NUMA_NODE_INDEX PW_TASKSET_SLR
 
     if [[ -z "$MANGOHUD_CONFIG" ]] ; then
