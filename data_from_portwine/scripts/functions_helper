@@ -1814,10 +1814,8 @@ pw_mangohud_check () {
             export PW_MANGOHUD_SLR='MANGOHUD=1'
         fi
         # TODO: need to fix work for OpenGL without flatpak...
-        if [[ $PW_USE_GALLIUM_ZINK == "0" ]] ; then # без этого могут быть вылеты
-            MANGOHUD_LIB_NAME="libMangoHud_shim.so"
-            export PW_LD_PRELOAD="${PW_LD_PRELOAD:+$PW_LD_PRELOAD:}${MANGOHUD_LIB_NAME}"
-        fi
+        MANGOHUD_LIB_NAME="libMangoHud_shim.so"
+        export PW_LD_PRELOAD="${PW_LD_PRELOAD:+$PW_LD_PRELOAD:}${MANGOHUD_LIB_NAME}"
     else
         export PW_MANGOHUD_SLR=''
         print_info "MangoHud is disabled"
@@ -3631,10 +3629,10 @@ start_portwine () {
         0)
             # WINED3D OPENGL
             print_info "Use WINED3D OpenGL"
+            unset PW_VKBASALT PW_USE_GALLIUM_ZINK PW_USE_WINED3D_VULKAN PW_USE_SUPPLIED_DXVK_VKD3D
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
             CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
             CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d9 d3d8 dxgi"
-            export PW_VKBASALT="0"
             ;;
         1)
             # STABLE DXVK AND VKD3D
@@ -3669,13 +3667,21 @@ start_portwine () {
             ;;
     esac
 
-    if [[ $PW_USE_GALLIUM_ZINK == "1" ]] \
-    || [[ $PW_USE_GALLIUM_NINE == "1" ]] \
+    if [[ $PW_USE_GALLIUM_NINE == "1" ]] \
+    || [[ $PW_USE_GALLIUM_ZINK == "1" ]] \
     || [[ $PW_USE_WINED3D_VULKAN == "1" ]] ; then
-        unset PATH_TO_DXVK_FILES CP_DXVK_FILES
+        unset PATH_TO_DXVK_FILES CP_DXVK_FILES PW_USE_SUPPLIED_DXVK_VKD3D
         PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
         CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
         CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d9 d3d8 dxgi"
+    fi
+
+    # GALLIUM NINE
+    if [[ $PW_USE_GALLIUM_NINE == "1" ]] ; then
+        print_info "Use GALLIUM-NINE (Native DX9 on MESA drivers)"
+        unset PW_VKBASALT PW_MANGOHUD PW_WINE_FULLSCREEN_FSR DXVK_ENABLE_NVAPI PW_USE_VRCLIENT
+        rm_from_var CP_WINE_FILES "d3d9"
+        CP_GALLIUM_NINE_FILES="d3d9"
     fi
 
     # GALLIUM ZINK
@@ -3690,21 +3696,7 @@ start_portwine () {
         then
             export LIBGL_KOPPER_DRI2="1"
         fi
-        if [[ $(check_vendor_gpu) =~ nouveau ]] ; then
-            export NOUVEAU_USE_ZINK="1"
-        fi
-    fi
-
-    # GALLIUM NINE
-    if [[ $PW_USE_GALLIUM_NINE == "1" ]] ; then
-        print_info "Use GALLIUM-NINE (Native DX9 on MESA drivers)"
-        rm_from_var CP_WINE_FILES "d3d9"
-        CP_GALLIUM_NINE_FILES="d3d9"
-        export PW_VKBASALT="0"
-        export PW_MANGOHUD="0"
-        export PW_WINE_FULLSCREEN_FSR="0"
-        export DXVK_ENABLE_NVAPI="0"
-        export PW_USE_VRCLIENT="0"
+        [[ $(check_vendor_gpu) =~ nouveau ]] && export NOUVEAU_USE_ZINK="1"
     fi
 
     # WINED3D VULKAN
@@ -3712,15 +3704,17 @@ start_portwine () {
         print_info "Use DAMAVAND (DirectX to wined3d vulkan)"
         export WINE_D3D_CONFIG="renderer=vulkan"
     else
-        export WINE_D3D_CONFIG="renderer=gl"
+        if [[ $PW_VULKAN_USE == "0" ]] \
+        || [[ $PW_USE_GALLIUM_NINE == "1" ]] || [[ $PW_USE_GALLIUM_ZINK == "1" ]] ; then
+            export WINE_D3D_CONFIG="renderer=gl"
+        fi
     fi
 
     export __GL_YIELD="NOTHING"
     export mesa_glthread="true"
 
     if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "1" ]] \
-    && [[ ! $PW_WINE_USE =~ (PROTON_LG|WINE_LG) ]] && [[ $PW_VULKAN_USE != 0 ]] \
-    && [[ $PW_USE_GALLIUM_ZINK != "1" ]] && [[ $PW_USE_GALLIUM_NINE != "1" ]] && [[ $PW_USE_WINED3D_VULKAN != "1" ]] \
+    && [[ ! $PW_WINE_USE =~ (PROTON_LG|WINE_LG) ]] \
     && [[ -f "${WINEDIR}/lib64/wine/dxvk/d3d9.dll" || -f "${WINEDIR}/lib/wine/dxvk/x86_64-windows/d3d9.dll" ]] ; then
         export DXVK_ASYNC="1"
         if [[ -f "${WINEDIR}/lib64/wine/dxvk/d3d10.dll" && -f "${WINEDIR}/lib64/wine/dxvk/d3d10_1.dll" ]] ; then
@@ -5191,8 +5185,8 @@ gui_edit_db () {
     PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE
     PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER
     PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE
-    PW_DISABLE_COMPOSITING PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_NATIVE_WAYLAND PW_USE_GALLIUM_NINE
-    PW_USE_GALLIUM_ZINK PW_USE_WINED3D_VULKAN PW_USE_SUPPLIED_DXVK_VKD3D
+    PW_DISABLE_COMPOSITING PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_NATIVE_WAYLAND PW_USE_GALLIUM_ZINK
+    PW_USE_GALLIUM_NINE PW_USE_WINED3D_VULKAN PW_USE_SUPPLIED_DXVK_VKD3D
     )
 
     if check_wayland_session
@@ -5245,8 +5239,8 @@ gui_edit_db () {
     PW_USE_RUNTIME_INFO=${translations[Use container launch mode (It is recommended not to change the value)]}
     PW_DINPUT_PROTOCOL_INFO=${translations[Force use DirectInput protocol instead of XInput]}
     PW_USE_NATIVE_WAYLAND_INFO=${translations[Enable experemental native Wayland support (need special wine build to work)]}
-    PW_USE_GALLIUM_NINE_INFO=${translations[Use Gallium Nine (native DirectX 9 for MESA)]}
     PW_USE_GALLIUM_ZINK_INFO=${translations[Use Gallium Zink (OpenGL driver is implemented via Vulkan)]}
+    PW_USE_GALLIUM_NINE_INFO=${translations[Use Gallium Nine (native DirectX 9 for MESA)]}
     PW_USE_WINED3D_VULKAN_INFO=${translations[Instead of DXVK, use WineD3D vulkan (Damavand). Experimental function.]}
     PW_USE_SUPPLIED_DXVK_VKD3D_INFO=${translations[Use dxvk and vkd3d which are bundled with wine or proton. (Does not work with PROTON_LG and WINE_LG)]}
 
