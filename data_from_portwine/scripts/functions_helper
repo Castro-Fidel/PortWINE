@@ -5285,7 +5285,7 @@ gui_edit_db () {
             for check_boole in $DISABLE_EDIT_DB_LIST ; do
                 if [[ $check_boole == "$int_to_boole" ]] ; then
                     CHECK_BOOLE_TRUE=1
-                    ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:D${THEME_CHKBOX}%${!int_to_boole}%"
+                    ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:D${THEME_CHKBOX}%FALSE%"
                 fi
             done
         fi
@@ -5433,8 +5433,12 @@ Binding a game to a single node reduces memory‑access latency and limits costl
     fi
     export PW_WINE_CPU_TOPOLOGY
 
-    edit_db_from_gui "${PW_EDIT_DB_LIST[@]}" LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY \
-    PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PW_LOCALE_SELECT PW_MESA_VK_WSI_PRESENT_MODE PW_AMD_VULKAN_USE PW_CPU_NUMA_NODE_INDEX PW_TASKSET_SLR
+    for dont_touch_var in $DISABLE_EDIT_DB_LIST ; do
+        rm_from_array "PW_EDIT_DB_LIST" "$dont_touch_var"
+    done
+    edit_db_from_gui "${PW_EDIT_DB_LIST[@]}" LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL \
+    WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL \
+    PW_LOCALE_SELECT PW_MESA_VK_WSI_PRESENT_MODE PW_AMD_VULKAN_USE PW_CPU_NUMA_NODE_INDEX PW_TASKSET_SLR
 
     if [[ -z "$MANGOHUD_CONFIG" ]] ; then
         MONITOR_HEIGHT="$(echo "$PW_SCREEN_RESOLUTION" | awk -F'x' '{print $2}')"
