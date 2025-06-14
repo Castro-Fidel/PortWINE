@@ -233,16 +233,20 @@ fi
 
 # choose mirror
 if [[ -z "$MIRROR" ]] \
-&& [[ "$LANGUAGE" == "ru" ]] \
-&& [[ "$BRANCH" != "devel" ]]
+&& [[ "$LANGUAGE" == "ru" ]]
 then
     echo 'export MIRROR="CLOUD"' >> "$USER_CONF"
-    MIRROR="CLOUD"
+    export MIRROR="CLOUD"
 elif [[ -z "$MIRROR" ]] ; then
     echo 'export MIRROR="GITHUB"' >> "$USER_CONF"
-    MIRROR="GITHUB"
+    export MIRROR="GITHUB"
 fi
-export MIRROR
+
+if [[ $USE_ONLY_LG_RU == "1" ]] ; then
+    export MIRROR="CLOUD"
+    edit_user_conf_from_gui MIRROR USE_ONLY_LG_RU
+    print_info "Force used linux-gaming.ru for all updates.\n"
+fi
 print_info "The first mirror in used: $MIRROR\n"
 
 # choose downloading covers from SteamGridDB or not

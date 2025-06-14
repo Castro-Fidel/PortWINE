@@ -2477,7 +2477,7 @@ pw_port_update () {
 
     if [[ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ]] \
     || [[ ! $BRANCH =~ (devel|master) ]]; then
-        echo "2024" > "${PORT_WINE_TMP_PATH}/scripts_ver"
+        echo "2025" > "${PORT_WINE_TMP_PATH}/scripts_ver"
         BRANCH_VERSION_UPDATE="SCRIPTS_STABLE_VERSION"
         BRANCH="master"
     fi
@@ -2487,21 +2487,26 @@ pw_port_update () {
     URL_PP_GITEA="https://git.linux-gaming.ru/CastroFidel/PortWINE/raw/branch/${BRANCH}/data_from_portwine/scripts/var"
 
     pw_check_update () {
-        debug_timer --start -s "UPDATE_ETERFUND"
-        if ! timeout 2 curl -f -s --list-only "$URL_ETERFUND" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
-        then
-            print_warning "https://gitlab.eterfund.ru/ broken. Skip it..."
-            UPDATE_SKIP_ETERFUND="1"
-        fi
-        debug_timer --end -s "UPDATE_ETERFUND"
+        if [[ $USE_ONLY_LG_RU != "1" ]] ; then
+            debug_timer --start -s "UPDATE_ETERFUND"
+            if ! timeout 2 curl -f -s --list-only "$URL_ETERFUND" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+            then
+                print_warning "https://gitlab.eterfund.ru/ broken. Skip it..."
+                UPDATE_SKIP_ETERFUND="1"
+            fi
+            debug_timer --end -s "UPDATE_ETERFUND"
 
-        debug_timer --start -s "UPDATE_GITHUB"
-        if ! timeout 2 curl -f -s --list-only "$URL_GITHUB" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
-        then
-            print_warning "https://raw.githubusercontent.com/ broken. Skip it..."
+            debug_timer --start -s "UPDATE_GITHUB"
+            if ! timeout 2 curl -f -s --list-only "$URL_GITHUB" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+            then
+                print_warning "https://raw.githubusercontent.com/ broken. Skip it..."
+                UPDATE_SKIP_GITHUB="1"
+            fi
+            debug_timer --end -s "UPDATE_GITHUB"
+        else
+            UPDATE_SKIP_ETERFUND="1"
             UPDATE_SKIP_GITHUB="1"
         fi
-        debug_timer --end -s "UPDATE_GITHUB"
 
         debug_timer --start -s "UPDATE_PP_GITEA"
         if ! timeout 2 curl -f -s --list-only "$URL_PP_GITEA" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
