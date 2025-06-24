@@ -4226,11 +4226,10 @@ start_portwine () {
     fi
 
     if [[ $PW_USE_NATIVE_WAYLAND == "1" ]] ; then
-        export PW_DISPLAY="env DISPLAY="
-        export PW_USE_RUNTIME="0"
+        export WINE_WAYLAND_HACKS="1"
+        var_winedlloverride_update "winex11.drv=d;winewayland.drv=b"
         get_and_set_reg_file --add 'Software\Wine\Drivers' 'Graphics' 'REG_SZ' "x11,wayland" "user"
     else
-        unset PW_DISPLAY
         get_and_set_reg_file --delete 'Software\Wine\Drivers' 'Graphics'
     fi
 
@@ -4445,7 +4444,6 @@ pw_run () {
             VK_INSTANCE_LAYERS=${PW_VK_INSTANCE_LAYERS} \
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
-            ${PW_DISPLAY} \
             "${WINELOADER}" "$@" ${proxy_launch_parameters} &>>"${PW_LOG_TO_FILE}"
         else
             if [[ "$PW_USE_TERMINAL" == 1 ]] ; then
@@ -4465,7 +4463,6 @@ pw_run () {
             VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
-            ${PW_DISPLAY} \
             "${WINELOADER}" "$@" ${proxy_launch_parameters} &>>"${PW_LOG_TO_FILE}"
             print_info "Update prefix log:"
             [[ -f "${PW_TMPFS_PATH}/update_pfx_log" ]] && cat "${PW_TMPFS_PATH}/update_pfx_log"
@@ -4492,7 +4489,6 @@ pw_run () {
             ${PW_GAMEMODERUN_SLR} \
             ${PW_POWERPROFILECTL_SLR} \
             ${PW_MANGOHUD_SLR} \
-            ${PW_DISPLAY} \
             ${PW_INHIBIT_SLR} \
             ${PW_TASKSET_SLR} \
             "${WINELOADER}" "$@" ${proxy_launch_parameters} &>>"${PW_LOG_TO_FILE}"
@@ -4512,7 +4508,6 @@ pw_run () {
             ${PW_GAMEMODERUN_SLR} \
             ${PW_POWERPROFILECTL_SLR} \
             ${PW_MANGOHUD_SLR} \
-            ${PW_DISPLAY} \
             ${PW_INHIBIT_SLR} \
             ${PW_TASKSET_SLR} \
             "${WINELOADER}" "$@" ${proxy_launch_parameters}
