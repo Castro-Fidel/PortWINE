@@ -411,7 +411,10 @@ EOF
             while read -r line
             do
                 export portwine_exe="$PORT_WINE_PATH/data/prefixes/$PW_PREFIX_NAME/$line"
-                portwine_create_shortcut
+                if [[ $START_FROM_STEAM == "1" ]]
+                then portwine_output_yad_shortcut --silent
+                else portwine_create_shortcut
+                fi
             done < "$PORT_WINE_PATH/data/prefixes/$PW_PREFIX_NAME/.create_shortcut"
         fi
         yad_info "${translations[Unpack is DONE for prefix:]} <b>\"${PW_PREFIX_NAME}\"</b>."
