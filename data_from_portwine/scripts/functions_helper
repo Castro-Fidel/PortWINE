@@ -5193,13 +5193,6 @@ gui_edit_db () {
     PW_USE_WINED3D_VULKAN PW_USE_SUPPLIED_DXVK_VKD3D PW_USE_NATIVE_WAYLAND PW_USE_DXVK_HDR
     )
 
-    if check_wayland_session
-    then rm_from_array "PW_EDIT_DB_LIST" PW_USE_US_LAYOUT
-    else
-        rm_from_array "PW_EDIT_DB_LIST" PW_USE_NATIVE_WAYLAND
-        rm_from_array "PW_EDIT_DB_LIST" PW_USE_DXVK_HDR
-    fi
-
     check_flatpak && rm_from_array "PW_EDIT_DB_LIST" PW_USE_RUNTIME
 
     # GALLIUM NINE
@@ -5276,6 +5269,11 @@ gui_edit_db () {
     if [[ $PW_WINE_USE =~ (PROTON_LG|WINE_LG) ]] \
     || [[ $PW_VULKAN_USE == "0" ]] ; then
         DISABLE_EDIT_DB_LIST+=" PW_USE_SUPPLIED_DXVK_VKD3D"
+    fi
+
+    if check_wayland_session
+    then DISABLE_EDIT_DB_LIST+=" PW_USE_US_LAYOUT"
+    else DISABLE_EDIT_DB_LIST+=" PW_USE_NATIVE_WAYLAND PW_USE_DXVK_HDR"
     fi
 
     unset ADD_CHK_BOX_EDIT_DB
