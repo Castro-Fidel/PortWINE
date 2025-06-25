@@ -315,7 +315,9 @@ fi
 if ! check_flatpak ; then
     if [[ -f "${PW_TMPFS_PATH}/portproton.lock" ]] ; then
         print_warning "Found lock file: ${PW_TMPFS_PATH}/portproton.lock"
-        yad_question "${translations[A running PortProton session was detected.\\nDo you want to end the previous session?]}" || exit 0
+        if [[ $START_FROM_STEAM != "1" ]]
+        then yad_question "${translations[A running PortProton session was detected.\\nDo you want to end the previous session?]}" || exit 0
+        fi
     fi
     touch "${PW_TMPFS_PATH}/portproton.lock"
     rm_lock_file () {
@@ -417,7 +419,9 @@ EOF
                 fi
             done < "$PORT_WINE_PATH/data/prefixes/$PW_PREFIX_NAME/.create_shortcut"
         fi
-        yad_info "${translations[Unpack is DONE for prefix:]} <b>\"${PW_PREFIX_NAME}\"</b>."
+        if [[ $START_FROM_STEAM != "1" ]]
+        then yad_info "${translations[Unpack is DONE for prefix:]} <b>\"${PW_PREFIX_NAME}\"</b>."
+        fi
         exit 0
     fi
 fi
