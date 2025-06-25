@@ -1696,7 +1696,7 @@ init_wine_ver () {
         WINE_LIBRARY_PATH="${WINEDIR}/lib"
         if [[ -d "${WINEDIR}/lib64/gstreamer-1.0" ]]
         then WINE_LIBRARY_PATH+=":${WINEDIR}/lib64"
-        elif [[ -d "${WINEDIR}/lib/x86_64-linux-gnu/gstreamer-1.0" ]]
+        elif [[ -d "${WINEDIR}/lib/x86_64-linux-gnu" ]]
         then WINE_LIBRARY_PATH+=":${WINEDIR}/lib/x86_64-linux-gnu:${WINEDIR}/lib/i386-linux-gnu"
         fi
 		export WINE_LIBRARY_PATH
@@ -4216,15 +4216,6 @@ start_portwine () {
         get_and_set_reg_file --add 'System\CurrentControlSet\Services\winebus' 'Enable SDL' 'REG_DWORD' "1" "system"
     fi
 
-    if [[ $PW_WINE_DPI_VALUE != "disabled" ]] ; then
-        if [[ $PW_WINE_DPI_VALUE == "recommended" ]] ; then
-            PW_RECOMMENDED_DPI=$(recommend_dpi "${PW_SCREEN_RESOLUTION:5:8}")
-            get_and_set_reg_file --add 'Control Panel\Desktop' 'LogPixels' 'REG_DWORD' "$PW_RECOMMENDED_DPI" "user"
-        else
-            get_and_set_reg_file --add 'Control Panel\Desktop' 'LogPixels' 'REG_DWORD' "$PW_WINE_DPI_VALUE" "user"
-        fi
-    fi
-
     if check_wayland_session \
     && [[ $PW_USE_NATIVE_WAYLAND == "1" || $PW_USE_DXVK_HDR == "1" ]]
     then
@@ -4232,9 +4223,29 @@ start_portwine () {
         export WINE_WAYLAND_HACKS="1"
         var_winedlloverride_update "winex11.drv=d;winewayland.drv=b"
         get_and_set_reg_file --add 'Software\Wine\Drivers' 'Graphics' 'REG_SZ' "x11,wayland" "user"
+
+        print_warning "Wayland in use. Force dpi=96"
+        export PW_WINE_DPI_VALUE="96"
+
+        if [[ -f "$WINEDIR/lib/libxkbregistry.so" ]] \
+        || [[ -f "$WINEDIR/lib/x86_64-linux-gnu/libxkbregistry.so" ]]
+        then print_info "runtime in use with native wayland."
+        else
+            print_warning "Wine is not support native wayland with runtime! Force disabled SLR."
+            export PW_USE_RUNTIME="0"
+        fi
     else
         unset WINE_WAYLAND_HACKS DXVK_HDR
         get_and_set_reg_file --delete 'Software\Wine\Drivers' 'Graphics'
+    fi
+
+    if [[ $PW_WINE_DPI_VALUE != "disabled" ]] ; then
+        if [[ $PW_WINE_DPI_VALUE == "recommended" ]] ; then
+            PW_RECOMMENDED_DPI=$(recommend_dpi "${PW_SCREEN_RESOLUTION:5:8}")
+            get_and_set_reg_file --add 'Control Panel\Desktop' 'LogPixels' 'REG_DWORD' "$PW_RECOMMENDED_DPI" "user"
+        else
+            get_and_set_reg_file --add 'Control Panel\Desktop' 'LogPixels' 'REG_DWORD' "$PW_WINE_DPI_VALUE" "user"
+        fi
     fi
 
     case "$PW_SOUND_DRIVER_USE" in
