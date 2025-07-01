@@ -1696,7 +1696,7 @@ init_wine_ver () {
         WINE_LIBRARY_PATH="${WINEDIR}/lib"
         if [[ -d "${WINEDIR}/lib64/gstreamer-1.0" ]]
         then WINE_LIBRARY_PATH+=":${WINEDIR}/lib64"
-        elif [[ -d "${WINEDIR}/lib/x86_64-linux-gnu/gstreamer-1.0" ]]
+        elif [[ -d "${WINEDIR}/lib/x86_64-linux-gnu" ]]
         then WINE_LIBRARY_PATH+=":${WINEDIR}/lib/x86_64-linux-gnu:${WINEDIR}/lib/i386-linux-gnu"
         fi
 		export WINE_LIBRARY_PATH
@@ -1814,10 +1814,8 @@ pw_mangohud_check () {
             export PW_MANGOHUD_SLR='MANGOHUD=1'
         fi
         # TODO: need to fix work for OpenGL without flatpak...
-        if [[ $PW_USE_GALLIUM_ZINK == "0" ]] ; then
-            MANGOHUD_LIB_NAME="libMangoHud_shim.so"
-            export PW_LD_PRELOAD="${PW_LD_PRELOAD:+$PW_LD_PRELOAD:}${MANGOHUD_LIB_NAME}"
-        fi
+        MANGOHUD_LIB_NAME="libMangoHud_shim.so"
+        export PW_LD_PRELOAD="${PW_LD_PRELOAD:+$PW_LD_PRELOAD:}${MANGOHUD_LIB_NAME}"
     else
         export PW_MANGOHUD_SLR=''
         print_info "MangoHud is disabled"
@@ -2479,7 +2477,7 @@ pw_port_update () {
 
     if [[ ! -f "${PORT_WINE_TMP_PATH}/scripts_ver" ]] \
     || [[ ! $BRANCH =~ (devel|master) ]]; then
-        echo "2024" > "${PORT_WINE_TMP_PATH}/scripts_ver"
+        echo "2025" > "${PORT_WINE_TMP_PATH}/scripts_ver"
         BRANCH_VERSION_UPDATE="SCRIPTS_STABLE_VERSION"
         BRANCH="master"
     fi
@@ -2489,21 +2487,26 @@ pw_port_update () {
     URL_PP_GITEA="https://git.linux-gaming.ru/CastroFidel/PortWINE/raw/branch/${BRANCH}/data_from_portwine/scripts/var"
 
     pw_check_update () {
-        debug_timer --start -s "UPDATE_ETERFUND"
-        if ! timeout 2 curl -f -s --list-only "$URL_ETERFUND" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
-        then
-            print_warning "https://gitlab.eterfund.ru/ broken. Skip it..."
-            UPDATE_SKIP_ETERFUND="1"
-        fi
-        debug_timer --end -s "UPDATE_ETERFUND"
+        if [[ $USE_ONLY_LG_RU != "1" ]] ; then
+            debug_timer --start -s "UPDATE_ETERFUND"
+            if ! timeout 2 curl -f -s --list-only "$URL_ETERFUND" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+            then
+                print_warning "https://gitlab.eterfund.ru/ broken. Skip it..."
+                UPDATE_SKIP_ETERFUND="1"
+            fi
+            debug_timer --end -s "UPDATE_ETERFUND"
 
-        debug_timer --start -s "UPDATE_GITHUB"
-        if ! timeout 2 curl -f -s --list-only "$URL_GITHUB" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
-        then
-            print_warning "https://raw.githubusercontent.com/ broken. Skip it..."
+            debug_timer --start -s "UPDATE_GITHUB"
+            if ! timeout 2 curl -f -s --list-only "$URL_GITHUB" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+            then
+                print_warning "https://raw.githubusercontent.com/ broken. Skip it..."
+                UPDATE_SKIP_GITHUB="1"
+            fi
+            debug_timer --end -s "UPDATE_GITHUB"
+        else
+            UPDATE_SKIP_ETERFUND="1"
             UPDATE_SKIP_GITHUB="1"
         fi
-        debug_timer --end -s "UPDATE_GITHUB"
 
         debug_timer --start -s "UPDATE_PP_GITEA"
         if ! timeout 2 curl -f -s --list-only "$URL_PP_GITEA" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
@@ -2737,6 +2740,28 @@ pw_get_tmp_files () {
         print_warning "use portable vulkaninfo"
         "$PW_PLUGINS_PATH"/portable/bin/x86_64-linux-gnu-vulkaninfo &> "${PW_TMPFS_PATH}/vulkaninfo.tmp"
     fi
+
+    # GALLIUM NINE
+    unset FIND_D3D_MODULE D3D_MODULE_PATH
+    if ! check_flatpak ; then
+        FIND_D3D_MODULE="$(find /usr/ -maxdepth 4 -type f -name "d3dadapter9.so.*" 2>/dev/null)"
+        if [[ -n "$FIND_D3D_MODULE" ]] ; then
+            FIND_D3D_MODULE="$(dirname "$FIND_D3D_MODULE")"
+            IFS=$'\n'
+            for D3D_MP in $FIND_D3D_MODULE ; do
+                if [[ -n "$D3D_MODULE_PATH" ]]
+                then export D3D_MODULE_PATH="$D3D_MODULE_PATH:/run/host${D3D_MP}"
+                else export D3D_MODULE_PATH="/run/host${D3D_MP}"
+                fi
+            done
+            IFS="$orig_IFS"
+        fi
+    else
+        if [[ -d "/app/lib/i386-linux-gnu/GL/default/lib/d3d" && -d "/usr/lib/x86_64-linux-gnu/GL/default/lib/d3d" ]] ; then
+            export D3D_MODULE_PATH="/app/lib/i386-linux-gnu/GL/default/lib/d3d:/usr/lib/x86_64-linux-gnu/GL/default/lib/d3d"
+        fi
+    fi
+    [[ -n $D3D_MODULE_PATH ]] && echo "$D3D_MODULE_PATH" > "${PW_TMPFS_PATH}/gallium_nine.tmp"
 }
 
 pw_skip_get_info () {
@@ -3536,7 +3561,7 @@ start_portwine () {
     if command -v systemd-inhibit &>/dev/null \
     && [[ "$GAMEMODERUN" != "1" ]]
     then
-        PW_INHIBIT_SLR="systemd-inhibit --mode=block --who=ru.linux_gaming.PortProton --why=${translations[Launched]}"
+        PW_INHIBIT_SLR="systemd-inhibit --mode=block --who=ru.linux_gaming.PortProton --why=${translations[Launched]} --what=idle:sleep"
         print_info "Screensaver will be inhibit"
     fi
     pw_other_fixes
@@ -3605,85 +3630,68 @@ start_portwine () {
 
     # 3D API
     unset CP_VKD3D_FILES CP_DXVK_FILES CP_DGV2_FILES CP_WINE_FILES PATH_TO_DXVK_FILES PATH_TO_VKD3D_FILES CP_GALLIUM_NINE_FILES
-    [[ "$PW_USE_GALLIUM_NINE" == "1" ]] && PW_VULKAN_USE="3"
+    case "${PW_VULKAN_USE}" in
+        0)
+            # WINED3D OPENGL
+            print_info "Use WINED3D OpenGL"
+            unset PW_VKBASALT PW_USE_GALLIUM_ZINK PW_USE_WINED3D_VULKAN PW_USE_SUPPLIED_DXVK_VKD3D
+            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
+            CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
+            CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d9 d3d8 dxgi"
+            ;;
+        1)
+            # STABLE DXVK AND VKD3D
+            print_info "DXVK v.${DXVK_STABLE_VER} in use"
+            print_info "VKD3D-PROTON v.${VKD3D_STABLE_VER} in use"
+            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
+            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
+            CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
+            [[ "$PW_USE_VRCLIENT" = "1" ]] && add_to_var CP_DXVK_FILES "openvr_api_dxvk"
+            CP_VKD3D_FILES="d3d12 libvkd3d-shader-1"
+            CP_WINE_FILES="d3d12core d3d8"
+            ;;
+        2)
+            # NEWEST DXVK AND VKD3D
+            print_info "DXVK v.${DXVK_GIT_VER} in use"
+            print_info "VKD3D-PROTON v.${VKD3D_GIT_VER} in use"
+            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}"
+            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
+            CP_DXVK_FILES="d3d11 d3d10core d3d9 d3d8 dxgi"
+            [[ "$PW_USE_VRCLIENT" = "1" ]] && add_to_var CP_DXVK_FILES "openvr_api_dxvk"
+            CP_VKD3D_FILES="d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1"
+            CP_WINE_FILES="d3d10_1 d3d10"
+            ;;
+        3)
+            # LEGACY DXVK
+            print_info "DXVK v.${DXVK_LEGACY_VER} in use"
+            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_LEGACY_VER}"
+            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
+            CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
+            CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
+            CP_WINE_FILES="d3d12 d3d12core d3d8"
+            ;;
+    esac
 
-    if [[ $PW_USE_DAMAVAND == "1" ]] && [[ $PW_VULKAN_USE != "0" ]] ; then
-        # WINED3D VULKAN (DAMAVAND)
-        print_info "Use DAMAVAND (DirectX to wined3d vulkan)"
+    if [[ $PW_USE_GALLIUM_NINE == "1" ]] \
+    || [[ $PW_USE_GALLIUM_ZINK == "1" ]] \
+    || [[ $PW_USE_WINED3D_VULKAN == "1" ]] ; then
+        unset PATH_TO_DXVK_FILES CP_DXVK_FILES PW_USE_SUPPLIED_DXVK_VKD3D
         PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
         CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
         CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d9 d3d8 dxgi"
-        export WINE_D3D_CONFIG="renderer=vulkan"
-    else
-        case "${PW_VULKAN_USE}" in
-            0)
-                # WINED3D OPENGL
-                print_info "Use WINED3D OpenGL"
-                PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
-                CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
-                CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d9 d3d8 dxgi"
-                export __GL_YIELD="NOTHING"
-                export mesa_glthread="true"
-                export WINE_D3D_CONFIG="renderer=gl"
-                export PW_VKBASALT="0"
-                export PW_USE_GALLIUM_ZINK="0"
-                ;;
-            1)
-                # STABLE DXVK AND VKD3D
-                print_info "DXVK v.${DXVK_STABLE_VER} in use"
-                print_info "VKD3D-PROTON v.${VKD3D_STABLE_VER} in use"
-                PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
-                PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
-                CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
-                [[ "$PW_USE_VRCLIENT" = "1" ]] && add_to_var CP_DXVK_FILES "openvr_api_dxvk"
-                CP_VKD3D_FILES="d3d12 libvkd3d-shader-1"
-                CP_WINE_FILES="d3d12core d3d8"
-                ;;
-            2)
-                # NEWEST DXVK AND VKD3D
-                print_info "DXVK v.${DXVK_GIT_VER} in use"
-                print_info "VKD3D-PROTON v.${VKD3D_GIT_VER} in use"
-                PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}"
-                PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
-                CP_DXVK_FILES="d3d11 d3d10core d3d9 d3d8 dxgi"
-                [[ "$PW_USE_VRCLIENT" = "1" ]] && add_to_var CP_DXVK_FILES "openvr_api_dxvk"
-                CP_VKD3D_FILES="d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1"
-                CP_WINE_FILES="d3d10_1 d3d10"
-                ;;
-            3)
-                # GALLIUM NINE
-                print_info "Use GALLIUM-NINE (Native DX9 on MESA drivers)"
-                PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
-                CP_GALLIUM_NINE_FILES="d3d9"
-                CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
-                CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d8 dxgi"
-                export __GL_YIELD="NOTHING"
-                export mesa_glthread="true"
-                export WINE_D3D_CONFIG="renderer=gl"
-                export PW_VKBASALT="0"
-                export PW_MANGOHUD="0"
-                export PW_WINE_FULLSCREEN_FSR="0"
-                export PW_USE_GALLIUM_ZINK="0"
-                export DXVK_ENABLE_NVAPI="0"
-                export PW_USE_VRCLIENT="0"
-                ;;
-            5)
-                # LEGACY DXVK
-                print_info "DXVK v.${DXVK_LEGACY_VER} in use"
-                PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_LEGACY_VER}"
-                PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
-                CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
-                CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
-                CP_WINE_FILES="d3d12 d3d12core d3d8"
-                ;;
-        esac
     fi
 
+    # GALLIUM NINE
+    if [[ $PW_USE_GALLIUM_NINE == "1" ]] ; then
+        print_info "Use GALLIUM-NINE (Native DX9 on MESA drivers)"
+        unset PW_VKBASALT PW_MANGOHUD PW_WINE_FULLSCREEN_FSR DXVK_ENABLE_NVAPI PW_USE_VRCLIENT
+        rm_from_var CP_WINE_FILES "d3d9"
+        CP_GALLIUM_NINE_FILES="d3d9"
+    fi
+
+    # GALLIUM ZINK
     if [[ $PW_USE_GALLIUM_ZINK == "1" ]] ; then
-        # GALLIUM ZINK
         print_info "Use GALLIUM-ZINK (OpenGL on MESA vulkan drivers)"
-        export __GL_YIELD="NOTHING"
-        export mesa_glthread="true"
         export  __GLX_VENDOR_LIBRARY_NAME="mesa"
         export MESA_LOADER_DRIVER_OVERRIDE="zink"
         export GALLIUM_DRIVER="zink"
@@ -3693,14 +3701,25 @@ start_portwine () {
         then
             export LIBGL_KOPPER_DRI2="1"
         fi
-        if [[ $(check_vendor_gpu) =~ nouveau ]] ; then
-            export NOUVEAU_USE_ZINK="1"
+        [[ $(check_vendor_gpu) =~ nouveau ]] && export NOUVEAU_USE_ZINK="1"
+    fi
+
+    # WINED3D VULKAN
+    if [[ $PW_USE_WINED3D_VULKAN == "1" ]] ; then
+        print_info "Use DAMAVAND (DirectX to wined3d vulkan)"
+        export WINE_D3D_CONFIG="renderer=vulkan"
+    else
+        if [[ $PW_VULKAN_USE == "0" ]] \
+        || [[ $PW_USE_GALLIUM_NINE == "1" ]] || [[ $PW_USE_GALLIUM_ZINK == "1" ]] ; then
+            export WINE_D3D_CONFIG="renderer=gl"
         fi
     fi
 
+    export __GL_YIELD="NOTHING"
+    export mesa_glthread="true"
+
     if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "1" ]] \
     && [[ ! $PW_WINE_USE =~ (PROTON_LG|WINE_LG) ]] \
-    && [[ ! $PW_VULKAN_USE =~ (0|3) ]] \
     && [[ -f "${WINEDIR}/lib64/wine/dxvk/d3d9.dll" || -f "${WINEDIR}/lib/wine/dxvk/x86_64-windows/d3d9.dll" ]] ; then
         export DXVK_ASYNC="1"
         if [[ -f "${WINEDIR}/lib64/wine/dxvk/d3d10.dll" && -f "${WINEDIR}/lib64/wine/dxvk/d3d10_1.dll" ]] ; then
@@ -3749,7 +3768,12 @@ start_portwine () {
             try_remove_file "${WINEPREFIX}/drive_c/windows/system32/dgVoodoo.conf"
             try_force_link_file "${DGV2CONF}" "${WINEPREFIX}/drive_c/windows/system32/dgVoodoo.conf"
 
-            if [[ $PW_USE_SUPPLIED_DXVK_VKD3D != "0" ]] ; then
+            if [[ $PW_USE_GALLIUM_NINE == "1" ]] ; then
+                rm_from_var CP_GALLIUM_NINE_FILES "d3d9"
+                rm_from_var CP_WINE_FILES "d3d8"
+            elif [[ $PW_USE_GALLIUM_ZINK == "1" ]] || [[ $PW_USE_WINED3D_VULKAN == "1" ]] ; then
+                rm_from_var CP_WINE_FILES "d3d9 d3d8"
+            elif [[ $PW_USE_SUPPLIED_DXVK_VKD3D != "0" ]] ; then
                 rm_from_var CP_DXVK_FILES "d3d9"
             else
                 case "${PW_VULKAN_USE}" in
@@ -3764,10 +3788,6 @@ start_portwine () {
                         rm_from_var CP_DXVK_FILES "d3d9 d3d8"
                         ;;
                     3)
-                        rm_from_var CP_GALLIUM_NINE_FILES "d3d9"
-                        rm_from_var CP_WINE_FILES "d3d8"
-                        ;;
-                    5)
                         rm_from_var CP_DXVK_FILES "d3d9"
                         rm_from_var CP_WINE_FILES "d3d8"
                         ;;
@@ -4038,7 +4058,8 @@ start_portwine () {
         export VKD3D_SHADER_CACHE_PATH="${PATH_TO_VKD3D_FILES}/vkd3d_cache"
     fi
 
-    if [[ "$CP_GALLIUM_NINE_FILES" == "d3d9" ]] ; then
+    # GALLIUM NINE
+    if [[ "$CP_GALLIUM_NINE_FILES" == "d3d9" ]] && [[ -f "${PW_TMPFS_PATH}/gallium_nine.tmp" ]] ; then
         PATH_TO_GALLIUM_NINE_FILES="${PW_PLUGINS_PATH}/gallium_nine_v.${PW_GALLIUM_NINE_VER}"
         if [[ ! -d "$PATH_TO_GALLIUM_NINE_FILES" ]] ; then
             if try_download "github.com/Castro-Fidel/vulkan/releases/download/gallium_nine_v.${PW_GALLIUM_NINE_VER}/gallium_nine_v.${PW_GALLIUM_NINE_VER}.tar.xz" \
@@ -4052,28 +4073,8 @@ start_portwine () {
         print_info "Try create symlink GALLIUM_NINE files..."
         try_force_link_file "${PATH_TO_GALLIUM_NINE_FILES}/lib32/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/syswow64/d3d9.dll"
         try_force_link_file "${PATH_TO_GALLIUM_NINE_FILES}/lib64/d3d9-nine.dll.so" "${WINEPREFIX}/drive_c/windows/system32/d3d9.dll"
-        unset FIND_D3D_MODULE D3D_MODULE_PATH
-        if ! check_flatpak ; then
-            FIND_D3D_MODULE=$(dirname "$(find /usr/ -maxdepth 4 -type f -name "d3dadapter9.so.*" 2>/dev/null)")
-            if [[ -n "$FIND_D3D_MODULE" ]] ; then
-                IFS=$'\n'
-                for D3D_MP in $FIND_D3D_MODULE ; do
-                    if [[ -n "$D3D_MODULE_PATH" ]]
-                    then export D3D_MODULE_PATH="$D3D_MODULE_PATH:/run/host${D3D_MP}"
-                    else export D3D_MODULE_PATH="/run/host${D3D_MP}"
-                    fi
-                done
-                IFS="$orig_IFS"
-                print_info "D3D_MODULE_PATH=${D3D_MODULE_PATH}"
-            else
-                pw_stop_progress_bar
-                yad_error "${translations[d3dadapter9.so.1.0.0 - Not found in the system.\\nInstall the missing package: <b>d3dadapter9</b>]}"
-                stop_portwine
-            fi
-        else
-            export D3D_MODULE_PATH="/app/lib/i386-linux-gnu/GL/default/lib/d3d:/usr/lib/x86_64-linux-gnu/GL/default/lib/d3d"
-            print_info "D3D_MODULE_PATH=${D3D_MODULE_PATH}"
-        fi
+        export D3D_MODULE_PATH="$(<"${PW_TMPFS_PATH}/gallium_nine.tmp")"
+        print_info "D3D_MODULE_PATH=$D3D_MODULE_PATH"
         var_winedlloverride_update "d3d9=n"
     fi
 
@@ -4215,6 +4216,29 @@ start_portwine () {
         get_and_set_reg_file --add 'System\CurrentControlSet\Services\winebus' 'Enable SDL' 'REG_DWORD' "1" "system"
     fi
 
+    if check_wayland_session \
+    && [[ $PW_USE_NATIVE_WAYLAND == "1" || $PW_USE_DXVK_HDR == "1" ]]
+    then
+        [[ $PW_USE_DXVK_HDR == "1" ]] && export DXVK_HDR="1"
+        export WINE_WAYLAND_HACKS="1"
+        var_winedlloverride_update "winex11.drv=d;winewayland.drv=b"
+        get_and_set_reg_file --add 'Software\Wine\Drivers' 'Graphics' 'REG_SZ' "x11,wayland" "user"
+
+        print_warning "Wayland in use. Force dpi=96"
+        export PW_WINE_DPI_VALUE="96"
+
+        if [[ -f "$WINEDIR/lib/libxkbregistry.so" ]] \
+        || [[ -f "$WINEDIR/lib/x86_64-linux-gnu/libxkbregistry.so" ]]
+        then print_info "runtime in use with native wayland."
+        else
+            print_warning "Wine is not support native wayland with runtime! Force disabled SLR."
+            export PW_USE_RUNTIME="0"
+        fi
+    else
+        unset WINE_WAYLAND_HACKS DXVK_HDR
+        get_and_set_reg_file --delete 'Software\Wine\Drivers' 'Graphics'
+    fi
+
     if [[ $PW_WINE_DPI_VALUE != "disabled" ]] ; then
         if [[ $PW_WINE_DPI_VALUE == "recommended" ]] ; then
             PW_RECOMMENDED_DPI=$(recommend_dpi "${PW_SCREEN_RESOLUTION:5:8}")
@@ -4222,15 +4246,6 @@ start_portwine () {
         else
             get_and_set_reg_file --add 'Control Panel\Desktop' 'LogPixels' 'REG_DWORD' "$PW_WINE_DPI_VALUE" "user"
         fi
-    fi
-
-    if [[ $PW_USE_NATIVE_WAYLAND == "1" ]] ; then
-        export PW_DISPLAY="env DISPLAY="
-        export PW_USE_RUNTIME="0"
-        get_and_set_reg_file --add 'Software\Wine\Drivers' 'Graphics' 'REG_SZ' "x11,wayland" "user"
-    else
-        unset PW_DISPLAY
-        get_and_set_reg_file --delete 'Software\Wine\Drivers' 'Graphics'
     fi
 
     case "$PW_SOUND_DRIVER_USE" in
@@ -4444,7 +4459,6 @@ pw_run () {
             VK_INSTANCE_LAYERS=${PW_VK_INSTANCE_LAYERS} \
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
-            ${PW_DISPLAY} \
             "${WINELOADER}" "$@" ${proxy_launch_parameters} &>>"${PW_LOG_TO_FILE}"
         else
             if [[ "$PW_USE_TERMINAL" == 1 ]] ; then
@@ -4464,7 +4478,6 @@ pw_run () {
             VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
             ${PW_GAMEMODERUN_SLR} \
             ${PW_MANGOHUD_SLR} \
-            ${PW_DISPLAY} \
             "${WINELOADER}" "$@" ${proxy_launch_parameters} &>>"${PW_LOG_TO_FILE}"
             print_info "Update prefix log:"
             [[ -f "${PW_TMPFS_PATH}/update_pfx_log" ]] && cat "${PW_TMPFS_PATH}/update_pfx_log"
@@ -4491,7 +4504,6 @@ pw_run () {
             ${PW_GAMEMODERUN_SLR} \
             ${PW_POWERPROFILECTL_SLR} \
             ${PW_MANGOHUD_SLR} \
-            ${PW_DISPLAY} \
             ${PW_INHIBIT_SLR} \
             ${PW_TASKSET_SLR} \
             "${WINELOADER}" "$@" ${proxy_launch_parameters} &>>"${PW_LOG_TO_FILE}"
@@ -4511,7 +4523,6 @@ pw_run () {
             ${PW_GAMEMODERUN_SLR} \
             ${PW_POWERPROFILECTL_SLR} \
             ${PW_MANGOHUD_SLR} \
-            ${PW_DISPLAY} \
             ${PW_INHIBIT_SLR} \
             ${PW_TASKSET_SLR} \
             "${WINELOADER}" "$@" ${proxy_launch_parameters}
@@ -4593,11 +4604,11 @@ portwine_launch () {
         while true ; do
             sleep 5
             if [[ -z "$GAMEPID" ]] ; then
-                GAMEPID="$(pgrep -fa 'EpicPortal|epicusername|epiclocale|AUTH_LOGIN' | awk '{print $1}')"
+                GAMEPID="$(pgrep -fa 'EpicPortal|epicusername|epiclocale|AUTH_LOGIN' | awk '{print $1}' | head -n 1)"
             else
                 if waitpid "$GAMEPID" ; then
                     sleep 1
-                    GAMEPID="$(pgrep -fa 'EpicPortal|epicusername|epiclocale|AUTH_LOGIN' | awk '{print $1}')"
+                    GAMEPID="$(pgrep -fa 'EpicPortal|epicusername|epiclocale|AUTH_LOGIN' | awk '{print $1}' | head -n 1)"
                     [[ -z "$GAMEPID" ]] && break || continue
                 fi
             fi
@@ -5189,19 +5200,14 @@ gui_edit_db () {
     PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE
     PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER
     PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE
-    PW_DISABLE_COMPOSITING PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_NATIVE_WAYLAND PW_USE_GALLIUM_ZINK PW_USE_GALLIUM_NINE
-    PW_USE_DAMAVAND PW_USE_SUPPLIED_DXVK_VKD3D
+    PW_DISABLE_COMPOSITING PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_GALLIUM_ZINK PW_USE_GALLIUM_NINE
+    PW_USE_WINED3D_VULKAN PW_USE_SUPPLIED_DXVK_VKD3D PW_USE_NATIVE_WAYLAND PW_USE_DXVK_HDR
     )
 
-    if check_wayland_session ; then
-        rm_from_array "PW_EDIT_DB_LIST" PW_USE_US_LAYOUT
-    else
-        rm_from_array "PW_EDIT_DB_LIST" PW_USE_NATIVE_WAYLAND
-    fi
+    check_flatpak && rm_from_array "PW_EDIT_DB_LIST" PW_USE_RUNTIME
 
-    if check_flatpak ; then
-        rm_from_array "PW_EDIT_DB_LIST" PW_USE_RUNTIME
-    fi
+    # GALLIUM NINE
+    [[ ! -f "${PW_TMPFS_PATH}/gallium_nine.tmp" ]] && rm_from_array "PW_EDIT_DB_LIST" PW_USE_GALLIUM_NINE
 
     PW_MANGOHUD_INFO=${translations[Using FPS and system load monitoring (Turns on and off by the key combination - right Shift + F12)]}
     PW_MANGOHUD_USER_CONF_INFO=${translations[Forced use of MANGOHUD system settings (GOverlay, etc.)]}
@@ -5242,10 +5248,11 @@ gui_edit_db () {
     PW_DISABLE_COMPOSITING_INFO=${translations[Disable desktop compositing (effects). It often improves performance.]}
     PW_USE_RUNTIME_INFO=${translations[Use container launch mode (It is recommended not to change the value)]}
     PW_DINPUT_PROTOCOL_INFO=${translations[Force use DirectInput protocol instead of XInput]}
-    PW_USE_NATIVE_WAYLAND_INFO=${translations[Enable experemental native Wayland support (need special wine build to work)]}
+    PW_USE_NATIVE_WAYLAND_INFO=${translations[Enable experemental native Wayland support]}
+    PW_USE_DXVK_HDR_INFO=${translations[Enable HDR settings in games with native Wayland]}
     PW_USE_GALLIUM_ZINK_INFO=${translations[Use Gallium Zink (OpenGL driver is implemented via Vulkan)]}
     PW_USE_GALLIUM_NINE_INFO=${translations[Use Gallium Nine (native DirectX 9 for MESA)]}
-    PW_USE_DAMAVAND_INFO=${translations[Instead of DXVK, use WineD3D vulkan (Damavand). Experimental function.]}
+    PW_USE_WINED3D_VULKAN_INFO=${translations[Instead of DXVK, use WineD3D vulkan (Damavand). Experimental function.]}
     PW_USE_SUPPLIED_DXVK_VKD3D_INFO=${translations[Use dxvk and vkd3d which are bundled with wine or proton. (Does not work with PROTON_LG and WINE_LG)]}
 
 #     PW_VULKAN_NO_ASYNC_INFO=${translations[Disable asynchronous calls for VULKAN and DXVK modes]}
@@ -5257,20 +5264,28 @@ gui_edit_db () {
         0)
             # WineD3D OpenGL
             VKD3D_CB="DCB"
-            DISABLE_EDIT_DB_LIST="PW_VKBASALT PW_VKBASALT_USER_CONF PW_USE_RAY_TRACING PW_USE_OBS_VKCAPTURE PW_USE_GALLIUM_ZINK PW_USE_DAMAVAND"
+            DISABLE_EDIT_DB_LIST="PW_VKBASALT PW_VKBASALT_USER_CONF PW_USE_RAY_TRACING PW_USE_OBS_VKCAPTURE PW_USE_GALLIUM_ZINK PW_USE_WINED3D_VULKAN"
             ;;
         1|2)
             # Stable, Newest
             VKD3D_CB="CB"
             ;;
-        5)
+        3)
             # Legacy
             VKD3D_CB="DCB"
             DISABLE_EDIT_DB_LIST="PW_USE_RAY_TRACING"
             ;;
     esac
 
-    [[ $PW_WINE_USE =~ (PROTON_LG|WINE_LG) ]] && DISABLE_EDIT_DB_LIST+=" PW_USE_SUPPLIED_DXVK_VKD3D"
+    if [[ $PW_WINE_USE =~ (PROTON_LG|WINE_LG) ]] \
+    || [[ $PW_VULKAN_USE == "0" ]] ; then
+        DISABLE_EDIT_DB_LIST+=" PW_USE_SUPPLIED_DXVK_VKD3D"
+    fi
+
+    if check_wayland_session
+    then DISABLE_EDIT_DB_LIST+=" PW_USE_US_LAYOUT"
+    else DISABLE_EDIT_DB_LIST+=" PW_USE_NATIVE_WAYLAND PW_USE_DXVK_HDR"
+    fi
 
     unset ADD_CHK_BOX_EDIT_DB
     for int_to_boole in "${PW_EDIT_DB_LIST[@]}" ; do
@@ -5286,7 +5301,7 @@ gui_edit_db () {
             for check_boole in $DISABLE_EDIT_DB_LIST ; do
                 if [[ $check_boole == "$int_to_boole" ]] ; then
                     CHECK_BOOLE_TRUE=1
-                    ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:D${THEME_CHKBOX}%${!int_to_boole}%"
+                    ADD_CHK_BOX_EDIT_DB+="--field=${CHKBOX_SPACE}${int_to_boole_non_pw}!${!TMP_HELP_FOR_GUI}:D${THEME_CHKBOX}%FALSE%"
                 fi
             done
         fi
@@ -5434,8 +5449,12 @@ Binding a game to a single node reduces memory‑access latency and limits costl
     fi
     export PW_WINE_CPU_TOPOLOGY
 
-    edit_db_from_gui "${PW_EDIT_DB_LIST[@]}" LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY \
-    PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PW_LOCALE_SELECT PW_MESA_VK_WSI_PRESENT_MODE PW_AMD_VULKAN_USE PW_CPU_NUMA_NODE_INDEX PW_TASKSET_SLR
+    for dont_touch_var in $DISABLE_EDIT_DB_LIST ; do
+        rm_from_array "PW_EDIT_DB_LIST" "$dont_touch_var"
+    done
+    edit_db_from_gui "${PW_EDIT_DB_LIST[@]}" LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL \
+    WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL \
+    PW_LOCALE_SELECT PW_MESA_VK_WSI_PRESENT_MODE PW_AMD_VULKAN_USE PW_CPU_NUMA_NODE_INDEX PW_TASKSET_SLR
 
     if [[ -z "$MANGOHUD_CONFIG" ]] ; then
         MONITOR_HEIGHT="$(echo "$PW_SCREEN_RESOLUTION" | awk -F'x' '{print $2}')"
@@ -5860,7 +5879,7 @@ gui_dgvoodoo2 () {
     [[ "${PW_DGV2_ANTIALIASING}" == "0" ]] && export PW_DGV2_ANTIALIASING="disabled" && edit_db_from_gui PW_DGV2_ANTIALIASING
 
     case "${PW_VULKAN_USE}" in
-        0|5)
+        0|3)
             DISABLE_DGV2_LIST="PW_DGV2_USE_DX12
             "
             ;;
@@ -6452,19 +6471,29 @@ portwine_create_shortcut () {
 }
 
 portwine_output_yad_shortcut () {
-    if [[ "$PW_YAD_OUT" == "0" ]] ; then
-        name_desktop=$(echo "$OUTPUT" | awk -F'|' '{print $1}' | sed -e "s/\`//g" -e "s/\"//g" -e "s/'//g" -e "s/\!//g")
-        PW_SHORTCUT_MENU=$(echo "$OUTPUT" | awk -F'|' '{print $2}')
-        PW_SHORTCUT_DESKTOP=$(echo "$OUTPUT" | awk -F'|' '{print $3}')
-        PW_SHORTCUT_STEAM=$(echo "$OUTPUT" | awk -F'|' '{print $4}')
-
-        if [[ $PORTWINE_CHANGE_SHORTCUT != 1 ]] ; then
-            edit_user_conf_from_gui PW_SHORTCUT_MENU PW_SHORTCUT_DESKTOP PW_SHORTCUT_STEAM
+    if [[ $PW_YAD_OUT == "0" ]] || [[ $1 == "--silent" ]] ; then
+        if [[ $1 == "--silent" ]] ; then
+            [[ ! -e ${portwine_exe} ]] && return 1
+            pw_create_gui_png
+            unset name_desktop
+            PW_SHORTCUT_MENU="TRUE"
+            PW_SHORTCUT_DESKTOP="TRUE"
+            PW_SHORTCUT_STEAM="FALSE"
+        else
+            name_desktop=$(echo "$OUTPUT" | awk -F'|' '{print $1}' | sed -e "s/\`//g" -e "s/\"//g" -e "s/'//g" -e "s/\!//g")
+            PW_SHORTCUT_MENU=$(echo "$OUTPUT" | awk -F'|' '{print $2}')
+            PW_SHORTCUT_DESKTOP=$(echo "$OUTPUT" | awk -F'|' '{print $3}')
+            PW_SHORTCUT_STEAM=$(echo "$OUTPUT" | awk -F'|' '{print $4}')
+            if [[ $PORTWINE_CHANGE_SHORTCUT != 1 ]] ; then
+                edit_user_conf_from_gui PW_SHORTCUT_MENU PW_SHORTCUT_DESKTOP PW_SHORTCUT_STEAM
+            fi
+            portwine_delete_shortcut
         fi
 
-        portwine_delete_shortcut
-
-        [[ -z $name_desktop ]] && create_name_desktop && export name_desktop="$PW_NAME_DESKTOP_PROXY"
+        if [[ -z $name_desktop ]] ; then
+            create_name_desktop
+            export name_desktop="$PW_NAME_DESKTOP_PROXY"
+        fi
 
         echo "[Desktop Entry]" > "${PORT_WINE_PATH}/${name_desktop}.desktop"
         echo "Name=${name_desktop}" >> "${PORT_WINE_PATH}/${name_desktop}.desktop"
@@ -6886,8 +6915,7 @@ portwine_start_debug () {
         0) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DirectX to wined3d opengl" >> "${PORT_WINE_PATH}/PortProton.log" ;;
         1) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_STABLE_VER}, VKD3D-PROTON v.${VKD3D_STABLE_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
         2) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_GIT_VER}, VKD3D-PROTON v.${VKD3D_GIT_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
-        3) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - Native DX9 on MESA drivers" >> "${PORT_WINE_PATH}/PortProton.log" ;;
-        5) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_LEGACY_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
+        3) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_LEGACY_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
         *) echo "PW_VULKAN_USE=${PW_VULKAN_USE}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
     esac
     echo "--------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"

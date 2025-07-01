@@ -34,8 +34,8 @@ then
     exit 1
 fi
 
-PORT_SCRIPTS_PATH="$(dirname "$(realpath "$0")")"
-PORT_WINE_PATH="$(realpath "$PORT_SCRIPTS_PATH/../..")"
+PORT_SCRIPTS_PATH="$(cd "$(dirname "$0")" && pwd)"
+PORT_WINE_PATH="$(dirname "$(dirname "$PORT_SCRIPTS_PATH")")"
 export PORT_SCRIPTS_PATH PORT_WINE_PATH
 
 # shellcheck source=/dev/null
@@ -233,16 +233,20 @@ fi
 
 # choose mirror
 if [[ -z "$MIRROR" ]] \
-&& [[ "$LANGUAGE" == "ru" ]] \
-&& [[ "$BRANCH" != "devel" ]]
+&& [[ "$LANGUAGE" == "ru" ]]
 then
     echo 'export MIRROR="CLOUD"' >> "$USER_CONF"
-    MIRROR="CLOUD"
+    export MIRROR="CLOUD"
 elif [[ -z "$MIRROR" ]] ; then
     echo 'export MIRROR="GITHUB"' >> "$USER_CONF"
-    MIRROR="GITHUB"
+    export MIRROR="GITHUB"
 fi
-export MIRROR
+
+if [[ $USE_ONLY_LG_RU == "1" ]] ; then
+    export MIRROR="CLOUD"
+    edit_user_conf_from_gui MIRROR USE_ONLY_LG_RU
+    print_info "Force used linux-gaming.ru for all updates.\n"
+fi
 print_info "The first mirror in used: $MIRROR\n"
 
 # choose downloading covers from SteamGridDB or not
@@ -311,7 +315,9 @@ fi
 if ! check_flatpak ; then
     if [[ -f "${PW_TMPFS_PATH}/portproton.lock" ]] ; then
         print_warning "Found lock file: ${PW_TMPFS_PATH}/portproton.lock"
-        yad_question "${translations[A running PortProton session was detected.\\nDo you want to end the previous session?]}" || exit 0
+        if [[ $START_FROM_STEAM != "1" ]]
+        then yad_question "${translations[A running PortProton session was detected.\\nDo you want to end the previous session?]}" || exit 0
+        fi
     fi
     touch "${PW_TMPFS_PATH}/portproton.lock"
     rm_lock_file () {
@@ -407,10 +413,15 @@ EOF
             while read -r line
             do
                 export portwine_exe="$PORT_WINE_PATH/data/prefixes/$PW_PREFIX_NAME/$line"
-                portwine_create_shortcut
+                if [[ $START_FROM_STEAM == "1" ]]
+                then portwine_output_yad_shortcut --silent
+                else portwine_create_shortcut
+                fi
             done < "$PORT_WINE_PATH/data/prefixes/$PW_PREFIX_NAME/.create_shortcut"
         fi
-        yad_info "${translations[Unpack is DONE for prefix:]} <b>\"${PW_PREFIX_NAME}\"</b>."
+        if [[ $START_FROM_STEAM != "1" ]]
+        then yad_info "${translations[Unpack is DONE for prefix:]} <b>\"${PW_PREFIX_NAME}\"</b>."
+        fi
         exit 0
     fi
 fi
@@ -516,7 +527,7 @@ SORT_NEWEST="${translations[Newest DXVK, VKD3D, D8VK (Vulkan v1.3+)]}"
 case "$PW_VULKAN_USE" in
     0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY" ;;
     1) PW_DEFAULT_VULKAN_USE="$SORT_STABLE!$SORT_NEWEST!$SORT_LEGACY!$SORT_OPENGL" ;;
-    5) PW_DEFAULT_VULKAN_USE="$SORT_LEGACY!$SORT_NEWEST!$SORT_STABLE!$SORT_OPENGL" ;;
+  3|5) PW_DEFAULT_VULKAN_USE="$SORT_LEGACY!$SORT_NEWEST!$SORT_STABLE!$SORT_OPENGL" ;;
     *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY!$SORT_OPENGL" ;;
 esac
 
@@ -958,7 +969,7 @@ case "${VULKAN_MOD}" in
     "$SORT_OPENGL" )     export PW_VULKAN_USE="0" ;;
     "$SORT_STABLE" )     export PW_VULKAN_USE="1" ;;
     "$SORT_NEWEST" )     export PW_VULKAN_USE="2" ;;
-    "$SORT_LEGACY" )     export PW_VULKAN_USE="5" ;;
+    "$SORT_LEGACY" )     export PW_VULKAN_USE="3" ;;
 esac
 
 init_wine_ver
