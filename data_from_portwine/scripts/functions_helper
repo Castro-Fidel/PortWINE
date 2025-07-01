@@ -2297,14 +2297,18 @@ check_dirs_and_files_in_pfx () {
 
 check_nvidia_rtx () {
     if [[ "$LSPCI_VGA" == *nvidia* ]] ; then
-        # Turing (without nvidia 16XX)
-        [[ "$LSPCI_VGA" == *TU[0-9]* ]] && [[ "$LSPCI_VGA" != *TU11[6-7]* ]] && return 0
-        # Ampere
-        [[ "$LSPCI_VGA" == *GA[0-9]* ]] && return 0
-        # Ada_Lovelace
-        [[ "$LSPCI_VGA" == *AD[0-9]* ]] || [[ "$LSPCI_VGA" == *2[6-8][0-9]* ]] && return 0
-        # Blackwell and Blackwell 2.0
-        [[ "$LSPCI_VGA" == *GB[0-9]* ]] && return 0
+        if [[ "$LSPCI_VGA" == *G[0-9]* ]] ||
+           [[ "$LSPCI_VGA" == *GT[0-9]* ]] ||
+           [[ "$LSPCI_VGA" == *MCP[0-9]* ]] ||
+           [[ "$LSPCI_VGA" == *GF[0-9]* ]] ||
+           [[ "$LSPCI_VGA" == *GK[0-9]* ]] ||
+           [[ "$LSPCI_VGA" == *GM[0-9]* ]] ||
+           [[ "$LSPCI_VGA" == *GP[0-9]* ]] ||
+           [[ "$LSPCI_VGA" == *GV[0-9]* ]] ||
+           [[ "$LSPCI_VGA" == *TU11[6-7]* ]]; then
+            return 1
+        fi
+        return 0
     fi
     return 1
 }
