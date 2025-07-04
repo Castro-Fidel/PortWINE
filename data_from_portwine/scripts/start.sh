@@ -108,11 +108,11 @@ unset PW_TERM PW_EXEC_FROM_DESKTOP WEBKIT_DISABLE_DMABUF_RENDERER PW_AMD_VULKAN_
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 rm -f "$PORT_WINE_TMP_PATH"/*{exe,msi,tar}*
 
-if mkdir -p "/tmp/PortProton" ; then
-    export PW_TMPFS_PATH="/tmp/PortProton"
+if mkdir -p "/tmp/PortProton_$USER" ; then
+    export PW_TMPFS_PATH="/tmp/PortProton_$USER"
 else
-    create_new_dir "${PORT_WINE_PATH}/data/tmp/PortProton"
-    export PW_TMPFS_PATH="${PORT_WINE_PATH}/data/tmp/PortProton"
+    create_new_dir "${PORT_WINE_PATH}/data/tmp/PortProton_$USER"
+    export PW_TMPFS_PATH="${PORT_WINE_PATH}/data/tmp/PortProton_$USER"
 fi
 
 echo "" > "${PW_TMPFS_PATH}/tmp_yad_form"
