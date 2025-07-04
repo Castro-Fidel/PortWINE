@@ -292,11 +292,9 @@ if [[ -z $PW_WINE_DPI_VALUE ]] ; then
     export PW_WINE_DPI_VALUE="recommended"
 fi
 
-if check_flatpak ; then
-    if check_gamescope_session
-    then PW_TERM="env LANG=C xterm -fullscreen -bg black -fg white -e"
-    else PW_TERM="env LANG=C xterm -bg black -fg white -e"
-    fi
+if check_gamescope_session
+then PW_TERM="env LANG=C xterm -fullscreen -bg black -fg white -e"
+else PW_TERM="env LANG=C xterm -bg black -fg white -e"
 fi
 
 pw_check_and_download_plugins
