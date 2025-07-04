@@ -315,17 +315,18 @@ fi
 if ! check_flatpak ; then
     if [[ -f "${PW_TMPFS_PATH}/portproton.lock" ]] ; then
         print_warning "Found lock file: ${PW_TMPFS_PATH}/portproton.lock"
-        if [[ $START_FROM_STEAM != "1" ]]
+        if ! check_start_from_steam
         then yad_question "${translations[A running PortProton session was detected.\\nDo you want to end the previous session?]}" || exit 0
         fi
     fi
     touch "${PW_TMPFS_PATH}/portproton.lock"
-    rm_lock_file () {
-        echo "Removing the lock file..."
-        rm -fv "${PW_TMPFS_PATH}/portproton.lock" && echo "OK"
-    }
-    trap "rm_lock_file" EXIT
 fi
+
+rm_log_lock () {
+    rm -fv "${PW_TMPFS_PATH}"/*.log
+    rm -fv "${PW_TMPFS_PATH}/portproton.lock"
+}
+trap "rm_log_lock" EXIT
 
 if check_flatpak ; then
     try_remove_dir "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
@@ -413,13 +414,13 @@ EOF
             while read -r line
             do
                 export portwine_exe="$PORT_WINE_PATH/data/prefixes/$PW_PREFIX_NAME/$line"
-                if [[ $START_FROM_STEAM == "1" ]]
+                if check_start_from_steam
                 then portwine_output_yad_shortcut --silent
                 else portwine_create_shortcut
                 fi
             done < "$PORT_WINE_PATH/data/prefixes/$PW_PREFIX_NAME/.create_shortcut"
         fi
-        if [[ $START_FROM_STEAM != "1" ]]
+        if ! check_start_from_steam
         then yad_info "${translations[Unpack is DONE for prefix:]} <b>\"${PW_PREFIX_NAME}\"</b>."
         fi
         exit 0

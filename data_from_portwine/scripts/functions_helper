@@ -2,21 +2,29 @@
 # Author: Castro-Fidel (linux-gaming.ru)
 # shellcheck disable=SC2034
 ########################################################################
-
 $PW_DEBUG
-print_error () { printf "\E[31m%s Error: $@ %s\e[0m\n" ;}
+
+process_log () {
+    if [[ $PROCESS_LOG == "1" ]] ; then
+        local filter_word="mono|gecko"
+        echo "$@" | sed -r "/$filter_word/Id" >> "$PW_TMPFS_PATH/process.log"
+    fi
+}
+export -f process_log
+
+print_error () { printf "\E[31m%s Error: $@ %s\e[0m\n" ; process_log "$@" ;}
 export -f print_error
 
-print_warning () { printf "\E[33m%s Warning: $@ %s\e[0m\n" ;}
+print_warning () { printf "\E[33m%s Warning: $@ %s\e[0m\n" ; process_log "$@" ;}
 export -f print_warning
 
-print_info () { printf "\E[36m%s Info: $@ %s\e[0m\n" ;}
+print_info () { printf "\E[36m%s Info: $@ %s\e[0m\n" ; process_log "$@" ;}
 export -f print_info
 
-print_ok () { printf "\E[35m%s OK: $@ %s\e[0m\n" ;}
+print_ok () { printf "\E[35m%s OK: $@ %s\e[0m\n" ; process_log "$@" ;}
 export -f print_ok
 
-print_var () { for vp in $@ ; do print_info "${vp}=${!vp}" ; done ;}
+print_var () { for vp in $@ ; do echo "${vp}=${!vp}" ; done ;}
 export -f print_var
 
 print_wrapped () {
@@ -620,6 +628,10 @@ try_download () {
     if [[ "$silent" == "true" ]] ; then
         curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
         -H 'Pragma: no-cache' -L "${FIRST_URL[@]}" -o "$dest" 2>&1
+    elif [[ $PROCESS_LOG == "1" ]] ; then
+        curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
+        -H 'Pragma: no-cache' -L "${FIRST_URL[@]}" -o "$dest" 2>&1 \
+        | tr '\r' '\n' | sed -ur 's|[# ]+||g;s|100||g;s|0-||g;s|.*=.*||g' >> "$PW_TMPFS_PATH/process.log"
     else
         curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
         -H 'Pragma: no-cache' -L "${FIRST_URL[@]}" -o "$dest" 2>&1 | \
@@ -861,7 +873,7 @@ background_pid () {
     arg2=$2 # Название команды
     arg3=$3 # Номер процесса (1,2,3..)
 
-    if [[ "$START_FROM_STEAM" == 1 ]] \
+    if check_start_from_steam \
     || [[ "$PW_GUI_DISABLED_CS" == 1 ]] \
     || [[ -n "$PW_DEBUG" ]] ; then
         case $arg1 in
@@ -4437,9 +4449,15 @@ pw_run () {
 
     PW_LOG_TO_FILE="${PORT_WINE_PATH}/PortProton.log"
     PW_LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}"
-    print_var "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VULKAN_DRIVER_NAME"
-    print_var "WINELOADER" "VKD3D_CONFIG" "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2"
-    print_var "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH" "PW_VK_ICD_FILENAMES" "PW_TASKSET_SLR"
+
+    echo "##### Current variables #####" > "$PW_TMPFS_PATH/var.log"
+    for var in "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VULKAN_DRIVER_NAME" \
+               "WINELOADER" "VKD3D_CONFIG" "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2" \
+               "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH" "PW_VK_ICD_FILENAMES" "PW_TASKSET_SLR"
+    do
+        print_var "$var" | tee -a "$PW_TMPFS_PATH/var.log"
+    done
+
     proxy_launch_parameters=${LAUNCH_PARAMETERS//\\\\/\\}
     if [[ "$PW_USE_RUNTIME" == 1 ]] \
     && [[ "$PW_WINE_USE" != "USE_SYSTEM_WINE" ]]
