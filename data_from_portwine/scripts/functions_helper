@@ -1823,16 +1823,52 @@ pw_mangohud_check () {
             print_info "Portable MangoHud is enabled"
         else
             print_info "System MangoHud is enabled"
-            export PW_MANGOHUD_SLR='MANGOHUD=1'
+            add_to_var PW_ADD_VAR_SLR 'MANGOHUD=1'
         fi
         # TODO: need to fix work for OpenGL without flatpak...
         MANGOHUD_LIB_NAME="libMangoHud_shim.so"
         export PW_LD_PRELOAD="${PW_LD_PRELOAD:+$PW_LD_PRELOAD:}${MANGOHUD_LIB_NAME}"
     else
-        export PW_MANGOHUD_SLR=''
         print_info "MangoHud is disabled"
     fi
     return 0
+}
+
+pw_lsfg_vk_check () {
+    if [[ "${PW_USE_LS_FRAME_GEN}" == "1" ]] ; then
+        local lsfg_vk_path="$PW_PLUGINS_PATH/fake_dlss/lsfg-vk-$PW_LSFG_VK_VER"
+        if [[ ! -d "$lsfg_vk_path" ]] ; then
+            if try_download "github.com/Castro-Fidel/vulkan/releases/download/lsfg-vk-$PW_LSFG_VK_VER/lsfg-vk-$PW_LSFG_VK_VER.tar.xz" \
+                            "${PORT_WINE_PATH}/data/tmp/lsfg-vk-$PW_LSFG_VK_VER.tar.xz" ; then
+                if ! unpack "${PORT_WINE_PATH}/data/tmp/lsfg-vk-$PW_LSFG_VK_VER.tar.xz" "$PW_PLUGINS_PATH/fake_dlss/"
+                then try_remove_dir "$lsfg_vk_path"
+                fi
+                try_remove_file "${PORT_WINE_PATH}/data/tmp/lsfg-vk-$PW_LSFG_VK_VER.tar.xz"
+            fi
+        fi
+
+        export LSFG_DLL_PATH="$lsfg_vk_path/Lossless.dll"
+        export LSFG_MULTIPLIER="2"
+        export LSFG_FLOW_SCALE="0.2"
+        export LSFG_PERF_MODE="1"
+        export PW_WINE_FULLSCREEN_FSR="0"
+
+        if [[ "$PW_USE_SYSTEM_VK_LAYERS" != "1" ]] ; then
+            sed -i 's/: "VK_LAYER/: "PW_VK_LAYER/' "$lsfg_vk_path/VkLayer_LS_frame_generation.json"
+            sed -i "s/ENABLE_LSFG/ENABLE_PW_LSFG/" "$lsfg_vk_path/VkLayer_LS_frame_generation.json"
+            sed -i "s|.*\"library_path\".*|    \"library_path\": \"$lsfg_vk_path/liblsfg-vk.so\",|g" "$lsfg_vk_path/VkLayer_LS_frame_generation.json"
+
+            try_force_link_file "$lsfg_vk_path/VkLayer_LS_frame_generation.json" \
+                                "${PW_PLUGINS_PATH}/portable/share/vulkan/implicit_layer.d/VkLayer_LS_PW_frame_generation.json"
+
+            add_to_var PW_ADD_VAR_SLR 'ENABLE_PW_LSFG=1'
+            print_info "Portable LSFG_VK is enabled"
+        else
+            add_to_var PW_ADD_VAR_SLR 'ENABLE_LSFG=1'
+            print_warning "Portable LSFG_VK is disabled"
+        fi
+        set_to_dxvk_conf low_latency
+    fi
 }
 
 pw_vkbasalt_check () {
@@ -3342,20 +3378,31 @@ start_portwine () {
         export DXVK_ASYNC="1"
     fi
 
-    enabled_fake_nvidia_videocard ()
-    {
+    sed -i /'dxgi.customDeviceDesc =/c # dxgi.customDeviceDesc =' "${DXVK_CONFIG_FILE}"
+    sed -i /'dxgi.customDeviceId =/c # dxgi.customDeviceId =' "${DXVK_CONFIG_FILE}"
+    sed -i /'dxgi.customVendorId =/c # dxgi.customVendorId =' "${DXVK_CONFIG_FILE}"
+    sed -i /'dxgi.hideAmdGpu =/c # dxgi.hideAmdGpu =' "${DXVK_CONFIG_FILE}"
+    sed -i /'dxgi.hideNvidiaGpu =/c # dxgi.hideNvidiaGpu =' "${DXVK_CONFIG_FILE}"
+    sed -i /'d3d11.cachedDynamicResources =/c # d3d11.cachedDynamicResources =' "${DXVK_CONFIG_FILE}"
+    sed -i /'dxgi.maxFrameLatency =/c # dxgi.maxFrameLatency =' "${DXVK_CONFIG_FILE}"
+    sed -i /'dd3d9.maxFrameLatency =/c # d3d9.maxFrameLatency =' "${DXVK_CONFIG_FILE}"
+    sed -i /'dxgi.syncInterval =/c # dxgi.syncInterval =' "${DXVK_CONFIG_FILE}"
+    sed -i /'d3d9.presentInterva =/c # d3d9.presentInterva =' "${DXVK_CONFIG_FILE}"
+    sed -i /'dxgi.numBackBuffers =/c # dxgi.numBackBuffers =' "${DXVK_CONFIG_FILE}"
+    sed -i /'d3d9.numBackBuffers =/c # d3d9.numBackBuffers =' "${DXVK_CONFIG_FILE}"
+    sed -i /'d3d9.deviceLossOnFocusLoss =/c # d3d9.deviceLossOnFocusLoss =' "${DXVK_CONFIG_FILE}"
+    sed -i /'d3d9.countLosableResources =/c # d3d9.countLosableResources =' "${DXVK_CONFIG_FILE}"
+    unset WINE_HIDE_NVIDIA_GPU WINE_HIDE_AMD_GPU WINEHAGS
+    unset DXVK_NVAPI_DRIVER_VERSION DXVK_NVAPI_ALLOW_OTHER_DRIVERS
+
+    set_to_dxvk_conf () {
         case "$1" in
-            old)
-                sed -i /'dxgi.customDeviceDesc =/c # dxgi.customDeviceDesc =' "${DXVK_CONFIG_FILE}"
+            nvidia_old)
                 sed -i /'dxgi.customDeviceId =/c dxgi.customDeviceId = 222F' "${DXVK_CONFIG_FILE}"
                 sed -i /'dxgi.customVendorId =/c dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
-                sed -i /'dxgi.hideAmdGpu =/c # dxgi.hideAmdGpu =' "${DXVK_CONFIG_FILE}"
-                sed -i /'dxgi.hideNvidiaGpu =/c # dxgi.hideNvidiaGpu =' "${DXVK_CONFIG_FILE}"
-                unset WINE_HIDE_NVIDIA_GPU WINE_HIDE_AMD_GPU
-                unset DXVK_NVAPI_DRIVER_VERSION DXVK_NVAPI_ALLOW_OTHER_DRIVERS
                 ;;
 
-            new)
+            nvidia_new)
                 sed -i /'dxgi.customDeviceDesc =/c dxgi.customDeviceDesc = "NVIDIA GeForce RTX 4090"' "${DXVK_CONFIG_FILE}"
                 sed -i /'dxgi.customDeviceId =/c dxgi.customDeviceId = 2684' "${DXVK_CONFIG_FILE}"
                 sed -i /'dxgi.customVendorId =/c dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
@@ -3367,15 +3414,17 @@ start_portwine () {
                 export DXVK_NVAPI_ALLOW_OTHER_DRIVERS="1"
                 export WINEHAGS="1"
                 ;;
-
-            *)
-                sed -i /'dxgi.customDeviceDesc =/c # dxgi.customDeviceDesc =' "${DXVK_CONFIG_FILE}"
-                sed -i /'dxgi.customDeviceId =/c # dxgi.customDeviceId =' "${DXVK_CONFIG_FILE}"
-                sed -i /'dxgi.customVendorId =/c # dxgi.customVendorId =' "${DXVK_CONFIG_FILE}"
-                sed -i /'dxgi.hideAmdGpu =/c # dxgi.hideAmdGpu =' "${DXVK_CONFIG_FILE}"
-                sed -i /'dxgi.hideNvidiaGpu =/c # dxgi.hideNvidiaGpu =' "${DXVK_CONFIG_FILE}"
-                unset WINE_HIDE_NVIDIA_GPU WINE_HIDE_AMD_GPU
-                unset DXVK_NVAPI_DRIVER_VERSION DXVK_NVAPI_ALLOW_OTHER_DRIVERS
+            
+            low_latency)
+                # sed -i /'d3d11.cachedDynamicResources =/c d3d11.cachedDynamicResources = a' "${DXVK_CONFIG_FILE}"
+                sed -i /'dxgi.maxFrameLatency =/c dxgi.maxFrameLatency = 1' "${DXVK_CONFIG_FILE}"
+                sed -i /'d3d9.maxFrameLatency =/c d3d9.maxFrameLatency = 1' "${DXVK_CONFIG_FILE}"
+                sed -i /'dxgi.syncInterval =/c dxgi.syncInterval = 1' "${DXVK_CONFIG_FILE}"
+                sed -i /'d3d9.presentInterval =/c d3d9.presentInterva = 1' "${DXVK_CONFIG_FILE}"
+                sed -i /'dxgi.numBackBuffers =/c dxgi.numBackBuffers = 1' "${DXVK_CONFIG_FILE}"
+                sed -i /'d3d9.numBackBuffers =/c d3d9.numBackBuffers = 1' "${DXVK_CONFIG_FILE}"
+                sed -i /'d3d9.deviceLossOnFocusLoss =/c d3d9.deviceLossOnFocusLoss = True' "${DXVK_CONFIG_FILE}"
+                sed -i /'d3d9.countLosableResources =/c d3d9.countLosableResources = True' "${DXVK_CONFIG_FILE}"
                 ;;
         esac
     }
@@ -3386,23 +3435,22 @@ start_portwine () {
     dlss-enabler-upscaler.dll dlssg_to_fsr3_amd_is_better-3.0.dll dlssg_to_fsr3_amd_is_better.dll dxvk.conf
     dlssg_to_fsr3.ini fakenvapi.ini libxess.dll nvapi64.dll _nvngx.dll nvngx.ini nvngx-wrapper.dll dxgi.dll"
     ORIGINAL_GAME_DLLS="d3dcompiler_47.dll amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll libxess.dll nvapi64.dll _nvngx.dll"
-    PATH_TO_GAME_EXEC="$PATH_TO_GAME"
 
-    if [[ -d "$PATH_TO_GAME_EXEC/Engine" ]]; then
-        ue_exe_path=$(find "$PATH_TO_GAME_EXEC" -maxdepth 4 -mindepth 4 -path "*Binaries/Win64/*.exe" -not -path "*/Engine/*" | head -1)
-        PATH_TO_GAME_EXEC=$(dirname "$ue_exe_path")
+    if [[ -d "$PATH_TO_GAME/Engine" ]]; then
+        ue_exe_path=$(find "$PATH_TO_GAME" -maxdepth 4 -mindepth 4 -path "*Binaries/Win64/*.exe" -not -path "*/Engine/*" | head -1)
+        PATH_TO_GAME=$(dirname "$ue_exe_path")
     fi
 
     if [[ "${PW_USE_FAKE_DLSS_3}" != "1" ]] \
-    && [[ -f "$PATH_TO_GAME_EXEC/dlss-enabler.dll" ]]
+    && [[ -f "$PATH_TO_GAME/dlss-enabler.dll" ]]
     then
-        try_remove_file "$PATH_TO_GAME_EXEC/nvngx.dll"
+        try_remove_file "$PATH_TO_GAME/nvngx.dll"
         for dll in $FAKE_DLSS_3_FILES ; do
-            try_remove_file "$PATH_TO_GAME_EXEC/$dll"
+            try_remove_file "$PATH_TO_GAME/$dll"
         done
         for dll in $ORIGINAL_GAME_DLLS ; do
-            if [[ -f "$PATH_TO_GAME_EXEC/${dll}.b" ]] ; then
-                mv -f "$PATH_TO_GAME_EXEC/${dll}.b" "$PATH_TO_GAME_EXEC/${dll}" 2>/dev/null
+            if [[ -f "$PATH_TO_GAME/${dll}.b" ]] ; then
+                mv -f "$PATH_TO_GAME/${dll}.b" "$PATH_TO_GAME/${dll}" 2>/dev/null
             fi
         done
     fi
@@ -3421,37 +3469,33 @@ start_portwine () {
         export PW_WINE_FULLSCREEN_FSR="0"
         export DXVK_ENABLE_NVAPI="1"
         export PW_USE_RAY_TRACING="1"
-        enabled_fake_nvidia_videocard 0
+        set_to_dxvk_conf 0
 
-        if [[ ! -f "$PATH_TO_GAME_EXEC/dlss-enabler.dll" ]] ; then
-            if [[ -f "$PATH_TO_GAME_EXEC/dxgi.dll" ]] ; then
+        if [[ ! -f "$PATH_TO_GAME/dlss-enabler.dll" ]] ; then
+            if [[ -f "$PATH_TO_GAME/dxgi.dll" ]] ; then
                 yad_error 'dxgi.dll is already present in the game folder!\nThis script uses dxgi.dll to load required files.\nRemove the mod using dxgi.dll.'
                 fatal "Force exit..."
             fi
             for dll in $ORIGINAL_GAME_DLLS ; do
-                if [[ -f "$PATH_TO_GAME_EXEC/$dll" ]] \
-                && [[ ! -f "$PATH_TO_GAME_EXEC/${dll}.b" ]]
+                if [[ -f "$PATH_TO_GAME/$dll" ]] \
+                && [[ ! -f "$PATH_TO_GAME/${dll}.b" ]]
                 then
-                    mv -f "$PATH_TO_GAME_EXEC/$dll" "$PATH_TO_GAME_EXEC/${dll}.b" 2>/dev/null
+                    mv -f "$PATH_TO_GAME/$dll" "$PATH_TO_GAME/${dll}.b" 2>/dev/null
                 fi
             done
             for dll in $FAKE_DLSS_3_FILES ; do
-                try_force_link_file "$FAKE_DLSS_3_PATH/$dll" "$PATH_TO_GAME_EXEC/$dll"
+                try_force_link_file "$FAKE_DLSS_3_PATH/$dll" "$PATH_TO_GAME/$dll"
             done
         fi
         for rm_dll in "nvngx.ini" "nvngx.dll" "_nvngx.dll" ; do
             try_remove_file "${WINEPREFIX}/drive_c/windows/system32/$rm_dll"
         done
-
-        if [[ -f "$PATH_TO_GAME_EXEC/dxvk.conf" ]] ; then
-            export DXVK_CONFIG_FILE="$PATH_TO_GAME_EXEC/dxvk.conf"
-        fi
     elif [[ "${PW_USE_FAKE_DLSS}" == "1" ]] ; then
         DXVK_ENABLE_NVAPI="1"
         try_remove_file "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll"
         try_copy_file_with_checksums "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
         try_copy_file_with_checksums "${PW_PLUGINS_PATH}/fake_dlss/${PW_FAKE_DLSS_VER}/nvngx.ini" "${WINEPREFIX}/drive_c/windows/system32/nvngx.ini"
-        enabled_fake_nvidia_videocard old
+        set_to_dxvk_conf nvidia_old
     elif [[ "${PW_USE_NVAPI_AND_DLSS}" == 1 ]] ; then
         DXVK_ENABLE_NVAPI="1"
         try_remove_file "${WINEPREFIX}/drive_c/windows/system32/nvngx.ini"
@@ -3461,14 +3505,14 @@ start_portwine () {
             try_copy_file_with_checksums "${FIND_NVNGX}/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll"
             export NVIDIA_WINE_DLL_DIR="${FIND_NVNGX}"
         fi
-        enabled_fake_nvidia_videocard 0
+        set_to_dxvk_conf 0
         var_winedlloverride_update "nvngx,_nvngx=n"
     else
         DXVK_ENABLE_NVAPI="0"
         for rm_dll in "nvngx.ini" "nvngx.dll" "_nvngx.dll" ; do
             try_remove_file "${WINEPREFIX}/drive_c/windows/system32/$rm_dll"
         done
-        enabled_fake_nvidia_videocard 0
+        set_to_dxvk_conf 0
     fi
     export DXVK_ENABLE_NVAPI
 
@@ -3503,6 +3547,11 @@ start_portwine () {
     if [[ "${PW_GPU_USE}" != "disabled" ]] && [[ "${PW_AMD_VULKAN_USE}" == "disabled" ]] ; then
         export DXVK_FILTER_DEVICE_NAME="${PW_GPU_USE}"
         export VKD3D_FILTER_DEVICE_NAME="${PW_GPU_USE}"
+    fi
+
+    if [[ -f "$PATH_TO_GAME/dxvk.conf" ]] ; then
+        export DXVK_CONFIG_FILE="$PATH_TO_GAME/dxvk.conf"
+        print_info "Custom dxvk.conf in use: $DXVK_CONFIG_FILE"
     fi
 
     export int_xneur=0
@@ -4106,10 +4155,12 @@ start_portwine () {
 
     if [[ "${PW_USE_SHADER_CACHE}" == "1" ]] ; then
         create_new_dir "${PW_VULKAN_DIR}/gl_shader_cache"
+        create_new_dir "${PW_VULKAN_DIR}/mesa_shader"
         export __GL_SHADER_DISK_CACHE="1"
         export __GL_SHADER_DISK_CACHE_PATH="${PW_VULKAN_DIR}/gl_shader_cache"
         export __GL_SHADER_DISK_CACHE_SIZE="50000000000"
         export __GL_SHADER_DISK_CACHE_SKIP_CLEANUP="1"
+        export MESA_SHADER_CACHE_DIR="${PW_VULKAN_DIR}/mesa_shader"
     else
         export __GL_SHADER_DISK_CACHE="0"
         export DXVK_STATE_CACHE="disable"
@@ -4420,6 +4471,7 @@ start_portwine () {
 
     pw_mangohud_check
     pw_vkbasalt_check
+    pw_lsfg_vk_check
 }
 
 pw_run () {
@@ -4477,10 +4529,10 @@ pw_run () {
             ${pw_runtime} \
             LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             LD_PRELOAD="${PW_LD_PRELOAD}" \
-            VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+            VK_ADD_IMPLICIT_LAYER_PATH="${PW_VK_LAYER_PATH}" \
             VK_INSTANCE_LAYERS=${PW_VK_INSTANCE_LAYERS} \
             ${PW_GAMEMODERUN_SLR} \
-            ${PW_MANGOHUD_SLR} \
+            ${PW_ADD_VAR_SLR} \
             "${WINELOADER}" "$@" ${proxy_launch_parameters} &>>"${PW_LOG_TO_FILE}"
         else
             if [[ "$PW_USE_TERMINAL" == 1 ]] ; then
@@ -4496,10 +4548,10 @@ pw_run () {
             ${pw_runtime} \
             LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             LD_PRELOAD="${PW_LD_PRELOAD}" \
-            VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+            VK_ADD_IMPLICIT_LAYER_PATH="${PW_VK_LAYER_PATH}" \
             VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
             ${PW_GAMEMODERUN_SLR} \
-            ${PW_MANGOHUD_SLR} \
+            ${PW_ADD_VAR_SLR} \
             "${WINELOADER}" "$@" ${proxy_launch_parameters} &>>"${PW_LOG_TO_FILE}"
             print_info "Update prefix log:"
             [[ -f "${PW_TMPFS_PATH}/update_pfx_log" ]] && cat "${PW_TMPFS_PATH}/update_pfx_log"
@@ -4520,12 +4572,12 @@ pw_run () {
             env FAKE_VAR= \
             LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             LD_PRELOAD="${PW_LD_PRELOAD}" \
-            VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+            VK_ADD_IMPLICIT_LAYER_PATH="${PW_VK_LAYER_PATH}" \
             VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
             ${PW_RUN_GAMESCOPE} \
             ${PW_GAMEMODERUN_SLR} \
             ${PW_POWERPROFILECTL_SLR} \
-            ${PW_MANGOHUD_SLR} \
+            ${PW_ADD_VAR_SLR} \
             ${PW_INHIBIT_SLR} \
             ${PW_TASKSET_SLR} \
             "${WINELOADER}" "$@" ${proxy_launch_parameters} &>>"${PW_LOG_TO_FILE}"
@@ -4539,12 +4591,12 @@ pw_run () {
             env FAKE_VAR= \
             LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             LD_PRELOAD="${PW_LD_PRELOAD}" \
-            VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+            VK_ADD_IMPLICIT_LAYER_PATH="${PW_VK_LAYER_PATH}" \
             VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
             ${PW_RUN_GAMESCOPE} \
             ${PW_GAMEMODERUN_SLR} \
             ${PW_POWERPROFILECTL_SLR} \
-            ${PW_MANGOHUD_SLR} \
+            ${PW_ADD_VAR_SLR} \
             ${PW_INHIBIT_SLR} \
             ${PW_TASKSET_SLR} \
             "${WINELOADER}" "$@" ${proxy_launch_parameters}
@@ -4695,10 +4747,10 @@ pw_start_cont_xterm () {
     pw_init_runtime
     ${pw_runtime} \
     LD_PRELOAD="${PW_LD_PRELOAD}" \
-    VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+    VK_ADD_IMPLICIT_LAYER_PATH="${PW_VK_LAYER_PATH}" \
     VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
     ${PW_GAMEMODERUN_SLR} \
-    ${PW_MANGOHUD_SLR} \
+    ${PW_ADD_VAR_SLR} \
     ${PW_TERM} bash
     restart_pp
 }
@@ -5218,7 +5270,7 @@ export -f gui_proton_downloader
 gui_edit_db () {
     KEY_EDIT_DB_GUI=$RANDOM
     PW_EDIT_DB_LIST=(PW_MANGOHUD PW_MANGOHUD_USER_CONF PW_VKBASALT PW_VKBASALT_USER_CONF PW_DGVOODOO2 PW_GAMESCOPE
-    PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_USE_FAKE_DLSS_3
+    PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_USE_FAKE_DLSS_3 PW_USE_LS_FRAME_GEN
     PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE
     PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER
     PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE
@@ -5251,6 +5303,7 @@ gui_edit_db () {
     PW_USE_NVAPI_AND_DLSS_INFO=${translations[Enable DLSS on supported NVIDIA graphics cards]}
     PW_USE_FAKE_DLSS_INFO=${translations[Enable DLSS translator in FSR 2 in DirectX 12 games (CyberFSR2)]}
     PW_USE_FAKE_DLSS_3_INFO=${translations[Enable DLSS 3 with FG translator in FSR 3 in DirectX 12 games (based on Decky-Framegen) Do not use in multiplayer games]}
+    PW_USE_LS_FRAME_GEN_INFO=${translations[Enable Lossless Scaling frame generation (experemental)]}
     PW_WINE_FULLSCREEN_FSR_INFO=${translations[Works while using any version of ProtonGE in full screen mode at a resolution below the standard screen]}
     PW_HIDE_NVIDIA_GPU_INFO=${translations[Disguise all features used for NVIDIA graphics cards]}
     PW_VIRTUAL_DESKTOP_INFO=${translations[Enable the application to run in the WINE virtual desktop]}
@@ -5856,9 +5909,13 @@ gui_mangohud () {
         PW_MANGOHUD="1"
         pw_init_runtime
         pw_mangohud_check
+        pw_vkbasalt_check
+        pw_lsfg_vk_check
         ${pw_runtime} \
+        $PW_ADD_VAR_SLR \
+        LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
         LD_PRELOAD="${PW_LD_PRELOAD}" \
-        VK_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+        VK_ADD_IMPLICIT_LAYER_PATH="${PW_VK_LAYER_PATH}" \
         VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
         "${PW_PLUGINS_PATH}/portable/bin/vkcube"
         gui_mangohud
