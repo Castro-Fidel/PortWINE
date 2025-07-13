@@ -1834,40 +1834,6 @@ pw_mangohud_check () {
     return 0
 }
 
-set_to_dxvk_conf () {
-    case "$1" in
-        nvidia_old)
-            sed -i /'dxgi.customDeviceId =/c dxgi.customDeviceId = 222F' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.customVendorId =/c dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
-            ;;
-
-        nvidia_new)
-            sed -i /'dxgi.customDeviceDesc =/c dxgi.customDeviceDesc = "NVIDIA GeForce RTX 4090"' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.customDeviceId =/c dxgi.customDeviceId = 2684' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.customVendorId =/c dxgi.customVendorId = 10de' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.hideAmdGpu =/c dxgi.hideAmdGpu = True' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.hideNvidiaGpu =/c dxgi.hideNvidiaGpu = False' "${DXVK_CONFIG_FILE}"
-            export WINE_HIDE_NVIDIA_GPU="0"
-            export WINE_HIDE_AMD_GPU="1"
-            export DXVK_NVAPI_DRIVER_VERSION="99999"
-            export DXVK_NVAPI_ALLOW_OTHER_DRIVERS="1"
-            export WINEHAGS="1"
-            ;;
-
-        low_latency)
-            # sed -i /'d3d11.cachedDynamicResources =/c d3d11.cachedDynamicResources = a' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.maxFrameLatency =/c dxgi.maxFrameLatency = 1' "${DXVK_CONFIG_FILE}"
-            sed -i /'d3d9.maxFrameLatency =/c d3d9.maxFrameLatency = 1' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.syncInterval =/c dxgi.syncInterval = 1' "${DXVK_CONFIG_FILE}"
-            sed -i /'d3d9.presentInterval =/c d3d9.presentInterva = 1' "${DXVK_CONFIG_FILE}"
-            sed -i /'dxgi.numBackBuffers =/c dxgi.numBackBuffers = 1' "${DXVK_CONFIG_FILE}"
-            sed -i /'d3d9.numBackBuffers =/c d3d9.numBackBuffers = 1' "${DXVK_CONFIG_FILE}"
-            sed -i /'d3d9.deviceLossOnFocusLoss =/c d3d9.deviceLossOnFocusLoss = True' "${DXVK_CONFIG_FILE}"
-            sed -i /'d3d9.countLosableResources =/c d3d9.countLosableResources = True' "${DXVK_CONFIG_FILE}"
-            ;;
-    esac
-}
-
 pw_lsfg_vk_check () {
     if [[ "${PW_USE_LS_FRAME_GEN}" == "1" ]] ; then
         local lsfg_vk_path="$PW_PLUGINS_PATH/fake_dlss/lsfg-vk-$PW_LSFG_VK_VER"
@@ -1892,6 +1858,7 @@ pw_lsfg_vk_check () {
             sed -i "s/ENABLE_LSFG/ENABLE_PW_LSFG/" "$lsfg_vk_path/VkLayer_LS_frame_generation.json"
             sed -i "s|.*\"library_path\".*|    \"library_path\": \"$lsfg_vk_path/liblsfg-vk.so\",|g" "$lsfg_vk_path/VkLayer_LS_frame_generation.json"
 
+            # var_pw_vk_istance_layers_config_update "PW_VK_LAYER_LS_frame_generation"
             try_force_link_file "$lsfg_vk_path/VkLayer_LS_frame_generation.json" \
                                 "${PW_PLUGINS_PATH}/portable/share/vulkan/implicit_layer.d/VkLayer_LS_PW_frame_generation.json"
 
@@ -1901,7 +1868,6 @@ pw_lsfg_vk_check () {
             add_to_var PW_ADD_VAR_SLR 'ENABLE_LSFG=1'
             print_warning "Portable LSFG_VK is disabled"
         fi
-        set_to_dxvk_conf low_latency
     fi
 }
 
@@ -3415,22 +3381,69 @@ start_portwine () {
         export DXVK_ASYNC="1"
     fi
 
-    sed -i /'dxgi.customDeviceDesc =/c # dxgi.customDeviceDesc =' "${DXVK_CONFIG_FILE}"
-    sed -i /'dxgi.customDeviceId =/c # dxgi.customDeviceId =' "${DXVK_CONFIG_FILE}"
-    sed -i /'dxgi.customVendorId =/c # dxgi.customVendorId =' "${DXVK_CONFIG_FILE}"
-    sed -i /'dxgi.hideAmdGpu =/c # dxgi.hideAmdGpu =' "${DXVK_CONFIG_FILE}"
-    sed -i /'dxgi.hideNvidiaGpu =/c # dxgi.hideNvidiaGpu =' "${DXVK_CONFIG_FILE}"
-    sed -i /'d3d11.cachedDynamicResources =/c # d3d11.cachedDynamicResources =' "${DXVK_CONFIG_FILE}"
-    sed -i /'dxgi.maxFrameLatency =/c # dxgi.maxFrameLatency =' "${DXVK_CONFIG_FILE}"
-    sed -i /'dd3d9.maxFrameLatency =/c # d3d9.maxFrameLatency =' "${DXVK_CONFIG_FILE}"
-    sed -i /'dxgi.syncInterval =/c # dxgi.syncInterval =' "${DXVK_CONFIG_FILE}"
-    sed -i /'d3d9.presentInterva =/c # d3d9.presentInterva =' "${DXVK_CONFIG_FILE}"
-    sed -i /'dxgi.numBackBuffers =/c # dxgi.numBackBuffers =' "${DXVK_CONFIG_FILE}"
-    sed -i /'d3d9.numBackBuffers =/c # d3d9.numBackBuffers =' "${DXVK_CONFIG_FILE}"
-    sed -i /'d3d9.deviceLossOnFocusLoss =/c # d3d9.deviceLossOnFocusLoss =' "${DXVK_CONFIG_FILE}"
-    sed -i /'d3d9.countLosableResources =/c # d3d9.countLosableResources =' "${DXVK_CONFIG_FILE}"
-    unset WINE_HIDE_NVIDIA_GPU WINE_HIDE_AMD_GPU WINEHAGS
-    unset DXVK_NVAPI_DRIVER_VERSION DXVK_NVAPI_ALLOW_OTHER_DRIVERS
+    set_to_dxvk_conf () {
+        case "$1" in
+            default)
+                sed -i \
+                    -e /'dxgi.customDeviceDesc =/c # dxgi.customDeviceDesc =' \
+                    -e /'dxgi.customDeviceId =/c # dxgi.customDeviceId =' \
+                    -e /'dxgi.customVendorId =/c # dxgi.customVendorId =' \
+                    -e /'dxgi.hideAmdGpu =/c # dxgi.hideAmdGpu =' \
+                    -e /'dxgi.hideNvidiaGpu =/c # dxgi.hideNvidiaGpu =' \
+                    -e /'d3d11.cachedDynamicResources =/c # d3d11.cachedDynamicResources =' \
+                    -e /'dxgi.maxFrameLatency =/c # dxgi.maxFrameLatency =' \
+                    -e /'d3d9.maxFrameLatency =/c # d3d9.maxFrameLatency =' \
+                    -e /'dxgi.syncInterval =/c # dxgi.syncInterval =' \
+                    -e /'d3d9.presentInterva =/c # d3d9.presentInterva =' \
+                    -e /'dxgi.numBackBuffers =/c # dxgi.numBackBuffers =' \
+                    -e /'d3d9.numBackBuffers =/c # d3d9.numBackBuffers =' \
+                    -e /'d3d9.deviceLossOnFocusLoss =/c # d3d9.deviceLossOnFocusLoss =' \
+                    -e /'d3d9.countLosableResources =/c # d3d9.countLosableResources =' \
+                "${DXVK_CONFIG_FILE}"
+
+                unset WINE_HIDE_NVIDIA_GPU WINE_HIDE_AMD_GPU WINEHAGS
+                unset DXVK_NVAPI_DRIVER_VERSION DXVK_NVAPI_ALLOW_OTHER_DRIVERS
+                ;;
+
+            nvidia_old)
+                sed -i \
+                    -e /'dxgi.customDeviceId =/c dxgi.customDeviceId = 222F' \
+                    -e /'dxgi.customVendorId =/c dxgi.customVendorId = 10de' \
+                "${DXVK_CONFIG_FILE}"
+                ;;
+
+            nvidia_new)
+                sed -i \
+                    -e /'dxgi.customDeviceDesc =/c dxgi.customDeviceDesc = "NVIDIA GeForce RTX 4090"' \
+                    -e /'dxgi.customDeviceId =/c dxgi.customDeviceId = 2684' \
+                    -e /'dxgi.customVendorId =/c dxgi.customVendorId = 10de' \
+                    -e /'dxgi.hideAmdGpu =/c dxgi.hideAmdGpu = True' \
+                    -e /'dxgi.hideNvidiaGpu =/c dxgi.hideNvidiaGpu = False' \
+                "${DXVK_CONFIG_FILE}"
+
+                export WINE_HIDE_NVIDIA_GPU="0"
+                export WINE_HIDE_AMD_GPU="1"
+                export DXVK_NVAPI_DRIVER_VERSION="99999"
+                export DXVK_NVAPI_ALLOW_OTHER_DRIVERS="1"
+                export WINEHAGS="1"
+                ;;
+
+            low_latency)
+                sed -i \
+                    -e /'d3d11.cachedDynamicResources =/c d3d11.cachedDynamicResources = a' \
+                    -e /'dxgi.maxFrameLatency =/c dxgi.maxFrameLatency = 1' \
+                    -e /'d3d9.maxFrameLatency =/c d3d9.maxFrameLatency = 1' \
+                    -e /'dxgi.syncInterval =/c dxgi.syncInterval = 1' \
+                    -e /'d3d9.presentInterval =/c d3d9.presentInterva = 1' \
+                    -e /'dxgi.numBackBuffers =/c dxgi.numBackBuffers = 1' \
+                    -e /'d3d9.numBackBuffers =/c d3d9.numBackBuffers = 1' \
+                    -e /'d3d9.deviceLossOnFocusLoss =/c d3d9.deviceLossOnFocusLoss = True' \
+                    -e /'d3d9.countLosableResources =/c d3d9.countLosableResources = True' \
+                "${DXVK_CONFIG_FILE}"
+                ;;
+        esac
+    }
+    set_to_dxvk_conf default
 
     # NVAPI, DLSS AND FAKE DLSS
     FAKE_DLSS_3_PATH="$PW_PLUGINS_PATH/fake_dlss/DeckyFramegen_$PW_FAKE_DLSS_3_VER/bin/"
@@ -3472,7 +3485,6 @@ start_portwine () {
         export PW_WINE_FULLSCREEN_FSR="0"
         export DXVK_ENABLE_NVAPI="1"
         export PW_USE_RAY_TRACING="1"
-        set_to_dxvk_conf 0
 
         if [[ ! -f "$PATH_TO_GAME/dlss-enabler.dll" ]] ; then
             if [[ -f "$PATH_TO_GAME/dxgi.dll" ]] ; then
@@ -3508,16 +3520,15 @@ start_portwine () {
             try_copy_file_with_checksums "${FIND_NVNGX}/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll"
             export NVIDIA_WINE_DLL_DIR="${FIND_NVNGX}"
         fi
-        set_to_dxvk_conf 0
         var_winedlloverride_update "nvngx,_nvngx=n"
     else
         DXVK_ENABLE_NVAPI="0"
         for rm_dll in "nvngx.ini" "nvngx.dll" "_nvngx.dll" ; do
             try_remove_file "${WINEPREFIX}/drive_c/windows/system32/$rm_dll"
         done
-        set_to_dxvk_conf 0
     fi
-    export DXVK_ENABLE_NVAPI
+
+    [[ "${PW_USE_LS_FRAME_GEN}" == "1" ]] && set_to_dxvk_conf low_latency
 
     if [[ "${PW_HEAP_DELAY_FREE}" == 1 ]]
     then export WINE_HEAP_DELAY_FREE="1"
