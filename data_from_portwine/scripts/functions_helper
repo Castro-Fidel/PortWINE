@@ -2043,7 +2043,10 @@ stop_portwine () {
     && ! check_gamescope_session
     then
         if [[ "${DESKTOP_SESSION}" =~ "plasma" ]] ; then
-            qdbus org.kde.KWin /Compositor resume
+            kde_version=$(plasmashell --version 2>/dev/null | grep -oE '[0-9]+' | head -1)
+            if [[ -n "$kde_version" && "$kde_version" -lt 6 ]]; then
+                qdbus org.kde.KWin /Compositor resume
+            fi
         elif [[ "${DESKTOP_SESSION}" =~ "mate" ]] ; then
             gsettings set org.mate.Marco.general compositing-manager true
         elif [[ "${DESKTOP_SESSION}" =~ "xfce" ]] ; then
