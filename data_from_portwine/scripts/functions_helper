@@ -1847,20 +1847,28 @@ pw_lsfg_vk_check () {
             fi
         fi
 
-        export LSFG_DLL_PATH="$lsfg_vk_path/Lossless.dll"
-        export LSFG_MULTIPLIER="2"
-        export LSFG_FLOW_SCALE="0.2"
-        export LSFG_PERF_MODE="1"
         export PW_WINE_FULLSCREEN_FSR="0"
+        export LSFG_DLL_PATH="$lsfg_vk_path/Lossless.dll"
+
+        check_variables LSFG_MULTIPLIER "2"
+        check_variables LSFG_FLOW_SCALE "0.1"
+        check_variables LSFG_PERF_MODE "1"
 
         if [[ "$PW_USE_SYSTEM_VK_LAYERS" != "1" ]] ; then
-            sed -i 's/: "VK_LAYER/: "PW_VK_LAYER/' "$lsfg_vk_path/VkLayer_LS_frame_generation.json"
-            sed -i "s/ENABLE_LSFG/ENABLE_PW_LSFG/" "$lsfg_vk_path/VkLayer_LS_frame_generation.json"
-            sed -i "s|.*\"library_path\".*|    \"library_path\": \"$lsfg_vk_path/liblsfg-vk.so\",|g" "$lsfg_vk_path/VkLayer_LS_frame_generation.json"
+            sed -i \
+                -e 's/: "VK_LAYER/: "PW_VK_LAYER/' \
+                -e "s/ENABLE_LSFG/ENABLE_PW_LSFG/" \
+                -e "s|.*\"library_path\".*|    \"library_path\": \"$lsfg_vk_path/liblsfg-vk.so\",|g" \
+            "$lsfg_vk_path/VkLayer_LS_frame_generation.json"
 
-            # var_pw_vk_istance_layers_config_update "PW_VK_LAYER_LS_frame_generation"
-            try_force_link_file "$lsfg_vk_path/VkLayer_LS_frame_generation.json" \
-                                "${PW_PLUGINS_PATH}/portable/share/vulkan/implicit_layer.d/VkLayer_LS_PW_frame_generation.json"
+            if check_flatpak ; then
+                create_new_dir "$PORT_WINE_PATH/data/vulkan/implicit_layer.d/"
+                try_force_link_file "$lsfg_vk_path/VkLayer_LS_frame_generation.json" \
+                                    "$PORT_WINE_PATH/data/vulkan/implicit_layer.d/VkLayer_LS_PW_frame_generation.json"
+            else
+                try_force_link_file "$lsfg_vk_path/VkLayer_LS_frame_generation.json" \
+                                    "$PW_PLUGINS_PATH/portable/share/vulkan/implicit_layer.d/VkLayer_LS_PW_frame_generation.json"
+            fi
 
             add_to_var PW_ADD_VAR_SLR 'ENABLE_PW_LSFG=1'
             print_info "Portable LSFG_VK is enabled"
@@ -4544,6 +4552,7 @@ pw_run () {
             LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             LD_PRELOAD="${PW_LD_PRELOAD}" \
             VK_ADD_IMPLICIT_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+            VK_ADD_LAYER_PATH="${PW_VK_LAYER_PATH}" \
             VK_INSTANCE_LAYERS=${PW_VK_INSTANCE_LAYERS} \
             ${PW_GAMEMODERUN_SLR} \
             ${PW_ADD_VAR_SLR} \
@@ -4563,6 +4572,7 @@ pw_run () {
             LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             LD_PRELOAD="${PW_LD_PRELOAD}" \
             VK_ADD_IMPLICIT_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+            VK_ADD_LAYER_PATH="${PW_VK_LAYER_PATH}" \
             VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
             ${PW_GAMEMODERUN_SLR} \
             ${PW_ADD_VAR_SLR} \
@@ -4587,6 +4597,7 @@ pw_run () {
             LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             LD_PRELOAD="${PW_LD_PRELOAD}" \
             VK_ADD_IMPLICIT_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+            VK_ADD_LAYER_PATH="${PW_VK_LAYER_PATH}" \
             VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
             ${PW_RUN_GAMESCOPE} \
             ${PW_GAMEMODERUN_SLR} \
@@ -4606,6 +4617,7 @@ pw_run () {
             LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
             LD_PRELOAD="${PW_LD_PRELOAD}" \
             VK_ADD_IMPLICIT_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+            VK_ADD_LAYER_PATH="${PW_VK_LAYER_PATH}" \
             VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
             ${PW_RUN_GAMESCOPE} \
             ${PW_GAMEMODERUN_SLR} \
@@ -4762,6 +4774,7 @@ pw_start_cont_xterm () {
     ${pw_runtime} \
     LD_PRELOAD="${PW_LD_PRELOAD}" \
     VK_ADD_IMPLICIT_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+    VK_ADD_LAYER_PATH="${PW_VK_LAYER_PATH}" \
     VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
     ${PW_GAMEMODERUN_SLR} \
     ${PW_ADD_VAR_SLR} \
@@ -5943,12 +5956,12 @@ gui_mangohud () {
         PW_MANGOHUD="1"
         pw_init_runtime
         pw_mangohud_check
-        pw_lsfg_vk_check
         ${pw_runtime} \
         $PW_ADD_VAR_SLR \
         LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
         LD_PRELOAD="${PW_LD_PRELOAD}" \
         VK_ADD_IMPLICIT_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+        VK_ADD_LAYER_PATH="${PW_VK_LAYER_PATH}" \
         VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
         "${PW_PLUGINS_PATH}/portable/bin/vkcube"
         gui_mangohud
