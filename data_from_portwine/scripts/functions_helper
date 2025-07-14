@@ -3441,13 +3441,18 @@ start_portwine () {
                     -e /'d3d11.cachedDynamicResources =/c d3d11.cachedDynamicResources = a' \
                     -e /'dxgi.maxFrameLatency =/c dxgi.maxFrameLatency = 1' \
                     -e /'d3d9.maxFrameLatency =/c d3d9.maxFrameLatency = 1' \
-                    -e /'dxgi.syncInterval =/c dxgi.syncInterval = 1' \
-                    -e /'d3d9.presentInterval =/c d3d9.presentInterva = 1' \
-                    -e /'dxgi.numBackBuffers =/c dxgi.numBackBuffers = 1' \
-                    -e /'d3d9.numBackBuffers =/c d3d9.numBackBuffers = 1' \
+                    -e /'dxgi.syncInterval =/c dxgi.syncInterval = 0' \
+                    -e /'d3d9.presentInterval =/c d3d9.presentInterva = 0' \
+                    -e /'dxgi.numBackBuffers =/c dxgi.numBackBuffers = 2' \
+                    -e /'d3d9.numBackBuffers =/c d3d9.numBackBuffers = 2' \
                     -e /'d3d9.deviceLossOnFocusLoss =/c d3d9.deviceLossOnFocusLoss = True' \
                     -e /'d3d9.countLosableResources =/c d3d9.countLosableResources = True' \
+                    -e /'dxvk.tearFree =/c dxvk.tearFree = False' \
                 "${DXVK_CONFIG_FILE}"
+
+                export PW_MESA_VK_WSI_PRESENT_MODE="relaxed"
+                export MESA_VK_WSI_PRESENT_MODE="${PW_MESA_VK_WSI_PRESENT_MODE}"
+                unset vblank_mode __GL_SYNC_TO_VBLANK
                 ;;
         esac
     }
@@ -4225,14 +4230,6 @@ start_portwine () {
 
     if [[ "${PW_MESA_VK_WSI_PRESENT_MODE}" != "disabled" ]] ; then
         export MESA_VK_WSI_PRESENT_MODE="${PW_MESA_VK_WSI_PRESENT_MODE}"
-        case "$PW_MESA_VK_WSI_PRESENT_MODE" in
-            immediate|mailbox)
-                export vblank_mode=0
-                export __GL_SYNC_TO_VBLANK=0 ;;
-            relaxed|fifo)
-                export vblank_mode=1
-                export __GL_SYNC_TO_VBLANK=1 ;;
-        esac
     fi
 
     #run_winetricks_from_db
