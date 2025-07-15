@@ -3449,10 +3449,6 @@ start_portwine () {
                     -e /'d3d9.countLosableResources =/c d3d9.countLosableResources = True' \
                     -e /'dxvk.tearFree =/c dxvk.tearFree = False' \
                 "${DXVK_CONFIG_FILE}"
-
-                export PW_MESA_VK_WSI_PRESENT_MODE="relaxed"
-                export MESA_VK_WSI_PRESENT_MODE="${PW_MESA_VK_WSI_PRESENT_MODE}"
-                unset vblank_mode __GL_SYNC_TO_VBLANK
                 ;;
         esac
     }
@@ -4230,6 +4226,17 @@ start_portwine () {
 
     if [[ "${PW_MESA_VK_WSI_PRESENT_MODE}" != "disabled" ]] ; then
         export MESA_VK_WSI_PRESENT_MODE="${PW_MESA_VK_WSI_PRESENT_MODE}"
+        case "$PW_MESA_VK_WSI_PRESENT_MODE" in
+            immediate|mailbox)
+                export vblank_mode=0
+                export __GL_SYNC_TO_VBLANK=0 ;;
+            relaxed|fifo)
+                export vblank_mode=1
+                export __GL_SYNC_TO_VBLANK=1 ;;
+        esac
+    else
+        export MESA_VK_WSI_PRESENT_MODE="relaxed"
+        unset vblank_mode __GL_SYNC_TO_VBLANK
     fi
 
     #run_winetricks_from_db
