@@ -4228,13 +4228,15 @@ start_portwine () {
         export MESA_VK_WSI_PRESENT_MODE="${PW_MESA_VK_WSI_PRESENT_MODE}"
         case "$PW_MESA_VK_WSI_PRESENT_MODE" in
             immediate|mailbox)
-                export vblank_mode=0
-                export __GL_SYNC_TO_VBLANK=0 ;;
+                check_variables vblank_mode "0"
+                check_variables __GL_SYNC_TO_VBLANK "0"
+                ;;
             relaxed|fifo)
-                export vblank_mode=1
-                export __GL_SYNC_TO_VBLANK=1 ;;
+                check_variables vblank_mode "1"
+                check_variables __GL_SYNC_TO_VBLANK "1"
+                ;;
         esac
-    else
+    elif [[ "${PW_USE_LS_FRAME_GEN}" == "1" ]] ; then
         export MESA_VK_WSI_PRESENT_MODE="relaxed"
         unset vblank_mode __GL_SYNC_TO_VBLANK
     fi
