@@ -135,6 +135,33 @@ fatal () {
     exit 1
 }
 
+simulate_user_activity() {
+    dbus-send --session --dest=org.freedesktop.ScreenSaver \
+              --type=method_call /org/freedesktop/ScreenSaver \
+              org.freedesktop.ScreenSaver.SimulateUserActivity
+}
+
+start_activity_simulation() {
+    (
+        trap 'exit 0' TERM INT
+        while [ -f "${PORT_WINE_PATH}/data/tmp/screensaver_pid" ]; do
+            simulate_user_activity
+            sleep 30
+        done
+    ) &
+    echo $! > "${PORT_WINE_PATH}/data/tmp/screensaver_pid"
+}
+
+stop_activity_simulation() {
+    if [ -f "${PORT_WINE_PATH}/data/tmp/screensaver_pid" ]; then
+        pw_screensaver_pid=$(cat "${PORT_WINE_PATH}/data/tmp/screensaver_pid")
+        if ps cax | grep "${pw_screensaver_pid}" ; then
+            kill -n 9 "${pw_screensaver_pid}" &>/dev/null
+        fi
+        rm -f "${PORT_WINE_PATH}/data/tmp/screensaver_pid"
+    fi
+}
+
 change_locale () {
     if [[ -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]] ; then
         LANGUAGE=$(<"${PORT_WINE_TMP_PATH}/PortProton_loc")
@@ -2031,7 +2058,6 @@ stop_portwine () {
             dbus-send --session --dest=com.deepin.WMSwitcher --type=method_call /com/deepin/WMSwitcher com.deepin.WMSwitcher.RequestSwitchWM
         fi
     fi
-
     pw_stop_progress_bar
     try_remove_file "${PORT_SCRIPTS_PATH}/0"
     try_remove_file "${PORT_SCRIPTS_PATH}/1"
@@ -2040,6 +2066,7 @@ stop_portwine () {
     find "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/drive_c/" -maxdepth 1 -type f -name "*.tmp" -delete
     pw_exit_tray
     pw_auto_create_shortcut
+    stop_activity_simulation
     add_in_stop_portwine
 
     if [[ $PW_LOG != 1 ]] && [[ -n $START_PW_TIME_IN_GAME ]] ; then
@@ -3644,14 +3671,16 @@ start_portwine () {
         export PW_GAMEMODERUN_SLR=""
     fi
 
-    # TODO: Add org.freedesktop.ScreenSaver.SimulateUserActivity for Flatpak support
-    # org.freedesktop.ScreenSaver.Inhibit doesn`t work because the Inhibit method is released as soon as the D-Bus connection is released
-    if command -v systemd-inhibit &>/dev/null \
-    && [[ "$GAMEMODERUN" != "1" ]]
-    then
+if [[ "$GAMEMODERUN" != "1" ]]; then
+    if check_flatpak; then
+        start_activity_simulation
+        PW_INHIBIT_SLR=""
+        print_info "Screensaver will be inhibited using D-Bus (Flatpak mode)"
+    elif command -v systemd-inhibit &>/dev/null; then
         PW_INHIBIT_SLR="systemd-inhibit --mode=block --who=ru.linux_gaming.PortProton --why=${translations[Launched]} --what=idle:sleep"
-        print_info "Screensaver will be inhibit"
+        print_info "Screensaver will be inhibited using systemd-inhibit (Native mode)"
     fi
+fi
     pw_other_fixes
 
     # enabled BattleEye_Runtime and EasyAntiCheat_Runtime
