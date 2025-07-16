@@ -2041,6 +2041,9 @@ stop_portwine () {
     pw_exit_tray
     pw_auto_create_shortcut
     add_in_stop_portwine
+    if [[ -n "$PW_TUNED_PROFILE" ]] ; then
+        tuned-adm profile $PW_TUNED_PROFILE
+    fi
 
     if [[ $PW_LOG != 1 ]] && [[ -n $START_PW_TIME_IN_GAME ]] ; then
         debug_timer --end -s "PW_TIME_IN_GAME"
@@ -3605,6 +3608,15 @@ start_portwine () {
                 if powerprofilesctl list | grep -q 'performance:' ; then
                     export PW_POWERPROFILECTL_SLR="powerprofilesctl launch -p performance --"
                     print_info "Gamemode replaced by powerprofilectl to avoid conflict with ananicy and sched-ext."
+                else
+                    export PW_POWERPROFILECTL_SLR=""
+                fi
+            elif command -v tuned-adm &>/dev/null ; then
+                export PW_TUNED_PROFILE=$(tuned-adm active | awk -F': ' '{print $2}')
+                if tuned-adm list | grep -q 'throughput-performance' ; then
+                    tuned-adm profile throughput-performance
+                    print_info "Gamemode replaced by tuned to avoid conflict with ananicy and sched-ext."
+                    export PW_POWERPROFILECTL_SLR=""
                 else
                     export PW_POWERPROFILECTL_SLR=""
                 fi
