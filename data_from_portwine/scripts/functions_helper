@@ -3351,18 +3351,31 @@ start_portwine () {
     if [[ $ULIMIT_HN -lt 524288 ]] ; then
         print_warning "ESYNC dont work! (ulimit -Hn $ULIMIT_HN < 524288)"
         export WINEESYNC="0"
-    elif [[ "${PW_NO_ESYNC}" == 1 ]]
+    elif [[ $PW_NO_ESYNC == "1" ]]
     then export WINEESYNC="0"
     else export WINEESYNC="1"
     fi
 
-    if [[ "${PW_NO_FSYNC}" == 1 ]] ; then
+    if [[ $PW_NO_FSYNC == "1" ]] ; then
         export WINEFSYNC="0"
         export WINEFSYNC_FUTEX2="0"
     else
         export WINEFSYNC="1"
         export WINEFSYNC_SPINCOUNT=100
         check_variables WINEFSYNC_FUTEX2 0
+    fi
+
+    if [[ $PW_NO_NTSYNC == "0" ]] ; then
+        if [[ -e "/dev/ntsync" ]] ; then
+            export WINENTSYNC="1"
+            export WINEFSYNC="0"
+            export WINEESYNC="0"
+        else
+            export WINENTSYNC="0"
+            print_error "/dev/ntsync - not found!"
+        fi
+    else
+        export WINENTSYNC="0"
     fi
 
     # export WINE_SIMULATE_ASYNC_READ=1
@@ -5323,9 +5336,9 @@ export -f gui_proton_downloader
 gui_edit_db () {
     KEY_EDIT_DB_GUI=$RANDOM
     PW_EDIT_DB_LIST=(PW_MANGOHUD PW_MANGOHUD_USER_CONF PW_VKBASALT PW_VKBASALT_USER_CONF PW_DGVOODOO2 PW_GAMESCOPE
-    PW_NO_ESYNC PW_NO_FSYNC PW_USE_RAY_TRACING PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_USE_FAKE_DLSS_3 PW_USE_LS_FRAME_GEN
-    PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS PW_USE_GAMEMODE
-    PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER
+    PW_NO_ESYNC PW_NO_FSYNC PW_NO_NTSYNC PW_USE_RAY_TRACING PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_USE_FAKE_DLSS_3
+    PW_USE_LS_FRAME_GEN PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS
+    PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER
     PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE
     PW_DISABLE_COMPOSITING PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_GALLIUM_ZINK PW_USE_GALLIUM_NINE
     PW_USE_WINED3D_VULKAN PW_USE_SUPPLIED_DXVK_VKD3D PW_USE_NATIVE_WAYLAND PW_USE_DXVK_HDR
@@ -5352,6 +5365,7 @@ gui_edit_db () {
 <b>Super + C :</b> Update clipboard]}
     PW_NO_ESYNC_INFO=${translations[Do not use in-process synchronization primitives based on eventfd. (It is recommended not to change the value.)]}
     PW_NO_FSYNC_INFO=${translations[Do not use futex-based in-process synchronization primitives. (Automatically disabled on systems without FUTEX_WAIT_MULTIPLE support) (It is recommended not to change the value)]}
+    PW_NO_NTSYNC_INFO=${translations[Do not use in-process synchronization via the Linux ntsync driver. (Automatically disabled on systems without loaded ntsync module) (Experimental)]}
     PW_USE_RAY_TRACING_INFO=${translations[Enable vkd3d support - Ray Tracing]}
     PW_USE_NVAPI_AND_DLSS_INFO=${translations[Enable DLSS on supported NVIDIA graphics cards]}
     PW_USE_FAKE_DLSS_INFO=${translations[Enable DLSS translator in FSR 2 in DirectX 12 games (CyberFSR2)]}
@@ -5409,6 +5423,8 @@ gui_edit_db () {
     || [[ $PW_VULKAN_USE == "0" ]] ; then
         DISABLE_EDIT_DB_LIST+=" PW_USE_SUPPLIED_DXVK_VKD3D"
     fi
+
+    [[ ! -e "/dev/ntsync" ]] && DISABLE_EDIT_DB_LIST+=" PW_NO_NTSYNC"
 
     if check_wayland_session
     then DISABLE_EDIT_DB_LIST+=" PW_USE_US_LAYOUT"

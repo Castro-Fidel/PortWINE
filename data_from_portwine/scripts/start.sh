@@ -335,6 +335,7 @@ if [[ ${portwine_exe,,} =~ (setup|install|.msi$) ]] ; then
     export PW_DISABLED_CREATE_DB="1"
     export PW_VULKAN_USE="1"
     export PW_MANGOHUD="0"
+    export PW_NO_NTSYNC="1"
     export PW_NO_FSYNC="1"
     export PW_NO_ESYNC="1"
     export PW_USE_GAMEMODE="0"
