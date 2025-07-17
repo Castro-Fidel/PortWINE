@@ -3494,21 +3494,34 @@ start_portwine () {
     set_to_dxvk_conf default
 
     # NVAPI, DLSS AND FAKE DLSS
-    FAKE_DLSS_3_PATH="$PW_PLUGINS_PATH/fake_dlss/DeckyFramegen_$PW_FAKE_DLSS_3_VER/bin/"
-    FAKE_DLSS_3_FILES="amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll d3dcompiler_47.dll dlss-enabler.dll 
-    dlss-enabler-upscaler.dll dlssg_to_fsr3_amd_is_better-3.0.dll dlssg_to_fsr3_amd_is_better.dll dxvk.conf
-    dlssg_to_fsr3.ini fakenvapi.ini libxess.dll nvapi64.dll _nvngx.dll nvngx.ini nvngx-wrapper.dll dxgi.dll"
-    ORIGINAL_GAME_DLLS="d3dcompiler_47.dll amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll libxess.dll nvapi64.dll _nvngx.dll"
-
     if [[ -d "$PATH_TO_GAME/Engine" ]]; then
         ue_exe_path=$(find "$PATH_TO_GAME" -maxdepth 4 -mindepth 4 -path "*Binaries/Win64/*.exe" -not -path "*/Engine/*" | head -1)
         PATH_TO_GAME=$(dirname "$ue_exe_path")
     fi
 
-    if [[ "${PW_USE_FAKE_DLSS_3}" != "1" ]] \
-    && [[ -f "$PATH_TO_GAME/dlss-enabler.dll" ]]
+    # remove old decky_framegen files
+    if [[ -f "$PATH_TO_GAME/dlss-enabler.dll" ]] ; then
+        for dll in amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll d3dcompiler_47.dll dlss-enabler.dll \
+                   dlss-enabler-upscaler.dll dlssg_to_fsr3_amd_is_better-3.0.dll dlssg_to_fsr3_amd_is_better.dll \
+                   dxvk.conf dlssg_to_fsr3.ini fakenvapi.ini libxess.dll nvapi64.dll _nvngx.dll nvngx.ini \
+                   nvngx-wrapper.dll dxgi.dll
+        do try_remove_file "$PATH_TO_GAME/$dll"
+        done
+        for dll in d3dcompiler_47.dll amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll libxess.dll nvapi64.dll _nvngx.dll
+        do [[ -f "$PATH_TO_GAME/${dll}.b" ]] && mv -f "$PATH_TO_GAME/${dll}.b" "$PATH_TO_GAME/${dll}" 2>/dev/null
+        done
+    fi
+
+    # install/remove new optiscaler
+    FAKE_DLSS_3_PATH="$PW_PLUGINS_PATH/fake_dlss/optiscaler-$PW_FAKE_DLSS_3_VER"
+    FAKE_DLSS_3_FILES="dxgi.dll amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll libxess.dll \
+                       libxess_dx11.dll dlssg_to_fsr3_amd_is_better.dll fakenvapi.ini \
+                       OptiScaler.ini dxvk.conf"
+    ORIGINAL_GAME_DLLS="amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll libxess.dll nvapi64.dll"
+
+    if [[ "${PW_USE_OPTISCALER}" != "1" ]] \
+    && [[ -f "$PATH_TO_GAME/dlssg_to_fsr3_amd_is_better.dll" ]]
     then
-        try_remove_file "$PATH_TO_GAME/nvngx.dll"
         for dll in $FAKE_DLSS_3_FILES ; do
             try_remove_file "$PATH_TO_GAME/$dll"
         done
@@ -3519,14 +3532,14 @@ start_portwine () {
         done
     fi
 
-    if [[ "${PW_USE_FAKE_DLSS_3}" == "1" ]] ; then
+    if [[ "${PW_USE_OPTISCALER}" == "1" ]] ; then
         if [[ ! -d "$FAKE_DLSS_3_PATH" ]] ; then
-            if try_download "github.com/Castro-Fidel/vulkan/releases/download/DeckyFramegen_${PW_FAKE_DLSS_3_VER}/DeckyFramegen_${PW_FAKE_DLSS_3_VER}.tar.xz" \
-                            "${PORT_WINE_PATH}/data/tmp/DeckyFramegen_${PW_FAKE_DLSS_3_VER}.tar.xz" ; then
-                if ! unpack "${PORT_WINE_PATH}/data/tmp/DeckyFramegen_${PW_FAKE_DLSS_3_VER}.tar.xz" "$PW_PLUGINS_PATH/fake_dlss/"
+            if try_download "github.com/Castro-Fidel/vulkan/releases/download/optiscaler-$PW_FAKE_DLSS_3_VER/optiscaler-$PW_FAKE_DLSS_3_VER.tar.xz" \
+                            "${PORT_WINE_PATH}/data/tmp/optiscaler-$PW_FAKE_DLSS_3_VER.tar.xz" ; then
+                if ! unpack "${PORT_WINE_PATH}/data/tmp/optiscaler-$PW_FAKE_DLSS_3_VER.tar.xz" "$PW_PLUGINS_PATH/fake_dlss/"
                 then try_remove_dir "$FAKE_DLSS_3_PATH"
                 fi
-                try_remove_file "${PORT_WINE_PATH}/data/tmp/DeckyFramegen_${PW_FAKE_DLSS_3_VER}.tar.xz"
+                try_remove_file "${PORT_WINE_PATH}/data/tmp/optiscaler-$PW_FAKE_DLSS_3_VER.tar.xz"
             fi
         fi
 
@@ -3534,7 +3547,7 @@ start_portwine () {
         export DXVK_ENABLE_NVAPI="1"
         export PW_USE_RAY_TRACING="1"
 
-        if [[ ! -f "$PATH_TO_GAME/dlss-enabler.dll" ]] ; then
+        if [[ ! -f "$PATH_TO_GAME/dlssg_to_fsr3_amd_is_better.dll" ]] ; then
             if [[ -f "$PATH_TO_GAME/dxgi.dll" ]] ; then
                 yad_error 'dxgi.dll is already present in the game folder!\nThis script uses dxgi.dll to load required files.\nRemove the mod using dxgi.dll.'
                 fatal "Force exit..."
@@ -4132,7 +4145,7 @@ fi
                     try_force_link_file "${PATH_TO_DXVK_FILES}/x32/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dxvk_dll}.dll"
                     try_force_link_file "${PATH_TO_DXVK_FILES}/x64/${wine_dxvk_dll}.dll" "${WINEPREFIX}/drive_c/windows/system32/${wine_dxvk_dll}.dll" ;;
             esac
-            if [[ $PW_USE_FAKE_DLSS_3 == "1" ]] && [[ $wine_dxvk_dll == "dxgi" ]]
+            if [[ $PW_USE_OPTISCALER == "1" ]] && [[ $wine_dxvk_dll == "dxgi" ]]
             then var_winedlloverride_update "dxgi=n,b"
             else var_winedlloverride_update "${wine_dxvk_dll}=n"
             fi
@@ -5376,7 +5389,7 @@ export -f gui_proton_downloader
 gui_edit_db () {
     KEY_EDIT_DB_GUI=$RANDOM
     PW_EDIT_DB_LIST=(PW_MANGOHUD PW_MANGOHUD_USER_CONF PW_VKBASALT PW_VKBASALT_USER_CONF PW_DGVOODOO2 PW_GAMESCOPE
-    PW_NO_ESYNC PW_NO_FSYNC PW_NO_NTSYNC PW_USE_RAY_TRACING PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_USE_FAKE_DLSS_3
+    PW_NO_ESYNC PW_NO_FSYNC PW_NO_NTSYNC PW_USE_RAY_TRACING PW_USE_NVAPI_AND_DLSS PW_USE_FAKE_DLSS PW_USE_OPTISCALER
     PW_USE_LS_FRAME_GEN PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS
     PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER
     PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE
@@ -5409,7 +5422,7 @@ gui_edit_db () {
     PW_USE_RAY_TRACING_INFO=${translations[Enable vkd3d support - Ray Tracing]}
     PW_USE_NVAPI_AND_DLSS_INFO=${translations[Enable DLSS on supported NVIDIA graphics cards]}
     PW_USE_FAKE_DLSS_INFO=${translations[Enable DLSS translator in FSR 2 in DirectX 12 games (CyberFSR2)]}
-    PW_USE_FAKE_DLSS_3_INFO=${translations[Enable DLSS 3 with FG translator in FSR 3 in DirectX 12 games (based on Decky-Framegen) Do not use in multiplayer games]}
+    PW_USE_OPTISCALER_INFO=${translations[Enable OptiScaler. It is a tool that lets you replace upscalers in games that already support DLSS2+ / FSR2+ / XeSS, now also supports enabling frame generation in those same games (through Nukem dlssg-to-fsr3 or OptiFG)]}
     PW_USE_LS_FRAME_GEN_INFO=${translations[Enable Lossless Scaling frame generation (experemental)]}
     PW_WINE_FULLSCREEN_FSR_INFO=${translations[Works while using any version of ProtonGE in full screen mode at a resolution below the standard screen]}
     PW_HIDE_NVIDIA_GPU_INFO=${translations[Disguise all features used for NVIDIA graphics cards]}
