@@ -135,17 +135,13 @@ fatal () {
     exit 1
 }
 
-simulate_user_activity() {
-    dbus-send --session --dest=org.freedesktop.ScreenSaver \
-              --type=method_call /org/freedesktop/ScreenSaver \
-              org.freedesktop.ScreenSaver.SimulateUserActivity
-}
-
 start_activity_simulation() {
     (
         trap 'exit 0' TERM INT
-        while [ -f "${PORT_WINE_PATH}/data/tmp/screensaver_pid" ]; do
-            simulate_user_activity
+        while [[ -f "${PORT_WINE_PATH}/data/tmp/screensaver_pid" ]] ; do
+            dbus-send --session --dest=org.freedesktop.ScreenSaver \
+                      --type=method_call /org/freedesktop/ScreenSaver \
+                      org.freedesktop.ScreenSaver.SimulateUserActivity
             sleep 30
         done
     ) &
@@ -153,7 +149,7 @@ start_activity_simulation() {
 }
 
 stop_activity_simulation() {
-    if [ -f "${PORT_WINE_PATH}/data/tmp/screensaver_pid" ]; then
+    if [[ -f "${PORT_WINE_PATH}/data/tmp/screensaver_pid" ]] ; then
         pw_screensaver_pid=$(cat "${PORT_WINE_PATH}/data/tmp/screensaver_pid")
         if ps cax | grep "${pw_screensaver_pid}" ; then
             kill -n 9 "${pw_screensaver_pid}" &>/dev/null
