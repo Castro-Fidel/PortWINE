@@ -136,13 +136,20 @@ fatal () {
 }
 
 start_activity_simulation() {
+    grep -i "fedora" "/run/host/etc/os-release" &>/dev/null && START_ACTIVITY_FEDORA="1"
     (
         trap 'exit 0' TERM INT
         while [[ -f "${PORT_WINE_PATH}/data/tmp/screensaver_pid" ]] ; do
-            dbus-send --session --dest=org.freedesktop.ScreenSaver \
-                      --type=method_call /org/freedesktop/ScreenSaver \
-                      org.freedesktop.ScreenSaver.SimulateUserActivity
-            sleep 30
+            if [[ $START_ACTIVITY_FEDORA == "1" ]] ; then
+                gdbus call --session --dest org.freedesktop.ScreenSaver \
+                           --object-path /ScreenSaver \
+                           --method org.freedesktop.ScreenSaver.SimulateUserActivity
+            else
+                dbus-send --session --dest=org.freedesktop.ScreenSaver \
+                          --type=method_call /org/freedesktop/ScreenSaver \
+                          org.freedesktop.ScreenSaver.SimulateUserActivity
+            fi
+            sleep 29
         done
     ) &
     echo $! > "${PORT_WINE_PATH}/data/tmp/screensaver_pid"
