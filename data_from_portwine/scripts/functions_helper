@@ -3515,7 +3515,7 @@ start_portwine () {
     OPTISCALER_PATH="$PW_PLUGINS_PATH/fake_dlss/optiscaler-$PW_OPTISCALER_VER"
     OPTISCALER_FILES="dxgi.dll amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll libxess.dll \
                        libxess_dx11.dll dlssg_to_fsr3_amd_is_better.dll fakenvapi.ini \
-                       OptiScaler.ini dxvk.conf"
+                       nvapi64.dll OptiScaler.ini dxvk.conf"
     ORIGINAL_GAME_DLLS="amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll libxess.dll nvapi64.dll"
 
     if [[ "${PW_USE_OPTISCALER}" != "1" ]] \
@@ -3546,6 +3546,9 @@ start_portwine () {
         export DXVK_ENABLE_NVAPI="1"
         export PW_USE_RAY_TRACING="1"
 
+        check_variables OPTISCALER_FG_TYPE "Nukems"
+        sed -i "s|FGType =.*|FGType = $OPTISCALER_FG_TYPE|g" "$OPTISCALER_PATH/OptiScaler.ini"
+
         if [[ ! -f "$PATH_TO_GAME/dlssg_to_fsr3_amd_is_better.dll" ]] ; then
             if [[ -f "$PATH_TO_GAME/dxgi.dll" ]] ; then
                 yad_error 'dxgi.dll is already present in the game folder!\nThis script uses dxgi.dll to load required files.\nRemove the mod using dxgi.dll.'
@@ -3558,10 +3561,15 @@ start_portwine () {
                     mv -f "$PATH_TO_GAME/$dll" "$PATH_TO_GAME/${dll}.b" 2>/dev/null
                 fi
             done
-            for dll in $OPTISCALER_FILES ; do
-                try_force_link_file "$OPTISCALER_PATH/$dll" "$PATH_TO_GAME/$dll"
-            done
         fi
+
+        for dll in $OPTISCALER_FILES ; do
+            if [[ ! -f "$PATH_TO_GAME/$dll" ]] \
+            || [[ -L "$PATH_TO_GAME/$dll" ]]
+            then try_copy_file "$OPTISCALER_PATH/$dll" "$PATH_TO_GAME/$dll"
+            fi
+        done
+
         for rm_dll in "nvngx.ini" "nvngx.dll" "_nvngx.dll" ; do
             try_remove_file "${WINEPREFIX}/drive_c/windows/system32/$rm_dll"
         done
