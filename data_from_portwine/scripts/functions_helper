@@ -2161,7 +2161,7 @@ pw_check_and_download_wine () {
 
 pw_check_and_download_dxvk_and_vkd3d () {
     # Download stable and git version DXVK
-    for DXVK_VAR_VER in "${DXVK_STABLE_VER}" "${DXVK_GIT_VER}" "${DXVK_LEGACY_VER}" ; do
+    for DXVK_VAR_VER in "${DXVK_STABLE_VER}" "${DXVK_GIT_VER}" ; do
         if [[ ! -d "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}" ]] ; then
             print_info "Download and install DXVK v.${DXVK_VAR_VER}"
             if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/dxvk-${DXVK_VAR_VER}/dxvk-${DXVK_VAR_VER}.tar.xz" \
@@ -2817,16 +2817,22 @@ pw_check_command () {
 }
 export -f pw_check_command
 
+pw_check_vulkan () {
+    if [[ ! -f "${PW_TMPFS_PATH}/vulkaninfo.tmp" ]] ; then
+        TIMEOUT_CMD="5"
+        if ! pw_check_command vulkaninfo ; then
+            print_warning "use portable vulkaninfo"
+            "$PW_PLUGINS_PATH"/portable/bin/x86_64-linux-gnu-vulkaninfo &> "${PW_TMPFS_PATH}/vulkaninfo.tmp"
+        fi
+    fi
+}
+
 pw_get_tmp_files () {
     for f_cmd in "gamescope --help" "lspci -k" "xrandr --current" "locale -a"
     do pw_check_command "$f_cmd"
     done
 
-    TIMEOUT_CMD="5"
-    if ! pw_check_command vulkaninfo ; then
-        print_warning "use portable vulkaninfo"
-        "$PW_PLUGINS_PATH"/portable/bin/x86_64-linux-gnu-vulkaninfo &> "${PW_TMPFS_PATH}/vulkaninfo.tmp"
-    fi
+    pw_check_vulkan
 
     # GALLIUM NINE
     unset FIND_D3D_MODULE D3D_MODULE_PATH
@@ -3793,12 +3799,18 @@ fi
             # STABLE DXVK AND VKD3D
             print_info "DXVK v.${DXVK_STABLE_VER} in use"
             print_info "VKD3D-PROTON v.${VKD3D_STABLE_VER} in use"
-            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}"
+            if [[ $PW_USE_SAREK_ASYNC == "1" ]] ; then
+                PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}/sarek-async"
+                export ASYNC_DRAW_CALL_THRESHOLD="1"
+                export DXVK_ALL_CORES="1"
+            else
+                PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}/sarek"
+            fi
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
-            CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
+            CP_DXVK_FILES="d3d11 d3d10core d3d9 d3d8 dxgi"
             [[ "$PW_USE_VRCLIENT" = "1" ]] && add_to_var CP_DXVK_FILES "openvr_api_dxvk"
-            CP_VKD3D_FILES="d3d12 libvkd3d-shader-1"
-            CP_WINE_FILES="d3d12core d3d8"
+            CP_VKD3D_FILES="d3d12 libvkd3d-1 libvkd3d-shader-1"
+            CP_WINE_FILES="d3d12core d3d10_1 d3d10"
             ;;
         2)
             # NEWEST DXVK AND VKD3D
@@ -3810,15 +3822,6 @@ fi
             [[ "$PW_USE_VRCLIENT" = "1" ]] && add_to_var CP_DXVK_FILES "openvr_api_dxvk"
             CP_VKD3D_FILES="d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1"
             CP_WINE_FILES="d3d10_1 d3d10"
-            ;;
-        3)
-            # LEGACY DXVK
-            print_info "DXVK v.${DXVK_LEGACY_VER} in use"
-            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_LEGACY_VER}"
-            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
-            CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
-            CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
-            CP_WINE_FILES="d3d12 d3d12core d3d8"
             ;;
     esac
 
@@ -3871,7 +3874,6 @@ fi
     if [[ $PW_USE_SUPPLIED_DXVK_VKD3D == "1" ]] \
     && [[ ! $PW_WINE_USE =~ (PROTON_LG|WINE_LG) ]] \
     && [[ -f "${WINEDIR}/lib64/wine/dxvk/d3d9.dll" || -f "${WINEDIR}/lib/wine/dxvk/x86_64-windows/d3d9.dll" ]] ; then
-        export DXVK_ASYNC="1"
         if [[ -f "${WINEDIR}/lib64/wine/dxvk/d3d10.dll" && -f "${WINEDIR}/lib64/wine/dxvk/d3d10_1.dll" ]] ; then
             CP_DXVK_FILES="d3d11 d3d10core d3d10_1 d3d10 d3d9 dxgi"
             CP_WINE_FILES=""
@@ -3947,16 +3949,8 @@ fi
                     0)
                         rm_from_var CP_WINE_FILES "d3d9 d3d8"
                         ;;
-                    1)
-                        rm_from_var CP_DXVK_FILES "d3d9"
-                        rm_from_var CP_WINE_FILES "d3d8"
-                        ;;
-                    2)
+                    1|2)
                         rm_from_var CP_DXVK_FILES "d3d9 d3d8"
-                        ;;
-                    3)
-                        rm_from_var CP_DXVK_FILES "d3d9"
-                        rm_from_var CP_WINE_FILES "d3d8"
                         ;;
                 esac
             fi
@@ -4182,9 +4176,9 @@ fi
             try_force_link_file "${WINEDIR}/lib64/wine/nvapi/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvapi64.dll"
             try_force_link_file "${WINEDIR}/lib64/wine/nvapi/nvofapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvofapi64.dll"
         else
-            try_force_link_file "${PATH_TO_DXVK_FILES}/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/nvapi.dll"
-            try_force_link_file "${PATH_TO_DXVK_FILES}/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvapi64.dll"
-            try_force_link_file "${PATH_TO_DXVK_FILES}/x64/nvofapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvofapi64.dll"
+            try_force_link_file "${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/nvapi.dll"
+            try_force_link_file "${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvapi64.dll"
+            try_force_link_file "${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}/x64/nvofapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvofapi64.dll"
         fi
         var_winedlloverride_update "nvapi64,nvofapi64,nvapi=n;nvcuda=b"
     else
@@ -5414,9 +5408,9 @@ gui_edit_db () {
     )
 
     check_flatpak && rm_from_array "PW_EDIT_DB_LIST" PW_USE_RUNTIME
-
     # GALLIUM NINE
     [[ ! -f "${PW_TMPFS_PATH}/gallium_nine.tmp" ]] && rm_from_array "PW_EDIT_DB_LIST" PW_USE_GALLIUM_NINE
+    [[ $PW_VULKAN_USE == "1" ]] && add_to_array "PW_EDIT_DB_LIST" PW_USE_SAREK_ASYNC
 
     PW_MANGOHUD_INFO=${translations[Using FPS and system load monitoring (Turns on and off by the key combination - right Shift + F12)]}
     PW_MANGOHUD_USER_CONF_INFO=${translations[Forced use of MANGOHUD system settings (GOverlay, etc.)]}
@@ -5464,6 +5458,7 @@ gui_edit_db () {
     PW_USE_GALLIUM_NINE_INFO=${translations[Use Gallium Nine (native DirectX 9 for MESA)]}
     PW_USE_WINED3D_VULKAN_INFO=${translations[Instead of DXVK, use WineD3D vulkan (Damavand). Experimental function.]}
     PW_USE_SUPPLIED_DXVK_VKD3D_INFO=${translations[Use dxvk and vkd3d which are bundled with wine or proton. (Does not work with PROTON_LG and WINE_LG)]}
+    PW_USE_SAREK_ASYNC_INFO=${translations[Use async version of dxvk-sarek. (May work better or vice versa)]}
 
 #     PW_VULKAN_NO_ASYNC_INFO=${translations[Disable asynchronous calls for VULKAN and DXVK modes]}
 #     PW_OLD_GL_STRING_INFO=${translations[Forced use of older versions of OpenGL]}
@@ -5479,11 +5474,6 @@ gui_edit_db () {
         1|2)
             # Stable, Newest
             VKD3D_CB="CB"
-            ;;
-        3)
-            # Legacy
-            VKD3D_CB="DCB"
-            DISABLE_EDIT_DB_LIST="PW_USE_RAY_TRACING"
             ;;
     esac
 
@@ -6095,7 +6085,7 @@ gui_dgvoodoo2 () {
     [[ "${PW_DGV2_ANTIALIASING}" == "0" ]] && export PW_DGV2_ANTIALIASING="disabled" && edit_db_from_gui PW_DGV2_ANTIALIASING
 
     case "${PW_VULKAN_USE}" in
-        0|3)
+        0)
             DISABLE_DGV2_LIST="PW_DGV2_USE_DX12
             "
             ;;
@@ -7131,7 +7121,6 @@ portwine_start_debug () {
         0) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DirectX to wined3d opengl" >> "${PORT_WINE_PATH}/PortProton.log" ;;
         1) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_STABLE_VER}, VKD3D-PROTON v.${VKD3D_STABLE_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
         2) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_GIT_VER}, VKD3D-PROTON v.${VKD3D_GIT_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
-        3) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_LEGACY_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
         *) echo "PW_VULKAN_USE=${PW_VULKAN_USE}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
     esac
     echo "--------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"

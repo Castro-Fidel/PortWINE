@@ -520,16 +520,8 @@ then DIST_ADD_TO_GUI+="!${translations[USE_SYSTEM_WINE]}"
 fi
 
 SORT_OPENGL="${translations[WineD3D OpenGL (For video cards without Vulkan)]}"
-SORT_LEGACY="${translations[Legacy DXVK (Vulkan v1.1)]}"
-SORT_STABLE="${translations[Stable DXVK, VKD3D (Vulkan v1.2)]}"
-SORT_NEWEST="${translations[Newest DXVK, VKD3D, D8VK (Vulkan v1.3+)]}"
-
-case "$PW_VULKAN_USE" in
-    0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY" ;;
-    1) PW_DEFAULT_VULKAN_USE="$SORT_STABLE!$SORT_NEWEST!$SORT_LEGACY!$SORT_OPENGL" ;;
-  3|5) PW_DEFAULT_VULKAN_USE="$SORT_LEGACY!$SORT_NEWEST!$SORT_STABLE!$SORT_OPENGL" ;;
-    *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY!$SORT_OPENGL" ;;
-esac
+SORT_STABLE="${translations[DXVK-Sarek, VKD3D (Vulkan v1.1+)]}"
+SORT_NEWEST="${translations[Newest DXVK, VKD3D (Vulkan v1.3+)]}"
 
 if [[ $PW_WINE_USE == PROTON_LG ]] ; then
     PW_WINE_USE="${PW_PROTON_LG_VER}"
@@ -574,6 +566,25 @@ if [[ -f "$portwine_exe" ]] ; then
                 PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$PW_NAME_DESKTOP_PROXY" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
             fi
         fi
+
+        if [[ -z $PW_VULKAN_USE ]] \
+        || (( PW_VULKAN_USE > 2 )) ; then
+            pw_check_vulkan
+            VULKAN_VERSION_CHECK=$(grep "apiVersion" "${PW_TMPFS_PATH}/vulkaninfo.tmp" 2>/dev/null)
+            if [[ $VULKAN_VERSION_CHECK =~ 1.[3-9]. ]] ; then
+                export PW_VULKAN_USE="2"
+            elif [[ $VULKAN_VERSION_CHECK =~ 1.[1-2]. ]] ; then
+                export PW_VULKAN_USE="1"
+            else
+                export PW_VULKAN_USE="0"
+            fi
+        fi
+
+        case "$PW_VULKAN_USE" in
+            0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_NEWEST!$SORT_STABLE" ;;
+            1) PW_DEFAULT_VULKAN_USE="$SORT_STABLE!$SORT_NEWEST!$SORT_OPENGL" ;;
+            *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_OPENGL" ;;
+        esac
 
         export KEY_START="$RANDOM"
         if [[ $PW_GUI_START == "NOTEBOOK" ]] ; then
@@ -822,6 +833,8 @@ else
     else export PW_GUI_SORT_TABS=(2 3 4 5 1)
     fi
 
+    PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_OPENGL"
+
     KEY_MENU="$RANDOM"
 
     IFS="%"
@@ -969,7 +982,6 @@ case "${VULKAN_MOD}" in
     "$SORT_OPENGL" )     export PW_VULKAN_USE="0" ;;
     "$SORT_STABLE" )     export PW_VULKAN_USE="1" ;;
     "$SORT_NEWEST" )     export PW_VULKAN_USE="2" ;;
-    "$SORT_LEGACY" )     export PW_VULKAN_USE="3" ;;
 esac
 
 init_wine_ver
