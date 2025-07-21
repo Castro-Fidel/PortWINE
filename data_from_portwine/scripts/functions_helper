@@ -139,7 +139,7 @@ start_activity_simulation() {
     grep -i "fedora" "/run/host/etc/os-release" &>/dev/null && START_ACTIVITY_FEDORA="1"
     (
         trap 'exit 0' TERM INT
-        while [[ -f "${PORT_WINE_PATH}/data/tmp/screensaver_pid" ]] ; do
+        while [[ -f "$PW_TMPFS_PATH/screensaver_pid" ]] ; do
             if [[ $START_ACTIVITY_FEDORA == "1" ]] ; then
                 gdbus call --session --dest org.freedesktop.ScreenSaver \
                            --object-path /ScreenSaver \
@@ -152,16 +152,16 @@ start_activity_simulation() {
             sleep 29
         done
     ) &
-    echo $! > "${PORT_WINE_PATH}/data/tmp/screensaver_pid"
+    echo $! > "$PW_TMPFS_PATH/screensaver_pid"
 }
 
 stop_activity_simulation() {
-    if [[ -f "${PORT_WINE_PATH}/data/tmp/screensaver_pid" ]] ; then
-        pw_screensaver_pid=$(cat "${PORT_WINE_PATH}/data/tmp/screensaver_pid")
+    if [[ -f "$PW_TMPFS_PATH/screensaver_pid" ]] ; then
+        pw_screensaver_pid=$(<"$PW_TMPFS_PATH/screensaver_pid")
         if ps cax | grep "${pw_screensaver_pid}" ; then
             kill -n 9 "${pw_screensaver_pid}" &>/dev/null
         fi
-        rm -f "${PORT_WINE_PATH}/data/tmp/screensaver_pid"
+        rm -f "$PW_TMPFS_PATH/screensaver_pid"
     fi
 }
 
