@@ -2220,25 +2220,6 @@ pw_check_and_download_dxvk_and_vkd3d () {
         fi
     done
 
-    # Download DGVOODOO2
-    if [[ ! -f "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}/dgVoodoo.conf" ]] ; then
-        print_info "Download and install DGVOODOO2 v.${DGV2_VER}"
-        if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/dgvoodoo2-${DGV2_VER}/dgvoodoo2-${DGV2_VER}.tar.xz" \
-        "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz"
-        then
-            if unpack "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz" "${PW_VULKAN_DIR}" ; then
-                try_remove_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz"
-            else
-                try_remove_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz"
-                try_remove_dir "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}"
-
-                yad_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
-            fi
-        else
-            yad_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
-        fi
-    fi
-
     return 0
 }
 
@@ -3915,6 +3896,23 @@ fi
 
     # DGVOODOO2 enable:
     if [[ "${PW_DGVOODOO2}" == "1" ]] ; then
+        if [[ ! -f "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}/dgVoodoo.conf" ]] ; then
+            print_info "Download and install DGVOODOO2 v.${DGV2_VER}"
+            if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/dgvoodoo2-${DGV2_VER}/dgvoodoo2-${DGV2_VER}.tar.xz" \
+            "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz"
+            then
+                if unpack "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz" "${PW_VULKAN_DIR}" ; then
+                    try_remove_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz"
+                else
+                    try_remove_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz"
+                    try_remove_dir "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}"
+
+                    yad_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
+                fi
+            else
+                yad_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
+            fi
+        fi
         print_info "Try create symlink DGVOODOO2 files..."
         PATH_TO_DGV2_FILES="${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}"
         CP_DGV2_FILES="d3d9 d3d8 d3dimm ddraw glide3x glide2x glide"
