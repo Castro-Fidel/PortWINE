@@ -5838,7 +5838,7 @@ gui_mangohud () {
         HORIZONTAL_STRETCH HUD_COMPACT HUD_NO_MARGIN IO_READ IO_WRITE NO_DISPLAY
         NO_SMALL_FONT PROCMEM PROCMEM_SHARED PROCMEM_VIRT RAM RESOLUTION
         SHOW_FPS_LIMIT SWAP TEMP_FAHRENHEIT THROTTLING_STATUS THROTTLING_STATUS_GRAPH
-        TIME VERSION VKBASALT VRAM VULKAN_DRIVER WINE
+        TIME VERSION VKBASALT VRAM VULKAN_DRIVER WINE WINESYNC
     )
 
     PW_MH_ARCH_INFO=${translations[Show if the application is 32- or 64-bit]}
@@ -5895,6 +5895,7 @@ gui_mangohud () {
     PW_MH_VRAM_INFO=${translations[Display system VRAM usage]}
     PW_MH_VULKAN_DRIVER_INFO=${translations[Display used Vulkan driver (radv/amdgpu-pro/amdvlk)]}
     PW_MH_WINE_INFO=${translations[Show current Wine or Proton version in use]}
+    PW_MH_WINESYNC_INFO=${translations[Show current wine sync in use]}
 
     unset ADD_GUI_MH GUI_MH_RESULT ADD_GUI_MH_FPS GUI_MH_FPS_RESULT PW_FPS_LIMIT_VAR PW_MANGOHUD_CONFIG
     try_remove_file "${PW_TMPFS_PATH}/tmp_yad_mh_set"
@@ -5903,9 +5904,9 @@ gui_mangohud () {
     GET_REFRESH_RATE=(30 40 45 48 60 75 90 120 144 165 175 240)
 
     if [[ -n "$MANGOHUD_CONFIG" ]] ; then
-        PW_MANGOHUD_CONFIG=$MANGOHUD_CONFIG
+        local PW_MANGOHUD_CONFIG=$MANGOHUD_CONFIG
     else
-        PW_MANGOHUD_CONFIG=$DEFAULT_MANGOHUD_CONFIG
+        local PW_MANGOHUD_CONFIG=$DEFAULT_MANGOHUD_CONFIG
     fi
     IFS=',' read -r -a PW_MANGOHUD_CONFIG <<< "${PW_MANGOHUD_CONFIG^^}"
 
@@ -6032,7 +6033,7 @@ gui_mangohud () {
 
     export MANGOHUD_CONFIG="${GUI_MH_RESULT}"
     export PW_MANGOHUD FPS_LIMIT
-    edit_db_from_gui PW_MANGOHUD_CONFIG PW_MANGOHUD FPS_LIMIT
+    edit_db_from_gui MANGOHUD_CONFIG PW_MANGOHUD FPS_LIMIT
 
     if [[ "${YAD_MANGOHUD_STATUS}" == "184" ]] ; then
         PW_MANGOHUD="1"
