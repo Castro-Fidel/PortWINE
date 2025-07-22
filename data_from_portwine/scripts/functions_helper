@@ -2368,24 +2368,6 @@ check_dirs_and_files_in_pfx () {
         done
     }
 
-check_nvidia_rtx () {
-    if [[ "$LSPCI_VGA" == *nvidia* ]] ; then
-        if [[ "$LSPCI_VGA" == *G[0-9]* ]] \
-        || [[ "$LSPCI_VGA" == *GT[0-9]* ]] \
-        || [[ "$LSPCI_VGA" == *MCP[0-9]* ]] \
-        || [[ "$LSPCI_VGA" == *GF[0-9]* ]] \
-        || [[ "$LSPCI_VGA" == *GK[0-9]* ]] \
-        || [[ "$LSPCI_VGA" == *GM[0-9]* ]] \
-        || [[ "$LSPCI_VGA" == *GP[0-9]* ]] \
-        || [[ "$LSPCI_VGA" == *GV[0-9]* ]] \
-        || [[ "$LSPCI_VGA" == *TU11[6-7]* ]]
-        then return 1
-        else return 0
-        fi
-    fi
-    return 1
-}
-
 pw_init_db () {
     if [[ -f "${portwine_exe}" ]] ; then
         PORTWINE_DB="$(basename "${portwine_exe%.[Ee][Xx][Ee]}")"
@@ -2866,7 +2848,7 @@ pw_skip_get_info () {
         fi
 
         if [[ -f "${PW_TMPFS_PATH}/lspci.tmp" ]] ; then
-            LSPCI_VGA="$(grep -e 'VGA|3D' "${PW_TMPFS_PATH}/lspci.tmp" | tr -d '\n')"
+            LSPCI_VGA="$(grep -E 'VGA|3D' "${PW_TMPFS_PATH}/lspci.tmp" | tr -d '\n')"
             export LSPCI_VGA
         fi
 
@@ -3561,8 +3543,8 @@ start_portwine () {
         done
     fi
 
-    # TODO: Add NVIDIA Smooth Motion
-    if check_nvidia_rtx ; then
+    # CHECK NVIDIA RTX
+    if echo "$LSPCI_VGA" | grep -i -q 'nvidia.*rtx' ; then
         check_variables PW_USE_NVAPI_AND_DLSS "1"
         check_variables PW_USE_RAY_TRACING "1"
     fi
