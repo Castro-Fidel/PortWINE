@@ -5566,6 +5566,12 @@ gui_edit_db () {
     fi
 
     [[ $AMD_VULKAN_CB == ":LBLH" ]] && translations[Select needed AMD vulkan implementation]=""
+    if [[ $NUMA_NODE_LIST == "0" ]] ; then
+        NUDA_CPU_CB=":LBLH"
+        translations[NUMA node for CPU affinity]=""
+    else
+        NUDA_CPU_CB=":CB"
+    fi
 
     "${pw_yad}" --plug=$KEY_EDIT_DB_GUI --tabnum="2" --form --separator="%" --columns=1 \
     --field="${translations[Change the version of <b>WINDOWS</b> emulation]}!${translations[Changing the <b>WINDOWS</b> emulation version may be required to run older games. <b>WINDOWS</b> versions below 10 do not support new games with DirectX 12]} :CB" "${ADD_WINVER_EDIT_DB}" \
@@ -5591,7 +5597,7 @@ mailbox - Triple buffering. Unlimited frame rate + no tearing.
 relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]} :CB" "$(combobox_fix --disabled "${PW_MESA_VK_WSI_PRESENT_MODE}" "fifo!immediate!mailbox!relaxed")" \
     --field="${translations[Select needed AMD vulkan implementation]}!${translations[Choosing which implementation of vulkan will be used to run the game]} $AMD_VULKAN_CB" "$(combobox_fix --disabled "$AMD_VULKAN_VAR" "$AMD_VULKAN_DRIVER_LIST")" \
     --field="${translations[NUMA node for CPU affinity]}!${translations[In multi‑core systems, CPUs are split into NUMA nodes, each with its own local memory and cores.
-Binding a game to a single node reduces memory‑access latency and limits costly core‑to‑core switches.)]} :CB" "$(combobox_fix --disabled "${NUMA_NODE_INDEX}" "${NUMA_NODE_LIST}")" \
+Binding a game to a single node reduces memory‑access latency and limits costly core‑to‑core switches.)]} $NUDA_CPU_CB" "$(combobox_fix --disabled "${NUMA_NODE_INDEX}" "${NUMA_NODE_LIST}")" \
     1> "$PW_TMPFS_PATH/tmp_output_yad_fps_limit" 2>/dev/null &
 
     "${pw_yad}" --notebook --key="$KEY_EDIT_DB_GUI" --title "${translations[EDIT DB]}" --text-align=center \
