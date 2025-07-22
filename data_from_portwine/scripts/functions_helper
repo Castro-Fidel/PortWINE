@@ -2369,6 +2369,11 @@ check_dirs_and_files_in_pfx () {
     }
 
 pw_init_db () {
+    if echo "$LSPCI_VGA" | grep -i -q 'nvidia.*rtx' ; then
+        export PW_USE_NVAPI_AND_DLSS="1"
+        export PW_USE_RAY_TRACING="1"
+    fi
+
     if [[ -f "${portwine_exe}" ]] ; then
         PORTWINE_DB="$(basename "${portwine_exe%.[Ee][Xx][Ee]}")"
         export PORTWINE_DB
@@ -3541,12 +3546,6 @@ start_portwine () {
             then try_copy_file "$OPTISCALER_PATH/$dll" "$PATH_TO_GAME/$dll"
             fi
         done
-    fi
-
-    # CHECK NVIDIA RTX
-    if echo "$LSPCI_VGA" | grep -i -q 'nvidia.*rtx' ; then
-        check_variables PW_USE_NVAPI_AND_DLSS "1"
-        check_variables PW_USE_RAY_TRACING "1"
     fi
 
     if [[ "${PW_USE_RAY_TRACING}" == "1" ]] ; then
