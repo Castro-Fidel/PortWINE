@@ -3445,15 +3445,9 @@ start_portwine () {
                     -e /'d3d9.countLosableResources =/c # d3d9.countLosableResources =' \
                 "${DXVK_CONFIG_FILE}"
 
-                unset WINE_HIDE_NVIDIA_GPU WINE_HIDE_AMD_GPU WINEHAGS
-                unset DXVK_NVAPI_DRIVER_VERSION DXVK_NVAPI_ALLOW_OTHER_DRIVERS
-                ;;
-
-            nvidia_old)
-                sed -i \
-                    -e /'dxgi.customDeviceId =/c dxgi.customDeviceId = 222F' \
-                    -e /'dxgi.customVendorId =/c dxgi.customVendorId = 10de' \
-                "${DXVK_CONFIG_FILE}"
+                export WINE_HIDE_NVIDIA_GPU="0"
+                export WINE_HIDE_AMD_GPU="0"
+                unset DXVK_NVAPI_DRIVER_VERSION DXVK_NVAPI_ALLOW_OTHER_DRIVERS WINEHAGS
                 ;;
 
             nvidia_new)
@@ -3470,6 +3464,8 @@ start_portwine () {
                 export DXVK_NVAPI_DRIVER_VERSION="99999"
                 export DXVK_NVAPI_ALLOW_OTHER_DRIVERS="1"
                 export WINEHAGS="1"
+                export PW_USE_NVAPI_AND_DLSS="1"
+                export PW_USE_RAY_TRACING="1"
                 ;;
 
             low_latency)
@@ -3495,6 +3491,10 @@ start_portwine () {
         ue_exe_path=$(find "$PATH_TO_GAME" -maxdepth 4 -mindepth 4 -path "*Binaries/Win64/*.exe" -not -path "*/Engine/*" | head -1)
         PATH_TO_GAME=$(dirname "$ue_exe_path")
     fi
+
+    for rm_dll in "nvngx.ini" "nvngx.dll" "_nvngx.dll" ; do
+        try_remove_file "${WINEPREFIX}/drive_c/windows/system32/$rm_dll"
+    done
 
     # remove old decky_framegen files
     if [[ -f "$PATH_TO_GAME/dlss-enabler.dll" ]] ; then
@@ -3541,8 +3541,8 @@ start_portwine () {
         fi
 
         export PW_WINE_FULLSCREEN_FSR="0"
-        export DXVK_ENABLE_NVAPI="1"
-        export PW_USE_RAY_TRACING="1"
+
+        set_to_dxvk_conf nvidia_new
 
         check_variables OPTISCALER_FG_TYPE "Nukems"
         sed -i "s|FGType =.*|FGType = $OPTISCALER_FG_TYPE|g" "$OPTISCALER_PATH/OptiScaler.ini"
@@ -3567,25 +3567,19 @@ start_portwine () {
             then try_copy_file "$OPTISCALER_PATH/$dll" "$PATH_TO_GAME/$dll"
             fi
         done
+    fi
 
-        for rm_dll in "nvngx.ini" "nvngx.dll" "_nvngx.dll" ; do
-            try_remove_file "${WINEPREFIX}/drive_c/windows/system32/$rm_dll"
-        done
-    elif [[ "${PW_USE_NVAPI_AND_DLSS}" == 1 ]] ; then
-        DXVK_ENABLE_NVAPI="1"
+    if [[ "${PW_USE_NVAPI_AND_DLSS}" == "1" ]] ; then
         try_remove_file "${WINEPREFIX}/drive_c/windows/system32/nvngx.ini"
         FIND_NVNGX="$(dirname $(find /usr/* -type f -name "nvngx.dll" 2>/dev/null | head -n 1 | awk '{print $1}'))"
         if [[ -n "$FIND_NVNGX" ]] ; then
             try_copy_file_with_checksums "${FIND_NVNGX}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
             try_copy_file_with_checksums "${FIND_NVNGX}/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll"
+            var_winedlloverride_update "nvngx,_nvngx=n"
             export NVIDIA_WINE_DLL_DIR="${FIND_NVNGX}"
         fi
-        var_winedlloverride_update "nvngx,_nvngx=n"
     else
-        DXVK_ENABLE_NVAPI="0"
-        for rm_dll in "nvngx.ini" "nvngx.dll" "_nvngx.dll" ; do
-            try_remove_file "${WINEPREFIX}/drive_c/windows/system32/$rm_dll"
-        done
+        export DXVK_ENABLE_NVAPI="0"
     fi
 
     [[ "${PW_USE_LS_FRAME_GEN}" == "1" ]] && set_to_dxvk_conf low_latency
