@@ -3413,7 +3413,6 @@ start_portwine () {
                     -e /'dxgi.customDeviceDesc =/c # dxgi.customDeviceDesc =' \
                     -e /'dxgi.customDeviceId =/c # dxgi.customDeviceId =' \
                     -e /'dxgi.customVendorId =/c # dxgi.customVendorId =' \
-                    -e /'dxgi.hideAmdGpu =/c # dxgi.hideAmdGpu =' \
                     -e /'dxgi.hideNvidiaGpu =/c # dxgi.hideNvidiaGpu =' \
                     -e /'d3d11.cachedDynamicResources =/c # d3d11.cachedDynamicResources =' \
                     -e /'dxgi.maxFrameLatency =/c # dxgi.maxFrameLatency =' \
@@ -3436,11 +3435,10 @@ start_portwine () {
                     -e /'dxgi.customDeviceDesc =/c dxgi.customDeviceDesc = "NVIDIA GeForce RTX 4090"' \
                     -e /'dxgi.customDeviceId =/c dxgi.customDeviceId = 2684' \
                     -e /'dxgi.customVendorId =/c dxgi.customVendorId = 10de' \
-                    -e /'dxgi.hideAmdGpu =/c dxgi.hideAmdGpu = True' \
                     -e /'dxgi.hideNvidiaGpu =/c dxgi.hideNvidiaGpu = False' \
                 "${DXVK_CONFIG_FILE}"
 
-                export WINE_HIDE_AMD_GPU="1"
+                # export WINE_HIDE_AMD_GPU="1"
                 export DXVK_NVAPI_DRIVER_VERSION="99999"
                 export DXVK_NVAPI_ALLOW_OTHER_DRIVERS="1"
                 export PW_USE_NVAPI_AND_DLSS="1"
@@ -3557,12 +3555,14 @@ start_portwine () {
 
     if [[ "${PW_USE_NVAPI_AND_DLSS}" == "1" ]] ; then
         export DXVK_ENABLE_NVAPI="1"
-        FIND_NVNGX="$(dirname $(find /usr/* -type f -name "nvngx.dll" 2>/dev/null | head -n 1 | awk '{print $1}'))"
-        if [[ -n "$FIND_NVNGX" ]] ; then
-            try_copy_file_with_checksums "${FIND_NVNGX}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
-            try_copy_file_with_checksums "${FIND_NVNGX}/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll"
-            var_winedlloverride_update "nvngx,_nvngx=n"
-            export NVIDIA_WINE_DLL_DIR="${FIND_NVNGX}"
+        if echo "$LSPCI_VGA" | grep -i -q 'nvidia' ; then
+            FIND_NVNGX="$(dirname $(find /usr/* -type f -name "nvngx.dll" 2>/dev/null | head -n 1 | awk '{print $1}'))"
+            if [[ -n "$FIND_NVNGX" ]] ; then
+                try_copy_file_with_checksums "${FIND_NVNGX}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
+                try_copy_file_with_checksums "${FIND_NVNGX}/_nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/_nvngx.dll"
+                var_winedlloverride_update "nvngx,_nvngx=n"
+                export NVIDIA_WINE_DLL_DIR="${FIND_NVNGX}"
+            fi
         fi
     else
         export DXVK_ENABLE_NVAPI="0"
