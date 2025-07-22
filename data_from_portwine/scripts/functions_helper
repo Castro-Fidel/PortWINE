@@ -2870,12 +2870,6 @@ pw_skip_get_info () {
             export LSPCI_VGA
         fi
 
-        # TODO: Add NVIDIA Smooth Motion
-        if check_nvidia_rtx ; then
-            check_variables PW_USE_NVAPI_AND_DLSS "1"
-            check_variables PW_USE_RAY_TRACING "1"
-        fi
-
         if [[ -f "${PW_TMPFS_PATH}/xrandr.tmp" ]] ; then
             PW_SCREEN_RESOLUTION="$(<"${PW_TMPFS_PATH}/xrandr.tmp" sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
             PW_SCREEN_PRIMARY="$(grep -e 'primary' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}')"
@@ -3459,11 +3453,9 @@ start_portwine () {
                     -e /'dxgi.hideNvidiaGpu =/c dxgi.hideNvidiaGpu = False' \
                 "${DXVK_CONFIG_FILE}"
 
-                export WINE_HIDE_NVIDIA_GPU="0"
                 export WINE_HIDE_AMD_GPU="1"
                 export DXVK_NVAPI_DRIVER_VERSION="99999"
                 export DXVK_NVAPI_ALLOW_OTHER_DRIVERS="1"
-                export WINEHAGS="1"
                 export PW_USE_NVAPI_AND_DLSS="1"
                 export PW_USE_RAY_TRACING="1"
                 ;;
@@ -3569,8 +3561,21 @@ start_portwine () {
         done
     fi
 
+    # TODO: Add NVIDIA Smooth Motion
+    if check_nvidia_rtx ; then
+        check_variables PW_USE_NVAPI_AND_DLSS "1"
+        check_variables PW_USE_RAY_TRACING "1"
+    fi
+
+    if [[ "${PW_USE_RAY_TRACING}" == "1" ]] ; then
+        var_vkd3d_config_update dxr
+        var_radv_perftest_config_update rt
+    else
+        var_vkd3d_config_update nodxr
+    fi
+
     if [[ "${PW_USE_NVAPI_AND_DLSS}" == "1" ]] ; then
-        try_remove_file "${WINEPREFIX}/drive_c/windows/system32/nvngx.ini"
+        export DXVK_ENABLE_NVAPI="1"
         FIND_NVNGX="$(dirname $(find /usr/* -type f -name "nvngx.dll" 2>/dev/null | head -n 1 | awk '{print $1}'))"
         if [[ -n "$FIND_NVNGX" ]] ; then
             try_copy_file_with_checksums "${FIND_NVNGX}/nvngx.dll" "${WINEPREFIX}/drive_c/windows/system32/nvngx.dll"
@@ -3601,16 +3606,6 @@ start_portwine () {
 
     [[ "${PW_MANGOHUD_USER_CONF}" == 1 ]] && unset MANGOHUD_CONFIG
     [[ "${PW_VKBASALT_USER_CONF}" == 1 ]] && unset PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS
-
-    if [[ "${PW_USE_DXR11}" == 1 ]] \
-    || [[ "${PW_USE_DXR10}" == 1 ]] \
-    || [[ "${PW_USE_RAY_TRACING}" == 1 ]]
-    then
-        var_vkd3d_config_update dxr
-        var_radv_perftest_config_update rt
-    else
-        var_vkd3d_config_update nodxr
-    fi
 
     if [[ "${PW_GPU_USE}" != "disabled" ]] && [[ "${PW_AMD_VULKAN_USE}" == "disabled" ]] ; then
         export DXVK_FILTER_DEVICE_NAME="${PW_GPU_USE}"
