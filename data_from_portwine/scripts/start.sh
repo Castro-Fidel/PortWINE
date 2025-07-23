@@ -567,14 +567,38 @@ if [[ -f "$portwine_exe" ]] ; then
             fi
         fi
 
-        if [[ -z $PW_VULKAN_USE ]] \
-        || (( PW_VULKAN_USE > 2 )) ; then
+        [[ $PW_VULKAN_USE =~ [3-5] ]] && unset PW_VULKAN_USE
+        if [[ -z $PW_VULKAN_USE ]] ; then
             pw_check_vulkan
-            VULKAN_VERSION_CHECK=$(grep "apiVersion" "${PW_TMPFS_PATH}/vulkaninfo.tmp" 2>/dev/null)
-            if [[ $VULKAN_VERSION_CHECK =~ 1.[3-9]. ]] ; then
-                export PW_VULKAN_USE="2"
-            elif [[ $VULKAN_VERSION_CHECK =~ 1.[1-2]. ]] ; then
-                export PW_VULKAN_USE="1"
+            if [[ -f "${PW_TMPFS_PATH}/vulkaninfo.tmp" ]] ; then
+                count="0"
+                while read -r line ; do
+                    [[ $line =~ apiVersion ]] && VULKAN_VERSION_CHECK["$count"]="$line"
+                    [[ $line =~ driverVersion ]] && VULKAN_DRIVER_VERSION["$count"]="$line"
+                    if [[ $line =~ deviceName ]] ; then
+                        if [[ $line =~ "$PW_GPU_USE" ]] ; then
+                            VULKAN_DEVICE_NAME["$count"]="$PW_GPU_USE"
+                            break
+                        else
+                            if [[ $line =~ llvmpipe ]] ; then
+                                unset VULKAN_VERSION_CHECK["$count"] VULKAN_DRIVER_VERSION["$count"]
+                            else
+                                VULKAN_DEVICE_NAME["$count"]="$line"
+                                (( count++ ))
+                            fi
+                        fi
+                    fi
+                done < "${PW_TMPFS_PATH}/vulkaninfo.tmp"
+                if [[ ${VULKAN_VERSION_CHECK[@]} =~ 1.[3-9]+. ]] ; then
+                    if [[ ${VULKAN_DEVICE_NAME[@],,} =~ (amd|intel) && ${VULKAN_DRIVER_VERSION[@]} =~ (2[5-9]|[3-9][0-9]). ]] \
+                    || [[ ${VULKAN_DEVICE_NAME[@],,} =~ nvidia && ${VULKAN_DRIVER_VERSION[@]} =~ (5[5-9][0-9]|[6-9][0-9][0-9]). ]] ; then
+                        export PW_VULKAN_USE="2"
+                    else
+                        export PW_VULKAN_USE="6"
+                    fi
+                elif [[ ${VULKAN_VERSION_CHECK[@]} =~ 1.[1-2]. ]] ; then
+                    export PW_VULKAN_USE="1"
+                fi
             else
                 export PW_VULKAN_USE="0"
             fi
