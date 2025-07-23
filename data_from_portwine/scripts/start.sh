@@ -592,8 +592,10 @@ if [[ -f "$portwine_exe" ]] ; then
                 done < "${PW_TMPFS_PATH}/vulkaninfo.tmp"
                 if [[ ${VULKAN_VERSION_CHECK[*]} =~ 1.[3-9]+. ]] ; then
                     for number in $(seq 0 $(( ${#VULKAN_VERSION_CHECK[@]} - 1 ))) ; do
-                        if [[ ${VULKAN_DEVICE_NAME[$number],,} =~ (amd|intel) && ${VULKAN_DRIVER_VERSION[$number]} =~ (2[5-9]|[3-9][0-9]). ]] \
-                        || [[ ${VULKAN_DEVICE_NAME[$number],,} =~ nvidia && ${VULKAN_DRIVER_VERSION[$number]} =~ (5[5-9][0-9]|[6-9][0-9][0-9]). ]] ; then
+                        VULKAN_DRIVER_VERSION[$number]="${VULKAN_DRIVER_VERSION[$number]//*= /}"
+                        VULKAN_DRIVER_VERSION[$number]="${VULKAN_DRIVER_VERSION[$number]// (*/}"
+                        if [[ ${VULKAN_DEVICE_NAME[$number],,} =~ (amd|intel) && ${VULKAN_DRIVER_VERSION[$number]} > 25 ]] \
+                        || [[ ${VULKAN_DEVICE_NAME[$number],,} =~ nvidia && ${VULKAN_DRIVER_VERSION[$number]} > 550.54.13 ]] ; then
                             export PW_VULKAN_USE="2"
                             break
                         else
