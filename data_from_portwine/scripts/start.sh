@@ -520,7 +520,7 @@ then DIST_ADD_TO_GUI+="!${translations[USE_SYSTEM_WINE]}"
 fi
 
 SORT_OPENGL="${translations[WineD3D OpenGL (For video cards without Vulkan)]}"
-SORT_STABLE="${translations[DXVK-Sarek, VKD3D (Vulkan v1.1+)]}"
+SORT_SAREK="${translations[DXVK-Sarek, VKD3D (Vulkan v1.1+)]}"
 SORT_NEWEST="${translations[Newest DXVK, VKD3D (Vulkan v1.3+)]}"
 
 if [[ $PW_WINE_USE == PROTON_LG ]] ; then
@@ -605,9 +605,9 @@ if [[ -f "$portwine_exe" ]] ; then
         fi
 
         case "$PW_VULKAN_USE" in
-            0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_NEWEST!$SORT_STABLE" ;;
-            1) PW_DEFAULT_VULKAN_USE="$SORT_STABLE!$SORT_NEWEST!$SORT_OPENGL" ;;
-            *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_OPENGL" ;;
+            0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_NEWEST!$SORT_SAREK" ;;
+            1) PW_DEFAULT_VULKAN_USE="$SORT_SAREK!$SORT_NEWEST!$SORT_OPENGL" ;;
+            *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_SAREK!$SORT_OPENGL" ;;
         esac
 
         export KEY_START="$RANDOM"
@@ -857,7 +857,7 @@ else
     else export PW_GUI_SORT_TABS=(2 3 4 5 1)
     fi
 
-    PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_OPENGL"
+    PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_SAREK!$SORT_OPENGL"
 
     KEY_MENU="$RANDOM"
 
@@ -1004,7 +1004,7 @@ fi
 
 case "${VULKAN_MOD}" in
     "$SORT_OPENGL" )     export PW_VULKAN_USE="0" ;;
-    "$SORT_STABLE" )     export PW_VULKAN_USE="1" ;;
+    "$SORT_SAREK"  )     export PW_VULKAN_USE="1" ;;
     "$SORT_NEWEST" )     export PW_VULKAN_USE="2" ;;
 esac
 
