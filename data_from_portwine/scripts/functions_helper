@@ -122,6 +122,7 @@ rm_from_array () {
             if [[ \$rm_names =~ \$element ]] ; then
                 unset $array_name[\$count]
                 $array_name=(\${$array_name[@]})
+                ((count--))
             fi
             ((count++))
         done"
@@ -2920,7 +2921,7 @@ pw_skip_get_info () {
             export AMD_VULKAN_DRIVER_LIST
             export AMD_VULKAN_CB=":CB"
         else
-            export AMD_VULKAN_CB=":DCB"
+            export AMD_VULKAN_CB=":LBLH"
         fi
 
         logical_cores=$(grep -c ^"processor" /proc/cpuinfo)
@@ -5373,6 +5374,13 @@ gui_edit_db () {
     PW_USE_WINED3D_VULKAN PW_USE_SUPPLIED_DXVK_VKD3D PW_USE_NATIVE_WAYLAND PW_USE_DXVK_HDR
     )
 
+    if check_wayland_session
+    then rm_from_array "PW_EDIT_DB_LIST" PW_USE_US_LAYOUT
+    else rm_from_array "PW_EDIT_DB_LIST" PW_USE_NATIVE_WAYLAND PW_USE_DXVK_HDR
+    fi
+    if [[ $PW_WINE_USE =~ (PROTON_LG|WINE_LG) ]] || [[ $PW_VULKAN_USE == "0" ]] ; then
+        rm_from_array "PW_EDIT_DB_LIST" PW_USE_SUPPLIED_DXVK_VKD3D
+    fi
     check_flatpak && rm_from_array "PW_EDIT_DB_LIST" PW_USE_RUNTIME
 
     # GALLIUM NINE
@@ -5447,17 +5455,7 @@ gui_edit_db () {
             ;;
     esac
 
-    if [[ $PW_WINE_USE =~ (PROTON_LG|WINE_LG) ]] \
-    || [[ $PW_VULKAN_USE == "0" ]] ; then
-        DISABLE_EDIT_DB_LIST+=" PW_USE_SUPPLIED_DXVK_VKD3D"
-    fi
-
     [[ ! -e "/dev/ntsync" ]] && DISABLE_EDIT_DB_LIST+=" PW_USE_NTSYNC"
-
-    if check_wayland_session
-    then DISABLE_EDIT_DB_LIST+=" PW_USE_US_LAYOUT"
-    else DISABLE_EDIT_DB_LIST+=" PW_USE_NATIVE_WAYLAND PW_USE_DXVK_HDR"
-    fi
 
     unset ADD_CHK_BOX_EDIT_DB
     for int_to_boole in "${PW_EDIT_DB_LIST[@]}" ; do
@@ -5527,6 +5525,14 @@ gui_edit_db () {
         AMD_VULKAN_VAR="disabled"
     fi
 
+    [[ $AMD_VULKAN_CB == ":LBLH" ]] && translations[Select needed AMD vulkan implementation]=""
+    if [[ $NUMA_NODE_LIST == "0" ]] ; then
+        NUDA_CPU_CB=":LBLH"
+        translations[NUMA node for CPU affinity]=""
+    else
+        NUDA_CPU_CB=":CB"
+    fi
+
     "${pw_yad}" --plug=$KEY_EDIT_DB_GUI --tabnum="2" --form --separator="%" --columns=1 \
     --field="${translations[Change the version of <b>WINDOWS</b> emulation]}!${translations[Changing the <b>WINDOWS</b> emulation version may be required to run older games. <b>WINDOWS</b> versions below 10 do not support new games with DirectX 12]} :CB" "${ADD_WINVER_EDIT_DB}" \
     --field="${translations[AUTOINSTALL WITH <b>WINETRICKS</b>]}!${translations[Automatically install with <b>WINETRICKS</b> additional libraries required to run the game/program. List of libraries separated by spaces]} :CBE" "$(combobox_fix --empty "${PW_DLL_INSTALL}" "vcrun2019 corefonts lucida")" \
@@ -5551,7 +5557,7 @@ mailbox - Triple buffering. Unlimited frame rate + no tearing.
 relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]} :CB" "$(combobox_fix --disabled "${PW_MESA_VK_WSI_PRESENT_MODE}" "fifo!immediate!mailbox!relaxed")" \
     --field="${translations[Select needed AMD vulkan implementation]}!${translations[Choosing which implementation of vulkan will be used to run the game]} $AMD_VULKAN_CB" "$(combobox_fix --disabled "$AMD_VULKAN_VAR" "$AMD_VULKAN_DRIVER_LIST")" \
     --field="${translations[NUMA node for CPU affinity]}!${translations[In multi‑core systems, CPUs are split into NUMA nodes, each with its own local memory and cores.
-Binding a game to a single node reduces memory‑access latency and limits costly core‑to‑core switches.)]} :CB" "$(combobox_fix --disabled "${NUMA_NODE_INDEX}" "${NUMA_NODE_LIST}")" \
+Binding a game to a single node reduces memory‑access latency and limits costly core‑to‑core switches.)]} $NUDA_CPU_CB" "$(combobox_fix --disabled "${NUMA_NODE_INDEX}" "${NUMA_NODE_LIST}")" \
     1> "$PW_TMPFS_PATH/tmp_output_yad_fps_limit" 2>/dev/null &
 
     "${pw_yad}" --notebook --key="$KEY_EDIT_DB_GUI" --title "${translations[EDIT DB]}" --text-align=center \
