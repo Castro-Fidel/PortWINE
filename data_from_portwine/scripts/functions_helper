@@ -5116,57 +5116,61 @@ gui_proton_downloader () {
 
     pw_start_progress_bar_block "${translations[Check new version WINE...]}"
 
+    METADATA_URL="https://git.linux-gaming.ru/Boria138/PortProton-Wine-Metadata/raw/branch/main/wine_metadata.json"
+    METADATA=$(curl -s "$METADATA_URL")
+    if [[ -z "$METADATA" ]] ; then
+        yad_error "${translations[Error: failed to fetch metadata.]}"
+        restart_pp
+    fi
+
     # PROTON_GE
-    read -r -d '' -a PROTON_GE_GIT < <(curl -s "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases" | grep "browser_download_url.*\.tar\.gz" | cut -d \" -f 4)
+    PROTON_GE_GIT=($(echo "$METADATA" | jq -r '.proton_ge[]?.name' 2>/dev/null))
     if [[ -n "${PROTON_GE_GIT[0]}" ]] ; then
         for PGEGIT in "${PROTON_GE_GIT[@]}" ; do
-            echo "${PGEGIT}" | awk -F/ '{print $NF}' | sed 's/.tar.gz//' >> "${PW_TMPFS_PATH}/tmp_proton_ge_git"
+            echo "${PGEGIT}" >> "${PW_TMPFS_PATH}/tmp_proton_ge_git"
         done
-        sed -i -e '/Proton-6.5-GE-2/,$d' -e '/github-action/d' -e '/^$/d' "${PW_TMPFS_PATH}/tmp_proton_ge_git"
     fi
 
     # WINE_KRON4EK
-    read -r -d '' -a WINE_KRON4EK < <(curl -s "https://api.github.com/repos/Kron4ek/Wine-Builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4)
+    WINE_KRON4EK=($(echo "$METADATA" | jq -r '.wine_kron4ek[]?.name' 2>/dev/null))
     if [[ -n "${WINE_KRON4EK[0]}" ]] ; then
         for PGEGIT in "${WINE_KRON4EK[@]}" ; do
-            echo "${PGEGIT}" | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
+            echo "${PGEGIT}" >> "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
         done
-        sed -i -e '/6.3/,$d' -e '/-x86/d' -e '/-wow64/d' -e '/^$/d' "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
     fi
 
     # PROTON_LG
-    read -r -d '' -a PROTON_PW_GIT < <(curl -s "https://api.github.com/repos/Castro-Fidel/wine_builds/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4 | sort -r)
+    PROTON_PW_GIT=($(echo "$METADATA" | jq -r '.proton_lg[]?.name' 2>/dev/null))
     if [[ -n "${PROTON_PW_GIT[0]}" ]] ; then
         for PPWGIT in "${PROTON_PW_GIT[@]}" ; do
-            echo "${PPWGIT}" | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_proton_pw_git"
+            echo "${PPWGIT}" >> "${PW_TMPFS_PATH}/tmp_proton_pw_git"
         done
-        sed -i -e "/${PW_WINE_LG_VER}/d" -e '/plugins/d' -e '/^$/d' "${PW_TMPFS_PATH}/tmp_proton_pw_git"
     fi
- 
-     # PROTON_CACHYOS
-    read -r -d '' -a PROTON_CACHYOS_GIT < <(curl -s "https://api.github.com/repos/CachyOS/proton-cachyos/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4 | grep -v "v3" | grep -v "znver4")
+
+    # PROTON_CACHYOS
+    PROTON_CACHYOS_GIT=($(echo "$METADATA" | jq -r '.proton_cachyos[]?.name' 2>/dev/null))
     if [[ -n "${PROTON_CACHYOS_GIT[0]}" ]] ; then
         for PGEGIT in "${PROTON_CACHYOS_GIT[@]}" ; do
-            echo "${PGEGIT}" | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_proton_cachyos_git"
+            echo "${PGEGIT}" >> "${PW_TMPFS_PATH}/tmp_proton_cachyos_git"
         done
     fi
 
-     # PROTON_SAREK
-    read -r -d '' -a PROTON_SAREK_GIT < <(curl -s "https://api.github.com/repos/pythonlover02/Proton-Sarek/releases" | grep "browser_download_url.*\.tar\.gz" | cut -d \" -f 4)
+    # PROTON_SAREK
+    PROTON_SAREK_GIT=($(echo "$METADATA" | jq -r '.proton_sarek[]?.name' 2>/dev/null))
     if [[ -n "${PROTON_SAREK_GIT[0]}" ]] ; then
         for PGEGIT in "${PROTON_SAREK_GIT[@]}" ; do
-            echo "${PGEGIT}" | awk -F/ '{print $NF}' | sed 's/.tar.gz//' >> "${PW_TMPFS_PATH}/tmp_proton_sarek_git"
+            echo "${PGEGIT}" >> "${PW_TMPFS_PATH}/tmp_proton_sarek_git"
         done
     fi
 
-     # Proton-EM
-    read -r -d '' -a PROTON_EM_GIT < <(curl -s "https://api.github.com/repos/Etaash-mathamsetty/Proton/releases" | grep "browser_download_url.*\.tar\.xz" | cut -d \" -f 4)
+    # PROTON_EM
+    PROTON_EM_GIT=($(echo "$METADATA" | jq -r '.proton_em[]?.name' 2>/dev/null))
     if [[ -n "${PROTON_EM_GIT[0]}" ]] ; then
         for PGEGIT in "${PROTON_EM_GIT[@]}" ; do
-            echo "${PGEGIT}" | awk -F/ '{print $NF}' | sed 's/.tar.xz//' >> "${PW_TMPFS_PATH}/tmp_proton_em_git"
+            echo "${PGEGIT}" >> "${PW_TMPFS_PATH}/tmp_proton_em_git"
         done
     fi
-    
+
     pw_stop_progress_bar
 
     if [[ -z "${PROTON_PW_GIT}" ]] ; then
@@ -5289,17 +5293,31 @@ gui_proton_downloader () {
     fi
 
     pw_download_get_wine () {
-        print_info "Download and install ${VERSION_WINE_GIT}..."
-        FILENAME="$(basename "${URL_VERSION_PROTON_GIT}")"
-        if [[ "${URL_VERSION_PROTON_GIT}" =~ _LG ]]
-        then USE_MIRROR=""
-        else USE_MIRROR="no_mirror"
+        local VERSION="$1"
+        print_info "Download and install ${VERSION}..."
+        URL_VERSION_PROTON_GIT=$(echo "$METADATA" | jq -r --arg version "$VERSION" '[
+            (.proton_ge[] | select(.name == $version) | .url),
+            (.wine_kron4ek[] | select(.name == $version) | .url),
+            (.proton_lg[] | select(.name == $version) | .url),
+            (.proton_cachyos[] | select(.name == $version) | .url),
+            (.proton_sarek[] | select(.name == $version) | .url),
+            (.proton_em[] | select(.name == $version) | .url)
+        ] | .[]' | head -n 1)
+        if [[ -z "$URL_VERSION_PROTON_GIT" ]]; then
+            yad_error "${translations[Error: no URL found for version ${VERSION}.]}"
+            return 1
+        fi
+        FILENAME=$(echo "$URL_VERSION_PROTON_GIT" | awk -F/ '{print $NF}')
+        if [[ "$URL_VERSION_PROTON_GIT" =~ _LG ]]; then
+            USE_MIRROR=""
+        else
+            USE_MIRROR="no_mirror"
         fi
         if try_download "${URL_VERSION_PROTON_GIT}" "${PORT_WINE_PATH}/data/tmp/$FILENAME" "$USE_MIRROR" ; then
             if unpack "${PORT_WINE_PATH}/data/tmp/${FILENAME}" "${PORT_WINE_PATH}/data/dist/" ; then
                 try_remove_file "${PORT_WINE_PATH}/data/tmp/${FILENAME}"
                 if [[ -n "${portwine_exe}" ]] ; then
-                    PW_WINE_USE=${VERSION_WINE_GIT^^}
+                    PW_WINE_USE=${VERSION^^}
                     edit_db_from_gui PW_WINE_USE
                 fi
             else
@@ -5333,23 +5351,12 @@ gui_proton_downloader () {
 
     if [[ "$1" != "silent" ]] ; then
         for GIVE_ALL_WINE in ${VERSION_WINE_GIT} ; do
-            for GIVE_WINE_URL in "${PROTON_GE_GIT[@]}" "${WINE_KRON4EK[@]}" "${PROTON_PW_GIT[@]}" "${PROTON_CACHYOS_GIT[@]}" "${PROTON_SAREK_GIT[@]}" "${PROTON_EM_GIT[@]}" ; do
-                if [[ ${GIVE_WINE_URL^^} =~ ${GIVE_ALL_WINE^^}.TAR ]] ; then
-                    export URL_VERSION_PROTON_GIT=$GIVE_WINE_URL
-                fi
-            done
-            pw_download_get_wine ""
+            pw_download_get_wine "$GIVE_ALL_WINE"
         done
         edit_db_from_gui
         restart_pp
     else
-        print_error "$PW_WINE_USE"
-        for GIVE_WINE_URL in "${PROTON_GE_GIT[@]}" "${WINE_KRON4EK[@]}" "${PROTON_PW_GIT[@]}" "${PROTON_CACHYOS_GIT[@]}" "${PROTON_SAREK_GIT[@]}" "${PROTON_EM_GIT[@]}" ; do
-            if [[ ${GIVE_WINE_URL^^} =~ ${PW_WINE_USE^^} ]] ; then
-                export URL_VERSION_PROTON_GIT=$GIVE_WINE_URL
-            fi
-        done
-        pw_download_get_wine ""
+        pw_download_get_wine "$VERSION_WINE_GIT"
     fi
 }
 export -f gui_proton_downloader
