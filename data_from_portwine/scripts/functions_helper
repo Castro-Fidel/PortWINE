@@ -2696,6 +2696,8 @@ pw_port_update () {
         return 0
     fi
 
+    tmp_next_ver=$(grep "SCRIPTS_NEXT_VERSION" "${PORT_WINE_TMP_PATH}/curent_var_ver" | awk -F "=" '{print $2}')
+    tmp_stab_ver=$(grep "SCRIPTS_STABLE_VERSION" "${PORT_WINE_TMP_PATH}/curent_var_ver" | awk -F "=" '{print $2}')
     scripts_current_ver=$(grep "$BRANCH_VERSION_UPDATE" "${PORT_WINE_TMP_PATH}/curent_var_ver" | awk -F "=" '{print $2}')
     if [[ ! -f "${PORT_WINE_TMP_PATH}/update_remind_later" ]] ; then
         echo "$scripts_current_ver" > "${PORT_WINE_TMP_PATH}/update_remind_later"
@@ -2727,7 +2729,6 @@ pw_port_update () {
             else
                 curl -s --list-only "${URL_FOR_CHANGELOG}/${PW_CHANGELOG_FILE}" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
                 sed -i "/Scripts version ${scripts_install_ver}/,$ d" "${PORT_WINE_TMP_PATH}/curent_var_ver"
-
                 "${pw_yad}" --title "${translations[Update scripts:]} v.(${scripts_install_ver}${BRANCH_VERSION})" \
                 --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --width=1280 --height=720 --text-info --wrap --scroll \
                 --button="${translations[DO NOT REMIND ME]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!":16 \
@@ -2768,6 +2769,7 @@ pw_port_update () {
                             try_remove_dir "${PORT_WINE_TMP_PATH}/$PW_NAME_ARCHIVE/"
                             echo "${scripts_current_ver}" > "${PORT_WINE_TMP_PATH}/scripts_ver"
                             unset SKIP_CHECK_UPDATES
+                            [[ "$tmp_next_ver" == "$tmp_stab_ver" ]] && echo "Stable update."
                             echo "Restarting PP after update..."
                             restart_pp
                         fi
