@@ -571,17 +571,18 @@ if [[ -f "$portwine_exe" ]] ; then
         if [[ -z $PW_VULKAN_USE ]] ; then
             pw_check_vulkan
             if [[ -f "${PW_TMPFS_PATH}/vulkaninfo.tmp" ]] ; then
+                unset VULKAN_VERSION_CHECK VULKAN_DRIVER_VERSION VULKAN_DEVICE_NAME
                 count="0"
                 while read -r line ; do
                     [[ $line =~ apiVersion ]] && VULKAN_VERSION_CHECK["$count"]="$line"
                     [[ $line =~ driverVersion ]] && VULKAN_DRIVER_VERSION["$count"]="$line"
                     if [[ $line =~ deviceName ]] ; then
-                        if [[ $line =~ "$PW_GPU_USE" ]] ; then
+                        if [[ $line == *"$PW_GPU_USE"* ]] ; then
                             VULKAN_DEVICE_NAME["$count"]="$PW_GPU_USE"
                             break
                         else
                             if [[ $line =~ llvmpipe ]] ; then
-                                unset VULKAN_VERSION_CHECK["$count"] VULKAN_DRIVER_VERSION["$count"]
+                                unset 'VULKAN_VERSION_CHECK["$count"]' 'VULKAN_DRIVER_VERSION["$count"]'
                             else
                                 VULKAN_DEVICE_NAME["$count"]="$line"
                                 (( count++ ))
@@ -589,14 +590,17 @@ if [[ -f "$portwine_exe" ]] ; then
                         fi
                     fi
                 done < "${PW_TMPFS_PATH}/vulkaninfo.tmp"
-                if [[ ${VULKAN_VERSION_CHECK[@]} =~ 1.[3-9]+. ]] ; then
-                    if [[ ${VULKAN_DEVICE_NAME[@],,} =~ (amd|intel) && ${VULKAN_DRIVER_VERSION[@]} =~ (2[5-9]|[3-9][0-9]). ]] \
-                    || [[ ${VULKAN_DEVICE_NAME[@],,} =~ nvidia && ${VULKAN_DRIVER_VERSION[@]} =~ (5[5-9][0-9]|[6-9][0-9][0-9]). ]] ; then
-                        export PW_VULKAN_USE="2"
-                    else
-                        export PW_VULKAN_USE="6"
-                    fi
-                elif [[ ${VULKAN_VERSION_CHECK[@]} =~ 1.[1-2]. ]] ; then
+                if [[ ${VULKAN_VERSION_CHECK[*]} =~ 1.[3-9]+. ]] ; then
+                    for number in $(seq 0 $(( ${#VULKAN_VERSION_CHECK[@]} - 1 ))) ; do
+                        if [[ ${VULKAN_DEVICE_NAME[$number],,} =~ (amd|intel) && ${VULKAN_DRIVER_VERSION[$number]} =~ (2[5-9]|[3-9][0-9]). ]] \
+                        || [[ ${VULKAN_DEVICE_NAME[$number],,} =~ nvidia && ${VULKAN_DRIVER_VERSION[$number]} =~ (5[5-9][0-9]|[6-9][0-9][0-9]). ]] ; then
+                            export PW_VULKAN_USE="2"
+                            break
+                        else
+                            export PW_VULKAN_USE="6"
+                        fi
+                    done
+                elif [[ ${VULKAN_VERSION_CHECK[*]} =~ 1.[1-2]. ]] ; then
                     export PW_VULKAN_USE="1"
                 fi
             else
