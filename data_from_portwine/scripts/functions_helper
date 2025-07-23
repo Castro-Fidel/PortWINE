@@ -2160,8 +2160,8 @@ pw_check_and_download_wine () {
 }
 
 pw_check_and_download_dxvk_and_vkd3d () {
-    # Download stable and git version DXVK
-    for DXVK_VAR_VER in "${DXVK_STABLE_VER}" "${DXVK_GIT_VER}" ; do
+    # Download DXVK versions
+    for DXVK_VAR_VER in "${DXVK_SAREK_VER}" "${DXVK_GIT_VER}" ; do
         if [[ ! -d "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}" ]] ; then
             print_info "Download and install DXVK v.${DXVK_VAR_VER}"
             if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/dxvk-${DXVK_VAR_VER}/dxvk-${DXVK_VAR_VER}.tar.xz" \
@@ -2190,8 +2190,8 @@ pw_check_and_download_dxvk_and_vkd3d () {
         fi
     done
 
-    # Download stable and git version VKD3D
-    for VKD3D_VAR_VER in "${VKD3D_STABLE_VER}" "${VKD3D_GIT_VER}" ; do
+    # Download VKD3D versions
+    for VKD3D_VAR_VER in "${VKD3D_SAREK_VER}" "${VKD3D_GIT_VER}" ; do
         if [[ ! -d "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}" ]] ; then
             print_info "Download and install VKD3D-PROTON v.${VKD3D_VAR_VER}"
             if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/vkd3d-proton-${VKD3D_VAR_VER}/vkd3d-proton-${VKD3D_VAR_VER}.tar.xz" \
@@ -3796,17 +3796,17 @@ fi
             CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d9 d3d8 dxgi"
             ;;
         1)
-            # STABLE DXVK AND VKD3D
-            print_info "DXVK v.${DXVK_STABLE_VER} in use"
-            print_info "VKD3D-PROTON v.${VKD3D_STABLE_VER} in use"
+            # DXVK-Sarek AND VKD3D
+            print_info "DXVK v.${DXVK_SAREK_VER} in use"
+            print_info "VKD3D-PROTON v.${VKD3D_SAREK_VER} in use"
             if [[ $PW_USE_SAREK_ASYNC == "1" ]] ; then
-                PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}/sarek-async"
+                PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_SAREK_VER}/sarek-async"
                 export ASYNC_DRAW_CALL_THRESHOLD="1"
                 export DXVK_ALL_CORES="1"
             else
-                PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_STABLE_VER}/sarek"
+                PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_SAREK_VER}/sarek"
             fi
-            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_STABLE_VER}"
+            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_SAREK_VER}"
             CP_DXVK_FILES="d3d11 d3d10core d3d9 d3d8 dxgi"
             [[ "$PW_USE_VRCLIENT" = "1" ]] && add_to_var CP_DXVK_FILES "openvr_api_dxvk"
             CP_VKD3D_FILES="d3d12 libvkd3d-1 libvkd3d-shader-1"
@@ -5472,7 +5472,7 @@ gui_edit_db () {
             DISABLE_EDIT_DB_LIST="PW_VKBASALT PW_VKBASALT_USER_CONF PW_USE_RAY_TRACING PW_USE_OBS_VKCAPTURE PW_USE_GALLIUM_ZINK PW_USE_WINED3D_VULKAN"
             ;;
         1|2)
-            # Stable, Newest
+            # Sarek, Newest
             VKD3D_CB="CB"
             ;;
     esac
@@ -6060,7 +6060,7 @@ gui_dgvoodoo2 () {
     PW_DGV2_INACTIVE_APP_STATE
     )
 
-    PW_DGV2_USE_DX12_INFO=${translations[Use DirectX12 for dgVoodoo2. Doesnt always work better. (Working only on newest and stable dxvk/vkd3d) (Direct3D and Glide settings)]}
+    PW_DGV2_USE_DX12_INFO=${translations[Use DirectX12 for dgVoodoo2. Doesnt always work better. (Working only on newest and sarek dxvk/vkd3d) (Direct3D and Glide settings)]}
     PW_DGV2_FORCE_VSYNC_INFO=${translations[Force the vertical sync to avoid tearing or prevent the GPU from rendering at crazy high speed. Keep in mind that some application need unforced vSync because of synchronization reasons. (Direct3D settings)]}
     PW_DGV2_DGVOODOO_WATERMARK_INFO=${translations[Shows the dgVoodoo watermark in-game when enabled. (Direct3D settings)]}
     PW_DGV2_ENABLE_CRT_INFO=${translations[CRT-like blurred appearance. (Direct3D and Glide settings)]}
@@ -7119,7 +7119,7 @@ portwine_start_debug () {
     echo "--------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
     case "$PW_VULKAN_USE" in
         0) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DirectX to wined3d opengl" >> "${PORT_WINE_PATH}/PortProton.log" ;;
-        1) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_STABLE_VER}, VKD3D-PROTON v.${VKD3D_STABLE_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
+        1) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_SAREK_VER}, VKD3D-PROTON v.${VKD3D_SAREK_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
         2) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_GIT_VER}, VKD3D-PROTON v.${VKD3D_GIT_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
         *) echo "PW_VULKAN_USE=${PW_VULKAN_USE}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
     esac
