@@ -558,6 +558,24 @@ if [[ -f "$portwine_exe" ]] ; then
         unset RESTART_PP_USED
         gui_userconf
     fi
+
+    if [[ -z $PW_VULKAN_USE ]] \
+    || [[ $PW_VULKAN_USE == [3-5] ]]
+    then
+        if [[ -e "/sys/module/nvidia/version" ]] ;then
+            if [[ $(</sys/module/nvidia/version) > 550.54.13 ]]
+            then export PW_VULKAN_USE="6"
+            else export PW_VULKAN_USE="2"
+            fi
+        else
+            background_pid --stop "pw_check_glxinfo" "2"
+            if [[ $(grep "Version:" "$PW_TMPFS_PATH/glxinfo.tmp" | awk '{print $2}') > 24.9.9 ]]
+            then export PW_VULKAN_USE="6"
+            else export PW_VULKAN_USE="2"
+            fi
+        fi
+    fi
+
     if [[ $PW_GUI_DISABLED_CS != 1 ]] ; then
         pw_create_gui_png
         if ! grep -il "$portwine_exe" "$PORT_WINE_PATH"/*.desktop &>/dev/null ; then
@@ -574,23 +592,6 @@ if [[ -f "$portwine_exe" ]] ; then
                 PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$PW_NAME_DESKTOP_PROXY" "50")</b>"
             else
                 PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$PW_NAME_DESKTOP_PROXY" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
-            fi
-        fi
-
-        if [[ -z $PW_VULKAN_USE ]] \
-        || [[ $PW_VULKAN_USE == [3-5] ]]
-        then
-            if [[ -e "/sys/module/nvidia/version" ]] ;then
-                if [[ $(</sys/module/nvidia/version) > 550.54.13 ]]
-                then export PW_VULKAN_USE="6"
-                else export PW_VULKAN_USE="2"
-                fi
-            else
-                background_pid --stop "pw_check_glxinfo" "2"
-                if [[ $(grep "Version:" "$PW_TMPFS_PATH/glxinfo.tmp" | awk '{print $2}') > 24.9.9 ]]
-                then export PW_VULKAN_USE="6"
-                else export PW_VULKAN_USE="2"
-                fi
             fi
         fi
 
