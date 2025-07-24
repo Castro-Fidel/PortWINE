@@ -536,7 +536,7 @@ if [[ -z $PW_VULKAN_USE ]] \
 || [[ $PW_VULKAN_USE == [3-5] ]]
 then
     if [[ -e "/sys/module/nvidia/version" && $(</sys/module/nvidia/version) > 550.54.13 ]] \
-    || [[ pw_check_glxinfo && $(grep "Version:" "$PW_TMPFS_PATH/glxinfo.tmp" | awk '{print $2}') > 25 ]]
+    || [[ $(pw_check_glxinfo) && $(grep "Version:" "$PW_TMPFS_PATH/glxinfo.tmp" | awk '{print $2}') > 25 ]]
     then export PW_VULKAN_USE="6"
     else export PW_VULKAN_USE="2"
     fi
