@@ -307,6 +307,7 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     export PW_FILESYSTEM
 
     background_pid --start "pw_get_tmp_files" "1"
+    background_pid --start "pw_check_glxinfo" "2"
 fi
 
 # create lock file
@@ -532,24 +533,6 @@ SORT_SAREK="${translations[DXVK, VKD3D (Sarek) (Vulkan v1.1+)]}"
 SORT_STABLE="${translations[DXVK, VKD3D (Stable) (Vulkan v1.3+)]}"
 SORT_NEWEST="${translations[DXVK, VKD3D (Newest) (Vulkan v1.3+)]}"
 
-if [[ -z $PW_VULKAN_USE ]] \
-|| [[ $PW_VULKAN_USE == [3-5] ]]
-then
-    pw_check_glxinfo
-    if [[ -e "/sys/module/nvidia/version" && $(</sys/module/nvidia/version) > 550.54.13 ]] \
-    || [[ $(grep "Version:" "$PW_TMPFS_PATH/glxinfo.tmp" | awk '{print $2}') > 25 ]]
-    then export PW_VULKAN_USE="6"
-    else export PW_VULKAN_USE="2"
-    fi
-fi
-
-case "$PW_VULKAN_USE" in
-    0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_NEWEST!$SORT_STABLE!$SORT_SAREK" ;;
-    1) PW_DEFAULT_VULKAN_USE="$SORT_SAREK!$SORT_NEWEST!$SORT_STABLE!$SORT_OPENGL" ;;
-    2) PW_DEFAULT_VULKAN_USE="$SORT_STABLE!$SORT_NEWEST!$SORT_SAREK!$SORT_OPENGL" ;;
-    *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_SAREK!$SORT_OPENGL" ;;
-esac
-
 if [[ $PW_WINE_USE == PROTON_LG ]] ; then
     PW_WINE_USE="${PW_PROTON_LG_VER}"
     PW_DEFAULT_WINE_USE="${PW_WINE_LG_VER}${DIST_ADD_TO_GUI}!${translations[GET-OTHER-WINE]}"
@@ -593,6 +576,30 @@ if [[ -f "$portwine_exe" ]] ; then
                 PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$PW_NAME_DESKTOP_PROXY" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
             fi
         fi
+
+        if [[ -z $PW_VULKAN_USE ]] \
+        || [[ $PW_VULKAN_USE == [3-5] ]]
+        then
+            if [[ -e "/sys/module/nvidia/version" ]] ;then
+                if [[ $(</sys/module/nvidia/version) > 550.54.13 ]]
+                then export PW_VULKAN_USE="6"
+                else export PW_VULKAN_USE="2"
+                fi
+            else
+                background_pid --stop "pw_check_glxinfo" "2"
+                if [[ $(grep "Version:" "$PW_TMPFS_PATH/glxinfo.tmp" | awk '{print $2}') > 24.9.9 ]]
+                then export PW_VULKAN_USE="6"
+                else export PW_VULKAN_USE="2"
+                fi
+            fi
+        fi
+
+        case "$PW_VULKAN_USE" in
+            0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_NEWEST!$SORT_STABLE!$SORT_SAREK" ;;
+            1) PW_DEFAULT_VULKAN_USE="$SORT_SAREK!$SORT_NEWEST!$SORT_STABLE!$SORT_OPENGL" ;;
+            2) PW_DEFAULT_VULKAN_USE="$SORT_STABLE!$SORT_NEWEST!$SORT_SAREK!$SORT_OPENGL" ;;
+            *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_SAREK!$SORT_OPENGL" ;;
+        esac
 
         export KEY_START="$RANDOM"
         if [[ $PW_GUI_START == "NOTEBOOK" ]] ; then
@@ -840,6 +847,8 @@ else
     then export PW_GUI_SORT_TABS=(1 2 3 4 5)
     else export PW_GUI_SORT_TABS=(2 3 4 5 1)
     fi
+
+    PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_SAREK!$SORT_OPENGL"
 
     KEY_MENU="$RANDOM"
 

@@ -871,9 +871,7 @@ check_vendor_gpu () {
     fi
 
     if command -v glxinfo &>/dev/null ; then
-        if [[ ! -f "${PW_TMPFS_PATH}/glxinfo.tmp" ]] ; then
-            glxinfo -B &> "${PW_TMPFS_PATH}/glxinfo.tmp"
-        fi
+        pw_check_glxinfo
         case "$(<"${PW_TMPFS_PATH}/glxinfo.tmp" tr '[:upper:]' '[:lower:]')" in
             *nvidia*)
                 [[ -d /sys/bus/pci/drivers/nvidia ]] && VENDOR_GPU_USE+=("nvidia")
@@ -2828,7 +2826,6 @@ pw_get_tmp_files () {
     done
 
     pw_check_vulkan
-    pw_check_glxinfo
 
     # GALLIUM NINE
     unset FIND_D3D_MODULE D3D_MODULE_PATH
