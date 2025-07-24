@@ -2162,7 +2162,7 @@ pw_check_and_download_wine () {
 
 pw_check_and_download_dxvk_and_vkd3d () {
     # Download DXVK versions
-    for DXVK_VAR_VER in "${DXVK_SAREK_VER}" "${DXVK_GIT_VER}" ; do
+    for DXVK_VAR_VER in "${DXVK_SAREK_VER}" "${DXVK_OLD_VER}" "${DXVK_NEW_VER}" ; do
         if [[ ! -d "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}" ]] ; then
             print_info "Download and install DXVK v.${DXVK_VAR_VER}"
             if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/dxvk-${DXVK_VAR_VER}/dxvk-${DXVK_VAR_VER}.tar.xz" \
@@ -2192,7 +2192,7 @@ pw_check_and_download_dxvk_and_vkd3d () {
     done
 
     # Download VKD3D versions
-    for VKD3D_VAR_VER in "${VKD3D_SAREK_VER}" "${VKD3D_GIT_VER}" ; do
+    for VKD3D_VAR_VER in "${VKD3D_SAREK_VER}" "${VKD3D_OLD_VER}" "${VKD3D_NEW_VER}" ; do
         if [[ ! -d "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}" ]] ; then
             print_info "Download and install VKD3D-PROTON v.${VKD3D_VAR_VER}"
             if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/vkd3d-proton-${VKD3D_VAR_VER}/vkd3d-proton-${VKD3D_VAR_VER}.tar.xz" \
@@ -3765,7 +3765,7 @@ fi
             # WINED3D OPENGL
             print_info "Use WINED3D OpenGL"
             unset PW_VKBASALT PW_USE_GALLIUM_ZINK PW_USE_WINED3D_VULKAN PW_USE_SUPPLIED_DXVK_VKD3D
-            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
+            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_NEW_VER}"
             CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
             CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d9 d3d8 dxgi"
             ;;
@@ -3782,28 +3782,38 @@ fi
             fi
             PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_SAREK_VER}"
             CP_DXVK_FILES="d3d11 d3d10core d3d9 d3d8 dxgi"
-            [[ "$PW_USE_VRCLIENT" = "1" ]] && add_to_var CP_DXVK_FILES "openvr_api_dxvk"
             CP_VKD3D_FILES="d3d12 libvkd3d-1 libvkd3d-shader-1"
             CP_WINE_FILES="d3d12core d3d10_1 d3d10"
             ;;
         2)
             # NEWEST DXVK AND VKD3D
-            print_info "DXVK v.${DXVK_GIT_VER} in use"
-            print_info "VKD3D-PROTON v.${VKD3D_GIT_VER} in use"
-            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}"
-            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
+            print_info "DXVK v.${DXVK_NEW_VER} in use"
+            print_info "VKD3D-PROTON v.${VKD3D_NEW_VER} in use"
+            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_NEW_VER}"
+            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_NEW_VER}"
             CP_DXVK_FILES="d3d11 d3d10core d3d9 d3d8 dxgi"
-            [[ "$PW_USE_VRCLIENT" = "1" ]] && add_to_var CP_DXVK_FILES "openvr_api_dxvk"
+            CP_VKD3D_FILES="d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1"
+            CP_WINE_FILES="d3d10_1 d3d10"
+            ;;
+        6)
+            # STABLE DXVK AND VKD3D
+            print_info "DXVK v.${DXVK_OLD_VER} in use"
+            print_info "VKD3D-PROTON v.${VKD3D_OLD_VER} in use"
+            PATH_TO_DXVK_FILES="${PW_VULKAN_DIR}/dxvk-${DXVK_OLD_VER}"
+            PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_OLD_VER}"
+            CP_DXVK_FILES="d3d11 d3d10core d3d9 d3d8 dxgi"
             CP_VKD3D_FILES="d3d12 d3d12core libvkd3d-1 libvkd3d-shader-1"
             CP_WINE_FILES="d3d10_1 d3d10"
             ;;
     esac
 
+    [[ "$PW_USE_VRCLIENT" = "1" ]] && add_to_var CP_DXVK_FILES "openvr_api_dxvk"
+
     if [[ $PW_USE_GALLIUM_NINE == "1" ]] \
     || [[ $PW_USE_GALLIUM_ZINK == "1" ]] \
     || [[ $PW_USE_WINED3D_VULKAN == "1" ]] ; then
         unset PATH_TO_DXVK_FILES CP_DXVK_FILES PW_USE_SUPPLIED_DXVK_VKD3D
-        PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_GIT_VER}"
+        PATH_TO_VKD3D_FILES="${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_NEW_VER}"
         CP_VKD3D_FILES="libvkd3d-1 libvkd3d-shader-1"
         CP_WINE_FILES="d3d12 d3d12core d3d11 d3d10core d3d10_1 d3d10 d3d9 d3d8 dxgi"
     fi
@@ -3942,7 +3952,7 @@ fi
         done
         # DGVOODOO2 settings:
         if [[ "${PW_DGV2_USE_DX12}" == "1" ]] ; then
-            if [[ "${PW_VULKAN_USE}" == "1" ]] || [[ "${PW_VULKAN_USE}" == "2" ]]
+            if [[ "${PW_VULKAN_USE}" =~ ^(1|2|6)$ ]]
             then sed -i "s/OutputAPI = d3d11_fl11_0/OutputAPI = d3d12_fl12_0/" "$DGV2CONF"
             fi
         fi
@@ -4150,9 +4160,9 @@ fi
             try_force_link_file "${WINEDIR}/lib64/wine/nvapi/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvapi64.dll"
             try_force_link_file "${WINEDIR}/lib64/wine/nvapi/nvofapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvofapi64.dll"
         else
-            try_force_link_file "${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/nvapi.dll"
-            try_force_link_file "${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvapi64.dll"
-            try_force_link_file "${PW_VULKAN_DIR}/dxvk-${DXVK_GIT_VER}/x64/nvofapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvofapi64.dll"
+            try_force_link_file "${PW_VULKAN_DIR}/dxvk-${DXVK_NEW_VER}/x32/nvapi.dll" "${WINEPREFIX}/drive_c/windows/syswow64/nvapi.dll"
+            try_force_link_file "${PW_VULKAN_DIR}/dxvk-${DXVK_NEW_VER}/x64/nvapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvapi64.dll"
+            try_force_link_file "${PW_VULKAN_DIR}/dxvk-${DXVK_NEW_VER}/x64/nvofapi64.dll" "${WINEPREFIX}/drive_c/windows/system32/nvofapi64.dll"
         fi
         var_winedlloverride_update "nvapi64,nvofapi64,nvapi=n;nvcuda=b"
     else
@@ -7102,7 +7112,8 @@ portwine_start_debug () {
     case "$PW_VULKAN_USE" in
         0) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DirectX to wined3d opengl" >> "${PORT_WINE_PATH}/PortProton.log" ;;
         1) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_SAREK_VER}, VKD3D-PROTON v.${VKD3D_SAREK_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
-        2) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_GIT_VER}, VKD3D-PROTON v.${VKD3D_GIT_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
+        2) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_NEW_VER}, VKD3D-PROTON v.${VKD3D_NEW_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
+        6) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_OLD_VER}, VKD3D-PROTON v.${VKD3D_OLD_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
         *) echo "PW_VULKAN_USE=${PW_VULKAN_USE}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
     esac
     echo "--------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
