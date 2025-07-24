@@ -495,6 +495,14 @@ esac
 
 ### GUI ###
 
+INFO_3DAPI=${translations[Select DXVK and VKD3D versions for DirectX to Vulkan translation:
+   - The newest ones work only with MESA 25+ drivers, or NVIDIA 550.54.14+
+   - Stable ones work with any drivers, provided that the video card supports Vulkan version 1.3+
+   - Sarek works with almost any video card that supports Vulkan
+   - WineD3D OpenGL works on any PC, but with low performance and old games]}
+INFO_WINE=${translations[Selecting a WINE version.]}
+INFO_PREFIX=${translations[Select a prefix to launch the game/application (if you enter a non-existent name, a new prefix will be created).]}
+
 unset PW_ADD_PREFIXES_TO_GUI
 if [[ -d "${PORT_WINE_PATH}/data/prefixes/" ]] ; then
     for PAIG in "${PORT_WINE_PATH}"/data/prefixes/* ; do
@@ -523,6 +531,23 @@ SORT_OPENGL="${translations[WineD3D OpenGL (For video cards without Vulkan)]}"
 SORT_SAREK="${translations[DXVK, VKD3D (Sarek) (Vulkan v1.1+)]}"
 SORT_STABLE="${translations[DXVK, VKD3D (Stable) (Vulkan v1.3+)]}"
 SORT_NEWEST="${translations[DXVK, VKD3D (Newest) (Vulkan v1.3+)]}"
+
+if [[ -z $PW_VULKAN_USE ]] \
+|| [[ $PW_VULKAN_USE == [3-5] ]]
+then
+    if [[ -e "/sys/module/nvidia/version" && $(</sys/module/nvidia/version) > 550.54.13 ]] \
+    || [[ pw_check_glxinfo && $(grep "Version:" "$PW_TMPFS_PATH/glxinfo.tmp" | awk '{print $2}') > 25 ]]
+    then export PW_VULKAN_USE="6"
+    else export PW_VULKAN_USE="2"
+    fi
+fi
+
+case "$PW_VULKAN_USE" in
+    0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_NEWEST!$SORT_STABLE!$SORT_SAREK" ;;
+    1) PW_DEFAULT_VULKAN_USE="$SORT_SAREK!$SORT_NEWEST!$SORT_STABLE!$SORT_OPENGL" ;;
+    2) PW_DEFAULT_VULKAN_USE="$SORT_STABLE!$SORT_NEWEST!$SORT_SAREK!$SORT_OPENGL" ;;
+    *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_SAREK!$SORT_OPENGL" ;;
+esac
 
 if [[ $PW_WINE_USE == PROTON_LG ]] ; then
     PW_WINE_USE="${PW_PROTON_LG_VER}"
@@ -568,81 +593,15 @@ if [[ -f "$portwine_exe" ]] ; then
             fi
         fi
 
-        [[ $PW_VULKAN_USE =~ [3-5] ]] && unset PW_VULKAN_USE
-        pw_check_vulkan
-        if [[ -f "${PW_TMPFS_PATH}/vulkaninfo.tmp" ]] ; then
-            unset VULKAN_VERSION_CHECK VULKAN_DRIVER_VERSION VULKAN_DEVICE_NAME
-            count="0"
-            while read -r line ; do
-                [[ $line =~ apiVersion ]] && VULKAN_VERSION_CHECK["$count"]="$line"
-                [[ $line =~ driverVersion ]] && VULKAN_DRIVER_VERSION["$count"]="$line"
-                if [[ $line =~ deviceName ]] ; then
-                    if [[ $line == *"$PW_GPU_USE"* ]] ; then
-                        VULKAN_DEVICE_NAME["$count"]="$PW_GPU_USE"
-                        break
-                    else
-                        if [[ $line =~ llvmpipe ]] ; then
-                            unset 'VULKAN_VERSION_CHECK["$count"]' 'VULKAN_DRIVER_VERSION["$count"]'
-                        else
-                            VULKAN_DEVICE_NAME["$count"]="$line"
-                            (( count++ ))
-                        fi
-                    fi
-                fi
-            done < "${PW_TMPFS_PATH}/vulkaninfo.tmp"
-            if [[ ! ${VULKAN_VERSION_CHECK[*]} =~ 1.[3-9]+. ]] ; then
-                for number in $(seq 0 $(( ${#VULKAN_VERSION_CHECK[@]} - 1 ))) ; do
-                    VULKAN_DRIVER_VERSION[$number]="${VULKAN_DRIVER_VERSION[$number]//*= /}"
-                    VULKAN_DRIVER_VERSION[$number]="${VULKAN_DRIVER_VERSION[$number]// (*/}"
-                    if [[ ${VULKAN_DEVICE_NAME[$number],,} =~ (amd|intel) && ${VULKAN_DRIVER_VERSION[$number]} > 25 ]] \
-                    || [[ ${VULKAN_DEVICE_NAME[$number],,} =~ nvidia && ${VULKAN_DRIVER_VERSION[$number]} > 550.54.13 ]] ; then
-                        [[ -z $PW_VULKAN_USE ]] && export PW_VULKAN_USE="2"
-                        PW_VULKAN_DRIVERS_NEW="1"
-                        break
-                    else
-                        [[ -z $PW_VULKAN_USE ]] && export PW_VULKAN_USE="6"
-                    fi
-                done
-            elif [[ ! ${VULKAN_VERSION_CHECK[*]} =~ 1.[1-2]. ]] ; then
-                [[ -z $PW_VULKAN_USE ]] && export PW_VULKAN_USE="1"
-                case "$PW_VULKAN_USE" in
-                    0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_SAREK" ;;
-                    *) PW_DEFAULT_VULKAN_USE="$SORT_SAREK!$SORT_OPENGL" ;;
-                esac
-            fi
-        fi
-
-        if [[ -z $PW_VULKAN_USE ]] ; then
-            export PW_VULKAN_USE="0"
-            PW_DEFAULT_VULKAN_USE="$SORT_OPENGL"
-        fi
-
-        if [[ -z $PW_DEFAULT_VULKAN_USE ]] ; then
-            if [[ $PW_VULKAN_DRIVERS_NEW == "1" ]] ; then
-                case "$PW_VULKAN_USE" in
-                    0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_NEWEST!$SORT_STABLE!$SORT_SAREK" ;;
-                    1) PW_DEFAULT_VULKAN_USE="$SORT_SAREK!$SORT_NEWEST!$SORT_STABLE!$SORT_OPENGL" ;;
-                    6) PW_DEFAULT_VULKAN_USE="$SORT_STABLE!$SORT_NEWEST!$SORT_SAREK!$SORT_OPENGL" ;;
-                    *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_SAREK!$SORT_OPENGL" ;;
-                esac
-            else
-                case "$PW_VULKAN_USE" in
-                    0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_STABLE!$SORT_SAREK" ;;
-                    1) PW_DEFAULT_VULKAN_USE="$SORT_SAREK!$SORT_STABLE!$SORT_OPENGL" ;;
-                    *) PW_DEFAULT_VULKAN_USE="$SORT_STABLE!$SORT_SAREK!$SORT_OPENGL" ;;
-                esac
-            fi
-        fi
-
         export KEY_START="$RANDOM"
         if [[ $PW_GUI_START == "NOTEBOOK" ]] ; then
             "${pw_yad}" --plug=$KEY_START --tabnum=1 --form --separator=";" $START_GUI_TYPE \
             --gui-type-box="$START_GUI_TYPE_BOX" --gui-type-layout="$START_GUI_TYPE_LAYOUT_UP" \
             --gui-type-text="$START_GUI_TYPE_TEXT" --gui-type-images="$START_GUI_TYPE_IMAGE" \
             --image="$PW_ICON_FOR_YAD" --text-align="center" --text "$PW_COMMENT_DB" \
-            --field="3D API  : :CB" "$PW_DEFAULT_VULKAN_USE" \
-            --field="  WINE  : :CB" "$(combobox_fix "$PW_WINE_USE" "$PW_DEFAULT_WINE_USE")" \
-            --field="PREFIX  : :CBE" "$PW_ADD_PREFIXES_TO_GUI" \
+            --field="3D API  : !$INFO_3DAPI:CB" "$PW_DEFAULT_VULKAN_USE" \
+            --field="  WINE  : !$INFO_WINE:CB" "$(combobox_fix "$PW_WINE_USE" "$PW_DEFAULT_WINE_USE")" \
+            --field="PREFIX  : !$INFO_PREFIX:CBE" "$PW_ADD_PREFIXES_TO_GUI" \
             1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
             "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="$START_GUI_NOTEBOOK_COLUMNS" --align-buttons --homogeneous-column \
@@ -683,9 +642,9 @@ if [[ -f "$portwine_exe" ]] ; then
             --gui-type-box="$START_GUI_TYPE_BOX" --gui-type-layout="$START_GUI_TYPE_LAYOUT_UP" \
             --gui-type-text="$START_GUI_TYPE_TEXT" --gui-type-images="$START_GUI_TYPE_IMAGE" \
             --image="$PW_ICON_FOR_YAD" --text-align="center" --text "$PW_COMMENT_DB" \
-            --field="3D API  : :CB" "$PW_DEFAULT_VULKAN_USE" \
-            --field="  WINE  : :CB" "$(combobox_fix "$PW_WINE_USE" "$PW_DEFAULT_WINE_USE")" \
-            --field="PREFIX  : :CBE" "$PW_ADD_PREFIXES_TO_GUI" \
+            --field="3D API  : !$INFO_3DAPI:CB" "$PW_DEFAULT_VULKAN_USE" \
+            --field="  WINE  : !$INFO_WINE:CB" "$(combobox_fix "$PW_WINE_USE" "$PW_DEFAULT_WINE_USE")" \
+            --field="PREFIX  : !$INFO_PREFIX:CBE" "$PW_ADD_PREFIXES_TO_GUI" \
             1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
             "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="$START_GUI_PANED_COLUMNS" \
@@ -881,8 +840,6 @@ else
     else export PW_GUI_SORT_TABS=(2 3 4 5 1)
     fi
 
-    PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_SAREK!$SORT_OPENGL"
-
     KEY_MENU="$RANDOM"
 
     IFS="%"
@@ -906,9 +863,9 @@ else
 
     "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[2]}" --form --columns=3 --align-buttons --separator=";" \
     --gui-type-layout="$MAIN_MENU_GUI_TYPE_LAYOUT" \
-    --field="   3D API  : :CB" "$PW_DEFAULT_VULKAN_USE" \
-    --field="   PREFIX  : :CBE" "$PW_ADD_PREFIXES_TO_GUI" \
-    --field="     WINE  : :CB" "$(combobox_fix "$PW_WINE_USE" "$PW_DEFAULT_WINE_USE")" \
+    --field="   3D API  : !$INFO_3DAPI:CB" "$PW_DEFAULT_VULKAN_USE" \
+    --field="   PREFIX  : !$INFO_PREFIX:CBE" "$PW_ADD_PREFIXES_TO_GUI" \
+    --field="     WINE  : !$INFO_WINE:CB" "$(combobox_fix "$PW_WINE_USE" "$PW_DEFAULT_WINE_USE")" \
     --field="${translations[Create prefix backup]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!":"CFBTN" '@bash -c "button_click --normal pw_create_prefix_backup"' \
     --field="   Winetricks!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[Run winetricks to install additional libraries to the selected prefix]}":"FBTN" '@bash -c "button_click --normal WINETRICKS"' \
     --field="   ${translations[Clear prefix]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[Clear the prefix to fix problems]}":"FBTN" '@bash -c "button_click --normal gui_clear_pfx"' \
@@ -1029,8 +986,8 @@ fi
 case "${VULKAN_MOD}" in
     "$SORT_OPENGL" )     export PW_VULKAN_USE="0" ;;
     "$SORT_SAREK"  )     export PW_VULKAN_USE="1" ;;
-    "$SORT_NEWEST" )     export PW_VULKAN_USE="2" ;;
-    "$SORT_STABLE" )     export PW_VULKAN_USE="6" ;;
+    "$SORT_STABLE" )     export PW_VULKAN_USE="2" ;;
+    "$SORT_NEWEST" )     export PW_VULKAN_USE="6" ;;
 esac
 
 init_wine_ver

@@ -2817,12 +2817,23 @@ pw_check_vulkan () {
     fi
 }
 
+pw_check_glxinfo () {
+    if [[ ! -f "${PW_TMPFS_PATH}/glxinfo.tmp" ]] ; then
+        TIMEOUT_CMD="5"
+        if pw_check_command glxinfo -B
+        then return 0
+        else return 1
+        fi
+    fi
+}
+
 pw_get_tmp_files () {
     for f_cmd in "gamescope --help" "lspci -k" "xrandr --current" "locale -a"
     do pw_check_command "$f_cmd"
     done
 
     pw_check_vulkan
+    pw_check_glxinfo
 
     # GALLIUM NINE
     unset FIND_D3D_MODULE D3D_MODULE_PATH
