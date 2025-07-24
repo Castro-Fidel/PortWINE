@@ -535,8 +535,9 @@ SORT_NEWEST="${translations[DXVK, VKD3D (Newest) (Vulkan v1.3+)]}"
 if [[ -z $PW_VULKAN_USE ]] \
 || [[ $PW_VULKAN_USE == [3-5] ]]
 then
+    pw_check_glxinfo
     if [[ -e "/sys/module/nvidia/version" && $(</sys/module/nvidia/version) > 550.54.13 ]] \
-    || [[ $(pw_check_glxinfo) && $(grep "Version:" "$PW_TMPFS_PATH/glxinfo.tmp" | awk '{print $2}') > 25 ]]
+    || [[ $(grep "Version:" "$PW_TMPFS_PATH/glxinfo.tmp" | awk '{print $2}') > 25 ]]
     then export PW_VULKAN_USE="6"
     else export PW_VULKAN_USE="2"
     fi
