@@ -2876,12 +2876,13 @@ pw_skip_get_info () {
 
         if [[ -f "${PW_TMPFS_PATH}/locale.tmp" ]] ; then
             GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
-            unset LOCALE_LIST
+            unset LOCALE_LIST LOCALE_UTF
+            [[ $(<"${PW_TMPFS_PATH}/locale.tmp") =~ utf8 ]] && LOCALE_UTF="8"
             for LOCALE in $GET_LOCALE_LIST ; do
                 if [[ $(<"${PW_TMPFS_PATH}/locale.tmp") =~ $LOCALE ]] ; then
                     if [[ -n "$LOCALE_LIST" ]]
-                    then LOCALE_LIST+="!$LOCALE"
-                    else LOCALE_LIST="$LOCALE"
+                    then LOCALE_LIST+="!$LOCALE$LOCALE_UTF"
+                    else LOCALE_LIST="$LOCALE$LOCALE_UTF"
                     fi
                 fi
             done
