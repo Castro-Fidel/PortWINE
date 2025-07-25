@@ -1656,12 +1656,7 @@ init_wine_ver () {
         done
         IFS="$orig_IFS"
         fi
-        if [[ -z $(lsbash "${PORT_WINE_PATH}/data/dist/" --grep "${PW_WINE_USE}") ]] ; then
-            if [[ "$PW_WINE_USE" =~ PROTON_LG* ]]
-            then export PW_WINE_USE=PROTON_LG
-            else export PW_WINE_USE=WINE_LG
-            fi
-        fi
+
         if [[ "$PW_WINE_USE" == PROTON_LG ]]
         then export PW_WINE_USE="${PW_PROTON_LG_VER}"
         elif [[ "$PW_WINE_USE" == WINE_LG ]]
@@ -2449,13 +2444,16 @@ pw_init_db () {
         if [[ -f "${PORTWINE_DB_FILE}" ]] ; then
             # shellcheck source=/dev/null
             source "${PORTWINE_DB_FILE}"
-            init_wine_ver &&
+            export PW_WINE_VER="$PW_WINE_USE"
+            init_wine_ver
             print_info "Use $PORTWINE_DB_FILE db file."
         else
             if [[ "${PW_DISABLED_CREATE_DB}" != 1 ]] ; then
                 if [[ -n "${PORTWINE_DB}" ]] ; then
                     PORTWINE_DB_FILE=$(grep -il "#${PORTWINE_DB}.exe" "${PORT_SCRIPTS_PATH}/portwine_db"/*)
                     export PORTWINE_DB_FILE
+                    use_exiftool "$portwine_exe"
+                    grep -q "Sony" "${PW_TMPFS_PATH}/exiftool.tmp" && PW_WINE_USE="WINE_LG"
                     if [[ -z "${PORTWINE_DB_FILE}" ]] ; then
                         {
                             echo "#!/usr/bin/env bash"
@@ -3028,6 +3026,22 @@ edit_user_conf_from_gui () {
     return 0
 }
 
+use_exiftool () {
+    if [[ ! -f "${PW_TMPFS_PATH}/exiftool.tmp" ]] \
+    || ! grep -q "$1" "${PW_TMPFS_PATH}/exiftool.tmp"
+    then
+        echo "$1" > "${PW_TMPFS_PATH}/exiftool.tmp"
+        if ! command -v exiftool &>/dev/null \
+        || ! timeout 3 exiftool "$1" &>> "${PW_TMPFS_PATH}/exiftool.tmp"
+        then
+            print_warning "use portable exiftool"
+            env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" \
+            "${PW_PLUGINS_PATH}/portable/bin/exiftool" \
+            "$1" &>> "${PW_TMPFS_PATH}/exiftool.tmp"
+        fi
+    fi
+}
+
 pw_create_gui_png () {
     if [[ -z $name_desktop_png ]] ; then
         basename_portwine_exe="$(basename "${portwine_exe}")"
@@ -3052,19 +3066,9 @@ pw_create_gui_png () {
         if [[ -n "${PORTWINE_CREATE_SHORTCUT_NAME}" ]] ; then
             PORTPROTON_NAME="${PORTWINE_CREATE_SHORTCUT_NAME}"
         else
-            if command -v exiftool &>/dev/null ; then
-                if timeout 3 exiftool "$portwine_exe" &> "${PW_TMPFS_PATH}/exiftool.tmp" ; then
-                    PW_PRODUCTNAME=$(sed -n 's/^Product Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
-                    FILE_DESCRIPTION=$(sed -n 's/^File Description\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
-                else
-                    print_error "exiftool - broken!"
-                fi
-            else
-                print_warning "use portable exiftool"
-                env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" "$portwine_exe" &> "${PW_TMPFS_PATH}/exiftool.tmp"
-                PW_PRODUCTNAME=$(sed -n 's/^Product Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
-                FILE_DESCRIPTION=$(sed -n 's/^File Description\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
-            fi
+            use_exiftool "$portwine_exe"
+            PW_PRODUCTNAME=$(sed -n 's/^Product Name\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
+            FILE_DESCRIPTION=$(sed -n 's/^File Description\s*:\s*//p' "${PW_TMPFS_PATH}/exiftool.tmp")
 
             if [[ "$PW_PRODUCTNAME" =~ (Launcher|RU) ]]
             then
@@ -6764,20 +6768,6 @@ get_lnk_path () {
     link_path=$(echo "$1" | sed 's|%ProgramFiles(x86)%|C:\\Program Files (x86)|gi;s|%ProgramFiles%|C:\\Program Files|gi' | sed "s|^.|${PORT_WINE_PATH}/data/prefixes/${prefix_name:-${PW_PREFIX_NAME:-DEFAULT}}/dosdevices/${link_drive}|g" | sed 's/\\/\//g')
 }
 
-get_lnk () {
-    if command -v exiftool &>/dev/null ; then
-        if timeout 3 exiftool "$1" &> "${PW_TMPFS_PATH}/exiftool.tmp" ; then
-            parse_lnk "$1"
-        else
-            print_error "exiftool - broken!"
-        fi
-    else
-        print_warning "use portable exiftool"
-        env PERL5LIB="${PW_PLUGINS_PATH}/portable/lib/perl5" "${PW_PLUGINS_PATH}/portable/bin/exiftool" "$1" &> "${PW_TMPFS_PATH}/exiftool.tmp"
-        parse_lnk "$1"
-    fi
-}
-
 pw_auto_create_shortcut () {
     if [[ "${PW_CHECK_AUTOINSTALL}" == "1" ]] \
     || [[ "${PW_NO_AUTO_CREATE_SHORTCUT}" == "1" ]] \
@@ -6823,7 +6813,8 @@ pw_auto_create_shortcut () {
     read -r -a SORTED_LINKS < <(echo "${LINKS[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
 
     for link_file in "${SORTED_LINKS[@]//#@_@#/ }" ; do
-        get_lnk "${link_file}"
+        use_exiftool "${link_file}"
+        parse_lnk "${link_file}"
         if ! exe_path="$(realpath "${link_path}" 2>/dev/null)" ; then
             print_warning "Link broken for: $link_name"
         else
