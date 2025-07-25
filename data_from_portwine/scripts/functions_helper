@@ -5469,6 +5469,11 @@ gui_edit_db () {
     esac
 
     [[ ! -e "/dev/ntsync" ]] && DISABLE_EDIT_DB_LIST+=" PW_USE_NTSYNC"
+    if [[ $(ldd --version | head -n 1 | awk '{print $4}') < 2.38 ]] ; then
+        DISABLE_EDIT_DB_LIST+=" PW_USE_LS_FRAME_GEN"
+        export PW_USE_LS_FRAME_GEN="0"
+        PW_USE_LS_FRAME_GEN_INFO=${translations[GLIBC version 2.38+ is required for use Lossless Scaling frame generation]}
+    fi
 
     unset ADD_CHK_BOX_EDIT_DB
     for int_to_boole in "${PW_EDIT_DB_LIST[@]}" ; do
