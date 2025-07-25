@@ -277,14 +277,15 @@ if [[ -z $SORT_WITH_TIME ]] ; then
 fi
 
 # TODO:fixes_after_update (со временем можно будет дропнуть)
-if fixes_after_update "2395: DESKTOP_WITH_TIME by default displays hours and minutes" ; then
-    DESKTOP_WITH_TIME="posnumber1"
-    edit_user_conf_from_gui DESKTOP_WITH_TIME
-fi
-if fixes_after_update "2398: SORT_WITH_TIME by default sorts from the last run" ; then
-    SORT_WITH_TIME="lastlaunch"
-    edit_user_conf_from_gui SORT_WITH_TIME
-fi
+# Оставил для примера
+# if fixes_after_update "2395: DESKTOP_WITH_TIME by default displays hours and minutes" ; then
+#     DESKTOP_WITH_TIME="posnumber1"
+#     edit_user_conf_from_gui DESKTOP_WITH_TIME
+# fi
+# if fixes_after_update "2398: SORT_WITH_TIME by default sorts from the last run" ; then
+#     SORT_WITH_TIME="lastlaunch"
+#     edit_user_conf_from_gui SORT_WITH_TIME
+# fi
 
 # choose wine dpi default
 if [[ -z $PW_WINE_DPI_VALUE ]] ; then
@@ -602,27 +603,32 @@ if [[ -f "$portwine_exe" ]] ; then
             *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_SAREK!$SORT_OPENGL" ;;
         esac
 
-        export KEY_START="$RANDOM"
+        KEY_START="$RANDOM"
+        "$pw_yad" --plug=$KEY_START --tabnum="1" --form --separator=";" $START_GUI_TYPE \
+        --gui-type-box="$START_GUI_TYPE_BOX" --gui-type-layout="$START_GUI_TYPE_LAYOUT_UP" \
+        --gui-type-text="$START_GUI_TYPE_TEXT" --gui-type-images="$START_GUI_TYPE_IMAGE" \
+        --image="$PW_ICON_FOR_YAD" --text-align="center" --text "$PW_COMMENT_DB" \
+        --field="3D API  : !$INFO_3DAPI:CB" "$PW_DEFAULT_VULKAN_USE" \
+        --field="  WINE  : !$INFO_WINE:CB" "$(combobox_fix "$PW_WINE_USE" "$PW_DEFAULT_WINE_USE")" \
+        --field="PREFIX  : !$INFO_PREFIX:CBE" "$PW_ADD_PREFIXES_TO_GUI" \
+        1> "$PW_TMPFS_PATH/tmp_yad_form_vulkan" 2>/dev/null &
+
+        if [[ $PW_GUI_START == "NOTEBOOK" ]]
+        then PW_GUI_START_TABNUM2="--columns=$START_GUI_NOTEBOOK_COLUMNS --gui-type-layout=$START_GUI_TYPE_LAYOUT_NOTEBOOK"
+        elif [[ $PW_GUI_START == "PANED" ]]
+        then PW_GUI_START_TABNUM2="--columns=$START_GUI_PANED_COLUMNS --gui-type-layout=$START_GUI_TYPE_LAYOUT_PANED --homogeneous-row"
+        fi
+
+        "$pw_yad" --plug=$KEY_START --tabnum="2" --form --align-buttons --homogeneous-column $PW_GUI_START_TABNUM2  \
+        --field="   ${translations[Base settings]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Edit database file for]} ${PORTWINE_DB}":"FBTN" '@bash -c "button_click --start 118"' \
+        --field="   ${translations[Open directory]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Open directory with <b>.ppdb</b> file]}":"FBTN" '@bash -c "button_click --start open_game_folder"' \
+        --field="   vkBasalt!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)]}":"FBTN" '@bash -c "button_click --start 120"' \
+        --field="   MangoHud!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)]}":"FBTN" '@bash -c "button_click --start 122"' \
+        --field="   dgVoodoo2!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)]}":"FBTN" '@bash -c "button_click --start 124"' \
+        --field="   GameScope!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable GameScope by default (Wayland micro compositor)]}":"FBTN" '@bash -c "button_click --start 126"' \
+        2>/dev/null &
+
         if [[ $PW_GUI_START == "NOTEBOOK" ]] ; then
-            "${pw_yad}" --plug=$KEY_START --tabnum=1 --form --separator=";" $START_GUI_TYPE \
-            --gui-type-box="$START_GUI_TYPE_BOX" --gui-type-layout="$START_GUI_TYPE_LAYOUT_UP" \
-            --gui-type-text="$START_GUI_TYPE_TEXT" --gui-type-images="$START_GUI_TYPE_IMAGE" \
-            --image="$PW_ICON_FOR_YAD" --text-align="center" --text "$PW_COMMENT_DB" \
-            --field="3D API  : !$INFO_3DAPI:CB" "$PW_DEFAULT_VULKAN_USE" \
-            --field="  WINE  : !$INFO_WINE:CB" "$(combobox_fix "$PW_WINE_USE" "$PW_DEFAULT_WINE_USE")" \
-            --field="PREFIX  : !$INFO_PREFIX:CBE" "$PW_ADD_PREFIXES_TO_GUI" \
-            1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
-
-            "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="$START_GUI_NOTEBOOK_COLUMNS" --align-buttons --homogeneous-column \
-            --gui-type-layout="$START_GUI_TYPE_LAYOUT_NOTEBOOK" \
-            --field="   ${translations[Base settings]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Edit database file for]} ${PORTWINE_DB}":"FBTN" '@bash -c "button_click --start 118"' \
-            --field="   ${translations[Open directory]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Open directory with <b>.ppdb</b> file]}":"FBTN" '@bash -c "button_click --start open_game_folder"' \
-            --field="   vkBasalt!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)]}":"FBTN" '@bash -c "button_click --start 120"' \
-            --field="   MangoHud!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)]}":"FBTN" '@bash -c "button_click --start 122"' \
-            --field="   dgVoodoo2!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)]}":"FBTN" '@bash -c "button_click --start 124"' \
-            --field="   GameScope!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable GameScope by default (Wayland micro compositor)]}":"FBTN" '@bash -c "button_click --start 126"' \
-            2>/dev/null &
-
             if [[ "$PW_YAD_FORM_TAB" == "1" ]] \
             && [[ -n "$TAB_START" ]]
             then
@@ -631,53 +637,24 @@ if [[ -f "$portwine_exe" ]] ; then
             else
                 export TAB_START="1"
             fi
-
-            "${pw_yad}" --key=$KEY_START --notebook --active-tab="$TAB_START" \
-            --gui-type="settings-notebook" \
-            --width="$PW_START_SIZE_W" --tab-pos="$PW_TAB_POSITON" \
-            --title "PortProton-$install_ver (${scripts_install_ver}${BRANCH_VERSION})" --expand \
-            --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-            --tab="${translations[GENERAL]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
-            --tab="${translations[SETTINGS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
-            --button="${translations[MAIN MENU]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Main menu]}":128 \
-            --button="${PW_SHORTCUT}" \
-            --button="${translations[DEBUG]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Launch with the creation of a .log file at the root PortProton]}":102 \
-            --button="${translations[LAUNCH]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Run file ...]}":106 2>/dev/null
-            PW_YAD_SET="$?"
-            export PW_YAD_FORM_TAB="1"
-
+            PW_GUI_START_TABNUM3="--notebook --active-tab=$TAB_START --gui-type=settings-notebook --expand"
         elif [[ $PW_GUI_START == "PANED" ]] ; then
-            "${pw_yad}" --plug=$KEY_START --tabnum=1 --form --separator=";" $START_GUI_TYPE \
-            --gui-type-box="$START_GUI_TYPE_BOX" --gui-type-layout="$START_GUI_TYPE_LAYOUT_UP" \
-            --gui-type-text="$START_GUI_TYPE_TEXT" --gui-type-images="$START_GUI_TYPE_IMAGE" \
-            --image="$PW_ICON_FOR_YAD" --text-align="center" --text "$PW_COMMENT_DB" \
-            --field="3D API  : !$INFO_3DAPI:CB" "$PW_DEFAULT_VULKAN_USE" \
-            --field="  WINE  : !$INFO_WINE:CB" "$(combobox_fix "$PW_WINE_USE" "$PW_DEFAULT_WINE_USE")" \
-            --field="PREFIX  : !$INFO_PREFIX:CBE" "$PW_ADD_PREFIXES_TO_GUI" \
-            1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
-
-            "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="$START_GUI_PANED_COLUMNS" \
-            --gui-type-layout="$START_GUI_TYPE_LAYOUT_PANED" \
-            --align-buttons --homogeneous-row --homogeneous-column \
-            --field="   ${translations[Base settings]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Edit database file for]} ${PORTWINE_DB}":"FBTN" '@bash -c "button_click --start 118"' \
-            --field="   ${translations[Open directory]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Open directory with <b>.ppdb</b> file]}":"FBTN" '@bash -c "button_click --start open_game_folder"' \
-            --field="   vkBasalt!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)]}":"FBTN" '@bash -c "button_click --start 120"' \
-            --field="   MangoHud!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)]}":"FBTN" '@bash -c "button_click --start 122"' \
-            --field="   dgVoodoo2!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)]}":"FBTN" '@bash -c "button_click --start 124"' \
-            --field="   GameScope!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable GameScope by default (Wayland micro compositor)]}":"FBTN" '@bash -c "button_click --start 126"' \
-            2>/dev/null &
-
-            "${pw_yad}" --key=$KEY_START --paned \
-            --gui-type="settings-paned" \
-            --width="$PW_START_SIZE_W" --tab-pos="$PW_TAB_POSITON" \
-            --title "PortProton-$install_ver (${scripts_install_ver}${BRANCH_VERSION})" \
-            --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-            --button="${translations[MAIN MENU]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Main menu]}":128 \
-            --button="${PW_SHORTCUT}" \
-            --button="${translations[DEBUG]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Launch with the creation of a .log file at the root PortProton]}":102 \
-            --button="${translations[LAUNCH]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Run file ...]}":106 2>/dev/null
-            PW_YAD_SET="$?"
+            PW_GUI_START_TABNUM3="--paned --gui-type=settings-paned"
         fi
+
+        "$pw_yad" --key=$KEY_START $PW_GUI_START_TABNUM3 \
+        --width="$PW_START_SIZE_W" --tab-pos="$PW_TAB_POSITON" \
+        --title "PortProton-$install_ver (${scripts_install_ver}${BRANCH_VERSION})" \
+        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+        --tab="${translations[GENERAL]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+        --tab="${translations[SETTINGS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+        --button="${translations[MAIN MENU]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Main menu]}":128 \
+        --button="${PW_SHORTCUT}" \
+        --button="${translations[DEBUG]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Launch with the creation of a .log file at the root PortProton]}":102 \
+        --button="${translations[LAUNCH]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Run file ...]}":106 2>/dev/null
+        PW_YAD_SET="$?"
+        [[ $PW_GUI_START == "NOTEBOOK" ]] && export PW_YAD_FORM_TAB="1"
+
         case "$PW_YAD_SET" in
             128)
                 [[ "$PW_GUI_START" == "NOTEBOOK" ]] && unset PW_YAD_FORM_TAB
