@@ -3508,17 +3508,17 @@ start_portwine () {
     OPTISCALER_PATH="$PW_PLUGINS_PATH/fake_dlss/optiscaler-$PW_OPTISCALER_VER"
     OPTISCALER_FILES="dxgi.dll amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll libxess.dll \
                        libxess_dx11.dll dlssg_to_fsr3_amd_is_better.dll fakenvapi.ini \
-                       nvapi64.dll OptiScaler.ini dxvk.conf"
-    ORIGINAL_GAME_DLLS="amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll libxess.dll nvapi64.dll"
+                       nvapi64.dll OptiScaler.ini dxvk.conf D3D12 D3D12_Optiscaler optiscaler_version"
+    ORIGINAL_GAME_DLLS="amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll libxess.dll nvapi64.dll D3D12"
 
     if [[ "${PW_USE_OPTISCALER}" != "1" ]] \
     && [[ -f "$PATH_TO_GAME/dlssg_to_fsr3_amd_is_better.dll" ]]
     then
         for dll in $OPTISCALER_FILES ; do
-            try_remove_file "$PATH_TO_GAME/$dll"
+            rm -fr "$PATH_TO_GAME/$dll"
         done
         for dll in $ORIGINAL_GAME_DLLS ; do
-            if [[ -f "$PATH_TO_GAME/${dll}.b" ]] ; then
+            if [[ -e "$PATH_TO_GAME/${dll}.b" ]] ; then
                 mv -f "$PATH_TO_GAME/${dll}.b" "$PATH_TO_GAME/${dll}" 2>/dev/null
             fi
         done
@@ -3535,7 +3535,7 @@ start_portwine () {
             fi
         fi
 
-        export PW_WINE_FULLSCREEN_FSR="0"
+        export PW_USE_NVAPI_AND_DLSS="1"
 
         set_to_dxvk_conf nvidia_new
 
@@ -3548,20 +3548,21 @@ start_portwine () {
                 fatal "Force exit..."
             fi
             for dll in $ORIGINAL_GAME_DLLS ; do
-                if [[ -f "$PATH_TO_GAME/$dll" ]] \
-                && [[ ! -f "$PATH_TO_GAME/${dll}.b" ]]
+                if [[ -e "$PATH_TO_GAME/$dll" ]] \
+                && [[ ! -e "$PATH_TO_GAME/${dll}.b" ]]
                 then
                     mv -f "$PATH_TO_GAME/$dll" "$PATH_TO_GAME/${dll}.b" 2>/dev/null
                 fi
             done
         fi
 
-        for dll in $OPTISCALER_FILES ; do
-            if [[ ! -f "$PATH_TO_GAME/$dll" ]] \
-            || [[ -L "$PATH_TO_GAME/$dll" ]]
-            then try_copy_file "$OPTISCALER_PATH/$dll" "$PATH_TO_GAME/$dll"
-            fi
-        done
+        if [[ ! -f "$PATH_TO_GAME/optiscaler_version" ]] \
+        || ! grep -q "$PW_OPTISCALER_VER" "$PATH_TO_GAME/optiscaler_version"
+        then
+            for dll in $OPTISCALER_FILES ; do
+                cp -fr "$OPTISCALER_PATH/$dll" "$PATH_TO_GAME/$dll" || print_error "$OPTISCALER_PATH/$dll not found for copy!"
+            done
+        fi
     fi
 
     if [[ "${PW_USE_RAY_TRACING}" == "1" ]] ; then
