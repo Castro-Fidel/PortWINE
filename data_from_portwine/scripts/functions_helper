@@ -2876,12 +2876,13 @@ pw_skip_get_info () {
 
         if [[ -f "${PW_TMPFS_PATH}/locale.tmp" ]] ; then
             GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
-            unset LOCALE_LIST
+            unset LOCALE_LIST LOCALE_UTF
+            [[ $(<"${PW_TMPFS_PATH}/locale.tmp") =~ utf8 ]] && LOCALE_UTF="8"
             for LOCALE in $GET_LOCALE_LIST ; do
                 if [[ $(<"${PW_TMPFS_PATH}/locale.tmp") =~ $LOCALE ]] ; then
                     if [[ -n "$LOCALE_LIST" ]]
-                    then LOCALE_LIST+="!$LOCALE"
-                    else LOCALE_LIST="$LOCALE"
+                    then LOCALE_LIST+="!$LOCALE$LOCALE_UTF"
+                    else LOCALE_LIST="$LOCALE$LOCALE_UTF"
                     fi
                 fi
             done
@@ -4585,9 +4586,6 @@ pw_run () {
         export WINE_LARGE_ADDRESS_AWARE="1"
     fi
 
-    check_variables SteamAppId "0"
-    check_variables SteamGameId "0"
-
     PW_LOG_TO_FILE="${PORT_WINE_PATH}/PortProton.log"
     PW_LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}"
 
@@ -4766,6 +4764,7 @@ portwine_launch () {
 
     [[ $PW_LOG != 1 ]] && debug_timer --start -s "PW_TIME_IN_GAME"
     if [[ -n "${LAUNCH_URI}" ]] ; then
+        export WINEFSYNC="1"
         pw_run start /high /b "${LAUNCH_URI}" &
         unset GAMEPID
         while true ; do
