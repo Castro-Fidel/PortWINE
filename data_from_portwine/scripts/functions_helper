@@ -2350,43 +2350,6 @@ check_dirs_and_files_in_pfx () {
         done
     }
 
-amd_vulkan_driver_selection () {
-    case "${PW_AMD_VULKAN_USE}" in
-        "amdvlk")
-            PW_VK_ICD_FILENAMES=""
-            for dir in /opt/amdgpu/etc/vulkan/icd.d /etc/vulkan/icd.d /usr/share/vulkan/icd.d; do
-                for file in "$dir"/amd_icd*.json; do
-                    [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
-                done
-            done
-            export PW_VK_ICD_FILENAMES
-            ;;
-
-        "amdgpupro")
-            PW_VK_ICD_FILENAMES=""
-            for dir in /opt/amdgpu-pro/etc/vulkan/icd.d /usr/share/vulkan/icd.d; do
-                for file in "$dir"/amd_pro_icd*.json; do
-                    [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
-                done
-            done
-
-            # add libs from https://github.com/CosmicFusion/fedora-amdgpu-pro/tree/main/x86_64/libdrm-pro to ld_library_path (this repo is deprecated and archived but why not)
-            echo "$PW_VK_ICD_FILENAMES" | grep -qi "/opt/amdgpu-pro/etc/vulkan/icd.d/amd_icd.*.json" && \
-            var_ld_library_path_update "/opt/amdgpu/libdrm/lib64:/opt/amdgpu/libdrm/lib32"
-
-            export PW_VK_ICD_FILENAMES
-            ;;
-
-        "radv")
-            PW_VK_ICD_FILENAMES=""
-            for file in /usr/share/vulkan/icd.d/radeon_icd.{i686,x86_64}.json; do
-                [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
-            done
-            export PW_VK_ICD_FILENAMES
-            ;;
-    esac
-}
-
 pw_init_db () {
     if echo "$LSPCI_VGA" | grep -i -q 'nvidia.*rtx' ; then
         export PW_USE_NVAPI_AND_DLSS="1"
@@ -2517,7 +2480,40 @@ pw_init_db () {
         fi
     fi
 
-    amd_vulkan_driver_selection
+    case "${PW_AMD_VULKAN_USE}" in
+        "amdvlk")
+            PW_VK_ICD_FILENAMES=""
+            for dir in /opt/amdgpu/etc/vulkan/icd.d /etc/vulkan/icd.d /usr/share/vulkan/icd.d; do
+                for file in "$dir"/amd_icd*.json; do
+                    [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
+                done
+            done
+            export PW_VK_ICD_FILENAMES
+            ;;
+
+        "amdgpupro")
+            PW_VK_ICD_FILENAMES=""
+            for dir in /opt/amdgpu-pro/etc/vulkan/icd.d /usr/share/vulkan/icd.d; do
+                for file in "$dir"/amd_pro_icd*.json; do
+                    [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
+                done
+            done
+
+            # add libs from https://github.com/CosmicFusion/fedora-amdgpu-pro/tree/main/x86_64/libdrm-pro to ld_library_path (this repo is deprecated and archived but why not)
+            echo "$PW_VK_ICD_FILENAMES" | grep -qi "/opt/amdgpu-pro/etc/vulkan/icd.d/amd_icd.*.json" && \
+            var_ld_library_path_update "/opt/amdgpu/libdrm/lib64:/opt/amdgpu/libdrm/lib32"
+
+            export PW_VK_ICD_FILENAMES
+            ;;
+
+        "radv")
+            PW_VK_ICD_FILENAMES=""
+            for file in /usr/share/vulkan/icd.d/radeon_icd.{i686,x86_64}.json; do
+                [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
+            done
+            export PW_VK_ICD_FILENAMES
+            ;;
+    esac
 
     [[ "${START_FROM_STEAM}" == 1 ]] && export PW_GUI_DISABLED_CS=1
     [[ "${START_FROM_PP_GUI}" == 1 ]] && export PW_GUI_DISABLED_CS=0 && unset START_FROM_PP_GUI
@@ -2819,13 +2815,32 @@ compare_versions () {
     return 0
 }
 
+get_gpu_names () {
+    GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d' | sort -u | sed 's/^ //' | paste -sd '!')
+    if [[ ${GET_GPU_NAMES,,} =~ radv ]] ; then
+        IFS='!' read -r -a GET_GPU_NAMES_ARRAY <<< "$GET_GPU_NAMES"
+        for i in "${!GET_GPU_NAMES_ARRAY[@]}" ; do
+            if [[ ${GET_GPU_NAMES_ARRAY[i],,} =~ amd && ! ${GET_GPU_NAMES_ARRAY[i],,} =~ radv ]] ; then
+              unset 'GET_GPU_NAMES_ARRAY[i]'
+            fi
+        done
+        GET_GPU_NAMES_ARRAY=("${GET_GPU_NAMES_ARRAY[@]}")
+        if [[ -n ${GET_GPU_NAMES_ARRAY[1]} ]] ; then
+            printf -v GET_GPU_NAMES '%s!' "${GET_GPU_NAMES_ARRAY[@]}"
+            GET_GPU_NAMES="${GET_GPU_NAMES%?}"
+        else
+            GET_GPU_NAMES="${GET_GPU_NAMES_ARRAY[0]}"
+        fi
+    fi
+    export GET_GPU_NAMES
+}
+
 pw_check_dxvk () {
     background_pid --end "pw_check_vulkan" "1"
     if [[ -z $PW_VULKAN_DRIVER_USE ]] && [[ -f "${PW_TMPFS_PATH}/vulkaninfo.tmp" ]] ; then
         if [[ -z $PW_GPU_USE ]] ; then
             if [[ -z $GET_GPU_NAMES ]] ; then
-                GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d' | sort -u | sed 's/^ //' | paste -sd '!')
-                export GET_GPU_NAMES
+                get_gpu_names
             fi
             IFS='!' read -r -a SELECTED_VULKAN_GPU <<< "$GET_GPU_NAMES"
         else
@@ -2840,8 +2855,6 @@ pw_check_dxvk () {
                     elem_lower=${elem,,}
                     if [[ $elem_lower =~ nvidia ]]; then
                         nvidia_group+=("$elem")
-                    elif [[ $elem_lower =~ radv ]]; then
-                        radv_group+=("$elem")
                     elif [[ $elem_lower =~ amd ]]; then
                         amd_group+=("$elem")
                     elif [[ $elem_lower =~ intel ]]; then
@@ -2853,7 +2866,6 @@ pw_check_dxvk () {
                 unset SELECTED_VULKAN_GPU
                 SELECTED_VULKAN_GPU_NEW=(
                     "${nvidia_group[@]}"
-                    "${radv_group[@]}"
                     "${amd_group[@]}"
                     "${intel_group[@]}"
                     "${other_group[@]}"
@@ -2918,25 +2930,13 @@ pw_check_dxvk () {
                 pw_check_dxvk
             fi
 
-            # если выбран amdvlk, то глобально без выбора PW_AMD_VULKAN_USE будет работать он
-            # для тех систем, где к примеру radv не используется, либо в приоритете amdvlk
-            if [[ -z $PW_AMD_VULKAN_USE || $PW_AMD_VULKAN_USE == "disabled" ]] ; then
-                PW_AMD_VULKAN_USE_OLD="$PW_AMD_VULKAN_USE"
-                if [[ ${PW_CHECK_VULKAN_DRIVER_ARRAY[4],,} == *"amd open-source driver"* ]] ; then
-                    PW_AMD_VULKAN_USE="amdvlk"
-                    amd_vulkan_driver_selection
-                elif [[ ${PW_CHECK_VULKAN_DRIVER_ARRAY[4],,} == *"amd proprietary driver"* ]] ; then
-                    PW_AMD_VULKAN_USE="amdgpupro"
-                    amd_vulkan_driver_selection
-                fi
-                PW_AMD_VULKAN_USE="$PW_AMD_VULKAN_USE_OLD"
-            fi
-
             # Если используется nvidia, со встройкой opengl будет работать через встройку
             # с этим будет работать через nvidia
             if [[ ${PW_CHECK_VULKAN_DRIVER_ARRAY[4],,} =~ nvidia ]] ; then
                 export __NV_PRIME_RENDER_OFFLOAD="1"
                 export __GLX_VENDOR_LIBRARY_NAME="nvidia"
+            else
+                export __NV_PRIME_RENDER_OFFLOAD="0"
             fi
 
             # если PW_GPU_USE изначально не было
@@ -3022,8 +3022,7 @@ pw_skip_get_info () {
         fi
 
         if [[ -f "${PW_TMPFS_PATH}/vulkaninfo.tmp" ]] ; then
-            GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d' | sort -u | sed 's/^ //' | paste -sd '!')
-            export GET_GPU_NAMES
+            get_gpu_names
         fi
 
         if [[ -f "${PW_TMPFS_PATH}/lspci.tmp" ]] ; then
