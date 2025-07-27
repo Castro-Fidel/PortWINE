@@ -2847,8 +2847,18 @@ pw_check_dxvk () {
             IFS='' read -r -a SELECTED_VULKAN_GPU <<< "$PW_GPU_USE"
         fi
 
-        # оптимизация когда vulkan драйвера в системе нет
-        if [[ -n ${SELECTED_VULKAN_GPU[@]} ]] ; then
+        # если используется amdvlk или amdgpupro, то проверка на vulkan драйвер происходит среди них, а не через mesa драйвер
+        if [[ $PW_AMD_VULKAN_USE =~ ^(amdvlk|amdgpupro)$ ]]  ; then
+            if [[ ${SELECTED_VULKAN_GPU[@],,} =~ radv ]] ; then
+                for i in "${!SELECTED_VULKAN_GPU[@]}" ; do
+                    if [[ ${SELECTED_VULKAN_GPU[i],,} =~ radv ]] ; then
+                        SELECTED_VULKAN_GPU[i]="${SELECTED_VULKAN_GPU[i]// (RADV*}"
+                    fi
+                done
+            fi
+        fi
+
+        if [[ -n ${SELECTED_VULKAN_GPU[@]} ]] ; then # оптимизация когда vulkan драйвера в системе нет
             # какие карты в приоритете, если не выбран изначально PW_GPU_USE
             if [[ -n ${SELECTED_VULKAN_GPU[1]} ]] ; then
                 for elem in "${SELECTED_VULKAN_GPU[@]}"; do
@@ -2873,7 +2883,7 @@ pw_check_dxvk () {
             fi
 
             # получаем информацию о конкретном драйвере который выбран в PW_GPU_USE,
-            # либо ищем наилучший драйвер с учётом приоритета видеокарт + инфа
+            # либо ищем наилучший драйвер с учётом приоритета видеокарт + информация
             for i in "${SELECTED_VULKAN_GPU_NEW[@]}" "${SELECTED_VULKAN_GPU[@]}" ; do
                 PW_CHECK_VULKAN_DRIVER="$(awk -v target="$i" '
                 BEGIN {
@@ -2924,14 +2934,15 @@ pw_check_dxvk () {
                 fi
             done
 
-            # фикс, если вдруг название PW_GPU_USE изменилось
+            # фикс, если вдруг PW_GPU_USE изменился или сломался
             if [[ -z ${PW_CHECK_VULKAN_DRIVER_ARRAY[4]} ]] && [[ -n $PW_GPU_USE && $PW_GPU_USE != "disabled" ]] ; then
+                PW_AMD_VULKAN_USE="disabled"
+                edit_db_from_gui PW_AMD_VULKAN_USE
                 unset PW_GPU_USE
                 pw_check_dxvk
             fi
 
-            # Если используется nvidia, со встройкой opengl будет работать через встройку
-            # с этим будет работать через nvidia
+            # если используется nvidia, со встройкой opengl будет работать через встройку, с этим будет работать через nvidia
             if [[ ${PW_CHECK_VULKAN_DRIVER_ARRAY[4],,} =~ nvidia ]] ; then
                 export __NV_PRIME_RENDER_OFFLOAD="1"
                 export __GLX_VENDOR_LIBRARY_NAME="nvidia"
@@ -2947,7 +2958,7 @@ pw_check_dxvk () {
         fi
     fi
 
-    # формируется в завимости от выбранного PW_GPU_USE и поддержки самого драйвера
+    # формируется в зависимости от выбранного PW_GPU_USE и поддержки самого драйвера
     if [[ $PW_VULKAN_DRIVER_USE == "6" ]] ; then
         [[ -z $PW_VULKAN_USE ]] && PW_VULKAN_USE="6"
         case "$PW_VULKAN_USE" in
