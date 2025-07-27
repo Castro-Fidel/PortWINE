@@ -2912,6 +2912,12 @@ pw_check_dxvk () {
                 fi
             done
 
+            # фикс, если вдруг название PW_GPU_USE изменилось
+            if [[ -z ${PW_CHECK_VULKAN_DRIVER_ARRAY[4]} ]] && [[ -n $PW_GPU_USE && $PW_GPU_USE != "disabled" ]] ; then
+                unset PW_GPU_USE
+                pw_check_dxvk
+            fi
+
             # если выбран amdvlk, то глобально без выбора PW_AMD_VULKAN_USE будет работать он
             # для тех систем, где к примеру radv не используется, либо в приоритете amdvlk
             if [[ -z $PW_AMD_VULKAN_USE || $PW_AMD_VULKAN_USE == "disabled" ]] ; then
@@ -2926,10 +2932,11 @@ pw_check_dxvk () {
                 PW_AMD_VULKAN_USE="$PW_AMD_VULKAN_USE_OLD"
             fi
 
-            # фикс, если вдруг название PW_GPU_USE изменилось
-            if [[ -z ${PW_CHECK_VULKAN_DRIVER_ARRAY[4]} ]] && [[ -n $PW_GPU_USE && $PW_GPU_USE != "disabled" ]] ; then
-                unset PW_GPU_USE
-                pw_check_dxvk
+            # Если используется nvidia, со встройкой opengl будет работать через встройку
+            # с этим будет работать через nvidia
+            if [[ ${PW_CHECK_VULKAN_DRIVER_ARRAY[4],,} =~ nvidia ]] ; then
+                export __NV_PRIME_RENDER_OFFLOAD="1"
+                export __GLX_VENDOR_LIBRARY_NAME="nvidia"
             fi
 
             # если PW_GPU_USE изначально не было
