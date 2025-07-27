@@ -1716,15 +1716,15 @@ init_wine_ver () {
         export WINEDLLPATH
     fi
 
-	if ! check_flatpak ; then
+    if ! check_flatpak ; then
         WINE_LIBRARY_PATH="${WINEDIR}/lib"
         if [[ -d "${WINEDIR}/lib64/gstreamer-1.0" ]]
         then WINE_LIBRARY_PATH+=":${WINEDIR}/lib64"
         elif [[ -d "${WINEDIR}/lib/x86_64-linux-gnu" ]]
         then WINE_LIBRARY_PATH+=":${WINEDIR}/lib/x86_64-linux-gnu:${WINEDIR}/lib/i386-linux-gnu"
         fi
-		export WINE_LIBRARY_PATH
-	fi
+        export WINE_LIBRARY_PATH
+    fi
 
     export MEDIACONV_BLANK_VIDEO_FILE="${WINEDIR}"/share/media/blank.mkv
     export MEDIACONV_BLANK_AUDIO_FILE="${WINEDIR}"/share/media/blank.ptna
@@ -1762,8 +1762,8 @@ pw_init_runtime () {
 
     PW_PV_OVERRIDES="/usr/lib/pressure-vessel/overrides/lib"
 
-	if ! check_flatpak; then
-	  export PW_LD_LIBRARY_PATH="\
+    if ! check_flatpak; then
+      export PW_LD_LIBRARY_PATH="\
 ${PW_PLUGINS_PATH}/portable/lib/lib64:\
 ${PW_PLUGINS_PATH}/portable/lib/lib32:\
 ${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:\
@@ -1772,7 +1772,7 @@ ${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:\
 /overrides/lib/i386-linux-gnu:\
 /lib/x86_64-linux-gnu:\
 /lib/i386-linux-gnu"
-	fi
+    fi
 
     export PW_PATH="${PW_PLUGINS_PATH}/portable/bin${PATH:+:$PATH}"
 
@@ -2350,6 +2350,43 @@ check_dirs_and_files_in_pfx () {
         done
     }
 
+amd_vulkan_driver_selection () {
+    case "${PW_AMD_VULKAN_USE}" in
+        "amdvlk")
+            PW_VK_ICD_FILENAMES=""
+            for dir in /opt/amdgpu/etc/vulkan/icd.d /etc/vulkan/icd.d /usr/share/vulkan/icd.d; do
+                for file in "$dir"/amd_icd*.json; do
+                    [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
+                done
+            done
+            export PW_VK_ICD_FILENAMES
+            ;;
+
+        "amdgpupro")
+            PW_VK_ICD_FILENAMES=""
+            for dir in /opt/amdgpu-pro/etc/vulkan/icd.d /usr/share/vulkan/icd.d; do
+                for file in "$dir"/amd_pro_icd*.json; do
+                    [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
+                done
+            done
+
+            # add libs from https://github.com/CosmicFusion/fedora-amdgpu-pro/tree/main/x86_64/libdrm-pro to ld_library_path (this repo is deprecated and archived but why not)
+            echo "$PW_VK_ICD_FILENAMES" | grep -qi "/opt/amdgpu-pro/etc/vulkan/icd.d/amd_icd.*.json" && \
+            var_ld_library_path_update "/opt/amdgpu/libdrm/lib64:/opt/amdgpu/libdrm/lib32"
+
+            export PW_VK_ICD_FILENAMES
+            ;;
+
+        "radv")
+            PW_VK_ICD_FILENAMES=""
+            for file in /usr/share/vulkan/icd.d/radeon_icd.{i686,x86_64}.json; do
+                [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
+            done
+            export PW_VK_ICD_FILENAMES
+            ;;
+    esac
+}
+
 pw_init_db () {
     if echo "$LSPCI_VGA" | grep -i -q 'nvidia.*rtx' ; then
         export PW_USE_NVAPI_AND_DLSS="1"
@@ -2480,40 +2517,7 @@ pw_init_db () {
         fi
     fi
 
-	case "${PW_AMD_VULKAN_USE}" in
-		"amdvlk")
-		    PW_VK_ICD_FILENAMES=""
-		    for dir in /opt/amdgpu/etc/vulkan/icd.d /etc/vulkan/icd.d /usr/share/vulkan/icd.d; do
-		        for file in "$dir"/amd_icd*.json; do
-		            [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
-		        done
-		    done
-		    export PW_VK_ICD_FILENAMES
-		    ;;
-
-		"amdgpupro")
-		    PW_VK_ICD_FILENAMES=""
-		    for dir in /opt/amdgpu-pro/etc/vulkan/icd.d /usr/share/vulkan/icd.d; do
-		        for file in "$dir"/amd_pro_icd*.json; do
-		            [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
-		        done
-		    done
-
-			# add libs from https://github.com/CosmicFusion/fedora-amdgpu-pro/tree/main/x86_64/libdrm-pro to ld_library_path (this repo is deprecated and archived but why not)
-		    echo "$PW_VK_ICD_FILENAMES" | grep -qi "/opt/amdgpu-pro/etc/vulkan/icd.d/amd_icd.*.json" && \
-            var_ld_library_path_update "/opt/amdgpu/libdrm/lib64:/opt/amdgpu/libdrm/lib32"
-
-		    export PW_VK_ICD_FILENAMES
-		    ;;
-
-		"radv")
-		    PW_VK_ICD_FILENAMES=""
-		    for file in /usr/share/vulkan/icd.d/radeon_icd.{i686,x86_64}.json; do
-		        [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
-		    done
-		    export PW_VK_ICD_FILENAMES
-		    ;;
-	esac
+    amd_vulkan_driver_selection
 
     [[ "${START_FROM_STEAM}" == 1 ]] && export PW_GUI_DISABLED_CS=1
     [[ "${START_FROM_PP_GUI}" == 1 ]] && export PW_GUI_DISABLED_CS=0 && unset START_FROM_PP_GUI
@@ -2899,7 +2903,8 @@ pw_check_dxvk () {
                     if compare_versions "${PW_CHECK_VULKAN_DRIVER_ARRAY_1[2]}" "25.0" ; then
                         PW_VULKAN_DRIVER_USE="6" && break
                     fi
-                elif [[ ${PW_CHECK_VULKAN_DRIVER_ARRAY[4],,} == *"amd open-source driver"* ]] ; then
+                elif [[ ${PW_CHECK_VULKAN_DRIVER_ARRAY[4],,} == *"amd open-source driver"* ]] \
+                || [[ ${PW_CHECK_VULKAN_DRIVER_ARRAY[4],,} == *"amd proprietary driver"* ]] ; then
                     read -r -a PW_CHECK_VULKAN_DRIVER_ARRAY_1 <<< "${PW_CHECK_VULKAN_DRIVER_ARRAY[1]}"
                     if compare_versions "${PW_CHECK_VULKAN_DRIVER_ARRAY_1[2]}" "2.0.310" ; then
                         PW_VULKAN_DRIVER_USE="6" && break
@@ -2909,14 +2914,16 @@ pw_check_dxvk () {
 
             # если выбран amdvlk, то глобально без выбора PW_AMD_VULKAN_USE будет работать он
             # для тех систем, где к примеру radv не используется, либо в приоритете amdvlk
-            if [[ ${PW_CHECK_VULKAN_DRIVER_ARRAY[4],,} == *"amd open-source driver"* ]] && [[ -z $PW_AMD_VULKAN_USE || $PW_AMD_VULKAN_USE == "disabled" ]] ; then
-                PW_VK_ICD_FILENAMES=""
-                for dir in /opt/amdgpu/etc/vulkan/icd.d /etc/vulkan/icd.d /usr/share/vulkan/icd.d; do
-                    for file in "$dir"/amd_icd*.json; do
-                        [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
-                    done
-                done
-                export PW_VK_ICD_FILENAMES
+            if [[ -z $PW_AMD_VULKAN_USE || $PW_AMD_VULKAN_USE == "disabled" ]] ; then
+                PW_AMD_VULKAN_USE_OLD="$PW_AMD_VULKAN_USE"
+                if [[ ${PW_CHECK_VULKAN_DRIVER_ARRAY[4],,} == *"amd open-source driver"* ]] ; then
+                    PW_AMD_VULKAN_USE="amdvlk"
+                    amd_vulkan_driver_selection
+                elif [[ ${PW_CHECK_VULKAN_DRIVER_ARRAY[4],,} == *"amd proprietary driver"* ]] ; then
+                    PW_AMD_VULKAN_USE="amdgpupro"
+                    amd_vulkan_driver_selection
+                fi
+                PW_AMD_VULKAN_USE="$PW_AMD_VULKAN_USE_OLD"
             fi
 
             # фикс, если вдруг название PW_GPU_USE изменилось
