@@ -2816,7 +2816,7 @@ compare_versions () {
 }
 
 get_gpu_names () {
-    GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d' | sort -u | sed 's/^ //' | paste -sd '!')
+    GET_GPU_NAMES=$(awk -F '= ' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d' | sort -u | paste -sd '!')
     if [[ ${GET_GPU_NAMES,,} =~ radv ]] ; then
         IFS='!' read -r -a GET_GPU_NAMES_ARRAY <<< "$GET_GPU_NAMES"
         for i in "${!GET_GPU_NAMES_ARRAY[@]}" ; do
@@ -2847,18 +2847,17 @@ pw_check_dxvk () {
             IFS='' read -r -a SELECTED_VULKAN_GPU <<< "$PW_GPU_USE"
         fi
 
-        # если используется amdvlk или amdgpupro, то проверка на vulkan драйвер происходит среди них, а не через mesa драйвер
-        if [[ $PW_AMD_VULKAN_USE =~ ^(amdvlk|amdgpupro)$ ]]  ; then
-            if [[ ${SELECTED_VULKAN_GPU[@],,} =~ radv ]] ; then
-                for i in "${!SELECTED_VULKAN_GPU[@]}" ; do
-                    if [[ ${SELECTED_VULKAN_GPU[i],,} =~ radv ]] ; then
-                        SELECTED_VULKAN_GPU[i]="${SELECTED_VULKAN_GPU[i]// (RADV*}"
-                    fi
-                done
-            fi
-        fi
-
         if [[ -n ${SELECTED_VULKAN_GPU[@]} ]] ; then # оптимизация когда vulkan драйвера в системе нет
+            # если используется amdvlk или amdgpupro, то проверка на vulkan драйвер происходит среди них, а не через mesa драйвер
+            if [[ $PW_AMD_VULKAN_USE =~ ^(amdvlk|amdgpupro)$ ]]  ; then
+                if [[ ${SELECTED_VULKAN_GPU[@],,} =~ radv ]] ; then
+                    for i in "${!SELECTED_VULKAN_GPU[@]}" ; do
+                        if [[ ${SELECTED_VULKAN_GPU[i],,} =~ radv ]] ; then
+                            SELECTED_VULKAN_GPU[i]="${SELECTED_VULKAN_GPU[i]// (RADV*}"
+                        fi
+                    done
+                fi
+            fi
             # какие карты в приоритете, если не выбран изначально PW_GPU_USE
             if [[ -n ${SELECTED_VULKAN_GPU[1]} ]] ; then
                 for elem in "${SELECTED_VULKAN_GPU[@]}"; do
@@ -2881,83 +2880,60 @@ pw_check_dxvk () {
                     "${other_group[@]}"
                 )
             fi
-
             # получаем информацию о конкретном драйвере который выбран в PW_GPU_USE,
             # либо ищем наилучший драйвер с учётом приоритета видеокарт + информация
-            for i in "${SELECTED_VULKAN_GPU_NEW[@]}" "${SELECTED_VULKAN_GPU[@]}" ; do
-                PW_CHECK_VULKAN_DRIVER="$(awk -v target="$i" '
-                BEGIN {
-                    in_target = 0
-                }
-                /^GPU[0-9]+:/ {
-                        if (in_target) {
-                            in_target = 0
-                        }
-                        next
-                }
-                /apiVersion/ { var1=$0 }
-                /driverVersion/ { var2=$0 }
-                /deviceName/ { var3=$0 }
-                /deviceName/ && !/llvmpipe/ {
-                    split($0, parts, "=")
-                    device_name = parts[2]
-                    gsub(/^[[:space:]]+|[[:space:]]+$/, "", device_name)
-                    if (device_name == target) in_target = 1
-                    next
-                }
-                in_target {
-                    if ($0 ~ /driverName/) { var5=$0 }
-                    if ($0 ~ /driverInfo/) { var4=$0; exit }
-                }
-                END {
-                    print var1 "!" var2 "!" var3 "!" var4 "!" var5 "!"
-                }
-                ' "${PW_TMPFS_PATH}/vulkaninfo.tmp")"
+            mapfile -t PW_VULKAN_DRIVER_ARRAY < <(awk '
+            /apiVersion|driverVersion/ { print $3 }
+            /deviceName|driverName|driverInfo/ {
+                split($0, parts, "= ")
+                print parts[2]
+            }' "${PW_TMPFS_PATH}/vulkaninfo.tmp")
 
-                IFS='!' read -r -a PW_CHECK_VULKAN_DRIVER_ARRAY <<< "$PW_CHECK_VULKAN_DRIVER"
-                if [[ ${PW_CHECK_VULKAN_DRIVER_ARRAY[4],,} =~ nvidia ]] ; then
-                    read -r -a PW_CHECK_VULKAN_DRIVER_ARRAY_3 <<< "${PW_CHECK_VULKAN_DRIVER_ARRAY[3]}"
-                    if compare_versions "${PW_CHECK_VULKAN_DRIVER_ARRAY_3[2]}" "550.54.14" ; then
+            for i in "${SELECTED_VULKAN_GPU_NEW[@]}" "${SELECTED_VULKAN_GPU[@]}" ; do
+                x="0" && y="6"
+                while true ; do
+                    PW_VULKAN_DRIVER_ARRAY_CHECK=("${PW_VULKAN_DRIVER_ARRAY[@]:x:y}")
+                    [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[2]} == "$i" ]] && break
+                    x=$(( x + 6 )) && y=$(( y + 6 ))
+                    # фикс, если вдруг PW_GPU_USE изменился или сломался
+                    if [[ -z ${PW_VULKAN_DRIVER_ARRAY_CHECK[2]} ]] ; then
+                        PW_AMD_VULKAN_USE="disabled"
+                        edit_db_from_gui PW_AMD_VULKAN_USE
+                        unset PW_GPU_USE
+                        pw_check_dxvk
+                        break
+                    fi
+                done
+
+                if [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[3],,} =~ nvidia ]] ; then
+                    if compare_versions "${PW_VULKAN_DRIVER_ARRAY_CHECK[4]}" "550.54.14" ; then
                         PW_VULKAN_DRIVER_USE="6" && break
                     fi
-                elif [[ ${PW_CHECK_VULKAN_DRIVER_ARRAY[3],,} =~ mesa ]] ; then
-                    read -r -a PW_CHECK_VULKAN_DRIVER_ARRAY_1 <<< "${PW_CHECK_VULKAN_DRIVER_ARRAY[1]}"
-                    if compare_versions "${PW_CHECK_VULKAN_DRIVER_ARRAY_1[2]}" "25.0" ; then
+                elif [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[4],,} =~ mesa ]] ; then
+                    if compare_versions "${PW_VULKAN_DRIVER_ARRAY_CHECK[1]}" "25.0" ; then
                         PW_VULKAN_DRIVER_USE="6" && break
                     fi
-                elif [[ ${PW_CHECK_VULKAN_DRIVER_ARRAY[4],,} == *"amd open-source driver"* ]] \
-                || [[ ${PW_CHECK_VULKAN_DRIVER_ARRAY[4],,} == *"amd proprietary driver"* ]] ; then
-                    read -r -a PW_CHECK_VULKAN_DRIVER_ARRAY_1 <<< "${PW_CHECK_VULKAN_DRIVER_ARRAY[1]}"
-                    if compare_versions "${PW_CHECK_VULKAN_DRIVER_ARRAY_1[2]}" "2.0.310" ; then
+                elif [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[4],,} == *"amd open-source driver"* ]] \
+                || [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[4],,} == *"amd proprietary driver"* ]] ; then
+                    if compare_versions "${PW_VULKAN_DRIVER_ARRAY_CHECK[1]}" "2.0.310" ; then
                         PW_VULKAN_DRIVER_USE="6" && break
                     fi
                 fi
             done
-
-            # фикс, если вдруг PW_GPU_USE изменился или сломался
-            if [[ -z ${PW_CHECK_VULKAN_DRIVER_ARRAY[4]} ]] && [[ -n $PW_GPU_USE && $PW_GPU_USE != "disabled" ]] ; then
-                PW_AMD_VULKAN_USE="disabled"
-                edit_db_from_gui PW_AMD_VULKAN_USE
-                unset PW_GPU_USE
-                pw_check_dxvk
-            fi
-
             # если используется nvidia, со встройкой opengl будет работать через встройку, с этим будет работать через nvidia
-            if [[ ${PW_CHECK_VULKAN_DRIVER_ARRAY[4],,} =~ nvidia ]] ; then
+            if [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[3],,} =~ nvidia ]] ; then
                 export __NV_PRIME_RENDER_OFFLOAD="1"
                 export __GLX_VENDOR_LIBRARY_NAME="nvidia"
             else
                 export __NV_PRIME_RENDER_OFFLOAD="0"
             fi
-
             # если PW_GPU_USE изначально не было
             if [[ -z $PW_GPU_USE ]] ; then
-                export PW_GPU_USE=${PW_CHECK_VULKAN_DRIVER_ARRAY[2]//*= /}
+                export PW_GPU_USE=${PW_VULKAN_DRIVER_ARRAY_CHECK[2]}
                 edit_user_conf_from_gui PW_GPU_USE
             fi
         fi
     fi
-
     # формируется в зависимости от выбранного PW_GPU_USE и поддержки самого драйвера
     if [[ $PW_VULKAN_DRIVER_USE == "6" ]] ; then
         [[ -z $PW_VULKAN_USE ]] && PW_VULKAN_USE="6"
@@ -2972,8 +2948,7 @@ pw_check_dxvk () {
             [[ -z $PW_VULKAN_USE ]] && PW_VULKAN_USE="0"
             PW_DEFAULT_VULKAN_USE="$SORT_OPENGL"
         else
-            read -r -a PW_CHECK_VULKAN_DRIVER_ARRAY_0 <<< "${PW_CHECK_VULKAN_DRIVER_ARRAY[0]}"
-            if compare_versions "${PW_CHECK_VULKAN_DRIVER_ARRAY_0[2]}" "1.3" ; then
+            if compare_versions "${PW_VULKAN_DRIVER_ARRAY_CHECK[0]}" "1.3" ; then
                 [[ -z $PW_VULKAN_USE ]] && PW_VULKAN_USE="2"
                 case "$PW_VULKAN_USE" in
                     0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_STABLE!$SORT_SAREK" ;;
