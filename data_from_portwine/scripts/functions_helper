@@ -2890,11 +2890,16 @@ pw_check_dxvk () {
             }' "${PW_TMPFS_PATH}/vulkaninfo.tmp")
 
             for i in "${SELECTED_VULKAN_GPU_NEW[@]}" "${SELECTED_VULKAN_GPU[@]}" ; do
-                x="0" && y="6"
+                x="0" && y="5"
                 while true ; do
                     PW_VULKAN_DRIVER_ARRAY_CHECK=("${PW_VULKAN_DRIVER_ARRAY[@]:x:y}")
-                    [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[2]} == "$i" ]] && break
-                    x=$(( x + 6 )) && y=$(( y + 6 ))
+                    if [[ -n $PW_AMD_VULKAN_USE && $PW_AMD_VULKAN_USE != "disabled" ]] ; then
+                        [[ $PW_AMD_VULKAN_USE == "amdvlk" && ${PW_VULKAN_DRIVER_ARRAY_CHECK[3],,} == *"amd open-source driver"* ]] && break
+                        [[ $PW_AMD_VULKAN_USE == "amdgpupro" && ${PW_VULKAN_DRIVER_ARRAY_CHECK[3],,} == *"amd proprietary driver"* ]] && break
+                    else
+                        [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[2]} == "$i" ]] && break
+                    fi
+                    x=$(( x + 5 )) && y=$(( y + 5 ))
                     # фикс, если вдруг PW_GPU_USE изменился или сломался
                     if [[ -z ${PW_VULKAN_DRIVER_ARRAY_CHECK[2]} ]] ; then
                         PW_AMD_VULKAN_USE="disabled"
@@ -2913,8 +2918,8 @@ pw_check_dxvk () {
                     if compare_versions "${PW_VULKAN_DRIVER_ARRAY_CHECK[1]}" "25.0" ; then
                         PW_VULKAN_DRIVER_USE="6" && break
                     fi
-                elif [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[4],,} == *"amd open-source driver"* ]] \
-                || [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[4],,} == *"amd proprietary driver"* ]] ; then
+                elif [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[3],,} == *"amd open-source driver"* ]] \
+                || [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[3],,} == *"amd proprietary driver"* ]] ; then
                     if compare_versions "${PW_VULKAN_DRIVER_ARRAY_CHECK[1]}" "2.0.310" ; then
                         PW_VULKAN_DRIVER_USE="6" && break
                     fi
