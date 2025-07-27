@@ -854,46 +854,35 @@ check_selinux () {
 export -f check_selinux
 
 check_vendor_gpu () {
-    unset VENDOR_GPU_USE
-    if [[ $PW_GPU_USE != disabled ]] ; then
+    if [[ -n $PW_GPU_USE && $PW_GPU_USE != "disabled" ]] ; then
         case "${PW_GPU_USE,,}" in
             *nvidia*)
-                [[ -d /sys/bus/pci/drivers/nvidia ]] && VENDOR_GPU_USE+=("nvidia")
-                [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE+=("nouveau")
-            ;;
+                [[ -d /sys/bus/pci/drivers/nvidia ]] && VENDOR_GPU_USE="nvidia"
+                [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE="nouveau" ;;
             *amd*)
-                [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE+=("amd")
-            ;;
+                [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE="amd" ;;
             *intel*)
-                [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE+=("intel")
-            ;;
+                [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE="intel" ;;
         esac
-    fi
-
-    if command -v glxinfo &>/dev/null ; then
-        background_pid --end "pw_check_glxinfo" "3"
+    elif command -v glxinfo &>/dev/null ; then
+        pw_check_glxinfo
         case "$(<"${PW_TMPFS_PATH}/glxinfo.tmp" tr '[:upper:]' '[:lower:]')" in
             *nvidia*)
-                [[ -d /sys/bus/pci/drivers/nvidia ]] && VENDOR_GPU_USE+=("nvidia")
-                [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE+=("nouveau")
-            ;;
+                [[ -d /sys/bus/pci/drivers/nvidia ]] && VENDOR_GPU_USE="nvidia"
+                [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE="nouveau" ;;
             *amd*)
-                [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE+=("amd")
-            ;;
+                [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE="amd" ;;
             *intel*)
-                [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE+=("intel")
-            ;;
+                [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE="intel" ;;
         esac
+    else
+        [[ -d /sys/bus/pci/drivers/nvidia ]] && VENDOR_GPU_USE="nvidia"
+        [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE="nouveau"
+        [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE="amd"
+        [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE="intel"
     fi
 
-    if [[ -z ${VENDOR_GPU_USE[0]} ]] ; then
-        [[ -d /sys/bus/pci/drivers/nvidia ]] && VENDOR_GPU_USE+=("nvidia")
-        [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE+=("nouveau")
-        [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE+=("amd")
-        [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE+=("intel")
-    fi
-
-    echo "${VENDOR_GPU_USE[*]}"
+    echo "$VENDOR_GPU_USE"
 }
 
 background_pid () {
@@ -2839,7 +2828,35 @@ pw_check_dxvk () {
             IFS='' read -r -a SELECTED_VULKAN_GPU <<< "$PW_GPU_USE"
         fi
 
-        for i in "${SELECTED_VULKAN_GPU[@]}" ; do
+        # какие карты в приоритете, если не выбран изначально PW_GPU_USE
+        if [[ -n ${SELECTED_VULKAN_GPU[1]} ]] ; then
+            for elem in "${SELECTED_VULKAN_GPU[@]}"; do
+                elem_lower=${elem,,}
+                if [[ $elem_lower =~ nvidia ]]; then
+                    nvidia_group+=("$elem")
+                elif [[ $elem_lower =~ radv ]]; then
+                    radv_group+=("$elem")
+                elif [[ $elem_lower =~ amd ]]; then
+                    amd_group+=("$elem")
+                elif [[ $elem_lower =~ intel ]]; then
+                    intel_group+=("$elem")
+                else
+                    other_group+=("$elem")
+                fi
+            done
+            unset SELECTED_VULKAN_GPU
+            SELECTED_VULKAN_GPU_NEW=(
+                "${nvidia_group[@]}"
+                "${radv_group[@]}"
+                "${amd_group[@]}"
+                "${intel_group[@]}"
+                "${other_group[@]}"
+            )
+        fi
+
+        # получаем информацию о конкретном драйвере который выбран в PW_GPU_USE,
+        # либо ищем наилучший драйвер с учётом приоритета видеокарт + инфа
+        for i in "${SELECTED_VULKAN_GPU_NEW[@]}" "${SELECTED_VULKAN_GPU[@]}" ; do
             PW_CHECK_VULKAN_DRIVER="$(awk -v target="$i" '
             BEGIN {
                 in_target = 0
@@ -2861,15 +2878,16 @@ pw_check_dxvk () {
                 next
             }
             in_target {
+                if ($0 ~ /driverName/) { var5=$0 }
                 if ($0 ~ /driverInfo/) { var4=$0; exit }
             }
             END {
-                print var1 "!" var2 "!" var3 "!" var4 "!"
+                print var1 "!" var2 "!" var3 "!" var4 "!" var5 "!"
              }
             ' "${PW_TMPFS_PATH}/vulkaninfo.tmp")"
 
             IFS='!' read -r -a PW_CHECK_VULKAN_DRIVER_ARRAY <<< "$PW_CHECK_VULKAN_DRIVER"
-            if [[ ${PW_CHECK_VULKAN_DRIVER_ARRAY[2],,} =~ nvidia ]] ; then
+            if [[ ${PW_CHECK_VULKAN_DRIVER_ARRAY[4],,} =~ nvidia ]] ; then
                 read -r -a PW_CHECK_VULKAN_DRIVER_ARRAY_3 <<< "${PW_CHECK_VULKAN_DRIVER_ARRAY[3]}"
                 if compare_versions "${PW_CHECK_VULKAN_DRIVER_ARRAY_3[2]}" "550.54.14" ; then
                     PW_VULKAN_DRIVER_USE="6" && break
@@ -2879,15 +2897,17 @@ pw_check_dxvk () {
                 if compare_versions "${PW_CHECK_VULKAN_DRIVER_ARRAY_1[2]}" "25.0" ; then
                     PW_VULKAN_DRIVER_USE="6" && break
                 fi
-            elif [[ ${PW_CHECK_VULKAN_DRIVER_ARRAY[3],,} =~ llpc ]] ; then
+            elif [[ ${PW_CHECK_VULKAN_DRIVER_ARRAY[4],,} == *"amd open-source driver"* ]] ; then
                 read -r -a PW_CHECK_VULKAN_DRIVER_ARRAY_1 <<< "${PW_CHECK_VULKAN_DRIVER_ARRAY[1]}"
                 if compare_versions "${PW_CHECK_VULKAN_DRIVER_ARRAY_1[2]}" "2.0.310" ; then
-                    PW_VULKAN_DRIVER_USE="6"
+                    PW_VULKAN_DRIVER_USE="6" && break
                 fi
             fi
         done
 
-        if [[ ${PW_CHECK_VULKAN_DRIVER_ARRAY[3],,} =~ llpc ]] && [[ -z $PW_AMD_VULKAN_USE || $PW_AMD_VULKAN_USE == "disabled" ]] ; then
+        # если выбран amdvlk, то глобально без выбора PW_AMD_VULKAN_USE будет работать он
+        # для тех систем, где к примеру radv не используется, либо в приоритете amdvlk
+        if [[ ${PW_CHECK_VULKAN_DRIVER_ARRAY[4],,} == *"amd open-source driver"* ]] && [[ -z $PW_AMD_VULKAN_USE || $PW_AMD_VULKAN_USE == "disabled" ]] ; then
             PW_VK_ICD_FILENAMES=""
             for dir in /opt/amdgpu/etc/vulkan/icd.d /etc/vulkan/icd.d /usr/share/vulkan/icd.d; do
                 for file in "$dir"/amd_icd*.json; do
@@ -2897,17 +2917,20 @@ pw_check_dxvk () {
             export PW_VK_ICD_FILENAMES
         fi
 
-        if [[ -z ${PW_CHECK_VULKAN_DRIVER_ARRAY[3]} ]] && [[ -n $PW_GPU_USE && $PW_GPU_USE != "disabled" ]] ; then
+        # фикс, если вдруг название PW_GPU_USE изменилось
+        if [[ -z ${PW_CHECK_VULKAN_DRIVER_ARRAY[4]} ]] && [[ -n $PW_GPU_USE && $PW_GPU_USE != "disabled" ]] ; then
             unset PW_GPU_USE
             pw_check_dxvk
         fi
 
+        # если PW_GPU_USE изначально не было
         if [[ -z $PW_GPU_USE ]] ; then
             export PW_GPU_USE=${PW_CHECK_VULKAN_DRIVER_ARRAY[2]//*= /}
             edit_user_conf_from_gui PW_GPU_USE
         fi
     fi
 
+    # формируется в завимости от выбранного PW_GPU_USE и поддержки самого драйвера
     if [[ $PW_VULKAN_DRIVER_USE == "6" ]] ; then
         [[ -z $PW_VULKAN_USE ]] && PW_VULKAN_USE="6"
         case "$PW_VULKAN_USE" in

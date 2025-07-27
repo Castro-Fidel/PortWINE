@@ -309,7 +309,6 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
 
     background_pid --start "pw_check_vulkan" "1"
     background_pid --start "pw_get_tmp_files" "2"
-    background_pid --start "pw_check_glxinfo" "3"
 fi
 
 if [[ -z $PW_GPU_USE || $PW_GPU_USE == "disabled" ]] ; then
