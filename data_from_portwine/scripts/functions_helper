@@ -2939,8 +2939,9 @@ pw_check_dxvk () {
             fi
         fi
     fi
+
     # формируется в зависимости от выбранного PW_GPU_USE и поддержки самого драйвера
-    if [[ $PW_VULKAN_DRIVER_USE == "6" ]] ; then
+    if [[ $PW_VULKAN_DRIVER_USE == "6" ]] || [[ $PW_VULKAN_UNLOCKED == "unlocked" ]] ; then
         [[ -z $PW_VULKAN_USE ]] && PW_VULKAN_USE="6"
         case "$PW_VULKAN_USE" in
             0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_NEWEST!$SORT_STABLE!$SORT_SAREK" ;;
@@ -6603,10 +6604,9 @@ gui_userconf () {
         SOUND_DRIVER_VAR="disabled"
     fi
 
-    if [[ $GUI_THEME == "default" ]] ; then GUI_THEME=${translations[default]}
-    elif [[ $GUI_THEME == "compact" ]] ; then GUI_THEME=${translations[compact]}
-    elif [[ $GUI_THEME == "classic" ]] ; then GUI_THEME=${translations[classic]}
-    fi
+    [[ $GUI_THEME == "default" ]] && GUI_THEME=${translations[default]}
+    [[ $GUI_THEME == "compact" ]] && GUI_THEME=${translations[compact]}
+    [[ $GUI_THEME == "classic" ]] && GUI_THEME=${translations[classic]}
 
     if command -v gsettings &>/dev/null ; then
         YAD_GTK_THEME=$(gsettings get org.gnome.desktop.interface gtk-theme)
@@ -6614,11 +6614,10 @@ gui_userconf () {
         [[ -n $YAD_GTK_THEME ]] && YAD_GTK_THEME="${YAD_GTK_THEME//\'/}!"
     fi
     [[ -n $GTK_THEME ]] && GTK_THEME_PROXY="$GTK_THEME"
-    if [[ -z $GTK_THEME_PROXY ]] ; then GTK_THEME_PROXY="${translations[default]}"
-    elif [[ $GTK_THEME_PROXY =~ light$ ]] ; then GTK_THEME_PROXY="${GTK_THEME_PROXY//light/${translations[light]}}"
-    elif [[ $GTK_THEME_PROXY =~ dark$ ]] ; then GTK_THEME_PROXY="${GTK_THEME_PROXY//dark/${translations[dark]}}"
-    elif [[ $GTK_THEME_PROXY == "${YAD_GTK_THEME//\!/}" ]] ; then GTK_THEME_PROXY="${YAD_GTK_THEME//\!/}"
-    fi
+    [[ -z $GTK_THEME_PROXY ]] && GTK_THEME_PROXY="${translations[default]}"
+    [[ $GTK_THEME_PROXY =~ light$ ]] && GTK_THEME_PROXY="${GTK_THEME_PROXY//light/${translations[light]}}"
+    [[ $GTK_THEME_PROXY =~ dark$ ]] && GTK_THEME_PROXY="${GTK_THEME_PROXY//dark/${translations[dark]}}"
+    [[ $GTK_THEME_PROXY == "${YAD_GTK_THEME//\!/}" ]] && GTK_THEME_PROXY="${YAD_GTK_THEME//\!/}"
 
     if [[ $DESKTOP_WITH_TIME == "posnumber1" ]] ; then
         DESKTOP_WITH_TIME=${translations[Show in hours and minutes]}
@@ -6634,6 +6633,14 @@ gui_userconf () {
         SORT_WITH_TIME=${translations[By time]}
     else
         SORT_WITH_TIME="disabled"
+    fi
+
+    if [[ $PW_VULKAN_UNLOCKED == "default" ]] ; then
+        PW_VULKAN_UNLOCKED="${translations[default]}"
+        PW_VULKAN_UNLOCKED_LIST="${translations[unlock]}"
+    elif [[ $PW_VULKAN_UNLOCKED == "unlocked" ]] ; then
+        PW_VULKAN_UNLOCKED="${translations[unlocked]}"
+        PW_VULKAN_UNLOCKED_LIST="${translations[default]}"
     fi
 
     "${pw_yad}" --title="${translations[GLOBAL SETTINGS (USER.CONF)]}" --form \
@@ -6652,6 +6659,7 @@ gui_userconf () {
     --field="${translations[Select gtk theme]}!${translations[Allows you to select a theme for GTK.]} :CB" "$(combobox_fix "$GTK_THEME_PROXY" "${YAD_GTK_THEME}Adwaita:${translations[light]}!Adwaita:${translations[dark]}!${translations[default]}")" \
     --field="${translations[Time display]}!${translations[Displays time spent in an application or game]} :CB" "$(combobox_fix --disabled "$DESKTOP_WITH_TIME" "${translations[Show in hours and minutes]}!${translations[Show in days, hours, minutes]}")" \
     --field="${translations[Sort shortcuts by]}!${translations[This setting sorts the shortcuts in the main menu]} :CB" "$(combobox_fix --disabled "$SORT_WITH_TIME" "${translations[According to last launch]}!${translations[By time]}")" \
+    --field="${translations[Unlock all 3D APIs]}!${translations[Allows you to unlock all available 3D APIs, even if your current graphics card does not meet the minimum requirements]} :CB" "$(combobox_fix "$PW_VULKAN_UNLOCKED" "$PW_VULKAN_UNLOCKED_LIST")" \
     --button="${translations[CANCEL THE CHANGES]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Cancel the current changes and return to the previous menu]}":1 \
     --button="${translations[RESET]} USER.CONF!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Restore default settings for]} user.conf":2 \
     --button="${translations[OPEN THE SETTINGS FILE]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Open the <b>user.conf</b> settings file in a system text editor to view and change variables manually]}":164 \
@@ -6702,9 +6710,8 @@ gui_userconf () {
                 export PW_CHANGE_BRANCH="1"
                 export PW_FORCE_UPDATE="1"
             else
-                if [[ $BRANCH == "DEVEL" ]] ; then BRANCH="devel"
-                elif [[ $BRANCH == "STABLE" ]] ; then BRANCH="master"
-                fi
+                [[ $BRANCH == "DEVEL" ]] && BRANCH="devel"
+                [[ $BRANCH == "STABLE" ]] && BRANCH="master"
             fi
             PW_GUI_START="${PW_ADD_SETTINGS_UC[2]}"
             DOWNLOAD_STEAM_GRID="${PW_ADD_SETTINGS_UC[3]}"
@@ -6715,31 +6722,29 @@ gui_userconf () {
             GTK_THEME="${PW_ADD_SETTINGS_UC[8]}"
             DESKTOP_WITH_TIME="${PW_ADD_SETTINGS_UC[9]}"
             SORT_WITH_TIME="${PW_ADD_SETTINGS_UC[10]}"
+            PW_VULKAN_UNLOCKED="${PW_ADD_SETTINGS_UC[11]}"
 
-            if [[ $DOWNLOAD_STEAM_GRID =~ (${translations[Enabled]}|${translations[Enable]}) ]] ; then DOWNLOAD_STEAM_GRID="1"
-            elif [[ $DOWNLOAD_STEAM_GRID =~ (${translations[Disabled]}|${translations[Disable]}) ]] ; then DOWNLOAD_STEAM_GRID="0"
-            fi
-            if [[ $PW_WINE_DPI_VALUE == "${translations[Recommended value]}" ]] ; then
-                PW_WINE_DPI_VALUE="recommended"
-            fi
-            if [[ $GUI_THEME == "${translations[default]}" ]] ; then GUI_THEME=default
-            elif [[ $GUI_THEME == "${translations[compact]}" ]] ; then GUI_THEME=compact
-            elif [[ $GUI_THEME == "${translations[classic]}" ]] ; then GUI_THEME=classic
-            fi
-            if [[ $GTK_THEME == "${translations[default]}" ]] ; then unset GTK_THEME
-            elif [[ $GTK_THEME =~ ${translations[light]} ]] ; then GTK_THEME=${GTK_THEME//${translations[light]}/light}
-            elif [[ $GTK_THEME =~ ${translations[dark]} ]] ; then GTK_THEME=${GTK_THEME//${translations[dark]}/dark}
-            fi
-            if [[ $DESKTOP_WITH_TIME == "${translations[Show in hours and minutes]}" ]] ; then DESKTOP_WITH_TIME="posnumber1"
-            elif [[ $DESKTOP_WITH_TIME == "${translations[Show in days, hours, minutes]}" ]] ; then DESKTOP_WITH_TIME="posnumber2"
-            fi
-            if [[ $SORT_WITH_TIME == "${translations[According to last launch]}" ]] ; then SORT_WITH_TIME="lastlaunch"
-            elif [[ $SORT_WITH_TIME == "${translations[By time]}" ]] ; then SORT_WITH_TIME="bytime"
-            fi
+            [[ $DOWNLOAD_STEAM_GRID =~ (${translations[Enabled]}|${translations[Enable]}) ]] && DOWNLOAD_STEAM_GRID="1"
+            [[ $DOWNLOAD_STEAM_GRID =~ (${translations[Disabled]}|${translations[Disable]}) ]] && DOWNLOAD_STEAM_GRID="0"
+            [[ $PW_WINE_DPI_VALUE == "${translations[Recommended value]}" ]] && PW_WINE_DPI_VALUE="recommended"
+            [[ $GUI_THEME == "${translations[default]}" ]] && GUI_THEME="default"
+            [[ $GUI_THEME == "${translations[compact]}" ]] && GUI_THEME="compact"
+            [[ $GUI_THEME == "${translations[classic]}" ]] && GUI_THEME="classic"
+            [[ $GTK_THEME == "${translations[default]}" ]] && unset GTK_THEME
+            [[ $GTK_THEME =~ ${translations[light]} ]] && GTK_THEME=${GTK_THEME//${translations[light]}/light}
+            [[ $GTK_THEME =~ ${translations[dark]} ]] && GTK_THEME=${GTK_THEME//${translations[dark]}/dark}
+            [[ $DESKTOP_WITH_TIME == "${translations[Show in hours and minutes]}" ]] && DESKTOP_WITH_TIME="posnumber1"
+            [[ $DESKTOP_WITH_TIME == "${translations[Show in days, hours, minutes]}" ]] && DESKTOP_WITH_TIME="posnumber2"
+            [[ $SORT_WITH_TIME == "${translations[According to last launch]}" ]] && SORT_WITH_TIME="lastlaunch"
+            [[ $SORT_WITH_TIME == "${translations[By time]}" ]] && SORT_WITH_TIME="bytime"
             [[ $PW_GPU_USE == "${translations[The graphics card does not support Vulkan]}" ]] && PW_GPU_USE="disabled"
+            [[ $PW_VULKAN_UNLOCKED == "${translations[default]}" ]] && PW_VULKAN_UNLOCKED="default"
+            if [[ $PW_VULKAN_UNLOCKED == "${translations[unlock]}" || $PW_VULKAN_UNLOCKED == "${translations[unlocked]}" ]]
+            then PW_VULKAN_UNLOCKED="unlocked"
+            fi
 
             edit_user_conf_from_gui MIRROR BRANCH PW_GUI_START DOWNLOAD_STEAM_GRID PW_GPU_USE PW_WINE_DPI_VALUE PW_SOUND_DRIVER_USE \
-            GUI_THEME GTK_THEME DESKTOP_WITH_TIME SORT_WITH_TIME
+            GUI_THEME GTK_THEME DESKTOP_WITH_TIME SORT_WITH_TIME PW_VULKAN_UNLOCKED
             restart_pp
             ;;
     esac
