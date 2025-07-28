@@ -2847,10 +2847,10 @@ pw_check_dxvk () {
             IFS='' read -r -a SELECTED_VULKAN_GPU <<< "$PW_GPU_USE"
         fi
 
-        if [[ -n ${SELECTED_VULKAN_GPU[@]} ]] ; then # оптимизация когда vulkan драйвера в системе нет
+        if [[ -n ${SELECTED_VULKAN_GPU[*]} ]] ; then # оптимизация когда vulkan драйвера в системе нет
             # если используется amdvlk или amdgpupro, то проверка на vulkan драйвер происходит среди них, а не через mesa драйвер
             if [[ $PW_AMD_VULKAN_USE =~ ^(amdvlk|amdgpupro)$ ]]  ; then
-                if [[ ${SELECTED_VULKAN_GPU[@],,} =~ radv ]] ; then
+                if [[ ${SELECTED_VULKAN_GPU[*],,} =~ radv ]] ; then
                     for i in "${!SELECTED_VULKAN_GPU[@]}" ; do
                         if [[ ${SELECTED_VULKAN_GPU[i],,} =~ radv ]] ; then
                             SELECTED_VULKAN_GPU[i]="${SELECTED_VULKAN_GPU[i]// (RADV*}"
@@ -3086,7 +3086,7 @@ pw_skip_get_info () {
         fi
 
         logical_cores=$(grep -c ^"processor" /proc/cpuinfo)
-        if (( $logical_cores <= "4" )) ; then
+        if (( logical_cores <= "4" )) ; then
             GET_LOGICAL_CORE="$(seq -s! 1 $(( logical_cores - 1 )))"
         else
             GET_LOGICAL_CORE="1!2!$(seq -s! 4 4 $(( logical_cores - 1 )))"
