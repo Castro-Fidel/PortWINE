@@ -854,32 +854,32 @@ check_selinux () {
 export -f check_selinux
 
 check_vendor_gpu () {
-    if [[ -n $PW_GPU_USE && $PW_GPU_USE != "disabled" ]] ; then
-        case "${PW_GPU_USE,,}" in
+    check_pci_driver () {
+        case "$1" in
             *nvidia*)
                 [[ -d /sys/bus/pci/drivers/nvidia ]] && VENDOR_GPU_USE="nvidia"
-                [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE="nouveau" ;;
+                [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE="nouveau"
+                ;;
             *amd*)
-                [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE="amd" ;;
+                [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE="amd"
+                ;;
             *intel*)
-                [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE="intel" ;;
-        esac
-    elif command -v glxinfo &>/dev/null ; then
-        pw_check_glxinfo
-        case "$(<"${PW_TMPFS_PATH}/glxinfo.tmp" tr '[:upper:]' '[:lower:]')" in
-            *nvidia*)
+                [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE="intel"
+                ;;
+            *)
                 [[ -d /sys/bus/pci/drivers/nvidia ]] && VENDOR_GPU_USE="nvidia"
-                [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE="nouveau" ;;
-            *amd*)
-                [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE="amd" ;;
-            *intel*)
-                [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE="intel" ;;
+                [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE="nouveau"
+                [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE="amd"
+                [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE="intel"
+                ;;
         esac
-    else
-        [[ -d /sys/bus/pci/drivers/nvidia ]] && VENDOR_GPU_USE="nvidia"
-        [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE="nouveau"
-        [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE="amd"
-        [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE="intel"
+    }
+
+    if [[ -n $PW_GPU_USE && $PW_GPU_USE != "disabled" ]]
+    then check_pci_driver "${PW_GPU_USE,,}"
+    elif pw_check_glxinfo
+    then check_pci_driver "$(<"${PW_TMPFS_PATH}/glxinfo.tmp" tr '[:upper:]' '[:lower:]')"
+    else check_pci_driver
     fi
 
     echo "$VENDOR_GPU_USE"
@@ -2861,16 +2861,12 @@ pw_check_dxvk () {
             # какие карты в приоритете, если не выбран изначально PW_GPU_USE
             if [[ -n ${SELECTED_VULKAN_GPU[1]} ]] ; then
                 for elem in "${SELECTED_VULKAN_GPU[@]}"; do
-                    elem_lower=${elem,,}
-                    if [[ $elem_lower =~ nvidia ]]; then
-                        nvidia_group+=("$elem")
-                    elif [[ $elem_lower =~ amd ]]; then
-                        amd_group+=("$elem")
-                    elif [[ $elem_lower =~ intel ]]; then
-                        intel_group+=("$elem")
-                    else
-                        other_group+=("$elem")
-                    fi
+                    case ${elem,,} in
+                        *nvidia*) nvidia_group+=("$elem") ;;
+                           *amd*) amd_group+=("$elem") ;;
+                         *intel*) intel_group+=("$elem") ;;
+                               *) other_group+=("$elem") ;;
+                    esac
                 done
                 unset SELECTED_VULKAN_GPU
                 SELECTED_VULKAN_GPU_NEW=(
@@ -6725,23 +6721,40 @@ gui_userconf () {
             SORT_WITH_TIME="${PW_ADD_SETTINGS_UC[10]}"
             PW_VULKAN_UNLOCKED="${PW_ADD_SETTINGS_UC[11]}"
 
-            [[ $DOWNLOAD_STEAM_GRID =~ (${translations[Enabled]}|${translations[Enable]}) ]] && DOWNLOAD_STEAM_GRID="1"
-            [[ $DOWNLOAD_STEAM_GRID =~ (${translations[Disabled]}|${translations[Disable]}) ]] && DOWNLOAD_STEAM_GRID="0"
+            if [[ $DOWNLOAD_STEAM_GRID =~ (${translations[Enabled]}|${translations[Enable]}) ]]
+            then DOWNLOAD_STEAM_GRID="1"
+            else DOWNLOAD_STEAM_GRID="0"
+            fi
+
             [[ $PW_WINE_DPI_VALUE == "${translations[Recommended value]}" ]] && PW_WINE_DPI_VALUE="recommended"
-            [[ $GUI_THEME == "${translations[default]}" ]] && GUI_THEME="default"
-            [[ $GUI_THEME == "${translations[compact]}" ]] && GUI_THEME="compact"
-            [[ $GUI_THEME == "${translations[classic]}" ]] && GUI_THEME="classic"
-            [[ $GTK_THEME == "${translations[default]}" ]] && unset GTK_THEME
-            [[ $GTK_THEME =~ ${translations[light]} ]] && GTK_THEME=${GTK_THEME//${translations[light]}/light}
-            [[ $GTK_THEME =~ ${translations[dark]} ]] && GTK_THEME=${GTK_THEME//${translations[dark]}/dark}
-            [[ $DESKTOP_WITH_TIME == "${translations[Show in hours and minutes]}" ]] && DESKTOP_WITH_TIME="posnumber1"
-            [[ $DESKTOP_WITH_TIME == "${translations[Show in days, hours, minutes]}" ]] && DESKTOP_WITH_TIME="posnumber2"
-            [[ $SORT_WITH_TIME == "${translations[According to last launch]}" ]] && SORT_WITH_TIME="lastlaunch"
-            [[ $SORT_WITH_TIME == "${translations[By time]}" ]] && SORT_WITH_TIME="bytime"
+
+            case $GUI_THEME in
+                "${translations[default]}") GUI_THEME="default" ;;
+                "${translations[compact]}") GUI_THEME="compact" ;;
+                "${translations[classic]}") GUI_THEME="classic" ;;
+            esac
+
+            case $GTK_THEME in
+                "${translations[default]}") unset GTK_THEME ;;
+                  "${translations[light]}") GTK_THEME=${GTK_THEME//${translations[light]}/light} ;;
+                   "${translations[dark]}") GTK_THEME=${GTK_THEME//${translations[dark]}/dark} ;;
+            esac
+
+            if [[ $DESKTOP_WITH_TIME == "${translations[Show in hours and minutes]}" ]]
+            then DESKTOP_WITH_TIME="posnumber1"
+            else DESKTOP_WITH_TIME="posnumber2"
+            fi
+
+            if [[ $SORT_WITH_TIME == "${translations[According to last launch]}" ]]
+            then SORT_WITH_TIME="lastlaunch"
+            else SORT_WITH_TIME="bytime"
+            fi
+
             [[ $PW_GPU_USE == "${translations[The graphics card does not support Vulkan]}" ]] && PW_GPU_USE="disabled"
-            [[ $PW_VULKAN_UNLOCKED == "${translations[default]}" ]] && PW_VULKAN_UNLOCKED="default"
+
             if [[ $PW_VULKAN_UNLOCKED == "${translations[unlock]}" || $PW_VULKAN_UNLOCKED == "${translations[unlocked]}" ]]
             then PW_VULKAN_UNLOCKED="unlocked"
+            else PW_VULKAN_UNLOCKED="default"
             fi
 
             edit_user_conf_from_gui MIRROR BRANCH PW_GUI_START DOWNLOAD_STEAM_GRID PW_GPU_USE PW_WINE_DPI_VALUE PW_SOUND_DRIVER_USE \
