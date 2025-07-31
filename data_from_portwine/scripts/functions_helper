@@ -854,46 +854,35 @@ check_selinux () {
 export -f check_selinux
 
 check_vendor_gpu () {
-    unset VENDOR_GPU_USE
-    if [[ $PW_GPU_USE != disabled ]] ; then
+    if [[ -n $PW_GPU_USE && $PW_GPU_USE != "disabled" ]] ; then
         case "${PW_GPU_USE,,}" in
             *nvidia*)
-                [[ -d /sys/bus/pci/drivers/nvidia ]] && VENDOR_GPU_USE+=("nvidia")
-                [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE+=("nouveau")
-            ;;
+                [[ -d /sys/bus/pci/drivers/nvidia ]] && VENDOR_GPU_USE="nvidia"
+                [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE="nouveau" ;;
             *amd*)
-                [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE+=("amd")
-            ;;
+                [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE="amd" ;;
             *intel*)
-                [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE+=("intel")
-            ;;
+                [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE="intel" ;;
         esac
-    fi
-
-    if command -v glxinfo &>/dev/null ; then
+    elif command -v glxinfo &>/dev/null ; then
         pw_check_glxinfo
         case "$(<"${PW_TMPFS_PATH}/glxinfo.tmp" tr '[:upper:]' '[:lower:]')" in
             *nvidia*)
-                [[ -d /sys/bus/pci/drivers/nvidia ]] && VENDOR_GPU_USE+=("nvidia")
-                [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE+=("nouveau")
-            ;;
+                [[ -d /sys/bus/pci/drivers/nvidia ]] && VENDOR_GPU_USE="nvidia"
+                [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE="nouveau" ;;
             *amd*)
-                [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE+=("amd")
-            ;;
+                [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE="amd" ;;
             *intel*)
-                [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE+=("intel")
-            ;;
+                [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE="intel" ;;
         esac
+    else
+        [[ -d /sys/bus/pci/drivers/nvidia ]] && VENDOR_GPU_USE="nvidia"
+        [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE="nouveau"
+        [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE="amd"
+        [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE="intel"
     fi
 
-    if [[ -z ${VENDOR_GPU_USE[0]} ]] ; then
-        [[ -d /sys/bus/pci/drivers/nvidia ]] && VENDOR_GPU_USE+=("nvidia")
-        [[ -d /sys/bus/pci/drivers/nouveau ]] && VENDOR_GPU_USE+=("nouveau")
-        [[ -d /sys/bus/pci/drivers/amdgpu ]] && VENDOR_GPU_USE+=("amd")
-        [[ -d /sys/bus/pci/drivers/i915 ]] && VENDOR_GPU_USE+=("intel")
-    fi
-
-    echo "${VENDOR_GPU_USE[*]}"
+    echo "$VENDOR_GPU_USE"
 }
 
 background_pid () {
@@ -1345,7 +1334,6 @@ seconds_to_time () {
 
 combobox_fix () {
     if [[ -z "$1" ]] ; then
-        print_error "no argument specified for combobox_fix"
         return 1
     else
         local name1 name2
@@ -1728,15 +1716,15 @@ init_wine_ver () {
         export WINEDLLPATH
     fi
 
-	if ! check_flatpak ; then
+    if ! check_flatpak ; then
         WINE_LIBRARY_PATH="${WINEDIR}/lib"
         if [[ -d "${WINEDIR}/lib64/gstreamer-1.0" ]]
         then WINE_LIBRARY_PATH+=":${WINEDIR}/lib64"
         elif [[ -d "${WINEDIR}/lib/x86_64-linux-gnu" ]]
         then WINE_LIBRARY_PATH+=":${WINEDIR}/lib/x86_64-linux-gnu:${WINEDIR}/lib/i386-linux-gnu"
         fi
-		export WINE_LIBRARY_PATH
-	fi
+        export WINE_LIBRARY_PATH
+    fi
 
     export MEDIACONV_BLANK_VIDEO_FILE="${WINEDIR}"/share/media/blank.mkv
     export MEDIACONV_BLANK_AUDIO_FILE="${WINEDIR}"/share/media/blank.ptna
@@ -1774,8 +1762,8 @@ pw_init_runtime () {
 
     PW_PV_OVERRIDES="/usr/lib/pressure-vessel/overrides/lib"
 
-	if ! check_flatpak; then
-	  export PW_LD_LIBRARY_PATH="\
+    if ! check_flatpak; then
+      export PW_LD_LIBRARY_PATH="\
 ${PW_PLUGINS_PATH}/portable/lib/lib64:\
 ${PW_PLUGINS_PATH}/portable/lib/lib32:\
 ${PW_PV_OVERRIDES}/x86_64-linux-gnu/aliases:\
@@ -1784,7 +1772,7 @@ ${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:\
 /overrides/lib/i386-linux-gnu:\
 /lib/x86_64-linux-gnu:\
 /lib/i386-linux-gnu"
-	fi
+    fi
 
     export PW_PATH="${PW_PLUGINS_PATH}/portable/bin${PATH:+:$PATH}"
 
@@ -2492,44 +2480,44 @@ pw_init_db () {
         fi
     fi
 
-	case "${PW_AMD_VULKAN_USE}" in
-		"amdvlk")
-		    PW_VK_ICD_FILENAMES=""
-		    for dir in /opt/amdgpu/etc/vulkan/icd.d /etc/vulkan/icd.d /usr/share/vulkan/icd.d; do
-		        for file in "$dir"/amd_icd*.json; do
-		            [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
-		        done
-		    done
-		    export PW_VK_ICD_FILENAMES
-		    ;;
+    case "${PW_AMD_VULKAN_USE}" in
+        "amdvlk")
+            PW_VK_ICD_FILENAMES=""
+            for dir in /opt/amdgpu/etc/vulkan/icd.d /etc/vulkan/icd.d /usr/share/vulkan/icd.d; do
+                for file in "$dir"/amd_icd*.json; do
+                    [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
+                done
+            done
+            export PW_VK_ICD_FILENAMES
+            ;;
 
-		"amdgpupro")
-		    PW_VK_ICD_FILENAMES=""
-		    for dir in /opt/amdgpu-pro/etc/vulkan/icd.d /usr/share/vulkan/icd.d; do
-		        for file in "$dir"/amd_pro_icd*.json; do
-		            [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
-		        done
-		    done
+        "amdgpupro")
+            PW_VK_ICD_FILENAMES=""
+            for dir in /opt/amdgpu-pro/etc/vulkan/icd.d /usr/share/vulkan/icd.d; do
+                for file in "$dir"/amd_pro_icd*.json; do
+                    [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
+                done
+            done
 
-			# add libs from https://github.com/CosmicFusion/fedora-amdgpu-pro/tree/main/x86_64/libdrm-pro to ld_library_path (this repo is deprecated and archived but why not)
-		    echo "$PW_VK_ICD_FILENAMES" | grep -qi "/opt/amdgpu-pro/etc/vulkan/icd.d/amd_icd.*.json" && \
+            # add libs from https://github.com/CosmicFusion/fedora-amdgpu-pro/tree/main/x86_64/libdrm-pro to ld_library_path (this repo is deprecated and archived but why not)
+            echo "$PW_VK_ICD_FILENAMES" | grep -qi "/opt/amdgpu-pro/etc/vulkan/icd.d/amd_icd.*.json" && \
             var_ld_library_path_update "/opt/amdgpu/libdrm/lib64:/opt/amdgpu/libdrm/lib32"
-            
-		    export PW_VK_ICD_FILENAMES
-		    ;;
 
-		"radv")
-		    PW_VK_ICD_FILENAMES=""
-		    for file in /usr/share/vulkan/icd.d/radeon_icd.{i686,x86_64}.json; do
-		        [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
-		    done
-		    export PW_VK_ICD_FILENAMES
-		    ;;
-	esac
+            export PW_VK_ICD_FILENAMES
+            ;;
+
+        "radv")
+            PW_VK_ICD_FILENAMES=""
+            for file in /usr/share/vulkan/icd.d/radeon_icd.{i686,x86_64}.json; do
+                [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
+            done
+            export PW_VK_ICD_FILENAMES
+            ;;
+    esac
 
     [[ "${START_FROM_STEAM}" == 1 ]] && export PW_GUI_DISABLED_CS=1
     [[ "${START_FROM_PP_GUI}" == 1 ]] && export PW_GUI_DISABLED_CS=0 && unset START_FROM_PP_GUI
-	
+
     return 0
 }
 
@@ -2802,28 +2790,196 @@ pw_check_command () {
 export -f pw_check_command
 
 pw_check_vulkan () {
-    if [[ ! -f "${PW_TMPFS_PATH}/vulkaninfo.tmp" ]] ; then
-        TIMEOUT_CMD="5"
-        if ! pw_check_command vulkaninfo ; then
-            print_warning "use portable vulkaninfo"
-            "$PW_PLUGINS_PATH"/portable/bin/x86_64-linux-gnu-vulkaninfo &> "${PW_TMPFS_PATH}/vulkaninfo.tmp"
+    TIMEOUT_CMD="5"
+    export DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1="1"
+    if ! pw_check_command vulkaninfo ; then
+        print_warning "use portable vulkaninfo"
+        "$PW_PLUGINS_PATH"/portable/bin/x86_64-linux-gnu-vulkaninfo &> "${PW_TMPFS_PATH}/vulkaninfo.tmp"
+    fi
+}
+
+compare_versions () {
+    IFS='.' read -ra a1 <<< "$1"
+    IFS='.' read -ra a2 <<< "$2"
+    local len=$(( ${#a1[@]} > ${#a2[@]} ? ${#a1[@]} : ${#a2[@]} ))
+
+    for ((i=0; i<len; i++)) ; do
+        local n1=$(( ${a1[i]:-0} ))
+        local n2=$(( ${a2[i]:-0} ))
+        if (( n1 > n2 )) ; then
+            return 0
+        elif (( n1 < n2 )) ; then
+            return 1
+        fi
+    done
+    return 0
+}
+
+get_gpu_names () {
+    GET_GPU_NAMES=$(awk -F '= ' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d' | sort -u | paste -sd '!')
+    if [[ ${GET_GPU_NAMES,,} =~ radv ]] ; then
+        IFS='!' read -r -a GET_GPU_NAMES_ARRAY <<< "$GET_GPU_NAMES"
+        for i in "${!GET_GPU_NAMES_ARRAY[@]}" ; do
+            if [[ ${GET_GPU_NAMES_ARRAY[i],,} =~ amd && ! ${GET_GPU_NAMES_ARRAY[i],,} =~ radv ]] ; then
+              unset 'GET_GPU_NAMES_ARRAY[i]'
+            fi
+        done
+        GET_GPU_NAMES_ARRAY=("${GET_GPU_NAMES_ARRAY[@]}")
+        if [[ -n ${GET_GPU_NAMES_ARRAY[1]} ]] ; then
+            printf -v GET_GPU_NAMES '%s!' "${GET_GPU_NAMES_ARRAY[@]}"
+            GET_GPU_NAMES="${GET_GPU_NAMES%?}"
+        else
+            GET_GPU_NAMES="${GET_GPU_NAMES_ARRAY[0]}"
+        fi
+    fi
+    export GET_GPU_NAMES
+}
+
+pw_check_dxvk () {
+    background_pid --end "pw_check_vulkan" "1"
+    if [[ -z $PW_VULKAN_DRIVER_USE ]] && [[ -f "${PW_TMPFS_PATH}/vulkaninfo.tmp" ]] ; then
+        if [[ -z $PW_GPU_USE ]] ; then
+            if [[ -z $GET_GPU_NAMES ]] ; then
+                get_gpu_names
+            fi
+            IFS='!' read -r -a SELECTED_VULKAN_GPU <<< "$GET_GPU_NAMES"
+        else
+            IFS='' read -r -a SELECTED_VULKAN_GPU <<< "$PW_GPU_USE"
+        fi
+
+        if [[ -n ${SELECTED_VULKAN_GPU[*]} ]] ; then # оптимизация когда vulkan драйвера в системе нет
+            # если используется amdvlk или amdgpupro, то проверка на vulkan драйвер происходит среди них, а не через mesa драйвер
+            if [[ $PW_AMD_VULKAN_USE =~ ^(amdvlk|amdgpupro)$ ]]  ; then
+                if [[ ${SELECTED_VULKAN_GPU[*],,} =~ radv ]] ; then
+                    for i in "${!SELECTED_VULKAN_GPU[@]}" ; do
+                        if [[ ${SELECTED_VULKAN_GPU[i],,} =~ radv ]] ; then
+                            SELECTED_VULKAN_GPU[i]="${SELECTED_VULKAN_GPU[i]// (RADV*}"
+                        fi
+                    done
+                fi
+            fi
+            # какие карты в приоритете, если не выбран изначально PW_GPU_USE
+            if [[ -n ${SELECTED_VULKAN_GPU[1]} ]] ; then
+                for elem in "${SELECTED_VULKAN_GPU[@]}"; do
+                    elem_lower=${elem,,}
+                    if [[ $elem_lower =~ nvidia ]]; then
+                        nvidia_group+=("$elem")
+                    elif [[ $elem_lower =~ amd ]]; then
+                        amd_group+=("$elem")
+                    elif [[ $elem_lower =~ intel ]]; then
+                        intel_group+=("$elem")
+                    else
+                        other_group+=("$elem")
+                    fi
+                done
+                unset SELECTED_VULKAN_GPU
+                SELECTED_VULKAN_GPU_NEW=(
+                    "${nvidia_group[@]}"
+                    "${amd_group[@]}"
+                    "${intel_group[@]}"
+                    "${other_group[@]}"
+                )
+            fi
+            # получаем информацию о конкретном драйвере который выбран в PW_GPU_USE,
+            # либо ищем наилучший драйвер с учётом приоритета видеокарт + информация
+            mapfile -t PW_VULKAN_DRIVER_ARRAY < <(awk '
+            /apiVersion|driverVersion/ { print $3 }
+            /deviceName|driverName|driverInfo/ {
+                split($0, parts, "= ")
+                print parts[2]
+            }' "${PW_TMPFS_PATH}/vulkaninfo.tmp")
+
+            for i in "${SELECTED_VULKAN_GPU_NEW[@]}" "${SELECTED_VULKAN_GPU[@]}" ; do
+                x="0" && y="5"
+                while true ; do
+                    PW_VULKAN_DRIVER_ARRAY_CHECK=("${PW_VULKAN_DRIVER_ARRAY[@]:x:y}")
+                    if [[ -n $PW_AMD_VULKAN_USE && $PW_AMD_VULKAN_USE != "disabled" ]] ; then
+                        [[ $PW_AMD_VULKAN_USE == "amdvlk" && ${PW_VULKAN_DRIVER_ARRAY_CHECK[3],,} == *"amd open-source driver"* ]] && break
+                        [[ $PW_AMD_VULKAN_USE == "amdgpupro" && ${PW_VULKAN_DRIVER_ARRAY_CHECK[3],,} == *"amd proprietary driver"* ]] && break
+                    else
+                        [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[2]} == "$i" ]] && break
+                    fi
+                    x=$(( x + 5 )) && y=$(( y + 5 ))
+                    # фикс, если вдруг PW_GPU_USE изменился или сломался
+                    if [[ -z ${PW_VULKAN_DRIVER_ARRAY_CHECK[2]} ]] ; then
+                        PW_AMD_VULKAN_USE="disabled"
+                        edit_db_from_gui PW_AMD_VULKAN_USE
+                        unset PW_GPU_USE
+                        pw_check_dxvk
+                        break
+                    fi
+                done
+
+                if [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[3],,} =~ nvidia ]] ; then
+                    if compare_versions "${PW_VULKAN_DRIVER_ARRAY_CHECK[4]}" "550.54.14" ; then
+                        PW_VULKAN_DRIVER_USE="6" && break
+                    fi
+                elif [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[4],,} =~ mesa ]] ; then
+                    if compare_versions "${PW_VULKAN_DRIVER_ARRAY_CHECK[1]}" "25.0" ; then
+                        PW_VULKAN_DRIVER_USE="6" && break
+                    fi
+                elif [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[3],,} == *"amd open-source driver"* ]] \
+                || [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[3],,} == *"amd proprietary driver"* ]] ; then
+                    if compare_versions "${PW_VULKAN_DRIVER_ARRAY_CHECK[1]}" "2.0.310" ; then
+                        PW_VULKAN_DRIVER_USE="6" && break
+                    fi
+                fi
+            done
+            # если используется nvidia, со встройкой opengl будет работать через встройку, с этим будет работать через nvidia
+            if [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[3],,} =~ nvidia ]] ; then
+                export __NV_PRIME_RENDER_OFFLOAD="1"
+                export __GLX_VENDOR_LIBRARY_NAME="nvidia"
+            else
+                export __NV_PRIME_RENDER_OFFLOAD="0"
+            fi
+            # если PW_GPU_USE изначально не было
+            if [[ -z $PW_GPU_USE ]] ; then
+                export PW_GPU_USE=${PW_VULKAN_DRIVER_ARRAY_CHECK[2]}
+                edit_user_conf_from_gui PW_GPU_USE
+            fi
+        fi
+    fi
+    # формируется в зависимости от выбранного PW_GPU_USE и поддержки самого драйвера
+    if [[ $PW_VULKAN_DRIVER_USE == "6" ]] || [[ $PW_VULKAN_UNLOCKED == "unlocked" ]] ; then
+        [[ -z $PW_VULKAN_USE ]] && PW_VULKAN_USE="6"
+        case "$PW_VULKAN_USE" in
+            0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_NEWEST!$SORT_STABLE!$SORT_SAREK" ;;
+            1) PW_DEFAULT_VULKAN_USE="$SORT_SAREK!$SORT_NEWEST!$SORT_STABLE!$SORT_OPENGL" ;;
+            2) PW_DEFAULT_VULKAN_USE="$SORT_STABLE!$SORT_NEWEST!$SORT_SAREK!$SORT_OPENGL" ;;
+            *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_SAREK!$SORT_OPENGL" ;;
+        esac
+    else
+        if [[ -z $PW_GPU_USE || $PW_GPU_USE == "disabled" ]] ; then
+            [[ -z $PW_VULKAN_USE ]] && PW_VULKAN_USE="0"
+            PW_DEFAULT_VULKAN_USE="$SORT_OPENGL"
+        else
+            if compare_versions "${PW_VULKAN_DRIVER_ARRAY_CHECK[0]}" "1.3" ; then
+                [[ -z $PW_VULKAN_USE ]] && PW_VULKAN_USE="2"
+                case "$PW_VULKAN_USE" in
+                    0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_STABLE!$SORT_SAREK" ;;
+                    1) PW_DEFAULT_VULKAN_USE="$SORT_SAREK!$SORT_STABLE!$SORT_OPENGL" ;;
+                    *) PW_DEFAULT_VULKAN_USE="$SORT_STABLE!$SORT_SAREK!$SORT_OPENGL" ;;
+                esac
+            else
+                [[ -z $PW_VULKAN_USE ]] && PW_VULKAN_USE="1"
+                case "$PW_VULKAN_USE" in
+                    0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_SAREK" ;;
+                    *) PW_DEFAULT_VULKAN_USE="$SORT_SAREK!$SORT_OPENGL" ;;
+                esac
+            fi
         fi
     fi
 }
 
 pw_check_glxinfo () {
-    if [[ ! -f "${PW_TMPFS_PATH}/glxinfo.tmp" ]] ; then
-        TIMEOUT_CMD="5"
-        pw_check_command glxinfo -B
-    fi
+    TIMEOUT_CMD="5"
+    pw_check_command glxinfo -B
 }
 
 pw_get_tmp_files () {
     for f_cmd in "gamescope --help" "lspci -k" "xrandr --current" "locale -a"
     do pw_check_command "$f_cmd"
     done
-
-    pw_check_vulkan
 
     # GALLIUM NINE
     unset FIND_D3D_MODULE D3D_MODULE_PATH
@@ -2850,16 +3006,14 @@ pw_get_tmp_files () {
 
 pw_skip_get_info () {
     if [[ "${SKIP_CHECK_UPDATES_NEW}" != "1" ]] ; then
-        background_pid --end "pw_get_tmp_files" "1"
+        background_pid --end "pw_get_tmp_files" "2"
 
         if [[ -f "${PW_TMPFS_PATH}/gamescope.tmp" ]] ; then
             export GAMESCOPE_INSTALLED="1"
         fi
 
         if [[ -f "${PW_TMPFS_PATH}/vulkaninfo.tmp" ]] ; then
-            VULKAN_DRIVER_NAME="$(grep -e 'driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | awk '{print$3}' | head -1)"
-            GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
-            export VULKAN_DRIVER_NAME GET_GPU_NAMES
+            get_gpu_names
         fi
 
         if [[ -f "${PW_TMPFS_PATH}/lspci.tmp" ]] ; then
@@ -2933,7 +3087,7 @@ pw_skip_get_info () {
         fi
 
         logical_cores=$(grep -c ^"processor" /proc/cpuinfo)
-        if (( $logical_cores <= "4" )) ; then
+        if (( logical_cores <= "4" )) ; then
             GET_LOGICAL_CORE="$(seq -s! 1 $(( logical_cores - 1 )))"
         else
             GET_LOGICAL_CORE="1!2!$(seq -s! 4 4 $(( logical_cores - 1 )))"
@@ -4591,7 +4745,7 @@ pw_run () {
     PW_LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}"
 
     echo "##### Current variables #####" > "$PW_TMPFS_PATH/var.log"
-    for var in "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" "VULKAN_DRIVER_NAME" \
+    for var in "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" \
                "WINELOADER" "VKD3D_CONFIG" "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2" \
                "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH" "PW_VK_ICD_FILENAMES" "PW_TASKSET_SLR"
     do
@@ -5545,7 +5699,6 @@ gui_edit_db () {
     if [[ -n "${PW_AMD_VULKAN_USE}" ]] && \
     [[ "${PW_AMD_VULKAN_USE}" != "disabled" ]] ; then
         AMD_VULKAN_VAR="${PW_AMD_VULKAN_USE}"
-        export DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1=1
     else
         AMD_VULKAN_VAR="disabled"
     fi
@@ -6425,12 +6578,12 @@ gui_userconf () {
         NEW_STEAM_BEHAVIOR="${translations[Enable]}"
     fi
 
-    if [[ -n $PW_GPU_USE ]] \
-    && [[ $PW_GPU_USE != "disabled" ]]
-    then
+    if [[ -n $PW_GPU_USE ]] && [[ $PW_GPU_USE != "disabled" ]] ; then
         GPU_VAR="$PW_GPU_USE"
+    elif [[ -n $GET_GPU_NAMES ]] ; then
+        GPU_VAR="${GET_GPU_NAMES/!*/}"
     else
-        GPU_VAR="disabled"
+        GPU_VAR="${translations[The graphics card does not support Vulkan]}"
     fi
 
     if [[ $PW_WINE_DPI_VALUE == "recommended" ]] ; then
@@ -6452,10 +6605,9 @@ gui_userconf () {
         SOUND_DRIVER_VAR="disabled"
     fi
 
-    if [[ $GUI_THEME == "default" ]] ; then GUI_THEME=${translations[default]}
-    elif [[ $GUI_THEME == "compact" ]] ; then GUI_THEME=${translations[compact]}
-    elif [[ $GUI_THEME == "classic" ]] ; then GUI_THEME=${translations[classic]}
-    fi
+    [[ $GUI_THEME == "default" ]] && GUI_THEME=${translations[default]}
+    [[ $GUI_THEME == "compact" ]] && GUI_THEME=${translations[compact]}
+    [[ $GUI_THEME == "classic" ]] && GUI_THEME=${translations[classic]}
 
     if command -v gsettings &>/dev/null ; then
         YAD_GTK_THEME=$(gsettings get org.gnome.desktop.interface gtk-theme)
@@ -6463,11 +6615,10 @@ gui_userconf () {
         [[ -n $YAD_GTK_THEME ]] && YAD_GTK_THEME="${YAD_GTK_THEME//\'/}!"
     fi
     [[ -n $GTK_THEME ]] && GTK_THEME_PROXY="$GTK_THEME"
-    if [[ -z $GTK_THEME_PROXY ]] ; then GTK_THEME_PROXY="${translations[default]}"
-    elif [[ $GTK_THEME_PROXY =~ light$ ]] ; then GTK_THEME_PROXY="${GTK_THEME_PROXY//light/${translations[light]}}"
-    elif [[ $GTK_THEME_PROXY =~ dark$ ]] ; then GTK_THEME_PROXY="${GTK_THEME_PROXY//dark/${translations[dark]}}"
-    elif [[ $GTK_THEME_PROXY == "${YAD_GTK_THEME//\!/}" ]] ; then GTK_THEME_PROXY="${YAD_GTK_THEME//\!/}"
-    fi
+    [[ -z $GTK_THEME_PROXY ]] && GTK_THEME_PROXY="${translations[default]}"
+    [[ $GTK_THEME_PROXY =~ light$ ]] && GTK_THEME_PROXY="${GTK_THEME_PROXY//light/${translations[light]}}"
+    [[ $GTK_THEME_PROXY =~ dark$ ]] && GTK_THEME_PROXY="${GTK_THEME_PROXY//dark/${translations[dark]}}"
+    [[ $GTK_THEME_PROXY == "${YAD_GTK_THEME//\!/}" ]] && GTK_THEME_PROXY="${YAD_GTK_THEME//\!/}"
 
     if [[ $DESKTOP_WITH_TIME == "posnumber1" ]] ; then
         DESKTOP_WITH_TIME=${translations[Show in hours and minutes]}
@@ -6485,6 +6636,14 @@ gui_userconf () {
         SORT_WITH_TIME="disabled"
     fi
 
+    if [[ $PW_VULKAN_UNLOCKED == "default" ]] ; then
+        PW_VULKAN_UNLOCKED="${translations[default]}"
+        PW_VULKAN_UNLOCKED_LIST="${translations[unlock]}"
+    elif [[ $PW_VULKAN_UNLOCKED == "unlocked" ]] ; then
+        PW_VULKAN_UNLOCKED="${translations[unlocked]}"
+        PW_VULKAN_UNLOCKED_LIST="${translations[default]}"
+    fi
+
     "${pw_yad}" --title="${translations[GLOBAL SETTINGS (USER.CONF)]}" --form \
     --gui-type="settings-shortcut" --separator="%" \
     --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
@@ -6494,13 +6653,14 @@ gui_userconf () {
     --field="${translations[Change branch to]}!${translations[Depending on the version of the scripts, PortProton will receive the latest changes first (the DEVEL branch), the STABLE branch is updated later and is stable.]} :CB" "$(combobox_fix "$BRANCH" "$NEW_BRANCH")" \
     --field="${translations[Change start gui to]}!${translations[When using PANED in the game start menu, additional buttons are located on one large page; if NOTEBOOK, then they are divided into several.]} :CB" "$(combobox_fix "$PW_GUI_START" "$NEW_START_GUI")" \
     --field="${translations[Steam covers download]}!${translations[If downloading steam covers is enabled, they will be downloaded and created. (Disablement is provided in cases where their downloading is unavailable for some reason)]} :CB" "$(combobox_fix "$DOWNLOAD_STEAM_GRID" "$NEW_STEAM_BEHAVIOR")" \
-    --field="${translations[Choose a graphics card to run the game]}!${translations[Select which video card will be used to run the game (used for all running games and programs in PortProton)]} :CB" "$(combobox_fix --disabled "$GPU_VAR" "$GET_GPU_NAMES")" \
+    --field="${translations[Choose a graphics card to run the game]}!${translations[Select which video card will be used to run the game (used for all running games and programs in PortProton)]} :CB" "$(combobox_fix "$GPU_VAR" "$GET_GPU_NAMES")" \
     --field="${translations[Force dpi]}!${translations[Here you can set forced dpi for applications wine]} :CB" "$(combobox_fix --disabled "$YAD_DPI_VAR" "${translations[Recommended value]}!80!96!120!144!168!192!216!240")" \
     --field="${translations[Choice wine audio driver]}!${translations[Fixes sound popling if choice alsa]} :CB" "$(combobox_fix --disabled "$SOUND_DRIVER_VAR" "alsa!oss!pulse")" \
     --field="${translations[Select PortProton theme]}!${translations[Allows you to select a theme for PortProton]} :CB" "$(combobox_fix "$GUI_THEME" "${translations[default]}!${translations[compact]}!${translations[classic]}")" \
     --field="${translations[Select gtk theme]}!${translations[Allows you to select a theme for GTK.]} :CB" "$(combobox_fix "$GTK_THEME_PROXY" "${YAD_GTK_THEME}Adwaita:${translations[light]}!Adwaita:${translations[dark]}!${translations[default]}")" \
     --field="${translations[Time display]}!${translations[Displays time spent in an application or game]} :CB" "$(combobox_fix --disabled "$DESKTOP_WITH_TIME" "${translations[Show in hours and minutes]}!${translations[Show in days, hours, minutes]}")" \
     --field="${translations[Sort shortcuts by]}!${translations[This setting sorts the shortcuts in the main menu]} :CB" "$(combobox_fix --disabled "$SORT_WITH_TIME" "${translations[According to last launch]}!${translations[By time]}")" \
+    --field="${translations[Unlock all 3D APIs]}!${translations[Allows you to unlock all available 3D APIs, even if your current graphics card does not meet the minimum requirements]} :CB" "$(combobox_fix "$PW_VULKAN_UNLOCKED" "$PW_VULKAN_UNLOCKED_LIST")" \
     --button="${translations[CANCEL THE CHANGES]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Cancel the current changes and return to the previous menu]}":1 \
     --button="${translations[RESET]} USER.CONF!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Restore default settings for]} user.conf":2 \
     --button="${translations[OPEN THE SETTINGS FILE]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Open the <b>user.conf</b> settings file in a system text editor to view and change variables manually]}":164 \
@@ -6525,6 +6685,7 @@ gui_userconf () {
             gui_open_user_conf
             ;;
         166)
+            unset PW_VULKAN_DRIVER_USE
             IFS='%' read -r -a PW_ADD_SETTINGS_UC <"${PW_TMPFS_PATH}/tmp_yad_userconf_set_cb"
             MIRROR="${PW_ADD_SETTINGS_UC[0]}"
             if [[ $BRANCH != "${PW_ADD_SETTINGS_UC[1]}" ]] ; then
@@ -6550,9 +6711,8 @@ gui_userconf () {
                 export PW_CHANGE_BRANCH="1"
                 export PW_FORCE_UPDATE="1"
             else
-                if [[ $BRANCH == "DEVEL" ]] ; then BRANCH="devel"
-                elif [[ $BRANCH == "STABLE" ]] ; then BRANCH="master"
-                fi
+                [[ $BRANCH == "DEVEL" ]] && BRANCH="devel"
+                [[ $BRANCH == "STABLE" ]] && BRANCH="master"
             fi
             PW_GUI_START="${PW_ADD_SETTINGS_UC[2]}"
             DOWNLOAD_STEAM_GRID="${PW_ADD_SETTINGS_UC[3]}"
@@ -6563,30 +6723,29 @@ gui_userconf () {
             GTK_THEME="${PW_ADD_SETTINGS_UC[8]}"
             DESKTOP_WITH_TIME="${PW_ADD_SETTINGS_UC[9]}"
             SORT_WITH_TIME="${PW_ADD_SETTINGS_UC[10]}"
+            PW_VULKAN_UNLOCKED="${PW_ADD_SETTINGS_UC[11]}"
 
-            if [[ $DOWNLOAD_STEAM_GRID =~ (${translations[Enabled]}|${translations[Enable]}) ]] ; then DOWNLOAD_STEAM_GRID="1"
-            elif [[ $DOWNLOAD_STEAM_GRID =~ (${translations[Disabled]}|${translations[Disable]}) ]] ; then DOWNLOAD_STEAM_GRID="0"
-            fi
-            if [[ $PW_WINE_DPI_VALUE == "${translations[Recommended value]}" ]] ; then
-                PW_WINE_DPI_VALUE="recommended"
-            fi
-            if [[ $GUI_THEME == "${translations[default]}" ]] ; then GUI_THEME=default
-            elif [[ $GUI_THEME == "${translations[compact]}" ]] ; then GUI_THEME=compact
-            elif [[ $GUI_THEME == "${translations[classic]}" ]] ; then GUI_THEME=classic
-            fi
-            if [[ $GTK_THEME == "${translations[default]}" ]] ; then unset GTK_THEME
-            elif [[ $GTK_THEME =~ ${translations[light]} ]] ; then GTK_THEME=${GTK_THEME//${translations[light]}/light}
-            elif [[ $GTK_THEME =~ ${translations[dark]} ]] ; then GTK_THEME=${GTK_THEME//${translations[dark]}/dark}
-            fi
-            if [[ $DESKTOP_WITH_TIME == "${translations[Show in hours and minutes]}" ]] ; then DESKTOP_WITH_TIME="posnumber1"
-            elif [[ $DESKTOP_WITH_TIME == "${translations[Show in days, hours, minutes]}" ]] ; then DESKTOP_WITH_TIME="posnumber2"
-            fi
-            if [[ $SORT_WITH_TIME == "${translations[According to last launch]}" ]] ; then SORT_WITH_TIME="lastlaunch"
-            elif [[ $SORT_WITH_TIME == "${translations[By time]}" ]] ; then SORT_WITH_TIME="bytime"
+            [[ $DOWNLOAD_STEAM_GRID =~ (${translations[Enabled]}|${translations[Enable]}) ]] && DOWNLOAD_STEAM_GRID="1"
+            [[ $DOWNLOAD_STEAM_GRID =~ (${translations[Disabled]}|${translations[Disable]}) ]] && DOWNLOAD_STEAM_GRID="0"
+            [[ $PW_WINE_DPI_VALUE == "${translations[Recommended value]}" ]] && PW_WINE_DPI_VALUE="recommended"
+            [[ $GUI_THEME == "${translations[default]}" ]] && GUI_THEME="default"
+            [[ $GUI_THEME == "${translations[compact]}" ]] && GUI_THEME="compact"
+            [[ $GUI_THEME == "${translations[classic]}" ]] && GUI_THEME="classic"
+            [[ $GTK_THEME == "${translations[default]}" ]] && unset GTK_THEME
+            [[ $GTK_THEME =~ ${translations[light]} ]] && GTK_THEME=${GTK_THEME//${translations[light]}/light}
+            [[ $GTK_THEME =~ ${translations[dark]} ]] && GTK_THEME=${GTK_THEME//${translations[dark]}/dark}
+            [[ $DESKTOP_WITH_TIME == "${translations[Show in hours and minutes]}" ]] && DESKTOP_WITH_TIME="posnumber1"
+            [[ $DESKTOP_WITH_TIME == "${translations[Show in days, hours, minutes]}" ]] && DESKTOP_WITH_TIME="posnumber2"
+            [[ $SORT_WITH_TIME == "${translations[According to last launch]}" ]] && SORT_WITH_TIME="lastlaunch"
+            [[ $SORT_WITH_TIME == "${translations[By time]}" ]] && SORT_WITH_TIME="bytime"
+            [[ $PW_GPU_USE == "${translations[The graphics card does not support Vulkan]}" ]] && PW_GPU_USE="disabled"
+            [[ $PW_VULKAN_UNLOCKED == "${translations[default]}" ]] && PW_VULKAN_UNLOCKED="default"
+            if [[ $PW_VULKAN_UNLOCKED == "${translations[unlock]}" || $PW_VULKAN_UNLOCKED == "${translations[unlocked]}" ]]
+            then PW_VULKAN_UNLOCKED="unlocked"
             fi
 
             edit_user_conf_from_gui MIRROR BRANCH PW_GUI_START DOWNLOAD_STEAM_GRID PW_GPU_USE PW_WINE_DPI_VALUE PW_SOUND_DRIVER_USE \
-            GUI_THEME GTK_THEME DESKTOP_WITH_TIME SORT_WITH_TIME
+            GUI_THEME GTK_THEME DESKTOP_WITH_TIME SORT_WITH_TIME PW_VULKAN_UNLOCKED
             restart_pp
             ;;
     esac
@@ -7032,9 +7191,9 @@ pw_prefix_manager () {
         --tab="${translations[SETTINGS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" 2>/dev/null
         YAD_STATUS="$?"
 
-        try_remove_file  "${PW_TMPFS_PATH}/dll_list_tmp"
-        try_remove_file  "${PW_TMPFS_PATH}/fonts_list_tmp"
-        try_remove_file  "${PW_TMPFS_PATH}/settings_list_tmp"
+        try_remove_file "${PW_TMPFS_PATH}/dll_list_tmp"
+        try_remove_file "${PW_TMPFS_PATH}/fonts_list_tmp"
+        try_remove_file "${PW_TMPFS_PATH}/settings_list_tmp"
 
         case "$YAD_STATUS" in
             0)
@@ -7077,11 +7236,6 @@ portwine_start_debug () {
     pw_skip_get_info
     kill_portwine
     export PW_LOG=1
-    if [[ -z "$VULKAN_DRIVER_NAME" ]] || [[ "$VULKAN_DRIVER_NAME" == "llvmpipe" ]] ; then
-        pw_notify_send -i warning \
-        "${translations[Attention working version of vulkan not detected!]}" \
-        "${translations[It is recommended to run games in OpenGL (low performance possible)!]}"
-    fi
     echo "${translations[PortProton was launched in creation mode PortProton.log and it is successfully stored in the root directory of the port]}" > "${PORT_WINE_PATH}/PortProton.log"
     echo "${translations[To diagnose the problem, copy ALL of the log to:]} https://linux-gaming.ru/t/opisanie-kategorii-portproton-pomoshh/1642" >> "${PORT_WINE_PATH}/PortProton.log"
     echo "-------------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
@@ -7422,6 +7576,7 @@ gui_open_user_conf () {
                 restart_pp --userconf
                 ;;
             2)
+                unset PW_VULKAN_DRIVER_USE
                 echo "${PW_USERCONF_GUI}" > "${PORT_WINE_PATH}/data/user.conf"
                 print_info "Restarting..."
                 restart_pp --userconf
