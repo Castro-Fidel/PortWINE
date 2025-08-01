@@ -2921,13 +2921,6 @@ pw_check_dxvk () {
                     fi
                 fi
             done
-            # если используется nvidia, со встройкой opengl будет работать через встройку, с этим будет работать через nvidia
-            if [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[3],,} =~ nvidia ]] ; then
-                export __NV_PRIME_RENDER_OFFLOAD="1"
-                export __GLX_VENDOR_LIBRARY_NAME="nvidia"
-            else
-                export __NV_PRIME_RENDER_OFFLOAD="0"
-            fi
             # если PW_GPU_USE изначально не было
             if [[ -z $PW_GPU_USE ]] ; then
                 export PW_GPU_USE=${PW_VULKAN_DRIVER_ARRAY_CHECK[2]}
@@ -3043,7 +3036,7 @@ pw_skip_get_info () {
         unset AMD_VULKAN_DRIVER_LIST
 
         if ! check_flatpak \
-        && [[ $(check_vendor_gpu) =~ amd ]]
+        && [[ $(check_vendor_gpu) == "amd" ]]
         then
             for DRIVER in $GET_AMD_VULKAN_DRIVER_LIST; do
                 case "$DRIVER" in
@@ -3775,8 +3768,15 @@ start_portwine () {
         export int_xneur=1
     fi
 
-    #https://github.com/flathub/net.lutris.Lutris/pull/368#issuecomment-1751381312
-    [[ $(check_vendor_gpu) =~ nvidia ]] && export WEBKIT_DISABLE_DMABUF_RENDERER=1
+    if [[ $(check_vendor_gpu) == "nvidia" ]] ; then
+        #https://github.com/flathub/net.lutris.Lutris/pull/368#issuecomment-1751381312
+        export WEBKIT_DISABLE_DMABUF_RENDERER="1"
+        #Для того чтобы OpenGL всегда работал через nvidia (если в PW_GPU_USE выбрана nvidia)
+        export __NV_PRIME_RENDER_OFFLOAD="1"
+        export __GLX_VENDOR_LIBRARY_NAME="nvidia"
+    else
+        export __NV_PRIME_RENDER_OFFLOAD="0"
+    fi
 
     if check_gamescope_session ; then
         export PW_GAMEMODERUN_SLR=""
@@ -3993,7 +3993,7 @@ fi
         then
             export LIBGL_KOPPER_DRI2="1"
         fi
-        [[ $(check_vendor_gpu) =~ nouveau ]] && export NOUVEAU_USE_ZINK="1"
+        [[ $(check_vendor_gpu) == "nouveau" ]] && export NOUVEAU_USE_ZINK="1"
     fi
 
     # WINED3D VULKAN
@@ -4606,7 +4606,7 @@ fi
     || check_gamescope_session
     then
         export vk_xwayland_wait_ready="false"
-        if [[ $(check_vendor_gpu) =~ amd ]] ; then
+        if [[ $(check_vendor_gpu) == "amd" ]] ; then
             export RADV_DEBUG+="nodcc "
             export AMD_DEBUG="nodcc"
             if [[ ! $(<"${PW_TMPFS_PATH}/vulkaninfo.tmp") =~ VK_EXT_image_drm_format_modifier ]] ; then
@@ -4614,10 +4614,10 @@ fi
                 grep -e '--backend' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null && PW_GS_BACKEND_SDL="1"
             fi
         fi
-        if [[ $(check_vendor_gpu) =~ intel ]] ; then
+        if [[ $(check_vendor_gpu) == "intel" ]] ; then
             export INTEL_DEBUG="norbc"
         fi
-        if [[ $(check_vendor_gpu) =~ nvidia ]] ; then
+        if [[ $(check_vendor_gpu) == "nvidia" ]] ; then
             PW_GAMESCOPE_VARIABLES_BEFORE+="__GL_THREADED_OPTIMIZATIONS=0 "
             PW_GAMESCOPE_VARIABLES_AFTER+="__GL_THREADED_OPTIMIZATIONS=1 "
         fi
@@ -6707,8 +6707,10 @@ gui_userconf () {
                 export PW_CHANGE_BRANCH="1"
                 export PW_FORCE_UPDATE="1"
             else
-                [[ $BRANCH == "DEVEL" ]] && BRANCH="devel"
-                [[ $BRANCH == "STABLE" ]] && BRANCH="master"
+                if [[ $BRANCH == "DEVEL" ]]
+                then BRANCH="devel"
+                else BRANCH="master"
+                fi
             fi
             PW_GUI_START="${PW_ADD_SETTINGS_UC[2]}"
             DOWNLOAD_STEAM_GRID="${PW_ADD_SETTINGS_UC[3]}"
