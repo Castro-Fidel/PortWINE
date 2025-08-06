@@ -320,7 +320,12 @@ parseSteamTargetExe() {
 
 enableSteamApi() {
 	[[ -z "${STEAM_BASE_FOLDER}" ]] && STEAM_BASE_FOLDER="$(getSteamPath)"
-	[[ ! -f "${STEAM_BASE_FOLDER}/.cef-enable-remote-debugging" ]] && touch "${STEAM_BASE_FOLDER}/.cef-enable-remote-debugging"
+	[[ -z "${STEAM_BASE_FOLDER}" ]] && return 69
+	if [[ ! -f "${STEAM_BASE_FOLDER}/.cef-enable-remote-debugging" ]]; then
+		touch "${STEAM_BASE_FOLDER}/.cef-enable-remote-debugging"
+		return 75
+	fi
+	return 0
 }
 
 callSteamApi() {
@@ -333,7 +338,7 @@ callSteamApi() {
 	fi
 
 	local js=$(<"${PORT_SCRIPTS_PATH:-.}/steam.js")
-	enableSteamApi && return 1
+	enableSteamApi || return 1
 
 	local websocat="${PW_PLUGINS_PATH:+${PW_PLUGINS_PATH}/portable/bin/}websocat"
 	if ! command -v "${websocat}" &>/dev/null; then
