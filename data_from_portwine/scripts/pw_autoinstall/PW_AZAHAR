@@ -6,10 +6,11 @@
 # info_en: An open source Nintendo 3DS emulator based on Citra, designed to run games with support for enhanced resolutions and advanced emulation settings.
 # info_ru: Эмулятор Nintendo 3DS с открытым исходным кодом на основе Citra, созданный для запуска игр с поддержкой улучшенного разрешения и расширенных настроек эмуляции.
 ##########################################################################
-# export LAUNCH_PARAMETERS="/VERYSILENT"
-export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/azahar-2120.3-windows-msys2-installer.exe"
+export PW_AZAHAR_VERSION=$(curl -s "https://github.com/azahar-emu/azahar/releases" | grep -oP '/azahar-emu/azahar/releases/tag/\K[0-9.]+(-[a-z0-9]+)?' | grep -v -- '-[a-z0-9]' | sort -Vu | tail -n1)
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/azahar-$PW_AZAHAR_VERSION-windows-msys2-installer.exe"
+export PW_PREFIX_NAME="AZAHAR"
 start_portwine
-if try_download "https://github.com/azahar-emu/azahar/releases/download/2120.3/azahar-2120.3-windows-msys2-installer.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
+if try_download "https://github.com/azahar-emu/azahar/releases/download/$PW_AZAHAR_VERSION/azahar-$PW_AZAHAR_VERSION-windows-msys2-installer.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
 then
     pw_start_progress_bar_install_game "Azahar."
     pw_run "${PW_AUTOINSTALL_EXE}"
