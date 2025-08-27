@@ -86,7 +86,7 @@ getSteamId() {
 			local file=$(find "$(dirname "${NOSTAPPPATH}")" -type f \( ${conditions# -o} \) -print -quit 2>/dev/null)
 			if [[ -n "${file}" ]]; then
 				if [[ "${file}" == *"steam_appid.txt" ]]; then
-					SteamAppId=$(cat "${file}" | tr -d '\r\n')
+					SteamAppId=$(cat "${file}" | tr -d '[:space:]\r\n')
 				else
 					SteamAppId=$(grep -i "^AppId=" "${file}" | cut -d'=' -f2 | head -1 | tr -d '\r\n')
 				fi
