@@ -2870,8 +2870,7 @@ pw_check_dxvk () {
                                *) other_group+=("$elem") ;;
                     esac
                 done
-                unset SELECTED_VULKAN_GPU
-                SELECTED_VULKAN_GPU_NEW=(
+                SELECTED_VULKAN_GPU=(
                     "${nvidia_group[@]}"
                     "${amd_group[@]}"
                     "${intel_group[@]}"
@@ -2880,14 +2879,34 @@ pw_check_dxvk () {
             fi
             # получаем информацию о конкретном драйвере который выбран в PW_GPU_USE,
             # либо ищем наилучший драйвер с учётом приоритета видеокарт + информация
-            mapfile -t PW_VULKAN_DRIVER_ARRAY < <(awk '
-            /apiVersion|driverVersion/ { print $3 }
-            /deviceName|driverName|driverInfo/ {
-                split($0, parts, "= ")
-                print parts[2]
+            mapfile -t PW_VULKAN_DRIVER_ARRAY < <(awk '/^GPU[0-9]+/ {
+            if (count == 5) {
+                # Выводим собранные значения перед переходом к следующему GPU
+                for (i = 1; i <= 5; i++) print values[i]
+                }
+                # Сбрасываем счетчик и массив значений для нового GPU
+                count = 0
+                delete values
+                next
+            }
+
+            count < 5 {
+                if (/apiVersion|driverVersion/) {
+                    values[++count] = $3
+                } else if (/deviceName|driverName|driverInfo/) {
+                    split($0, parts, "= ")
+                    values[++count] = parts[2]
+                }
+            }
+
+            END {
+                # Выводим значения для последнего GPU, если набралось 5
+                if (count == 5) {
+                    for (i = 1; i <= 5; i++) print values[i]
+                }
             }' "${PW_TMPFS_PATH}/vulkaninfo.tmp")
 
-            for i in "${SELECTED_VULKAN_GPU_NEW[@]}" "${SELECTED_VULKAN_GPU[@]}" ; do
+            for i in "${SELECTED_VULKAN_GPU[@]}" ; do
                 x="0" && y="5"
                 while true ; do
                     PW_VULKAN_DRIVER_ARRAY_CHECK=("${PW_VULKAN_DRIVER_ARRAY[@]:x:y}")
