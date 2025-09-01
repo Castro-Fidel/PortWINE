@@ -3798,9 +3798,14 @@ start_portwine () {
     [[ "${PW_MANGOHUD_USER_CONF}" == 1 ]] && unset MANGOHUD_CONFIG
     [[ "${PW_VKBASALT_USER_CONF}" == 1 ]] && unset PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS
 
-    if [[ "${PW_GPU_USE}" != "disabled" ]] && [[ "${PW_AMD_VULKAN_USE}" == "disabled" ]] ; then
-        export DXVK_FILTER_DEVICE_NAME="${PW_GPU_USE}"
-        export VKD3D_FILTER_DEVICE_NAME="${PW_GPU_USE}"
+    if [[ -n $PW_GPU_USE && $PW_GPU_USE != "disabled" ]] \
+    && [[ -z $PW_AMD_VULKAN_USE || $PW_AMD_VULKAN_USE == "disabled" ]] ; then
+        export DXVK_FILTER_DEVICE_NAME="$PW_GPU_USE"
+        export VKD3D_FILTER_DEVICE_NAME="$PW_GPU_USE"
+        export PW_vendorID="$(grep -B3 "$PW_GPU_USE" "${PW_TMPFS_PATH}/vulkaninfo.tmp" | grep vendorID | sort -u | awk -F'0x' '{print $2}')"
+        export PW_deviceID="$(grep -B3 "$PW_GPU_USE" "${PW_TMPFS_PATH}/vulkaninfo.tmp" | grep deviceID | sort -u | awk -F'0x' '{print $2}')"
+        export MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE="1"
+        export MESA_VK_DEVICE_SELECT="$PW_vendorID:$PW_deviceID"
     fi
 
     if [[ -f "$PATH_TO_GAME/dxvk.conf" ]] ; then
@@ -3821,9 +3826,11 @@ start_portwine () {
         export WEBKIT_DISABLE_DMABUF_RENDERER="1"
         #Для того чтобы OpenGL всегда работал через nvidia (если в PW_GPU_USE выбрана nvidia)
         export __NV_PRIME_RENDER_OFFLOAD="1"
+        export __VK_LAYER_NV_optimus="NVIDIA_only"
         export __GLX_VENDOR_LIBRARY_NAME="nvidia"
     else
         export __NV_PRIME_RENDER_OFFLOAD="0"
+        export __VK_LAYER_NV_optimus="non_NVIDIA_only"
     fi
 
     if check_gamescope_session ; then
@@ -4675,8 +4682,6 @@ fi
     && ! check_gamescope_session
     then
         if [[ "${PW_GPU_USE}" != "disabled" ]] ; then
-            PW_vendorID="$(grep -B3 "${PW_GPU_USE}" "${PW_TMPFS_PATH}/vulkaninfo.tmp" | grep vendorID | sort -u | awk -F'0x' '{print $2}')"
-            PW_deviceID="$(grep -B3 "${PW_GPU_USE}" "${PW_TMPFS_PATH}/vulkaninfo.tmp" | grep deviceID | sort -u | awk -F'0x' '{print $2}')"
             PW_ID_VIDEO=" --prefer-vk-device ${PW_vendorID}:${PW_deviceID}"
         else
             PW_ID_VIDEO=""
