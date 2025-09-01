@@ -718,7 +718,7 @@ var_vkd3d_config_update () {
 var_radv_perftest_config_update () {
     if echo "$RADV_PERFTEST" | grep "$1"
     then return 0
-    else export RADV_PERFTEST="${1}${RADV_PERFTEST:+;$RADV_PERFTEST}"
+    else export RADV_PERFTEST="${1}${RADV_PERFTEST:+,$RADV_PERFTEST}"
     fi
 }
 
@@ -2800,6 +2800,13 @@ pw_check_vulkan () {
     fi
 }
 
+pw_check_vulkan_extensions () {
+    if sed -n "/deviceName \+ = $PW_GPU_USE/,/GPU/p" "${PW_TMPFS_PATH}/vulkaninfo.tmp" | grep -w "$1" &>/dev/null
+    then return 0
+    else return 1
+    fi
+}
+
 compare_versions () {
     IFS='.' read -ra a1 <<< "$1"
     IFS='.' read -ra a2 <<< "$2"
@@ -3727,7 +3734,12 @@ start_portwine () {
 
     if [[ "${PW_USE_RAY_TRACING}" == "1" ]] ; then
         var_vkd3d_config_update dxr
-        var_radv_perftest_config_update rt
+        if [[ $(check_vendor_gpu) == "amd" ]] ; then
+            var_radv_perftest_config_update rt
+            if ! pw_check_vulkan_extensions "VK_KHR_ray_tracing_pipeline" ; then
+                var_radv_perftest_config_update emulate_rt
+            fi
+        fi
     else
         var_vkd3d_config_update nodxr
     fi
@@ -4626,7 +4638,7 @@ fi
         if [[ $(check_vendor_gpu) == "amd" ]] ; then
             export RADV_DEBUG+="nodcc "
             export AMD_DEBUG="nodcc"
-            if [[ ! $(<"${PW_TMPFS_PATH}/vulkaninfo.tmp") =~ VK_EXT_image_drm_format_modifier ]] ; then
+            if ! pw_check_vulkan_extensions "VK_EXT_image_drm_format_modifier" ; then
                 export R600_DEBUG="nodcc"
                 grep -e '--backend' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null && PW_GS_BACKEND_SDL="1"
             fi
