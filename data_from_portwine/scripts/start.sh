@@ -312,7 +312,7 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
 fi
 
 if [[ -z $PW_GPU_USE || $PW_GPU_USE == "disabled" ]] ; then
-    unset PW_GPU_USE
+    PW_GPU_USE="disabled"
     pw_check_dxvk
 fi
 

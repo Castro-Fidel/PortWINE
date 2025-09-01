@@ -875,7 +875,7 @@ check_vendor_gpu () {
         esac
     }
 
-    if [[ -n $PW_GPU_USE && $PW_GPU_USE != "disabled" ]]
+    if [[ $PW_GPU_USE != "disabled" ]]
     then check_pci_driver "${PW_GPU_USE,,}"
     elif pw_check_glxinfo
     then check_pci_driver "$(<"${PW_TMPFS_PATH}/glxinfo.tmp" tr '[:upper:]' '[:lower:]')"
@@ -2482,7 +2482,8 @@ pw_init_db () {
         fi
     fi
 
-    case "${PW_AMD_VULKAN_USE}" in
+    [[ -z $PW_AMD_VULKAN_USE ]] && export PW_AMD_VULKAN_USE="disabled"
+    case "$PW_AMD_VULKAN_USE" in
         "amdvlk")
             PW_VK_ICD_FILENAMES=""
             for dir in /opt/amdgpu/etc/vulkan/icd.d /etc/vulkan/icd.d /usr/share/vulkan/icd.d; do
@@ -2847,17 +2848,16 @@ get_gpu_names () {
 pw_check_dxvk () {
     background_pid --end "pw_check_vulkan" "1"
     if [[ -z $PW_VULKAN_DRIVER_USE ]] && [[ -f "${PW_TMPFS_PATH}/vulkaninfo.tmp" ]] ; then
-        if [[ -z $PW_GPU_USE ]] ; then
-            if [[ -z $GET_GPU_NAMES ]] ; then
-                get_gpu_names
-            fi
+        if [[ $PW_GPU_USE == "disabled" ]] ; then
+            [[ -z $GET_GPU_NAMES ]] && get_gpu_names
             IFS='!' read -r -a SELECTED_VULKAN_GPU <<< "$GET_GPU_NAMES"
         else
             IFS='' read -r -a SELECTED_VULKAN_GPU <<< "$PW_GPU_USE"
         fi
 
-        if [[ -n ${SELECTED_VULKAN_GPU[*]} ]] ; then # оптимизация когда vulkan драйвера в системе нет
-            # если используется amdvlk или amdgpupro, то проверка на vulkan драйвер происходит среди них, а не через mesa драйвер
+        # Заходим сюда только, когда в системе есть vulkan драйвер
+        if [[ -n ${SELECTED_VULKAN_GPU[*]} ]] ; then
+            # Если используется amdvlk или amdgpupro, то проверка на vulkan драйвер происходит среди них, а не через mesa драйвер
             if [[ $PW_AMD_VULKAN_USE =~ ^(amdvlk|amdgpupro)$ ]]  ; then
                 if [[ ${SELECTED_VULKAN_GPU[*],,} =~ radv ]] ; then
                     for i in "${!SELECTED_VULKAN_GPU[@]}" ; do
@@ -2867,7 +2867,7 @@ pw_check_dxvk () {
                     done
                 fi
             fi
-            # какие карты в приоритете, если не выбран изначально PW_GPU_USE
+            # Какие карты в приоритете, если не выбран изначально PW_GPU_USE
             if [[ -n ${SELECTED_VULKAN_GPU[1]} ]] ; then
                 for elem in "${SELECTED_VULKAN_GPU[@]}"; do
                     case ${elem,,} in
@@ -2887,9 +2887,9 @@ pw_check_dxvk () {
             # получаем информацию о конкретном драйвере который выбран в PW_GPU_USE,
             # либо ищем наилучший драйвер с учётом приоритета видеокарт + информация
             mapfile -t PW_VULKAN_DRIVER_ARRAY < <(awk '/^GPU[0-9]+/ {
-            if (count == 5) {
+            if (count == 7) {
                 # Выводим собранные значения перед переходом к следующему GPU
-                for (i = 1; i <= 5; i++) print values[i]
+                for (i = 1; i <= 7; i++) print values[i]
                 }
                 # Сбрасываем счетчик и массив значений для нового GPU
                 count = 0
@@ -2897,8 +2897,8 @@ pw_check_dxvk () {
                 next
             }
 
-            count < 5 {
-                if (/apiVersion|driverVersion/) {
+            count < 7 {
+                if (/apiVersion|driverVersion|vendorID|deviceID/) {
                     values[++count] = $3
                 } else if (/deviceName|driverName|driverInfo/) {
                     split($0, parts, "= ")
@@ -2907,55 +2907,60 @@ pw_check_dxvk () {
             }
 
             END {
-                # Выводим значения для последнего GPU, если набралось 5
-                if (count == 5) {
-                    for (i = 1; i <= 5; i++) print values[i]
+                # Выводим значения для последнего GPU, если набралось 7
+                if (count == 7) {
+                    for (i = 1; i <= 7; i++) print values[i]
                 }
             }' "${PW_TMPFS_PATH}/vulkaninfo.tmp")
 
             for i in "${SELECTED_VULKAN_GPU[@]}" ; do
-                x="0" && y="5"
+                x="0" && y="7"
                 while true ; do
                     PW_VULKAN_DRIVER_ARRAY_CHECK=("${PW_VULKAN_DRIVER_ARRAY[@]:x:y}")
-                    if [[ -n $PW_AMD_VULKAN_USE && $PW_AMD_VULKAN_USE != "disabled" ]] ; then
-                        [[ $PW_AMD_VULKAN_USE == "amdvlk" && ${PW_VULKAN_DRIVER_ARRAY_CHECK[3],,} == *"amd open-source driver"* ]] && break
-                        [[ $PW_AMD_VULKAN_USE == "amdgpupro" && ${PW_VULKAN_DRIVER_ARRAY_CHECK[3],,} == *"amd proprietary driver"* ]] && break
+                    if [[ $PW_AMD_VULKAN_USE != "disabled" ]] ; then
+                        [[ $PW_AMD_VULKAN_USE == "amdvlk" && ${PW_VULKAN_DRIVER_ARRAY_CHECK[5],,} == *"amd open-source driver"* ]] && break
+                        [[ $PW_AMD_VULKAN_USE == "amdgpupro" && ${PW_VULKAN_DRIVER_ARRAY_CHECK[5],,} == *"amd proprietary driver"* ]] && break
                     else
-                        [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[2]} == "$i" ]] && break
+                        [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[4]} == "$i" ]] && break
                     fi
-                    x=$(( x + 5 )) && y=$(( y + 5 ))
+                    x=$(( x + 7 )) && y=$(( y + 7 ))
                     # фикс, если вдруг PW_GPU_USE изменился или сломался
-                    if [[ -z ${PW_VULKAN_DRIVER_ARRAY_CHECK[2]} ]] ; then
+                    if [[ -z ${PW_VULKAN_DRIVER_ARRAY_CHECK[4]} ]] ; then
+                        PW_GPU_USE="disabled"
                         PW_AMD_VULKAN_USE="disabled"
                         edit_db_from_gui PW_AMD_VULKAN_USE
-                        unset PW_GPU_USE
                         pw_check_dxvk
                         break
                     fi
                 done
-
-                if [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[3],,} =~ nvidia ]] ; then
-                    if compare_versions "${PW_VULKAN_DRIVER_ARRAY_CHECK[4]}" "550.54.14" ; then
+                if [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[5],,} =~ nvidia ]] ; then
+                    if compare_versions "${PW_VULKAN_DRIVER_ARRAY_CHECK[6]}" "550.54.14" ; then
                         PW_VULKAN_DRIVER_USE="6" && break
                     fi
-                elif [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[4],,} =~ mesa ]] ; then
+                elif [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[6],,} =~ mesa ]] ; then
                     if compare_versions "${PW_VULKAN_DRIVER_ARRAY_CHECK[1]}" "25.0" ; then
                         PW_VULKAN_DRIVER_USE="6" && break
                     fi
-                elif [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[3],,} == *"amd open-source driver"* ]] \
-                || [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[3],,} == *"amd proprietary driver"* ]] ; then
+                elif [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[5],,} == *"amd open-source driver"* ]] \
+                || [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[5],,} == *"amd proprietary driver"* ]] ; then
                     if compare_versions "${PW_VULKAN_DRIVER_ARRAY_CHECK[1]}" "2.0.310" ; then
                         PW_VULKAN_DRIVER_USE="6" && break
                     fi
                 fi
             done
+
+            PW_vendorID="$(echo "${PW_VULKAN_DRIVER_ARRAY_CHECK[2]}" | awk -F'0x' '{print $2}')"
+            PW_deviceID="$(echo "${PW_VULKAN_DRIVER_ARRAY_CHECK[3]}" | awk -F'0x' '{print $2}')"
+            export PW_vendorID PW_deviceID
+
             # если PW_GPU_USE изначально не было
-            if [[ -z $PW_GPU_USE ]] ; then
-                export PW_GPU_USE=${PW_VULKAN_DRIVER_ARRAY_CHECK[2]}
+            if [[ $PW_GPU_USE == "disabled" ]] ; then
+                export PW_GPU_USE=${PW_VULKAN_DRIVER_ARRAY_CHECK[4]}
                 edit_user_conf_from_gui PW_GPU_USE
             fi
         fi
     fi
+
     # формируется в зависимости от выбранного PW_GPU_USE и поддержки самого драйвера
     if [[ $PW_VULKAN_DRIVER_USE == "6" ]] || [[ $PW_VULKAN_UNLOCKED == "unlocked" ]] ; then
         [[ -z $PW_VULKAN_USE ]] && PW_VULKAN_USE="6"
@@ -2966,8 +2971,8 @@ pw_check_dxvk () {
             *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_SAREK!$SORT_OPENGL" ;;
         esac
     else
-        if [[ -z $PW_GPU_USE || $PW_GPU_USE == "disabled" ]] ; then
-            [[ -z $PW_VULKAN_USE ]] && PW_VULKAN_USE="0"
+        if [[ $PW_GPU_USE == "disabled" ]] ; then
+            PW_VULKAN_USE="0"
             PW_DEFAULT_VULKAN_USE="$SORT_OPENGL"
         else
             if compare_versions "${PW_VULKAN_DRIVER_ARRAY_CHECK[0]}" "1.3" ; then
@@ -3798,12 +3803,9 @@ start_portwine () {
     [[ "${PW_MANGOHUD_USER_CONF}" == 1 ]] && unset MANGOHUD_CONFIG
     [[ "${PW_VKBASALT_USER_CONF}" == 1 ]] && unset PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS
 
-    if [[ -n $PW_GPU_USE && $PW_GPU_USE != "disabled" ]] \
-    && [[ -z $PW_AMD_VULKAN_USE || $PW_AMD_VULKAN_USE == "disabled" ]] ; then
+    if [[ $PW_GPU_USE != "disabled" ]] && [[ $PW_AMD_VULKAN_USE == "disabled" ]] ; then
         export DXVK_FILTER_DEVICE_NAME="$PW_GPU_USE"
         export VKD3D_FILTER_DEVICE_NAME="$PW_GPU_USE"
-        export PW_vendorID="$(grep -B3 "$PW_GPU_USE" "${PW_TMPFS_PATH}/vulkaninfo.tmp" | grep vendorID | sort -u | awk -F'0x' '{print $2}')"
-        export PW_deviceID="$(grep -B3 "$PW_GPU_USE" "${PW_TMPFS_PATH}/vulkaninfo.tmp" | grep deviceID | sort -u | awk -F'0x' '{print $2}')"
         export MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE="1"
         export MESA_VK_DEVICE_SELECT="$PW_vendorID:$PW_deviceID"
     fi
@@ -3831,6 +3833,7 @@ start_portwine () {
     else
         export __NV_PRIME_RENDER_OFFLOAD="0"
         export __VK_LAYER_NV_optimus="non_NVIDIA_only"
+        unset __GLX_VENDOR_LIBRARY_NAME
     fi
 
     if check_gamescope_session ; then
@@ -4681,10 +4684,8 @@ fi
     if [[ "${PW_GAMESCOPE}" == "1" && "${GAMESCOPE_INSTALLED}" == "1" ]] \
     && ! check_gamescope_session
     then
-        if [[ "${PW_GPU_USE}" != "disabled" ]] ; then
-            PW_ID_VIDEO=" --prefer-vk-device ${PW_vendorID}:${PW_deviceID}"
-        else
-            PW_ID_VIDEO=""
+        if [[ $PW_GPU_USE != "disabled" ]]
+        then PW_ID_VIDEO=" --prefer-vk-device ${PW_vendorID}:${PW_deviceID}"
         fi
 
         #checkbox
@@ -5745,13 +5746,6 @@ gui_edit_db () {
         NUMA_NODE_INDEX="disabled"
     fi
 
-    if [[ -n "${PW_AMD_VULKAN_USE}" ]] && \
-    [[ "${PW_AMD_VULKAN_USE}" != "disabled" ]] ; then
-        AMD_VULKAN_VAR="${PW_AMD_VULKAN_USE}"
-    else
-        AMD_VULKAN_VAR="disabled"
-    fi
-
     [[ $AMD_VULKAN_CB == ":LBLH" ]] && translations[Select needed AMD vulkan implementation]=""
     if [[ $NUMA_NODE_LIST == "0" ]] ; then
         NUDA_CPU_CB=":LBLH"
@@ -5782,7 +5776,7 @@ A brief instruction:
 immediate - Unlimited frame rate + tearing.
 mailbox - Triple buffering. Unlimited frame rate + no tearing.
 relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]} :CB" "$(combobox_fix --disabled "${PW_MESA_VK_WSI_PRESENT_MODE}" "fifo!immediate!mailbox!relaxed")" \
-    --field="${translations[Select needed AMD vulkan implementation]}!${translations[Choosing which implementation of vulkan will be used to run the game]} $AMD_VULKAN_CB" "$(combobox_fix --disabled "$AMD_VULKAN_VAR" "$AMD_VULKAN_DRIVER_LIST")" \
+    --field="${translations[Select needed AMD vulkan implementation]}!${translations[Choosing which implementation of vulkan will be used to run the game]} $AMD_VULKAN_CB" "$(combobox_fix --disabled "$PW_AMD_VULKAN_USE" "$AMD_VULKAN_DRIVER_LIST")" \
     --field="${translations[NUMA node for CPU affinity]}!${translations[In multi‑core systems, CPUs are split into NUMA nodes, each with its own local memory and cores.
 Binding a game to a single node reduces memory‑access latency and limits costly core‑to‑core switches.)]} $NUDA_CPU_CB" "$(combobox_fix --disabled "${NUMA_NODE_INDEX}" "${NUMA_NODE_LIST}")" \
     1> "$PW_TMPFS_PATH/tmp_output_yad_fps_limit" 2>/dev/null &
@@ -6627,7 +6621,7 @@ gui_userconf () {
         NEW_STEAM_BEHAVIOR="${translations[Enable]}"
     fi
 
-    if [[ -n $PW_GPU_USE ]] && [[ $PW_GPU_USE != "disabled" ]] ; then
+    if [[ $PW_GPU_USE != "disabled" ]] ; then
         GPU_VAR="$PW_GPU_USE"
     elif [[ -n $GET_GPU_NAMES ]] ; then
         GPU_VAR="${GET_GPU_NAMES/!*/}"
