@@ -4576,10 +4576,11 @@ fi
         get_and_set_reg_file --add 'System\CurrentControlSet\Services\winebus' 'Enable SDL' 'REG_DWORD' "1" "system"
     fi
 
+    export DXVK_HDR="1"
+
     if check_wayland_session \
-    && [[ $PW_USE_NATIVE_WAYLAND == "1" || $PW_USE_DXVK_HDR == "1" ]]
+    && [[ $PW_USE_NATIVE_WAYLAND == "1" ]]
     then
-        [[ $PW_USE_DXVK_HDR == "1" ]] && export DXVK_HDR="1"
         export WINE_WAYLAND_HACKS="1"
         var_winedlloverride_update "winex11.drv=d;winewayland.drv=b"
         get_and_set_reg_file --add 'Software\Wine\Drivers' 'Graphics' 'REG_SZ' "x11,wayland" "user"
@@ -4693,14 +4694,8 @@ fi
         [[ "${PW_GS_BORDERLESS_WINDOW}" == "1" ]] &&  PW_GAMESCOPE_ARGS_NEW+=" -b"
         [[ "${PW_GS_FORCE_GRAB_CURSOR}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --force-grab-cursor"
         [[ "${PW_GS_FORCE_GRAB_KEYBOARD}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" -g"
-
-        if [[ "${PW_GS_HDR_ENABLE}" == "1" ]] ; then
-            PW_GAMESCOPE_ARGS_NEW+=" --hdr-enabled"
-            export DXVK_HDR="1"
-        fi
-
+        [[ "${PW_GS_HDR_ENABLE}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --hdr-enabled"
         [[ "${PW_GS_ENABLE_GAMESCOPE_WSI}" == "1" ]] && export ENABLE_GAMESCOPE_WSI="1"
-
         [[ "${PW_GS_HDR_ITM_ENABLE}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --hdr-itm-enable"
         [[ "${PW_GS_SDR_GAMMUT_WIDENESS}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --sdr-gamut-wideness"
         [[ "${PW_GS_FORCE_COMPOSITION}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" --force-composition"
@@ -5595,12 +5590,12 @@ gui_edit_db () {
     PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER
     PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE
     PW_DISABLE_COMPOSITING PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_GALLIUM_ZINK PW_USE_GALLIUM_NINE
-    PW_USE_WINED3D_VULKAN PW_USE_SUPPLIED_DXVK_VKD3D PW_USE_NATIVE_WAYLAND PW_USE_DXVK_HDR PW_GAMESCOPE
+    PW_USE_WINED3D_VULKAN PW_USE_SUPPLIED_DXVK_VKD3D PW_USE_NATIVE_WAYLAND PW_GAMESCOPE
     )
 
     if check_wayland_session
     then rm_from_array "PW_EDIT_DB_LIST" PW_USE_US_LAYOUT
-    else rm_from_array "PW_EDIT_DB_LIST" PW_USE_NATIVE_WAYLAND PW_USE_DXVK_HDR
+    else rm_from_array "PW_EDIT_DB_LIST" PW_USE_NATIVE_WAYLAND
     fi
     if [[ $PW_WINE_USE =~ (PROTON_LG|WINE_LG) ]] || [[ $PW_VULKAN_USE == "0" ]] ; then
         rm_from_array "PW_EDIT_DB_LIST" PW_USE_SUPPLIED_DXVK_VKD3D
@@ -5651,7 +5646,6 @@ gui_edit_db () {
     PW_USE_RUNTIME_INFO=${translations[Use container launch mode (It is recommended not to change the value)]}
     PW_DINPUT_PROTOCOL_INFO=${translations[Force use DirectInput protocol instead of XInput]}
     PW_USE_NATIVE_WAYLAND_INFO=${translations[Enable experemental native Wayland support]}
-    PW_USE_DXVK_HDR_INFO=${translations[Enable HDR settings in games with native Wayland]}
     PW_USE_GALLIUM_ZINK_INFO=${translations[Use Gallium Zink (OpenGL driver is implemented via Vulkan)]}
     PW_USE_GALLIUM_NINE_INFO=${translations[Use Gallium Nine (native DirectX 9 for MESA)]}
     PW_USE_WINED3D_VULKAN_INFO=${translations[Instead of DXVK, use WineD3D vulkan (Damavand). Experimental function.]}
