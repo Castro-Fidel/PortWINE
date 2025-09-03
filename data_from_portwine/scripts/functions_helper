@@ -3456,6 +3456,8 @@ start_portwine () {
         export MEDIACONV_VIDEO_DUMP_FILE="$STEAM_COMPAT_TRANSCODED_MEDIA_PATH/video.foz"
 
         export PROTON_MEDIA_USE_GST="1"
+    else
+        export PROTON_MEDIA_USE_GST="0"
     fi
 
     check_variables VKD3D_DEBUG "none"
@@ -3467,7 +3469,7 @@ start_portwine () {
     if [[ "${PW_LOG}" == 1 ]] \
     || [[ -n "$PW_DEBUG" ]]
     then
-        check_variables GST_DEBUG "ERROR"
+        # check_variables GST_DEBUG "GST_REFCOUNTING:5,GST_BUFFER:5"
         check_variables WINEDEBUG "err+all"
         check_variables WINE_MONO_TRACE "E:System.NotImplementedException"
         check_variables VKBASALT_LOG_LEVEL "error"
@@ -4597,7 +4599,7 @@ fi
             export PW_USE_RUNTIME="0"
         fi
     else
-        unset WINE_WAYLAND_HACKS DXVK_HDR
+        unset WINE_WAYLAND_HACKS
         get_and_set_reg_file --delete 'Software\Wine\Drivers' 'Graphics'
     fi
 
