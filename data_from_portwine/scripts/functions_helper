@@ -3827,14 +3827,14 @@ start_portwine () {
 
     if [[ $(check_vendor_gpu) == "nvidia" ]] ; then
         #https://github.com/flathub/net.lutris.Lutris/pull/368#issuecomment-1751381312
-        export WEBKIT_DISABLE_DMABUF_RENDERER="1"
+        check_variables WEBKIT_DISABLE_DMABUF_RENDERER "1"
         #Для того чтобы OpenGL всегда работал через nvidia (если в PW_GPU_USE выбрана nvidia)
-        export __NV_PRIME_RENDER_OFFLOAD="1"
-        export __VK_LAYER_NV_optimus="NVIDIA_only"
-        export __GLX_VENDOR_LIBRARY_NAME="nvidia"
+        check_variables __NV_PRIME_RENDER_OFFLOAD "1"
+        check_variables __VK_LAYER_NV_optimus "NVIDIA_only"
+        check_variables __GLX_VENDOR_LIBRARY_NAME "nvidia"
     else
-        export __NV_PRIME_RENDER_OFFLOAD="0"
-        export __VK_LAYER_NV_optimus="non_NVIDIA_only"
+        check_variables __NV_PRIME_RENDER_OFFLOAD "0"
+        check_variables __VK_LAYER_NV_optimus "non_NVIDIA_only"
         unset __GLX_VENDOR_LIBRARY_NAME
     fi
 
@@ -4359,7 +4359,7 @@ fi
             fi
         done
         create_new_dir "${PATH_TO_DXVK_FILES}/dxvk_cache"
-        export DXVK_STATE_CACHE_PATH="${PATH_TO_DXVK_FILES}"/dxvk_cache
+        check_variables DXVK_STATE_CACHE_PATH "${PATH_TO_DXVK_FILES}"/dxvk_cache
         export DXVK_STATE_CACHE="1"
     fi
 
@@ -4406,7 +4406,7 @@ fi
             var_winedlloverride_update "${wine_vkd3d_dll}=n"
         done
         create_new_dir "${PATH_TO_VKD3D_FILES}/vkd3d_cache"
-        export VKD3D_SHADER_CACHE_PATH="${PATH_TO_VKD3D_FILES}/vkd3d_cache"
+        check_variables VKD3D_SHADER_CACHE_PATH "${PATH_TO_VKD3D_FILES}/vkd3d_cache"
     fi
 
     # некоторым играм для любых 3D api для правильной работы wined3d необходимо чтобы эти библиотеки всегда были
@@ -4449,11 +4449,11 @@ fi
     if [[ "${PW_USE_SHADER_CACHE}" == "1" ]] ; then
         create_new_dir "${PW_VULKAN_DIR}/gl_shader_cache"
         create_new_dir "${PW_VULKAN_DIR}/mesa_shader"
-        export __GL_SHADER_DISK_CACHE="1"
-        export __GL_SHADER_DISK_CACHE_PATH="${PW_VULKAN_DIR}/gl_shader_cache"
-        export __GL_SHADER_DISK_CACHE_SIZE="50000000000"
-        export __GL_SHADER_DISK_CACHE_SKIP_CLEANUP="1"
-        export MESA_SHADER_CACHE_DIR="${PW_VULKAN_DIR}/mesa_shader"
+        check_variables __GL_SHADER_DISK_CACHE "1"
+        check_variables __GL_SHADER_DISK_CACHE_PATH "${PW_VULKAN_DIR}/gl_shader_cache"
+        check_variables __GL_SHADER_DISK_CACHE_SIZE "50000000000"
+        check_variables __GL_SHADER_DISK_CACHE_SKIP_CLEANUP "1"
+        check_variables MESA_SHADER_CACHE_DIR "${PW_VULKAN_DIR}/mesa_shader"
     else
         export __GL_SHADER_DISK_CACHE="0"
         export DXVK_STATE_CACHE="disable"
