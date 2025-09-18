@@ -4582,8 +4582,9 @@ fi
     fi
 
     if check_wayland_session \
-    && [[ $PW_USE_NATIVE_WAYLAND == "1" ]]
+    && [[ $PW_USE_NATIVE_WAYLAND == "1" || $PW_USE_DXVK_HDR == "1" ]]
     then
+        [[ $PW_USE_DXVK_HDR == "1" ]] && export DXVK_HDR="1"
         export WINE_WAYLAND_HACKS="1"
         var_winedlloverride_update "winex11.drv=d;winewayland.drv=b"
         get_and_set_reg_file --add 'Software\Wine\Drivers' 'Graphics' 'REG_SZ' "x11,wayland" "user"
@@ -4599,7 +4600,7 @@ fi
             export PW_USE_RUNTIME="0"
         fi
     else
-        unset WINE_WAYLAND_HACKS
+        unset WINE_WAYLAND_HACKS DXVK_HDR
         get_and_set_reg_file --delete 'Software\Wine\Drivers' 'Graphics'
     fi
 
@@ -5595,7 +5596,7 @@ gui_edit_db () {
     PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER
     PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE
     PW_DISABLE_COMPOSITING PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_GALLIUM_ZINK PW_USE_GALLIUM_NINE
-    PW_USE_WINED3D_VULKAN PW_USE_SUPPLIED_DXVK_VKD3D PW_USE_NATIVE_WAYLAND PW_GAMESCOPE
+    PW_USE_WINED3D_VULKAN PW_USE_SUPPLIED_DXVK_VKD3D PW_USE_NATIVE_WAYLAND PW_USE_DXVK_HDR PW_GAMESCOPE
     )
 
     if check_wayland_session
@@ -5651,6 +5652,7 @@ gui_edit_db () {
     PW_USE_RUNTIME_INFO=${translations[Use container launch mode (It is recommended not to change the value)]}
     PW_DINPUT_PROTOCOL_INFO=${translations[Force use DirectInput protocol instead of XInput]}
     PW_USE_NATIVE_WAYLAND_INFO=${translations[Enable experemental native Wayland support]}
+    PW_USE_DXVK_HDR_INFO=${translations[Enable HDR settings in games with native Wayland]}
     PW_USE_GALLIUM_ZINK_INFO=${translations[Use Gallium Zink (OpenGL driver is implemented via Vulkan)]}
     PW_USE_GALLIUM_NINE_INFO=${translations[Use Gallium Nine (native DirectX 9 for MESA)]}
     PW_USE_WINED3D_VULKAN_INFO=${translations[Instead of DXVK, use WineD3D vulkan (Damavand). Experimental function.]}
