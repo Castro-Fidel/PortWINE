@@ -7,6 +7,9 @@
   <a href="https://flathub.org/ru/apps/ru.linux_gaming.PortProton">
     <img src="https://img.shields.io/flathub/downloads/ru.linux_gaming.PortProton?style=flat&logo=flathub" alt="Flathub Downloads">
   </a>
+  <a href="https://translate.codeberg.org/projects/portproton/">
+    <img src="https://img.shields.io/weblate/progress/portproton?server=https%3A%2F%2Ftranslate.codeberg.org&logo=weblate&logoColor=%232185D0" alt="Translate Codeberg">
+  </a>
   <a href="https://t.me/linux_gaming_ru">
     <img src="https://img.shields.io/endpoint?&style=flat&url=https%3A%2F%2Ftg.sumanjay.workers.dev%2Flinux_gaming_ru" alt="Telegram">
   </a>
