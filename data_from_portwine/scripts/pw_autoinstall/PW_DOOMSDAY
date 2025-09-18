@@ -8,11 +8,14 @@
 ########################################################################
 export PW_PREFIX_NAME="DOOMSDAY"
 export LAUNCH_PARAMETERS="/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-"
-export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/dls_installer_1.0.30_1729944485-3778620.exe"
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/dls_installer.exe"
 export PORTWINE_CREATE_SHORTCUT_NAME="Doomsday"
 
+bad_url="$(curl https://dls.igg.com/download/pc/h/ | grep downloadUrl | awk -F'downloadUrl":"' '{print $2}' | awk -F'"' '{print $1}')"
+good_url="${bad_url//\\/}"
+
 start_portwine
-if try_download "https://statics-global.igg.com/game_package/dls/11200199071/2024/08/28/dls_installer_1.0.30.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
+if try_download "$good_url" "${PW_AUTOINSTALL_EXE}" no_mirror
 then
     pw_start_progress_bar_install_game "Doomsday."
     pw_kill_autostart Launcher.exe &
