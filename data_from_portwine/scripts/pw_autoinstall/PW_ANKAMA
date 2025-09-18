@@ -8,17 +8,21 @@
 ########################################################################
 export LAUNCH_PARAMETERS="/S"
 export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/Ankama-Setup.exe"
+export PW_WINE_USE="WINE_LG"
+export PW_PREFIX_NAME="ANKAMA"
+
 start_portwine
 if try_download "https://download.ankama.com/launcher/full/win/" "${PW_AUTOINSTALL_EXE}" no_mirror
 then
     pw_start_progress_bar_install_game "Ankama Launcher."
+    get_and_set_reg_file --add 'Software\Wine\X11 Driver' 'Decorated' 'REG_SZ' "N" "user"
     pw_run "${PW_AUTOINSTALL_EXE}"
     portwine_exe="$WINEPREFIX/drive_c/users/steamuser/AppData/Local/Programs/Ankama Launcher/Ankama Launcher.exe"
     try_remove_file "${PW_AUTOINSTALL_EXE}"
     try_remove_file "${portwine_exe}.ppdb"
     kill_portwine
     pw_stop_progress_bar
-    export PORTWINE_CREATE_SHORTCUT_NAME="AnkamaLauncher"
+    export PORTWINE_CREATE_SHORTCUT_NAME="Ankama Launcher"
     portwine_create_shortcut
 fi
 stop_portwine
