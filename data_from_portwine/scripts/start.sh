@@ -535,9 +535,9 @@ then DIST_ADD_TO_GUI+="!${translations[USE_SYSTEM_WINE]}"
 fi
 
 SORT_OPENGL="${translations[WineD3D OpenGL (For video cards without Vulkan)]}"
-SORT_SAREK="${translations[DXVK, VKD3D (Sarek) (Vulkan v1.1+)]}"
-SORT_STABLE="${translations[DXVK, VKD3D (Stable) (Vulkan v1.3+)]}"
-SORT_NEWEST="${translations[DXVK, VKD3D (Newest) (Vulkan v1.3+)]}"
+SORT_SAREK="${translations[DXVK, VKD3D - Sarek (Vulkan v1.1+)]}"
+SORT_STABLE="${translations[DXVK, VKD3D - Stable (Vulkan v1.3+)]}"
+SORT_NEWEST="${translations[DXVK, VKD3D - Newest (Vulkan v1.3+)]}"
 
 if [[ $PW_WINE_USE == PROTON_LG ]] ; then
     PW_WINE_USE="${PW_PROTON_LG_VER}"
