@@ -7513,6 +7513,82 @@ EOF
     restart_pp
 }
 
+pw_create_prefix_backup_cli () {
+    PW_PREFIX_NAME="$1"
+    PW_PREFIX_TO_BACKUP="$2"
+
+    unset PW_SANDBOX_HOME_PATH
+    pw_init_runtime
+    if check_flatpak; then
+        TMP_ALL_PATH=""
+    else
+        TMP_ALL_PATH="LD_LIBRARY_PATH=\"${PW_LD_LIBRARY_PATH}\""
+    fi
+
+    chmod -R u+w "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"
+
+    echo "#!/usr/bin/env bash
+    ${TMP_ALL_PATH} mksquashfs \"${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}\" \
+    \"${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part\" -comp zstd \
+    || rm -f \"${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part\"
+    " > "${PORT_WINE_TMP_PATH}/pp_pfx_backup.sh"
+
+    chmod u+x "${PORT_WINE_TMP_PATH}/pp_pfx_backup.sh"
+
+    ${pw_runtime} ${PW_TERM} "${PORT_WINE_TMP_PATH}/pp_pfx_backup.sh"
+
+    try_remove_file "${PORT_WINE_TMP_PATH}/pp_pfx_backup.sh"
+
+    if [[ -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" ]]; then
+        mv -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" \
+              "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack"
+        return 0
+    else
+        return 1
+    fi
+}
+
+pw_unpack_prefix_cli () {
+    PW_BACKUP_FILE="$1"
+
+    unset PW_SANDBOX_HOME_PATH
+    pw_init_runtime
+
+    if check_flatpak; then
+        TMP_ALL_PATH=""
+    else
+        TMP_ALL_PATH="LD_LIBRARY_PATH=\"${PW_LD_LIBRARY_PATH}\""
+    fi
+
+    if check_selinux; then
+        NO_XATTRS_NEED="-no-xattrs"
+    else
+        NO_XATTRS_NEED=""
+    fi
+
+    PW_PREFIX_NAME=$(basename "${PW_BACKUP_FILE^^}" .PPACK)
+
+    echo "#!/usr/bin/env bash
+    ${TMP_ALL_PATH} unsquashfs $NO_XATTRS_NEED -f -d \
+    \"${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}\" \"$PW_BACKUP_FILE\" \
+    || echo \"ERROR\" > \"${PORT_WINE_TMP_PATH}/pp_pfx_unpack_error\"
+    " > "${PORT_WINE_TMP_PATH}/pp_pfx_unpack.sh"
+
+    chmod u+x "${PORT_WINE_TMP_PATH}/pp_pfx_unpack.sh"
+    ${pw_runtime} ${PW_TERM} "${PORT_WINE_TMP_PATH}/pp_pfx_unpack.sh"
+
+    if grep "ERROR" "${PORT_WINE_TMP_PATH}/pp_pfx_unpack_error" &>/dev/null; then
+        try_remove_file "${PORT_WINE_TMP_PATH}/pp_pfx_unpack_error"
+        try_remove_file "${PORT_WINE_TMP_PATH}/pp_pfx_unpack.sh"
+        return 1
+    else
+        try_remove_file "${PORT_WINE_TMP_PATH}/pp_pfx_unpack.sh"
+        return 0
+    fi
+}
+
+
+
 pw_autoinstall_from_db () {
     export PW_USER_TEMP="${PORT_WINE_TMP_PATH}"
     export PW_USE_GAMEMODE=0
