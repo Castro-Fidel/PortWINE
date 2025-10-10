@@ -2065,13 +2065,13 @@ stop_portwine () {
         create_name_desktop
     fi
 
-    case "$1" in
-        --restart)
-            restart_pp ;;
-        *)
-            unset SKIP_CHECK_UPDATES
-            exit 0 ;;
-    esac
+    if [[ $PW_CLI != "1" ]] ; then
+        case "$1" in
+            --restart) restart_pp ;;
+                    *) unset SKIP_CHECK_UPDATES ;;
+        esac
+    fi
+    exit 0 
 }
 export -f stop_portwine
 
@@ -7479,7 +7479,7 @@ pw_create_prefix_backup () {
         restart_pp
     fi
 
-    if pw_create_prefix_backup_cli "$PW_PREFIX_NAME" "$PW_PREFIX_TO_BACKUP" ; then
+    if pw_create_prefix_backup "$PW_PREFIX_NAME" "$PW_PREFIX_TO_BACKUP" ; then
         yad_info "${translations[Backup has been successfully created for prefix:]} $PW_PREFIX_NAME"
         if [[ ! -f "${PORT_WINE_TMP_PATH}/pfx_backup_info" ]] ; then
             yad_info "${translations[Attention! Do not pass the resev copy to third parties, there is a risk of losing accounts!]}"
@@ -7491,7 +7491,7 @@ pw_create_prefix_backup () {
     restart_pp
 }
 
-pw_create_prefix_backup_cli () {
+pw_create_prefix_backup () {
     PW_PREFIX_NAME="$1"
     PW_PREFIX_TO_BACKUP="$2"
 
@@ -7532,7 +7532,7 @@ pw_create_prefix_backup_cli () {
     fi
 }
 
-pw_unpack_prefix_cli () {
+pw_unpack_prefix () {
     PW_BACKUP_FILE="$1"
 
     unset PW_SANDBOX_HOME_PATH
@@ -7685,12 +7685,12 @@ open_game_folder () {
 }
 export -f open_game_folder
 
-gui_wine_uninstaller () {
+wine_uninstaller () {
     start_portwine
     pw_run uninstaller
     stop_portwine --restart
 }
-export -f gui_wine_uninstaller
+export -f wine_uninstaller
 
 gui_open_user_conf () {
     PW_USERCONF_GUI="$("${pw_yad}" --title="${translations[EDIT USER CONFIG]}" \

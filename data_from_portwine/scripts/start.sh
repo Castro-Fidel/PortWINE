@@ -390,7 +390,7 @@ export SKIP_CHECK_UPDATES="1"
 [[ "$MISSING_DESKTOP_FILE" == "1" ]] && portwine_missing_shortcut
 
 if [[ $(basename "${portwine_exe,,}") =~ .ppack$ ]] ; then
-    if ! pw_unpack_prefix_cli "$portwine_exe" ; then
+    if ! pw_unpack_prefix "$portwine_exe" ; then
         yad_error "${translations[Unpack has FAILED for prefix:]} <b>\"${PW_PREFIX_NAME}\"</b>."
         exit 1
     else       
@@ -402,6 +402,16 @@ if [[ $(basename "${portwine_exe,,}") =~ .ppack$ ]] ; then
 fi
 
 ### CLI ###
+
+if [[ ${1,,} == "cli" ]] ; then
+    export PW_CLI="1"
+    shift
+fi
+
+get_wine_and_pfx () {
+    [[ -n $1 ]] && export PW_WINE_USE="$1"
+    [[ -n $2 ]] && export PW_PREFIX_NAME="$2"
+}
 
 case "$1" in
     --help)
@@ -446,13 +456,6 @@ $(echo $files_from_autoinstall | awk '{for (i = 1; i <= NF; i++) {if (i % 10 == 
         /usr/bin/env bash -c "${pw_full_command_line[@]}" 2>&1 | tee "$PORT_WINE_PATH/scripts-debug.log" &
         exit 0
         ;;
-    --server-file-access)
-        echo
-        curl -s --list-only "https://cloud.linux-gaming.ru/log/$(date +20%y_%m)_file_access.log" | sort -V -k 2,2 \
-        | sed 's/count=//g' | awk '{a=$1; $1=$2; $2=a} 1' | awk 'BEGIN {print "Count: Name:"} {print}' | column -t
-        echo
-        exit 0
-        ;;
     --update)
         gui_pw_update
         ;;
@@ -468,13 +471,46 @@ $(echo $files_from_autoinstall | awk '{for (i = 1; i <= NF; i++) {if (i % 10 == 
         ;;
     --backup-prefix)
         # portproton --backup-prefix <PREFIX_NAME> <BACKUP_DIR>
-        pw_create_prefix_backup_cli "$2" "$3"
+        pw_create_prefix_backup "$2" "$3"
         exit $?
         ;;
     --restore-prefix)
         # portproton --restore-prefix <PREFIX_BACKUP_FILE.ppack>
-        pw_unpack_prefix_cli "$2"
+        pw_unpack_prefix "$2"
         exit $?
+        ;;
+    --winefile)
+        get_wine_and_pfx "$2" "$3"
+        pw_winefile
+        exit $?
+        ;;
+    --winecfg)
+        get_wine_and_pfx "$2" "$3"
+        pw_winecfg
+        exit $?
+        ;;
+    --winecmd)
+        get_wine_and_pfx "$2" "$3"
+        pw_winecmd
+        exit $?
+        ;;
+    --winereg)
+        get_wine_and_pfx "$2" "$3"
+        pw_winereg
+        exit $?
+        ;;
+    --wine_uninstaller)
+        get_wine_and_pfx "$2" "$3"
+        wine_uninstaller
+        exit $?
+        ;;
+    --clear_pfx)
+        get_wine_and_pfx "$2" "$3"
+        clear_pfx
+        exit $?
+        ;;
+    --initial)
+        exit 0
         ;;
 esac
 
@@ -820,7 +856,7 @@ else
     --field="   Winetricks!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[Run winetricks to install additional libraries to the selected prefix]}":"FBTN" '@bash -c "button_click --normal WINETRICKS"' \
     --field="   ${translations[Clear prefix]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[Clear the prefix to fix problems]}":"FBTN" '@bash -c "button_click --normal gui_clear_pfx"' \
     --field="   ${translations[Get other Wine]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[Open the menu to download other versions of WINE or PROTON]}":"FBTN" '@bash -c "button_click --normal gui_proton_downloader"' \
-    --field="   ${translations[Uninstaller]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[Run the program uninstaller built into wine]}":"FBTN" '@bash -c "button_click --normal gui_wine_uninstaller"' \
+    --field="   ${translations[Uninstaller]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[Run the program uninstaller built into wine]}":"FBTN" '@bash -c "button_click --normal wine_uninstaller"' \
     --field="   ${translations[Prefix Manager]}     !$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[Run winecfg to edit the settings of the selected prefix]}":"FBTN" '@bash -c "button_click --normal WINECFG"' \
     --field="   ${translations[File Manager]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[Run wine file manager]}":"FBTN" '@bash -c "button_click --normal WINEFILE"' \
     --field="   ${translations[Command line]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png!${translations[Run wine cmd]}":"FBTN" '@bash -c "button_click --normal WINECMD"' \
@@ -959,7 +995,7 @@ case "$PW_YAD_SET" in
     gui_proton_downloader|WINETRICKS|\
     116|pw_create_prefix_backup|\
     gui_clear_pfx|WINEREG|WINECMD|\
-    WINEFILE|WINECFG|gui_wine_uninstaller)
+    WINEFILE|WINECFG|wine_uninstaller)
         if [[ -z $PW_DESKTOP_FILES ]] ; then
             export TAB_MAIN_MENU="3"
         else
@@ -988,7 +1024,7 @@ case "$PW_YAD_SET" in
     WINETRICKS|116) pw_prefix_manager ;;
     gui_clear_pfx) gui_clear_pfx ;;
     gui_open_user_conf) gui_open_user_conf ;;
-    gui_wine_uninstaller) gui_wine_uninstaller ;;
+    wine_uninstaller) wine_uninstaller ;;
     gui_rm_portproton) gui_rm_portproton ;;
     gui_pw_reinstall_pp) pw_reinstall_pp ;;
     gui_pw_update) gui_pw_update ;;
