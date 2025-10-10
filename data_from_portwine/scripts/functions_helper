@@ -783,7 +783,8 @@ pw_notify_send () {
 export -f pw_notify_send
 
 check_start_from_steam () {
-    if [[ "${START_FROM_STEAM}" == 1 ]]
+    if [[ "${START_FROM_STEAM}" == 1 ]] \
+    || [[ "${PW_CLI}" == 1 ]]
     then return 0
     else return 1
     fi
@@ -1511,11 +1512,14 @@ fixes_after_update () {
 }
 
 restart_pp () {
-    case "$1" in
-        --userconf) export RESTART_PP_USED="userconf" ;;
-        --edit_db) export RESTART_PP_USED="edit_db" ;;
-    esac
-    /usr/bin/env bash -c "${pw_full_command_line[@]}" &
+    if [[ "${PW_CLI}" != 1 ]] ; then
+        case "$1" in
+            --userconf) export RESTART_PP_USED="userconf" ;;
+            --edit_db) export RESTART_PP_USED="edit_db" ;;
+        esac
+        /usr/bin/env bash -c "${pw_full_command_line[@]}" &
+        exit 0
+    fi
     exit 0
 }
 
@@ -6860,29 +6864,33 @@ portwine_create_shortcut () {
     [[ ! -e ${portwine_exe} ]] && return 1
     pw_create_gui_png
 
-    [[ -z "${PW_SHORTCUT_MENU}" ]] && PW_SHORTCUT_MENU="TRUE"
-    [[ -z "${PW_SHORTCUT_DESKTOP}" ]] && PW_SHORTCUT_DESKTOP="TRUE"
-    [[ -z "${PW_SHORTCUT_STEAM}" ]] && PW_SHORTCUT_STEAM="FALSE"
+    check_variables PW_SHORTCUT_MENU "TRUE"
+    check_variables PW_SHORTCUT_DESKTOP "TRUE"
+    check_variables PW_SHORTCUT_STEAM "FALSE"
 
     unset name_desktop
     create_name_desktop
     export name_desktop="$PW_NAME_DESKTOP_PROXY"
 
-    OUTPUT=$("${pw_yad}" --title="${translations[Choices]}" --form \
-    --gui-type="settings-shortcut" \
-    --gui-type-box="${NOTEBOOK_GUI_TYPE_BOX}" --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" \
-    --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" --gui-type-images="${NOTEBOOK_GUI_TYPE_IMAGE}" \
-    --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
-    --image "${PORT_WINE_PATH}/data/img/${name_desktop_png}.png" \
-    --text-align="center" --text "${translations[The shortcut will be created in the PortProton directory.]}" \
-    --field="${translations[Name]}" "${name_desktop}" \
-    --field="  ${translations[Add shortcut to MENU -> GAMES]}":CHK "$PW_SHORTCUT_MENU" \
-    --field="  ${translations[Add shortcut to Desktop]}":CHK "$PW_SHORTCUT_DESKTOP" \
-    --field="  ${translations[Add shortcut to STEAM library]}":CHK "$PW_SHORTCUT_STEAM" \
-    --button="${translations[CANCEL]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":2 \
-    --button="${translations[CREATE SHORTCUT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
-    PW_YAD_OUT=$?
-    portwine_output_yad_shortcut
+    if [[ "${PW_CLI}" != 1 ]] ; then
+        OUTPUT=$("${pw_yad}" --title="${translations[Choices]}" --form \
+        --gui-type="settings-shortcut" \
+        --gui-type-box="${NOTEBOOK_GUI_TYPE_BOX}" --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" \
+        --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" --gui-type-images="${NOTEBOOK_GUI_TYPE_IMAGE}" \
+        --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
+        --image "${PORT_WINE_PATH}/data/img/${name_desktop_png}.png" \
+        --text-align="center" --text "${translations[The shortcut will be created in the PortProton directory.]}" \
+        --field="${translations[Name]}" "${name_desktop}" \
+        --field="  ${translations[Add shortcut to MENU -> GAMES]}":CHK "$PW_SHORTCUT_MENU" \
+        --field="  ${translations[Add shortcut to Desktop]}":CHK "$PW_SHORTCUT_DESKTOP" \
+        --field="  ${translations[Add shortcut to STEAM library]}":CHK "$PW_SHORTCUT_STEAM" \
+        --button="${translations[CANCEL]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":2 \
+        --button="${translations[CREATE SHORTCUT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 2>/dev/null)
+        PW_YAD_OUT=$?
+        portwine_output_yad_shortcut
+    else
+        portwine_output_yad_shortcut --silent
+    fi
 }
 
 portwine_output_yad_shortcut () {
@@ -6891,9 +6899,9 @@ portwine_output_yad_shortcut () {
             [[ ! -e ${portwine_exe} ]] && return 1
             pw_create_gui_png
             unset name_desktop
-            PW_SHORTCUT_MENU="TRUE"
-            PW_SHORTCUT_DESKTOP="TRUE"
-            PW_SHORTCUT_STEAM="FALSE"
+            check_variables PW_SHORTCUT_MENU "TRUE"
+            check_variables PW_SHORTCUT_DESKTOP "TRUE"
+            check_variables PW_SHORTCUT_STEAM "FALSE"
         else
             name_desktop=$(echo "$OUTPUT" | awk -F'|' '{print $1}' | sed -e "s/\`//g" -e "s/\"//g" -e "s/'//g" -e "s/\!//g")
             PW_SHORTCUT_MENU=$(echo "$OUTPUT" | awk -F'|' '{print $2}')

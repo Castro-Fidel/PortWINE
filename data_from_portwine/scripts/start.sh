@@ -388,6 +388,7 @@ fi
 
 if [[ ${1,,} == "cli" ]] ; then
     export PW_CLI="1"
+    export PROCESS_LOG="1"
     shift
 fi
 
