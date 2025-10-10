@@ -390,42 +390,10 @@ export SKIP_CHECK_UPDATES="1"
 [[ "$MISSING_DESKTOP_FILE" == "1" ]] && portwine_missing_shortcut
 
 if [[ $(basename "${portwine_exe,,}") =~ .ppack$ ]] ; then
-    unset PW_SANDBOX_HOME_PATH
-    pw_init_runtime
-    if check_flatpak
-    then TMP_ALL_PATH=""
-    else TMP_ALL_PATH="LD_LIBRARY_PATH=\"${PW_LD_LIBRARY_PATH}\""
-    fi
-    if check_selinux
-    then NO_XATTRS_NEED="-no-xattrs"
-    else NO_XATTRS_NEED=""
-    fi
-    PW_PREFIX_NAME=$(basename "${1^^}" .PPACK)
-cat << EOF > "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack.sh
-    #!/usr/bin/env bash
-    ${TMP_ALL_PATH} unsquashfs $NO_XATTRS_NEED -f -d "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" "$1" \
-    || echo "ERROR" > "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack_error
-    sleep 3
-EOF
-    chmod u+x "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack.sh
-    ${pw_runtime} ${PW_TERM} "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack.sh
-    if grep "ERROR" "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack_error &>/dev/null ; then
-        try_remove_file "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack_error
-        try_remove_file "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack.sh
+    if ! pw_unpack_prefix_cli "$portwine_exe" ; then
         yad_error "${translations[Unpack has FAILED for prefix:]} <b>\"${PW_PREFIX_NAME}\"</b>."
         exit 1
-    else
-        try_remove_file "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack.sh
-        if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut" ]] ; then
-            while read -r line
-            do
-                export portwine_exe="$PORT_WINE_PATH/data/prefixes/$PW_PREFIX_NAME/$line"
-                if check_start_from_steam
-                then portwine_output_yad_shortcut --silent
-                else portwine_create_shortcut
-                fi
-            done < "$PORT_WINE_PATH/data/prefixes/$PW_PREFIX_NAME/.create_shortcut"
-        fi
+    else       
         if ! check_start_from_steam
         then yad_info "${translations[Unpack is DONE for prefix:]} <b>\"${PW_PREFIX_NAME}\"</b>."
         fi

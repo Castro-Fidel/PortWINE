@@ -7478,30 +7478,8 @@ pw_create_prefix_backup () {
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
         restart_pp
     fi
-    if [[ -n "$(grep "/${PW_PREFIX_NAME}/" "${PORT_WINE_PATH}"/*.desktop )" ]] ; then
-        try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut"
-        grep "/${PW_PREFIX_NAME}/" "${PORT_WINE_PATH}"/*.desktop | awk -F"/${PW_PREFIX_NAME}/" '{print $2}' \
-        | awk -F\" '{print $1}' > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut"
-    fi
-    unset PW_SANDBOX_HOME_PATH
-    pw_init_runtime
-    if check_flatpak
-    then TMP_ALL_PATH=""
-    else TMP_ALL_PATH="LD_LIBRARY_PATH=\"${PW_LD_LIBRARY_PATH}\""
-    fi
-    chmod -R u+w "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"
-cat << EOF > "${PORT_WINE_TMP_PATH}"/pp_pfx_backup.sh
-    #!/usr/bin/env bash
-    ${TMP_ALL_PATH} mksquashfs "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}" \
-    "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" -comp zstd \
-    || rm -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part"
-    sleep 3
-EOF
-    chmod u+x "${PORT_WINE_TMP_PATH}"/pp_pfx_backup.sh
-    ${pw_runtime} ${PW_TERM} "${PORT_WINE_TMP_PATH}"/pp_pfx_backup.sh
-    try_remove_file "${PORT_WINE_TMP_PATH}"/pp_pfx_backup.sh
-    if [[ -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" ]] ; then
-        mv -f "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack.part" "${PW_PREFIX_TO_BACKUP}/${PW_PREFIX_NAME}.ppack"
+
+    if pw_create_prefix_backup_cli "$PW_PREFIX_NAME" "$PW_PREFIX_TO_BACKUP" ; then
         yad_info "${translations[Backup has been successfully created for prefix:]} $PW_PREFIX_NAME"
         if [[ ! -f "${PORT_WINE_TMP_PATH}/pfx_backup_info" ]] ; then
             yad_info "${translations[Attention! Do not pass the resev copy to third parties, there is a risk of losing accounts!]}"
@@ -7516,6 +7494,12 @@ EOF
 pw_create_prefix_backup_cli () {
     PW_PREFIX_NAME="$1"
     PW_PREFIX_TO_BACKUP="$2"
+
+    if [[ -n "$(grep "/${PW_PREFIX_NAME}/" "${PORT_WINE_PATH}"/*.desktop )" ]] ; then
+        try_remove_file "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut"
+        grep "/${PW_PREFIX_NAME}/" "${PORT_WINE_PATH}"/*.desktop | awk -F"/${PW_PREFIX_NAME}/" '{print $2}' \
+        | awk -F\" '{print $1}' > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut"
+    fi
 
     unset PW_SANDBOX_HOME_PATH
     pw_init_runtime
@@ -7583,6 +7567,16 @@ pw_unpack_prefix_cli () {
         return 1
     else
         try_remove_file "${PORT_WINE_TMP_PATH}/pp_pfx_unpack.sh"
+        if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.create_shortcut" ]] ; then
+            while read -r line
+            do
+                export portwine_exe="$PORT_WINE_PATH/data/prefixes/$PW_PREFIX_NAME/$line"
+                if check_start_from_steam
+                then portwine_output_yad_shortcut --silent
+                else portwine_create_shortcut
+                fi
+            done < "$PORT_WINE_PATH/data/prefixes/$PW_PREFIX_NAME/.create_shortcut"
+        fi
         return 0
     fi
 }
