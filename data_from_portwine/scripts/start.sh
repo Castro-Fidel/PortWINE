@@ -276,23 +276,6 @@ if [[ -z $SORT_WITH_TIME ]] ; then
     export SORT_WITH_TIME="lastlaunch"
 fi
 
-# TODO:fixes_after_update (со временем можно будет дропнуть)
-# Оставил для примера
-# if fixes_after_update "2395: DESKTOP_WITH_TIME by default displays hours and minutes" ; then
-#     DESKTOP_WITH_TIME="posnumber1"
-#     edit_user_conf_from_gui DESKTOP_WITH_TIME
-# fi
-# if fixes_after_update "2398: SORT_WITH_TIME by default sorts from the last run" ; then
-#     SORT_WITH_TIME="lastlaunch"
-#     edit_user_conf_from_gui SORT_WITH_TIME
-# fi
-
-# choose wine dpi default
-if [[ -z $PW_WINE_DPI_VALUE ]] ; then
-    echo 'export PW_WINE_DPI_VALUE="recommended"' >> "$USER_CONF"
-    export PW_WINE_DPI_VALUE="recommended"
-fi
-
 if check_gamescope_session
 then PW_TERM="env LANG=C xterm -fullscreen -bg black -fg white -e"
 else PW_TERM="env LANG=C xterm -bg black -fg white -e"
@@ -348,7 +331,7 @@ if [[ ${portwine_exe,,} =~ (setup|install|.msi$) ]] ; then
     export PW_USE_GAMEMODE="0"
     export PW_DLL_INSTALL=""
     # export WINEDLLOVERRIDES="mscoree,mshtml="
-    export PW_WINE_USE="WINE_LG"
+    export PW_WINE_USE="PROTON_LG"
 
     export PW_USE_SETUP_FILE="1"
 fi

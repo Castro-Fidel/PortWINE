@@ -1495,18 +1495,6 @@ convert_dec_and_hex () {
     esac
 }
 
-recommend_dpi () {
-    local height=$1
-
-    if [[ -z "$height" ]] ; then
-        echo "disabled"
-        return 1
-    fi
-    local dpi=$(( height / 11 ))
-    (( dpi < 96 )) && dpi="96"
-    echo "$dpi"
-}
-
 fixes_after_update () {
     local fixes_path line fixes_info IFS
     fixes_info=$1
@@ -4603,13 +4591,10 @@ fi
         get_and_set_reg_file --delete 'Software\Wine\Drivers' 'Graphics'
     fi
 
-    if [[ $PW_WINE_DPI_VALUE != "disabled" ]] ; then
-        if [[ $PW_WINE_DPI_VALUE == "recommended" ]] ; then
-            PW_RECOMMENDED_DPI=$(recommend_dpi "${PW_SCREEN_RESOLUTION:5:8}")
-            get_and_set_reg_file --add 'Control Panel\Desktop' 'LogPixels' 'REG_DWORD' "$PW_RECOMMENDED_DPI" "user"
-        else
-            get_and_set_reg_file --add 'Control Panel\Desktop' 'LogPixels' 'REG_DWORD' "$PW_WINE_DPI_VALUE" "user"
-        fi
+    if [[ $PW_WINE_DPI_VALUE =~ (disabled|recommended|96) ]] ; then
+        get_and_set_reg_file --add 'Control Panel\Desktop' 'LogPixels' 'REG_DWORD' "96" "user"
+    else
+        get_and_set_reg_file --add 'Control Panel\Desktop' 'LogPixels' 'REG_DWORD' "$PW_WINE_DPI_VALUE" "user"
     fi
 
     case "$PW_SOUND_DRIVER_USE" in
