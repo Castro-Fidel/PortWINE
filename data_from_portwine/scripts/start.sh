@@ -498,6 +498,16 @@ $(echo $files_from_autoinstall | awk '{for (i = 1; i <= NF; i++) {if (i % 10 == 
         edit_db_from_gui $keys_all
         exit 0
         ;;
+    --backup-prefix)
+        # portproton --backup-prefix <PREFIX_NAME> <BACKUP_DIR>
+        pw_create_prefix_backup_cli "$2" "$3"
+        exit $?
+        ;;
+    --restore-prefix)
+        # portproton --restore-prefix <PREFIX_BACKUP_FILE.ppack>
+        pw_unpack_prefix_cli "$2"
+        exit $?
+        ;;
 esac
 
 ### GUI ###
