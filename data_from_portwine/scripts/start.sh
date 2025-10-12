@@ -395,6 +395,8 @@ fi
 get_wine_and_pfx () {
     [[ -n $1 ]] && export PW_WINE_USE="$1"
     [[ -n $2 ]] && export PW_PREFIX_NAME="$2"
+    # drop create_new_dir "${PATH_TO_VKD3D_FILES}/vkd3d_cache" and create_new_dir "${PATH_TO_DXVK_FILES}/dxvk_cache"
+    unset PW_USE_SUPPLIED_DXVK_VKD3D
 }
 
 case "$1" in
