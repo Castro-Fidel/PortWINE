@@ -492,7 +492,7 @@ $(echo $files_from_autoinstall | awk '{for (i = 1; i <= NF; i++) {if (i % 10 == 
         ;;
     --clear_pfx)
         get_wine_and_pfx "$2" "$3"
-        clear_pfx
+        pw_clear_pfx
         exit $?
         ;;
     --initial)
