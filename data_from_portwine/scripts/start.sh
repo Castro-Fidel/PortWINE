@@ -395,6 +395,8 @@ fi
 get_wine_and_pfx () {
     [[ -n $1 ]] && export PW_WINE_USE="$1"
     [[ -n $2 ]] && export PW_PREFIX_NAME="$2"
+    # drop create_new_dir "${PATH_TO_VKD3D_FILES}/vkd3d_cache" and create_new_dir "${PATH_TO_DXVK_FILES}/dxvk_cache"
+    unset PW_USE_SUPPLIED_DXVK_VKD3D
 }
 
 case "$1" in
@@ -490,7 +492,7 @@ $(echo $files_from_autoinstall | awk '{for (i = 1; i <= NF; i++) {if (i % 10 == 
         ;;
     --clear_pfx)
         get_wine_and_pfx "$2" "$3"
-        clear_pfx
+        pw_clear_pfx
         exit $?
         ;;
     --initial)
