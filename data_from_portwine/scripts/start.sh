@@ -281,10 +281,12 @@ then PW_TERM="env LANG=C xterm -fullscreen -bg black -fg white -e"
 else PW_TERM="env LANG=C xterm -bg black -fg white -e"
 fi
 
-pw_check_and_download_plugins
+if [[ "${PW_CLI}" != 1 ]] ; then
+    pw_check_and_download_plugins
+fi
 
 # check skip update
-if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
+if [[ "${SKIP_CHECK_UPDATES}" != 1  || "${PW_CLI}" != 1 ]] ; then
     pw_port_update
 
     PW_FILESYSTEM=$(stat -f -c %T "${PORT_WINE_PATH}")
