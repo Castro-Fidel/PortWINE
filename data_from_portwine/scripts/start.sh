@@ -52,6 +52,12 @@ MISSING_DESKTOP_FILE="0"
 
 unset PW_NO_RESTART_PPDB PW_DISABLED_CREATE_DB
 
+if [[ ${1,,} == "cli" ]] ; then
+    export PW_CLI="1"
+    export PROCESS_LOG="1"
+    shift
+fi
+
 if [[ "${1,,}" =~ .ppack$ ]] ; then
     export PW_NO_RESTART_PPDB="1"
     export PW_DISABLED_CREATE_DB="1"
@@ -387,12 +393,6 @@ if [[ $(basename "${portwine_exe,,}") =~ .ppack$ ]] ; then
 fi
 
 ### CLI ###
-
-if [[ ${1,,} == "cli" ]] ; then
-    export PW_CLI="1"
-    export PROCESS_LOG="1"
-    shift
-fi
 
 get_wine_and_pfx () {
     [[ -n $1 ]] && export PW_WINE_USE="$1"
