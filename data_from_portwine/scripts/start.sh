@@ -57,6 +57,7 @@ if [[ ${1,,} == "cli" ]] ; then
     export PROCESS_LOG="1"
     shift
 fi
+check_variables PW_CLI "0"
 
 if [[ "${1,,}" =~ .ppack$ ]] ; then
     export PW_NO_RESTART_PPDB="1"
