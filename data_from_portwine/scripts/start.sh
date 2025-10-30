@@ -52,6 +52,12 @@ MISSING_DESKTOP_FILE="0"
 
 unset PW_NO_RESTART_PPDB PW_DISABLED_CREATE_DB
 
+if [[ ${1,,} == "cli" ]] ; then
+    export PW_CLI="1"
+    export PROCESS_LOG="1"
+    shift
+fi
+
 if [[ "${1,,}" =~ .ppack$ ]] ; then
     export PW_NO_RESTART_PPDB="1"
     export PW_DISABLED_CREATE_DB="1"
@@ -281,10 +287,12 @@ then PW_TERM="env LANG=C xterm -fullscreen -bg black -fg white -e"
 else PW_TERM="env LANG=C xterm -bg black -fg white -e"
 fi
 
-pw_check_and_download_plugins
+if [[ "${PW_CLI}" != 1 ]] ; then
+    pw_check_and_download_plugins
+fi
 
 # check skip update
-if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
+if [[ "${SKIP_CHECK_UPDATES}" != 1  || "${PW_CLI}" != 1 ]] ; then
     pw_port_update
 
     PW_FILESYSTEM=$(stat -f -c %T "${PORT_WINE_PATH}")
@@ -385,13 +393,6 @@ if [[ $(basename "${portwine_exe,,}") =~ .ppack$ ]] ; then
 fi
 
 ### CLI ###
-
-if [[ ${1,,} == "cli" ]] ; then
-    export PW_CLI="1"
-    export PROCESS_LOG="1"
-    shift
-fi
-
 get_wine_and_pfx () {
     [[ -n $1 ]] && export PW_WINE_USE="$1"
     [[ -n $2 ]] && export PW_PREFIX_NAME="$2"
@@ -453,6 +454,53 @@ $(echo $files_from_autoinstall | awk '{for (i = 1; i <= NF; i++) {if (i % 10 == 
         # --edit-db /полный/путь/до/файла.exe PW_MANGOHUD=1 PW_VKBASALT=0 (и т.д) для примера
         set_several_variables "${@:3}"
         edit_db_from_gui $keys_all
+        exit 0
+        ;;
+    --list-db)
+        export pw_yad=""
+        gui_edit_db
+        pw_skip_get_info
+        declare -A NODE_MAP
+        INDEX=0
+        while read -r line; do
+            NODE_MAP[$INDEX]="$line"
+            ((INDEX++))
+        done < <(lscpu | grep -Po "NUMA node\d+ CPU\(s\):\s+\K.*" 2>/dev/null || true)
+        for i in "${!NODE_MAP[@]}"; do
+            echo "NUMA_NODE_${i}=${NODE_MAP[$i]}"
+        done
+        echo "IS_AMD=$([[ $(check_vendor_gpu) == \"amd\" ]] && echo true || echo false)"
+        echo "LOGICAL_CORE_OPTIONS=$GET_LOGICAL_CORE"
+        [[ -n "$LOCALE_LIST" ]] && echo "LOCALE_LIST=$LOCALE_LIST"
+        [[ -n "$AMD_VULKAN_DRIVER_LIST" ]] && echo "AMD_VULKAN_DRIVER_LIST=$AMD_VULKAN_DRIVER_LIST"
+        for var in "${PW_EDIT_DB_FINAL_LIST[@]}"; do
+            if echo "$DISABLE_EDIT_DB_LIST" | grep -qw "$var"; then
+                echo "$var blocked"
+            else
+                echo "$var"
+            fi
+        done
+        exit 0
+        ;;
+    --show-ppdb)
+        # --show-ppdb /полный/путь/до/файла.exe
+        ppdb_path="$2"
+
+        if [[ "$ppdb_path" == *.exe ]]; then
+            ppdb_path="${ppdb_path}.ppdb"
+        fi
+
+        if [[ ! -f "$ppdb_path" ]]; then
+            echo "PPDB file not found: $ppdb_path"
+            exit 1
+        fi
+
+        grep -E '^export ' "$ppdb_path" | sed '/^[[:space:]]*$/d' | while IFS='=' read -r var val; do
+            [[ -z "$var" ]] && continue
+            var_name=$(echo "$var" | sed 's/^export[[:space:]]*//')
+            val_clean=$(echo "$val" | sed 's/^"//; s/"$//')
+            echo "${var_name}=${val_clean}"
+        done
         exit 0
         ;;
     --backup-prefix)
