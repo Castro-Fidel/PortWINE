@@ -854,9 +854,16 @@ else
         MAIN_GUI_ROWS="$(( ( AMOUNT_GENERATE_BUTTONS + 1 ) / MAIN_GUI_COLUMNS + 1 ))"
     fi
 
-    if [[ -z $PW_DESKTOP_FILES ]]
-    then export PW_GUI_SORT_TABS=(1 2 3 4 5)
-    else export PW_GUI_SORT_TABS=(2 3 4 5 1)
+    if [[ $PW_EMULS == "1" ]] ; then
+        if [[ -z $PW_DESKTOP_FILES ]]
+        then export PW_GUI_SORT_TABS=(1 2 3 4 5)
+        else export PW_GUI_SORT_TABS=(2 3 4 5 1)
+        fi
+    else
+        if [[ -z $PW_DESKTOP_FILES ]]
+        then export PW_GUI_SORT_TABS=(1 0 2 3 4)
+        else export PW_GUI_SORT_TABS=(2 0 3 4 1)
+        fi
     fi
 
     PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_SAREK!$SORT_OPENGL"
@@ -959,8 +966,10 @@ else
     fi
 
     IFS="%"
-    "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[1]}" --form --columns="$MAIN_GUI_ROWS_EMULS" --align-buttons --scroll --homogeneous-column \
-    --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" --separator=" " ${PW_GENERATE_BUTTONS_EMULS} 2>/dev/null &
+    if [[ $PW_EMULS == "1" ]] ; then
+        "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[1]}" --form --columns="$MAIN_GUI_ROWS_EMULS" --align-buttons --scroll --homogeneous-column \
+        --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" --separator=" " ${PW_GENERATE_BUTTONS_EMULS} 2>/dev/null &
+    fi
     "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[0]}" --form --columns="$MAIN_GUI_ROWS_GAMES" --align-buttons --scroll --homogeneous-column \
     --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" --separator=" " ${PW_GENERATE_BUTTONS_GAMES} 2>/dev/null &
     IFS="$orig_IFS"
@@ -970,33 +979,62 @@ else
         export TAB_MAIN_MENU="1"
     fi
 
-    if [[ -z $PW_DESKTOP_FILES ]] ; then
-        "${pw_yad}" --key=$KEY_MENU --notebook --expand \
-        --gui-type="settings-notebook" --active-tab="${TAB_MAIN_MENU}" \
-        --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
-        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-        --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
-        --tab-pos="bottom" \
-        --tab="${translations[AUTOINSTALLS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
-        --tab="${translations[EMULATORS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
-        --tab="${translations[WINE SETTINGS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
-        --tab="${translations[PORTPROTON SETTINGS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
-        --tab="${translations[INSTALLED]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" 2>/dev/null
-        YAD_STATUS="$?"
+    if [[ $PW_EMULS == "1" ]] ; then
+        if [[ -z $PW_DESKTOP_FILES ]] ; then
+            "${pw_yad}" --key=$KEY_MENU --notebook --expand \
+            --gui-type="settings-notebook" --active-tab="${TAB_MAIN_MENU}" \
+            --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
+            --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+            --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
+            --tab-pos="bottom" \
+            --tab="${translations[AUTOINSTALLS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+            --tab="${translations[EMULATORS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+            --tab="${translations[WINE SETTINGS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+            --tab="${translations[PORTPROTON SETTINGS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+            --tab="${translations[INSTALLED]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" 2>/dev/null
+            YAD_STATUS="$?"
+        else
+            "${pw_yad}" --key=$KEY_MENU --notebook --expand \
+            --gui-type="settings-notebook" --active-tab="${TAB_MAIN_MENU}" \
+            --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
+            --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+            --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
+            --tab-pos="bottom" \
+            --tab="${translations[INSTALLED]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+            --tab="${translations[AUTOINSTALLS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+            --tab="${translations[EMULATORS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+            --tab="${translations[WINE SETTINGS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+            --tab="${translations[PORTPROTON SETTINGS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" 2>/dev/null
+            YAD_STATUS="$?"
+        fi
     else
-        "${pw_yad}" --key=$KEY_MENU --notebook --expand \
-        --gui-type="settings-notebook" --active-tab="${TAB_MAIN_MENU}" \
-        --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
-        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-        --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
-        --tab-pos="bottom" \
-        --tab="${translations[INSTALLED]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
-        --tab="${translations[AUTOINSTALLS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
-        --tab="${translations[EMULATORS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
-        --tab="${translations[WINE SETTINGS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
-        --tab="${translations[PORTPROTON SETTINGS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" 2>/dev/null
-        YAD_STATUS="$?"
+        if [[ -z $PW_DESKTOP_FILES ]] ; then
+            "${pw_yad}" --key=$KEY_MENU --notebook --expand \
+            --gui-type="settings-notebook" --active-tab="${TAB_MAIN_MENU}" \
+            --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
+            --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+            --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
+            --tab-pos="bottom" \
+            --tab="${translations[AUTOINSTALLS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+            --tab="${translations[WINE SETTINGS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+            --tab="${translations[PORTPROTON SETTINGS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+            --tab="${translations[INSTALLED]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" 2>/dev/null
+            YAD_STATUS="$?"
+        else
+            "${pw_yad}" --key=$KEY_MENU --notebook --expand \
+            --gui-type="settings-notebook" --active-tab="${TAB_MAIN_MENU}" \
+            --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
+            --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+            --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
+            --tab-pos="bottom" \
+            --tab="${translations[INSTALLED]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+            --tab="${translations[AUTOINSTALLS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+            --tab="${translations[WINE SETTINGS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
+            --tab="${translations[PORTPROTON SETTINGS]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" 2>/dev/null
+            YAD_STATUS="$?"
+        fi
     fi
+
 
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
     pw_yad_set_form
@@ -1021,30 +1059,25 @@ case "$PW_YAD_SET" in
     128|gui_pw_update|gui_rm_portproton|\
     change_loc|gui_open_scripts_from_backup|\
     gui_credits|pw_start_cont_xterm)
-        if [[ -z $PW_DESKTOP_FILES ]] ; then
-            export TAB_MAIN_MENU="4"
-        else
-            export TAB_MAIN_MENU="5"
-        fi
-        ;;
+        if [[ $PW_EMULS == "1" ]]
+        then [[ -z $PW_DESKTOP_FILES ]] && TAB_MAIN_MENU="4" || TAB_MAIN_MENU="5"
+        else [[ -z $PW_DESKTOP_FILES ]] && TAB_MAIN_MENU="3" || TAB_MAIN_MENU="4"
+        fi ;;
     gui_proton_downloader|WINETRICKS|\
     116|pw_create_prefix_backup|\
     gui_clear_pfx|WINEREG|WINECMD|\
     WINEFILE|WINECFG|wine_uninstaller)
-        if [[ -z $PW_DESKTOP_FILES ]] ; then
-            export TAB_MAIN_MENU="3"
-        else
-            export TAB_MAIN_MENU="4"
-        fi
-        ;;
+        if [[ $PW_EMULS == "1" ]]
+        then [[ -z $PW_DESKTOP_FILES ]] && TAB_MAIN_MENU="3" || TAB_MAIN_MENU="4"
+        else [[ -z $PW_DESKTOP_FILES ]] && TAB_MAIN_MENU="2" || TAB_MAIN_MENU="3"
+        fi ;;
     pw_find_exe)
-        if [[ -z $PW_DESKTOP_FILES ]] ; then
-            export TAB_MAIN_MENU="5"
-        else
-            export TAB_MAIN_MENU="1"
-        fi
-        ;;
+        if [[ $PW_EMULS == "1" ]]
+        then [[ -z $PW_DESKTOP_FILES ]] && TAB_MAIN_MENU="5" || TAB_MAIN_MENU="1"
+        else [[ -z $PW_DESKTOP_FILES ]] && TAB_MAIN_MENU="4" || TAB_MAIN_MENU="1"
+        fi ;;
 esac
+export TAB_MAIN_MENU
 
 case "$PW_YAD_SET" in
     '') ;;
