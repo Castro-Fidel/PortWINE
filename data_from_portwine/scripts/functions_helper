@@ -5798,18 +5798,20 @@ Binding a game to a single node reduces memory‑access latency and limits costl
         export bool_from_yad=$(( bool_from_yad + 1 ))
     done
 
-    IFS='%' read -r -a PW_ADD_SETTINGS <"${PW_TMPFS_PATH}/tmp_output_yad_fps_limit"
-    PW_WINDOWS_VER="${PW_ADD_SETTINGS[0]}"
-    PW_DLL_INSTALL="${PW_ADD_SETTINGS[1]}"
-    WINEDLLOVERRIDES="${PW_ADD_SETTINGS[2]}"
-    LAUNCH_PARAMETERS="${PW_ADD_SETTINGS[3]}"
-    CPU_LIMIT="${PW_ADD_SETTINGS[4]}"
-    PW_MESA_GL_VERSION_OVERRIDE="${PW_ADD_SETTINGS[5]}"
-    PW_VKD3D_FEATURE_LEVEL="${PW_ADD_SETTINGS[6]}"
-    PW_LOCALE_SELECT="${PW_ADD_SETTINGS[7]}"
-    PW_MESA_VK_WSI_PRESENT_MODE="${PW_ADD_SETTINGS[8]}"
-    PW_AMD_VULKAN_USE="${PW_ADD_SETTINGS[9]}"
-    NUMA_NODE_INDEX="${PW_ADD_SETTINGS[10]//[[:space:]]/}"
+    if [[ "${PW_CLI}" != "1" ]] ; then
+        IFS='%' read -r -a PW_ADD_SETTINGS <"${PW_TMPFS_PATH}/tmp_output_yad_fps_limit"
+        PW_WINDOWS_VER="${PW_ADD_SETTINGS[0]}"
+        PW_DLL_INSTALL="${PW_ADD_SETTINGS[1]}"
+        WINEDLLOVERRIDES="${PW_ADD_SETTINGS[2]}"
+        LAUNCH_PARAMETERS="${PW_ADD_SETTINGS[3]}"
+        CPU_LIMIT="${PW_ADD_SETTINGS[4]}"
+        PW_MESA_GL_VERSION_OVERRIDE="${PW_ADD_SETTINGS[5]}"
+        PW_VKD3D_FEATURE_LEVEL="${PW_ADD_SETTINGS[6]}"
+        PW_LOCALE_SELECT="${PW_ADD_SETTINGS[7]}"
+        PW_MESA_VK_WSI_PRESENT_MODE="${PW_ADD_SETTINGS[8]}"
+        PW_AMD_VULKAN_USE="${PW_ADD_SETTINGS[9]}"
+        NUMA_NODE_INDEX="${PW_ADD_SETTINGS[10]//[[:space:]]/}"
+    fi
 
     if [[ $NUMA_NODE_INDEX =~ ^[0-9]+$ ]] && [[ -v NODE_MAP[$NUMA_NODE_INDEX] ]] ; then
         NUMA_CORES="${NODE_MAP[$NUMA_NODE_INDEX]}"
