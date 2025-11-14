@@ -487,13 +487,13 @@ $(echo $files_from_autoinstall | awk '{for (i = 1; i <= NF; i++) {if (i % 10 == 
         # --show-ppdb /полный/путь/до/файла.exe
         ppdb_path="$2"
 
-        if [[ "$ppdb_path" == *.exe ]]; then
-            ppdb_path="${ppdb_path}.ppdb"
+        if [[ ! -f "$ppdb_path" ]]; then
+            export portwine_exe="$ppdb_path"
+            pw_init_db
         fi
 
-        if [[ ! -f "$ppdb_path" ]]; then
-            echo "PPDB file not found: $ppdb_path"
-            exit 1
+        if [[ "$ppdb_path" == *.exe ]]; then
+            ppdb_path="${ppdb_path}.ppdb"
         fi
 
         grep -E '^export ' "$ppdb_path" | sed '/^[[:space:]]*$/d' | while IFS='=' read -r var val; do
