@@ -493,17 +493,22 @@ $(echo $files_from_autoinstall | awk '{for (i = 1; i <= NF; i++) {if (i % 10 == 
         esac
 
         ppdb_path="${exe_path}.ppdb"
-
         if [[ ! -f "$ppdb_path" ]]; then
             export portwine_exe="$exe_path"
             pw_init_db
         fi
 
-        grep -E '^export ' "$ppdb_path" | sed '/^[[:space:]]*$/d' | while IFS='=' read -r var val; do
-            [[ -z "$var" ]] && continue
-            var_name=$(echo "$var" | sed 's/^export[[:space:]]*//')
-            val_clean=$(echo "$val" | sed 's/^"//; s/"$//')
-            echo "${var_name}=${val_clean}"
+        grep -E '^export ' "$ppdb_path" \
+        | sed '/^[[:space:]]*$/d' \
+        | while IFS= read -r line; do
+            line="${line#export }"
+            if [[ "$line" =~ ^([^=]+)=\"([^\"]*)\"[[:space:]]*#.*$ ]]; then
+                echo "${BASH_REMATCH[1]}=\"${BASH_REMATCH[2]}\""
+            elif [[ "$line" =~ ^([^=]+)=([^#[:space:]]+)[[:space:]]*#.*$ ]]; then
+                echo "${BASH_REMATCH[1]}=${BASH_REMATCH[2]}"
+            else
+                echo "$line"
+            fi
         done
         exit 0
         ;;
