@@ -3400,6 +3400,7 @@ start_portwine () {
                     yad_error_download && exit 1
                 fi
             fi
+            echo "based_on_dotnet" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
         fi
         return 0
     }
@@ -3514,11 +3515,13 @@ start_portwine () {
             pw_update_pfx_cover_gui
             unpack "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
             pw_wineboot -r
+            echo "based_on_default" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
         elif [[ "${PW_CHECK_AUTOINSTALL}" == 1 ]] \
         && [[ "${DISABLE_CP_DEFPFX}" != 1 ]] ; then
             pw_update_pfx_cover_gui
             unpack "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
             pw_wineboot -r
+            echo "based_on_default" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
         elif [[ "${PW_CHECK_AUTOINSTALL}" == 1 ]] \
         && [[ "${DISABLE_CP_DEFPFX}" == 1 ]] ; then
             pw_update_pfx_cover_gui
@@ -3527,6 +3530,7 @@ start_portwine () {
             pw_update_pfx_cover_gui
             unpack "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
             pw_wineboot -r
+            echo "based_on_default" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
         else
             pw_update_pfx_cover_gui
             pw_wineboot -i
@@ -3543,6 +3547,13 @@ start_portwine () {
             pw_stop_progress_bar
         fi
     fi
+
+    if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" ]] \
+    && grep -q "based_on" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
+    then export PW_BASE_PFX="$(awk -F'based_on_' '$2 != "" {print $2}' "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log")" 
+    else export PW_BASE_PFX="none"
+    fi
+
     rm -f "${PORT_WINE_PATH}"/data/prefixes/*/drive_c/users/*/Desktop/*.lnk
 
     echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
@@ -4787,6 +4798,7 @@ pw_run () {
     && [[ "$PW_WINE_USE" != "USE_SYSTEM_WINE" ]]
     then
         if [[ "${PW_LOG}" == 1 ]] ; then
+            echo "export PW_BASE_PFX=$PW_BASE_PFX" >> "${PORT_WINE_PATH}/PortProton.log"
             echo "WINEDLLOVERRIDES=${WINEDLLOVERRIDES}" >> "${PW_LOG_TO_FILE}"
             echo "------------------------------------" >> "${PW_LOG_TO_FILE}"
             [[ -f "${PW_TMPFS_PATH}/update_pfx_log" ]] && cat "${PW_TMPFS_PATH}/update_pfx_log" >> "${PW_LOG_TO_FILE}"
