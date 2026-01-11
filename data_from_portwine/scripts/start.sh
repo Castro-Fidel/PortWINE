@@ -36,7 +36,8 @@ fi
 
 PORT_SCRIPTS_PATH="$(cd "$(dirname "$0")" && pwd)"
 PORT_WINE_PATH="$(dirname "$(dirname "$PORT_SCRIPTS_PATH")")"
-export PORT_SCRIPTS_PATH PORT_WINE_PATH
+PW_LOG_FILE="${PORT_WINE_PATH}/PortProton.log"
+export PORT_SCRIPTS_PATH PORT_WINE_PATH PW_LOG_FILE
 
 # shellcheck source=/dev/null
 source "$PORT_SCRIPTS_PATH/functions_helper"

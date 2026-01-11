@@ -4775,7 +4775,7 @@ pw_run () {
         export WINE_LARGE_ADDRESS_AWARE="1"
     fi
 
-    PW_LOG_TO_FILE="${PORT_WINE_PATH}/PortProton.log"
+    PW_LOG_TO_FILE="$PW_LOG_FILE"
     PW_LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}"
 
     echo "##### Current variables #####" > "$PW_TMPFS_PATH/var.log"
@@ -4791,7 +4791,7 @@ pw_run () {
     && [[ "$PW_WINE_USE" != "USE_SYSTEM_WINE" ]]
     then
         if [[ "${PW_LOG}" == 1 ]] ; then
-            echo "export PW_BASE_PFX=$PW_BASE_PFX" >> "${PORT_WINE_PATH}/PortProton.log"
+            echo "export PW_BASE_PFX=$PW_BASE_PFX" >> "$PW_LOG_FILE"
             echo "WINEDLLOVERRIDES=${WINEDLLOVERRIDES}" >> "${PW_LOG_TO_FILE}"
             echo "------------------------------------" >> "${PW_LOG_TO_FILE}"
             [[ -f "${PW_TMPFS_PATH}/update_pfx_log" ]] && cat "${PW_TMPFS_PATH}/update_pfx_log" >> "${PW_LOG_TO_FILE}"
@@ -7306,142 +7306,142 @@ portwine_start_debug () {
     pw_skip_get_info
     kill_portwine
     export PW_LOG=1
-    echo "${translations[PortProton was launched in creation mode PortProton.log and it is successfully stored in the root directory of the port]}" > "${PORT_WINE_PATH}/PortProton.log"
-    echo "${translations[To diagnose the problem, copy ALL of the log to:]} https://linux-gaming.ru/t/opisanie-kategorii-portproton-pomoshh/1642" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "-------------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "PortWINE version:" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "${translations[PortProton was launched in creation mode PortProton.log and it is successfully stored in the root directory of the port]}" > "$PW_LOG_FILE"
+    echo "${translations[To diagnose the problem, copy ALL of the log to:]} https://linux-gaming.ru/t/opisanie-kategorii-portproton-pomoshh/1642" >> "$PW_LOG_FILE"
+    echo "-------------------------------------------------------------" >> "$PW_LOG_FILE"
+    echo "PortWINE version:" >> "$PW_LOG_FILE"
     read install_ver < "${PORT_WINE_TMP_PATH}/PortProton_ver"
-    echo "PortProton-${install_ver}" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "------------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Scripts version:" >> "${PORT_WINE_PATH}/PortProton.log"
-    cat "${PORT_WINE_TMP_PATH}/scripts_ver" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "-----------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "PortProton-${install_ver}" >> "$PW_LOG_FILE"
+    echo "------------------------------------------------------------" >> "$PW_LOG_FILE"
+    echo "Scripts version:" >> "$PW_LOG_FILE"
+    cat "${PORT_WINE_TMP_PATH}/scripts_ver" >> "$PW_LOG_FILE"
+    echo "-----------------------------------------------------------" >> "$PW_LOG_FILE"
     if check_flatpak ; then
-        echo "FLATPAK in used" >> "${PORT_WINE_PATH}/PortProton.log"
+        echo "FLATPAK in used" >> "$PW_LOG_FILE"
     elif [[ "${PW_USE_RUNTIME}" = 0 ]] ; then
-        echo "RUNTIME is disabled" >> "${PORT_WINE_PATH}/PortProton.log"
+        echo "RUNTIME is disabled" >> "$PW_LOG_FILE"
     else
-        echo "RUNTIME is enabled" >> "${PORT_WINE_PATH}/PortProton.log"
+        echo "RUNTIME is enabled" >> "$PW_LOG_FILE"
     fi
-    echo "----------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "----------------------------------------------------------" >> "$PW_LOG_FILE"
     if [[ -n "${portwine_exe}" ]] ; then
-        echo "Debug for programm:" >> "${PORT_WINE_PATH}/PortProton.log"
-        echo "${portwine_exe}" >> "${PORT_WINE_PATH}/PortProton.log"
-        echo "---------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+        echo "Debug for programm:" >> "$PW_LOG_FILE"
+        echo "${portwine_exe}" >> "$PW_LOG_FILE"
+        echo "---------------------------------------------------------" >> "$PW_LOG_FILE"
     fi
-    echo "GLIBC version:" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo $(ldd --version | grep -m1 ldd | awk '{print $NF}') >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "--------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "GLIBC version:" >> "$PW_LOG_FILE"
+    echo $(ldd --version | grep -m1 ldd | awk '{print $NF}') >> "$PW_LOG_FILE"
+    echo "--------------------------------------------------------" >> "$PW_LOG_FILE"
     case "$PW_VULKAN_USE" in
-        0) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DirectX to wined3d opengl" >> "${PORT_WINE_PATH}/PortProton.log" ;;
-        1) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_SAREK_VER}, VKD3D-PROTON v.${VKD3D_SAREK_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
-        2) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_NEW_VER}, VKD3D-PROTON v.${VKD3D_NEW_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
-        6) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_OLD_VER}, VKD3D-PROTON v.${VKD3D_OLD_VER}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
-        *) echo "PW_VULKAN_USE=${PW_VULKAN_USE}" >> "${PORT_WINE_PATH}/PortProton.log" ;;
+        0) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DirectX to wined3d opengl" >> "$PW_LOG_FILE" ;;
+        1) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_SAREK_VER}, VKD3D-PROTON v.${VKD3D_SAREK_VER}" >> "$PW_LOG_FILE" ;;
+        2) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_NEW_VER}, VKD3D-PROTON v.${VKD3D_NEW_VER}" >> "$PW_LOG_FILE" ;;
+        6) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DXVK v.${DXVK_OLD_VER}, VKD3D-PROTON v.${VKD3D_OLD_VER}" >> "$PW_LOG_FILE" ;;
+        *) echo "PW_VULKAN_USE=${PW_VULKAN_USE}" >> "$PW_LOG_FILE" ;;
     esac
-    echo "--------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Version WINE in use:" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "$PW_WINE_USE" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "-------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Program bit depth:" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "--------------------------------------------" >> "$PW_LOG_FILE"
+    echo "Version WINE in use:" >> "$PW_LOG_FILE"
+    echo "$PW_WINE_USE" >> "$PW_LOG_FILE"
+    echo "-------------------------------------------------------" >> "$PW_LOG_FILE"
+    echo "Program bit depth:" >> "$PW_LOG_FILE"
     if [[ $(file "$portwine_exe") =~ x86-64 ]] ; then
-        echo "64 bit" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "-----------------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+        echo "64 bit" >> "$PW_LOG_FILE"
+    echo "-----------------------------------------------------------------" >> "$PW_LOG_FILE"
     else
-        echo "32 bit" >> "${PORT_WINE_PATH}/PortProton.log"
+        echo "32 bit" >> "$PW_LOG_FILE"
     fi
-    echo "--------------------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Date and time of start debug for PortProton:" >> "${PORT_WINE_PATH}/PortProton.log"
-    date >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "-----------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "The installation path of the PortProton:" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "$PORT_WINE_PATH" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "--------------------------------------------------------------------" >> "$PW_LOG_FILE"
+    echo "Date and time of start debug for PortProton:" >> "$PW_LOG_FILE"
+    date >> "$PW_LOG_FILE"
+    echo "-----------------------------------------------------" >> "$PW_LOG_FILE"
+    echo "The installation path of the PortProton:" >> "$PW_LOG_FILE"
+    echo "$PORT_WINE_PATH" >> "$PW_LOG_FILE"
+    echo "------------------------------------------------------" >> "$PW_LOG_FILE"
     if check_flatpak ; then
-        echo "Flatpak runtime:" >> "${PORT_WINE_PATH}/PortProton.log"
-        grep -oP 'PRETTY_NAME="\K[^"]+' /etc/os-release  >> "${PORT_WINE_PATH}/PortProton.log"
-        echo "Operating system:" >> "${PORT_WINE_PATH}/PortProton.log"
-        grep -oP 'PRETTY_NAME="\K[^"]+' /run/host/etc/os-release  >> "${PORT_WINE_PATH}/PortProton.log"
+        echo "Flatpak runtime:" >> "$PW_LOG_FILE"
+        grep -oP 'PRETTY_NAME="\K[^"]+' /etc/os-release  >> "$PW_LOG_FILE"
+        echo "Operating system:" >> "$PW_LOG_FILE"
+        grep -oP 'PRETTY_NAME="\K[^"]+' /run/host/etc/os-release  >> "$PW_LOG_FILE"
     else
-        echo "Operating system:" >> "${PORT_WINE_PATH}/PortProton.log"
-        grep -oP 'PRETTY_NAME="\K[^"]+' /etc/os-release  >> "${PORT_WINE_PATH}/PortProton.log"
+        echo "Operating system:" >> "$PW_LOG_FILE"
+        grep -oP 'PRETTY_NAME="\K[^"]+' /etc/os-release  >> "$PW_LOG_FILE"
     fi
-    echo "--------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Desktop environment:" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Desktop session: ${DESKTOP_SESSION}" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Current desktop: ${XDG_CURRENT_DESKTOP}" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Session type: ${XDG_SESSION_TYPE}" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "---------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Kernel:" >> "${PORT_WINE_PATH}/PortProton.log"
-    uname -r >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "-------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "CPU:" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "CPU physical cores:$(grep 'cpu cores' /proc/cpuinfo | sort -u | cut -d':' -f2)" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "CPU logical cores: $(grep 'processor' /proc/cpuinfo | wc -l)" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "CPU model name:$(grep 'model name' /proc/cpuinfo | sort -u | cut -d':' -f2)" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "RAM:" >> "${PORT_WINE_PATH}/PortProton.log"
-    free -m >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "--------------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Filesystem ${PATH_TO_GAME} - $(stat -f -c %T "${PATH_TO_GAME}")" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Filesystem ${PORT_WINE_PATH} - $(stat -f -c %T "${PORT_WINE_PATH}")" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Filesystem ${PW_TMPFS_PATH} - $(stat -f -c %T "${PW_TMPFS_PATH}")" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "---------------------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Graphic cards and drivers:" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo 'lspci -k | grep -EA3 VGA|3D|Display :' >> "${PORT_WINE_PATH}/PortProton.log"
-    lspci -k | grep -EA3 'VGA|3D|Display' >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "----" >> "${PORT_WINE_PATH}/PortProton.log"
-    command -v glxinfo &>/dev/null && glxinfo -B >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "-----" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "inxi -G:" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "--------------------------------------------------" >> "$PW_LOG_FILE"
+    echo "Desktop environment:" >> "$PW_LOG_FILE"
+    echo "Desktop session: ${DESKTOP_SESSION}" >> "$PW_LOG_FILE"
+    echo "Current desktop: ${XDG_CURRENT_DESKTOP}" >> "$PW_LOG_FILE"
+    echo "Session type: ${XDG_SESSION_TYPE}" >> "$PW_LOG_FILE"
+    echo "---------------------------------------------------" >> "$PW_LOG_FILE"
+    echo "Kernel:" >> "$PW_LOG_FILE"
+    uname -r >> "$PW_LOG_FILE"
+    echo "-------------------------------------------------" >> "$PW_LOG_FILE"
+    echo "CPU:" >> "$PW_LOG_FILE"
+    echo "CPU physical cores:$(grep 'cpu cores' /proc/cpuinfo | sort -u | cut -d':' -f2)" >> "$PW_LOG_FILE"
+    echo "CPU logical cores: $(grep 'processor' /proc/cpuinfo | wc -l)" >> "$PW_LOG_FILE"
+    echo "CPU model name:$(grep 'model name' /proc/cpuinfo | sort -u | cut -d':' -f2)" >> "$PW_LOG_FILE"
+    echo "------------------------------------------------" >> "$PW_LOG_FILE"
+    echo "RAM:" >> "$PW_LOG_FILE"
+    free -m >> "$PW_LOG_FILE"
+    echo "--------------------------------------------------------------" >> "$PW_LOG_FILE"
+    echo "Filesystem ${PATH_TO_GAME} - $(stat -f -c %T "${PATH_TO_GAME}")" >> "$PW_LOG_FILE"
+    echo "Filesystem ${PORT_WINE_PATH} - $(stat -f -c %T "${PORT_WINE_PATH}")" >> "$PW_LOG_FILE"
+    echo "Filesystem ${PW_TMPFS_PATH} - $(stat -f -c %T "${PW_TMPFS_PATH}")" >> "$PW_LOG_FILE"
+    echo "---------------------------------------------------------------" >> "$PW_LOG_FILE"
+    echo "Graphic cards and drivers:" >> "$PW_LOG_FILE"
+    echo 'lspci -k | grep -EA3 VGA|3D|Display :' >> "$PW_LOG_FILE"
+    lspci -k | grep -EA3 'VGA|3D|Display' >> "$PW_LOG_FILE"
+    echo "----" >> "$PW_LOG_FILE"
+    command -v glxinfo &>/dev/null && glxinfo -B >> "$PW_LOG_FILE"
+    echo "-----" >> "$PW_LOG_FILE"
+    echo "inxi -G:" >> "$PW_LOG_FILE"
     if ! check_flatpak ; then
-        "${PW_PLUGINS_PATH}/portable/bin/inxi" -Gc0 >> "${PORT_WINE_PATH}/PortProton.log"
+        "${PW_PLUGINS_PATH}/portable/bin/inxi" -Gc0 >> "$PW_LOG_FILE"
     fi
     if echo "$LSPCI_VGA" | grep -i nvidia &>/dev/null ; then
         if command -v ldconfig &>/dev/null ; then
-            echo "------" >> "${PORT_WINE_PATH}/PortProton.log"
-            echo "ldconfig -p | grep libGLX_nvidia" >> "${PORT_WINE_PATH}/PortProton.log"
-            ldconfig -p | grep libGLX_nvidia >> "${PORT_WINE_PATH}/PortProton.log"
+            echo "------" >> "$PW_LOG_FILE"
+            echo "ldconfig -p | grep libGLX_nvidia" >> "$PW_LOG_FILE"
+            ldconfig -p | grep libGLX_nvidia >> "$PW_LOG_FILE"
         fi
     fi
-    echo "PW_SCREEN_RESOLUTION=$PW_SCREEN_RESOLUTION" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "PW_SCREEN_PRIMARY=$PW_SCREEN_PRIMARY" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "----------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "Vulkan info device name:" >> "${PORT_WINE_PATH}/PortProton.log"
-    grep -E '^GPU|deviceName|driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "PW_SCREEN_RESOLUTION=$PW_SCREEN_RESOLUTION" >> "$PW_LOG_FILE"
+    echo "PW_SCREEN_PRIMARY=$PW_SCREEN_PRIMARY" >> "$PW_LOG_FILE"
+    echo "----------------------------------------------" >> "$PW_LOG_FILE"
+    echo "Vulkan info device name:" >> "$PW_LOG_FILE"
+    grep -E '^GPU|deviceName|driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" >> "$PW_LOG_FILE"
     "${PW_PLUGINS_PATH}/portable/bin/vkcube" --c 50
     if [[ $? -eq 0 ]] ; then
-        echo "Vulkan cube test passed successfully" >> "${PORT_WINE_PATH}/PortProton.log"
+        echo "Vulkan cube test passed successfully" >> "$PW_LOG_FILE"
     else
-        echo "Vulkan cube test completed with error" >> "${PORT_WINE_PATH}/PortProton.log"
+        echo "Vulkan cube test completed with error" >> "$PW_LOG_FILE"
     fi
-    echo "----------------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo 'locale:' >> "${PORT_WINE_PATH}/PortProton.log"
-    locale >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "---" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo 'locale -a | grep -i "$(locale | grep -e '^LANG=' | sed 's/LANG=//' | sed  's/\-8//')" :' >> "${PORT_WINE_PATH}/PortProton.log"
-    locale -a | grep -i "$(locale | grep -e '^LANG=' | sed 's/LANG=//' | sed  's/\-8//')" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "-------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "----------------------------------------------------" >> "$PW_LOG_FILE"
+    echo 'locale:' >> "$PW_LOG_FILE"
+    locale >> "$PW_LOG_FILE"
+    echo "---" >> "$PW_LOG_FILE"
+    echo 'locale -a | grep -i "$(locale | grep -e '^LANG=' | sed 's/LANG=//' | sed  's/\-8//')" :' >> "$PW_LOG_FILE"
+    locale -a | grep -i "$(locale | grep -e '^LANG=' | sed 's/LANG=//' | sed  's/\-8//')" >> "$PW_LOG_FILE"
+    echo "-------------------------------------------" >> "$PW_LOG_FILE"
     if [[ "${PW_USE_D3D_EXTRAS}" != 1 ]]
-    then echo "D3D_EXTRAS - disabled" >> "${PORT_WINE_PATH}/PortProton.log"
-    else echo "D3D_EXTRAS - enabled" >> "${PORT_WINE_PATH}/PortProton.log"
+    then echo "D3D_EXTRAS - disabled" >> "$PW_LOG_FILE"
+    else echo "D3D_EXTRAS - enabled" >> "$PW_LOG_FILE"
     fi
-    echo "------------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "winetricks.log:" >> "${PORT_WINE_PATH}/PortProton.log"
-    cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" | sed -e /^"d3dcomp*"/d -e /^"d3dx*"/d >> "${PORT_WINE_PATH}/PortProton.log"
-    echo "-----------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "------------------------------------------" >> "$PW_LOG_FILE"
+    echo "winetricks.log:" >> "$PW_LOG_FILE"
+    cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" | sed -e /^"d3dcomp*"/d -e /^"d3dx*"/d >> "$PW_LOG_FILE"
+    echo "-----------------------------------------" >> "$PW_LOG_FILE"
     if [[ -n "${PORTWINE_DB_FILE}" ]] ; then
-        echo "Use ${PORTWINE_DB_FILE} db file:" >> "${PORT_WINE_PATH}/PortProton.log"
-        cat "${PORTWINE_DB_FILE}" | sed '/##/d' >> "${PORT_WINE_PATH}/PortProton.log"
+        echo "Use ${PORTWINE_DB_FILE} db file:" >> "$PW_LOG_FILE"
+        cat "${PORTWINE_DB_FILE}" | sed '/##/d' >> "$PW_LOG_FILE"
     else
-        echo "Use ${PORT_SCRIPTS_PATH}/portwine_db/default db file:" >> "${PORT_WINE_PATH}/PortProton.log"
-        cat "${PORT_SCRIPTS_PATH}/portwine_db/default" | sed '/##/d' >> "${PORT_WINE_PATH}/PortProton.log"
+        echo "Use ${PORT_SCRIPTS_PATH}/portwine_db/default db file:" >> "$PW_LOG_FILE"
+        cat "${PORT_SCRIPTS_PATH}/portwine_db/default" | sed '/##/d' >> "$PW_LOG_FILE"
     fi
-    echo "----------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "----------------------------------------" >> "$PW_LOG_FILE"
     if [[ -f "${USER_CONF}" ]] ; then
-        cat "${USER_CONF}" | sed '/bash/d' >> "${PORT_WINE_PATH}/PortProton.log"
+        cat "${USER_CONF}" | sed '/bash/d' >> "$PW_LOG_FILE"
     fi
-    echo "---------------------------------------" >> "${PORT_WINE_PATH}/PortProton.log"
+    echo "---------------------------------------" >> "$PW_LOG_FILE"
 
     portwine_launch &
     sleep 3
@@ -7456,21 +7456,27 @@ portwine_start_debug () {
                 sleep 3
                 PW_TIMER=1
             fi
-    done < "${PORT_WINE_PATH}/PortProton.log" | "${pw_yad}" --text-info --tail --button="STOP!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 --title="DEBUG" \
+    done < "$PW_LOG_FILE" | "${pw_yad}" --text-info --tail --button="STOP!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png":0 --title="DEBUG" \
     --skip-taskbar --width=800 --height=400 --text "${translations[Please wait! After finishing the PortProton, click STOP.]}" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" 2>/dev/null &&
     kill_portwine
-    sed -i '/.fx$/d' "${PORT_WINE_PATH}/PortProton.log"
-    sed -i '/HACK_does_openvr_work/d' "${PORT_WINE_PATH}/PortProton.log"
-    sed -i '/Uploading is disabled/d' "${PORT_WINE_PATH}/PortProton.log"
-    sed -i '/wine: RLIMIT_NICE is <= 20/d' "${PORT_WINE_PATH}/PortProton.log"
-    sed -i '/ALT_2.24/d' "${PORT_WINE_PATH}/PortProton.log"
-    sed -i '/UDEV monitor/d' "${PORT_WINE_PATH}/PortProton.log"
-    deb_text=$(awk '! a[$0]++' "${PORT_WINE_PATH}/PortProton.log")
-    echo "$deb_text" > "${PORT_WINE_PATH}/PortProton.log"
+
+    deb_text=$(awk '! a[$0]++' "$PW_LOG_FILE")
+    echo "$deb_text" > "$PW_LOG_FILE"
+
+    sed -i \
+        -e '/\.fx$/d' \
+        -e '/HACK_does_openvr_work/d' \
+        -e '/Uploading is disabled/d' \
+        -e '/wine: RLIMIT_NICE is <= 20/d' \
+        -e '/ALT_2.24/d' \
+        -e '/UDEV monitor/d' \
+        -e "s/$USER/xuser/g" \
+        "$PW_LOG_FILE"
+
     "$pw_yad" --title="PortProton.log" --no-buttons --text-align=center \
     --text-info --show-uri --wrap --width=1200 --height=550  --uri-color=red \
     --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-    --filename="${PORT_WINE_PATH}/PortProton.log"
+    --filename="$PW_LOG_FILE"
     stop_portwine
 }
 
