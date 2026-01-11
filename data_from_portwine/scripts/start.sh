@@ -655,13 +655,18 @@ if [[ -f "$portwine_exe" ]] ; then
         fi
 
         create_name_desktop
+
+        if [[ -n $PW_PPDB_URL ]]
+        then PW_COMMENT_URL="<a href=\"$PW_PPDB_URL\">\(PPDB\)</a>"
+        fi
+        
         if [[ -n $PW_COMMENT_DB ]] ; then
-            PW_COMMENT_DB="$PW_COMMENT_DB$(seconds_to_time "$TIME_CURRENT")"
+            PW_COMMENT_DB="$PW_COMMENT_DB $PW_COMMENT_URL$(seconds_to_time "$TIME_CURRENT")"
         else
             if [[ $PW_USE_SETUP_FILE == "1" ]] ; then
                 PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$PW_NAME_DESKTOP_PROXY" "50")</b>"
             else
-                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$PW_NAME_DESKTOP_PROXY" "50")</b>$(seconds_to_time "$TIME_CURRENT")"
+                PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "$PW_NAME_DESKTOP_PROXY" "50")</b> $PW_COMMENT_URL $(seconds_to_time "$TIME_CURRENT")"
             fi
         fi
 
