@@ -41,6 +41,17 @@ export PORT_SCRIPTS_PATH PORT_WINE_PATH
 # shellcheck source=/dev/null
 source "$PORT_SCRIPTS_PATH/functions_helper"
 
+export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
+create_new_dir "$PORT_WINE_TMP_PATH"
+rm -f "$PORT_WINE_TMP_PATH"/*.{exe,msi,tar}*
+
+if mkdir -p "/tmp/PortProton_$USER" ; then
+    export PW_TMPFS_PATH="/tmp/PortProton_$USER"
+else
+    create_new_dir "${PORT_WINE_PATH}/data/tmp/PortProton_$USER"
+    export PW_TMPFS_PATH="${PORT_WINE_PATH}/data/tmp/PortProton_$USER"
+fi
+
 export PW_START_PID="$$"
 export NO_AT_BRIDGE="1"
 export GDK_BACKEND="x11"
@@ -63,6 +74,26 @@ if [[ "${1,,}" =~ \.ppack$ ]] ; then
     export PW_NO_RESTART_PPDB="1"
     export PW_DISABLED_CREATE_DB="1"
     portwine_exe="$1"
+elif [[ "${1,,}" =~ \.ppdb$ ]] ; then
+    if [[ -f "$1" ]] ; then
+        PW_TMP_PPDB_FILE="$PW_TMPFS_PATH/tmp_from_site.ppdb"
+        try_copy_file "$1" "$PW_TMP_PPDB_FILE"
+        PW_TMP_PPDB_EXE="$(grep "^#.*\.exe$" "$PW_TMP_PPDB_FILE" | sed 's/#//')"
+
+        if check_flatpak
+        then PW_EXEC_FROM_DESKTOP="$(grep "$PW_TMP_PPDB_EXE" "$PORT_WINE_PATH/"*.desktop | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
+        else PW_EXEC_FROM_DESKTOP="$(grep "$PW_TMP_PPDB_EXE" "$PORT_WINE_PATH/"*.desktop | head -n 1 | awk -F"=env " '{print $2}')"
+        fi
+
+        portwine_exe="$(echo "$PW_EXEC_FROM_DESKTOP" | awk -F'"' '{print $4}')"
+        mv -f "$PW_TMP_PPDB_FILE" "${portwine_exe}.ppdb"
+
+        print_info "Restarting PP after copy new ppdb file..."
+        /usr/bin/env bash -c "${PW_EXEC_FROM_DESKTOP}" &
+        exit 0
+    else
+        fatal "ppdb file \"$1\" not found!"
+    fi
 elif [[ "${1,,}" =~ \.(exe|bat|msi|reg|lnk)$ ]] ; then
     if [[ -f "$1" ]] ; then
         portwine_exe="$(realpath -s "$1")"
@@ -104,23 +135,13 @@ else
     unset PW_GUI_DISABLED_CS
 fi
 
-unset MANGOHUD PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_YAD_SET PW_CPU_NUMA_NODE_INDEX PW_TASKSET_SLR
+unset MANGOHUD PW_VULKAN_USE WINEDLLOVERRIDES PW_NO_WRITE_WATCH PW_YAD_SET PW_CPU_NUMA_NODE_INDEX PW_TASKSET_SLR PW_PPDB_URL
 unset PW_CHECK_AUTOINSTALL PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS PORTWINE_DB PORTWINE_DB_FILE RADV_PERFTEST PW_USE_RUNTIME
 unset CHK_SYMLINK_FILE PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PATH_TO_GAME PW_START_DEBUG PORTPROTON_NAME PW_PATH
 unset PW_PREFIX_NAME VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR PW_WINE_CPU_TOPOLOGY LAUNCH_URI
 unset MANGOHUD_CONFIG FPS_LIMIT PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PORTWINE_CREATE_SHORTCUT_NAME MIRROR
 unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NOSTSTDIR RADV_DEBUG PW_NO_AUTO_CREATE_SHORTCUT
 unset PW_TERM PW_EXEC_FROM_DESKTOP WEBKIT_DISABLE_DMABUF_RENDERER PW_AMD_VULKAN_USE PW_VK_ICD_FILENAMES PW_USE_SETUP_FILE
-
-export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
-rm -f "$PORT_WINE_TMP_PATH"/*{exe,msi,tar}*
-
-if mkdir -p "/tmp/PortProton_$USER" ; then
-    export PW_TMPFS_PATH="/tmp/PortProton_$USER"
-else
-    create_new_dir "${PORT_WINE_PATH}/data/tmp/PortProton_$USER"
-    export PW_TMPFS_PATH="${PORT_WINE_PATH}/data/tmp/PortProton_$USER"
-fi
 
 echo "" > "${PW_TMPFS_PATH}/tmp_yad_form"
 echo "" > "${PW_TMPFS_PATH}/tmp_yad_form_vulkan"
