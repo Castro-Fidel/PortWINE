@@ -7868,9 +7868,13 @@ update_ext_ppdb () {
         if [[ -f "$portwine_exe" ]] ; then
             print_info "Moved new $tmp_ppdb_file to ${portwine_exe}.ppdb"
             mv -f "$tmp_ppdb_file" "${portwine_exe}.ppdb"
-            print_info "Restarting PP after copy new ppdb file..."
-            /usr/bin/env bash -c "${PW_EXEC_FROM_DESKTOP}" &
-            exit 0
+            if [[ $PW_CLI == "1" ]] ; then
+                exit 0
+            else
+                print_info "Restarting PP after copy new ppdb file..."
+                /usr/bin/env bash -c "${PW_EXEC_FROM_DESKTOP}" &
+                exit 0
+            fi
         else
             yad_error "Not found desktop file for:\n<b>\n${tmp_ppdb_exe[@]}\n</b>"
             exit 1
