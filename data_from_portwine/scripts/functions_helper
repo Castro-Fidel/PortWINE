@@ -5649,6 +5649,7 @@ gui_edit_db () {
     PW_USE_WINED3D_VULKAN_INFO=${translations[Instead of DXVK, use WineD3D vulkan (Damavand). Experimental function.]}
     PW_USE_SUPPLIED_DXVK_VKD3D_INFO=${translations[Use dxvk and vkd3d which are bundled with wine or proton. (Does not work with PROTON_LG and WINE_LG)]}
     PW_USE_SAREK_ASYNC_INFO=${translations[Use async version of dxvk-sarek. (May work better or vice versa)]}
+    PW_SOUND_DRIVER_USE_INFO=${translations[Choice wine audio driver]}
 
 #     PW_VULKAN_NO_ASYNC_INFO=${translations[Disable asynchronous calls for VULKAN and DXVK modes]}
 #     PW_OLD_GL_STRING_INFO=${translations[Forced use of older versions of OpenGL]}
@@ -5668,6 +5669,14 @@ gui_edit_db () {
     esac
 
     [[ ! -e "/dev/ntsync" ]] && DISABLE_EDIT_DB_LIST+=" PW_USE_NTSYNC"
+
+    if [[ -n "$PW_SOUND_DRIVER_USE" ]] \
+    && [[ "$PW_SOUND_DRIVER_USE" != "disabled" ]]
+    then
+        SOUND_DRIVER_VAR="$PW_SOUND_DRIVER_USE"
+    else
+        SOUND_DRIVER_VAR="disabled"
+    fi
 
     if ! check_flatpak \
     && ! compare_versions "$(ldd --version | head -n 1 | awk '{print $NF}')" "2.38"
@@ -5768,6 +5777,7 @@ immediate - Unlimited frame rate + tearing.
 mailbox - Triple buffering. Unlimited frame rate + no tearing.
 relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]} :CB" "$(combobox_fix --disabled "${PW_MESA_VK_WSI_PRESENT_MODE}" "fifo!immediate!mailbox!relaxed")" \
     --field="${translations[Select needed AMD vulkan implementation]}!${translations[Choosing which implementation of vulkan will be used to run the game]} $AMD_VULKAN_CB" "$(combobox_fix --disabled "$PW_AMD_VULKAN_USE" "$AMD_VULKAN_DRIVER_LIST")" \
+    --field="${translations[Choice wine audio driver]}!${translations[Fixes sound popling if choice alsa]} :CB" "$(combobox_fix --disabled "${PW_SOUND_DRIVER_USE}" "alsa!oss!pulse")" \
     --field="${translations[NUMA node for CPU affinity]}!${translations[In multi‑core systems, CPUs are split into NUMA nodes, each with its own local memory and cores.
 Binding a game to a single node reduces memory‑access latency and limits costly core‑to‑core switches.)]} $NUDA_CPU_CB" "$(combobox_fix --disabled "${NUMA_NODE_INDEX}" "${NUMA_NODE_LIST}")" \
     1> "$PW_TMPFS_PATH/tmp_output_yad_fps_limit" 2>/dev/null &
@@ -5821,7 +5831,8 @@ Binding a game to a single node reduces memory‑access latency and limits costl
         PW_LOCALE_SELECT="${PW_ADD_SETTINGS[7]}"
         PW_MESA_VK_WSI_PRESENT_MODE="${PW_ADD_SETTINGS[8]}"
         PW_AMD_VULKAN_USE="${PW_ADD_SETTINGS[9]}"
-        NUMA_NODE_INDEX="${PW_ADD_SETTINGS[10]//[[:space:]]/}"
+        PW_SOUND_DRIVER_USE="${PW_ADD_SETTINGS[10]}"
+        NUMA_NODE_INDEX="${PW_ADD_SETTINGS[11]//[[:space:]]/}"
     fi
 
     if [[ $NUMA_NODE_INDEX =~ ^[0-9]+$ ]] && [[ -v NODE_MAP[$NUMA_NODE_INDEX] ]] ; then
@@ -5849,7 +5860,7 @@ Binding a game to a single node reduces memory‑access latency and limits costl
     PW_EDIT_DB_FINAL_LIST=("${PW_EDIT_DB_LIST[@]}" \
     LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL \
     WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL \
-    PW_LOCALE_SELECT PW_MESA_VK_WSI_PRESENT_MODE PW_AMD_VULKAN_USE PW_CPU_NUMA_NODE_INDEX PW_TASKSET_SLR)
+    PW_LOCALE_SELECT PW_MESA_VK_WSI_PRESENT_MODE PW_AMD_VULKAN_USE PW_SOUND_DRIVER_USE PW_CPU_NUMA_NODE_INDEX PW_TASKSET_SLR)
     export PW_EDIT_DB_FINAL_LIST
 
     edit_db_from_gui "${PW_EDIT_DB_FINAL_LIST[@]}"
@@ -6639,14 +6650,6 @@ gui_userconf () {
         YAD_DPI_VAR="disabled"
     fi
 
-    if [[ -n "$PW_SOUND_DRIVER_USE" ]] \
-    && [[ "$PW_SOUND_DRIVER_USE" != "disabled" ]]
-    then
-        SOUND_DRIVER_VAR="$PW_SOUND_DRIVER_USE"
-    else
-        SOUND_DRIVER_VAR="disabled"
-    fi
-
     [[ $GUI_THEME == "default" ]] && GUI_THEME=${translations[default]}
     [[ $GUI_THEME == "compact" ]] && GUI_THEME=${translations[compact]}
     [[ $GUI_THEME == "classic" ]] && GUI_THEME=${translations[classic]}
@@ -6705,7 +6708,6 @@ gui_userconf () {
     --field="${translations[Steam covers download]}!${translations[If downloading steam covers is enabled, they will be downloaded and created. (Disablement is provided in cases where their downloading is unavailable for some reason)]} :CB" "$(combobox_fix "$DOWNLOAD_STEAM_GRID" "$NEW_STEAM_BEHAVIOR")" \
     --field="${translations[Choose a graphics card to run the game]}!${translations[Select which video card will be used to run the game (used for all running games and programs in PortProton)]} :CB" "$(combobox_fix "$GPU_VAR" "$GET_GPU_NAMES")" \
     --field="${translations[Force dpi]}!${translations[Here you can set forced dpi for applications wine]} :CB" "$(combobox_fix --disabled "$YAD_DPI_VAR" "${translations[Recommended value]}!80!96!120!144!168!192!216!240")" \
-    --field="${translations[Choice wine audio driver]}!${translations[Fixes sound popling if choice alsa]} :CB" "$(combobox_fix --disabled "$SOUND_DRIVER_VAR" "alsa!oss!pulse")" \
     --field="${translations[Select PortProton theme]}!${translations[Allows you to select a theme for PortProton]} :CB" "$(combobox_fix "$GUI_THEME" "${translations[default]}!${translations[compact]}!${translations[classic]}")" \
     --field="${translations[Select gtk theme]}!${translations[Allows you to select a theme for GTK.]} :CB" "$(combobox_fix "$GTK_THEME_PROXY" "${YAD_GTK_THEME}Adwaita:${translations[light]}!Adwaita:${translations[dark]}!${translations[default]}")" \
     --field="${translations[Time display]}!${translations[Displays time spent in an application or game]} :CB" "$(combobox_fix --disabled "$DESKTOP_WITH_TIME" "${translations[Show in hours and minutes]}!${translations[Show in days, hours, minutes]}")" \
@@ -6771,13 +6773,12 @@ gui_userconf () {
             DOWNLOAD_STEAM_GRID="${PW_ADD_SETTINGS_UC[3]}"
             PW_GPU_USE="${PW_ADD_SETTINGS_UC[4]}"
             PW_WINE_DPI_VALUE="${PW_ADD_SETTINGS_UC[5]}"
-            PW_SOUND_DRIVER_USE="${PW_ADD_SETTINGS_UC[6]}"
-            GUI_THEME="${PW_ADD_SETTINGS_UC[7]}"
-            GTK_THEME="${PW_ADD_SETTINGS_UC[8]}"
-            DESKTOP_WITH_TIME="${PW_ADD_SETTINGS_UC[9]}"
-            SORT_WITH_TIME="${PW_ADD_SETTINGS_UC[10]}"
-            PW_VULKAN_UNLOCKED="${PW_ADD_SETTINGS_UC[11]}"
-            PW_EMULS_STATE_TEMP="${PW_ADD_SETTINGS_UC[12]}"
+            GUI_THEME="${PW_ADD_SETTINGS_UC[6]}"
+            GTK_THEME="${PW_ADD_SETTINGS_UC[7]}"
+            DESKTOP_WITH_TIME="${PW_ADD_SETTINGS_UC[8]}"
+            SORT_WITH_TIME="${PW_ADD_SETTINGS_UC[9]}"
+            PW_VULKAN_UNLOCKED="${PW_ADD_SETTINGS_UC[10]}"
+            PW_EMULS_STATE_TEMP="${PW_ADD_SETTINGS_UC[11]}"
 
             if [[ $DOWNLOAD_STEAM_GRID =~ (${translations[Enabled]}|${translations[Enable]}) ]]
             then DOWNLOAD_STEAM_GRID="1"
@@ -6823,7 +6824,7 @@ gui_userconf () {
             else PW_EMULS="0"
             fi
 
-            edit_user_conf_from_gui MIRROR BRANCH PW_GUI_START DOWNLOAD_STEAM_GRID PW_GPU_USE PW_WINE_DPI_VALUE PW_SOUND_DRIVER_USE \
+            edit_user_conf_from_gui MIRROR BRANCH PW_GUI_START DOWNLOAD_STEAM_GRID PW_GPU_USE PW_WINE_DPI_VALUE \
             GUI_THEME GTK_THEME DESKTOP_WITH_TIME SORT_WITH_TIME PW_VULKAN_UNLOCKED PW_EMULS
             restart_pp
             ;;

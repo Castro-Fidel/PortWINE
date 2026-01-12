@@ -200,6 +200,7 @@ export WINETRICKS_DOWNLOADER="curl"
 export USER_CONF="${PORT_WINE_PATH}/data/user.conf"
 check_user_conf
 sed -i 's/="CDN"/="CLOUD"/g' "$USER_CONF"
+sed -i '/export PW_SOUND_DRIVER_USE=/d' "$USER_CONF"
 
 check_variables PW_LOG "0"
 
