@@ -7,7 +7,7 @@ source "$(dirname "$(readlink -f "$0")")/start.sh"
 
 if check_flatpak
 then PW_EXEC="flatpak run ru.linux_gaming.PortProton"
-else PW_EXEC="env \"${PORT_SCRIPTS_PATH}/start.sh\" %F"
+else PW_EXEC="env \"${PORT_SCRIPTS_PATH}/start.sh\" %u"
 fi
 
 cat << EOF > "${PORT_WINE_PATH}/PortProton.desktop"
@@ -19,7 +19,7 @@ Type=Application
 Terminal=False
 Categories=Game
 StartupNotify=true
-MimeType=application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program;application/x-ms-shortcut;text/win-bat;
+MimeType=application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program;application/x-ms-shortcut;text/win-bat;x-scheme-handler/portproton;
 Path=${PORT_SCRIPTS_PATH}
 Icon=${PORT_WINE_PATH}/data/img/w.png
 EOF

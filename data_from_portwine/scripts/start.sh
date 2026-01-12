@@ -80,32 +80,17 @@ if [[ "${1,,}" =~ \.ppack$ ]] ; then
     export PW_DISABLED_CREATE_DB="1"
     portwine_exe="$1"
 elif [[ "${1,,}" =~ \.ppdb$ ]] ; then
-    if [[ -f "$1" ]] ; then
-        PW_TMP_PPDB_FILE="$PW_TMPFS_PATH/tmp_from_site.ppdb"
-        try_copy_file "$1" "$PW_TMP_PPDB_FILE"
-        PW_TMP_PPDB_EXE=("$(grep "^#.*\.exe$" "$PW_TMP_PPDB_FILE" | sed 's/#//')")
-        for exe_name in "${PW_TMP_PPDB_EXE[@]}" ; do
-            [[ -z $exe_name ]] && fatal "Name for exe file not found in $1"
-            if check_flatpak ; then
-                PW_EXEC_FROM_DESKTOP="$(grep "$exe_name" "$PORT_WINE_PATH/"*.desktop | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
-            else
-                PW_EXEC_FROM_DESKTOP="$(grep "$exe_name" "$PORT_WINE_PATH/"*.desktop | head -n 1 | awk -F"=env " '{print $2}')"
-            fi
-            [[ -n $PW_EXEC_FROM_DESKTOP ]] && break
-        done
-        portwine_exe="$(echo "$PW_EXEC_FROM_DESKTOP" | awk -F'"' '{print $4}')"
-        if [[ -f "$portwine_exe" ]] ; then
-            print_info "Moved new $PW_TMP_PPDB_FILE to ${portwine_exe}.ppdb"
-            mv -f "$PW_TMP_PPDB_FILE" "${portwine_exe}.ppdb"
-            print_info "Restarting PP after copy new ppdb file..."
-            /usr/bin/env bash -c "${PW_EXEC_FROM_DESKTOP}" &
-            exit 0
-        else
-            yad_error "Not found desktop file for:\n<b>\n${PW_TMP_PPDB_EXE[@]}\n</b>"
-            exit 1
-        fi
+    update_ext_ppdb "$1"
+elif [[ "$1" == portproton://* ]] ; then
+    PPDB_URL="${1#portproton://}"
+    PPDB_URL="${PPDB_URL//https\/\//https:\/\/}"
+    PW_TMP_PPDB_FILE="$PW_TMPFS_PATH/tmp_from_url.ppdb"
+
+    print_info "Downloading PPDB from: $PPDB_URL"
+    if curl -fsSL "$PPDB_URL" -o "$PW_TMP_PPDB_FILE" ; then
+        update_ext_ppdb "$PW_TMP_PPDB_FILE" "url"
     else
-        fatal "ppdb file \"$1\" not found!"
+        fatal "Failed to download PPDB from URL: $PPDB_URL"
     fi
 elif [[ "${1,,}" =~ \.(exe|bat|msi|reg|lnk)$ ]] ; then
     if [[ -f "$1" ]] ; then

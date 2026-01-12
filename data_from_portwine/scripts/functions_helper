@@ -7844,3 +7844,38 @@ DGVOODOO2: https://dege.fw.hu/]}" 2>/dev/null &
 
     restart_pp
 }
+
+update_ext_ppdb () {
+    if [[ -f "$1" ]] ; then
+        local tmp_ppdb_file tmp_ppdb_exe
+        if [[ $2 == "url" ]] ; then
+            tmp_ppdb_file="$1"
+        else
+            tmp_ppdb_file="$PW_TMPFS_PATH/tmp_from_site.ppdb"
+            try_copy_file "$1" "$tmp_ppdb_file"
+        fi
+        tmp_ppdb_exe=("$(grep "^#.*\.exe$" "$tmp_ppdb_file" | sed 's/#//')")
+        for exe_name in "${tmp_ppdb_exe[@]}" ; do
+            [[ -z $exe_name ]] && fatal "Name for exe file not found in $1"
+            if check_flatpak ; then
+                PW_EXEC_FROM_DESKTOP="$(grep "$exe_name" "$PORT_WINE_PATH/"*.desktop | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
+            else
+                PW_EXEC_FROM_DESKTOP="$(grep "$exe_name" "$PORT_WINE_PATH/"*.desktop | head -n 1 | awk -F"=env " '{print $2}')"
+            fi
+            [[ -n $PW_EXEC_FROM_DESKTOP ]] && break
+        done
+        portwine_exe="$(echo "$PW_EXEC_FROM_DESKTOP" | awk -F'"' '{print $4}')"
+        if [[ -f "$portwine_exe" ]] ; then
+            print_info "Moved new $tmp_ppdb_file to ${portwine_exe}.ppdb"
+            mv -f "$tmp_ppdb_file" "${portwine_exe}.ppdb"
+            print_info "Restarting PP after copy new ppdb file..."
+            /usr/bin/env bash -c "${PW_EXEC_FROM_DESKTOP}" &
+            exit 0
+        else
+            yad_error "Not found desktop file for:\n<b>\n${tmp_ppdb_exe[@]}\n</b>"
+            exit 1
+        fi
+    else
+        fatal "ppdb file \"$1\" not found!"
+    fi
+}
