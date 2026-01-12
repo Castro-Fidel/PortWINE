@@ -53,6 +53,10 @@ else
     export PW_TMPFS_PATH="${PORT_WINE_PATH}/data/tmp/PortProton_$USER"
 fi
 
+export PW_CACHE_LANG_PATH="${PORT_WINE_TMP_PATH}/cache_lang/"
+export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
+export PW_GUI_THEMES_PATH="${PORT_WINE_PATH}/data/themes"
+
 export PW_START_PID="$$"
 export NO_AT_BRIDGE="1"
 export GDK_BACKEND="x11"
@@ -79,19 +83,27 @@ elif [[ "${1,,}" =~ \.ppdb$ ]] ; then
     if [[ -f "$1" ]] ; then
         PW_TMP_PPDB_FILE="$PW_TMPFS_PATH/tmp_from_site.ppdb"
         try_copy_file "$1" "$PW_TMP_PPDB_FILE"
-        PW_TMP_PPDB_EXE="$(grep "^#.*\.exe$" "$PW_TMP_PPDB_FILE" | sed 's/#//')"
-
-        if check_flatpak
-        then PW_EXEC_FROM_DESKTOP="$(grep "$PW_TMP_PPDB_EXE" "$PORT_WINE_PATH/"*.desktop | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
-        else PW_EXEC_FROM_DESKTOP="$(grep "$PW_TMP_PPDB_EXE" "$PORT_WINE_PATH/"*.desktop | head -n 1 | awk -F"=env " '{print $2}')"
-        fi
-
+        PW_TMP_PPDB_EXE=("$(grep "^#.*\.exe$" "$PW_TMP_PPDB_FILE" | sed 's/#//')")
+        for exe_name in "${PW_TMP_PPDB_EXE[@]}" ; do
+            [[ -z $exe_name ]] && fatal "Name for exe file not found in $1"
+            if check_flatpak ; then
+                PW_EXEC_FROM_DESKTOP="$(grep "$exe_name" "$PORT_WINE_PATH/"*.desktop | head -n 1 | sed 's|flatpak run ru.linux_gaming.PortProton|\"${PORT_SCRIPTS_PATH}/start.sh\"|' | awk -F'=' '{print $2}')"
+            else
+                PW_EXEC_FROM_DESKTOP="$(grep "$exe_name" "$PORT_WINE_PATH/"*.desktop | head -n 1 | awk -F"=env " '{print $2}')"
+            fi
+            [[ -n $PW_EXEC_FROM_DESKTOP ]] && break
+        done
         portwine_exe="$(echo "$PW_EXEC_FROM_DESKTOP" | awk -F'"' '{print $4}')"
-        mv -f "$PW_TMP_PPDB_FILE" "${portwine_exe}.ppdb"
-
-        print_info "Restarting PP after copy new ppdb file..."
-        /usr/bin/env bash -c "${PW_EXEC_FROM_DESKTOP}" &
-        exit 0
+        if [[ -f "$portwine_exe" ]] ; then
+            print_info "Moved new $PW_TMP_PPDB_FILE to ${portwine_exe}.ppdb"
+            mv -f "$PW_TMP_PPDB_FILE" "${portwine_exe}.ppdb"
+            print_info "Restarting PP after copy new ppdb file..."
+            /usr/bin/env bash -c "${PW_EXEC_FROM_DESKTOP}" &
+            exit 0
+        else
+            yad_error "Not found desktop file for:\n<b>\n${PW_TMP_PPDB_EXE[@]}\n</b>"
+            exit 1
+        fi
     else
         fatal "ppdb file \"$1\" not found!"
     fi
@@ -186,9 +198,6 @@ export STEAM_SCRIPTS="${PORT_WINE_PATH}/steam_scripts"
 create_new_dir "$STEAM_SCRIPTS"
 
 export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
-export PW_CACHE_LANG_PATH="${PORT_WINE_TMP_PATH}/cache_lang/"
-export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
-export PW_GUI_THEMES_PATH="${PORT_WINE_PATH}/data/themes"
 export pw_yad="${PW_GUI_THEMES_PATH}/gui/yad_gui_pp"
 
 change_locale
