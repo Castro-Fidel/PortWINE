@@ -6686,6 +6686,14 @@ gui_userconf () {
         PW_VULKAN_UNLOCKED_LIST="${translations[default]}"
     fi
 
+    if [[ $PW_EMULS == "1" ]] ; then
+        PW_EMULS_STATE="${translations[Enabled]}"
+        PW_EMULS_TOGGLE="${translations[Disable]}"
+    else
+        PW_EMULS_STATE="${translations[Disabled]}"
+        PW_EMULS_TOGGLE="${translations[Enable]}"
+    fi
+
     "${pw_yad}" --title="${translations[GLOBAL SETTINGS (USER.CONF)]}" --form \
     --gui-type="settings-shortcut" --separator="%" \
     --window-icon "$PW_GUI_ICON_PATH/portproton.svg" \
@@ -6703,6 +6711,7 @@ gui_userconf () {
     --field="${translations[Time display]}!${translations[Displays time spent in an application or game]} :CB" "$(combobox_fix --disabled "$DESKTOP_WITH_TIME" "${translations[Show in hours and minutes]}!${translations[Show in days, hours, minutes]}")" \
     --field="${translations[Sort shortcuts by]}!${translations[This setting sorts the shortcuts in the main menu]} :CB" "$(combobox_fix --disabled "$SORT_WITH_TIME" "${translations[According to last launch]}!${translations[By time]}")" \
     --field="${translations[Unlock all 3D APIs]}!${translations[Allows you to unlock all available 3D APIs, even if your current graphics card does not meet the minimum requirements]} :CB" "$(combobox_fix "$PW_VULKAN_UNLOCKED" "$PW_VULKAN_UNLOCKED_LIST")" \
+    --field="${translations[Show emulators tab]}!${translations[Toggle the visibility of the emulators tab in the main interface]} :CB" "$(combobox_fix "$PW_EMULS_STATE" "$PW_EMULS_TOGGLE")" \
     --button="${translations[CANCEL THE CHANGES]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Cancel the current changes and return to the previous menu]}":1 \
     --button="${translations[RESET]} USER.CONF!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Restore default settings for]} user.conf":2 \
     --button="${translations[OPEN THE SETTINGS FILE]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Open the <b>user.conf</b> settings file in a system text editor to view and change variables manually]}":164 \
@@ -6768,6 +6777,7 @@ gui_userconf () {
             DESKTOP_WITH_TIME="${PW_ADD_SETTINGS_UC[9]}"
             SORT_WITH_TIME="${PW_ADD_SETTINGS_UC[10]}"
             PW_VULKAN_UNLOCKED="${PW_ADD_SETTINGS_UC[11]}"
+            PW_EMULS_STATE_TEMP="${PW_ADD_SETTINGS_UC[12]}"
 
             if [[ $DOWNLOAD_STEAM_GRID =~ (${translations[Enabled]}|${translations[Enable]}) ]]
             then DOWNLOAD_STEAM_GRID="1"
@@ -6808,8 +6818,13 @@ gui_userconf () {
             else PW_VULKAN_UNLOCKED="default"
             fi
 
+            if [[ $PW_EMULS_STATE_TEMP =~ (${translations[Enabled]}|${translations[Enable]}) ]]
+            then PW_EMULS="1"
+            else PW_EMULS="0"
+            fi
+
             edit_user_conf_from_gui MIRROR BRANCH PW_GUI_START DOWNLOAD_STEAM_GRID PW_GPU_USE PW_WINE_DPI_VALUE PW_SOUND_DRIVER_USE \
-            GUI_THEME GTK_THEME DESKTOP_WITH_TIME SORT_WITH_TIME PW_VULKAN_UNLOCKED
+            GUI_THEME GTK_THEME DESKTOP_WITH_TIME SORT_WITH_TIME PW_VULKAN_UNLOCKED PW_EMULS
             restart_pp
             ;;
     esac
