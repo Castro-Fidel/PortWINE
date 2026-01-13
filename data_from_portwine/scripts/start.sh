@@ -53,7 +53,6 @@ else
     export PW_TMPFS_PATH="${PORT_WINE_PATH}/data/tmp/PortProton_$USER"
 fi
 
-export PW_CACHE_LANG_PATH="${PORT_WINE_TMP_PATH}/cache_lang/"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
 export PW_GUI_THEMES_PATH="${PORT_WINE_PATH}/data/themes"
 
@@ -185,43 +184,26 @@ create_new_dir "$STEAM_SCRIPTS"
 export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
 export pw_yad="${PW_GUI_THEMES_PATH}/gui/yad_gui_pp"
 
-change_locale
-
 export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
 try_remove_dir "${PW_WINELIB}/var"
 install_ver="$(<"${PORT_WINE_TMP_PATH}/PortProton_ver")"
 export install_ver
 if [[ -f "${PORT_WINE_TMP_PATH}/scripts_ver" ]]
 then scripts_install_ver="$(<"${PORT_WINE_TMP_PATH}/scripts_ver")"
-else scripts_install_ver="2025"
+else scripts_install_ver="2026"
 fi
 export scripts_install_ver
 export WINETRICKS_DOWNLOADER="curl"
-export USER_CONF="${PORT_WINE_PATH}/data/user.conf"
+
 check_user_conf
-sed -i 's/="CDN"/="CLOUD"/g' "$USER_CONF"
-sed -i '/export PW_SOUND_DRIVER_USE=/d' "$USER_CONF"
-
-check_variables PW_LOG "0"
-
-try_remove_file "${PW_TMPFS_PATH}/update_pfx_log"
-
-# shellcheck source=/dev/null
-source "$USER_CONF"
-
-[[ ! -f "$PORT_WINE_TMP_PATH/statistics" ]] && touch "$PORT_WINE_TMP_PATH/statistics"
-[[ ! -f "$PW_CACHE_LANG_PATH/$LANGUAGE" ]] && create_translations
-
-unset translations
+check_translations
 # shellcheck source=/dev/null
 source "$PW_CACHE_LANG_PATH/$LANGUAGE"
 
-if [[ $TRANSLATIONS_VER != "$scripts_install_ver" ]] ; then
-    try_remove_dir "$PW_CACHE_LANG_PATH"
-    create_translations
-    # shellcheck source=/dev/null
-    source "$PW_CACHE_LANG_PATH/$LANGUAGE"
-fi
+check_variables PW_LOG "0"
+try_remove_file "${PW_TMPFS_PATH}/update_pfx_log"
+
+[[ ! -f "$PORT_WINE_TMP_PATH/statistics" ]] && touch "$PORT_WINE_TMP_PATH/statistics"
 
 if [[ -n "${STEAM_COMPAT_DATA_PATH:-}" ]]; then
     steamplay_launch "${@:2}"

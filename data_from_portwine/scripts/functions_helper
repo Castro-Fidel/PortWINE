@@ -167,200 +167,6 @@ stop_activity_simulation() {
     fi
 }
 
-change_locale () {
-    if [[ -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]] ; then
-        LANGUAGE=$(<"${PORT_WINE_TMP_PATH}/PortProton_loc")
-
-        # TODO: drop legacy check language after 01.01.2025
-        if [[ "$LANGUAGE" == "RUS" ]] ; then
-            LANGUAGE="ru"
-            echo "ru" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
-        elif [[ "$LANGUAGE" == "ENG" ]] ; then
-            LANGUAGE="en"
-            echo "en" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
-        fi
-    fi
-
-    local GAME_LANGUAGE="$LANGUAGE"
-
-    if check_gamescope_session ; then
-        LANGUAGE="en"
-    else
-        [[ ! -f "${pw_yad}" ]] && pw_yad="yad"
-        if [[ -z "$LANGUAGE" ]] \
-        || [[ "${PW_FORCE_CHANGE_LOC}" == "1" ]] ; then
-            SET_LANG=(
-                "${pw_yad}" --list
-                --window-icon="$PW_GUI_ICON_PATH/portproton.svg"
-                --title="Select language for PortProton"
-                --column="Language" --column=""
-                --width=400 --height=200
-
-                "Russian (Русский)"                     ru
-                "English"                               en
-                "Spanish (Español・Española)"            es
-            )
-
-            out=$("${SET_LANG[@]}")
-            if [[ -z $out ]] \
-            && [[ -n "$LANGUAGE" ]] ; then
-                echo "${LANGUAGE}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
-            elif [[ -z $out ]] ; then
-                echo "en" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
-            else
-                LANGUAGE=$(echo "$out" | cut -d '|' -f2)
-                echo "${LANGUAGE}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
-                create_translations
-            fi
-            unset PW_FORCE_CHANGE_LOC
-            restart_pp
-        fi
-    fi
-    export LANGUAGE
-
-    case "$GAME_LANGUAGE" in
-        ru)
-            check_start_from_steam && export LC_ALL=ru_RU.UTF-8
-            export FULL_LN="russian"
-            export LANGUAGE_GIF="ru"
-            ;;
-        es)
-            check_start_from_steam && export LC_ALL=es_ES.UTF-8
-            export FULL_LN="spanish"
-            export LANGUAGE_GIF="en"
-            ;;
-         *)
-            export FULL_LN="english"
-            export LANGUAGE_GIF="en"
-            export LANGUAGE="en"
-            ;;
-    esac
-
-}
-export -f change_locale
-
-generate_pot () {
-    local FILES_FOR_GETTEXT i
-    FILES_FOR_GETTEXT=(functions_helper start.sh setup.sh add_in_steam.sh)
-    for i in "${FILES_FOR_GETTEXT[@]}" ; do
-        sed -e 's/{translations\[/(gettext \"/g' -e 's/]}/")/g' "${PORT_SCRIPTS_PATH}/$i" > "${PORT_SCRIPTS_PATH}/${i}_tmp"
-        sed -i '/\[\$/d' "${PORT_SCRIPTS_PATH}/${i}_tmp"
-    done
-    #Когда присходит предупреждение: синтаксис $"..." запрещен по соображениям безопасности; используйте eval_gettext
-    #и ругается на строку в которой нет перевода, можно использовать sed -i '//d' и убрать эту строку
-    #либо отредактировать сам код, чтобы не было такой ошибки (к примеру вместо двойных ковычек использовать в таком месте одинарные)
-    for lang in $LANGUAGES_LIST ; do
-        echo "${lang}"
-        create_new_dir "${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/"
-        LANG_PO="${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/PortProton.po"
-        #LANG_MO="${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/PortProton.mo"
-        TEMPLATE_POT="${PORT_WINE_PATH}/data/locales/PortProton.pot"
-        pushd "${PORT_WINE_PATH}" 1>/dev/null || fatal
-        xgettext --no-location --from-code=UTF-8 --language Shell -i \
-        "data/scripts/start.sh_tmp" \
-        "data/scripts/setup.sh_tmp" \
-        "data/scripts/functions_helper_tmp" \
-        "data/scripts/add_in_steam.sh_tmp" \
-        -o "$TEMPLATE_POT"
-        popd 1>/dev/null || fatal
-        if [[ -f "$LANG_PO" ]] ; then
-            echo "update $LANG_PO file"
-            msgmerge --update "$LANG_PO" "$TEMPLATE_POT"
-        else
-            echo "create $LANG_PO file"
-            msginit --input="$TEMPLATE_POT" --locale="${lang}" --output="$LANG_PO"
-        fi
-        #msgfmt --output-file="$LANG_MO" "$LANG_PO"
-    done
-    try_remove_file "${PORT_SCRIPTS_PATH}/start.sh_tmp"
-    try_remove_file "${PORT_SCRIPTS_PATH}/setup.sh_tmp"
-    try_remove_file "${PORT_SCRIPTS_PATH}/functions_helper_tmp"
-    try_remove_file "${PORT_SCRIPTS_PATH}/add_in_steam.sh_tmp"
-    try_remove_dir "${PW_CACHE_LANG_PATH}"
-}
-export -f generate_pot
-
-create_translations () {
-    local po_file msgid msgstr
-    [[ ! -d $PW_CACHE_LANG_PATH ]] && create_new_dir "$PW_CACHE_LANG_PATH"
-    cat << EOF > "${PW_CACHE_LANG_PATH}/$LANGUAGE"
-#!/usr/bin/env bash
-TRANSLATIONS_VER=$scripts_install_ver
-declare -A translations=(
-EOF
-    if [[ $LANGUAGE == "en" ]] ; then
-        po_file="${PORT_WINE_PATH}/data/locales/PortProton.pot"
-    else
-        po_file="${PORT_WINE_PATH}/data/locales/$LANGUAGE/LC_MESSAGES/PortProton.po"
-    fi
-
-    while read -r line ; do
-        while [[ $line =~ msgid ]] ; do
-                unset msgid
-                msgid="$line"
-                read -r line
-            while [[ ! $line =~ msgstr ]] ; do
-                msgid+="$line"
-                read -r line
-            done
-            if [[ $line =~ msgstr ]]; then
-                if [[ $LANGUAGE == "en" ]] ; then
-                    if [[ $msgid == "msgid   \"\"" ]] ; then
-                        continue
-                    fi
-                    msgstr="$msgid"
-                else
-                    unset msgstr
-                    msgstr="$line"
-                    read -r line
-                    while [[ ! $line =~ msgid ]] ; do
-                        msgstr+=$line
-                        read -r line
-                        if [[ -z $line ]] ; then
-                            break
-                        fi
-                    done
-                fi
-            fi
-        if [[ $LANGUAGE != "en" ]] ; then
-            msgstr=${msgstr//"msgstr "/}
-            msgid=${msgid//"msgid "/}
-        fi
-        msgstr=${msgstr//" "/-_-}
-        msgstr=${msgstr//"\n"\"\"/+_+}
-        msgstr=${msgstr//\"\"/}
-        msgstr=${msgstr//#*/}
-        msgstr=${msgstr//"*"/#_#}
-        msgid=${msgid//" "/-_-}
-        msgid=${msgid//"\n"\"\"/+_+}
-        msgid=${msgid//\"\"/}
-        msgid=${msgid//#*/}
-        msgid=${msgid//"*"/#_#}
-        if [[ -n $msgid ]] ; then
-            if [[ -z $msgstr ]] ; then
-                msgstr="$msgid"
-            fi
-            if [[ $msgid =~ \$ ]] ; then
-                msgid=${msgid//\$/\\$}
-                if [[ $msgstr =~ \$% ]] ; then
-                    msgstr=${msgstr//\$/\\$}
-                fi
-            fi
-            echo \["$msgid"\]="$msgstr" >> "${PW_CACHE_LANG_PATH}/$LANGUAGE"
-        fi
-        done
-    done < "$po_file"
-
-    echo ")" >> "${PW_CACHE_LANG_PATH}/$LANGUAGE"
-    sed -i 's/+_+/\n/g' "${PW_CACHE_LANG_PATH}/$LANGUAGE"
-    sed -i 's/#_#/\*/g' "${PW_CACHE_LANG_PATH}/$LANGUAGE"
-    sed -i 's/-_-/ /g' "${PW_CACHE_LANG_PATH}/$LANGUAGE"
-    if [[ $LANGUAGE == "en" ]] ; then
-        sed -i 's/msgid   //g' "${PW_CACHE_LANG_PATH}/$LANGUAGE"
-    fi
-}
-export -f create_translations
-
 try_copy_file () {
     if [[ ! -f "$1" ]] ; then print_info "file $1 not found for copy" && return 1
     elif [[ -z "$2" ]] ; then print_error "no way to copy file $1" && return 1
@@ -1597,6 +1403,8 @@ pw_reinstall_pp () {
 }
 
 check_user_conf () {
+    export USER_CONF="${PORT_WINE_PATH}/data/user.conf"
+
     if [[ ! -f "${USER_CONF}" ]] ; then
         cat << EOF > "${USER_CONF}"
 #!/usr/bin/env bash"
@@ -1604,6 +1412,201 @@ check_user_conf () {
 # export DXVK_HUD=full"
 # export GALLIUM_HUD=fps"
 EOF
+    else
+        sed -i \
+            -e 's/="CDN"/="CLOUD"/g' \
+            -e '/export PW_SOUND_DRIVER_USE=/d' \
+            "$USER_CONF"
+    fi
+
+    # shellcheck source=/dev/null
+    source "$USER_CONF"
+}
+
+
+generate_pot () {
+    local FILES_FOR_GETTEXT i
+    FILES_FOR_GETTEXT=(functions_helper start.sh setup.sh add_in_steam.sh)
+    for i in "${FILES_FOR_GETTEXT[@]}" ; do
+        sed -e 's/{translations\[/(gettext \"/g' -e 's/]}/")/g' "${PORT_SCRIPTS_PATH}/$i" > "${PORT_SCRIPTS_PATH}/${i}_tmp"
+        sed -i '/\[\$/d' "${PORT_SCRIPTS_PATH}/${i}_tmp"
+    done
+    #Когда присходит предупреждение: синтаксис $"..." запрещен по соображениям безопасности; используйте eval_gettext
+    #и ругается на строку в которой нет перевода, можно использовать sed -i '//d' и убрать эту строку
+    #либо отредактировать сам код, чтобы не было такой ошибки (к примеру вместо двойных ковычек использовать в таком месте одинарные)
+    for lang in $LANGUAGES_LIST ; do
+        echo "${lang}"
+        create_new_dir "${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/"
+        LANG_PO="${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/PortProton.po"
+        #LANG_MO="${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/PortProton.mo"
+        TEMPLATE_POT="${PORT_WINE_PATH}/data/locales/PortProton.pot"
+        pushd "${PORT_WINE_PATH}" 1>/dev/null || fatal
+        xgettext --no-location --from-code=UTF-8 --language Shell -i \
+        "data/scripts/start.sh_tmp" \
+        "data/scripts/setup.sh_tmp" \
+        "data/scripts/functions_helper_tmp" \
+        "data/scripts/add_in_steam.sh_tmp" \
+        -o "$TEMPLATE_POT"
+        popd 1>/dev/null || fatal
+        if [[ -f "$LANG_PO" ]] ; then
+            echo "update $LANG_PO file"
+            msgmerge --update "$LANG_PO" "$TEMPLATE_POT"
+        else
+            echo "create $LANG_PO file"
+            msginit --input="$TEMPLATE_POT" --locale="${lang}" --output="$LANG_PO"
+        fi
+        #msgfmt --output-file="$LANG_MO" "$LANG_PO"
+    done
+    try_remove_file "${PORT_SCRIPTS_PATH}/start.sh_tmp"
+    try_remove_file "${PORT_SCRIPTS_PATH}/setup.sh_tmp"
+    try_remove_file "${PORT_SCRIPTS_PATH}/functions_helper_tmp"
+    try_remove_file "${PORT_SCRIPTS_PATH}/add_in_steam.sh_tmp"
+    try_remove_dir "${PW_CACHE_LANG_PATH}"
+}
+export -f generate_pot
+
+create_translations () {
+    local po_file msgid msgstr
+    [[ ! -d $PW_CACHE_LANG_PATH ]] && create_new_dir "$PW_CACHE_LANG_PATH"
+    cat << EOF > "${PW_CACHE_LANG_PATH}/$LANGUAGE"
+#!/usr/bin/env bash
+TRANSLATIONS_VER=$scripts_install_ver
+declare -A translations=(
+EOF
+    if [[ $LANGUAGE == "en" ]] ; then
+        po_file="${PORT_WINE_PATH}/data/locales/PortProton.pot"
+    else
+        po_file="${PORT_WINE_PATH}/data/locales/$LANGUAGE/LC_MESSAGES/PortProton.po"
+    fi
+
+    while read -r line ; do
+        while [[ $line =~ msgid ]] ; do
+                unset msgid
+                msgid="$line"
+                read -r line
+            while [[ ! $line =~ msgstr ]] ; do
+                msgid+="$line"
+                read -r line
+            done
+            if [[ $line =~ msgstr ]]; then
+                if [[ $LANGUAGE == "en" ]] ; then
+                    if [[ $msgid == "msgid   \"\"" ]] ; then
+                        continue
+                    fi
+                    msgstr="$msgid"
+                else
+                    unset msgstr
+                    msgstr="$line"
+                    read -r line
+                    while [[ ! $line =~ msgid ]] ; do
+                        msgstr+=$line
+                        read -r line
+                        if [[ -z $line ]] ; then
+                            break
+                        fi
+                    done
+                fi
+            fi
+        if [[ $LANGUAGE != "en" ]] ; then
+            msgstr=${msgstr//"msgstr "/}
+            msgid=${msgid//"msgid "/}
+        fi
+        msgstr=${msgstr//" "/-_-}
+        msgstr=${msgstr//"\n"\"\"/+_+}
+        msgstr=${msgstr//\"\"/}
+        msgstr=${msgstr//#*/}
+        msgstr=${msgstr//"*"/#_#}
+        msgid=${msgid//" "/-_-}
+        msgid=${msgid//"\n"\"\"/+_+}
+        msgid=${msgid//\"\"/}
+        msgid=${msgid//#*/}
+        msgid=${msgid//"*"/#_#}
+        if [[ -n $msgid ]] ; then
+            if [[ -z $msgstr ]] ; then
+                msgstr="$msgid"
+            fi
+            if [[ $msgid =~ \$ ]] ; then
+                msgid=${msgid//\$/\\$}
+                if [[ $msgstr =~ \$% ]] ; then
+                    msgstr=${msgstr//\$/\\$}
+                fi
+            fi
+            echo \["$msgid"\]="$msgstr" >> "${PW_CACHE_LANG_PATH}/$LANGUAGE"
+        fi
+        done
+    done < "$po_file"
+
+    echo ")" >> "${PW_CACHE_LANG_PATH}/$LANGUAGE"
+    sed -i 's/+_+/\n/g' "${PW_CACHE_LANG_PATH}/$LANGUAGE"
+    sed -i 's/#_#/\*/g' "${PW_CACHE_LANG_PATH}/$LANGUAGE"
+    sed -i 's/-_-/ /g' "${PW_CACHE_LANG_PATH}/$LANGUAGE"
+    if [[ $LANGUAGE == "en" ]] ; then
+        sed -i 's/msgid   //g' "${PW_CACHE_LANG_PATH}/$LANGUAGE"
+    fi
+}
+
+check_translations () {
+    if [[ -f "${PORT_WINE_TMP_PATH}/PortProton_loc" ]] ; then
+        LANGUAGE=$(<"${PORT_WINE_TMP_PATH}/PortProton_loc")
+    fi
+
+    if check_gamescope_session ; then
+        LANGUAGE="en"
+    else
+        [[ ! -f "${pw_yad}" ]] && pw_yad="yad"
+        if [[ -z "$LANGUAGE" ]] \
+        || [[ "${PW_FORCE_CHANGE_LOC}" == "1" ]] ; then
+            SET_LANG=(
+                "${pw_yad}" --list
+                --window-icon="$PW_GUI_ICON_PATH/portproton.svg"
+                --title="Select language for PortProton"
+                --column="Language" --column=""
+                --width=400 --height=200
+
+                "Russian (Русский)"                     ru
+                "English"                               en
+                "Spanish (Español・Española)"            es
+            )
+
+            out=$("${SET_LANG[@]}")
+            if [[ -z $out ]] \
+            && [[ -n "$LANGUAGE" ]] ; then
+                echo "${LANGUAGE}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
+            elif [[ -z $out ]] ; then
+                echo "en" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
+            else
+                LANGUAGE=$(echo "$out" | cut -d '|' -f2)
+                echo "${LANGUAGE}" > "${PORT_WINE_TMP_PATH}/PortProton_loc"
+            fi
+            unset PW_FORCE_CHANGE_LOC
+        fi
+    fi
+    export LANGUAGE
+
+    case "$LANGUAGE" in
+        ru)
+            check_start_from_steam && export LC_ALL=ru_RU.UTF-8
+            export FULL_LN="russian"
+            export LANGUAGE_GIF="ru"
+            ;;
+        es)
+            check_start_from_steam && export LC_ALL=es_ES.UTF-8
+            export FULL_LN="spanish"
+            export LANGUAGE_GIF="en"
+            ;;
+         *)
+            export FULL_LN="english"
+            export LANGUAGE_GIF="en"
+            export LANGUAGE="en"
+            ;;
+    esac
+
+    export PW_CACHE_LANG_PATH="${PORT_WINE_TMP_PATH}/cache_lang/"
+    if [[ ! -f "$PW_CACHE_LANG_PATH/$LANGUAGE" ]] ; then
+        create_translations
+    elif [[ $(sed -n '2p' "$PW_CACHE_LANG_PATH/$LANGUAGE") != "TRANSLATIONS_VER=$scripts_install_ver" ]] ; then
+        try_remove_dir "$PW_CACHE_LANG_PATH"
+        create_translations
     fi
 }
 
@@ -7892,8 +7895,32 @@ update_ext_ppdb () {
                 exit 0
             fi
         else
-            yad_error "Not found desktop file for:\n<b>\n${tmp_ppdb_exe[@]}\n</b>"
-            exit 1
+            check_user_conf
+            check_translations
+
+            # shellcheck source=/dev/null
+            source "$PW_CACHE_LANG_PATH/$LANGUAGE"
+
+            # shellcheck source=/dev/null
+            source "$PW_GUI_THEMES_PATH/$GUI_THEME.pptheme"
+
+            if yad_question "${translations[No shortcut found to launch]}:<b>\n${tmp_ppdb_exe[@]}\n</b>\n     ${translations[Do you want to specify the path to the file manually?]}\n" ; then
+                cd "$HOME"
+                portwine_exe=$("${pw_yad}" --file --width=750 --height=600 \
+                --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "EXE FILE" --file-filter="*.exe" 2>/dev/null )
+                YAD_STATUS="$?"
+
+                if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then
+                    exit 1
+                fi
+                print_info "Moved new $tmp_ppdb_file to ${portwine_exe}.ppdb"
+                mv -f "$tmp_ppdb_file" "${portwine_exe}.ppdb"
+                print_info "Restarting PP after move new ppdb file..."
+                /usr/bin/env bash -c "${PORT_SCRIPTS_PATH}/start.sh $portwine_exe" &
+                exit 0
+            else
+                exit 1
+            fi
         fi
     else
         fatal "ppdb file \"$1\" not found!"
