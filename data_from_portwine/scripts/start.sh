@@ -513,7 +513,7 @@ $(echo $files_from_autoinstall | awk '{for (i = 1; i <= NF; i++) {if (i % 10 == 
         ;;
     --backup-prefix)
         # portproton --backup-prefix <PREFIX_NAME> <BACKUP_DIR>
-        pw_create_prefix_backup "$2" "$3"
+        pw_create_prefix_backup_cli "$2" "$3"
         exit $?
         ;;
     --restore-prefix)
