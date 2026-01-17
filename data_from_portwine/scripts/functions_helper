@@ -421,14 +421,21 @@ try_check_sha256sum () {
 
 try_download () {
     export dest="$2"
-    local silent="false"
     export no_mirror="false"
+    local silent="false"
+
+    case "$MIRROR" in
+        CLOUD) local NEW_MIRROR="GITHUB" ;;
+        GITHUB) local NEW_MIRROR="CLOUD" ;;
+    esac
+    local add_button="--button=${translations[Change mirror to]} $NEW_MIRROR:1"
 
     case "$3" in
            silent)
                 silent=true ;;
         no_mirror)
                 no_mirror=true
+                add_button="--no-buttons" ;;
     esac
 
     local filename
@@ -462,7 +469,6 @@ try_download () {
 
     # Normal download
     print_info "Download $filename from ${FIRST_URL[0]}..."
-    set -o pipefail
     if [[ "$silent" == "true" ]] ; then
         curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
         -H 'Pragma: no-cache' -L "${FIRST_URL[@]}" -o "$dest" 2>&1
@@ -470,44 +476,79 @@ try_download () {
         curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
         -H 'Pragma: no-cache' -L "${FIRST_URL[@]}" -o "$dest" 2>&1 \
         | tr '\r' '\n' | sed -ur 's|[# ]+||g;s|100||g;s|0-||g;s|.*=.*||g' >> "$PW_TMPFS_PATH/process.log"
+    elif [[ "$no_mirror" != "true" ]] ; then
+        curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
+        -H 'Pragma: no-cache' -L "${FIRST_URL[@]}" -o "$dest" 2>&1 | \
+        tr '\r' '\n' | sed -ur 's|[# ]+||g;s|100||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
+        "$pw_yad" --progress --text="${translations[Downloading]} $filename" --auto-close --no-escape \
+        --text-align="center" --fixed "$add_button" --title "PortProton" --width=500 --height=90 \
+        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders="$PROGRESS_BAR_BORDERS_SIZE" &
+
+        sleep 1
+        while pgrep -a "yad" | grep "$filename" &>/dev/null ; do
+            sleep 1
+        done
+
+        CURL_PID="$(pgrep -a curl | grep -i "portproton" | cut -d' ' -f1)"
+        if [[ -n $CURL_PID ]] ; then
+            kill "$CURL_PID" &>/dev/null
+            local curl_status="error"
+        fi
+
+        if [[ $curl_status != "error" ]] \
+        && try_check_sha256sum "${FIRST_URL[@]}"
+        then
+            print_ok "File downloaded successfully: $filename from ${FIRST_URL[0]}"
+            return 0
+        else
+            local curl_status="error"
+        fi
     else
+        set -o pipefail
         curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
         -H 'Pragma: no-cache' -L "${FIRST_URL[@]}" -o "$dest" 2>&1 | \
         tr '\r' '\n' | sed -ur 's|[# ]+||g;s|100||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
         "$pw_yad" --progress --text="${translations[Downloading]} $filename" --auto-close --no-escape \
         --auto-kill --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders="$PROGRESS_BAR_BORDERS_SIZE"
+
+        [[ "${PIPESTATUS[0]}" != 0 ]] && local curl_status="error"
     fi
 
-    if [[ "${PIPESTATUS[0]}" != 0 ]] ; then
+    if [[ $curl_status == "error" ]] ; then
         if [[ "$no_mirror" != "true" ]] ; then
             print_warning "Failed download $filename from ${FIRST_URL[0]}, trying mirror: ${SECOND_URL[0]}"
+            set -o pipefail
             curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
-            -H 'Pragma: no-cache' -L "${SECOND_URL[@]}" -o "$dest" 2>&1 | \
+            -H 'Pragma: no-cache' -L -C - "${SECOND_URL[@]}" -o "$dest" 2>&1 | \
             tr '\r' '\n' | sed -ur 's|[# ]+||g;s|100||g;s|.*=.*||g;s|.*|#Downloading at &\n&|g' | \
             "$pw_yad" --progress --text="${translations[Downloading]} $filename" --auto-close --no-escape \
-            --auto-kill --text-align="center" --fixed --no-buttons --title "PortProton" --width=500 --height=90 \
-            --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --borders="$PROGRESS_BAR_BORDERS_SIZE"
-        fi
-        if [[ "${PIPESTATUS[0]}" != 0 ]] ; then
-            print_error "Failed to download $filename from mirror. Skipping..."
-            return 1
-        else
-            print_ok "File downloaded successfully: $filename from ${SECOND_URL[0]}"
-            if try_check_sha256sum "${SECOND_URL[@]}" ; then
-                return 0
-            else
-                try_remove_file "$dest"
+            --auto-kill --text-align="center" --fixed --button="${translations[CANCEL]}:1" \
+            --title "PortProton" --width=500 --height=90 --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
+            --borders="$PROGRESS_BAR_BORDERS_SIZE"
+
+            if [[ "${PIPESTATUS[0]}" != 0 ]] ; then
+                print_error "Failed to download $filename from mirror."
                 return 1
+            else
+                print_ok "File downloaded successfully: $filename from ${SECOND_URL[0]}"
+
+                export MIRROR="$NEW_MIRROR"
+                print_warning "Mirror changed to $MIRROR"
+                edit_user_conf_from_gui MIRROR
+
+                if try_check_sha256sum "${SECOND_URL[@]}" ; then
+                    return 0
+                else
+                    try_remove_file "$dest"
+                    return 1
+                fi
             fi
+        else
+            try_remove_file "$dest"
+            print_error "Failed to download $filename from ${FIRST_URL[0]}"
+            return 1
         fi
-    fi
-    print_ok "File downloaded successfully: $filename from ${FIRST_URL[0]}"
-    if try_check_sha256sum "${FIRST_URL[@]}" ; then
-        return 0
-    else
-        try_remove_file "$dest"
-        return 1
     fi
 }
 
