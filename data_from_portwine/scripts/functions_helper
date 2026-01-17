@@ -1947,6 +1947,8 @@ wait_wineserver () {
 export -f wait_wineserver
 
 kill_portwine () {
+    [[ -n "$WINESERVER" ]] && "$WINESERVER" -k
+
     if [[ "${PW_WINE_USE}" != "USE_SYSTEM_WINE" ]] ; then
         if check_flatpak && [[ "$ALPINE_FP" == "1" ]] ; then
             wine_pids=$(ls -l /proc/*/exe >/dev/null 2>&1 | grep -ie PortProton | grep -E 'wine(64)?-preloader|wineserver' | awk -F/ '{print $3}')
@@ -1984,7 +1986,7 @@ pw_kill_autostart () {
         else
             sleep "${SWAIT}"
             if [[ "$3" == please ]]
-            then kill -s SIGTERM $(ps aux | grep -m 1 -i "$1" | grep -v grep | awk '{print $2}')
+            then kill -s SIGTERM $(ps aux | grep -m 1 -i "$1" | grep -v grep | awk '{print $2}') &>/dev/null
             else kill_portwine
             fi
             break
@@ -2001,9 +2003,9 @@ export -f pw_kill_autostart
 
 pw_exit_tray () {
     read -r -a PGREP_TRAY_GUI_PP < <(pgrep -a tray_gui_pp)
-    [[ -n ${PGREP_TRAY_GUI_PP[0]} ]] && kill -s SIGUSR1 "${PGREP_TRAY_GUI_PP[0]}" 2>/dev/null
+    [[ -n ${PGREP_TRAY_GUI_PP[0]} ]] && kill "${PGREP_TRAY_GUI_PP[0]}" &>/dev/null
     read -r -a PGREP_YAD_GUI_PP < <(pgrep -a yad_gui_pp)
-    [[ -n ${PGREP_YAD_GUI_PP[0]} ]] && kill -s SIGUSR1 "${PGREP_YAD_GUI_PP[0]}" 2>/dev/null
+    [[ -n ${PGREP_YAD_GUI_PP[0]} ]] && kill -s SIGUSR1 "${PGREP_YAD_GUI_PP[0]}" &>/dev/null
 }
 export -f pw_exit_tray
 
@@ -5244,11 +5246,11 @@ export -f open_changelog
 pw_tray_icon () {
     if [[ "$XDG_SESSION_TYPE" == "tty" || "$(readlink -f /bin/sh)" == *"/dash" ]] ; then
         if [[ -n "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')" ]] ; then
-            kill -s SIGUSR1 "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')"
+            kill -s SIGUSR1 "$(pgrep -a yad_gui_pp | grep "\--notification" | awk '{print $1}')" &>/dev/null
         fi
     else
         if [[ -n "$(pgrep -a tray_gui_pp)" ]] ; then
-            kill -s SIGUSR1 $(pgrep -a tray_gui_pp) 2>/dev/null
+            kill -s SIGUSR1 $(pgrep -a tray_gui_pp) &>/dev/null
         fi
     fi
 
@@ -7641,16 +7643,16 @@ button_click () {
 
     case "$1" in
         --normal)
-            kill -s SIGUSR1 "$(pgrep -a yad | grep "\--key=${KEY_MENU}" | awk '{print $1}')" > /dev/null 2>&1
+            kill -s SIGUSR1 "$(pgrep -a yad | grep "\--key=${KEY_MENU}" | awk '{print $1}')" &>/dev/null
             ;;
         --start)
-            kill -s SIGUSR1 "$(pgrep -a yad | grep "\--key=${KEY_START}" | awk '{print $1}')" > /dev/null 2>&1
+            kill -s SIGUSR1 "$(pgrep -a yad | grep "\--key=${KEY_START}" | awk '{print $1}')" &>/dev/null
             ;;
         --userconf)
-            kill -s SIGUSR1 "$(pgrep -a yad | grep "\--key=${KEY_USERCONF_GUI}" | awk '{print $1}')" > /dev/null 2>&1
+            kill -s SIGUSR1 "$(pgrep -a yad | grep "\--key=${KEY_USERCONF_GUI}" | awk '{print $1}')" &>/dev/null
             ;;
         --desktop)
-            kill -s SIGUSR1 "$(pgrep -a yad | grep "\--key=${KEY_MENU}" | awk '{print $1}')" > /dev/null 2>&1
+            kill -s SIGUSR1 "$(pgrep -a yad | grep "\--key=${KEY_MENU}" | awk '{print $1}')" &>/dev/null
             PW_YAD_SET="${PORT_WINE_PATH}/${PW_YAD_SET//#@_@#/ }"
             if [[ -n $PW_DESKTOP_FILES_REGEX ]] ; then
                 local count=1

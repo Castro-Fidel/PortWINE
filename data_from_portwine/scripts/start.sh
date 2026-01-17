@@ -318,11 +318,20 @@ if ! check_flatpak ; then
     touch "${PW_TMPFS_PATH}/portproton.lock"
 fi
 
-rm_log_lock () {
+pw_cleanup () {
+    CURL_PID="$(pgrep -a curl | grep -i "portproton" | cut -d' ' -f1)"
+    if [[ -n $CURL_PID ]] ; then
+        for pid in $CURL_PID ; do
+            kill "$pid" &>/dev/null
+        done
+    fi
+
     rm -fv "${PW_TMPFS_PATH}"/*.log
-    rm -fv "${PW_TMPFS_PATH}/portproton.lock"
+    if [[ -f "${PW_TMPFS_PATH}/portproton.lock" ]] ; then
+        rm -fv "${PW_TMPFS_PATH}/portproton.lock"
+    fi
 }
-trap "rm_log_lock" EXIT
+trap "pw_cleanup" EXIT
 
 if check_flatpak ; then
     try_remove_dir "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
@@ -359,8 +368,8 @@ source "${USER_CONF}"
 
 if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     kill_portwine
-    killall -15 yad_gui_pp 2>/dev/null
-    kill -TERM "$(pgrep -a yad | grep PortProton | head -n 1 | awk '{print $1}')" 2>/dev/null
+    killall -15 yad_gui_pp &>/dev/null
+    kill -TERM "$(pgrep -a yad | grep PortProton | head -n 1 | awk '{print $1}')" &>/dev/null
 
     if [[ -f "/usr/bin/portproton" ]] \
     && [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]]
