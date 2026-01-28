@@ -345,6 +345,7 @@ if [[ ${portwine_exe,,} =~ (setup|install|.msi$) ]] ; then
     export PW_USE_NTSYNC="0"
     export PW_USE_FSYNC="0"
     export PW_USE_ESYNC="0"
+    export WINE_LARGE_ADDRESS_AWARE="0"
     export PW_USE_GAMEMODE="0"
     export PW_DLL_INSTALL=""
     # export WINEDLLOVERRIDES="mscoree,mshtml="

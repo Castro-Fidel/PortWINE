@@ -4590,7 +4590,7 @@ fi
     fi
 
     if [[ -f "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg" ]] \
-    && [[ -z $(grep "Windows $PW_WINDOWS_VER" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg") ]]
+    && ! grep -iq "Microsoft Windows $PW_WINDOWS_VER" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/system.reg"
     then
         if [[ -n $PW_WINDOWS_VER ]] \
         && [[ $(echo "$PW_WINDOWS_VER" | sed 's/.*/\L&/') == "xp" ]]
@@ -4816,11 +4816,9 @@ pw_run () {
     fi
 
     if file "$portwine_exe" | grep -q "x86-64" ; then
-        print_info "file: $portwine_exe is x86-64, force set WINE_LARGE_ADDRESS_AWARE to 0"
-        export WINE_LARGE_ADDRESS_AWARE="0"
+        check_variables WINE_LARGE_ADDRESS_AWARE "0"
     else
-        print_info "file: $portwine_exe not x86-64, force set WINE_LARGE_ADDRESS_AWARE to 1"
-        export WINE_LARGE_ADDRESS_AWARE="1"
+        check_variables WINE_LARGE_ADDRESS_AWARE "1"
     fi
 
     PW_LOG_TO_FILE="$PW_LOG_FILE"
@@ -4829,7 +4827,8 @@ pw_run () {
     echo "##### Current variables #####" > "$PW_TMPFS_PATH/var.log"
     for var in "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" \
                "WINELOADER" "VKD3D_CONFIG" "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2" \
-               "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH" "PW_VK_ICD_FILENAMES" "PW_TASKSET_SLR"
+               "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH" "PW_VK_ICD_FILENAMES" \
+               "PW_TASKSET_SLR" "WINE_LARGE_ADDRESS_AWARE"
     do
         print_var "$var" | tee -a "$PW_TMPFS_PATH/var.log"
     done
