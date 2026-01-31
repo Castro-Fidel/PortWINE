@@ -7100,7 +7100,8 @@ pw_auto_create_shortcut () {
     fi
 
     unset LINKS
-    for link_file in "${PORT_WINE_PATH}"/data/prefixes/*/drive_c/users/*/Desktop/*.lnk ; do
+    print_info "checking *.lnk files"
+    for link_file in "${PORT_WINE_PATH}"/data/prefixes/*/drive_c/users/${USER}/Desktop/*.lnk ; do
         link_file=$(readlink -f "$link_file")
         LINKS+=("${link_file// /#@_@#}")
     done
@@ -7111,17 +7112,23 @@ pw_auto_create_shortcut () {
     for link_file in "${SORTED_LINKS[@]//#@_@#/ }" ; do
         use_exiftool "${link_file}"
         parse_lnk "${link_file}"
-        if ! exe_path="$(realpath "${link_path}" 2>/dev/null)" ; then
-            print_warning "Link broken for: $link_name"
-        else
-            print_info "Created link for: $link_name"
-            PORTPROTON_NAME="$link_name"
+        link_path="${link_path//\.exe\//\.exe}"
+        if exe_path="$(realpath "${link_path}" 2>/dev/null)" ; then
             export portwine_exe="$exe_path"
-            resize_png "$portwine_exe" "${PORTPROTON_NAME}" "48" "128"
-            export PW_NO_RESTART_PPDB=1
-            unset PW_ICON_FOR_YAD name_desktop_png
-            portwine_create_shortcut
+        elif exe_path="$(realpath "${link_path//\/Games\//\/games\//}" 2>/dev/null)" ; then
+            export portwine_exe="$exe_path"
+        elif exe_path="$(realpath "${link_path//\/Games\//\/GAMES\//}" 2>/dev/null)" ; then
+            export portwine_exe="$exe_path"
+        else
+            print_warning "Link broken for: $link_name"
+            continue
         fi
+        print_info "Created link for: $link_name"
+        PORTPROTON_NAME="$link_name"
+        resize_png "$portwine_exe" "${PORTPROTON_NAME}" "48" "128"
+        export PW_NO_RESTART_PPDB=1
+        unset PW_ICON_FOR_YAD name_desktop_png
+        portwine_create_shortcut
     done
 }
 export -f pw_auto_create_shortcut
@@ -7657,8 +7664,6 @@ pw_unpack_prefix () {
     fi
 }
 
-
-
 pw_autoinstall_from_db () {
     export PW_USER_TEMP="${PORT_WINE_TMP_PATH}"
     export PW_USE_GAMEMODE=0
@@ -7674,6 +7679,7 @@ pw_autoinstall_from_db () {
     export PW_MANGOHUD=0
     export PW_VKBASALT=0
     export PW_USE_D3D_EXTRAS=1
+    export WINE_LARGE_ADDRESS_AWARE=0
     # shellcheck source=/dev/null
     . "${PORT_SCRIPTS_PATH}/pw_autoinstall/${PW_YAD_SET}"
 }
