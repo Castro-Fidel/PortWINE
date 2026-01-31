@@ -7415,8 +7415,19 @@ portwine_start_debug () {
         echo "${portwine_exe}" >> "$PW_LOG_FILE"
         echo "---------------------------------------------------------" >> "$PW_LOG_FILE"
     fi
-    echo "GLIBC version:" >> "$PW_LOG_FILE"
-    echo $(ldd --version | grep -m1 ldd | awk '{print $NF}') >> "$PW_LOG_FILE"
+    echo "libc version:" >> "$PW_LOG_FILE"
+    LIBC_VERSION=$(ldd --version 2>&1)
+    if echo "$LIBC_VERSION" | grep -q "musl"; then
+        MUSL_VERSION=$(echo "$LIBC_VERSION" | grep -i "version" | head -n1 | awk '{print $NF}')
+        if [ -n "$MUSL_VERSION" ]; then
+            echo "musl $MUSL_VERSION" >> "$PW_LOG_FILE"
+        else
+            echo "musl (version unknown)" >> "$PW_LOG_FILE"
+        fi
+    else
+        VERSION=$(echo "$LIBC_VERSION" | grep -m1 ldd | awk '{print $NF}')
+        echo "glibc $VERSION" >> "$PW_LOG_FILE"
+    fi
     echo "--------------------------------------------------------" >> "$PW_LOG_FILE"
     case "$PW_VULKAN_USE" in
         0) echo "PW_VULKAN_USE=${PW_VULKAN_USE} - DirectX to wined3d opengl" >> "$PW_LOG_FILE" ;;
