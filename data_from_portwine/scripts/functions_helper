@@ -7372,6 +7372,22 @@ pw_prefix_manager () {
     gui_prefix_manager
 }
 
+# Function to get real fstype for fuseblk via lsblk
+get_real_fstype() {
+    local mount_point=$1
+    local fstype=$(stat -f -c %T "$mount_point")
+    if [[ "$fstype" == "fuseblk" ]]; then
+        local device=$(df "$mount_point" | tail -1 | awk '{print $1}')
+        if [[ -n "$device" ]]; then
+            local real_fstype=$(lsblk -no FSTYPE "$device" 2>/dev/null | head -1)
+            if [[ -n "$real_fstype" ]]; then
+                fstype="$real_fstype"
+            fi
+        fi
+    fi
+    echo "$fstype"
+}
+
 portwine_start_debug () {
     pw_skip_get_info
     kill_portwine
@@ -7453,9 +7469,9 @@ portwine_start_debug () {
     echo "RAM:" >> "$PW_LOG_FILE"
     free -m >> "$PW_LOG_FILE"
     echo "--------------------------------------------------------------" >> "$PW_LOG_FILE"
-    echo "Filesystem ${PATH_TO_GAME} - $(stat -f -c %T "${PATH_TO_GAME}")" >> "$PW_LOG_FILE"
-    echo "Filesystem ${PORT_WINE_PATH} - $(stat -f -c %T "${PORT_WINE_PATH}")" >> "$PW_LOG_FILE"
-    echo "Filesystem ${PW_TMPFS_PATH} - $(stat -f -c %T "${PW_TMPFS_PATH}")" >> "$PW_LOG_FILE"
+    echo "Filesystem ${PATH_TO_GAME} - $(get_real_fstype "${PATH_TO_GAME}")" >> "$PW_LOG_FILE"
+    echo "Filesystem ${PORT_WINE_PATH} - $(get_real_fstype "${PORT_WINE_PATH}")" >> "$PW_LOG_FILE"
+    echo "Filesystem ${PW_TMPFS_PATH} - $(get_real_fstype "${PW_TMPFS_PATH}")" >> "$PW_LOG_FILE"
     echo "---------------------------------------------------------------" >> "$PW_LOG_FILE"
     echo "Graphic cards and drivers:" >> "$PW_LOG_FILE"
     echo 'lspci -k | grep -EA3 VGA|3D|Display :' >> "$PW_LOG_FILE"
