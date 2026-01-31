@@ -6,10 +6,8 @@
 # info_en: Launcher for the GOG game library.
 # info_ru: Лаунчер для библиотеки игр GOG.
 ########################################################################
-GOG_VER="$(curl "https://remote-config.gog.com/components/webinstaller?component_version=2.0.0" \
-| awk -F'setup_galaxy_' '{print $2}' \
-| awk -F'.exe' '{print $1}')"
-[[ "${GOG_VER}" != 2.* ]] && yad_error "ERROR: Get the GOG version." && exit 1
+GOG_VER=2.0
+
 export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/setup_galaxy_${GOG_VER}.exe"
 export LAUNCH_PARAMETERS="/VERYSILENT"
 export PW_PREFIX_NAME="GOG"
@@ -18,8 +16,7 @@ export PW_WINE_USE="PROTON_LG_9-12"
 export PORTWINE_CREATE_SHORTCUT_NAME="GOG GALAXY"
 
 start_portwine
-
-if try_download "https://content-system.gog.com/open_link/download?path=/open/galaxy/client/setup_galaxy_${GOG_VER}.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
+if try_download "https://webinstallers.gog-statics.com/download/GOG_Galaxy_${GOG_VER}.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
 then
     pw_start_progress_bar_install_game "GOG Galaxy."
     pw_run "${PW_AUTOINSTALL_EXE}"
@@ -30,5 +27,4 @@ then
     pw_stop_progress_bar
     portwine_create_shortcut
 fi
-
 stop_portwine
