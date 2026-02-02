@@ -5333,12 +5333,6 @@ pw_tray_icon () {
 # GUI GET OTHER WINE
 gui_proton_downloader () {
     unset VERSION_WINE_GIT VERSION_INSTALLED_WINE URL_VERSION_PROTON_GIT GIVE_WINE_URL
-    try_remove_file "${PW_TMPFS_PATH}/tmp_proton_pw_git"
-    try_remove_file "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
-    try_remove_file "${PW_TMPFS_PATH}/tmp_proton_cachyos_git"
-    try_remove_file "${PW_TMPFS_PATH}/tmp_proton_sarek_git"
-    try_remove_file "${PW_TMPFS_PATH}/tmp_proton_em_git"
-    try_remove_file "${PW_TMPFS_PATH}/tmp_proton_ge_git"
     try_remove_file "${PW_TMPFS_PATH}/tmp_installed_wine"
     try_remove_file "${PW_TMPFS_PATH}/tmp_set_wine"
 
@@ -5365,96 +5359,70 @@ gui_proton_downloader () {
         restart_pp
     fi
 
-    # PROTON_GE
-    PROTON_GE_GIT=($(echo "$METADATA" | jq -r '.proton_ge[]?.name' 2>/dev/null))
-    if [[ -n "${PROTON_GE_GIT[0]}" ]] ; then
-        for PGEGIT in "${PROTON_GE_GIT[@]}" ; do
-            echo "${PGEGIT}" >> "${PW_TMPFS_PATH}/tmp_proton_ge_git"
-        done
-    fi
-
-    # WINE_KRON4EK
-    WINE_KRON4EK=($(echo "$METADATA" | jq -r '.wine_kron4ek[]?.name' 2>/dev/null))
-    if [[ -n "${WINE_KRON4EK[0]}" ]] ; then
-        for PGEGIT in "${WINE_KRON4EK[@]}" ; do
-            echo "${PGEGIT}" >> "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git"
-        done
-    fi
-
-    # PROTON_LG
-    PROTON_PW_GIT=($(echo "$METADATA" | jq -r '.proton_lg[]?.name' 2>/dev/null))
-    if [[ -n "${PROTON_PW_GIT[0]}" ]] ; then
-        for PPWGIT in "${PROTON_PW_GIT[@]}" ; do
-            echo "${PPWGIT}" >> "${PW_TMPFS_PATH}/tmp_proton_pw_git"
-        done
-    fi
-
-    # PROTON_CACHYOS
-    PROTON_CACHYOS_GIT=($(echo "$METADATA" | jq -r '.proton_cachyos[]?.name' 2>/dev/null))
-    if [[ -n "${PROTON_CACHYOS_GIT[0]}" ]] ; then
-        # The Pentium/Celeron don't have the full instruction set, but /lib/ld-linux-x86-64.so.2 --help | grep -B 3 -E “x86-64” says otherwise, so         this is where checking all flags comes in (code from https://dl.xanmod.org/check_x86-64_psabi.sh)
-        CPU_LEVEL=$(awk '
-            BEGIN {
-                while (!/flags/) if (getline < "/proc/cpuinfo" != 1) exit 1
-                if (/lm/&&/cmov/&&/cx8/&&/fpu/&&/fxsr/&&/mmx/&&/syscall/&&/sse2/) level = 1
-                if (level == 1 && /cx16/&&/lahf/&&/popcnt/&&/sse4_1/&&/sse4_2/&&/ssse3/) level = 2
-                if (level == 2 && /avx/&&/avx2/&&/bmi1/&&/bmi2/&&/f16c/&&/fma/&&/abm/&&/movbe/&&/xsave/) level = 3
-                if (level == 3 && /avx512f/&&/avx512bw/&&/avx512cd/&&/avx512dq/&&/avx512vl/) level = 4
-                if (level > 0) { print level; exit level + 1 }
-                exit 1
-            }' /proc/cpuinfo)
-
-        for PGEGIT in "${PROTON_CACHYOS_GIT[@]}" ; do
-            if [[ "$PGEGIT" =~ v2 ]] && [[ "$CPU_LEVEL" -lt 2 ]]; then
-                continue
-            elif [[ "$PGEGIT" =~ v3 ]] && [[ "$CPU_LEVEL" -lt 3 ]]; then
-                continue
-            elif [[ "$PGEGIT" =~ v4 ]] && [[ "$CPU_LEVEL" -lt 4 ]]; then
-                continue
-            else
-                echo "${PGEGIT}" >> "${PW_TMPFS_PATH}/tmp_proton_cachyos_git"
-            fi
-        done
-    fi
-
-    # PROTON_SAREK
-    PROTON_SAREK_GIT=($(echo "$METADATA" | jq -r '.proton_sarek[]?.name' 2>/dev/null))
-    if [[ -n "${PROTON_SAREK_GIT[0]}" ]] ; then
-        for PGEGIT in "${PROTON_SAREK_GIT[@]}" ; do
-            echo "${PGEGIT}" >> "${PW_TMPFS_PATH}/tmp_proton_sarek_git"
-        done
-    fi
-
-    # PROTON_EM
-    PROTON_EM_GIT=($(echo "$METADATA" | jq -r '.proton_em[]?.name' 2>/dev/null))
-    if [[ -n "${PROTON_EM_GIT[0]}" ]] ; then
-        for PGEGIT in "${PROTON_EM_GIT[@]}" ; do
-            echo "${PGEGIT}" >> "${PW_TMPFS_PATH}/tmp_proton_em_git"
-        done
-    fi
-
-    pw_stop_progress_bar
-
-    if [[ -z "${PROTON_PW_GIT}" ]] ; then
+    # Get all category keys from JSON
+    # Ensure proton_lg is always first
+    WINE_CATEGORIES_RAW=($(echo "$METADATA" | jq -r 'keys[]' 2>/dev/null))
+    if [[ ${#WINE_CATEGORIES_RAW[@]} -eq 0 ]] ; then
         yad_error "${translations[Error: check wine.]}"
         restart_pp
     fi
+    WINE_CATEGORIES=()
+    for CAT in "${WINE_CATEGORIES_RAW[@]}" ; do
+        [[ "$CAT" == "proton_lg" ]] && WINE_CATEGORIES=("proton_lg" "${WINE_CATEGORIES[@]}") || WINE_CATEGORIES+=("$CAT")
+    done
 
+    # CPU level check for cachyos filtering
+    CPU_LEVEL=$(awk '
+        BEGIN {
+            while (!/flags/) if (getline < "/proc/cpuinfo" != 1) exit 1
+            if (/lm/&&/cmov/&&/cx8/&&/fpu/&&/fxsr/&&/mmx/&&/syscall/&&/sse2/) level = 1
+            if (level == 1 && /cx16/&&/lahf/&&/popcnt/&&/sse4_1/&&/sse4_2/&&/ssse3/) level = 2
+            if (level == 2 && /avx/&&/avx2/&&/bmi1/&&/bmi2/&&/f16c/&&/fma/&&/abm/&&/movbe/&&/xsave/) level = 3
+            if (level == 3 && /avx512f/&&/avx512bw/&&/avx512cd/&&/avx512dq/&&/avx512vl/) level = 4
+            if (level > 0) { print level; exit level + 1 }
+            exit 1
+        }' /proc/cpuinfo)
+
+    declare -A CATEGORY_TMP_FILES
+    declare -a CATEGORY_ORDER
+
+    for CATEGORY in "${WINE_CATEGORIES[@]}" ; do
+        TMP_FILE="${PW_TMPFS_PATH}/tmp_${CATEGORY}_git"
+        try_remove_file "$TMP_FILE"
+        CATEGORY_TMP_FILES["$CATEGORY"]="$TMP_FILE"
+        CATEGORY_ORDER+=("$CATEGORY")
+
+        WINE_NAMES=($(echo "$METADATA" | jq -r ".${CATEGORY}[]?.name" 2>/dev/null))
+        if [[ -n "${WINE_NAMES[0]}" ]] ; then
+            for WINE_NAME in "${WINE_NAMES[@]}" ; do
+                # Special filtering for cachyos based on CPU level
+                if [[ "$CATEGORY" == *"cachyos"* ]] ; then
+                    if [[ "$WINE_NAME" =~ v2 ]] && [[ "$CPU_LEVEL" -lt 2 ]]; then
+                        continue
+                    elif [[ "$WINE_NAME" =~ v3 ]] && [[ "$CPU_LEVEL" -lt 3 ]]; then
+                        continue
+                    elif [[ "$WINE_NAME" =~ v4 ]] && [[ "$CPU_LEVEL" -lt 4 ]]; then
+                        continue
+                    fi
+                fi
+                echo "${WINE_NAME}" >> "$TMP_FILE"
+            done
+        fi
+    done
+
+    pw_stop_progress_bar
+
+    # Remove already installed versions from all category files
     pushd "${PORT_WINE_PATH}/data/dist/" || fatal
     for INSTALLING_VERSION_IN_DIST in * ; do
-        sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "${PW_TMPFS_PATH}/tmp_proton_pw_git" \
-        "${PW_TMPFS_PATH}/tmp_proton_ge_git" "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git" \
-        "${PW_TMPFS_PATH}/tmp_proton_cachyos_git" "${PW_TMPFS_PATH}/tmp_proton_sarek_git" \
-        "${PW_TMPFS_PATH}/tmp_proton_em_git"
+        for CATEGORY in "${CATEGORY_ORDER[@]}" ; do
+            TMP_FILE="${CATEGORY_TMP_FILES[$CATEGORY]}"
+            if [[ -f "$TMP_FILE" ]] ; then
+                sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "$TMP_FILE"
+            fi
+        done
     done
     popd 1>/dev/null || fatal
-
-    TMP_PROTON_PW_GIT="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_proton_pw_git" | tr '\n' ' ')"
-    TMP_PROTON_GE_GIT="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_proton_ge_git" | tr '\n' ' ')"
-    TMP_PROTON_KR_GIT="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_wine_kron4ek_git" | tr '\n' ' ')"
-    TMP_PROTON_CACHYOS_GIT="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_proton_cachyos_git" | tr '\n' ' ')"
-    TMP_PROTON_SAREK_GIT="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_proton_sarek_git" | tr '\n' ' ')"
-    TMP_PROTON_EM_GIT="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_proton_em_git" | tr '\n' ' ')"
 
     ls -l ${PORT_WINE_PATH}/data/dist | awk '{print $9}' | sed -e "/$PW_PROTON_LG_VER/d" -e "/$PW_WINE_LG_VER/d" -e '/^$/d' 1>"${PW_TMPFS_PATH}/tmp_installed_wine"
     TMP_INSTALLED_WINE="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_installed_wine" | tr '\n' ' ')"
@@ -5463,55 +5431,36 @@ gui_proton_downloader () {
         # GUI
         export KEY_WINE=$RANDOM
 
-        "${pw_yad}" --plug=$KEY_WINE --tabnum=1 --list --checklist --separator="" \
-        --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" \
-        --column "${translations[Set]}" \
-        --column "${translations[Select WINE for download:]}" \
-        $TMP_PROTON_PW_GIT \
-        1>> "${PW_TMPFS_PATH}/tmp_set_wine" \
-        2>/dev/null &
+        local TAB_NUM=1
+        local -a TAB_ARGS=()
 
-        "${pw_yad}" --plug=$KEY_WINE --tabnum=2 --list --checklist --separator="" \
-        --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" \
-        --column "${translations[Set]}" \
-        --column "${translations[Select WINE for download:]}" \
-        $TMP_PROTON_KR_GIT \
-        1>> "${PW_TMPFS_PATH}/tmp_set_wine" \
-        2>/dev/null &
+        for CATEGORY in "${CATEGORY_ORDER[@]}" ; do
+            TMP_FILE="${CATEGORY_TMP_FILES[$CATEGORY]}"
+            if [[ -f "$TMP_FILE" && -s "$TMP_FILE" ]] ; then
+                local -a items=()
+                while IFS= read -r line ; do
+                    [[ -n "$line" ]] && items+=("FALSE" "$line")
+                done < "$TMP_FILE"
 
-        "${pw_yad}" --plug=$KEY_WINE --tabnum=3 --list --checklist --separator="" \
-        --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" \
-        --column "${translations[Set]}" \
-        --column "${translations[Select WINE for download:]}" \
-        $TMP_PROTON_GE_GIT \
-        1>> "${PW_TMPFS_PATH}/tmp_set_wine" \
-        2>/dev/null &
+                if [[ ${#items[@]} -gt 0 ]] ; then
+                    "${pw_yad}" --plug=$KEY_WINE --tabnum=$TAB_NUM --list --checklist --separator="" \
+                    --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" \
+                    --column "${translations[Set]}" \
+                    --column "${translations[Select WINE for download:]}" \
+                    "${items[@]}" \
+                    1>> "${PW_TMPFS_PATH}/tmp_set_wine" \
+                    2>/dev/null &
 
-        "${pw_yad}" --plug=$KEY_WINE --tabnum=4 --list --checklist --separator="" \
-        --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" \
-        --column "${translations[Set]}" \
-        --column "${translations[Select WINE for download:]}" \
-        $TMP_PROTON_CACHYOS_GIT \
-        1>> "${PW_TMPFS_PATH}/tmp_set_wine" \
-        2>/dev/null &
+                    local TAB_LABEL
+                    TAB_LABEL=$(echo "$CATEGORY" | tr '[:lower:]' '[:upper:]' | tr '_' '-')
+                    TAB_ARGS+=("--tab=${TAB_LABEL}!${PW_GUI_ICON_PATH}/${TAB_SIZE}.png!")
+                    ((TAB_NUM++))
+                fi
+            fi
+        done
 
-        "${pw_yad}" --plug=$KEY_WINE --tabnum=5 --list --checklist --separator="" \
-        --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" \
-        --column "${translations[Set]}" \
-        --column "${translations[Select WINE for download:]}" \
-        $TMP_PROTON_SAREK_GIT \
-        1>> "${PW_TMPFS_PATH}/tmp_set_wine" \
-        2>/dev/null &
-
-        "${pw_yad}" --plug=$KEY_WINE --tabnum=6 --list --checklist --separator="" \
-        --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" \
-        --column "${translations[Set]}" \
-        --column "${translations[Select WINE for download:]}" \
-        $TMP_PROTON_EM_GIT \
-        1>> "${PW_TMPFS_PATH}/tmp_set_wine" \
-        2>/dev/null &
-
-        "${pw_yad}" --plug=$KEY_WINE --tabnum=7 --list --checklist --separator="" \
+        # Add installed wine tab
+        "${pw_yad}" --plug=$KEY_WINE --tabnum=$TAB_NUM --list --checklist --separator="" \
         --gui-type-layout="${NOTEBOOK_GUI_TYPE_LAYOUT}" --gui-type-text="${NOTEBOOK_GUI_TYPE_TEXT}" \
         --column "${translations[Set]}" \
         --column "${translations[Select installed WINE for delete:]}" \
@@ -5519,19 +5468,15 @@ gui_proton_downloader () {
         1> "${PW_TMPFS_PATH}/tmp_installed_wine_set" \
         2>/dev/null &
 
-        "${pw_yad}" --key=$KEY_WINE --notebook --width=500 --height=600 --text-align=center \
+        TAB_ARGS+=("--tab=${translations[INSTALLED]}!${PW_GUI_ICON_PATH}/${TAB_SIZE}.png!")
+
+        "${pw_yad}" --key="$KEY_WINE" --notebook --width=500 --height=600 --text-align=center \
         --gui-type="settings-notebook" \
-        --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --title "${translations[WINE MANAGER]}" --separator="" --expand \
+        --window-icon="${PW_GUI_ICON_PATH}/portproton.svg" --title "${translations[WINE MANAGER]}" --separator="" --expand \
         --tab-pos="top" \
-        --tab="PROTON-LG!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
-        --tab="WINE-KRON4EK!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
-        --tab="PROTON-GE!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
-        --tab="PROTON-CACHYOS!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
-        --tab="PROTON-SAREK!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
-        --tab="PROTON-EM!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
-        --tab="${translations[INSTALLED]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
-        --button="${translations[CANCEL]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!":1 \
-        --button="${translations[OK]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!":0 2>/dev/null
+        "${TAB_ARGS[@]}" \
+        --button="${translations[CANCEL]}!${PW_GUI_ICON_PATH}/${BUTTON_SIZE}.png!":1 \
+        --button="${translations[OK]}!${PW_GUI_ICON_PATH}/${BUTTON_SIZE}.png!":0 2>/dev/null
         YAD_WINE_STATUS="$?"
         if [[ "$YAD_WINE_STATUS" == "1" || "$YAD_WINE_STATUS" == "252" ]] ; then
             restart_pp
@@ -5556,15 +5501,11 @@ gui_proton_downloader () {
 
     pw_download_get_wine () {
         local VERSION="$1"
+        local ALL_CATEGORIES=$(echo "$METADATA" | jq -r 'keys[]' 2>/dev/null)
         print_info "Download and install ${VERSION}..."
-        URL_VERSION_PROTON_GIT=$(echo "$METADATA" | jq -r --arg version "$VERSION" '[
-            (.proton_ge[] | select(.name == $version) | .url),
-            (.wine_kron4ek[] | select(.name == $version) | .url),
-            (.proton_lg[] | select(.name == $version) | .url),
-            (.proton_cachyos[] | select(.name == $version) | .url),
-            (.proton_sarek[] | select(.name == $version) | .url),
-            (.proton_em[] | select(.name == $version) | .url)
-        ] | .[]' | head -n 1)
+        URL_VERSION_PROTON_GIT=$(echo "$METADATA" | jq -r --arg version "$VERSION" '
+            to_entries[] | .value[]? | select(.name == $version) | .url
+        ' 2>/dev/null | head -n 1)
         if [[ -z "$URL_VERSION_PROTON_GIT" ]]; then
             yad_error "${translations[Error: no URL found for version ${VERSION}.]}"
             return 1
