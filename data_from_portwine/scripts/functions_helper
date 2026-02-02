@@ -7506,11 +7506,15 @@ portwine_start_debug () {
     echo "----------------------------------------------" >> "$PW_LOG_FILE"
     echo "Vulkan info device name:" >> "$PW_LOG_FILE"
     grep -E '^GPU|deviceName|driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" >> "$PW_LOG_FILE"
-    "${PW_PLUGINS_PATH}/portable/bin/vkcube" --c 50
-    if [[ $? -eq 0 ]] ; then
+    # Capture both stdout and stderr to get detailed error information
+    VKCUBE_OUTPUT=$("${PW_PLUGINS_PATH}/portable/bin/vkcube" --c 50 2>&1)
+    VKCUBE_EXIT_CODE=$?
+    if [[ $VKCUBE_EXIT_CODE -eq 0 ]] ; then
         echo "Vulkan cube test passed successfully" >> "$PW_LOG_FILE"
     else
-        echo "Vulkan cube test completed with error" >> "$PW_LOG_FILE"
+        echo "Vulkan cube test completed with error (exit code: $VKCUBE_EXIT_CODE)" >> "$PW_LOG_FILE"
+        echo "Vulkan cube error details:" >> "$PW_LOG_FILE"
+        echo "$VKCUBE_OUTPUT" >> "$PW_LOG_FILE"
     fi
     echo "----------------------------------------------------" >> "$PW_LOG_FILE"
     echo 'locale:' >> "$PW_LOG_FILE"
