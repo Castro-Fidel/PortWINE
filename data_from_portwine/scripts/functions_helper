@@ -1988,7 +1988,9 @@ wait_wineserver () {
 export -f wait_wineserver
 
 kill_portwine () {
-    [[ -n "$WINESERVER" ]] && "$WINESERVER" -k
+    if [[ -n "$WINESERVER" ]] && [[ -f "$WINESERVER" ]] ; then
+        "$WINESERVER" -k
+    fi
 
     if [[ "${PW_WINE_USE}" != "USE_SYSTEM_WINE" ]] ; then
         if check_flatpak && [[ "$ALPINE_FP" == "1" ]] ; then
@@ -2145,38 +2147,6 @@ pw_download_libs () {
                 export PW_LIBS_VER="_v$((${PW_LIBS_VER//_v/} - 1))"
                 export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
             fi
-        fi
-    fi
-    return 0
-}
-
-pw_check_and_download_wine () {
-    [[ ! -d "${PORT_WINE_PATH}/data/dist/" ]] && create_new_dir "${PORT_WINE_PATH}/data/dist"
-    if [[ "${PW_WINE_USE}" == "GET-OTHER-WINE" ]] ; then
-        gui_proton_downloader
-    fi
-    if [[ "$PW_WINE_USE" == PROTON_LG ]]
-    then export PW_WINE_USE="${PW_PROTON_LG_VER}"
-    elif [[ "$PW_WINE_USE" == WINE_*_LG ]] || [[ "$PW_WINE_USE" == WINE_LG ]]
-    then export PW_WINE_USE="${PW_WINE_LG_VER}"
-    fi
-    if [[ ! -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ]] ; then
-        print_info "Download and install ${PW_WINE_USE}..."
-        if try_download "github.com/Castro-Fidel/wine_builds/releases/download/${PW_WINE_USE}/${PW_WINE_USE}.tar.xz" \
-                        "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" ; then
-            if unpack "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz" "${PORT_WINE_PATH}/data/dist/" ; then
-                echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}/version"
-                try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz"
-                try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}"
-            else
-                try_remove_file "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}.tar.xz"
-                try_remove_dir "${PORT_WINE_PATH}/data/tmp/${PW_WINE_USE}"
-                try_remove_dir "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}"
-
-                yad_error_download && pw_check_and_download_wine || exit 1
-            fi
-        else
-            yad_error_download && pw_check_and_download_wine || exit 1
         fi
     fi
     return 0
@@ -3456,7 +3426,7 @@ start_portwine () {
     var_winedlloverride_update "${PW_MUST_WINEDLLOVERRIDES}"
     pw_list_install_dll_in_prefix
     if [[ "${PW_WINE_USE}" != "USE_SYSTEM_WINE" ]]
-    then pw_check_and_download_wine "${PW_WINE_USE}"
+    then gui_proton_downloader silent "${PW_WINE_USE}"
     fi
     init_wine_ver
 
@@ -5335,6 +5305,7 @@ gui_proton_downloader () {
     unset VERSION_WINE_GIT VERSION_INSTALLED_WINE URL_VERSION_PROTON_GIT GIVE_WINE_URL
     try_remove_file "${PW_TMPFS_PATH}/tmp_installed_wine"
     try_remove_file "${PW_TMPFS_PATH}/tmp_set_wine"
+    create_new_dir "${PORT_WINE_PATH}/data/dist"
 
     if [[ "$PW_WINE_USE" == PROTON_LG ]]
     then PW_WINE_USE="${PW_PROTON_LG_VER}"
@@ -5345,12 +5316,11 @@ gui_proton_downloader () {
     fi
     export PW_WINE_USE
 
-    if [[ "$1" == "silent" ]] \
-    && [[ -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ]] ; then
-        return 0
+    if [[ "$1" == "silent" ]] ; then
+        [[ -d "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}" ]] && return 0
+    else
+        pw_start_progress_bar_block "${translations[Check new version WINE...]}"
     fi
-
-    pw_start_progress_bar_block "${translations[Check new version WINE...]}"
 
     METADATA_URL="https://git.linux-gaming.ru/Boria138/PortProton-Wine-Metadata/raw/branch/main/wine_metadata.json"
     METADATA=$(curl -s "$METADATA_URL")
@@ -5359,75 +5329,75 @@ gui_proton_downloader () {
         restart_pp
     fi
 
-    # Get all category keys from JSON
-    # Ensure proton_lg is always first
-    WINE_CATEGORIES_RAW=($(echo "$METADATA" | jq -r 'keys[]' 2>/dev/null))
-    if [[ ${#WINE_CATEGORIES_RAW[@]} -eq 0 ]] ; then
-        yad_error "${translations[Error: check wine.]}"
-        restart_pp
-    fi
-    WINE_CATEGORIES=()
-    for CAT in "${WINE_CATEGORIES_RAW[@]}" ; do
-        [[ "$CAT" == "proton_lg" ]] && WINE_CATEGORIES=("proton_lg" "${WINE_CATEGORIES[@]}") || WINE_CATEGORIES+=("$CAT")
-    done
-
-    # CPU level check for cachyos filtering
-    CPU_LEVEL=$(awk '
-        BEGIN {
-            while (!/flags/) if (getline < "/proc/cpuinfo" != 1) exit 1
-            if (/lm/&&/cmov/&&/cx8/&&/fpu/&&/fxsr/&&/mmx/&&/syscall/&&/sse2/) level = 1
-            if (level == 1 && /cx16/&&/lahf/&&/popcnt/&&/sse4_1/&&/sse4_2/&&/ssse3/) level = 2
-            if (level == 2 && /avx/&&/avx2/&&/bmi1/&&/bmi2/&&/f16c/&&/fma/&&/abm/&&/movbe/&&/xsave/) level = 3
-            if (level == 3 && /avx512f/&&/avx512bw/&&/avx512cd/&&/avx512dq/&&/avx512vl/) level = 4
-            if (level > 0) { print level; exit level + 1 }
-            exit 1
-        }' /proc/cpuinfo)
-
-    declare -A CATEGORY_TMP_FILES
-    declare -a CATEGORY_ORDER
-
-    for CATEGORY in "${WINE_CATEGORIES[@]}" ; do
-        TMP_FILE="${PW_TMPFS_PATH}/tmp_${CATEGORY}_git"
-        try_remove_file "$TMP_FILE"
-        CATEGORY_TMP_FILES["$CATEGORY"]="$TMP_FILE"
-        CATEGORY_ORDER+=("$CATEGORY")
-
-        WINE_NAMES=($(echo "$METADATA" | jq -r ".${CATEGORY}[]?.name" 2>/dev/null))
-        if [[ -n "${WINE_NAMES[0]}" ]] ; then
-            for WINE_NAME in "${WINE_NAMES[@]}" ; do
-                # Special filtering for cachyos based on CPU level
-                if [[ "$CATEGORY" == *"cachyos"* ]] ; then
-                    if [[ "$WINE_NAME" =~ v2 ]] && [[ "$CPU_LEVEL" -lt 2 ]]; then
-                        continue
-                    elif [[ "$WINE_NAME" =~ v3 ]] && [[ "$CPU_LEVEL" -lt 3 ]]; then
-                        continue
-                    elif [[ "$WINE_NAME" =~ v4 ]] && [[ "$CPU_LEVEL" -lt 4 ]]; then
-                        continue
-                    fi
-                fi
-                echo "${WINE_NAME}" >> "$TMP_FILE"
-            done
+    if [[ "$1" != "silent" ]] ; then
+        # Get all category keys from JSON
+        # Ensure proton_lg is always first
+        WINE_CATEGORIES_RAW=($(echo "$METADATA" | jq -r 'keys[]' 2>/dev/null))
+        if [[ ${#WINE_CATEGORIES_RAW[@]} -eq 0 ]] ; then
+            yad_error "${translations[Error: check wine.]}"
+            restart_pp
         fi
-    done
+        WINE_CATEGORIES=()
+        for CAT in "${WINE_CATEGORIES_RAW[@]}" ; do
+            [[ "$CAT" == "proton_lg" ]] && WINE_CATEGORIES=("proton_lg" "${WINE_CATEGORIES[@]}") || WINE_CATEGORIES+=("$CAT")
+        done
 
-    pw_stop_progress_bar
+        # CPU level check for cachyos filtering
+        CPU_LEVEL=$(awk '
+            BEGIN {
+                while (!/flags/) if (getline < "/proc/cpuinfo" != 1) exit 1
+                if (/lm/&&/cmov/&&/cx8/&&/fpu/&&/fxsr/&&/mmx/&&/syscall/&&/sse2/) level = 1
+                if (level == 1 && /cx16/&&/lahf/&&/popcnt/&&/sse4_1/&&/sse4_2/&&/ssse3/) level = 2
+                if (level == 2 && /avx/&&/avx2/&&/bmi1/&&/bmi2/&&/f16c/&&/fma/&&/abm/&&/movbe/&&/xsave/) level = 3
+                if (level == 3 && /avx512f/&&/avx512bw/&&/avx512cd/&&/avx512dq/&&/avx512vl/) level = 4
+                if (level > 0) { print level; exit level + 1 }
+                exit 1
+            }' /proc/cpuinfo)
 
-    # Remove already installed versions from all category files
-    pushd "${PORT_WINE_PATH}/data/dist/" || fatal
-    for INSTALLING_VERSION_IN_DIST in * ; do
-        for CATEGORY in "${CATEGORY_ORDER[@]}" ; do
-            TMP_FILE="${CATEGORY_TMP_FILES[$CATEGORY]}"
-            if [[ -f "$TMP_FILE" ]] ; then
-                sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "$TMP_FILE"
+        declare -A CATEGORY_TMP_FILES
+        declare -a CATEGORY_ORDER
+
+        for CATEGORY in "${WINE_CATEGORIES[@]}" ; do
+            TMP_FILE="${PW_TMPFS_PATH}/tmp_${CATEGORY}_git"
+            try_remove_file "$TMP_FILE"
+            CATEGORY_TMP_FILES["$CATEGORY"]="$TMP_FILE"
+            CATEGORY_ORDER+=("$CATEGORY")
+
+            WINE_NAMES=($(echo "$METADATA" | jq -r ".${CATEGORY}[]?.name" 2>/dev/null))
+            if [[ -n "${WINE_NAMES[0]}" ]] ; then
+                for WINE_NAME in "${WINE_NAMES[@]}" ; do
+                    # Special filtering for cachyos based on CPU level
+                    if [[ "$CATEGORY" == *"cachyos"* ]] ; then
+                        if [[ "$WINE_NAME" =~ v2 ]] && [[ "$CPU_LEVEL" -lt 2 ]]; then
+                            continue
+                        elif [[ "$WINE_NAME" =~ v3 ]] && [[ "$CPU_LEVEL" -lt 3 ]]; then
+                            continue
+                        elif [[ "$WINE_NAME" =~ v4 ]] && [[ "$CPU_LEVEL" -lt 4 ]]; then
+                            continue
+                        fi
+                    fi
+                    echo "${WINE_NAME}" >> "$TMP_FILE"
+                done
             fi
         done
-    done
-    popd 1>/dev/null || fatal
 
-    ls -l ${PORT_WINE_PATH}/data/dist | awk '{print $9}' | sed -e "/$PW_PROTON_LG_VER/d" -e "/$PW_WINE_LG_VER/d" -e '/^$/d' 1>"${PW_TMPFS_PATH}/tmp_installed_wine"
-    TMP_INSTALLED_WINE="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_installed_wine" | tr '\n' ' ')"
+        pw_stop_progress_bar
 
-    if [[ "$1" != "silent" ]] ; then
+        # Remove already installed versions from all category files
+        pushd "${PORT_WINE_PATH}/data/dist/" || fatal
+        for INSTALLING_VERSION_IN_DIST in * ; do
+            for CATEGORY in "${CATEGORY_ORDER[@]}" ; do
+                TMP_FILE="${CATEGORY_TMP_FILES[$CATEGORY]}"
+                if [[ -f "$TMP_FILE" ]] ; then
+                    sed -i "/${INSTALLING_VERSION_IN_DIST}$/Id" "$TMP_FILE"
+                fi
+            done
+        done
+        popd 1>/dev/null || fatal
+
+        ls -l ${PORT_WINE_PATH}/data/dist | awk '{print $9}' | sed -e "/$PW_PROTON_LG_VER/d" -e "/$PW_WINE_LG_VER/d" -e '/^$/d' 1>"${PW_TMPFS_PATH}/tmp_installed_wine"
+        TMP_INSTALLED_WINE="$(sed 's/^/FALSE /' "${PW_TMPFS_PATH}/tmp_installed_wine" | tr '\n' ' ')"
+
         # GUI
         export KEY_WINE=$RANDOM
 
@@ -5504,14 +5474,14 @@ gui_proton_downloader () {
         local ALL_CATEGORIES=$(echo "$METADATA" | jq -r 'keys[]' 2>/dev/null)
         print_info "Download and install ${VERSION}..."
         URL_VERSION_PROTON_GIT=$(echo "$METADATA" | jq -r --arg version "$VERSION" '
-            to_entries[] | .value[]? | select(.name == $version) | .url
+        to_entries[] | .value[]? | select((.name | ascii_downcase) == ($version | ascii_downcase)) | .url
         ' 2>/dev/null | head -n 1)
         if [[ -z "$URL_VERSION_PROTON_GIT" ]]; then
-            yad_error "${translations[Error: no URL found for version ${VERSION}.]}"
-            return 1
+            yad_error "${translations[Error: no URL found for version]} ${VERSION}."
+            exit 1
         fi
         FILENAME=$(echo "$URL_VERSION_PROTON_GIT" | awk -F/ '{print $NF}')
-        if [[ "$URL_VERSION_PROTON_GIT" =~ _LG ]]; then
+        if [[ "$URL_VERSION_PROTON_GIT" =~ (_LG|_HYP|_STEAM) ]]; then
             USE_MIRROR=""
         else
             USE_MIRROR="no_mirror"
