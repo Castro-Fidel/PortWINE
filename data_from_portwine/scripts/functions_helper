@@ -3169,6 +3169,10 @@ edit_db_from_gui () {
         print_warning "Skipped edit_db_from_gui"
         return 0
     fi
+    if [[ ! -w "$PORTWINE_DB_FILE" ]] ; then
+        print_error "no write acces to ppdb file: $PORTWINE_DB_FILE"
+        return 1
+    fi
     print_info "edit_db_from_gui PORTWINE_DB_FILE=$PORTWINE_DB_FILE"
     if [[ -n "$PORTWINE_DB_FILE" ]] \
     && [[ -f "$PORTWINE_DB_FILE" ]]
@@ -7442,12 +7446,13 @@ portwine_start_debug () {
     echo "winetricks.log:" >> "$PW_LOG_FILE"
     cat "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log" | sed -e /^"d3dcomp*"/d -e /^"d3dx*"/d >> "$PW_LOG_FILE"
     echo "-----------------------------------------" >> "$PW_LOG_FILE"
-    if [[ -n "${PORTWINE_DB_FILE}" ]] ; then
+    if [[ -n "${PORTWINE_DB_FILE}" ]] \
+    && [[ -f "${PORTWINE_DB_FILE}" ]]
+    then
         echo "Use ${PORTWINE_DB_FILE} db file:" >> "$PW_LOG_FILE"
         cat "${PORTWINE_DB_FILE}" | sed '/##/d' >> "$PW_LOG_FILE"
-    else
-        echo "Use ${PORT_SCRIPTS_PATH}/portwine_db/default db file:" >> "$PW_LOG_FILE"
-        cat "${PORT_SCRIPTS_PATH}/portwine_db/default" | sed '/##/d' >> "$PW_LOG_FILE"
+    elif [[ ! -w "$PORTWINE_DB_FILE" ]] ; then
+        echo "ERROR: no write acces to db file: $PORTWINE_DB_FILE" >> "$PW_LOG_FILE"
     fi
     echo "----------------------------------------" >> "$PW_LOG_FILE"
     if [[ -f "${USER_CONF}" ]] ; then
