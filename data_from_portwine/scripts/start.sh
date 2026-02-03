@@ -339,7 +339,9 @@ if check_flatpak ; then
 else pw_download_libs
 fi
 
-if [[ ${portwine_exe,,} =~ (setup|install|.msi$) ]] ; then
+if [[ -n $portwine_exe ]] \
+&& [[ "$(basename ${portwine_exe,,})" =~ (setup|install|.msi$) ]]
+then
     export PW_DISABLED_CREATE_DB="1"
     export PW_VULKAN_USE="1"
     export PW_MANGOHUD="0"
