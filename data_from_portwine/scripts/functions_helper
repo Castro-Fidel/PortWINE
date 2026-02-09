@@ -4799,13 +4799,12 @@ pw_run () {
     PW_LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}:${WINE_LIBRARY_PATH}"
 
     echo "##### Current variables #####" > "$PW_TMPFS_PATH/var.log"
-    for var in "WINEDIR" "WINEPREFIX" "WINEDLLOVERRIDES" "PATH_TO_GAME" "PW_WINE_USE" "PW_VULKAN_USE" \
-               "WINELOADER" "VKD3D_CONFIG" "PW_LD_LIBRARY_PATH" "PATH" "WINEESYNC" "WINEFSYNC" "WINEFSYNC_FUTEX2" \
-               "WINEDLLPATH" "WINE_CPU_TOPOLOGY" "PW_RUN_GAMESCOPE" "LD_LIBRARY_PATH" "PW_VK_ICD_FILENAMES" \
-               "PW_TASKSET_SLR" "WINE_LARGE_ADDRESS_AWARE"
-    do
-        print_var "$var" | tee -a "$PW_TMPFS_PATH/var.log"
-    done
+    while IFS='=' read -r var value; do
+        var_name=$(printf '%s\n' "$var" | cut -d'=' -f1)
+        if printf '%s\n' "$var_name" | grep -qE '^(PW_|DXVK_|VKD3D_|WINE)' && [ "$var_name" != "PW_GENERATE_BUTTONS_GAMES" ] && [ "$var_name" != "PW_GENERATE_BUTTONS_EMULS" ] || printf '%s\n' "$var_name" | grep -qE '(PATH_TO_GAME|PATH|LD_LIBRARY_PATH)'; then
+            print_var "$var_name" | tee -a "$PW_TMPFS_PATH/var.log"
+        fi
+    done < <(env)
 
     proxy_launch_parameters=${LAUNCH_PARAMETERS//\\\\/\\}
     if [[ "$PW_USE_RUNTIME" == 1 ]] \
