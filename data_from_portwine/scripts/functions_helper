@@ -2835,22 +2835,9 @@ compare_versions () {
 }
 
 get_gpu_names () {
-    GET_GPU_NAMES=$(awk -F '= ' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d' | sort -u | paste -sd '!')
-    if [[ ${GET_GPU_NAMES,,} =~ radv ]] ; then
-        IFS='!' read -r -a GET_GPU_NAMES_ARRAY <<< "$GET_GPU_NAMES"
-        for i in "${!GET_GPU_NAMES_ARRAY[@]}" ; do
-            if [[ ${GET_GPU_NAMES_ARRAY[i],,} =~ amd && ! ${GET_GPU_NAMES_ARRAY[i],,} =~ radv ]] ; then
-              unset 'GET_GPU_NAMES_ARRAY[i]'
-            fi
-        done
-        GET_GPU_NAMES_ARRAY=("${GET_GPU_NAMES_ARRAY[@]}")
-        if [[ -n ${GET_GPU_NAMES_ARRAY[1]} ]] ; then
-            printf -v GET_GPU_NAMES '%s!' "${GET_GPU_NAMES_ARRAY[@]}"
-            GET_GPU_NAMES="${GET_GPU_NAMES%?}"
-        else
-            GET_GPU_NAMES="${GET_GPU_NAMES_ARRAY[0]}"
-        fi
-    fi
+    GET_GPU_NAMES=$(awk -F '= ' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | \
+                   sed '/llvmpipe/I d' | \
+                   paste -sd '!')
     export GET_GPU_NAMES
 }
 
