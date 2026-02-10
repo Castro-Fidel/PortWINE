@@ -466,6 +466,44 @@ $(echo $files_from_autoinstall | awk '{for (i = 1; i <= NF; i++) {if (i % 10 == 
         edit_db_from_gui $keys_all
         exit 0
         ;;
+    --get-user-conf)
+        # --get-user-conf VARIABLE_NAME
+        if [[ -z "$2" ]]; then
+            echo "Error: Variable name is required"
+            echo "Usage: --get-user-conf VARIABLE_NAME"
+            exit 1
+        fi
+
+        if manage_user_conf_value get "$2" >/dev/null 2>&1; then
+            manage_user_conf_value get "$2"
+        else
+            echo "Variable $2 not found in user.conf"
+            exit 1
+        fi
+        exit 0
+        ;;
+    --set-user-conf)
+        # --set-user-conf VARIABLE_NAME VALUE
+        if [[ -z "$2" ]] || [[ -z "$3" ]]; then
+            echo "Error: Both variable name and value are required"
+            echo "Usage: --set-user-conf VARIABLE_NAME VALUE"
+            exit 1
+        fi
+
+        manage_user_conf_value set "$2" "$3"
+        exit $?
+        ;;
+        --delete-user-conf)
+        # --delete-user-conf VARIABLE_NAME
+        if [[ -z "$2" ]]; then
+            echo "Error: Variable name is required"
+            echo "Usage: --delete-user-conf VARIABLE_NAME"
+            exit 1
+        fi
+
+        manage_user_conf_value delete "$2"
+        exit $?
+        ;;
     --list-db)
         export pw_yad=""
         gui_edit_db
