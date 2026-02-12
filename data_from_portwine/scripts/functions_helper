@@ -5311,12 +5311,14 @@ gui_proton_downloader () {
     try_remove_file "${PW_TMPFS_PATH}/tmp_set_wine"
     create_new_dir "${PORT_WINE_PATH}/data/dist"
 
+    if [[ "$1" == "silent" ]] && [[ -n "$2" ]]
+    then PW_WINE_USE="$2"
+    fi
+
     if [[ "$PW_WINE_USE" == PROTON_LG ]]
     then PW_WINE_USE="${PW_PROTON_LG_VER}"
     elif [[ "$PW_WINE_USE" == WINE_*_LG ]] || [[ "$PW_WINE_USE" == WINE_LG ]]
     then PW_WINE_USE="${PW_WINE_LG_VER}"
-    elif [[ "$1" == "silent" ]] && [[ -n "$2" ]]
-    then PW_WINE_USE="$2"
     fi
     export PW_WINE_USE
 
@@ -5468,9 +5470,6 @@ gui_proton_downloader () {
             print_info "Nothing to do."
             restart_pp
         fi
-
-    elif [[ "$1" == "silent" ]] && [[ -n "$2" ]] ; then
-        VERSION_WINE_GIT="$2"
     fi
 
     pw_download_get_wine () {
@@ -5533,7 +5532,7 @@ gui_proton_downloader () {
         edit_db_from_gui
         restart_pp
     else
-        pw_download_get_wine "$VERSION_WINE_GIT"
+        pw_download_get_wine "$PW_WINE_USE"
     fi
 }
 export -f gui_proton_downloader
