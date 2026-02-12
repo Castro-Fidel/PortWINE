@@ -428,9 +428,34 @@ case "$1" in
 --launch                                            ${translations[Launches the application immediately, requires the path to the .exe file]}
 --edit-db                                           ${translations[After the variable, the path to the .exe file is required and then the variables.
                                                     (List their variables and values for example PW_MANGOHUD=1 PW_VKBASALT=0, etc.)]}
+--get-user-conf                                     ${translations[Get a value from user.conf file, requires variable name]}
+--set-user-conf                                     ${translations[Set a value in user.conf file, requires variable name and value]}
+--del-user-conf                                     ${translations[Delete a value from user.conf file, requires variable name]}
+--list-db                                           ${translations[List all available database variables]}
+--show-ppdb                                         ${translations[Show the content of .ppdb file for specified .exe file]}
+--backup-prefix                                     ${translations[Backup specified prefix to a file]}
+--restore-prefix                                    ${translations[Restore prefix from backup file]}
+--winefile                                          ${translations[Open wine file explorer, requires WINE version and prefix name]}
+--winecfg                                           ${translations[Open wine configuration, requires WINE version and prefix name]}
+--winecmd                                           ${translations[Open wine command prompt, requires WINE version and prefix name]}
+--winereg                                           ${translations[Open wine registry editor, requires WINE version and prefix name]}
+--wine_uninstaller                                  ${translations[Open wine uninstaller, requires WINE version and prefix name]}
+--clear_pfx                                         ${translations[Clear specified prefix, requires WINE version and prefix name]}
+--initial                                           ${translations[Initial setup command]}
 --autoinstall                                       ${translations[--autoinstall and the name of what needs to be installed is given in the list below:]}
 
 $(echo $files_from_autoinstall | awk '{for (i = 1; i <= NF; i++) {if (i % 10 == 0) {print ""} printf "%s ", $i}}')
+
+${translations[Usage examples:]}
+  portproton cli --launch /path/to/game.exe
+  portproton cli --edit-db /path/to/game.exe PW_MANGOHUD=1 PW_VKBASALT=0
+  portproton cli --get-user-conf PW_MANGOHUD
+  portproton cli --set-user-conf PW_MANGOHUD 1
+  portproton cli --del-user-conf PW_MANGOHUD
+  portproton cli --backup-prefix DEFAULT /path/to/backup/directory
+  portproton cli --restore-prefix /path/to/backup/file.ppack
+  portproton cli --winecfg WINE_LG DEFAULT
+  portproton cli --autoinstall [script_name_from_pw_autoinstall]
             "
         }
         help_info
@@ -466,6 +491,21 @@ $(echo $files_from_autoinstall | awk '{for (i = 1; i <= NF; i++) {if (i % 10 == 
         # --edit-db /полный/путь/до/файла.exe PW_MANGOHUD=1 PW_VKBASALT=0 (и т.д) для примера
         set_several_variables "${@:3}"
         edit_db_from_gui $keys_all
+        exit 0
+        ;;
+    --get-user-conf)
+        # --get-user-conf VARIABLE_NAME
+        manage_user_conf_value get "$2"
+        exit 0
+        ;;
+    --set-user-conf)
+        # --set-user-conf VARIABLE_NAME VALUE
+        manage_user_conf_value set "$2" "$3"
+        exit 0
+        ;;
+        --delete-user-conf)
+        # --delete-user-conf VARIABLE_NAME
+        manage_user_conf_value delete "$2"
         exit 0
         ;;
     --list-db)
