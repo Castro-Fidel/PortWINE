@@ -2491,41 +2491,6 @@ pw_init_db () {
         fi
     fi
 
-    [[ -z $PW_AMD_VULKAN_USE ]] && export PW_AMD_VULKAN_USE="disabled"
-    case "$PW_AMD_VULKAN_USE" in
-        "amdvlk")
-            PW_VK_ICD_FILENAMES=""
-            for dir in /opt/amdgpu/etc/vulkan/icd.d /etc/vulkan/icd.d /usr/share/vulkan/icd.d; do
-                for file in "$dir"/amd_icd*.json; do
-                    [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
-                done
-            done
-            export PW_VK_ICD_FILENAMES
-            ;;
-
-        "amdgpupro")
-            PW_VK_ICD_FILENAMES=""
-            for dir in /opt/amdgpu-pro/etc/vulkan/icd.d /usr/share/vulkan/icd.d; do
-                for file in "$dir"/amd_pro_icd*.json; do
-                    [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
-                done
-            done
-
-            # add libs from https://github.com/CosmicFusion/fedora-amdgpu-pro/tree/main/x86_64/libdrm-pro to ld_library_path (this repo is deprecated and archived but why not)
-            echo "$PW_VK_ICD_FILENAMES" | grep -qi "/opt/amdgpu-pro/etc/vulkan/icd.d/amd_icd.*.json" && \
-            var_ld_library_path_update "/opt/amdgpu/libdrm/lib64:/opt/amdgpu/libdrm/lib32"
-
-            export PW_VK_ICD_FILENAMES
-            ;;
-
-        "radv")
-            PW_VK_ICD_FILENAMES=""
-            for file in /usr/share/vulkan/icd.d/radeon_icd.{i686,x86_64}.json; do
-                [ -f "$file" ] && PW_VK_ICD_FILENAMES="${PW_VK_ICD_FILENAMES:+${PW_VK_ICD_FILENAMES}:}$file"
-            done
-            export PW_VK_ICD_FILENAMES
-            ;;
-    esac
 
     [[ "${START_FROM_STEAM}" == 1 ]] && export PW_GUI_DISABLED_CS=1
     [[ "${START_FROM_PP_GUI}" == 1 ]] && export PW_GUI_DISABLED_CS=0 && unset START_FROM_PP_GUI
@@ -2853,16 +2818,6 @@ pw_check_dxvk () {
 
         # Заходим сюда только, когда в системе есть vulkan драйвер
         if [[ -n ${SELECTED_VULKAN_GPU[*]} ]] ; then
-            # Если используется amdvlk или amdgpupro, то проверка на vulkan драйвер происходит среди них, а не через mesa драйвер
-            if [[ $PW_AMD_VULKAN_USE =~ ^(amdvlk|amdgpupro)$ ]]  ; then
-                if [[ ${SELECTED_VULKAN_GPU[*],,} =~ radv ]] ; then
-                    for i in "${!SELECTED_VULKAN_GPU[@]}" ; do
-                        if [[ ${SELECTED_VULKAN_GPU[i],,} =~ radv ]] ; then
-                            SELECTED_VULKAN_GPU[i]="${SELECTED_VULKAN_GPU[i]// (RADV*}"
-                        fi
-                    done
-                fi
-            fi
             # Какие карты в приоритете, если не выбран изначально PW_GPU_USE
             if [[ -n ${SELECTED_VULKAN_GPU[1]} ]] ; then
                 for elem in "${SELECTED_VULKAN_GPU[@]}"; do
@@ -2913,18 +2868,11 @@ pw_check_dxvk () {
                 x="0" && y="7"
                 while true ; do
                     PW_VULKAN_DRIVER_ARRAY_CHECK=("${PW_VULKAN_DRIVER_ARRAY[@]:x:y}")
-                    if [[ $PW_AMD_VULKAN_USE != "disabled" ]] ; then
-                        [[ $PW_AMD_VULKAN_USE == "amdvlk" && ${PW_VULKAN_DRIVER_ARRAY_CHECK[5],,} == *"amd open-source driver"* ]] && break
-                        [[ $PW_AMD_VULKAN_USE == "amdgpupro" && ${PW_VULKAN_DRIVER_ARRAY_CHECK[5],,} == *"amd proprietary driver"* ]] && break
-                    else
-                        [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[4]} == "$i" ]] && break
-                    fi
+                    [[ ${PW_VULKAN_DRIVER_ARRAY_CHECK[4]} == "$i" ]] && break
                     x=$(( x + 7 )) && y=$(( y + 7 ))
                     # фикс, если вдруг PW_GPU_USE изменился или сломался
                     if [[ -z ${PW_VULKAN_DRIVER_ARRAY_CHECK[4]} ]] ; then
                         PW_GPU_USE="disabled"
-                        PW_AMD_VULKAN_USE="disabled"
-                        edit_db_from_gui PW_AMD_VULKAN_USE
                         pw_check_dxvk
                         break
                     fi
@@ -3071,48 +3019,6 @@ pw_skip_get_info () {
             export LOCALE_LIST
         fi
 
-        GET_AMD_VULKAN_DRIVER_LIST="amdvlk amdgpupro radv"
-        unset AMD_VULKAN_DRIVER_LIST
-
-        if ! check_flatpak \
-        && [[ $(check_vendor_gpu) == "amd" ]]
-        then
-            for DRIVER in $GET_AMD_VULKAN_DRIVER_LIST; do
-                case "$DRIVER" in
-                    "amdvlk")
-                        for file in /opt/amdgpu/etc/vulkan/icd.d/amd_icd*.json \
-                                    /etc/vulkan/icd.d/amd_icd*.json \
-                                    /usr/share/vulkan/icd.d/amd_icd*.json ; do
-                            if [ -f "$file" ]; then
-                                AMD_VULKAN_DRIVER_LIST+="amdvlk"
-                                break
-                            fi
-                        done
-                        ;;
-                    "amdgpupro")
-                        for file in /opt/amdgpu-pro/etc/vulkan/icd.d/amd_icd*.json \
-                                    /usr/share/vulkan/icd.d/amd_pro_icd*.json; do
-                            if [ -f "$file" ]; then
-                                AMD_VULKAN_DRIVER_LIST+="!amdgpupro"
-                                break
-                            fi
-                        done
-                        ;;
-                    "radv")
-                        for file in /usr/share/vulkan/icd.d/radeon_icd.*.json ; do
-                            if [ -f "$file" ]; then
-                                AMD_VULKAN_DRIVER_LIST+="!radv"
-                                break
-                            fi
-                        done
-                        ;;
-                esac
-            done
-            export AMD_VULKAN_DRIVER_LIST
-            export AMD_VULKAN_CB=":CB"
-        else
-            export AMD_VULKAN_CB=":LBLH"
-        fi
 
         logical_cores=$(grep -c ^"processor" /proc/cpuinfo)
         if (( logical_cores <= "4" )) ; then
@@ -3853,7 +3759,7 @@ start_portwine () {
     [[ "${PW_MANGOHUD_USER_CONF}" == 1 ]] && unset MANGOHUD_CONFIG
     [[ "${PW_VKBASALT_USER_CONF}" == 1 ]] && unset PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS
 
-    if [[ $PW_GPU_USE != "disabled" ]] && [[ $PW_AMD_VULKAN_USE == "disabled" ]] ; then
+    if [[ $PW_GPU_USE != "disabled" ]] ; then
         export DXVK_FILTER_DEVICE_NAME="$PW_GPU_USE"
         export VKD3D_FILTER_DEVICE_NAME="$PW_GPU_USE"
         export MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE="1"
@@ -5744,7 +5650,6 @@ gui_edit_db () {
         NUMA_NODE_INDEX="disabled"
     fi
 
-    [[ $AMD_VULKAN_CB == ":LBLH" ]] && translations[Select needed AMD vulkan implementation]=""
     if [[ $NUMA_NODE_LIST == "0" ]] ; then
         NUDA_CPU_CB=":LBLH"
         translations[NUMA node for CPU affinity]=""
@@ -5774,7 +5679,6 @@ A brief instruction:
 immediate - Unlimited frame rate + tearing.
 mailbox - Triple buffering. Unlimited frame rate + no tearing.
 relaxed - Same as fifo but allows tearing when below the monitors refresh rate.]} :CB" "$(combobox_fix --disabled "${PW_MESA_VK_WSI_PRESENT_MODE}" "fifo!immediate!mailbox!relaxed")" \
-    --field="${translations[Select needed AMD vulkan implementation]}!${translations[Choosing which implementation of vulkan will be used to run the game]} $AMD_VULKAN_CB" "$(combobox_fix --disabled "$PW_AMD_VULKAN_USE" "$AMD_VULKAN_DRIVER_LIST")" \
     --field="${translations[Choice wine audio driver]}!${translations[Fixes sound popling if choice alsa]} :CB" "$(combobox_fix --disabled "${PW_SOUND_DRIVER_USE}" "alsa!oss!pulse")" \
     --field="${translations[NUMA node for CPU affinity]}!${translations[In multi‑core systems, CPUs are split into NUMA nodes, each with its own local memory and cores.
 Binding a game to a single node reduces memory‑access latency and limits costly core‑to‑core switches.)]} $NUDA_CPU_CB" "$(combobox_fix --disabled "${NUMA_NODE_INDEX}" "${NUMA_NODE_LIST}")" \
@@ -5828,9 +5732,8 @@ Binding a game to a single node reduces memory‑access latency and limits costl
         PW_VKD3D_FEATURE_LEVEL="${PW_ADD_SETTINGS[6]}"
         PW_LOCALE_SELECT="${PW_ADD_SETTINGS[7]}"
         PW_MESA_VK_WSI_PRESENT_MODE="${PW_ADD_SETTINGS[8]}"
-        PW_AMD_VULKAN_USE="${PW_ADD_SETTINGS[9]}"
-        PW_SOUND_DRIVER_USE="${PW_ADD_SETTINGS[10]}"
-        NUMA_NODE_INDEX="${PW_ADD_SETTINGS[11]//[[:space:]]/}"
+        PW_SOUND_DRIVER_USE="${PW_ADD_SETTINGS[9]}"
+        NUMA_NODE_INDEX="${PW_ADD_SETTINGS[10]//[[:space:]]/}"
     fi
 
     if [[ $NUMA_NODE_INDEX =~ ^[0-9]+$ ]] && [[ -v NODE_MAP[$NUMA_NODE_INDEX] ]] ; then
@@ -5857,7 +5760,7 @@ Binding a game to a single node reduces memory‑access latency and limits costl
     fi
     PW_EDIT_DB_FINAL_LIST=("${PW_EDIT_DB_LIST[@]}" LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL \
     WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL \
-    PW_LOCALE_SELECT PW_MESA_VK_WSI_PRESENT_MODE PW_AMD_VULKAN_USE PW_SOUND_DRIVER_USE \
+    PW_LOCALE_SELECT PW_MESA_VK_WSI_PRESENT_MODE PW_SOUND_DRIVER_USE \
     PW_CPU_NUMA_NODE_INDEX PW_TASKSET_SLR)
     export PW_EDIT_DB_FINAL_LIST
 
