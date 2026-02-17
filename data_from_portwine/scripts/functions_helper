@@ -3213,6 +3213,58 @@ edit_user_conf_from_gui () {
     return 0
 }
 
+# Manage USER.conf values (get, set, delete)
+manage_user_conf_value () {
+    local action="$1"
+    local var_name="$2"
+    local var_value="$3"
+
+    if [[ -z "${action}" ]] || [[ -z "${var_name}" ]]; then
+        print_error "Action and variable name must be provided"
+        return 1
+    fi
+
+    if [[ ! -f "${USER_CONF}" ]]; then
+        print_error "USER.conf file does not exist: ${USER_CONF}"
+        return 1
+    fi
+
+    case "$action" in
+        get)
+            if grep -q "^export ${var_name}=" "${USER_CONF}" ; then
+                # Extract the value, handling both quoted and unquoted values
+                local value=$(grep "^export ${var_name}=" "${USER_CONF}" | sed -E 's/^export [^=]+=("?)(.*)\1$/\2/')
+                echo "$value"
+                return 0
+            else
+                # Variable not found in USER.conf
+                return 1
+            fi
+            ;;
+        set)
+            if [[ -z "${var_value}" ]]; then
+                print_error "Variable value must be provided for set action"
+                return 1
+            fi
+
+            export "$var_name=$var_value"
+            edit_user_conf_from_gui "$var_name"
+            return 0
+            ;;
+        delete)
+            if grep -q "^export ${var_name}=" "${USER_CONF}" ; then
+                sed -i "/^export ${var_name}=/d" "${USER_CONF}"
+                print_info "Removed ${var_name} from USER.conf"
+            fi
+            return 0
+            ;;
+        *)
+            print_error "Invalid action: $action. Use get, set, or delete"
+            return 1
+            ;;
+    esac
+}
+
 use_exiftool () {
     if [[ ! -f "${PW_TMPFS_PATH}/exiftool.tmp" ]] \
     || ! grep -q "$1" "${PW_TMPFS_PATH}/exiftool.tmp"
