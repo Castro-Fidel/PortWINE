@@ -356,6 +356,9 @@ then
     export PW_USE_SETUP_FILE="1"
 fi
 
+# shellcheck source=/dev/null
+source "${USER_CONF}"
+
 pw_init_db
 
 if [[ ! -d "${HOME}/PortProton" ]] \
@@ -365,9 +368,6 @@ then
 fi
 
 pw_check_and_download_dxvk_and_vkd3d
-
-# shellcheck source=/dev/null
-source "${USER_CONF}"
 
 if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     kill_portwine
