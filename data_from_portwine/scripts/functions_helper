@@ -3858,8 +3858,8 @@ start_portwine () {
         export PW_GAMEMODERUN_SLR=""
     fi
 
-if [[ "$GAMEMODERUN" != "1" ]]; then
-    if check_flatpak; then
+if [[ "$GAMEMODERUN" != "1" ]] && [[ "$PW_USE_INHIBIT_SLEEP" == "1" ]]; then
+    if check_flatpak && [[ -e "/var/run/dbus/system_bus_socket" ]]; then
         start_activity_simulation
         PW_INHIBIT_SLR=""
         print_info "Screensaver will be inhibited using D-Bus (Flatpak mode)"
@@ -5488,7 +5488,7 @@ gui_edit_db () {
     PW_EDIT_DB_LIST=(PW_MANGOHUD PW_MANGOHUD_USER_CONF PW_VKBASALT PW_VKBASALT_USER_CONF PW_DGVOODOO2
     PW_USE_ESYNC PW_USE_FSYNC PW_USE_NTSYNC PW_USE_RAY_TRACING PW_USE_NVAPI_AND_DLSS PW_USE_OPTISCALER
     PW_USE_LS_FRAME_GEN PW_WINE_FULLSCREEN_FSR PW_HIDE_NVIDIA_GPU PW_VIRTUAL_DESKTOP PW_USE_TERMINAL PW_GUI_DISABLED_CS
-    PW_USE_GAMEMODE PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER
+    PW_USE_GAMEMODE PW_USE_INHIBIT_SLEEP PW_USE_D3D_EXTRAS PW_FIX_VIDEO_IN_GAME PW_REDUCE_PULSE_LATENCY PW_USE_US_LAYOUT PW_USE_GSTREAMER
     PW_USE_SHADER_CACHE PW_USE_WINE_DXGI PW_USE_EAC_AND_BE PW_USE_SYSTEM_VK_LAYERS PW_USE_OBS_VKCAPTURE
     PW_DISABLE_COMPOSITING PW_USE_RUNTIME PW_DINPUT_PROTOCOL PW_USE_GALLIUM_ZINK PW_USE_GALLIUM_NINE
     PW_USE_WINED3D_VULKAN PW_USE_SUPPLIED_DXVK_VKD3D PW_USE_NATIVE_WAYLAND PW_USE_DXVK_HDR PW_GAMESCOPE
@@ -5497,6 +5497,9 @@ gui_edit_db () {
     if check_wayland_session
     then rm_from_array "PW_EDIT_DB_LIST" PW_USE_US_LAYOUT
     else rm_from_array "PW_EDIT_DB_LIST" PW_USE_NATIVE_WAYLAND
+    fi
+    if [[ ! -e "/var/run/dbus/system_bus_socket" ]] ; then
+        rm_from_array "PW_EDIT_DB_LIST" PW_USE_INHIBIT_SLEEP
     fi
     if [[ $PW_WINE_USE =~ (PROTON_LG|WINE_LG) ]] || [[ $PW_VULKAN_USE == "0" ]] ; then
         rm_from_array "PW_EDIT_DB_LIST" PW_USE_SUPPLIED_DXVK_VKD3D
@@ -5533,6 +5536,7 @@ gui_edit_db () {
     PW_USE_TERMINAL_INFO=${translations[Run the application in the terminal]}
     PW_GUI_DISABLED_CS_INFO=${translations[Disable the window for selecting startup modes and WINE versions]}
     PW_USE_GAMEMODE_INFO=${translations[Using automatic system optimization to improve performance in games (provided the gamemode package is installed on the system, doesn\'t work with ananicy)]}
+    PW_USE_INHIBIT_SLEEP_INFO=${translations[Prevent the system from going to sleep and disable the screensaver while the game is running]}
     PW_USE_D3D_EXTRAS_INFO=${translations[Enable forced use of third-party DirectX libraries]}
     PW_FIX_VIDEO_IN_GAME_INFO=${translations[Required for video playback in some games so that it is not distorted (usually colored pink)]}
     PW_REDUCE_PULSE_LATENCY_INFO=${translations[Reduce pulseaudio latency to fix intermittent sound]}
