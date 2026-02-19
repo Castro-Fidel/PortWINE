@@ -3756,7 +3756,14 @@ start_portwine () {
     else export WINE_DO_NOT_CREATE_DXGI_DEVICE_MANAGER="0"
     fi
 
-    [[ "${PW_MANGOHUD_USER_CONF}" == 1 ]] && unset MANGOHUD_CONFIG
+    if [[ -f "$PATH_TO_GAME/MangoHud.conf" ]] ; then
+        unset MANGOHUD_CONFIG
+        export MANGOHUD_CONFIGFILE="$PATH_TO_GAME/MangoHud.conf"
+        print_info "Custom MangoHud.conf in use: $MANGOHUD_CONFIGFILE"
+    elif [[ "${PW_MANGOHUD_USER_CONF}" == 1 ]] ; then
+        unset MANGOHUD_CONFIG
+    fi
+
     [[ "${PW_VKBASALT_USER_CONF}" == 1 ]] && unset PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS
 
     if [[ $PW_GPU_USE != "disabled" ]] ; then
