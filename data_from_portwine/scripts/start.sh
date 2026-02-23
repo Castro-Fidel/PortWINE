@@ -293,14 +293,18 @@ if [[ "${PW_CLI}" != 1 ]] ; then
 fi
 
 # check skip update
-if [[ "${SKIP_CHECK_UPDATES}" != 1  || "${PW_CLI}" != 1 ]] ; then
-    pw_port_update
+if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
+    [[ "${PW_CLI}" != 1 ]] && pw_port_update
 
     PW_FILESYSTEM=$(stat -f -c %T "${PORT_WINE_PATH}")
     export PW_FILESYSTEM
 
     background_pid --start "pw_check_vulkan" "1"
     background_pid --start "pw_get_tmp_files" "2"
+
+    if ! command -v jq &>/dev/null ; then
+        yad_error "${translations[For PortProton to work correctly, you must install]}: <b>jq</b>"
+    fi
 fi
 
 if [[ -z $PW_GPU_USE || $PW_GPU_USE == "disabled" ]] ; then
