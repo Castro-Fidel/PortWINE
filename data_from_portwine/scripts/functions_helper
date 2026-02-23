@@ -4883,30 +4883,51 @@ pw_yad_form_vulkan () {
 }
 
 steamplay_launch () {
+    # Debug: log steamplay_launch parameters to console
+    echo "=== steamplay_launch Debug ===" >&2
+    echo "portwine_exe (on entry): ${portwine_exe:-<empty>}" >&2
+    echo "\$1: $1" >&2
+    echo "\$@: $@" >&2
+    echo "STEAM_COMPAT_TOOL_PATHS: ${STEAM_COMPAT_TOOL_PATHS:-<empty>}" >&2
+    echo "=============================" >&2
+    
+    # If portwine_exe is not set, try to get it from the first argument (Steam passes the game exe path)
+    if [[ -z "${portwine_exe:-}" && -n "$1" ]]; then
+        portwine_exe="$1"
+        shift
+    fi
+
     if [[ -n "${portwine_exe:-}" ]]; then
-        cd "$(dirname "${portwine_exe}")"
-        export PORTWINE_DB_FILE="${portwine_exe}.ppdb"
-        [[ -f "${PORTWINE_DB_FILE}" ]] && source "${PORTWINE_DB_FILE}"
-        PORT_WINE_PREFIX="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME:-DEFAULT}"
-        for path in "ProgramData" "users/Public" "users/steamuser"; do
-            mkdir -p "${PORT_WINE_PREFIX}/drive_c/${path}"
-            if [[ ! -L "${WINEPREFIX}/drive_c/${path}" ]]; then
-                mkdir -p "${WINEPREFIX}/drive_c/users/"
-                rm -rf "${WINEPREFIX}/drive_c/${path}"
-                ln -sr "${PORT_WINE_PREFIX}/drive_c/${path}" "${WINEPREFIX}/drive_c/${path}"
+        # Check if Steam Proton is available
+        if [[ -n "${STEAM_COMPAT_TOOL_PATHS:-}" ]] && [[ -x "${STEAM_COMPAT_TOOL_PATHS%%:*}/proton" ]]; then
+            # Steam Proton mode - original behavior
+            cd "$(dirname "${portwine_exe}")"
+            export PORTWINE_DB_FILE="${portwine_exe}.ppdb"
+            [[ -f "${PORTWINE_DB_FILE}" ]] && source "${PORTWINE_DB_FILE}"
+            PORT_WINE_PREFIX="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME:-DEFAULT}"
+            for path in "ProgramData" "users/Public" "users/steamuser"; do
+                mkdir -p "${PORT_WINE_PREFIX}/drive_c/${path}"
+                if [[ ! -L "${WINEPREFIX}/drive_c/${path}" ]]; then
+                    mkdir -p "${WINEPREFIX}/drive_c/users/"
+                    rm -rf "${WINEPREFIX}/drive_c/${path}"
+                    ln -sr "${PORT_WINE_PREFIX}/drive_c/${path}" "${WINEPREFIX}/drive_c/${path}"
+                fi
+            done
+            if [[ -n "${PW_DLL_INSTALL:-}" ]] ; then
+                update_winetricks
+                PATH="${PATH}:${PW_PLUGINS_PATH}/portable/bin" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32" \
+                    "${PORT_WINE_TMP_PATH}/winetricks" -q ${PW_DLL_INSTALL}
             fi
-        done
-        if [[ -n "${PW_DLL_INSTALL:-}" ]] ; then
-            update_winetricks
-            PATH="${PATH}:${PW_PLUGINS_PATH}/portable/bin" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32" \
-                "${PORT_WINE_TMP_PATH}/winetricks" -q ${PW_DLL_INSTALL}
-        fi
-        [[ $PW_LOG != 1 ]] && debug_timer --start -s "PW_TIME_IN_GAME"
-        "${STEAM_COMPAT_TOOL_PATHS%%:*}/proton" "run" "${portwine_exe}" "$@"
-        if [[ $PW_LOG != 1 ]] && [[ -n $START_PW_TIME_IN_GAME ]] ; then
-            debug_timer --end -s "PW_TIME_IN_GAME"
-            PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 ))
-            search_desktop_file
+            [[ $PW_LOG != 1 ]] && debug_timer --start -s "PW_TIME_IN_GAME"
+            "${STEAM_COMPAT_TOOL_PATHS%%:*}/proton" "run" "${portwine_exe}" "$@"
+            if [[ $PW_LOG != 1 ]] && [[ -n $START_PW_TIME_IN_GAME ]] ; then
+                debug_timer --end -s "PW_TIME_IN_GAME"
+                PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 ))
+                search_desktop_file
+            fi
+        else
+            # PortProton mode - do nothing, let the main script continue to GUI
+            : # noop - GUI will be shown by main script
         fi
     fi
 }
@@ -4938,17 +4959,17 @@ portwine_launch () {
     else
         case "${portwine_exe,,}" in
             *.exe)
-                pw_run "${PW_VD_TMP[@]}" ${WINE_WIN_START} "$portwine_exe"
+                pw_run "${PW_VD_TMP[@]}" ${WINE_WIN_START} "$portwine_exe" "${STEAM_GAME_ARGS[@]}"
             ;;
             *.bat)
                 PW_USE_TERMINAL=1
-                pw_run "${PW_VD_TMP[@]}" "$portwine_exe"
+                pw_run "${PW_VD_TMP[@]}" "$portwine_exe" "${STEAM_GAME_ARGS[@]}"
             ;;
             *.msi)
-                pw_run "${PW_VD_TMP[@]}" msiexec /i "$portwine_exe"
+                pw_run "${PW_VD_TMP[@]}" msiexec /i "$portwine_exe" "${STEAM_GAME_ARGS[@]}"
             ;;
             *.reg)
-                pw_run "${PW_VD_TMP[@]}" regedit "$portwine_exe"
+                pw_run "${PW_VD_TMP[@]}" regedit "$portwine_exe" "${STEAM_GAME_ARGS[@]}"
             ;;
             *)
                 pw_run "${PW_VD_TMP[@]}" winefile

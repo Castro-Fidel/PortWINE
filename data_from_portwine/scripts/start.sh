@@ -34,10 +34,20 @@ then
     exit 1
 fi
 
-PORT_SCRIPTS_PATH="$(cd "$(dirname "$0")" && pwd)"
+PORT_SCRIPTS_PATH="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 PORT_WINE_PATH="$(dirname "$(dirname "$PORT_SCRIPTS_PATH")")"
 PW_LOG_FILE="${PORT_WINE_PATH}/PortProton.log"
 export PORT_SCRIPTS_PATH PORT_WINE_PATH PW_LOG_FILE
+
+# If started from Steam without a compat tool, drop Steam Runtime libs
+if [[ -n "${STEAM_COMPAT_DATA_PATH:-}" && -z "${STEAM_COMPAT_TOOL_PATHS:-}" ]]; then
+    unset LD_PRELOAD
+    # Remove pinned libs from LD_LIBRARY_PATH if present. (curl: pinned_libs_64/libcurl.so.4: version `CURL_GNUTLS_4' not found (required by curl)
+    if [[ -n "${LD_LIBRARY_PATH:-}" ]]; then
+        LD_LIBRARY_PATH="$(echo "${LD_LIBRARY_PATH}" | tr ':' '\n' | grep -v '/steam-runtime/pinned_libs_64' | grep -v '/steam-runtime/pinned_libs_32' | paste -sd: -)"
+        export LD_LIBRARY_PATH
+    fi
+fi
 
 # shellcheck source=/dev/null
 source "$PORT_SCRIPTS_PATH/functions_helper"
@@ -62,6 +72,24 @@ export GDK_BACKEND="x11"
 read -r -a pw_full_command_line <<< "$0 $*"
 export pw_full_command_line
 export orig_IFS="$IFS"
+
+# Save Steam game arguments for later use
+if [[ -n "${STEAM_COMPAT_DATA_PATH:-}" ]]; then
+    # If started from Steam as compatibility tool, $1 is the game exe path
+    # Skip Steam's internal tools
+    if [[ -z "${portwine_exe:-}" && -n "$1" ]]; then
+        case "$(basename "$1")" in
+            d3ddriverquery64.exe|d3ddriverquery.exe|iscriptevaluator.exe|steam.exe|steamservice.exe)
+                exit 0
+                ;;
+            *)
+                portwine_exe="$1"
+                ;;
+        esac
+    fi
+    STEAM_GAME_ARGS=("${@:2}")
+    export STEAM_GAME_ARGS
+fi
 
 MISSING_DESKTOP_FILE="0"
 
@@ -206,9 +234,14 @@ try_remove_file "${PW_TMPFS_PATH}/update_pfx_log"
 
 [[ ! -f "$PORT_WINE_TMP_PATH/statistics" ]] && touch "$PORT_WINE_TMP_PATH/statistics"
 
-if [[ -n "${STEAM_COMPAT_DATA_PATH:-}" ]]; then
-    steamplay_launch "${@:2}"
+# If started from Steam with Steam Proton - launch directly and exit
+# If started from Steam with PortProton - continue to show GUI
+if [[ -n "${STEAM_COMPAT_DATA_PATH:-}" ]] && [[ -n "${STEAM_COMPAT_TOOL_PATHS:-}" ]] && [[ -x "${STEAM_COMPAT_TOOL_PATHS%%:*}/proton" ]]; then
+    steamplay_launch "$@"
     exit
+elif [[ -n "${STEAM_COMPAT_DATA_PATH:-}" ]]; then
+    # PortProton mode - set up and continue to GUI
+    steamplay_launch "$@"
 fi
 unset WINEPREFIX
 
