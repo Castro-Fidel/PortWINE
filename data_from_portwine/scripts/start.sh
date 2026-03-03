@@ -206,7 +206,8 @@ try_remove_file "${PW_TMPFS_PATH}/update_pfx_log"
 
 [[ ! -f "$PORT_WINE_TMP_PATH/statistics" ]] && touch "$PORT_WINE_TMP_PATH/statistics"
 
-if [[ -n "${STEAM_COMPAT_DATA_PATH:-}" ]]; then
+if [[ -n "${STEAM_COMPAT_TOOL_PATHS:-}" ]] && [[ -x "${STEAM_COMPAT_TOOL_PATHS%%:*}/proton" ]]; then
+    # TODO: Add portproton_steamplay_launch for fix steam libs and etc
     steamplay_launch "${@:2}"
     exit
 fi
