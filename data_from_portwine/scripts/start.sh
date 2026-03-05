@@ -551,18 +551,37 @@ ${translations[Usage examples:]}
             pw_init_db
         fi
 
-        grep -E '^export ' "$ppdb_path" \
-        | sed '/^[[:space:]]*$/d' \
-        | while IFS= read -r line; do
-            line="${line#export }"
-            if [[ "$line" =~ ^([^=]+)=\"([^\"]*)\"[[:space:]]*#.*$ ]]; then
-                echo "${BASH_REMATCH[1]}=\"${BASH_REMATCH[2]}\""
-            elif [[ "$line" =~ ^([^=]+)=([^#[:space:]]+)[[:space:]]*#.*$ ]]; then
-                echo "${BASH_REMATCH[1]}=${BASH_REMATCH[2]}"
-            else
-                echo "$line"
+        declare -A all_vars
+        while IFS='=' read -r key val; do
+            key="${key#export }"
+            val="${val#\"}"
+            val="${val%\"}"
+            all_vars["$key"]="$val"
+        done < <(grep -E '^export ' "$ppdb_path" | sed '/^[[:space:]]*$/d')
+
+        check_user_conf
+        if [[ -f "$USER_CONF" ]]; then
+            while IFS='=' read -r key val; do
+                key="${key#export }"
+                val="${val#\"}"
+                val="${val%\"}"
+                all_vars["$key"]="$val"
+            done < <(grep -E '^export ' "$USER_CONF" 2>/dev/null | sed '/^[[:space:]]*$/d')
+        fi
+
+        while IFS='=' read -r key val; do
+            key="${key#export }"
+            val="${val#\"}"
+            val="${val%\"}"
+            if [[ -z "${all_vars[$key]+x}" ]]; then
+                all_vars["$key"]="$val"
             fi
+        done < <(grep -E '^export ' "$PORT_SCRIPTS_PATH/var" | sed '/^[[:space:]]*$/d')
+
+        for key in "${!all_vars[@]}"; do
+            echo "${key}=\"${all_vars[$key]}\""
         done
+
         exit 0
         ;;
     --backup-prefix)
