@@ -59,9 +59,9 @@ The **official website of the project** since September 2022 is: https://linux-g
 ```sh
 su -
 
-apt-get update && apt-get dist-upgrade -y
+apt-get update && apt-get dist-upgrade
 
-apt-get install portproton i586-{libvulkan1,libd3d,libGL,libgio,libnm,libnsl1,libnss,glibc-nss,glibc-pthread,libunwind,xorg-dri-swrast}
+apt-get install portproton
 
 exit
 ```
