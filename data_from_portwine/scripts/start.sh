@@ -14,6 +14,8 @@ then
     flatpak run ru.linux_gaming.PortProton "$@"
     exit
 fi
+
+if [[ "${1,,}" != "cli" ]] ; then
 echo '
             █░░ █ █▄░█ █░█ ▀▄▀ ▄▄ █▀▀ ▄▀█ █▀▄▀█ █ █▄░█ █▀▀ ░ █▀█ █░█
             █▄▄ █ █░▀█ █▄█ █░█ ░░ █▄█ █▀█ █░▀░█ █ █░▀█ █▄█ ▄ █▀▄ █▄█
@@ -25,6 +27,7 @@ echo '
 ██║░░░░░╚█████╔╝██║░░██║░░░██║░░░██║░░░░░██║░░██║╚█████╔╝░░░██║░░░╚█████╔╝██║░╚███║
 ╚═╝░░░░░░╚════╝░╚═╝░░╚═╝░░░╚═╝░░░╚═╝░░░░░╚═╝░░╚═╝░╚════╝░░░░╚═╝░░░░╚════╝░╚═╝░░╚══╝
 '
+fi
 $PW_DEBUG
 
 if [[ $(id -u) = 0 ]] \
@@ -231,10 +234,10 @@ if [[ -z "$BRANCH" ]] ; then
     export BRANCH="master"
 fi
 if [[ "$BRANCH" == "master" ]] ; then
-    print_info "Branch in used: STABLE\n"
+    [[ "${PW_CLI}" != 1 ]] && print_info "Branch in used: STABLE\n"
     export BRANCH_VERSION=""
 else
-    print_warning "Branch in used: DEVEL\n"
+    [[ "${PW_CLI}" != 1 ]] && print_warning "Branch in used: DEVEL\n"
     export BRANCH_VERSION="-dev"
 fi
 
@@ -252,9 +255,9 @@ fi
 if [[ $USE_ONLY_LG_RU == "1" ]] ; then
     export MIRROR="CLOUD"
     edit_user_conf_from_gui MIRROR USE_ONLY_LG_RU
-    print_info "Force used linux-gaming.ru for all updates.\n"
+    [[ "${PW_CLI}" != 1 ]] && print_info "Force used linux-gaming.ru for all updates.\n"
 fi
-print_info "The first mirror in used: $MIRROR\n"
+[[ "${PW_CLI}" != 1 ]] && print_info "The first mirror in used: $MIRROR\n"
 
 # choose downloading covers from SteamGridDB or not
 if [[ -z "$DOWNLOAD_STEAM_GRID" ]] ; then
