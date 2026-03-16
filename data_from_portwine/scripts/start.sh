@@ -557,7 +557,7 @@ ${translations[Usage examples:]}
             val="${val#\"}"
             val="${val%\"}"
             all_vars["$key"]="$val"
-        done < <(grep -E '^export ' "$ppdb_path" | sed '/^[[:space:]]*$/d')
+        done < <(grep -E '^export ' "$ppdb_path" | sed -E 's/[[:space:]]*#.*$//' | sed '/^[[:space:]]*$/d')
 
         check_user_conf
         if [[ -f "$USER_CONF" ]]; then
@@ -566,7 +566,7 @@ ${translations[Usage examples:]}
                 val="${val#\"}"
                 val="${val%\"}"
                 all_vars["$key"]="$val"
-            done < <(grep -E '^export ' "$USER_CONF" 2>/dev/null | sed '/^[[:space:]]*$/d')
+            done < <(grep -E '^export ' "$USER_CONF" 2>/dev/null | sed -E 's/[[:space:]]*#.*$//' | sed '/^[[:space:]]*$/d')
         fi
 
         while IFS='=' read -r key val; do
@@ -576,7 +576,7 @@ ${translations[Usage examples:]}
             if [[ -z "${all_vars[$key]+x}" ]]; then
                 all_vars["$key"]="$val"
             fi
-        done < <(grep -E '^export ' "$PORT_SCRIPTS_PATH/var" | sed '/^[[:space:]]*$/d')
+        done < <(grep -E '^export ' "$PORT_SCRIPTS_PATH/var" | sed -E 's/[[:space:]]*#.*$//' | sed '/^[[:space:]]*$/d')
 
         for key in "${!all_vars[@]}"; do
             echo "${key}=\"${all_vars[$key]}\""
