@@ -2390,8 +2390,8 @@ pw_init_db () {
             # shellcheck source=/dev/null
             source "${PORTWINE_DB_FILE}"
             if echo "${portwine_exe}" | grep "/prefixes/" &>/dev/null ; then
-                if [[ -z $(lsbash "${PORT_WINE_PATH}/prefixes/" --grep ^"${PW_PREFIX_NAME}"$) ]] \
-                || [[ -z $(grep -e ^"export PW_PREFIX_NAME=" "${PORTWINE_DB_FILE}" 2>/dev/null) ]]
+                if [[ ("${PW_CLI}" != "1" && -z $(lsbash "${PORT_WINE_PATH}/prefixes/" --grep ^"${PW_PREFIX_NAME}"$)) \
+                || -z $(grep -e ^"export PW_PREFIX_NAME=" "${PORTWINE_DB_FILE}" 2>/dev/null) ]]
                 then
                     PW_PREFIX_NAME=$(echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
                     edit_db_from_gui PW_PREFIX_NAME
@@ -2430,8 +2430,8 @@ pw_init_db () {
                 try_copy_file "${PW_FIND_DB_FILE}" "${portwine_exe}".ppdb
                 PORTWINE_DB_FILE="${portwine_exe}".ppdb
                 if echo "${portwine_exe}" | grep "/prefixes/" &>/dev/null ; then
-                    if [[ -z $(lsbash "${PORT_WINE_PATH}/prefixes/" --grep ^"${PW_PREFIX_NAME}"$) ]] \
-                    || [[ -z $(grep -e ^"export PW_PREFIX_NAME=" "${PORTWINE_DB_FILE}" 2>/dev/null) ]]
+                    if [[ ("${PW_CLI}" != "1" && -z $(lsbash "${PORT_WINE_PATH}/prefixes/" --grep ^"${PW_PREFIX_NAME}"$)) \
+                    || -z $(grep -e ^"export PW_PREFIX_NAME=" "${PORTWINE_DB_FILE}" 2>/dev/null) ]]
                     then
                         PW_PREFIX_NAME=$(echo "${portwine_exe}" | awk -F"/prefixes/" '{print $2}' | awk -F"/" '{print $1}')
                         edit_db_from_gui PW_PREFIX_NAME
@@ -3491,6 +3491,14 @@ start_portwine () {
         && [[ "${DISABLE_CP_DEFPFX}" == 1 ]] ; then
             pw_update_pfx_cover_gui
             pw_wineboot -i
+      elif [[ "${PW_CLI}" == "1" ]]; then
+          if [[ "${DISABLE_CP_DEFPFX}" == "1" ]]; then
+              pw_wineboot -i
+          else
+              unpack "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
+              pw_wineboot -r
+              echo "based_on_default" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
+          fi
         elif yad_question "${translations[Do you want to installing recommended libraries in the new prefix:]} ${PW_PREFIX_NAME}" ; then
             pw_update_pfx_cover_gui
             unpack "${PW_PLUGINS_PATH}/default_pfx.tar.xz" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/" silent
