@@ -1694,22 +1694,10 @@ init_wine_ver () {
         export WINELOADER="${WINEDIR}/bin/wine"
         export WINESERVER="${WINEDIR}/bin/wineserver"
         if [[ -d "${WINEDIR}/files" && ! -d "${WINEDIR}/dist" ]] ; then
-            for clear_dist_files in $(lsbash "$WINEDIR" | sed -r "s/^(files|version)$//g") ; do
-                rm -fr "${WINEDIR}/$clear_dist_files"
-            done
-            mv -f "${WINEDIR}/files"/* "${WINEDIR}/"
-            rm -fr "${WINEDIR}/files"
-        elif [[ ! -d "${WINEDIR}/files" && -d "${WINEDIR}/dist" ]] ; then
-            for clear_dist_files in $(lsbash "$WINEDIR" | sed -r "s/^(dist|version)$//g") ; do
-                rm -fr "${WINEDIR}/$clear_dist_files"
-            done
-            mv -f "${WINEDIR}/dist"/* "${WINEDIR}/"
-            rm -fr "${WINEDIR}/dist"
-        elif [[ -f "${WINEDIR}/proton_dist.tar" ]] ; then
-            unpack "${WINEDIR}/proton_dist.tar" "${WINEDIR}/"
-            for clear_dist_files in $(lsbash "$WINEDIR" | sed -r "s/^(bin|lib|lib64|share|version)$//g") ; do
-                rm -fr "${WINEDIR}/$clear_dist_files"
-            done
+            export WINEDIR="${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}/files"
+            export WINE="${WINEDIR}/bin/wine"
+            export WINELOADER="${WINEDIR}/bin/wine"
+            export WINESERVER="${WINEDIR}/bin/wineserver"
         fi
         if [[ -d "${WINEDIR}" ]] ; then
             [[ ! -f "${WINEDIR}/version" ]] && echo "${PW_WINE_USE}" > "${WINEDIR}/version"
@@ -1735,17 +1723,6 @@ init_wine_ver () {
                     print_warning "${WINEDIR}/share/wine/${mono_gecko_chk} is broken symlink. Repair... OK."
                 fi
             done
-
-            if ! grep 'Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' "${WINEDIR}/share/wine/wine.inf" &>/dev/null ; then
-                echo 'HKLM,Software\NVIDIA Corporation\Global,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
-                echo -e 'HKLM,System\ControlSet001\Services\nvlddmkm,"{41FCC608-8496-4DEF-B43E-7D9BD675A6FF}",0x10001,0x00000001' >> "${WINEDIR}/share/wine/wine.inf"
-                sed -i '/Steam.exe/d' "${WINEDIR}/share/wine/wine.inf"
-                sed -i '/\\Valve\\Steam/d' "${WINEDIR}/share/wine/wine.inf"
-                sed -i '/winemenubuilder/d' "${WINEDIR}/share/wine/wine.inf"
-                rm -f "${WINEDIR}"/lib*/*steam* &>/dev/null
-                rm -f "${WINEDIR}"/lib*/wine/*/*steam* &>/dev/null
-                rm -f "${WINEDIR}"/lib*/wine/*-windows/winemenubuilder.exe &>/dev/null
-            fi
         fi
 
         WINEDLLPATH="${WINEDIR}/lib/wine"
@@ -3322,6 +3299,184 @@ pw_create_unique_exe () {
     fi
 }
 
+pw_optiscaler_sync_files () {
+    local notify_conflict OPTISCALER_PATH OPTISCALER_FILES ORIGINAL_GAME_DLLS dll
+    if [[ "${START_FROM_STEAM}" == "1" ]] ; then
+        notify_conflict="print_error"
+    else
+        notify_conflict="yad_error"
+    fi
+    OPTISCALER_PATH="${PW_PLUGINS_PATH}/fake_dlss/optiscaler-${PW_OPTISCALER_VER}"
+    OPTISCALER_FILES="dxgi.dll amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll libxess.dll \
+        libxess_dx11.dll libxess_fg.dll dlssg_to_fsr3_amd_is_better.dll fakenvapi.ini \
+        fakenvapi.dll OptiScaler.ini D3D12 D3D12_Optiscaler libxell.dll \
+        amd_fidelityfx_upscaler_dx12.dll amd_fidelityfx_framegeneration_dx12.dll"
+    ORIGINAL_GAME_DLLS="amd_fidelityfx_upscaler_dx12.dll amd_fidelityfx_vk.dll \
+        amd_fidelityfx_dx12.dll libxess.dll libxess_dx11.dll libxess_fg.dll \
+        amd_fidelityfx_framegeneration_dx12.dll libxell.dll D3D12"
+
+    for dll in "nvapi64.dll" "_nvngx.dll" "nvngx.dll" ; do
+        if [[ -f "$PATH_TO_GAME/${dll}.b" ]] ; then
+            try_remove_file "$PATH_TO_GAME/$dll"
+            mv -f "$PATH_TO_GAME/${dll}.b" "$PATH_TO_GAME/$dll" 2>/dev/null
+            print_info "revert ${dll}.b to $dll"
+        fi
+    done
+
+    if [[ "${PW_USE_OPTISCALER}" != "1" ]] ; then
+        if [[ -f "$PATH_TO_GAME/dlssg_to_fsr3_amd_is_better.dll" ]] ; then
+            for dll in $OPTISCALER_FILES ; do rm -fr "$PATH_TO_GAME/$dll"; done
+            for dll in $ORIGINAL_GAME_DLLS ; do [[ -e "$PATH_TO_GAME/${dll}.b" ]] && mv -f "$PATH_TO_GAME/${dll}.b" "$PATH_TO_GAME/${dll}" 2>/dev/null; done
+            try_remove_file "$PATH_TO_GAME/optiscaler_version"
+            try_remove_file "$PATH_TO_GAME/dxvk.conf"
+        fi
+        return 0
+    fi
+
+    if [[ ! -d "$OPTISCALER_PATH" ]] && try_download "github.com/Castro-Fidel/vulkan/releases/download/optiscaler-$PW_OPTISCALER_VER/optiscaler-$PW_OPTISCALER_VER.tar.xz" "${PORT_WINE_PATH}/data/tmp/optiscaler-$PW_OPTISCALER_VER.tar.xz" ; then
+        unpack "${PORT_WINE_PATH}/data/tmp/optiscaler-$PW_OPTISCALER_VER.tar.xz" "${PW_PLUGINS_PATH}/fake_dlss/" || try_remove_dir "$OPTISCALER_PATH"
+        try_remove_file "${PORT_WINE_PATH}/data/tmp/optiscaler-$PW_OPTISCALER_VER.tar.xz"
+    fi
+
+    check_variables OPTISCALER_FG_TYPE "Nukems"
+    sed -i "s|FGType =.*|FGType = $OPTISCALER_FG_TYPE|g" "$OPTISCALER_PATH/OptiScaler.ini"
+    echo "" > "$PATH_TO_GAME/dxvk.conf"
+    if [[ ! -f "$PATH_TO_GAME/dlssg_to_fsr3_amd_is_better.dll" && -f "$PATH_TO_GAME/dxgi.dll" ]] ; then
+        "${notify_conflict}" 'dxgi.dll is already present in the game folder!\nThis script uses dxgi.dll to load required files.\nRemove the mod using dxgi.dll.'
+        fatal "Force exit..."
+    fi
+    for dll in $ORIGINAL_GAME_DLLS ; do [[ -e "$PATH_TO_GAME/$dll" && ! -e "$PATH_TO_GAME/${dll}.b" ]] && mv -f "$PATH_TO_GAME/$dll" "$PATH_TO_GAME/${dll}.b" 2>/dev/null; done
+    if [[ ! -f "$PATH_TO_GAME/optiscaler_version" ]] || ! grep -q "$PW_OPTISCALER_VER" "$PATH_TO_GAME/optiscaler_version" ; then
+        for dll in $OPTISCALER_FILES ; do cp -fr "$OPTISCALER_PATH/$dll" "$PATH_TO_GAME/$dll" || print_error "$OPTISCALER_PATH/$dll not found for copy!"; done
+        echo "$PW_OPTISCALER_VER" > "$PATH_TO_GAME/optiscaler_version"
+    fi
+    export PW_USE_NVAPI_AND_DLSS="1"
+    set_to_dxvk_conf nvidia_new
+}
+
+pw_prepare_gamescope_launch () {
+    local gpu_vendor
+
+    unset PW_GAMESCOPE_VARIABLES_BEFORE PW_GAMESCOPE_VARIABLES_AFTER
+    if [[ "${PW_GAMESCOPE}" == "1" ]] \
+    && [[ "${GAMESCOPE_INSTALLED}" != "1" ]]
+    then
+        if [[ -f "${PW_TMPFS_PATH}/gamescope.tmp" ]] \
+        || command -v gamescope &>/dev/null
+        then
+            export GAMESCOPE_INSTALLED="1"
+        fi
+    fi
+
+    if [[ "${PW_GAMESCOPE}" == "1" && "${GAMESCOPE_INSTALLED}" == "1" ]] \
+    || check_gamescope_session
+    then
+        export vk_xwayland_wait_ready="false"
+        gpu_vendor="$(check_vendor_gpu)"
+        if [[ "${gpu_vendor}" == "amd" ]] ; then
+            export RADV_DEBUG+="nodcc "
+            export AMD_DEBUG="nodcc"
+            if ! pw_check_vulkan_extensions "VK_EXT_image_drm_format_modifier" ; then
+                export R600_DEBUG="nodcc"
+                grep -e '--backend' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null && PW_GS_BACKEND_SDL="1"
+            fi
+        fi
+        [[ "${gpu_vendor}" == "intel" ]] && export INTEL_DEBUG="norbc"
+        if [[ "${gpu_vendor}" == "nvidia" ]] ; then
+            PW_GAMESCOPE_VARIABLES_BEFORE+="__GL_THREADED_OPTIMIZATIONS=0 "
+            PW_GAMESCOPE_VARIABLES_AFTER+="__GL_THREADED_OPTIMIZATIONS=1 "
+        fi
+    fi
+
+    if [[ "${PW_GAMESCOPE}" == "1" && "${GAMESCOPE_INSTALLED}" == "1" ]] \
+    && ! check_gamescope_session
+    then
+        if [[ $PW_GPU_USE != "disabled" ]]
+        then PW_ID_VIDEO=" --prefer-vk-device ${PW_vendorID}:${PW_deviceID}"
+        fi
+
+        [[ "${PW_GS_ENABLE_GAMESCOPE_WSI}" == "1" ]] && export ENABLE_GAMESCOPE_WSI="1"
+        [[ "${PW_GS_SDL_VIDEODRIVER_X11}" == "1" ]] && export SDL_VIDEODRIVER="x11"
+        [[ "${PW_GS_MANGOAPP}" == "1" ]] && export PW_MANGOHUD="0"
+        if [[ "${PW_GS_HDR_ENABLE}" == "1" && "${PW_GS_ENABLE_GAMESCOPE_WSI}" == "1" ]] ; then
+            export ENABLE_HDR_WSI="1"
+            export DXVK_HDR="1"
+            export GAMESCOPE_WAYLAND_DISPLAY="gamescope-0"
+        fi
+        if [[ -z "${PW_GAMESCOPE_ARGS_NEW// }" ]] ; then
+            pw_gamescope_build_args
+            [[ -n "${PW_GS_FILTER_MODE}" && "${PW_GS_FILTER_MODE}" != "disabled" ]] && export PW_WINE_FULLSCREEN_FSR="0"
+        fi
+        edit_db_from_gui PW_GAMESCOPE_ARGS_NEW
+        export PW_RUN_GAMESCOPE="env ${PW_GAMESCOPE_VARIABLES_BEFORE}gamescope${PW_ID_VIDEO}${PW_GAMESCOPE_ARGS_NEW} env ${PW_GAMESCOPE_VARIABLES_AFTER}--"
+    fi
+}
+
+pw_set_sync_runtime_vars () {
+    local ULIMIT_HN
+
+    ULIMIT_HN=$(ulimit -Hn)
+    if [[ $ULIMIT_HN -lt 524288 ]] ; then
+        print_warning "ESYNC dont work! (ulimit -Hn $ULIMIT_HN < 524288)"
+        export PW_USE_ESYNC="0"
+    elif [[ "${PW_USE_ESYNC}" == "0" ]] ; then
+        export WINEESYNC="0"
+        export PROTON_NO_ESYNC="1"
+    else
+        export WINEESYNC="1"
+        export PROTON_NO_ESYNC="0"
+    fi
+
+    if [[ "${PW_USE_FSYNC}" == "0" ]] ; then
+        export WINEFSYNC="0"
+        export PROTON_NO_FSYNC="1"
+        export WINEFSYNC_FUTEX2="0"
+    else
+        export WINEFSYNC="1"
+        export PROTON_NO_FSYNC="0"
+        export WINEFSYNC_SPINCOUNT=100
+        check_variables WINEFSYNC_FUTEX2 0
+    fi
+
+    if [[ "${PW_USE_NTSYNC}" == "1" && -e "/dev/ntsync" ]] ; then
+        export WINENTSYNC="1"
+        export PROTON_NO_NTSYNC="0"
+    else
+        export WINENTSYNC="0"
+        export PROTON_NO_NTSYNC="1"
+
+        if [[ "${PW_USE_NTSYNC}" == "1" ]] ; then
+            print_error "/dev/ntsync - not found!"
+        fi
+    fi
+}
+
+pw_enable_gamemode_basic () {
+    if check_flatpak ; then
+        export GAMEMODERUN=1
+        PW_GAMEMODERUN_SLR="gamemoderun"
+    elif command -v gamemoded &>/dev/null ; then
+        export GAMEMODERUN=1
+        PW_GAMEMODERUN_SLR="gamemoderun"
+        systemctl enable --now --user gamemoded &>/dev/null
+    else
+        export GAMEMODERUN=1
+        if ! pidof gamemoded &>/dev/null ; then
+            if [[ -n "${PW_LD_PRELOAD}" ]]; then
+                export PW_LD_PRELOAD="${PW_LD_PRELOAD}:libgamemodeauto.so.0"
+            else
+                export PW_LD_PRELOAD="libgamemodeauto.so.0"
+            fi
+            env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32" \
+                "${PW_PLUGINS_PATH}/portable/bin/gamemoded" &>/dev/null &
+            sleep 0.1
+        fi
+    fi
+
+    print_info "Gamemode will be launched."
+    return 0
+}
+
 start_portwine () {
     pw_skip_get_info
     if [[ "${PW_LOCALE_SELECT}" != "disabled" ]] && [[ -n "${PW_LOCALE_SELECT}" ]] ; then
@@ -3531,34 +3686,7 @@ start_portwine () {
 
     echo "${PW_WINE_USE}" > "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/.wine_ver"
 
-    ULIMIT_HN=$(ulimit -Hn)
-    if [[ $ULIMIT_HN -lt 524288 ]] ; then
-        print_warning "ESYNC dont work! (ulimit -Hn $ULIMIT_HN < 524288)"
-        export WINEESYNC="0"
-    elif [[ $PW_USE_ESYNC == "0" ]]
-    then export WINEESYNC="0"
-    else export WINEESYNC="1"
-    fi
-
-    if [[ $PW_USE_FSYNC == "0" ]] ; then
-        export WINEFSYNC="0"
-        export WINEFSYNC_FUTEX2="0"
-    else
-        export WINEFSYNC="1"
-        export WINEFSYNC_SPINCOUNT=100
-        check_variables WINEFSYNC_FUTEX2 0
-    fi
-
-    if [[ $PW_USE_NTSYNC == "1" ]] ; then
-        if [[ -e "/dev/ntsync" ]] ; then
-            export WINENTSYNC="1"
-        else
-            export WINENTSYNC="0"
-            print_error "/dev/ntsync - not found!"
-        fi
-    else
-        export WINENTSYNC="0"
-    fi
+    pw_set_sync_runtime_vars
 
     # export WINE_SIMULATE_ASYNC_READ=1
     # export WINE_FSYNC_SIMULATE_SCHED_QUANTUM=1
@@ -3647,81 +3775,7 @@ start_portwine () {
         PATH_TO_GAME=$(dirname "$ue_exe_path")
     fi
 
-    # remove old opliscaler files
-    for old_dll in "nvapi64.dll" "_nvngx.dll" "nvngx.dll" ; do
-        if [[ -f "$PATH_TO_GAME/${old_dll}.b" ]] ; then
-            try_remove_file "$PATH_TO_GAME/$old_dll"
-            mv -f "$PATH_TO_GAME/${old_dll}.b" "$PATH_TO_GAME/$old_dll" 2>/dev/null
-            print_info "revert ${old_dll}.b to $old_dll"
-        fi
-    done
-
-    # install/remove new optiscaler
-    OPTISCALER_PATH="$PW_PLUGINS_PATH/fake_dlss/optiscaler-$PW_OPTISCALER_VER"
-    OPTISCALER_FILES="dxgi.dll amd_fidelityfx_dx12.dll amd_fidelityfx_vk.dll libxess.dll \
-        libxess_dx11.dll libxess_fg.dll dlssg_to_fsr3_amd_is_better.dll fakenvapi.ini \
-        fakenvapi.dll OptiScaler.ini D3D12 D3D12_Optiscaler libxell.dll \
-        amd_fidelityfx_upscaler_dx12.dll amd_fidelityfx_framegeneration_dx12.dll"
-    ORIGINAL_GAME_DLLS="amd_fidelityfx_upscaler_dx12.dll amd_fidelityfx_vk.dll \
-        amd_fidelityfx_dx12.dll libxess.dll libxess_dx11.dll libxess_fg.dll \
-        amd_fidelityfx_framegeneration_dx12.dll libxell.dll D3D12"
-
-    if [[ "${PW_USE_OPTISCALER}" != "1" ]] \
-    && [[ -f "$PATH_TO_GAME/dlssg_to_fsr3_amd_is_better.dll" ]]
-    then
-        for dll in $OPTISCALER_FILES ; do
-            rm -fr "$PATH_TO_GAME/$dll"
-        done
-        for dll in $ORIGINAL_GAME_DLLS ; do
-            if [[ -e "$PATH_TO_GAME/${dll}.b" ]] ; then
-                mv -f "$PATH_TO_GAME/${dll}.b" "$PATH_TO_GAME/${dll}" 2>/dev/null
-            fi
-        done
-        try_remove_file "$PATH_TO_GAME/optiscaler_version"
-        try_remove_file "$PATH_TO_GAME/dxvk.conf"
-    fi
-
-    if [[ "${PW_USE_OPTISCALER}" == "1" ]] ; then
-        if [[ ! -d "$OPTISCALER_PATH" ]] ; then
-            if try_download "github.com/Castro-Fidel/vulkan/releases/download/optiscaler-$PW_OPTISCALER_VER/optiscaler-$PW_OPTISCALER_VER.tar.xz" \
-                            "${PORT_WINE_PATH}/data/tmp/optiscaler-$PW_OPTISCALER_VER.tar.xz" ; then
-                if ! unpack "${PORT_WINE_PATH}/data/tmp/optiscaler-$PW_OPTISCALER_VER.tar.xz" "$PW_PLUGINS_PATH/fake_dlss/"
-                then try_remove_dir "$OPTISCALER_PATH"
-                fi
-                try_remove_file "${PORT_WINE_PATH}/data/tmp/optiscaler-$PW_OPTISCALER_VER.tar.xz"
-            fi
-        fi
-
-        check_variables OPTISCALER_FG_TYPE "Nukems"
-        sed -i "s|FGType =.*|FGType = $OPTISCALER_FG_TYPE|g" "$OPTISCALER_PATH/OptiScaler.ini"
-        echo "" > "$PATH_TO_GAME/dxvk.conf"
-
-        if [[ ! -f "$PATH_TO_GAME/dlssg_to_fsr3_amd_is_better.dll" ]] ; then
-            if [[ -f "$PATH_TO_GAME/dxgi.dll" ]] ; then
-                yad_error 'dxgi.dll is already present in the game folder!\nThis script uses dxgi.dll to load required files.\nRemove the mod using dxgi.dll.'
-                fatal "Force exit..."
-            fi
-            for dll in $ORIGINAL_GAME_DLLS ; do
-                if [[ -e "$PATH_TO_GAME/$dll" ]] \
-                && [[ ! -e "$PATH_TO_GAME/${dll}.b" ]]
-                then
-                    mv -f "$PATH_TO_GAME/$dll" "$PATH_TO_GAME/${dll}.b" 2>/dev/null
-                fi
-            done
-        fi
-
-        if [[ ! -f "$PATH_TO_GAME/optiscaler_version" ]] \
-        || ! grep -q "$PW_OPTISCALER_VER" "$PATH_TO_GAME/optiscaler_version"
-        then
-            for dll in $OPTISCALER_FILES ; do
-                cp -fr "$OPTISCALER_PATH/$dll" "$PATH_TO_GAME/$dll" || print_error "$OPTISCALER_PATH/$dll not found for copy!"
-            done
-            echo "$PW_OPTISCALER_VER" > "$PATH_TO_GAME/optiscaler_version"
-        fi
-
-        export PW_USE_NVAPI_AND_DLSS="1"
-        set_to_dxvk_conf nvidia_new
-    fi
+    pw_optiscaler_sync_files
 
     if [[ "${PW_USE_RAY_TRACING}" == "1" ]] ; then
         var_vkd3d_config_update dxr
@@ -3870,32 +3924,7 @@ export -f pw_ppd_dbus_has_profile
             else
                 export PW_POWERPROFILECTL_PROFILE=""
             fi
-        elif check_flatpak ; then
-            export GAMEMODERUN=1
-            PW_GAMEMODERUN_SLR="gamemoderun"
-            print_info "Gamemode will be launched."
-        elif command -v gamemoded &>/dev/null ; then
-            export GAMEMODERUN=1
-            PW_GAMEMODERUN_SLR="gamemoderun"
-            systemctl enable --now --user gamemoded &>/dev/null
-            print_info "Gamemode will be launched."
-        elif [[ "$PW_USE_RUNTIME" == 1 ]] ; then
-            export GAMEMODERUN=1
-            if ! pidof gamemoded &>/dev/null ; then
-                GAMEMODEAUTO_NAME="libgamemodeauto.so.0"
-                if [[ -n "${PW_LD_PRELOAD}" ]]; then
-                    export PW_LD_PRELOAD="${PW_LD_PRELOAD}:${GAMEMODEAUTO_NAME}"
-                else
-                    export PW_LD_PRELOAD="${GAMEMODEAUTO_NAME}"
-                fi
-
-                env LD_LIBRARY_PATH="${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32" \
-                    "${PW_PLUGINS_PATH}/portable/bin/gamemoded" &>/dev/null &
-
-                print_info "Gamemode will be launched."
-                sleep 0.1
-            fi
-        else
+        elif ! pw_enable_gamemode_basic ; then
             export GAMEMODERUN=0
             export PW_GAMEMODERUN_SLR=""
             print_info "Gamemode is not installed or disabled in vars script or db file: PW_USE_GAMEMODE=$PW_USE_GAMEMODE"
@@ -4659,54 +4688,7 @@ fi
         fi
     fi
 
-    unset PW_GAMESCOPE_VARIABLES_BEFORE PW_GAMESCOPE_VARIABLES_AFTER
-    # GAMESCOPE fixes:
-    if [[ "${PW_GAMESCOPE}" == "1" && "${GAMESCOPE_INSTALLED}" == "1" ]] \
-    || check_gamescope_session
-    then
-        export vk_xwayland_wait_ready="false"
-        if [[ $(check_vendor_gpu) == "amd" ]] ; then
-            export RADV_DEBUG+="nodcc "
-            export AMD_DEBUG="nodcc"
-            if ! pw_check_vulkan_extensions "VK_EXT_image_drm_format_modifier" ; then
-                export R600_DEBUG="nodcc"
-                grep -e '--backend' "${PW_TMPFS_PATH}/gamescope.tmp" &>/dev/null && PW_GS_BACKEND_SDL="1"
-            fi
-        fi
-        if [[ $(check_vendor_gpu) == "intel" ]] ; then
-            export INTEL_DEBUG="norbc"
-        fi
-        if [[ $(check_vendor_gpu) == "nvidia" ]] ; then
-            PW_GAMESCOPE_VARIABLES_BEFORE+="__GL_THREADED_OPTIMIZATIONS=0 "
-            PW_GAMESCOPE_VARIABLES_AFTER+="__GL_THREADED_OPTIMIZATIONS=1 "
-        fi
-    fi
-    # GAMESCOPE enable:
-    if [[ "${PW_GAMESCOPE}" == "1" && "${GAMESCOPE_INSTALLED}" == "1" ]] \
-    && ! check_gamescope_session
-    then
-        if [[ $PW_GPU_USE != "disabled" ]]
-        then PW_ID_VIDEO=" --prefer-vk-device ${PW_vendorID}:${PW_deviceID}"
-        fi
-
-        [[ "${PW_GS_ENABLE_GAMESCOPE_WSI}" == "1" ]] && export ENABLE_GAMESCOPE_WSI="1"
-        [[ "${PW_GS_SDL_VIDEODRIVER_X11}" == "1" ]] && export SDL_VIDEODRIVER="x11"
-        [[ "${PW_GS_MANGOAPP}" == "1" ]] && export PW_MANGOHUD="0"
-        if [[ "${PW_GS_HDR_ENABLE}" == "1" && "${PW_GS_ENABLE_GAMESCOPE_WSI}" == "1" ]] ; then
-            export ENABLE_HDR_WSI="1"
-            export DXVK_HDR="1"
-            export GAMESCOPE_WAYLAND_DISPLAY="gamescope-0"
-        fi
-
-        # GUI state lives in PW_GS_*; rebuild args for old/empty profiles.
-        if [[ -z "${PW_GAMESCOPE_ARGS_NEW// }" ]] ; then
-            pw_gamescope_process build_args
-            [[ -n "${PW_GS_FILTER_MODE}" && "${PW_GS_FILTER_MODE}" != "disabled" ]] && export PW_WINE_FULLSCREEN_FSR="0"
-        fi
-
-        edit_db_from_gui PW_GAMESCOPE_ARGS_NEW
-        export PW_RUN_GAMESCOPE="env ${PW_GAMESCOPE_VARIABLES_BEFORE}gamescope${PW_ID_VIDEO}${PW_GAMESCOPE_ARGS_NEW} env ${PW_GAMESCOPE_VARIABLES_AFTER}--"
-    fi
+    pw_prepare_gamescope_launch
 
     # fixed msxml3 with new wine
     get_and_set_reg_file --delete 'Software\Wine\DllOverrides' '*msxml3'
@@ -4873,24 +4855,101 @@ pw_yad_form_vulkan () {
 steamplay_launch () {
     if [[ -n "${portwine_exe:-}" ]]; then
         cd "$(dirname "${portwine_exe}")"
+        export PATH_TO_GAME="$(pwd)"
         export PORTWINE_DB_FILE="${portwine_exe}.ppdb"
         [[ -f "${PORTWINE_DB_FILE}" ]] && source "${PORTWINE_DB_FILE}"
-        PORT_WINE_PREFIX="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME:-DEFAULT}"
-        for path in "ProgramData" "users/Public" "users/steamuser"; do
-            mkdir -p "${PORT_WINE_PREFIX}/drive_c/${path}"
-            if [[ ! -L "${WINEPREFIX}/drive_c/${path}" ]]; then
-                mkdir -p "${WINEPREFIX}/drive_c/users/"
-                rm -rf "${WINEPREFIX}/drive_c/${path}"
-                ln -sr "${PORT_WINE_PREFIX}/drive_c/${path}" "${WINEPREFIX}/drive_c/${path}"
+
+        if [[ -f "$PATH_TO_GAME/MangoHud.conf" ]] ; then
+            unset MANGOHUD_CONFIG
+            export MANGOHUD_CONFIGFILE="$PATH_TO_GAME/MangoHud.conf"
+            print_info "Custom MangoHud.conf in use: $MANGOHUD_CONFIGFILE"
+        elif [[ "${PW_MANGOHUD_USER_CONF}" == 1 ]] ; then
+            unset MANGOHUD_CONFIG
+        fi
+
+        pw_optiscaler_sync_files
+
+        PORT_WINE_PREFIX="$STEAM_COMPAT_DATA_PATH/pfx"
+
+        pw_prepare_gamescope_launch
+
+        if check_gamescope_session ; then
+            export PW_GAMEMODERUN_SLR=""
+        elif [[ "$PW_USE_GAMEMODE" = "1" ]] \
+        && [[ -n "$DBUS_SESSION_BUS_ADDRESS" ]]
+        then
+            pw_enable_gamemode_basic
+        fi
+
+        if [[ "$GAMEMODERUN" != "1" ]] && [[ "$PW_USE_INHIBIT_SLEEP" == "1" ]]; then
+            if check_flatpak && [[ -e "/var/run/dbus/system_bus_socket" ]]; then
+                start_activity_simulation
+                PW_INHIBIT_SLR=""
+                print_info "Screensaver will be inhibited using D-Bus (Flatpak mode)"
+            elif [[ -e "/var/run/dbus/system_bus_socket" ]] && command -v systemd-inhibit &>/dev/null; then
+                PW_INHIBIT_SLR="systemd-inhibit --mode=block --who=ru.linux_gaming.PortProton --why=${translations[Launched]} --what=idle:sleep"
+                print_info "Screensaver will be inhibited using systemd-inhibit (Native mode)"
             fi
-        done
+        fi
+
+        pw_set_sync_runtime_vars
+
+        # Mangohud, VkBasalt, LSFG
+        if [[ "$PW_USE_SYSTEM_VK_LAYERS" == "1" ]] ; then
+            unset PW_VK_LAYER_PATH
+        else
+            export PW_VK_LAYER_PATH="${PW_PLUGINS_PATH}/portable/share/vulkan/implicit_layer.d"
+        fi
+
+        pw_mangohud_check
+        pw_vkbasalt_check
+        pw_lsfg_vk_check
+
+        export VK_ADD_IMPLICIT_LAYER_PATH="${PW_VK_LAYER_PATH}"
+        export VK_ADD_LAYER_PATH="${PW_VK_LAYER_PATH}"
+        export VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}"
+
+        # Winetricks
         if [[ -n "${PW_DLL_INSTALL:-}" ]] ; then
             update_winetricks
             PATH="${PATH}:${PW_PLUGINS_PATH}/portable/bin" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32" \
                 "${PORT_WINE_TMP_PATH}/winetricks" -q ${PW_DLL_INSTALL}
         fi
+
         [[ $PW_LOG != 1 ]] && debug_timer --start -s "PW_TIME_IN_GAME"
-        "${STEAM_COMPAT_TOOL_PATHS%%:*}/proton" "run" "${portwine_exe}" "$@"
+        if [[ -x "${STEAM_COMPAT_TOOL_PATHS%%:*}/proton" ]] ; then
+            proton_runner="${STEAM_COMPAT_TOOL_PATHS%%:*}/proton"
+        elif [[ -x "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}/proton" ]] ; then
+            proton_runner="${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}/proton"
+        fi
+
+        # Virtual Desktop
+        if [[ "${PW_VIRTUAL_DESKTOP}" == "1" ]] ; then
+            if [[ "${PW_SCREEN_RESOLUTION:-}" != *x* ]] ; then
+                if [[ -f "${PW_TMPFS_PATH}/xrandr.tmp" ]] ; then
+                    PW_SCREEN_RESOLUTION="$(sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p' "${PW_TMPFS_PATH}/xrandr.tmp")"
+                fi
+                [[ "${PW_SCREEN_RESOLUTION:-}" != *x* ]] && PW_SCREEN_RESOLUTION="1920x1080"
+            fi
+            "${proton_runner}" "run" reg add "HKEY_CURRENT_USER\\Software\\Wine\\Explorer\\Desktops" /v "PortProton" /d "${PW_SCREEN_RESOLUTION}" /f &>/dev/null
+            "${proton_runner}" "run" reg add "HKEY_CURRENT_USER\\Software\\Wine\\Explorer" /v "Desktop" /d "PortProton" /f &>/dev/null
+            print_info "Steam Play virtual desktop enabled in registry: ${PW_SCREEN_RESOLUTION}"
+        else
+            "${proton_runner}" "run" reg delete "HKEY_CURRENT_USER\\Software\\Wine\\Explorer" /v "Desktop" /f &>/dev/null
+            "${proton_runner}" "run" reg delete "HKEY_CURRENT_USER\\Software\\Wine\\Explorer\\Desktops" /v "PortProton" /f &>/dev/null
+            print_info "Steam Play virtual desktop disabled in registry"
+        fi
+
+        ${PW_RUN_GAMESCOPE} \
+        env \
+        LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32" \
+        LD_PRELOAD="${LD_PRELOAD:+$LD_PRELOAD:}${PW_LD_PRELOAD}" \
+        ${PW_INHIBIT_SLR} \
+        ${PW_TASKSET_SLR} \
+        ${PW_ADD_VAR_SLR} \
+        ${PW_GAMEMODERUN_SLR} \
+        "${proton_runner}" waitforexitandrun "${portwine_exe}" "$@"
+        stop_activity_simulation
         if [[ $PW_LOG != 1 ]] && [[ -n $START_PW_TIME_IN_GAME ]] ; then
             debug_timer --end -s "PW_TIME_IN_GAME"
             PW_TIME_IN_GAME=$(( PW_TIME_IN_GAME / 1000 ))
