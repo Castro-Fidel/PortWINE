@@ -292,9 +292,7 @@ then PW_TERM="env LANG=C xterm -fullscreen -bg black -fg white -e"
 else PW_TERM="env LANG=C xterm -bg black -fg white -e"
 fi
 
-if [[ "${PW_CLI}" != 1 ]] ; then
-    pw_check_and_download_plugins
-fi
+pw_check_and_download_plugins
 
 # check skip update
 if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
