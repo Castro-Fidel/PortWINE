@@ -2096,8 +2096,8 @@ stop_portwine () {
     pw_auto_create_shortcut
     stop_activity_simulation
     add_in_stop_portwine
-    if [[ -n "$PW_TUNED_PROFILE" ]] ; then
-        tuned-adm profile $PW_TUNED_PROFILE
+    if [[ -n "$PW_POWERPROFILECTL_PROFILE" ]] && [[ "$(pw_ppd_dbus_get_profile)" != "$PW_POWERPROFILECTL_PROFILE" ]] ; then
+        pw_ppd_dbus_set_profile "$PW_POWERPROFILECTL_PROFILE"
     fi
 
     if [[ $PW_LOG != 1 ]] && [[ -n $START_PW_TIME_IN_GAME ]] ; then
@@ -3807,6 +3807,48 @@ start_portwine () {
         unset __GLX_VENDOR_LIBRARY_NAME
     fi
 
+pw_ppd_dbus_get_profile() {
+    if ! command -v gdbus &>/dev/null; then
+        return 1
+    fi
+    local result
+    result=$(gdbus call --system \
+        --dest net.hadess.PowerProfiles \
+        --object-path /net/hadess/PowerProfiles \
+        --method org.freedesktop.DBus.Properties.Get \
+        'net.hadess.PowerProfiles' 'ActiveProfile' 2>/dev/null)
+    [[ -n "$result" ]] && echo "$result" | sed "s/.*'\([^']*\)'.*/\1/" || return 1
+}
+export -f pw_ppd_dbus_get_profile
+
+pw_ppd_dbus_set_profile() {
+    local profile="$1"
+    if ! command -v gdbus &>/dev/null; then
+        return 1
+    fi
+    gdbus call --system \
+        --dest net.hadess.PowerProfiles \
+        --object-path /net/hadess/PowerProfiles \
+        --method org.freedesktop.DBus.Properties.Set \
+        'net.hadess.PowerProfiles' 'ActiveProfile' "<'$profile'>" &>/dev/null
+}
+export -f pw_ppd_dbus_set_profile
+
+pw_ppd_dbus_has_profile() {
+    local profile="$1"
+    if ! command -v gdbus &>/dev/null; then
+        return 1
+    fi
+    local result
+    result=$(gdbus call --system \
+        --dest net.hadess.PowerProfiles \
+        --object-path /net/hadess/PowerProfiles \
+        --method org.freedesktop.DBus.Properties.GetAll \
+        'net.hadess.PowerProfiles' 2>/dev/null)
+    [[ "$result" == *"'$profile'"* ]]
+}
+export -f pw_ppd_dbus_has_profile
+
     if check_gamescope_session ; then
         export PW_GAMEMODERUN_SLR=""
     elif [[ "$PW_USE_GAMEMODE" = "1" ]] \
@@ -3821,22 +3863,12 @@ start_portwine () {
         then
             export GAMEMODERUN=0
             export PW_GAMEMODERUN_SLR=""
-            if command -v powerprofilesctl &>/dev/null ; then
-                if powerprofilesctl list | grep -q 'performance:' ; then
-                    export PW_POWERPROFILECTL_SLR="powerprofilesctl launch -p performance --"
-                    print_info "Gamemode replaced by powerprofilectl to avoid conflicts"
-                else
-                    export PW_POWERPROFILECTL_SLR=""
-                fi
-            elif command -v tuned-adm &>/dev/null ; then
-                export PW_TUNED_PROFILE=$(tuned-adm active | awk -F': ' '{print $2}')
-                if tuned-adm list | grep -q 'throughput-performance' ; then
-                    tuned-adm profile throughput-performance
-                    print_info "Gamemode replaced by tuned to avoid conflict with ananicy and sched-ext."
-                    export PW_POWERPROFILECTL_SLR=""
-                else
-                    export PW_POWERPROFILECTL_SLR=""
-                fi
+            if pw_ppd_dbus_has_profile "performance" && [[ "$(pw_ppd_dbus_get_profile)" != "performance" ]] ; then
+                export PW_POWERPROFILECTL_PROFILE=$(pw_ppd_dbus_get_profile)
+                pw_ppd_dbus_set_profile performance
+                print_info "Gamemode replaced by power-profiles-daemon/tuned-ppd/tlp-pd via D-Bus to avoid conflicts"
+            else
+                export PW_POWERPROFILECTL_PROFILE=""
             fi
         elif check_flatpak ; then
             export GAMEMODERUN=1
@@ -4726,7 +4758,6 @@ pw_run () {
             echo ""
             print_info "Log from RUNTIME and WINE:"
             ${PW_RUN_GAMESCOPE} \
-            ${PW_POWERPROFILECTL_SLR} \
             ${PW_INHIBIT_SLR} \
             ${PW_TASKSET_SLR} \
             ${pw_runtime} \
@@ -4746,7 +4777,6 @@ pw_run () {
             echo ""
             echo "Log WINE:" > "${PW_LOG_TO_FILE}"
             ${PW_RUN_GAMESCOPE} \
-            ${PW_POWERPROFILECTL_SLR} \
             ${PW_INHIBIT_SLR} \
             ${PW_TASKSET_SLR} \
             ${pw_runtime} \
@@ -4782,7 +4812,6 @@ pw_run () {
             VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
             ${PW_RUN_GAMESCOPE} \
             ${PW_GAMEMODERUN_SLR} \
-            ${PW_POWERPROFILECTL_SLR} \
             ${PW_ADD_VAR_SLR} \
             ${PW_INHIBIT_SLR} \
             ${PW_TASKSET_SLR} \
@@ -4802,7 +4831,6 @@ pw_run () {
             VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
             ${PW_RUN_GAMESCOPE} \
             ${PW_GAMEMODERUN_SLR} \
-            ${PW_POWERPROFILECTL_SLR} \
             ${PW_ADD_VAR_SLR} \
             ${PW_INHIBIT_SLR} \
             ${PW_TASKSET_SLR} \
