@@ -4898,35 +4898,6 @@ steamplay_launch () {
     fi
 }
 
-run_with_after_exe_bat () {
-    local main_exe after_exe wait_delay wait_delay_int run_after_bat
-
-    main_exe="${1}"
-    after_exe="${2}"
-    wait_delay="${PW_RUN_AFTER_DELAY:-3}"
-    wait_delay_int="${wait_delay%%.*}"
-    [[ "${wait_delay_int}" =~ ^[0-9]+$ ]] || wait_delay_int="3"
-
-    run_after_bat="${PW_TMPFS_PATH}/pw_run_after_exe_${PW_PREFIX_NAME:-DEFAULT}_$$.bat"
-
-    cat > "${run_after_bat}" <<EOF
-@echo off
-start "" "z:${main_exe}"
-ping -n ${wait_delay_int} 127.0.0.1 >nul
-start "" "z:${after_exe}"
-EOF
-
-    pw_run "${PW_VD_TMP[@]}" cmd /c "z:${run_after_bat}"
-    try_remove_file "${run_after_bat}"
-}
-
-should_run_after_exe () {
-    [[ -n "${PW_RUN_AFTER_EXE:-}" ]] \
-    && [[ -f "${PW_RUN_AFTER_EXE}" ]] \
-    && [[ "${PW_RUN_AFTER_EXE}" != "${portwine_exe}" ]] \
-    && [[ "${portwine_exe,,}" =~ \.exe$ ]]
-}
-
 portwine_launch () {
     start_portwine
     unset PW_VD_TMP
@@ -4952,8 +4923,27 @@ portwine_launch () {
             fi
         done
     else
-        if should_run_after_exe ; then
-            run_with_after_exe_bat "${portwine_exe}" "${PW_RUN_AFTER_EXE}"
+        if [[ -n "${PW_RUN_AFTER_EXE:-}" ]] \
+        && [[ -f "${PW_RUN_AFTER_EXE}" ]] \
+        && [[ "${PW_RUN_AFTER_EXE}" != "${portwine_exe}" ]] \
+        && [[ "${portwine_exe,,}" =~ \.exe$ ]]
+        then
+            local wait_delay wait_delay_int run_after_bat
+            wait_delay="${PW_RUN_AFTER_DELAY:-3}"
+            wait_delay_int="${wait_delay%%.*}"
+            [[ "${wait_delay_int}" =~ ^[0-9]+$ ]] || wait_delay_int="3"
+
+            run_after_bat="${PW_TMPFS_PATH}/pw_run_after_exe_${PW_PREFIX_NAME:-DEFAULT}_$$.bat"
+
+            cat > "${run_after_bat}" <<EOF
+@echo off
+start "" "z:${portwine_exe}"
+timeout /t ${wait_delay_int} /nobreak
+start "" "z:${PW_RUN_AFTER_EXE}"
+EOF
+
+            pw_run "${PW_VD_TMP[@]}" cmd /c "z:${run_after_bat}"
+            try_remove_file "${run_after_bat}"
         else
             case "${portwine_exe,,}" in
                 *.exe)
