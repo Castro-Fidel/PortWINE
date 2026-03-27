@@ -1848,6 +1848,7 @@ ${PW_PV_OVERRIDES}/i386-linux-gnu/aliases:\
     export PRESSURE_VESSEL_RUNTIME_BASE="${PW_WINELIB}"
     export PRESSURE_VESSEL_VARIABLE_DIR="${PW_WINELIB}/var"
     export PRESSURE_VESSEL_PREFIX="${PW_WINELIB}/pressure-vessel"
+    export PRESSURE_VESSEL_ARCHITECTURES="x86_64-linux-gnu:i386-linux-gnu"
     export FONTCONFIG_PATH=''
 
     unset PRESSURE_VESSEL_FILESYSTEMS_RO PRESSURE_VESSEL_FILESYSTEMS_RW
@@ -4699,7 +4700,7 @@ fi
 
         # GUI state lives in PW_GS_*; rebuild args for old/empty profiles.
         if [[ -z "${PW_GAMESCOPE_ARGS_NEW// }" ]] ; then
-            pw_gamescope_build_args
+            pw_gamescope_process build_args
             [[ -n "${PW_GS_FILTER_MODE}" && "${PW_GS_FILTER_MODE}" != "disabled" ]] && export PW_WINE_FULLSCREEN_FSR="0"
         fi
 
@@ -6343,239 +6344,247 @@ gui_dgvoodoo2 () {
     restart_pp
 }
 
-# Build gamescope args from current GUI variables.
-pw_gamescope_build_args () {
-    local -a gs_toggle_order=(
-    PW_GS_FULLSCREEN PW_GS_FORCE_FULLSCREEN PW_GS_BORDERLESS_WINDOW PW_GS_FORCE_GRAB_CURSOR
-    PW_GS_FORCE_GRAB_KEYBOARD PW_GS_HDR_ENABLE PW_GS_HDR_ITM_ENABLE PW_GS_SDR_GAMMUT_WIDENESS
-    PW_GS_FORCE_COMPOSITION PW_GS_HDR_FORCE_SUPPORT PW_GS_HDR_FORCE_OUTPUT PW_GS_HDR_FORCE_HEATMAP
-    PW_GS_EXPOSE_WAYLAND PW_GS_REALTIME_SCHEDULING PW_GS_MANGOAPP PW_GS_BACKEND_SDL PW_GS_CURSOR_SCALE_HEIGHT
-    )
-    local -A gs_toggle_map=(
-    [PW_GS_FULLSCREEN]="-f"
-    [PW_GS_FORCE_FULLSCREEN]="--force-windows-fullscreen"
-    [PW_GS_BORDERLESS_WINDOW]="-b"
-    [PW_GS_FORCE_GRAB_CURSOR]="--force-grab-cursor"
-    [PW_GS_FORCE_GRAB_KEYBOARD]="-g"
-    [PW_GS_HDR_ENABLE]="--hdr-enabled"
-    [PW_GS_HDR_ITM_ENABLE]="--hdr-itm-enabled"
-    [PW_GS_SDR_GAMMUT_WIDENESS]="--sdr-gamut-wideness"
-    [PW_GS_FORCE_COMPOSITION]="--force-composition"
-    [PW_GS_HDR_FORCE_SUPPORT]="--hdr-debug-force-support"
-    [PW_GS_HDR_FORCE_OUTPUT]="--hdr-debug-force-output"
-    [PW_GS_HDR_FORCE_HEATMAP]="--hdr-debug-heatmap"
-    [PW_GS_EXPOSE_WAYLAND]="--expose-wayland"
-    [PW_GS_REALTIME_SCHEDULING]="--rt"
-    [PW_GS_MANGOAPP]="--mangoapp"
-    [PW_GS_BACKEND_SDL]="--backend sdl"
-    [PW_GS_CURSOR_SCALE_HEIGHT]="--cursor-scale-height 1"
-    )
-    local gs_var pwgs_res_sw1 pwgs_res_sw pwgs_res_sh1 pwgs_res_sh
-    local gs_res_w gs_res_h pwgs_res_iw pwgs_res_ih
-
-    PW_GAMESCOPE_ARGS_NEW=""
-    for gs_var in "${gs_toggle_order[@]}" ; do
-        [[ "${!gs_var}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" ${gs_toggle_map[$gs_var]}"
-    done
-
-    if [[ -n "${PW_GS_SHOW_RESOLUTION}" && "${PW_GS_SHOW_RESOLUTION}" != "disabled" ]] ; then
-        pwgs_res_sw1="${PW_GS_SHOW_RESOLUTION%x*}"
-        pwgs_res_sw="${pwgs_res_sw1%%-*}"
-        pwgs_res_sh1="${PW_GS_SHOW_RESOLUTION#*x}"
-        pwgs_res_sh="${pwgs_res_sh1%%-*}"
-        PW_GAMESCOPE_ARGS_NEW+=" -W ${pwgs_res_sw} -H ${pwgs_res_sh}"
-
-        if [[ -n "${PW_GS_INTERNAL_RESOLUTION}" && "${PW_GS_INTERNAL_RESOLUTION}" != "0.0" ]] ; then
-            gs_res_w=${PW_GS_SHOW_RESOLUTION:0:4}
-            gs_res_h=${PW_GS_SHOW_RESOLUTION:5:8}
-            pwgs_res_iw=$(echo "${gs_res_w}" "${PW_GS_INTERNAL_RESOLUTION}" | awk '{print $1*$2}')
-            pwgs_res_ih=$(echo "${gs_res_h}" "${PW_GS_INTERNAL_RESOLUTION}" | awk '{print $1*$2}')
-            PW_GAMESCOPE_ARGS_NEW+=" -w ${pwgs_res_iw} -h ${pwgs_res_ih}"
-        fi
-    fi
-
-    [[ -n "${PW_GS_FRAME_LIMIT}" && "${PW_GS_FRAME_LIMIT}" != "disabled" ]] && PW_GAMESCOPE_ARGS_NEW+=" -r ${PW_GS_FRAME_LIMIT}"
-    [[ -n "${PW_GS_MAX_SCALE_FACTOR}" && "${PW_GS_MAX_SCALE_FACTOR}" != "0.0" ]] && PW_GAMESCOPE_ARGS_NEW+=" -m ${PW_GS_MAX_SCALE_FACTOR}"
-    [[ -n "${PW_GS_SCALER_MODE}" && "${PW_GS_SCALER_MODE}" != "disabled" ]] && PW_GAMESCOPE_ARGS_NEW+=" -S ${PW_GS_SCALER_MODE}"
-
-    if [[ -n "${PW_GS_FILTER_MODE}" && "${PW_GS_FILTER_MODE}" != "disabled" ]] ; then
-        if [[ "${PW_GS_FILTER_MODE_OLD}" != "true" ]] ; then
-            PW_GAMESCOPE_ARGS_NEW+=" -F ${PW_GS_FILTER_MODE}"
-        else
-            if [[ "${PW_GS_FILTER_MODE}" == "fsr" ]] ; then
-                PW_GAMESCOPE_ARGS_NEW+=" -U"
-            elif [[ "${PW_GS_FILTER_MODE}" == "nis" ]] ; then
-                PW_GAMESCOPE_ARGS_NEW+=" -Y"
-            fi
-        fi
-        PW_GAMESCOPE_ARGS_NEW+=" --sharpness ${PW_GS_UPSCALE_SHARPNESS}"
-    fi
-
-    [[ -n "${PW_GS_MOUSE_SENSITIVITY}" && "${PW_GS_MOUSE_SENSITIVITY}" != "0.0" ]] && PW_GAMESCOPE_ARGS_NEW+=" -s ${PW_GS_MOUSE_SENSITIVITY}"
-    [[ -n "${PW_GS_SDR_CONTENT_NITS}" && "${PW_GS_SDR_CONTENT_NITS}" != "400" ]] && PW_GAMESCOPE_ARGS_NEW+=" --hdr-sdr-content-nits ${PW_GS_SDR_CONTENT_NITS}"
-    [[ -n "${PW_GS_ITM_SDR_NITS}" && "${PW_GS_ITM_SDR_NITS}" != "0" ]] && PW_GAMESCOPE_ARGS_NEW+=" --hdr-itm-sdr-nits ${PW_GS_ITM_SDR_NITS}"
-    [[ -n "${PW_GS_ITM_TARGET_NITS}" && "${PW_GS_ITM_TARGET_NITS}" != "0" ]] && PW_GAMESCOPE_ARGS_NEW+=" --hdr-itm-target-nits ${PW_GS_ITM_TARGET_NITS}"
+# Gamescope configuration and processing
+# Common data for all gamescope functions
+pw_gamescope_get_config() {
+    case "$1" in
+        --bool-vars)
+            echo "\
+PW_GS_FULLSCREEN PW_GS_FORCE_FULLSCREEN PW_GS_BORDERLESS_WINDOW PW_GS_MANGOAPP \
+PW_GS_FORCE_GRAB_CURSOR PW_GS_HDR_FORCE_HEATMAP PW_GS_SDR_GAMMUT_WIDENESS \
+PW_GS_FORCE_GRAB_KEYBOARD PW_GS_HDR_ENABLE PW_GS_HDR_ITM_ENABLE PW_GS_BACKEND_SDL \
+PW_GS_FORCE_COMPOSITION PW_GS_HDR_FORCE_SUPPORT PW_GS_HDR_FORCE_OUTPUT \
+PW_GS_EXPOSE_WAYLAND PW_GS_REALTIME_SCHEDULING \
+"
+            ;;
+        --flag-to-var)
+            cat <<'EOF'
+-f:PW_GS_FULLSCREEN
+--force-windows-fullscreen:PW_GS_FORCE_FULLSCREEN
+-b:PW_GS_BORDERLESS_WINDOW
+--force-grab-cursor:PW_GS_FORCE_GRAB_CURSOR
+-g:PW_GS_FORCE_GRAB_KEYBOARD
+--hdr-enabled:PW_GS_HDR_ENABLE
+--hdr-itm-enabled:PW_GS_HDR_ITM_ENABLE
+--sdr-gamut-wideness:PW_GS_SDR_GAMMUT_WIDENESS
+--force-composition:PW_GS_FORCE_COMPOSITION
+--hdr-debug-force-support:PW_GS_HDR_FORCE_SUPPORT
+--hdr-debug-force-output:PW_GS_HDR_FORCE_OUTPUT
+--hdr-debug-heatmap:PW_GS_HDR_FORCE_HEATMAP
+--expose-wayland:PW_GS_EXPOSE_WAYLAND
+--rt:PW_GS_REALTIME_SCHEDULING
+--mangoapp:PW_GS_MANGOAPP
+EOF
+            ;;
+        --var-to-arg)
+            cat <<'EOF'
+PW_GS_FULLSCREEN:-f
+PW_GS_FORCE_FULLSCREEN:--force-windows-fullscreen
+PW_GS_BORDERLESS_WINDOW:-b
+PW_GS_FORCE_GRAB_CURSOR:--force-grab-cursor
+PW_GS_FORCE_GRAB_KEYBOARD:-g
+PW_GS_HDR_ENABLE:--hdr-enabled
+PW_GS_HDR_ITM_ENABLE:--hdr-itm-enabled
+PW_GS_SDR_GAMMUT_WIDENESS:--sdr-gamut-wideness
+PW_GS_FORCE_COMPOSITION:--force-composition
+PW_GS_HDR_FORCE_SUPPORT:--hdr-debug-force-support
+PW_GS_HDR_FORCE_OUTPUT:--hdr-debug-force-output
+PW_GS_HDR_FORCE_HEATMAP:--hdr-debug-heatmap
+PW_GS_EXPOSE_WAYLAND:--expose-wayland
+PW_GS_REALTIME_SCHEDULING:--rt
+PW_GS_MANGOAPP:--mangoapp
+PW_GS_BACKEND_SDL:--backend sdl
+EOF
+            ;;
+        --arg-to-var)
+            cat <<'EOF'
+-W:PWGS_OUTPUT_WIDTH
+-H:PWGS_OUTPUT_HEIGHT
+-r:PW_GS_FRAME_LIMIT
+-m:PW_GS_MAX_SCALE_FACTOR
+-S:PW_GS_SCALER_MODE
+-F:PW_GS_FILTER_MODE
+--sharpness:PW_GS_UPSCALE_SHARPNESS
+-s:PW_GS_MOUSE_SENSITIVITY
+--hdr-sdr-content-nits:PW_GS_SDR_CONTENT_NITS
+--hdr-itm-sdr-nits:PW_GS_ITM_SDR_NITS
+--hdr-itm-target-nits:PW_GS_ITM_TARGET_NITS
+-w:PWGS_INTERNAL_WIDTH
+-h:PWGS_INTERNAL_HEIGHT
+EOF
+            ;;
+        --defaults)
+            cat <<'EOF'
+PW_GS_SHOW_RESOLUTION:disabled
+PW_GS_INTERNAL_RESOLUTION:1.0
+PW_GS_FRAME_LIMIT:disabled
+PW_GS_MAX_SCALE_FACTOR:0.0
+PW_GS_SCALER_MODE:disabled
+PW_GS_FILTER_MODE:disabled
+PW_GS_UPSCALE_SHARPNESS:10
+PW_GS_MOUSE_SENSITIVITY:0.0
+PW_GS_SDR_CONTENT_NITS:400
+PW_GS_ITM_SDR_NITS:0
+PW_GS_ITM_TARGET_NITS:0
+EOF
+            ;;
+    esac
 }
 
-# Reset GUI PW_GS_* defaults before parse-backfill from PW_GAMESCOPE_ARGS_NEW.
-pw_gamescope_reset_gui_vars () {
-    local -a gs_gui_bool_vars=(
-    PW_GS_FULLSCREEN PW_GS_FORCE_FULLSCREEN PW_GS_BORDERLESS_WINDOW PW_GS_FORCE_GRAB_CURSOR
-    PW_GS_FORCE_GRAB_KEYBOARD PW_GS_HDR_ENABLE PW_GS_HDR_ITM_ENABLE PW_GS_SDR_GAMMUT_WIDENESS
-    PW_GS_FORCE_COMPOSITION PW_GS_HDR_FORCE_SUPPORT PW_GS_HDR_FORCE_OUTPUT PW_GS_HDR_FORCE_HEATMAP
-    PW_GS_EXPOSE_WAYLAND PW_GS_REALTIME_SCHEDULING PW_GS_MANGOAPP PW_GS_BACKEND_SDL PW_GS_CURSOR_SCALE_HEIGHT
-    )
-    local gs_gui_var
-
-    for gs_gui_var in "${gs_gui_bool_vars[@]}" ; do
-        printf -v "${gs_gui_var}" "%s" "0"
-    done
-
-    PW_GS_SHOW_RESOLUTION="disabled"
-    PW_GS_INTERNAL_RESOLUTION="1.0"
-    PW_GS_FRAME_LIMIT="disabled"
-    PW_GS_MAX_SCALE_FACTOR="0.0"
-    PW_GS_SCALER_MODE="disabled"
-    PW_GS_FILTER_MODE="disabled"
-    PW_GS_UPSCALE_SHARPNESS="10"
-    PW_GS_MOUSE_SENSITIVITY="0.0"
-    PW_GS_SDR_CONTENT_NITS="400"
-    PW_GS_ITM_SDR_NITS="0"
-    PW_GS_ITM_TARGET_NITS="0"
-}
-
-# Keep only allowed gamescope flags/values before writing PW_GAMESCOPE_ARGS_NEW to .ppdb.
-pw_gamescope_sanitize_args () {
-    local gs_disabled_label="${translations[Disabled]}"
-    local gs_disable_label="${translations[Disable]}"
+# Unified gamescope processing function
+# Usage: pw_gamescope_process <command>
+# Commands: build_args, reset_vars, sanitize, parse_args
+pw_gamescope_process () {
+    local cmd="$1"
+    local gs_var gs_val gs_arg gs_next gs_arg_i
     local -a gs_args_input gs_args_output
-    local gs_arg gs_next gs_arg_i
 
-    PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW//${gs_disabled_label}/}"
-    PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW//${gs_disable_label}/}"
-    read -r -a gs_args_input <<< "${PW_GAMESCOPE_ARGS_NEW}"
+    case "$cmd" in
+        reset_vars)
+            # Reset all boolean variables to 0
+            for gs_var in $(pw_gamescope_get_config --bool-vars) ; do
+                printf -v "$gs_var" "%s" "0"
+            done
+            # Reset value variables to defaults
+            while IFS=':' read -r gs_var gs_val ; do
+                [[ -n "$gs_var" ]] && printf -v "$gs_var" "%s" "$gs_val"
+            done <<< "$(pw_gamescope_get_config --defaults)"
+            ;;
 
-    for ((gs_arg_i=0; gs_arg_i<${#gs_args_input[@]}; gs_arg_i++)) ; do
-        gs_arg="${gs_args_input[$gs_arg_i]}"
-        gs_next="${gs_args_input[$((gs_arg_i + 1))]}"
-        case "${gs_arg}" in
-            -f|-b|-g|--force-windows-fullscreen|--force-grab-cursor|--hdr-enabled|--hdr-itm-enabled|--sdr-gamut-wideness|--force-composition|--hdr-debug-force-support|--hdr-debug-force-output|--hdr-debug-heatmap|--expose-wayland|--rt|--mangoapp|--cursor-scale-height|-U|-Y)
-                gs_args_output+=("${gs_arg}")
-                ;;
-            --backend)
-                if [[ -n "${gs_next}" ]] && [[ ! "${gs_next}" =~ ^- ]] ; then
-                    gs_args_output+=("${gs_arg}" "${gs_next}")
-                    ((gs_arg_i++))
+        build_args)
+            PW_GAMESCOPE_ARGS_NEW=""
+            # Build toggle flags
+            while IFS=':' read -r gs_var gs_arg ; do
+                [[ -n "$gs_var" && "${!gs_var}" == "1" ]] && PW_GAMESCOPE_ARGS_NEW+=" ${gs_arg}"
+            done <<< "$(pw_gamescope_get_config --var-to-arg)"
+
+            # Add resolution settings
+            if [[ -n "${PW_GS_SHOW_RESOLUTION}" && "${PW_GS_SHOW_RESOLUTION}" != "disabled" ]] ; then
+                local pwgs_res_sw pwgs_res_sh pwgs_res_iw pwgs_res_ih
+                pwgs_res_sw="${PW_GS_SHOW_RESOLUTION%%x*}"
+                pwgs_res_sh="${PW_GS_SHOW_RESOLUTION##*x}"
+                pwgs_res_sw="${pwgs_res_sw%%-*}"
+                pwgs_res_sh="${pwgs_res_sh%%-*}"
+                PW_GAMESCOPE_ARGS_NEW+=" -W ${pwgs_res_sw} -H ${pwgs_res_sh}"
+
+                if [[ -n "${PW_GS_INTERNAL_RESOLUTION}" && "${PW_GS_INTERNAL_RESOLUTION}" != "0.0" ]] ; then
+                    pwgs_res_iw=$(awk -v w="$pwgs_res_sw" -v r="$PW_GS_INTERNAL_RESOLUTION" 'BEGIN { printf "%d", w * r }')
+                    pwgs_res_ih=$(awk -v h="$pwgs_res_sh" -v r="$PW_GS_INTERNAL_RESOLUTION" 'BEGIN { printf "%d", h * r }')
+                    PW_GAMESCOPE_ARGS_NEW+=" -w ${pwgs_res_iw} -h ${pwgs_res_ih}"
                 fi
-                ;;
-            -W|-H|-w|-h|-r|-m|-S|-F|-s|--sharpness|--hdr-sdr-content-nits|--hdr-itm-sdr-nits|--hdr-itm-target-nits)
-                if [[ -n "${gs_next}" ]] && [[ ! "${gs_next}" =~ ^- ]] ; then
-                    gs_args_output+=("${gs_arg}" "${gs_next}")
-                    ((gs_arg_i++))
+            fi
+
+            # Add value-based flags
+            [[ -n "${PW_GS_FRAME_LIMIT}" && "${PW_GS_FRAME_LIMIT}" != "disabled" ]] && PW_GAMESCOPE_ARGS_NEW+=" -r ${PW_GS_FRAME_LIMIT}"
+            [[ -n "${PW_GS_MAX_SCALE_FACTOR}" && "${PW_GS_MAX_SCALE_FACTOR}" != "0.0" ]] && PW_GAMESCOPE_ARGS_NEW+=" -m ${PW_GS_MAX_SCALE_FACTOR}"
+            [[ -n "${PW_GS_SCALER_MODE}" && "${PW_GS_SCALER_MODE}" != "disabled" ]] && PW_GAMESCOPE_ARGS_NEW+=" -S ${PW_GS_SCALER_MODE}"
+
+            # Handle filter mode (with legacy support)
+            if [[ -n "${PW_GS_FILTER_MODE}" && "${PW_GS_FILTER_MODE}" != "disabled" ]] ; then
+                if [[ "${PW_GS_FILTER_MODE_OLD}" == "true" ]] ; then
+                    [[ "${PW_GS_FILTER_MODE}" == "fsr" ]] && PW_GAMESCOPE_ARGS_NEW+=" -U"
+                    [[ "${PW_GS_FILTER_MODE}" == "nis" ]] && PW_GAMESCOPE_ARGS_NEW+=" -Y"
+                else
+                    PW_GAMESCOPE_ARGS_NEW+=" -F ${PW_GS_FILTER_MODE}"
                 fi
-                ;;
-        esac
-    done
+                PW_GAMESCOPE_ARGS_NEW+=" --sharpness ${PW_GS_UPSCALE_SHARPNESS}"
+            fi
 
-    PW_GAMESCOPE_ARGS_NEW="${gs_args_output[*]}"
-    [[ -n "${PW_GAMESCOPE_ARGS_NEW}" ]] && PW_GAMESCOPE_ARGS_NEW=" ${PW_GAMESCOPE_ARGS_NEW}"
-}
+            # Add remaining value flags
+            [[ -n "${PW_GS_MOUSE_SENSITIVITY}" && "${PW_GS_MOUSE_SENSITIVITY}" != "0.0" ]] && PW_GAMESCOPE_ARGS_NEW+=" -s ${PW_GS_MOUSE_SENSITIVITY}"
+            [[ -n "${PW_GS_SDR_CONTENT_NITS}" && "${PW_GS_SDR_CONTENT_NITS}" != "400" ]] && PW_GAMESCOPE_ARGS_NEW+=" --hdr-sdr-content-nits ${PW_GS_SDR_CONTENT_NITS}"
+            [[ -n "${PW_GS_ITM_SDR_NITS}" && "${PW_GS_ITM_SDR_NITS}" != "0" ]] && PW_GAMESCOPE_ARGS_NEW+=" --hdr-itm-sdr-nits ${PW_GS_ITM_SDR_NITS}"
+            [[ -n "${PW_GS_ITM_TARGET_NITS}" && "${PW_GS_ITM_TARGET_NITS}" != "0" ]] && PW_GAMESCOPE_ARGS_NEW+=" --hdr-itm-target-nits ${PW_GS_ITM_TARGET_NITS}"
+            ;;
 
-# Parse gamescope args string back into GUI variables.
-pw_gamescope_parse_args () {
-    local -A gs_flag_to_var=(
-    [-f]="PW_GS_FULLSCREEN"
-    [--force-windows-fullscreen]="PW_GS_FORCE_FULLSCREEN"
-    [-b]="PW_GS_BORDERLESS_WINDOW"
-    [--force-grab-cursor]="PW_GS_FORCE_GRAB_CURSOR"
-    [-g]="PW_GS_FORCE_GRAB_KEYBOARD"
-    [--hdr-enabled]="PW_GS_HDR_ENABLE"
-    [--hdr-itm-enabled]="PW_GS_HDR_ITM_ENABLE"
-    [--sdr-gamut-wideness]="PW_GS_SDR_GAMMUT_WIDENESS"
-    [--force-composition]="PW_GS_FORCE_COMPOSITION"
-    [--hdr-debug-force-support]="PW_GS_HDR_FORCE_SUPPORT"
-    [--hdr-debug-force-output]="PW_GS_HDR_FORCE_OUTPUT"
-    [--hdr-debug-heatmap]="PW_GS_HDR_FORCE_HEATMAP"
-    [--expose-wayland]="PW_GS_EXPOSE_WAYLAND"
-    [--rt]="PW_GS_REALTIME_SCHEDULING"
-    [--mangoapp]="PW_GS_MANGOAPP"
-    [--cursor-scale-height]="PW_GS_CURSOR_SCALE_HEIGHT"
-    )
-    local -A gs_value_to_var=(
-    [-W]="PWGS_OUTPUT_WIDTH"
-    [-H]="PWGS_OUTPUT_HEIGHT"
-    [-r]="PW_GS_FRAME_LIMIT"
-    [-m]="PW_GS_MAX_SCALE_FACTOR"
-    [-S]="PW_GS_SCALER_MODE"
-    [-F]="PW_GS_FILTER_MODE"
-    [--sharpness]="PW_GS_UPSCALE_SHARPNESS"
-    [-s]="PW_GS_MOUSE_SENSITIVITY"
-    [--hdr-sdr-content-nits]="PW_GS_SDR_CONTENT_NITS"
-    [--hdr-itm-sdr-nits]="PW_GS_ITM_SDR_NITS"
-    [--hdr-itm-target-nits]="PW_GS_ITM_TARGET_NITS"
-    [-w]="PWGS_INTERNAL_WIDTH"
-    [-h]="PWGS_INTERNAL_HEIGHT"
-    )
-    local -a PW_GS_ARGS_ARRAY
-    local gs_arg gs_next gs_var gs_arg_i
+        sanitize)
+            local gs_disabled="${translations[Disabled]}" gs_disable="${translations[Disable]}"
+            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW//${gs_disabled}/}"
+            PW_GAMESCOPE_ARGS_NEW="${PW_GAMESCOPE_ARGS_NEW//${gs_disable}/}"
+            read -r -a gs_args_input <<< "${PW_GAMESCOPE_ARGS_NEW}"
 
-    pw_gamescope_reset_gui_vars
-    read -r -a PW_GS_ARGS_ARRAY <<< "${PW_GAMESCOPE_ARGS_NEW}"
-    unset PWGS_INTERNAL_WIDTH PWGS_INTERNAL_HEIGHT
+            for ((gs_arg_i=0; gs_arg_i<${#gs_args_input[@]}; gs_arg_i++)) ; do
+                gs_arg="${gs_args_input[$gs_arg_i]}"
+                gs_next="${gs_args_input[$((gs_arg_i + 1))]}"
+                case "${gs_arg}" in
+                    -f|-b|-g|--force-windows-fullscreen|--force-grab-cursor|--hdr-enabled|--hdr-itm-enabled|--sdr-gamut-wideness|--force-composition|--hdr-debug-force-support|--hdr-debug-force-output|--hdr-debug-heatmap|--expose-wayland|--rt|--mangoapp|-U|-Y)
+                        gs_args_output+=("${gs_arg}") ;;
+                    --backend|-W|-H|-w|-h|-r|-m|-S|-F|-s|--sharpness|--hdr-sdr-content-nits|--hdr-itm-sdr-nits|--hdr-itm-target-nits)
+                        if [[ -n "${gs_next}" && ! "${gs_next}" =~ ^- ]] ; then
+                            gs_args_output+=("${gs_arg}" "${gs_next}")
+                            ((gs_arg_i++))
+                        fi ;;
+                esac
+            done
 
-    for ((gs_arg_i=0; gs_arg_i<${#PW_GS_ARGS_ARRAY[@]}; gs_arg_i++)) ; do
-        gs_arg="${PW_GS_ARGS_ARRAY[$gs_arg_i]}"
-        gs_var="${gs_flag_to_var[$gs_arg]}"
+            PW_GAMESCOPE_ARGS_NEW="${gs_args_output[*]}"
+            [[ -n "${PW_GAMESCOPE_ARGS_NEW}" ]] && PW_GAMESCOPE_ARGS_NEW=" ${PW_GAMESCOPE_ARGS_NEW}"
+            ;;
 
-        if [[ -n "${gs_var}" ]] ; then
-            printf -v "${gs_var}" "%s" "1"
-            continue
-        fi
+        parse_args)
+            local -A flag_map val_map
+            # Load flag mappings
+            while IFS=':' read -r gs_arg gs_var ; do
+                [[ -n "$gs_arg" ]] && flag_map[$gs_arg]="$gs_var"
+            done <<< "$(pw_gamescope_get_config --flag-to-var)"
+            # Load value mappings
+            while IFS=':' read -r gs_arg gs_var ; do
+                [[ -n "$gs_arg" ]] && val_map[$gs_arg]="$gs_var"
+            done <<< "$(pw_gamescope_get_config --arg-to-var)"
 
-        case "${gs_arg}" in
-            --backend)
-                gs_next="${PW_GS_ARGS_ARRAY[$((gs_arg_i + 1))]}"
-                if [[ -n "${gs_next}" && "${gs_next}" == "sdl" ]] ; then
-                    PW_GS_BACKEND_SDL="1"
+            # Reset and parse
+            pw_gamescope_process reset_vars
+            read -r -a gs_args_input <<< "${PW_GAMESCOPE_ARGS_NEW}"
+
+            for ((gs_arg_i=0; gs_arg_i<${#gs_args_input[@]}; gs_arg_i++)) ; do
+                gs_arg="${gs_args_input[$gs_arg_i]}"
+                gs_var="${flag_map[$gs_arg]}"
+
+                if [[ -n "$gs_var" ]] ; then
+                    printf -v "$gs_var" "%s" "1"
+                    continue
                 fi
-                ;;
-            -U) PW_GS_FILTER_MODE="fsr" ;;
-            -Y) PW_GS_FILTER_MODE="nis" ;;
-            *)
-                gs_var="${gs_value_to_var[$gs_arg]}"
-                if [[ -n "${gs_var}" ]] ; then
-                    gs_next="${PW_GS_ARGS_ARRAY[$((gs_arg_i + 1))]}"
-                    if [[ -n "${gs_next}" ]] && [[ ! "${gs_next}" =~ ^- ]] ; then
-                        printf -v "${gs_var}" "%s" "${gs_next}"
-                        ((gs_arg_i++))
+
+                case "$gs_arg" in
+                    --backend)
+                        gs_next="${gs_args_input[$((gs_arg_i + 1))]}"
+                        [[ "$gs_next" == "sdl" ]] && PW_GS_BACKEND_SDL="1"
+                        ;;
+                    -U) PW_GS_FILTER_MODE="fsr" ;;
+                    -Y) PW_GS_FILTER_MODE="nis" ;;
+                    *)
+                        gs_var="${val_map[$gs_arg]}"
+                        if [[ -n "$gs_var" ]] ; then
+                            gs_next="${gs_args_input[$((gs_arg_i + 1))]}"
+                            if [[ -n "$gs_next" && ! "$gs_next" =~ ^- ]] ; then
+                                printf -v "$gs_var" "%s" "$gs_next"
+                                ((gs_arg_i++))
+                            fi
+                        fi
+                        ;;
+                esac
+            done
+
+            # Reconstruct resolution and internal scaling
+            if [[ -n "${PWGS_OUTPUT_WIDTH}" && -n "${PWGS_OUTPUT_HEIGHT}" ]] ; then
+                PW_GS_SHOW_RESOLUTION="${PWGS_OUTPUT_WIDTH}x${PWGS_OUTPUT_HEIGHT}"
+            fi
+            [[ ! "${PW_GS_SHOW_RESOLUTION}" =~ ^[0-9]+x[0-9]+$ ]] && PW_GS_SHOW_RESOLUTION="disabled"
+
+            if [[ "${PW_GS_SHOW_RESOLUTION}" != "disabled" && -n "${PWGS_INTERNAL_WIDTH}" && -n "${PWGS_INTERNAL_HEIGHT}" ]] ; then
+                local out_w out_h
+                out_w="${PW_GS_SHOW_RESOLUTION%%x*}"
+                out_h="${PW_GS_SHOW_RESOLUTION##*x}"
+                if [[ "$out_w" != "0" && "$out_h" != "0" ]] ; then
+                    if [[ "${PWGS_INTERNAL_WIDTH}" == "$out_w" && "${PWGS_INTERNAL_HEIGHT}" == "$out_h" ]] ; then
+                        PW_GS_INTERNAL_RESOLUTION="1.0"
+                    else
+                        PW_GS_INTERNAL_RESOLUTION="$(awk -v iw="${PWGS_INTERNAL_WIDTH}" -v ow="$out_w" 'BEGIN { printf "%.1f", iw / ow }')"
                     fi
                 fi
-                ;;
-        esac
-    done
-
-    if [[ -n "${PWGS_OUTPUT_WIDTH}" && -n "${PWGS_OUTPUT_HEIGHT}" ]] ; then
-        PW_GS_SHOW_RESOLUTION="${PWGS_OUTPUT_WIDTH}x${PWGS_OUTPUT_HEIGHT}"
-    fi
-    if [[ ! "${PW_GS_SHOW_RESOLUTION}" =~ ^[0-9]+x[0-9]+$ ]] ; then
-        PW_GS_SHOW_RESOLUTION="disabled"
-    fi
-
-    if [[ "${PW_GS_SHOW_RESOLUTION}" != "disabled" ]] \
-    && [[ -n "${PWGS_INTERNAL_WIDTH}" && -n "${PWGS_INTERNAL_HEIGHT}" ]]
-    then
-        GS_RES_W="${PW_GS_SHOW_RESOLUTION%x*}"
-        GS_RES_H="${PW_GS_SHOW_RESOLUTION#*x}"
-        if [[ -n "${GS_RES_W}" && -n "${GS_RES_H}" ]] \
-        && [[ "${GS_RES_W}" != "0" && "${GS_RES_H}" != "0" ]]
-        then
-            if [[ "${PWGS_INTERNAL_WIDTH}" == "${GS_RES_W}" && "${PWGS_INTERNAL_HEIGHT}" == "${GS_RES_H}" ]] ; then
-                PW_GS_INTERNAL_RESOLUTION="1.0"
-            else
-                PW_GS_INTERNAL_RESOLUTION="$(awk -v iw="${PWGS_INTERNAL_WIDTH}" -v ow="${GS_RES_W}" 'BEGIN { printf "%.1f", iw / ow }')"
             fi
-        fi
-    fi
+            ;;
+    esac
 }
 
 # GUI GAMESCOPE
@@ -6592,9 +6601,8 @@ gui_gamescope () {
         [[ $(<"${PW_TMPFS_PATH}/gamescope.tmp") =~ '--mangoapp' ]] && add_to_array "PW_GS_LIST" PW_GS_MANGOAPP
         [[ $(<"${PW_TMPFS_PATH}/gamescope.tmp") =~ '--backend' ]] && add_to_array "PW_GS_LIST" PW_GS_BACKEND_SDL
         check_wayland_session && add_to_array "PW_GS_LIST" PW_GS_SDL_VIDEODRIVER_X11
-        [[ $(<"${PW_TMPFS_PATH}/gamescope.tmp") =~ '--cursor-scale-height' ]] && add_to_array "PW_GS_LIST" PW_GS_CURSOR_SCALE_HEIGHT
 
-        #debian bookworm fix
+        # Debian bookworm fix
         if [[ $(<"${PW_TMPFS_PATH}/gamescope.tmp") =~ '-U, --fsr-upscaling' ]] ; then
             GS_FILTER_CB="fsr!nis"
             export PW_GS_FILTER_MODE_OLD="true"
@@ -6605,11 +6613,10 @@ gui_gamescope () {
         fi
     fi
 
-    # Backfill PW_GS_* from PW_GAMESCOPE_ARGS_NEW so yad widgets reflect saved args.
-    if [[ -n "${PW_GAMESCOPE_ARGS_NEW// }" ]] ; then
-        pw_gamescope_parse_args
-    fi
+    # Backfill PW_GS_* from PW_GAMESCOPE_ARGS_NEW so yad widgets reflect saved args
+    [[ -n "${PW_GAMESCOPE_ARGS_NEW// }" ]] && pw_gamescope_process parse_args
 
+    # Set info variables for tooltips
     PW_GS_FULLSCREEN_INFO=${translations[Make the window fullscreen]}
     PW_GS_FORCE_FULLSCREEN_INFO=${translations[Force windows inside of gamescope to be the size of the nested display (fullscreen)]}
     PW_GS_BORDERLESS_WINDOW_INFO=${translations[Make the window borderless. Working only with backend sdl or X11 session.]}
@@ -6628,7 +6635,6 @@ gui_gamescope () {
     PW_GS_MANGOAPP_INFO=${translations[Launch with the mangoapp (mangohud) performance overlay enabled. You should use this instead of using mangohud on the game or gamescope.]}
     PW_GS_BACKEND_SDL_INFO=${translations[Use sdl backend. (by default wayland backend is used).]}
     PW_GS_SDL_VIDEODRIVER_X11_INFO=${translations[Force use sdl videodriver x11, works with BACKEND SDL. (Default is wayland)]}
-    PW_GS_CURSOR_SCALE_HEIGHT_INFO=${translations[if specified, sets a base output height to linearly scale the cursor against.]}
 
     unset ADD_CHK_BOX_GS
     if [[ $GAMESCOPE_INSTALLED == "1" ]] ; then
@@ -6722,7 +6728,7 @@ gui_gamescope () {
             ;;
     esac
 
-    # Read yad values into PW_GS_* and then rebuild PW_GAMESCOPE_ARGS_NEW from that state.
+    # Read yad values into PW_GS_* and then rebuild PW_GAMESCOPE_ARGS_NEW from that state
     read -r -a output_yad_gs <"${PW_TMPFS_PATH}/tmp_yad_gs_set"
     bool_from_yad="0"
     for boole_to_int in "${PW_GS_LIST[@]}" ; do
@@ -6750,12 +6756,12 @@ gui_gamescope () {
     PW_GS_ITM_SDR_NITS="${PW_ADD_SETTINGS_GS[9]}"
     PW_GS_ITM_TARGET_NITS="${PW_ADD_SETTINGS_GS[10]}"
 
-    # Rebuild args from current PW_GS_* values produced by yad widgets.
-    pw_gamescope_build_args
+    # Rebuild args from current PW_GS_* values produced by yad widgets
+    pw_gamescope_process build_args
 
-    pw_gamescope_sanitize_args
+    pw_gamescope_process sanitize
 
-    # Keep ppdb export list consistent before re-writing gamescope keys.
+    # Keep ppdb export list consistent before re-writing gamescope keys
     sed -i '/^export PW_GS_/d' "${portwine_exe}.ppdb"
     sed -i '/^export PW_GAMESCOPE_ARGS_NEW=/d' "${portwine_exe}.ppdb"
     edit_db_from_gui "${gs_ppdb_vars[@]}"
