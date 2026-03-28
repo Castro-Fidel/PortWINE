@@ -445,6 +445,7 @@ case "$1" in
 --winereg                                           ${translations[Open wine registry editor, requires WINE version and prefix name]}
 --wine_uninstaller                                  ${translations[Open wine uninstaller, requires WINE version and prefix name]}
 --clear_pfx                                         ${translations[Clear specified prefix, requires WINE version and prefix name]}
+--mangohud-preview                                  ${translations[Starts MangoHud preview in vkcube (optional argument: inline MangoHud config)]}
 --initial                                           ${translations[Initial setup command]}
 --autoinstall                                       ${translations[--autoinstall and the name of what needs to be installed is given in the list below:]}
 
@@ -459,6 +460,7 @@ ${translations[Usage examples:]}
   portproton cli --backup-prefix DEFAULT /path/to/backup/directory
   portproton cli --restore-prefix /path/to/backup/file.ppack
   portproton cli --winecfg WINE_LG DEFAULT
+  portproton cli --mangohud-preview "fps,frametime,cpu_temp,gpu_temp"
   portproton cli --autoinstall [script_name_from_pw_autoinstall]
             "
         }
@@ -622,6 +624,10 @@ ${translations[Usage examples:]}
     --clear_pfx)
         get_wine_and_pfx "$2" "$3"
         pw_clear_pfx
+        exit $?
+        ;;
+    --mangohud-preview)
+        pw_mangohud_preview "${2:-}"
         exit $?
         ;;
     --initial)
