@@ -1861,6 +1861,30 @@ pw_mangohud_check () {
     return 0
 }
 
+pw_mangohud_preview () {
+    local preview_config="${1:-}"
+
+    if [[ -n "$preview_config" ]] ; then
+        export MANGOHUD_CONFIG="$preview_config"
+        print_info "MangoHud preview inline config in use: $MANGOHUD_CONFIG"
+    fi
+
+    PW_MANGOHUD="1"
+    PW_LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32"
+    PW_VK_LAYER_PATH="${PW_PLUGINS_PATH}/portable/share/vulkan/implicit_layer.d"
+
+    export PW_MANGOHUD
+
+    pw_mangohud_check
+    env \
+    $PW_ADD_VAR_SLR \
+    LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
+    VK_ADD_IMPLICIT_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+    VK_ADD_LAYER_PATH="${PW_VK_LAYER_PATH}" \
+    VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
+    "${PW_PLUGINS_PATH}/portable/bin/vkcube"
+}
+
 pw_lsfg_vk_check () {
     if [[ "${PW_USE_LS_FRAME_GEN}" == "1" ]] ; then
         local lsfg_vk_path="$PW_PLUGINS_PATH/fake_dlss/lsfg-vk-$PW_LSFG_VK_VER"
@@ -6216,17 +6240,7 @@ gui_mangohud () {
     edit_db_from_gui MANGOHUD_CONFIG PW_MANGOHUD FPS_LIMIT
 
     if [[ "${YAD_MANGOHUD_STATUS}" == "184" ]] ; then
-        PW_MANGOHUD="1"
-        pw_init_runtime
-        pw_mangohud_check
-        ${pw_runtime} \
-        $PW_ADD_VAR_SLR \
-        LD_LIBRARY_PATH="${PW_LD_LIBRARY_PATH}" \
-        LD_PRELOAD="${PW_LD_PRELOAD}" \
-        VK_ADD_IMPLICIT_LAYER_PATH="${PW_VK_LAYER_PATH}" \
-        VK_ADD_LAYER_PATH="${PW_VK_LAYER_PATH}" \
-        VK_INSTANCE_LAYERS="${PW_VK_INSTANCE_LAYERS}" \
-        "${PW_PLUGINS_PATH}/portable/bin/vkcube"
+        pw_mangohud_preview "${MANGOHUD_CONFIG}"
         gui_mangohud
     fi
 
