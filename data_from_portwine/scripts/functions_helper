@@ -5756,6 +5756,7 @@ gui_edit_db () {
     fi
 
     "${pw_yad}" --plug=$KEY_EDIT_DB_GUI --tabnum="2" --form --separator="%" --columns=1 \
+    --file-filter="EXE | *.exe *.EXE" \
     --field="${translations[Change the version of <b>WINDOWS</b> emulation]}!${translations[Changing the <b>WINDOWS</b> emulation version may be required to run older games. <b>WINDOWS</b> versions below 10 do not support new games with DirectX 12]} :CB" "${ADD_WINVER_EDIT_DB}" \
     --field="${translations[AUTOINSTALL WITH <b>WINETRICKS</b>]}!${translations[Automatically install with <b>WINETRICKS</b> additional libraries required to run the game/program. List of libraries separated by spaces]} :CBE" "$(combobox_fix --empty "${PW_DLL_INSTALL}" "vcrun2019 corefonts lucida")" \
     --field="${translations[Forced to use/disable libraries]}!${translations[Forced to use/disable the library only for the given application. (There are examples in the drop-down list)
@@ -5769,6 +5770,8 @@ A brief instruction:
     * library=b,n - use <b>WINE</b> library and then <b>WINDOWS</b>
     * library= - disable the use of this library]} :CBE" "$(combobox_fix --empty "${WINEDLLOVERRIDES}" "libglesv2=!d3dx9_36,d3dx9_42=n,b;mfc120=b,n")" \
     --field="${translations[ADD ARGUMENTS FOR .EXE FILE]}!${translations[Adding an argument after the <b>.exe</b> file, just like you would add an argument in a shortcut on a <b>WINDOWS </b> system]} :CBE" "$(combobox_fix --empty "\\${LAUNCH_PARAMETERS}" "-dx11 -skipintro 1")" \
+    --field="RUN SECOND .EXE AFTER MAIN!Path to second .exe that should be started after the main one. Leave empty to disable.:FL" "${PW_RUN_AFTER_EXE}" \
+    --field="SECOND .EXE DELAY (seconds)!Delay before starting the second .exe after the main one.:NUM" "${PW_RUN_AFTER_DELAY:-3}!1..600" \
     --field="${translations[Limit the use of processor cores]}!${translations[Limiting the number of CPU cores is useful for Unity games (It is recommended to set the value equal to 8)]} :CB" "$(combobox_fix --disabled "${CPU_LIMIT_VAR}" "${GET_LOGICAL_CORE}")" \
     --field="${translations[Forcibly select the OpenGL version for the game]}!${translations[You can select the required OpenGL version, some games require a forced Compatibility Profile (COMPAT). (Examples are in the drop-down list)]} :CB" "$(combobox_fix --disabled "${PW_MESA_GL_VERSION_OVERRIDE}" "4.6COMPAT!4.5COMPAT!4.3COMPAT!4.1COMPAT!3.3COMPAT!3.2COMPAT")" \
     --field="${translations[Forcibly select the VKD3D feature level]}!${translations[You can set a forced feature level VKD3D for games on DirectX12]} :$VKD3D_CB" "$(combobox_fix --disabled "${PW_VKD3D_FEATURE_LEVEL}" "12_2!12_1!12_0!11_1!11_0")" \
@@ -5825,13 +5828,15 @@ Binding a game to a single node reduces memory‑access latency and limits costl
         PW_DLL_INSTALL="${PW_ADD_SETTINGS[1]}"
         WINEDLLOVERRIDES="${PW_ADD_SETTINGS[2]}"
         LAUNCH_PARAMETERS="${PW_ADD_SETTINGS[3]}"
-        CPU_LIMIT="${PW_ADD_SETTINGS[4]}"
-        PW_MESA_GL_VERSION_OVERRIDE="${PW_ADD_SETTINGS[5]}"
-        PW_VKD3D_FEATURE_LEVEL="${PW_ADD_SETTINGS[6]}"
-        PW_LOCALE_SELECT="${PW_ADD_SETTINGS[7]}"
-        PW_MESA_VK_WSI_PRESENT_MODE="${PW_ADD_SETTINGS[8]}"
-        PW_SOUND_DRIVER_USE="${PW_ADD_SETTINGS[9]}"
-        NUMA_NODE_INDEX="${PW_ADD_SETTINGS[10]//[[:space:]]/}"
+        PW_RUN_AFTER_EXE="${PW_ADD_SETTINGS[4]}"
+        PW_RUN_AFTER_DELAY="${PW_ADD_SETTINGS[5]}"
+        CPU_LIMIT="${PW_ADD_SETTINGS[6]}"
+        PW_MESA_GL_VERSION_OVERRIDE="${PW_ADD_SETTINGS[7]}"
+        PW_VKD3D_FEATURE_LEVEL="${PW_ADD_SETTINGS[8]}"
+        PW_LOCALE_SELECT="${PW_ADD_SETTINGS[9]}"
+        PW_MESA_VK_WSI_PRESENT_MODE="${PW_ADD_SETTINGS[10]}"
+        PW_SOUND_DRIVER_USE="${PW_ADD_SETTINGS[11]}"
+        NUMA_NODE_INDEX="${PW_ADD_SETTINGS[12]//[[:space:]]/}"
     fi
 
     if [[ $NUMA_NODE_INDEX =~ ^[0-9]+$ ]] && [[ -v NODE_MAP[$NUMA_NODE_INDEX] ]] ; then
@@ -5856,7 +5861,7 @@ Binding a game to a single node reduces memory‑access latency and limits costl
             rm_from_array "PW_EDIT_DB_LIST" "$dont_touch_var"
         done
     fi
-    PW_EDIT_DB_FINAL_LIST=("${PW_EDIT_DB_LIST[@]}" LAUNCH_PARAMETERS PW_WINDOWS_VER PW_DLL_INSTALL \
+    PW_EDIT_DB_FINAL_LIST=("${PW_EDIT_DB_LIST[@]}" LAUNCH_PARAMETERS PW_RUN_AFTER_EXE PW_RUN_AFTER_DELAY PW_WINDOWS_VER PW_DLL_INSTALL \
     WINEDLLOVERRIDES PW_WINE_CPU_TOPOLOGY PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL \
     PW_LOCALE_SELECT PW_MESA_VK_WSI_PRESENT_MODE PW_SOUND_DRIVER_USE \
     PW_CPU_NUMA_NODE_INDEX PW_TASKSET_SLR)
