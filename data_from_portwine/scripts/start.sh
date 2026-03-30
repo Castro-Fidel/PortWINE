@@ -77,6 +77,12 @@ if [[ ${1,,} == "cli" ]] ; then
 fi
 check_variables PW_CLI "0"
 
+if [[ "${1:-}" == file://* ]] ; then
+    pw_file_path="${1#file://}"
+    pw_file_path="${pw_file_path//%20/ }"
+    set -- "${pw_file_path}" "${@:2}"
+fi
+
 if [[ "${1,,}" =~ \.ppack$ ]] ; then
     export PW_NO_RESTART_PPDB="1"
     export PW_DISABLED_CREATE_DB="1"
