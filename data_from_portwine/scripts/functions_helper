@@ -3378,6 +3378,170 @@ pw_optiscaler_sync_files () {
     set_to_dxvk_conf nvidia_new
 }
 
+pw_dgvoodoo2_apply_conf () {
+    local DGV2CONF
+    DGV2CONF="${WINEPREFIX:-${PORT_WINE_PREFIX}}/drive_c/windows/syswow64/dgVoodoo.conf"
+    if [[ -z "${DGV2CONF}" ]] || [[ ! -f "${DGV2CONF}" ]] ; then
+        return 1
+    fi
+
+    if [[ "${PW_DGV2_USE_DX12}" == "1" ]] ; then
+        if [[ "${PW_VULKAN_USE}" =~ ^(1|2|6)$ ]]
+        then sed -i "s/OutputAPI = d3d11_fl11_0/OutputAPI = d3d12_fl12_0/" "$DGV2CONF"
+        fi
+    fi
+
+    if [[ "${PW_DGV2_ENABLE_CRT}" == "1" ]] ; then
+        sed -i "s/ScalingMode = unspecified/ScalingMode = stretched_ar_crt/" "$DGV2CONF"
+    else
+        if [[ "${PW_DGV2_RESAMPLING}" != "disabled" ]] ; then
+            sed -i "s/ScalingMode = unspecified/ScalingMode = stretched_ar/" "$DGV2CONF"
+        elif [[ "${PW_DGV2_DISPLAY_ROI}" != "disabled" ]] ; then
+            sed -i "s/ScalingMode = unspecified/ScalingMode = stretched_ar/" "$DGV2CONF"
+        elif [[ "${PW_DGV2_CURSOR_SCALE}" != "0" ]] ; then
+            sed -i "s/ScalingMode = unspecified/ScalingMode = stretched_ar/" "$DGV2CONF"
+        else
+            sed -i "s/ScalingMode = unspecified/ScalingMode = stretched/" "$DGV2CONF"
+        fi
+    fi
+
+    [[ "${PW_DGV2_FREE_MOUSE}" == "1" ]] && sed -i "s/FreeMouse = false/FreeMouse = true/" "$DGV2CONF"
+    [[ "${PW_DGV2_FASTMEMORY}" == "1" ]] && sed -i "s/FastVideoMemoryAccess = false/FastVideoMemoryAccess = true/" "$DGV2CONF"
+    [[ "${PW_DGV2_FORCE_VSYNC}" == "1" ]] && sed -i "s/ForceVerticalSync = false/ForceVerticalSync = true/" "$DGV2CONF"
+    [[ "${PW_DGV2_DISABLE_MIPMAPPING}" == "1" ]] && sed -i "s/DisableMipmapping = false/DisableMipmapping = true/g" "$DGV2CONF"
+    [[ "${PW_DGV2_GLIDE_GAMMA_RAMP}" != "1" ]] && sed -i "s/EnableGlideGammaRamp = true/EnableGlideGammaRamp = false/" "$DGV2CONF"
+    [[ "${PW_DGV2_BLIT_STRETCH}" == "1" ]] && sed -i "s/BilinearBlitStretch = false/BilinearBlitStretch = true/" "$DGV2CONF"
+    [[ "${PW_DGV2_PHONG_SHADING}" == "1" ]] && sed -i "s/PhongShadingWhenPossible = false/PhongShadingWhenPossible = true/" "$DGV2CONF"
+    [[ "${PW_DGV2_16_BIT_DEPTH_BUFFER}" == "1" ]] && sed -i "s/16BitDepthBuffer = false/16BitDepthBuffer = true/" "$DGV2CONF"
+    [[ "${PW_DGV2_3DFX_SPLASH_SCREEN}" == "1" ]] && sed -i "s/3DfxSplashScreen = false/3DfxSplashScreen = true/" "$DGV2CONF"
+    [[ "${PW_DGV2_3DFX_WATERMARK}" == "1" ]] && sed -i "s/3DfxWatermark = false/3DfxWatermark = true/" "$DGV2CONF"
+    [[ "${PW_DGV2_FILTER_POINT_SAMPLED}" == "1" ]] && sed -i "s/KeepFilterIfPointSampled = false/KeepFilterIfPointSampled = true/" "$DGV2CONF"
+    [[ "${PW_DGV2_DGVOODOO_WATERMARK}" == "1" ]] && sed -i "s/dgVoodooWatermark = false/dgVoodooWatermark = true/" "$DGV2CONF"
+    [[ "${PW_DGV2_EMULATING_PCI_ACCESS}" == "1" ]] && sed -i "s/ForceEmulatingTruePCIAccess = false/ForceEmulatingTruePCIAccess = true/" "$DGV2CONF"
+    [[ "${PW_DGV2_INACTIVE_APP_STATE}" == "1" ]] && sed -i "s/EnableInactiveAppState = false/EnableInactiveAppState = true/" "$DGV2CONF"
+    [[ "${PW_DGV2_DISPLAY_ROI}" != "disabled" ]] && sed -i "s/DisplayROI =/DisplayROI = ${PW_DGV2_DISPLAY_ROI}, pos:centered/" "$DGV2CONF"
+    [[ "${PW_DGV2_FPS_LIMIT}" != "disabled" ]] && sed -i "s/FPSLimit = 0/FPSLimit = ${PW_DGV2_FPS_LIMIT}/" "$DGV2CONF"
+    [[ "${PW_DGV2_BIT_DEPTH}" != "disabled" ]] && sed -i "s/DesktopBitDepth =/DesktopBitDepth = ${PW_DGV2_BIT_DEPTH}/" "$DGV2CONF"
+    [[ "${PW_DGV2_CURSOR_SCALE}" != "0" ]] && sed -i "s/CursorScaleFactor = 0/CursorScaleFactor = ${PW_DGV2_CURSOR_SCALE}/" "$DGV2CONF"
+    [[ "${PW_DGV2_BRIGHTNESS}" != "100" ]] && sed -i "s/Brightness = 100/Brightness = ${PW_DGV2_BRIGHTNESS}/" "$DGV2CONF"
+    [[ "${PW_DGV2_COLOR}" != "100" ]] && sed -i "s/Color = 100/Color = ${PW_DGV2_COLOR}/" "$DGV2CONF"
+    [[ "${PW_DGV2_CONTRAST}" != "100" ]] && sed -i "s/Contrast = 100/Contrast = ${PW_DGV2_CONTRAST}/" "$DGV2CONF"
+
+    if [[ "${PW_DGV2_FILTERING}" != "disabled" ]] ; then
+        case "$PW_DGV2_FILTERING" in
+            "Point sampled") sed -i "s/\<Filtering = appdriven\>/Filtering = pointsampled/" "$DGV2CONF" ;;
+            Bilinear) sed -i "s/\<Filtering = appdriven\>/Filtering = bilinear/" "$DGV2CONF" ;;
+            "Linear mip") sed -i "s/\<Filtering = appdriven\>/Filtering = linearmip/" "$DGV2CONF" ;;
+            Trilinear) sed -i "s/\<Filtering = appdriven\>/Filtering = trilinear/" "$DGV2CONF" ;;
+            "Anisotropic 2x") sed -i "s/\<Filtering = appdriven\>/Filtering = 2/" "$DGV2CONF" ;;
+            "Anisotropic 4x") sed -i "s/\<Filtering = appdriven\>/Filtering = 4/" "$DGV2CONF" ;;
+            "Anisotropic 8x") sed -i "s/\<Filtering = appdriven\>/Filtering = 8/" "$DGV2CONF" ;;
+            "Anisotropic 16x") sed -i "s/\<Filtering = appdriven\>/Filtering = 16/" "$DGV2CONF" ;;
+        esac
+        case "$PW_DGV2_FILTERING" in
+            "Point sampled")
+                sed -i "s/TMUFiltering = appdriven/TMUFiltering = pointsampled/" "$DGV2CONF" ;;
+            Bilinear|"Linear mip"|Trilinear|"Anisotropic 2x"|"Anisotropic 4x"|"Anisotropic 8x"|"Anisotropic 16x")
+                sed -i "s/TMUFiltering = appdriven/TMUFiltering = bilinear/" "$DGV2CONF" ;;
+        esac
+    fi
+
+    if [[ "${PW_DGV2_ANTIALIASING}" != "disabled" ]] && [[ "${PW_DGV2_GLIDE_NAPALM}" != "1" ]] ; then
+        sed -i "s/Antialiasing = appdriven/Antialiasing = ${PW_DGV2_ANTIALIASING}/g" "$DGV2CONF"
+    elif [[ "${PW_DGV2_ANTIALIASING}" != "disabled" ]] && [[ "${PW_DGV2_GLIDE_NAPALM}" == "1" ]] ; then
+        sed -i "86s/Antialiasing = appdriven/Antialiasing = ${PW_DGV2_ANTIALIASING}/" "$DGV2CONF"
+    fi
+
+    if [[ "${PW_DGV2_VRAM}" != "disabled" ]] ; then
+        if [[ "${PW_DGV2_VIDEOCARD}" == "dgVoodoo2 SVGA 3D" ]] ; then
+            if [[ "${PW_DGV2_VRAM}" -le "128" ]] ; then
+                sed -i "s/VRAM = 256/VRAM = ${PW_DGV2_VRAM}/" "$DGV2CONF"
+            else
+                sed -i "s/VRAM = 256/VRAM = 64/" "$DGV2CONF"
+            fi
+        fi
+        [[ "${PW_DGV2_VIDEOCARD}" == "Geforce 4 Ti 4800" ]] && [[ "${PW_DGV2_VRAM}" -ge "64" ]] && [[ "${PW_DGV2_VRAM}" -le "256" ]] \
+            && sed -i "s/VRAM = 256/VRAM = ${PW_DGV2_VRAM}/" "$DGV2CONF"
+        [[ "${PW_DGV2_VIDEOCARD}" == "ATI Radeon 8500" ]] && [[ "${PW_DGV2_VRAM}" -ge "64" ]] && [[ "${PW_DGV2_VRAM}" -le "256" ]] \
+            && sed -i "s/VRAM = 256/VRAM = ${PW_DGV2_VRAM}/" "$DGV2CONF"
+        [[ "${PW_DGV2_VIDEOCARD}" == "Matrox Parhelia-512" ]] && [[ "${PW_DGV2_VRAM}" -ge "128" ]] && [[ "${PW_DGV2_VRAM}" -le "256" ]] \
+            && sed -i "s/VRAM = 256/VRAM = ${PW_DGV2_VRAM}/" "$DGV2CONF"
+        [[ "${PW_DGV2_VIDEOCARD}" == "GeForce FX 5700 Ultra" ]] && [[ "${PW_DGV2_VRAM}" -ge "64" ]] && [[ "${PW_DGV2_VRAM}" -le "256" ]] \
+            && sed -i "s/VRAM = 256/VRAM = ${PW_DGV2_VRAM}/" "$DGV2CONF"
+        if [[ "${PW_DGV2_VIDEOCARD}" == "GeForce 9800 GT" ]] ; then
+            if [[ "${PW_DGV2_VRAM}" -ge "512" ]] && [[ "${PW_DGV2_VRAM}" -le "1024" ]] ; then
+                sed -i "s/VRAM = 256/VRAM = ${PW_DGV2_VRAM}/" "$DGV2CONF"
+            else
+                sed -i "s/VRAM = 256/VRAM = 512/" "$DGV2CONF"
+            fi
+        fi
+    else
+        [[ "${PW_DGV2_VIDEOCARD}" == "dgVoodoo2 SVGA 3D" ]] && sed -i "s/VRAM = 256/VRAM = 64/" "$DGV2CONF"
+        [[ "${PW_DGV2_VIDEOCARD}" == "GeForce 9800 GT" ]] && sed -i "s/VRAM = 256/VRAM = 512/" "$DGV2CONF"
+    fi
+
+    if [[ "$PW_DGV2_RESOLUTION" != "disabled" ]] ; then
+        case "$PW_DGV2_RESOLUTION" in
+            "2x app resolution")
+                sed -i "s/Resolution = unforced/Resolution = 2x/g" "$DGV2CONF" ;;
+            "3x app resolution")
+                sed -i "s/Resolution = unforced/Resolution = 3x/g" "$DGV2CONF" ;;
+            "4x app resolution")
+                sed -i "s/Resolution = unforced/Resolution = 4x/g" "$DGV2CONF" ;;
+            *)
+                H_RES_DGV2="${PW_DGV2_RESOLUTION:0:4}"
+                V_RES_DGV2="${PW_DGV2_RESOLUTION:5:9}"
+                sed -i "s/Resolution = unforced/Resolution = h:$H_RES_DGV2, v:$V_RES_DGV2/g" "$DGV2CONF" ;;
+        esac
+    fi
+
+    if [[ "$PW_DGV2_RESAMPLING" != "disabled" ]] ; then
+        case "$PW_DGV2_RESAMPLING" in
+            "Point sampled") sed -i "s/Resampling = bilinear/Resampling = pointsampled/" "$DGV2CONF" ;;
+            Lanczos-2) sed -i "s/Resampling = bilinear/Resampling = lanczos-2" "$DGV2CONF" ;;
+            Bicubic) sed -i "s/Resampling = bilinear/Resampling = bicubic" "$DGV2CONF" ;;
+            Lanczos-3) sed -i "s/Resampling = bilinear/Resampling = lanczos-3" "$DGV2CONF" ;;
+        esac
+    fi
+
+    if [[ $PW_DGV2_VIDEOCARD != "dgVoodoo2 Virtual 3D" ]] ; then
+        case "$PW_DGV2_VIDEOCARD" in
+            "dgVoodoo2 SVGA 3D") sed -i "s/VideoCard = internal3D/VideoCard = svga/" "$DGV2CONF" ;;
+            "Geforce 4 Ti 4800") sed -i "s/VideoCard = internal3D/VideoCard = geforce_ti_4800/" "$DGV2CONF" ;;
+            "ATI Radeon 8500") sed -i "s/VideoCard = internal3D/VideoCard = ati_radeon_8500/" "$DGV2CONF" ;;
+            "Matrox Parhelia-512") sed -i "s/VideoCard = internal3D/VideoCard = matrox_parhelia-512/" "$DGV2CONF" ;;
+            "GeForce FX 5700 Ultra") sed -i "s/VideoCard = internal3D/VideoCard = geforce_fx_5700_ultra/" "$DGV2CONF" ;;
+            "GeForce 9800 GT") sed -i "s/VideoCard = internal3D/VideoCard = geforce_9800_gt/" "$DGV2CONF" ;;
+        esac
+        if [[ "${PW_DGV2_VIDEOCARD}" == "Voodoo Graphics" ]] ; then
+            sed -i "s/VideoCard = voodoo_2/VideoCard = voodoo_graphics/" "$DGV2CONF"
+            sed -i "s/NumberOfTMUs = 2/NumberOfTMUs = 1/" "$DGV2CONF"
+            if [[ "${PW_DGV2_ONBOARD_RAM}" == "1" ]]
+            then sed -i "s/OnboardRAM = 8/OnboardRAM = 4/" "$DGV2CONF"
+            else sed -i "s/OnboardRAM = 8/OnboardRAM = 2/" "$DGV2CONF"
+            fi
+        fi
+        if [[ "${PW_DGV2_VIDEOCARD}" == "Voodoo Rush" ]] ; then
+            sed -i "s/VideoCard = voodoo_2/VideoCard = voodoo_rush/" "$DGV2CONF"
+            sed -i "s/NumberOfTMUs = 2/NumberOfTMUs = 1/" "$DGV2CONF"
+            if [[ "${PW_DGV2_ONBOARD_RAM}" == "1" ]]
+            then sed -i "s/OnboardRAM = 8/OnboardRAM = 4/" "$DGV2CONF"
+            else sed -i "s/OnboardRAM = 8/OnboardRAM = 2/" "$DGV2CONF"
+            fi
+        fi
+        if [[ "${PW_DGV2_VIDEOCARD}" == "Voodoo 2" ]] && [[ "${PW_DGV2_ONBOARD_RAM}" == "1" ]] ; then
+            sed -i "s/OnboardRAM = 8/OnboardRAM = 12/" "$DGV2CONF"
+        fi
+        if [[ "${PW_DGV2_VIDEOCARD}" == "Voodoo Banshee" ]] ; then
+            sed -i "s/VideoCard = voodoo_2/VideoCard = voodoo_banshee/" "$DGV2CONF"
+            sed -i "s/NumberOfTMUs = 2/NumberOfTMUs = 1/" "$DGV2CONF"
+            if [[ "${PW_DGV2_ONBOARD_RAM}" == "1" ]] ; then
+                sed -i "s/OnboardRAM = 8/OnboardRAM = 16/" "$DGV2CONF"
+            fi
+        fi
+    fi
+}
+
 pw_prepare_gamescope_launch () {
     local gpu_vendor
 
@@ -4182,7 +4346,6 @@ fi
         PATH_TO_DGV2_FILES="${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}"
         CP_DGV2_FILES="d3d9 d3d8 d3dimm ddraw glide3x glide2x glide"
         try_copy_file "${PATH_TO_DGV2_FILES}/dgVoodoo.conf" "${WINEPREFIX}/drive_c/windows/syswow64/"
-        DGV2CONF="${WINEPREFIX}/drive_c/windows/syswow64/dgVoodoo.conf"
         if [[ "${PW_DGV2_DISABLE_D3D}" == "1" ]] ; then
             rm_from_var CP_DGV2_FILES "d3d9 d3d8"
         else
@@ -4219,162 +4382,7 @@ fi
             try_force_link_file "${PATH_TO_DGV2_FILES}/x32/${wine_dgv2_dll}.dll" "${WINEPREFIX}/drive_c/windows/syswow64/${wine_dgv2_dll}.dll"
             var_winedlloverride_update "${wine_dgv2_dll}=n"
         done
-        # DGVOODOO2 settings:
-        if [[ "${PW_DGV2_USE_DX12}" == "1" ]] ; then
-            if [[ "${PW_VULKAN_USE}" =~ ^(1|2|6)$ ]]
-            then sed -i "s/OutputAPI = d3d11_fl11_0/OutputAPI = d3d12_fl12_0/" "$DGV2CONF"
-            fi
-        fi
-
-        if [[ "${PW_DGV2_ENABLE_CRT}" == "1" ]] ; then
-            sed -i "s/ScalingMode = unspecified/ScalingMode = stretched_ar_crt/" "$DGV2CONF"
-        else
-            if [[ "${PW_DGV2_RESAMPLING}" != "disabled" ]] ; then
-                sed -i "s/ScalingMode = unspecified/ScalingMode = stretched_ar/" "$DGV2CONF"
-            elif [[ "${PW_DGV2_DISPLAY_ROI}" != "disabled" ]] ; then
-                sed -i "s/ScalingMode = unspecified/ScalingMode = stretched_ar/" "$DGV2CONF"
-            elif [[ "${PW_DGV2_CURSOR_SCALE}" != "0" ]] ; then
-                sed -i "s/ScalingMode = unspecified/ScalingMode = stretched_ar/" "$DGV2CONF"
-            else
-                sed -i "s/ScalingMode = unspecified/ScalingMode = stretched/" "$DGV2CONF"
-            fi
-        fi
-
-        [[ "${PW_DGV2_FREE_MOUSE}" == "1" ]] && sed -i "s/FreeMouse = false/FreeMouse = true/" "$DGV2CONF"
-        [[ "${PW_DGV2_FASTMEMORY}" == "1" ]] && sed -i "s/FastVideoMemoryAccess = false/FastVideoMemoryAccess = true/" "$DGV2CONF"
-        [[ "${PW_DGV2_FORCE_VSYNC}" == "1" ]] && sed -i "s/ForceVerticalSync = false/ForceVerticalSync = true/" "$DGV2CONF"
-        [[ "${PW_DGV2_DISABLE_MIPMAPPING}" == "1" ]] && sed -i "s/DisableMipmapping = false/DisableMipmapping = true/g" "$DGV2CONF"
-        [[ "${PW_DGV2_GLIDE_GAMMA_RAMP}" != "1" ]] && sed -i "s/EnableGlideGammaRamp = true/EnableGlideGammaRamp = false/" "$DGV2CONF"
-        [[ "${PW_DGV2_BLIT_STRETCH}" == "1" ]] && sed -i "s/BilinearBlitStretch = false/BilinearBlitStretch = true/" "$DGV2CONF"
-        [[ "${PW_DGV2_PHONG_SHADING}" == "1" ]] && sed -i "s/PhongShadingWhenPossible = false/PhongShadingWhenPossible = true/" "$DGV2CONF"
-        [[ "${PW_DGV2_16_BIT_DEPTH_BUFFER}" == "1" ]] && sed -i "s/16BitDepthBuffer = false/16BitDepthBuffer = true/" "$DGV2CONF"
-        [[ "${PW_DGV2_3DFX_SPLASH_SCREEN}" == "1" ]] && sed -i "s/3DfxSplashScreen = false/3DfxSplashScreen = true/" "$DGV2CONF"
-        [[ "${PW_DGV2_3DFX_WATERMARK}" == "1" ]] && sed -i "s/3DfxWatermark = false/3DfxWatermark = true/" "$DGV2CONF"
-        [[ "${PW_DGV2_FILTER_POINT_SAMPLED}" == "1" ]] && sed -i "s/KeepFilterIfPointSampled = false/KeepFilterIfPointSampled = true/" "$DGV2CONF"
-        [[ "${PW_DGV2_DGVOODOO_WATERMARK}" == "1" ]] && sed -i "s/dgVoodooWatermark = false/dgVoodooWatermark = true/" "$DGV2CONF"
-        [[ "${PW_DGV2_EMULATING_PCI_ACCESS}" == "1" ]] && sed -i "s/ForceEmulatingTruePCIAccess = false/ForceEmulatingTruePCIAccess = true/" "$DGV2CONF"
-        [[ "${PW_DGV2_INACTIVE_APP_STATE}" == "1" ]] && sed -i "s/EnableInactiveAppState = false/EnableInactiveAppState = true/" "$DGV2CONF"
-        [[ "${PW_DGV2_DISPLAY_ROI}" != "disabled" ]] && sed -i "s/DisplayROI =/DisplayROI = ${PW_DGV2_DISPLAY_ROI}, pos:centered/" "$DGV2CONF"
-        [[ "${PW_DGV2_FPS_LIMIT}" != "disabled" ]] && sed -i "s/FPSLimit = 0/FPSLimit = ${PW_DGV2_FPS_LIMIT}/" "$DGV2CONF"
-        [[ "${PW_DGV2_BIT_DEPTH}" != "disabled" ]] && sed -i "s/DesktopBitDepth =/DesktopBitDepth = ${PW_DGV2_BIT_DEPTH}/" "$DGV2CONF"
-        [[ "${PW_DGV2_CURSOR_SCALE}" != "0" ]] && sed -i "s/CursorScaleFactor = 0/CursorScaleFactor = ${PW_DGV2_CURSOR_SCALE}/" "$DGV2CONF"
-        [[ "${PW_DGV2_BRIGHTNESS}" != "100" ]] && sed -i "s/Brightness = 100/Brightness = ${PW_DGV2_BRIGHTNESS}/" "$DGV2CONF"
-        [[ "${PW_DGV2_COLOR}" != "100" ]] && sed -i "s/Color = 100/Color = ${PW_DGV2_COLOR}/" "$DGV2CONF"
-        [[ "${PW_DGV2_CONTRAST}" != "100" ]] && sed -i "s/Contrast = 100/Contrast = ${PW_DGV2_CONTRAST}/" "$DGV2CONF"
-
-        if [[ "${PW_DGV2_FILTERING}" != "disabled" ]] ; then
-            case "$PW_DGV2_FILTERING" in
-                "Point sampled") sed -i "s/\<Filtering = appdriven\>/Filtering = pointsampled/" "$DGV2CONF" ;;
-                Bilinear) sed -i "s/\<Filtering = appdriven\>/Filtering = bilinear/" "$DGV2CONF" ;;
-                "Linear mip") sed -i "s/\<Filtering = appdriven\>/Filtering = linearmip/" "$DGV2CONF" ;;
-                Trilinear) sed -i "s/\<Filtering = appdriven\>/Filtering = trilinear/" "$DGV2CONF" ;;
-                "Anisotropic 2x") sed -i "s/\<Filtering = appdriven\>/Filtering = 2/" "$DGV2CONF" ;;
-                "Anisotropic 4x") sed -i "s/\<Filtering = appdriven\>/Filtering = 4/" "$DGV2CONF" ;;
-                "Anisotropic 8x") sed -i "s/\<Filtering = appdriven\>/Filtering = 8/" "$DGV2CONF" ;;
-                "Anisotropic 16x") sed -i "s/\<Filtering = appdriven\>/Filtering = 16/" "$DGV2CONF" ;;
-            esac
-            case "$PW_DGV2_FILTERING" in
-                "Point sampled")
-                    sed -i "s/TMUFiltering = appdriven/TMUFiltering = pointsampled/" "$DGV2CONF" ;;
-                Bilinear|"Linear mip"|Trilinear|"Anisotropic 2x"|"Anisotropic 4x"|"Anisotropic 8x"|"Anisotropic 16x")
-                    sed -i "s/TMUFiltering = appdriven/TMUFiltering = bilinear/" "$DGV2CONF" ;;
-            esac
-        fi
-
-        if [[ "${PW_DGV2_ANTIALIASING}" != "disabled" ]] && [[ "${PW_DGV2_GLIDE_NAPALM}" != "1" ]] ; then
-            sed -i "s/Antialiasing = appdriven/Antialiasing = ${PW_DGV2_ANTIALIASING}/g" "$DGV2CONF"
-        elif [[ "${PW_DGV2_ANTIALIASING}" != "disabled" ]] && [[ "${PW_DGV2_GLIDE_NAPALM}" == "1" ]] ; then
-            sed -i "86s/Antialiasing = appdriven/Antialiasing = ${PW_DGV2_ANTIALIASING}/" "$DGV2CONF"
-        fi
-
-        if [[ "${PW_DGV2_VRAM}" != "disabled" ]] ; then
-            if [[ "${PW_DGV2_VIDEOCARD}" == "dgVoodoo2 SVGA 3D" ]] ; then
-                if [[ "${PW_DGV2_VRAM}" -le "128" ]] ; then
-                    sed -i "s/VRAM = 256/VRAM = ${PW_DGV2_VRAM}/" "$DGV2CONF"
-                else
-                    sed -i "s/VRAM = 256/VRAM = 64/" "$DGV2CONF"
-                fi
-            fi
-            [[ "${PW_DGV2_VIDEOCARD}" == "Geforce 4 Ti 4800" ]] && [[ "${PW_DGV2_VRAM}" -ge "64" ]] && [[ "${PW_DGV2_VRAM}" -le "256" ]] \
-                && sed -i "s/VRAM = 256/VRAM = ${PW_DGV2_VRAM}/" "$DGV2CONF"
-            [[ "${PW_DGV2_VIDEOCARD}" == "ATI Radeon 8500" ]] && [[ "${PW_DGV2_VRAM}" -ge "64" ]] && [[ "${PW_DGV2_VRAM}" -le "256" ]] \
-                && sed -i "s/VRAM = 256/VRAM = ${PW_DGV2_VRAM}/" "$DGV2CONF"
-            [[ "${PW_DGV2_VIDEOCARD}" == "Matrox Parhelia-512" ]] && [[ "${PW_DGV2_VRAM}" -ge "128" ]] && [[ "${PW_DGV2_VRAM}" -le "256" ]] \
-                && sed -i "s/VRAM = 256/VRAM = ${PW_DGV2_VRAM}/" "$DGV2CONF"
-            [[ "${PW_DGV2_VIDEOCARD}" == "GeForce FX 5700 Ultra" ]] && [[ "${PW_DGV2_VRAM}" -ge "64" ]] && [[ "${PW_DGV2_VRAM}" -le "256" ]] \
-                && sed -i "s/VRAM = 256/VRAM = ${PW_DGV2_VRAM}/" "$DGV2CONF"
-            if [[ "${PW_DGV2_VIDEOCARD}" == "GeForce 9800 GT" ]] ; then
-                if [[ "${PW_DGV2_VRAM}" -ge "512" ]] && [[ "${PW_DGV2_VRAM}" -le "1024" ]] ; then
-                    sed -i "s/VRAM = 256/VRAM = ${PW_DGV2_VRAM}/" "$DGV2CONF"
-                else
-                    sed -i "s/VRAM = 256/VRAM = 512/" "$DGV2CONF"
-                fi
-            fi
-        else
-            [[ "${PW_DGV2_VIDEOCARD}" == "dgVoodoo2 SVGA 3D" ]] && sed -i "s/VRAM = 256/VRAM = 64/" "$DGV2CONF"
-            [[ "${PW_DGV2_VIDEOCARD}" == "GeForce 9800 GT" ]] && sed -i "s/VRAM = 256/VRAM = 512/" "$DGV2CONF"
-        fi
-
-        if [[ "$PW_DGV2_RESOLUTION" != "disabled" ]] ; then
-            case "$PW_DGV2_RESOLUTION" in
-                "2x app resolution")
-                    sed -i "s/Resolution = unforced/Resolution = 2x/g" "$DGV2CONF" ;;
-                "3x app resolution")
-                    sed -i "s/Resolution = unforced/Resolution = 3x/g" "$DGV2CONF" ;;
-                "4x app resolution")
-                    sed -i "s/Resolution = unforced/Resolution = 4x/g" "$DGV2CONF" ;;
-                *)
-                    H_RES_DGV2="${PW_DGV2_RESOLUTION:0:4}"
-                    V_RES_DGV2="${PW_DGV2_RESOLUTION:5:9}"
-                    sed -i "s/Resolution = unforced/Resolution = h:$H_RES_DGV2, v:$V_RES_DGV2/g" "$DGV2CONF" ;;
-            esac
-        fi
-
-        if [[ "$PW_DGV2_RESAMPLING" != "disabled" ]] ; then
-            case "$PW_DGV2_RESAMPLING" in
-                "Point sampled") sed -i "s/Resampling = bilinear/Resampling = pointsampled/" "$DGV2CONF" ;;
-                Lanczos-2) sed -i "s/Resampling = bilinear/Resampling = lanczos-2" "$DGV2CONF" ;;
-                Bicubic) sed -i "s/Resampling = bilinear/Resampling = bicubic" "$DGV2CONF" ;;
-                Lanczos-3) sed -i "s/Resampling = bilinear/Resampling = lanczos-3" "$DGV2CONF" ;;
-            esac
-        fi
-
-        if [[ $PW_DGV2_VIDEOCARD != "dgVoodoo2 Virtual 3D" ]] ; then
-            case "$PW_DGV2_VIDEOCARD" in
-                "dgVoodoo2 SVGA 3D") sed -i "s/VideoCard = internal3D/VideoCard = svga/" "$DGV2CONF" ;;
-                "Geforce 4 Ti 4800") sed -i "s/VideoCard = internal3D/VideoCard = geforce_ti_4800/" "$DGV2CONF" ;;
-                "ATI Radeon 8500") sed -i "s/VideoCard = internal3D/VideoCard = ati_radeon_8500/" "$DGV2CONF" ;;
-                "Matrox Parhelia-512") sed -i "s/VideoCard = internal3D/VideoCard = matrox_parhelia-512/" "$DGV2CONF" ;;
-                "GeForce FX 5700 Ultra") sed -i "s/VideoCard = internal3D/VideoCard = geforce_fx_5700_ultra/" "$DGV2CONF" ;;
-                "GeForce 9800 GT") sed -i "s/VideoCard = internal3D/VideoCard = geforce_9800_gt/" "$DGV2CONF" ;;
-            esac
-            if [[ "${PW_DGV2_VIDEOCARD}" == "Voodoo Graphics" ]] ; then
-                sed -i "s/VideoCard = voodoo_2/VideoCard = voodoo_graphics/" "$DGV2CONF"
-                sed -i "s/NumberOfTMUs = 2/NumberOfTMUs = 1/" "$DGV2CONF"
-                if [[ "${PW_DGV2_ONBOARD_RAM}" == "1" ]]
-                then sed -i "s/OnboardRAM = 8/OnboardRAM = 4/" "$DGV2CONF"
-                else sed -i "s/OnboardRAM = 8/OnboardRAM = 2/" "$DGV2CONF"
-                fi
-            fi
-            if [[ "${PW_DGV2_VIDEOCARD}" == "Voodoo Rush" ]] ; then
-                sed -i "s/VideoCard = voodoo_2/VideoCard = voodoo_rush/" "$DGV2CONF"
-                sed -i "s/NumberOfTMUs = 2/NumberOfTMUs = 1/" "$DGV2CONF"
-                if [[ "${PW_DGV2_ONBOARD_RAM}" == "1" ]]
-                then sed -i "s/OnboardRAM = 8/OnboardRAM = 4/" "$DGV2CONF"
-                else sed -i "s/OnboardRAM = 8/OnboardRAM = 2/" "$DGV2CONF"
-                fi
-            fi
-            if [[ "${PW_DGV2_VIDEOCARD}" == "Voodoo 2" ]] && [[ "${PW_DGV2_ONBOARD_RAM}" == "1" ]] ; then
-                sed -i "s/OnboardRAM = 8/OnboardRAM = 12/" "$DGV2CONF"
-            fi
-            if [[ "${PW_DGV2_VIDEOCARD}" == "Voodoo Banshee" ]] ; then
-                sed -i "s/VideoCard = voodoo_2/VideoCard = voodoo_banshee/" "$DGV2CONF"
-                sed -i "s/NumberOfTMUs = 2/NumberOfTMUs = 1/" "$DGV2CONF"
-                if [[ "${PW_DGV2_ONBOARD_RAM}" == "1" ]] ; then
-                    sed -i "s/OnboardRAM = 8/OnboardRAM = 16/" "$DGV2CONF"
-                fi
-            fi
-        fi
+        pw_dgvoodoo2_apply_conf
     else
         for rm_dgv2_dll in d3dimm glide glide2x glide3x ; do
             try_remove_file "${WINEPREFIX}/drive_c/windows/syswow64/${rm_dgv2_dll}.dll"
@@ -4891,9 +4899,55 @@ steamplay_launch () {
             unset MANGOHUD_CONFIG
         fi
 
-        pw_optiscaler_sync_files
-
         PORT_WINE_PREFIX="$STEAM_COMPAT_DATA_PATH/pfx"
+        pw_optiscaler_sync_files
+        if [[ "${PW_DGVOODOO2}" == "1" ]] && [[ -d "${PATH_TO_GAME}" ]] ; then
+            local CP_DGV2_FILES wine_dgv2_dll d3d9_arch_dir
+            PATH_TO_DGV2_FILES="${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}"
+            if [[ ! -f "${PATH_TO_DGV2_FILES}/dgVoodoo.conf" ]] ; then
+                print_info "Download and install DGVOODOO2 v.${DGV2_VER}"
+                if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/dgvoodoo2-${DGV2_VER}/dgvoodoo2-${DGV2_VER}.tar.xz" \
+                "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz"
+                then
+                    if unpack "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz" "${PW_VULKAN_DIR}" ; then
+                        try_remove_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz"
+                    else
+                        try_remove_file "${PW_VULKAN_DIR}/dgvoodoo2-${DGV2_VER}.tar.xz"
+                        try_remove_dir "${PATH_TO_DGV2_FILES}"
+                        print_error "Failed to unpack DGVOODOO2 v.${DGV2_VER}"
+                        exit 1
+                    fi
+                else
+                    print_error "Failed to download DGVOODOO2 v.${DGV2_VER}"
+                    exit 1
+                fi
+            fi
+
+            CP_DGV2_FILES="d3d9 d3d8 d3dimm ddraw glide3x glide2x glide"
+            d3d9_arch_dir="x32"
+            if command -v file &>/dev/null \
+            && file -b "${portwine_exe}" 2>/dev/null | grep -q "PE32+" ; then
+                d3d9_arch_dir="x64"
+            fi
+            try_copy_file "${PATH_TO_DGV2_FILES}/dgVoodoo.conf" "${PORT_WINE_PREFIX}/drive_c/windows/syswow64/"
+            if [[ "${PW_DGV2_DISABLE_D3D}" == "1" ]] ; then
+                rm_from_var CP_DGV2_FILES "d3d9 d3d8"
+            fi
+            if [[ "${PW_DGV2_GLIDE_NAPALM}" == "1" ]] ; then
+                rm_from_var CP_DGV2_FILES "glide3x"
+                try_force_link_file "${PATH_TO_DGV2_FILES}/x32/glide3x-napalm.dll" "${PATH_TO_GAME}/glide3x.dll"
+                var_winedlloverride_update "glide3x=n"
+            fi
+            for wine_dgv2_dll in $CP_DGV2_FILES ; do
+                if [[ "${wine_dgv2_dll}" == "d3d9" ]] ; then
+                    try_force_link_file "${PATH_TO_DGV2_FILES}/${d3d9_arch_dir}/d3d9.dll" "${PATH_TO_GAME}/d3d9.dll"
+                else
+                    try_force_link_file "${PATH_TO_DGV2_FILES}/x32/${wine_dgv2_dll}.dll" "${PATH_TO_GAME}/${wine_dgv2_dll}.dll"
+                fi
+                var_winedlloverride_update "${wine_dgv2_dll}=n"
+            done
+            pw_dgvoodoo2_apply_conf
+        fi
 
         pw_prepare_gamescope_launch
 
