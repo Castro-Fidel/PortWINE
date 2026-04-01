@@ -4887,10 +4887,15 @@ pw_yad_form_vulkan () {
 
 steamplay_launch () {
     if [[ -n "${portwine_exe:-}" ]]; then
+        local steamplay_ld_library_path
         cd "$(dirname "${portwine_exe}")"
         export PATH_TO_GAME="$(pwd)"
         export PORTWINE_DB_FILE="${portwine_exe}.ppdb"
         [[ -f "${PORTWINE_DB_FILE}" ]] && source "${PORTWINE_DB_FILE}"
+
+        steamplay_ld_library_path="${LD_LIBRARY_PATH}:${STEAM_RUNTIME_LIBRARY_PATH}:${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32"
+        [[ -d "${HOME}/.local/share/Steam/ubuntu12_32" ]] && steamplay_ld_library_path="${steamplay_ld_library_path}:${HOME}/.local/share/Steam/ubuntu12_32"
+        [[ -d "${HOME}/.local/share/Steam/ubuntu12_64" ]] && steamplay_ld_library_path="${steamplay_ld_library_path}:${HOME}/.local/share/Steam/ubuntu12_64"
 
         if [[ -f "$PATH_TO_GAME/MangoHud.conf" ]] ; then
             unset MANGOHUD_CONFIG
@@ -4945,7 +4950,7 @@ steamplay_launch () {
         # Winetricks
         if [[ -n "${PW_DLL_INSTALL:-}" ]] ; then
             update_winetricks
-            PATH="${PATH}:${PW_PLUGINS_PATH}/portable/bin" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32" \
+            PATH="${PATH}:${PW_PLUGINS_PATH}/portable/bin" LD_LIBRARY_PATH="${steamplay_ld_library_path}" \
                 "${PORT_WINE_TMP_PATH}/winetricks" -q ${PW_DLL_INSTALL}
         fi
 
@@ -4975,12 +4980,12 @@ steamplay_launch () {
 
         ${PW_RUN_GAMESCOPE} \
         env \
-        LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PW_PLUGINS_PATH}/portable/lib/lib64:${PW_PLUGINS_PATH}/portable/lib/lib32" \
+        LD_LIBRARY_PATH="${steamplay_ld_library_path}" \
         LD_PRELOAD="${LD_PRELOAD:+$LD_PRELOAD:}${PW_LD_PRELOAD}" \
-        ${PW_INHIBIT_SLR} \
-        ${PW_TASKSET_SLR} \
         ${PW_ADD_VAR_SLR} \
         ${PW_GAMEMODERUN_SLR} \
+        ${PW_INHIBIT_SLR} \
+        ${PW_TASKSET_SLR} \
         "${proton_runner}" waitforexitandrun "${portwine_exe}" "$@"
         stop_activity_simulation
         if [[ $PW_LOG != 1 ]] && [[ -n $START_PW_TIME_IN_GAME ]] ; then
