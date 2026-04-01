@@ -1741,8 +1741,8 @@ init_wine_ver () {
         export WINE_LIBRARY_PATH
     fi
 
-    export MEDIACONV_BLANK_VIDEO_FILE="${WINEDIR}"/share/media/blank.mkv
-    export MEDIACONV_BLANK_AUDIO_FILE="${WINEDIR}"/share/media/blank.ptna
+    export MEDIACONV_BLANK_VIDEO_FILE="${WINEDIR}/share/media/blank.mkv"
+    export MEDIACONV_BLANK_AUDIO_FILE="${WINEDIR}/share/media/blank.ptna"
     if  [[ -d "${WINEDIR}"/share/espeak-ng-data ]] ; then
         export ESPEAK_DATA_PATH="${WINEDIR}"/share/
     fi
@@ -3595,7 +3595,7 @@ start_portwine () {
     if [[ "${PW_LOG}" == 1 ]] \
     || [[ -n "$PW_DEBUG" ]]
     then
-        check_variables GST_DEBUG "GST_REFCOUNTING:1,GST_BUFFER:1"
+        check_variables GST_DEBUG "*:1"
         # check_variables WINEDEBUG "+timestamp,+pid,+tid,+seh,+unwind,+threadname,+debugstr,+loaddll,+mscoree"
         check_variables WINEDEBUG "err+all"
         check_variables WINE_MONO_TRACE "E:System.NotImplementedException"
@@ -4649,6 +4649,14 @@ fi
     then
         [[ $PW_USE_DXVK_HDR == "1" ]] && export DXVK_HDR="1"
         export WINE_WAYLAND_HACKS="1"
+        export PROTON_NO_STEAMINPUT="1"
+        export WAYLANDDRV_NO_IME="1"
+        export PROTON_USE_XALIA="0"
+
+        if [[ -d "$WINEDIR/share/X11/locale" ]] ; then
+            check_variables "XLOCALEDIR" "$WINEDIR/share/X11/locale"
+        fi
+
         var_winedlloverride_update "winex11.drv=d;winewayland.drv=b"
         get_and_set_reg_file --add 'Software\Wine\Drivers' 'Graphics' 'REG_SZ' "x11,wayland" "user"
 
@@ -4665,6 +4673,7 @@ fi
     else
         export GST_GL_WINDOW="x11"
         unset WINE_WAYLAND_HACKS DXVK_HDR
+        check_variables PROTON_USE_XALIA 0
         get_and_set_reg_file --delete 'Software\Wine\Drivers' 'Graphics'
     fi
 
