@@ -3574,8 +3574,7 @@ start_portwine () {
             then export GST_PLUGIN_SYSTEM_PATH_1_0="${WINEDIR}/lib/x86_64-linux-gnu/gstreamer-1.0:${WINEDIR}/lib/i386-linux-gnu/gstreamer-1.0"
             fi
         fi
-        export GST_GL_WINDOW="surfaceless"
-        unset GST_GL_WINDOW
+
         create_new_dir "${PORT_WINE_TMP_PATH}/gstreamer_tmp"
         export WINE_GST_REGISTRY_DIR="${PORT_WINE_TMP_PATH}/gstreamer_tmp"
 
@@ -3592,22 +3591,31 @@ start_portwine () {
         export PROTON_MEDIA_USE_GST="0"
     fi
 
-    check_variables VKD3D_DEBUG "none"
-    check_variables VKD3D_SHADER_DEBUG "none"
-    check_variables DXVK_LOG_LEVEL "none"
-    check_variables DXVK_NVAPI_LOG_LEVEL "none"
     check_variables VK_LOADER_DEBUG "none"
-    check_variables VKBASALT_LOG_LEVEL "none"
     if [[ "${PW_LOG}" == 1 ]] \
     || [[ -n "$PW_DEBUG" ]]
     then
-        # check_variables GST_DEBUG "GST_REFCOUNTING:5,GST_BUFFER:5"
+        check_variables GST_DEBUG "GST_REFCOUNTING:1,GST_BUFFER:1"
+        # check_variables WINEDEBUG "+timestamp,+pid,+tid,+seh,+unwind,+threadname,+debugstr,+loaddll,+mscoree"
         check_variables WINEDEBUG "err+all"
         check_variables WINE_MONO_TRACE "E:System.NotImplementedException"
         check_variables VKBASALT_LOG_LEVEL "error"
+        check_variables VKD3D_DEBUG "warn"
+        check_variables VKD3D_SHADER_DEBUG "fixme"
+        check_variables DXVK_LOG_LEVEL "info"
+        check_variables DXVK_NVAPI_LOG_LEVEL "info"
+        check_variables FSR4_WATERMARK "1"
+        check_variables DXVK_NVAPI_SET_NGX_DEBUG_OPTIONS "DLSSIndicator=1024,DLSSGIndicator=2,"
     else
         export WINEDEBUG="-all"
-        unset WINE_MONO_TRACE
+        unset WINE_MONO_TRACE GST_DEBUG
+        check_variables VKBASALT_LOG_LEVEL "none"
+        check_variables VKD3D_DEBUG "none"
+        check_variables VKD3D_SHADER_DEBUG "none"
+        check_variables DXVK_LOG_LEVEL "none"
+        check_variables DXVK_NVAPI_LOG_LEVEL "none"
+        check_variables FSR4_WATERMARK "0"
+        check_variables DXVK_NVAPI_SET_NGX_DEBUG_OPTIONS "DLSSIndicator=0,DLSSGIndicator=0,"
     fi
 
     #disable winebth.sys as it crashes winedevice.exe
@@ -4655,6 +4663,7 @@ fi
             export PW_USE_RUNTIME="0"
         fi
     else
+        export GST_GL_WINDOW="x11"
         unset WINE_WAYLAND_HACKS DXVK_HDR
         get_and_set_reg_file --delete 'Software\Wine\Drivers' 'Graphics'
     fi
@@ -7769,6 +7778,9 @@ portwine_start_debug () {
     deb_text=$(awk '! a[$0]++' "$PW_LOG_FILE")
     echo "$deb_text" > "$PW_LOG_FILE"
 
+        # -e '/debug: Compiling shader/d' \
+        # -e '/debug: Shader cache miss/d' \
+
     sed -i \
         -e '/\.fx$/d' \
         -e '/HACK_does_openvr_work/d' \
@@ -7780,14 +7792,10 @@ portwine_start_debug () {
         -e "s|/run/media/$USER|/run/media/xuser|g" \
         -e "s|/media/$USER|/media/xuser|g" \
         -e "s|PortProton_$USER|PortProton_xuser|g" \
-        -e "s|#Author: $USER|#Author: xuser" \
+        -e "s|#Author: $USER|#Author: xuser|g" \
         "$PW_LOG_FILE"
 
-    "$pw_yad" --title="PortProton.log" --no-buttons --text-align=center \
-    --text-info --show-uri --wrap --width=1200 --height=550  --uri-color=red \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-    --filename="$PW_LOG_FILE"
-    stop_portwine
+    stop_portwine & xdg-open "$PW_LOG_FILE"
 }
 
 pw_create_prefix_backup () {
