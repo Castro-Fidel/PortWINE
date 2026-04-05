@@ -8236,3 +8236,49 @@ update_ext_ppdb () {
         fatal "ppdb file \"$1\" not found!"
     fi
 }
+
+find_ext_ppdb () {
+    if [[ -z "$1" ]] || [[ ! -f "$1" ]] ; then
+        fatal "Broken arguments for function: find_ext_ppdb"
+    fi
+    local exe_filename find_metadata_url get_ppdb_info current_ppdb_file
+    exe_filename="$(basename "$1")"
+    current_ppdb_file="${1}.ppdb"
+    find_metadata_url="https://ppdb.linux-gaming.ru/api/lookup/exe/$exe_filename"
+
+    print_info "Get metadata from $find_metadata_url"
+    get_ppdb_info=$(curl -A 'PortProton' -s "$find_metadata_url")
+    if [[ -z "$get_ppdb_info" ]] ; then
+        yad_error "${translations[Error: failed to fetch metadata.]}\n($find_metadata_url)"
+        restart_pp
+    elif [[ "$get_ppdb_info" =~ 'No game found' ]] ; then
+        yad_error "${translations[Error: settings file not found for]} $exe_filename"
+        restart_pp
+    fi
+
+    source <(jq -r 'to_entries[] | "json_\(.key)=\"\(.value)\""' <<< "$get_ppdb_info")
+    print_info "New variables from $find_metadata_url:"
+    declare -p ${!json_@} | awk -F'--' '{print $2}'
+
+    if yad_question "\
+${translations[Settings file was found for]} $exe_filename:
+
+${translations[Name]}: $json_name
+${translations[Rating]}: $json_rating
+${translations[URL]}: $json_url
+
+${translations[Would you like to use this settings file?]}"
+    then
+        print_info "Replacing PPDB from: $json_ppdb_url"
+        try_remove_file "$current_ppdb_file"
+        if curl -A 'PortProton' -fsSL "$json_ppdb_url" -o "$current_ppdb_file" ; then
+            restart_pp
+        else
+            yad_error "${translations[Failed to download PPDB from URL: $json_ppdb_url]}"
+            exit 1
+        fi
+    else
+        restart_pp
+    fi
+}
+

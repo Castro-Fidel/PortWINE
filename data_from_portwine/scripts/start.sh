@@ -95,7 +95,7 @@ elif [[ "$1" == portproton://* ]] ; then
     PW_TMP_PPDB_FILE="$PW_TMPFS_PATH/tmp_from_url.ppdb"
 
     print_info "Downloading PPDB from: $PPDB_URL"
-    if curl -fsSL "$PPDB_URL" -o "$PW_TMP_PPDB_FILE" ; then
+    if curl -A 'PortProton' -fsSL "$PPDB_URL" -o "$PW_TMP_PPDB_FILE" ; then
         update_ext_ppdb "$PW_TMP_PPDB_FILE" "url"
     else
         fatal "Failed to download PPDB from URL: $PPDB_URL"
@@ -757,6 +757,7 @@ if [[ -f "$portwine_exe" ]] ; then
         --field="   MangoHud!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)]}":"FBTN" '@bash -c "button_click --start 122"' \
         --field="   dgVoodoo2!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)]}":"FBTN" '@bash -c "button_click --start 124"' \
         --field="   GameScope!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable GameScope by default (Wayland micro compositor)]}":"FBTN" '@bash -c "button_click --start 126"' \
+        --field="   ${translations[Find settings (ppdb)]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Try to find the settings on the website ppdb.linux-gaming.ru and apply them.]}":"FBTN" '@bash -c "button_click --start find_ext_ppdb"' \
         2>/dev/null &
 
         if [[ $PW_GUI_START == "NOTEBOOK" ]] ; then
@@ -1199,6 +1200,7 @@ case "$PW_YAD_SET" in
     open_changelog) open_changelog ;;
     change_loc) change_loc ;;
     open_game_folder) open_game_folder ;;
+    find_ext_ppdb) find_ext_ppdb "$portwine_exe" ;;
     118) gui_edit_db ;;
     120) gui_vkbasalt ;;
     122) gui_mangohud ;;
