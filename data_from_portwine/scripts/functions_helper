@@ -5817,7 +5817,7 @@ Binding a game to a single node reduces memory‑access latency and limits costl
     --tab="${translations[ADVANCED]}!$PW_GUI_ICON_PATH/$TAB_SIZE.png!" \
     --button="${translations[CANCEL THE CHANGES]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Cancel the current changes and return to the previous menu]}":1 \
     --button="${translations[RESET SETTINGS]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Restore default settings]}":2 \
-    --button="${translations[OPEN THE SETTINGS FILE]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Open the <b>.ppdb</b> settings file in a system text editor to view and change variables manually]}":150 \
+    --button="${translations[OPEN DIRECTORY]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Open directory with <b>.ppdb</b> file]}":150 \
     --button="${translations[SAVE CHANGES]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Save the current changes, and go to the previous menu]}":0 2>/dev/null
     YAD_STATUS="$?"
 
@@ -5830,7 +5830,7 @@ Binding a game to a single node reduces memory‑access latency and limits costl
             restart_pp
             ;;
         150)
-            gui_edit_db_file
+            open_game_folder
             ;;
     esac
 
@@ -8059,26 +8059,6 @@ gui_open_user_conf () {
     esac
 }
 export -f gui_open_user_conf
-
-gui_edit_db_file () {
-    GUI_EDIT_DB_FILE="$("${pw_yad}" --title="${translations[EDIT DB]}" \
-    --text-info --editable --width=800 --height=600 \
-    --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-    --button="${translations[BACK]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!":1 \
-    --button="${translations[SAVE]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!":2 \
-    --filename="${PORTWINE_DB_FILE}" 2>/dev/null)"
-    YAD_STATUS="$?"
-
-    case "$YAD_STATUS" in
-        1|252)
-                restart_pp --edit_db
-                ;;
-          2)
-                echo "${GUI_EDIT_DB_FILE}" > "${PORTWINE_DB_FILE}"
-                restart_pp --edit_db
-                ;;
-    esac
-}
 
 gui_open_scripts_from_backup () {
     [[ -d "${PORT_WINE_TMP_PATH}/scripts_backup/" ]] && cd "${PORT_WINE_TMP_PATH}/scripts_backup/" || cd "$HOME"

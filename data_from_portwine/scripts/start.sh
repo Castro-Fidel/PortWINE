@@ -752,12 +752,11 @@ if [[ -f "$portwine_exe" ]] ; then
 
         "$pw_yad" --plug=$KEY_START --tabnum="2" --form --align-buttons --homogeneous-column $PW_GUI_START_TABNUM2  \
         --field="   ${translations[Base settings]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Edit database file for]} ${PORTWINE_DB}":"FBTN" '@bash -c "button_click --start 118"' \
-        --field="   ${translations[Open directory]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Open directory with <b>.ppdb</b> file]}":"FBTN" '@bash -c "button_click --start open_game_folder"' \
+        --field="   ${translations[Find settings (ppdb)]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Try to find the settings on the website ppdb.linux-gaming.ru and apply them.]}":"FBTN" '@bash -c "button_click --start find_ext_ppdb"' \
         --field="   vkBasalt!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)]}":"FBTN" '@bash -c "button_click --start 120"' \
         --field="   MangoHud!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)]}":"FBTN" '@bash -c "button_click --start 122"' \
         --field="   dgVoodoo2!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)]}":"FBTN" '@bash -c "button_click --start 124"' \
         --field="   GameScope!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Enable GameScope by default (Wayland micro compositor)]}":"FBTN" '@bash -c "button_click --start 126"' \
-        --field="   ${translations[Find settings (ppdb)]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Try to find the settings on the website ppdb.linux-gaming.ru and apply them.]}":"FBTN" '@bash -c "button_click --start find_ext_ppdb"' \
         2>/dev/null &
 
         if [[ $PW_GUI_START == "NOTEBOOK" ]] ; then
@@ -1199,7 +1198,6 @@ case "$PW_YAD_SET" in
     gui_open_scripts_from_backup) gui_open_scripts_from_backup ;;
     open_changelog) open_changelog ;;
     change_loc) change_loc ;;
-    open_game_folder) open_game_folder ;;
     find_ext_ppdb) find_ext_ppdb "$portwine_exe" ;;
     118) gui_edit_db ;;
     120) gui_vkbasalt ;;
