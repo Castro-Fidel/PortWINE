@@ -1257,6 +1257,16 @@ get_and_set_reg_file () {
     name_for_find_old=$name_for_find
     name_fatal="$name_block $name_for_find"
 
+    # Определяем базовую директорию для reg-файлов
+    local reg_base_dir
+    if [[ -n "${STEAM_COMPAT_DATA_PATH:-}" ]] && [[ -n "${PORT_WINE_PREFIX:-}" ]] ; then
+        # Steam Play режим - используем reg-файлы из префикса Steam
+        reg_base_dir="${PORT_WINE_PREFIX}"
+    else
+        # Обычный режим PortProton
+        reg_base_dir="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}"
+    fi
+
     case $name_type_reg in
             REG_DWORD)
                 name_for_find="\"$name_for_find\"=dword:"
@@ -1274,13 +1284,13 @@ get_and_set_reg_file () {
     esac
     name_block=${name_block//\\/\\\\\\\\}
     if [[ -n $name_for_new_block ]] ; then
-        find_block=$(grep -n "\[$name_block\]" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg")
+        find_block=$(grep -n "\[$name_block\]" "${reg_base_dir}/$name_for_new_block.reg")
     else
-        find_block=$(grep -n "\[$name_block\]" "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/"*.reg)
+        find_block=$(grep -n "\[$name_block\]" "${reg_base_dir}/"*.reg)
     fi
     if [[ -n $find_block ]] ; then
         if [[ -n $name_for_new_block ]] ; then
-            find_file="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg"
+            find_file="${reg_base_dir}/$name_for_new_block.reg"
             find_line=${find_block//:*/}
         else
             find_file=${find_block//:*/}
@@ -1305,8 +1315,8 @@ get_and_set_reg_file () {
     if [[ $name_add_or_del == --add ]] ; then
         if [[ -z $find_block ]] ; then
             if [[ -n $name_for_new_block ]] ; then
-                sed -i '$a\\n'\["$name_block"\] "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg"
-                find_file="${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/$name_for_new_block.reg"
+                sed -i '$a\\n'\["$name_block"\] "${reg_base_dir}/$name_for_new_block.reg"
+                find_file="${reg_base_dir}/$name_for_new_block.reg"
                 find_line=$(wc -l "$find_file" | awk -F" " '{print $1}')
                 find_line=$(( find_line - 1 ))
             else
@@ -1326,6 +1336,25 @@ get_and_set_reg_file () {
         print_info "Delete $name_for_find_old to reg file"
         sed -i "${find_number_line}d" "$find_file"
     fi
+}
+
+pw_setup_dinput () {
+    if [[ $PW_DINPUT_PROTOCOL == "1" ]] ; then
+        get_and_set_reg_file --add 'System\CurrentControlSet\Services\winebus' 'DisableHidraw' 'REG_DWORD' "0" "system"
+        get_and_set_reg_file --add 'System\CurrentControlSet\Services\winebus' 'Enable SDL' 'REG_DWORD' "0" "system"
+    else
+        get_and_set_reg_file --add 'System\CurrentControlSet\Services\winebus' 'DisableHidraw' 'REG_DWORD' "1" "system"
+        get_and_set_reg_file --add 'System\CurrentControlSet\Services\winebus' 'Enable SDL' 'REG_DWORD' "1" "system"
+    fi
+}
+
+pw_setup_audio_driver () {
+    case "$PW_SOUND_DRIVER_USE" in
+        pulse) get_and_set_reg_file --add 'Software\Wine\Drivers' 'Audio' 'REG_SZ' "pulse" "user" ;;
+         alsa) get_and_set_reg_file --add 'Software\Wine\Drivers' 'Audio' 'REG_SZ' "alsa" "user" ;;
+          oss) get_and_set_reg_file --add 'Software\Wine\Drivers' 'Audio' 'REG_SZ' "oss" "user" ;;
+            *) get_and_set_reg_file --delete 'Software\Wine\Drivers' 'Audio' ;;
+    esac
 }
 
 convert_dec_and_hex () {
@@ -2072,21 +2101,9 @@ stop_portwine () {
     if [[ "${PW_DISABLE_COMPOSITING}" == "1" ]] \
     && ! check_gamescope_session
     then
-        if [[ "${DESKTOP_SESSION}" =~ "plasma" ]] ; then
-            kde_version=$(plasmashell --version 2>/dev/null | grep -oE '[0-9]+' | head -1)
-            if [[ -n "$kde_version" && "$kde_version" -lt 6 ]]; then
-                qdbus org.kde.KWin /Compositor resume
-            fi
-        elif [[ "${DESKTOP_SESSION}" =~ "mate" ]] ; then
-            gsettings set org.mate.Marco.general compositing-manager true
-        elif [[ "${DESKTOP_SESSION}" =~ "xfce" ]] ; then
-            xfconf-query -c xfwm4 -p /general/use_compositing -s true
-        elif [[ "${DESKTOP_SESSION}" =~ "cinnamon" ]] ; then
-            gsettings set org.cinnamon.muffin unredirect-fullscreen-windows false
-        elif [[ "${DESKTOP_SESSION}" =~ "deepin" ]] ; then
-            dbus-send --session --dest=com.deepin.WMSwitcher --type=method_call /com/deepin/WMSwitcher com.deepin.WMSwitcher.RequestSwitchWM
-        fi
+        pw_toggle_compositing enable
     fi
+
     pw_stop_progress_bar
     try_remove_file "${PORT_SCRIPTS_PATH}/0"
     try_remove_file "${PORT_SCRIPTS_PATH}/1"
@@ -4636,13 +4653,7 @@ fi
         [[ -z "$LAUNCH_PARAMETERS" ]] && export LAUNCH_PARAMETERS+=" -eac-nop-loaded "
     fi
 
-    if [[ $PW_DINPUT_PROTOCOL == "1" ]] ; then
-        get_and_set_reg_file --add 'System\CurrentControlSet\Services\winebus' 'DisableHidraw' 'REG_DWORD' "0" "system"
-        get_and_set_reg_file --add 'System\CurrentControlSet\Services\winebus' 'Enable SDL' 'REG_DWORD' "0" "system"
-    else
-        get_and_set_reg_file --add 'System\CurrentControlSet\Services\winebus' 'DisableHidraw' 'REG_DWORD' "1" "system"
-        get_and_set_reg_file --add 'System\CurrentControlSet\Services\winebus' 'Enable SDL' 'REG_DWORD' "1" "system"
-    fi
+    pw_setup_dinput
 
     if check_wayland_session \
     && [[ $PW_USE_NATIVE_WAYLAND == "1" || $PW_USE_DXVK_HDR == "1" ]]
@@ -4683,12 +4694,7 @@ fi
         get_and_set_reg_file --add 'Control Panel\Desktop' 'LogPixels' 'REG_DWORD' "$PW_WINE_DPI_VALUE" "user"
     fi
 
-    case "$PW_SOUND_DRIVER_USE" in
-        pulse) get_and_set_reg_file --add 'Software\Wine\Drivers' 'Audio' 'REG_SZ' "pulse" "user" ;;
-         alsa) get_and_set_reg_file --add 'Software\Wine\Drivers' 'Audio' 'REG_SZ' "alsa" "user" ;;
-          oss) get_and_set_reg_file --add 'Software\Wine\Drivers' 'Audio' 'REG_SZ' "oss" "user" ;;
-            *) get_and_set_reg_file --delete 'Software\Wine\Drivers' 'Audio' ;;
-    esac
+    pw_setup_audio_driver
 
     pw_stop_progress_bar
     if ! check_start_from_steam ; then
@@ -4714,20 +4720,7 @@ fi
     if [[ "${PW_DISABLE_COMPOSITING}" == "1" ]] \
     && ! check_gamescope_session
     then
-        if [[ "${DESKTOP_SESSION}" =~ "plasma" ]] ; then
-            kde_version=$(plasmashell --version 2>/dev/null | grep -oE '[0-9]+' | head -1)
-            if [[ -n "$kde_version" && "$kde_version" -lt 6 ]]; then
-                qdbus org.kde.KWin /Compositor suspend
-            fi
-        elif [[ "${DESKTOP_SESSION}" =~ "mate" ]] ; then
-            gsettings set org.mate.Marco.general compositing-manager false
-        elif [[ "${DESKTOP_SESSION}" =~ "xfce" ]] ; then
-            xfconf-query -c xfwm4 -p /general/use_compositing -s false
-        elif [[ "${DESKTOP_SESSION}" =~ "cinnamon" ]] ; then
-            gsettings set org.cinnamon.muffin unredirect-fullscreen-windows true
-        elif [[ "${DESKTOP_SESSION}" =~ "deepin" ]] ; then
-            dbus-send --session --dest=com.deepin.WMSwitcher --type=method_call /com/deepin/WMSwitcher com.deepin.WMSwitcher.RequestSwitchWM
-        fi
+        pw_toggle_compositing disable
     fi
 
     pw_prepare_gamescope_launch
@@ -4968,6 +4961,20 @@ steamplay_launch () {
             proton_runner="${STEAM_COMPAT_TOOL_PATHS%%:*}/proton"
         elif [[ -x "${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}/proton" ]] ; then
             proton_runner="${PORT_WINE_PATH}/data/dist/${PW_WINE_USE}/proton"
+        else
+            fatal "proton runner not found"
+        fi
+
+        if [[ ! -f "${WINEPREFIX}/system.reg" ]] \
+        || ! grep -iq "Microsoft Windows $PW_WINDOWS_VER" "${WINEPREFIX}/system.reg"
+        then
+            if [[ -n $PW_WINDOWS_VER ]] \
+            && [[ $(echo "$PW_WINDOWS_VER" | sed 's/.*/\L&/') == "xp" ]]
+            then
+                export PW_WINDOWS_VER="xp64"
+            fi
+            "${proton_runner}" run winecfg -v "$(echo "win${PW_WINDOWS_VER}" | sed 's/.*/\L&/')" &>/dev/null
+            print_info "Steam Play set to win${PW_WINDOWS_VER}"
         fi
 
         # Virtual Desktop
@@ -4978,13 +4985,174 @@ steamplay_launch () {
                 fi
                 [[ "${PW_SCREEN_RESOLUTION:-}" != *x* ]] && PW_SCREEN_RESOLUTION="1920x1080"
             fi
-            "${proton_runner}" "run" reg add "HKEY_CURRENT_USER\\Software\\Wine\\Explorer\\Desktops" /v "PortProton" /d "${PW_SCREEN_RESOLUTION}" /f &>/dev/null
-            "${proton_runner}" "run" reg add "HKEY_CURRENT_USER\\Software\\Wine\\Explorer" /v "Desktop" /d "PortProton" /f &>/dev/null
+            get_and_set_reg_file --add 'Software\Wine\Explorer\Desktops' 'PortProton' 'REG_SZ' "${PW_SCREEN_RESOLUTION}" "user"
+            get_and_set_reg_file --add 'Software\Wine\Explorer' 'Desktop' 'REG_SZ' "PortProton" "user"
             print_info "Steam Play virtual desktop enabled in registry: ${PW_SCREEN_RESOLUTION}"
         else
-            "${proton_runner}" "run" reg delete "HKEY_CURRENT_USER\\Software\\Wine\\Explorer" /v "Desktop" /f &>/dev/null
-            "${proton_runner}" "run" reg delete "HKEY_CURRENT_USER\\Software\\Wine\\Explorer\\Desktops" /v "PortProton" /f &>/dev/null
+            get_and_set_reg_file --delete 'Software\Wine\Explorer' 'Desktop' '' '' "user"
+            get_and_set_reg_file --delete 'Software\Wine\Explorer\Desktops' 'PortProton' '' '' "user"
             print_info "Steam Play virtual desktop disabled in registry"
+        fi
+
+        if [[ "${PW_USE_WINE_DXGI}" == "1" ]] ; then
+            var_winedlloverride_update "dxgi=b"
+        fi
+
+        pw_setup_dinput
+
+        if [[ "${PW_USE_NVAPI_AND_DLSS}" == "1" ]] ; then
+            export PROTON_FORCE_NVAPI="1"
+            export PROTON_HIDE_NVIDIA_GPU="0"
+        fi
+
+        if [[ "${PW_USE_NATIVE_WAYLAND}" == "1" ]] ; then
+            export PROTON_ENABLE_WAYLAND="1"
+            export WAYLANDDRV_NO_IME="1"  # Proton-EM не выставляет эту переменную
+        fi
+
+        if [[ "${PW_USE_DXVK_HDR}" == "1" ]] ; then
+            export PROTON_ENABLE_HDR="1"
+        fi
+
+        if [[ "${PW_USE_EAC_AND_BE}" == 1 ]] ; then
+            export PROTON_BATTLEYE_RUNTIME="${PW_PLUGINS_PATH}/BattlEye_Runtime"
+            export PROTON_EAC_RUNTIME="${PW_PLUGINS_PATH}/EasyAntiCheat_Runtime"
+            var_winedlloverride_update "beclient,beclient_x64=b,n"
+        else
+            unset PROTON_BATTLEYE_RUNTIME PROTON_EAC_RUNTIME
+        fi
+
+        if [[ "${PW_USE_RAY_TRACING}" == "1" ]] ; then
+            var_vkd3d_config_update dxr
+            if [[ $(check_vendor_gpu) == "amd" ]] ; then
+                var_radv_perftest_config_update rt
+            fi
+        else
+            var_vkd3d_config_update nodxr
+        fi
+
+        if [[ "$PW_USE_OBS_VKCAPTURE" == "1" ]] ; then
+            export OBS_VKCAPTURE="1"
+            export PW_USE_SYSTEM_VK_LAYERS="1"
+            print_warning "System mangohud, vkBasalt, obs-vk capture and other applications using vulkan layers are forcibly used."
+        fi
+
+        if [[ -f "$PATH_TO_GAME/dxvk.conf" ]] ; then
+            export DXVK_CONFIG_FILE="$PATH_TO_GAME/dxvk.conf"
+            print_info "Custom dxvk.conf in use: $DXVK_CONFIG_FILE"
+        else
+            unset DXVK_CONFIG_FILE
+        fi
+
+        [[ "${PW_VKBASALT_USER_CONF}" == 1 ]] && unset PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS
+
+        if [[ "${PW_LOCALE_SELECT}" != "disabled" ]] && [[ -n "${PW_LOCALE_SELECT}" ]]; then
+            export LC_ALL="${PW_LOCALE_SELECT}"
+            export HOST_LC_ALL="${LC_ALL}"
+        fi
+
+        # GALLIUM ZINK
+        if [[ "${PW_USE_GALLIUM_ZINK}" == "1" ]] ; then
+            print_info "Use GALLIUM-ZINK (OpenGL on MESA vulkan drivers)"
+            export __GLX_VENDOR_LIBRARY_NAME="mesa"
+            export MESA_LOADER_DRIVER_OVERRIDE="zink"
+            export GALLIUM_DRIVER="zink"
+            if ! check_wayland_session \
+            && ! check_gamescope_session \
+            && [[ "${PW_GAMESCOPE}" != "1" ]]
+            then
+                export LIBGL_KOPPER_DRI2="1"
+            fi
+            [[ $(check_vendor_gpu) == "nouveau" ]] && export NOUVEAU_USE_ZINK="1"
+        fi
+
+        # WINED3D VULKAN
+        if [[ "${PW_USE_WINED3D_VULKAN}" == "1" ]] ; then
+            print_info "Use DAMAVAND (DirectX to wined3d vulkan)"
+            export WINE_D3D_CONFIG="renderer=vulkan"
+        else
+            if [[ "${PW_USE_GALLIUM_ZINK}" == "1" ]] ; then
+                export WINE_D3D_CONFIG="renderer=gl"
+            fi
+        fi
+
+        if [[ "${PW_FIX_VIDEO_IN_GAME}" == 1 ]] ; then
+            export WINE_DO_NOT_CREATE_DXGI_DEVICE_MANAGER="1"
+        else
+            export WINE_DO_NOT_CREATE_DXGI_DEVICE_MANAGER="0"
+        fi
+
+        if [[ "${PW_REDUCE_PULSE_LATENCY}" == 1 ]] ; then
+            export PULSE_LATENCY_MSEC="30"
+        fi
+
+        pw_setup_audio_driver
+
+        if [[ "${PW_GPU_USE}" != "disabled" ]] ; then
+            export DXVK_FILTER_DEVICE_NAME="$PW_GPU_USE"
+            export VKD3D_FILTER_DEVICE_NAME="$PW_GPU_USE"
+        fi
+
+        if [[ "${PW_WINE_FULLSCREEN_FSR}" == "1" ]] \
+        && ! check_gamescope_session
+        then
+            export WINE_FULLSCREEN_FSR="1"
+            export WINE_FULLSCREEN_FSR_STRENGTH="2"
+            export WINE_FULLSCREEN_INTEGER_SCALING="0"
+        else
+            export WINE_FULLSCREEN_FSR="0"
+            unset WINE_FULLSCREEN_FAKE_CURRENT_RES WINE_FULLSCREEN_FSR_STRENGTH WINE_FULLSCREEN_INTEGER_SCALING
+        fi
+
+        if [[ "${PW_MESA_GL_VERSION_OVERRIDE}" != "disabled" ]] ; then
+            export MESA_GL_VERSION_OVERRIDE="${PW_MESA_GL_VERSION_OVERRIDE}"
+            if [[ "${PW_MESA_GL_VERSION_OVERRIDE}" == 3.2COMPAT ]] ; then
+                export MESA_GLSL_VERSION_OVERRIDE="150"
+            else
+                MESA_GLSL_VERSION_OVERRIDE="${PW_MESA_GL_VERSION_OVERRIDE//./}"
+                export MESA_GLSL_VERSION_OVERRIDE="${MESA_GLSL_VERSION_OVERRIDE//COMPAT/}0"
+            fi
+        fi
+
+        if [[ "${PW_VKD3D_FEATURE_LEVEL}" != "disabled" ]] ; then
+            export VKD3D_FEATURE_LEVEL="${PW_VKD3D_FEATURE_LEVEL}"
+        fi
+
+        if [[ "${PW_MESA_VK_WSI_PRESENT_MODE}" != "disabled" ]] ; then
+            export MESA_VK_WSI_PRESENT_MODE="${PW_MESA_VK_WSI_PRESENT_MODE}"
+            case "$PW_MESA_VK_WSI_PRESENT_MODE" in
+                immediate|mailbox)
+                    export vblank_mode="0"
+                    export __GL_SYNC_TO_VBLANK="0"
+                    ;;
+                relaxed|fifo)
+                    export vblank_mode="1"
+                    export __GL_SYNC_TO_VBLANK="1"
+                    ;;
+            esac
+        elif [[ "${PW_USE_LS_FRAME_GEN}" == "1" ]] ; then
+            export MESA_VK_WSI_PRESENT_MODE="immediate"
+            unset vblank_mode __GL_SYNC_TO_VBLANK
+        fi
+
+        if [[ "${PW_WINE_CPU_TOPOLOGY}" != "disabled" ]] ; then
+            export WINE_CPU_TOPOLOGY="${PW_WINE_CPU_TOPOLOGY}"
+        fi
+
+        if [[ -n "${PW_RUN_AFTER_EXE:-}" ]] \
+        && [[ -f "${PW_RUN_AFTER_EXE}" ]] \
+        && [[ "${PW_RUN_AFTER_EXE}" != "${portwine_exe}" ]] \
+        && [[ "${portwine_exe,,}" =~ \.exe$ ]]
+        then
+            printf -v PROTON_REMOTE_DEBUG_CMD '%q' "${PW_RUN_AFTER_EXE}"
+            export PROTON_REMOTE_DEBUG_CMD
+            export PRESSURE_VESSEL_FILESYSTEMS_RW="${PRESSURE_VESSEL_FILESYSTEMS_RW:+$PRESSURE_VESSEL_FILESYSTEMS_RW:}$(dirname "${PW_RUN_AFTER_EXE}")"
+        fi
+
+        if [[ "${PW_DISABLE_COMPOSITING}" == "1" ]] \
+        && ! check_gamescope_session
+        then
+            pw_toggle_compositing disable
         fi
 
         ${PW_RUN_GAMESCOPE} \
@@ -4996,6 +5164,11 @@ steamplay_launch () {
         ${PW_INHIBIT_SLR} \
         ${PW_TASKSET_SLR} \
         "${proton_runner}" waitforexitandrun "${portwine_exe}" "$@"
+        if [[ "${PW_DISABLE_COMPOSITING}" == "1" ]] \
+        && ! check_gamescope_session
+        then
+            pw_toggle_compositing enable
+        fi
         stop_activity_simulation
         if [[ $PW_LOG != 1 ]] && [[ -n $START_PW_TIME_IN_GAME ]] ; then
             debug_timer --end -s "PW_TIME_IN_GAME"
@@ -5290,6 +5463,36 @@ pw_start_progress_bar_install_game () {
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" &>/dev/null &
         PW_YAD_PID_PROGRESS_BAR+=($!)
         return 0
+    fi
+}
+
+pw_toggle_compositing () {
+    local action="$1"
+    if [[ "${action}" == "disable" ]] ; then
+        local kde_action="suspend"
+        local mate_value="false"
+        local xfce_value="false"
+        local cinnamon_value="true"
+    else
+        local kde_action="resume"
+        local mate_value="true"
+        local xfce_value="true"
+        local cinnamon_value="false"
+    fi
+
+    if [[ "${DESKTOP_SESSION}" =~ "plasma" ]] ; then
+        kde_version=$(plasmashell --version 2>/dev/null | grep -oE '[0-9]+' | head -1)
+        if [[ -n "$kde_version" && "$kde_version" -lt 6 ]]; then
+            qdbus org.kde.KWin /Compositor "$kde_action"
+        fi
+    elif [[ "${DESKTOP_SESSION}" =~ "mate" ]] ; then
+        gsettings set org.mate.Marco.general compositing-manager "$mate_value"
+    elif [[ "${DESKTOP_SESSION}" =~ "xfce" ]] ; then
+        xfconf-query -c xfwm4 -p /general/use_compositing -s "$xfce_value"
+    elif [[ "${DESKTOP_SESSION}" =~ "cinnamon" ]] ; then
+        gsettings set org.cinnamon.muffin unredirect-fullscreen-windows "$cinnamon_value"
+    elif [[ "${DESKTOP_SESSION}" =~ "deepin" ]] ; then
+        dbus-send --session --dest=com.deepin.WMSwitcher --type=method_call /com/deepin/WMSwitcher com.deepin.WMSwitcher.RequestSwitchWM
     fi
 }
 
@@ -8271,4 +8474,3 @@ find_ext_ppdb () {
         restart_pp
     fi
 }
-
