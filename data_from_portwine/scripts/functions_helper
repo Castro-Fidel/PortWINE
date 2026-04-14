@@ -1551,10 +1551,9 @@ EOF
             done
             if [[ $line =~ msgstr ]]; then
                 if [[ $LANGUAGE == "en" ]] ; then
-                    if [[ $msgid == "msgid   \"\"" ]] ; then
+                    if [[ $msgid == "msgid \"\"" ]] ; then
                         continue
                     fi
-                    msgstr="$msgid"
                 else
                     unset msgstr
                     msgstr="$line"
@@ -1568,9 +1567,11 @@ EOF
                     done
                 fi
             fi
-        if [[ $LANGUAGE != "en" ]] ; then
+        msgid=${msgid//"msgid "/}
+        if [[ $LANGUAGE == "en" ]] ; then
+            msgstr="$msgid"
+        else
             msgstr=${msgstr//"msgstr "/}
-            msgid=${msgid//"msgid "/}
         fi
         msgstr=${msgstr//" "/-_-}
         msgstr=${msgstr//"\n"\"\"/+_+}
@@ -1601,9 +1602,7 @@ EOF
     sed -i 's/+_+/\n/g' "${PW_CACHE_LANG_PATH}/$LANGUAGE"
     sed -i 's/#_#/\*/g' "${PW_CACHE_LANG_PATH}/$LANGUAGE"
     sed -i 's/-_-/ /g' "${PW_CACHE_LANG_PATH}/$LANGUAGE"
-    if [[ $LANGUAGE == "en" ]] ; then
-        sed -i 's/msgid   //g' "${PW_CACHE_LANG_PATH}/$LANGUAGE"
-    fi
+
 }
 
 check_translations () {
