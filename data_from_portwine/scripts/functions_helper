@@ -1467,6 +1467,7 @@ EOF
 
 generate_pot () {
     local FILES_FOR_GETTEXT i
+    local -a POT_FILES=()
     FILES_FOR_GETTEXT=(functions_helper start.sh setup.sh add_in_steam.sh)
     for i in "${FILES_FOR_GETTEXT[@]}" ; do
         sed -e 's/{translations\[/(gettext \"/g' -e 's/]}/")/g' "${PORT_SCRIPTS_PATH}/$i" > "${PORT_SCRIPTS_PATH}/${i}_tmp"
@@ -1481,14 +1482,26 @@ generate_pot () {
         LANG_PO="${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/PortProton.po"
         #LANG_MO="${PORT_WINE_PATH}/data/locales/${lang}/LC_MESSAGES/PortProton.mo"
         TEMPLATE_POT="${PORT_WINE_PATH}/data/locales/PortProton.pot"
-        pushd "${PORT_WINE_PATH}" 1>/dev/null || fatal
-        xgettext --no-location --from-code=UTF-8 --language Shell -i \
-        "data/scripts/start.sh_tmp" \
-        "data/scripts/setup.sh_tmp" \
-        "data/scripts/functions_helper_tmp" \
-        "data/scripts/add_in_steam.sh_tmp" \
-        -o "$TEMPLATE_POT"
-        popd 1>/dev/null || fatal
+        POT_FILES=()
+        for i in "${FILES_FOR_GETTEXT[@]}" ; do
+            local TMP_FILE="${PORT_SCRIPTS_PATH}/${i}_tmp"
+            local LINE_COUNT=$(wc -l < "$TMP_FILE")
+            if [[ "$LINE_COUNT" -gt 3000 ]] ; then
+                local SPLIT_DIR="${PW_TMPFS_PATH}/split_${i}"
+                create_new_dir "$SPLIT_DIR"
+                split -l 3000 "$TMP_FILE" "${SPLIT_DIR}/part_"
+                for part in "${SPLIT_DIR}"/part_* ; do
+                    local part_pot="${part}.pot"
+                    xgettext --no-location --from-code=UTF-8 --language Shell -i "$part" -o "$part_pot"
+                    [[ -f "$part_pot" ]] && POT_FILES+=("$part_pot")
+                done
+            else
+                local single_pot="${TMP_FILE}.pot"
+                xgettext --no-location --from-code=UTF-8 --language Shell -i "$TMP_FILE" -o "$single_pot"
+                [[ -f "$single_pot" ]] && POT_FILES+=("$single_pot")
+            fi
+        done
+        msgcat --use-first "${POT_FILES[@]}" -o "$TEMPLATE_POT"
         if [[ -f "$LANG_PO" ]] ; then
             echo "update $LANG_PO file"
             msgmerge --update "$LANG_PO" "$TEMPLATE_POT"
@@ -1499,9 +1512,16 @@ generate_pot () {
         #msgfmt --output-file="$LANG_MO" "$LANG_PO"
     done
     try_remove_file "${PORT_SCRIPTS_PATH}/start.sh_tmp"
+    try_remove_file "${PORT_SCRIPTS_PATH}/start.sh_tmp.pot"
     try_remove_file "${PORT_SCRIPTS_PATH}/setup.sh_tmp"
+    try_remove_file "${PORT_SCRIPTS_PATH}/setup.sh_tmp.pot"
     try_remove_file "${PORT_SCRIPTS_PATH}/functions_helper_tmp"
+    try_remove_file "${PORT_SCRIPTS_PATH}/functions_helper_tmp.pot"
     try_remove_file "${PORT_SCRIPTS_PATH}/add_in_steam.sh_tmp"
+    try_remove_file "${PORT_SCRIPTS_PATH}/add_in_steam.sh_tmp.pot"
+    for i in "${FILES_FOR_GETTEXT[@]}" ; do
+        try_remove_dir "${PW_TMPFS_PATH}/split_${i}"
+    done
     try_remove_dir "${PW_CACHE_LANG_PATH}"
 }
 export -f generate_pot
