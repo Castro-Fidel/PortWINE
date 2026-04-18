@@ -38,12 +38,61 @@ then
 fi
 
 PORT_SCRIPTS_PATH="$(cd "$(dirname "$0")" && pwd)"
-PORT_WINE_PATH="$(dirname "$(dirname "$PORT_SCRIPTS_PATH")")"
+PORT_WINE_PROGRAM_PATH="$(dirname "$(dirname "$PORT_SCRIPTS_PATH")")"
+PORT_WINE_APP_DATA_PATH="$(dirname "$PORT_SCRIPTS_PATH")"
+PORT_WINE_DATA_PATH_ARG=""
+
+if [[ "${1,,}" == "cli" ]] ; then
+    case "${2:-}" in
+        --data-path)
+            if [[ -z "${3:-}" ]] ; then
+                echo "Missing value for --data-path"
+                exit 1
+            fi
+            PORT_WINE_DATA_PATH_ARG="${3}"
+            ;;
+        --data-path=*)
+            PORT_WINE_DATA_PATH_ARG="${2#--data-path=}"
+            if [[ -z "${PORT_WINE_DATA_PATH_ARG}" ]] ; then
+                echo "Missing value for --data-path"
+                exit 1
+            fi
+            ;;
+    esac
+fi
+
+if [[ -n "${PORT_WINE_DATA_PATH_ARG}" ]] ; then
+    PORT_WINE_PATH="$(realpath -m "${PORT_WINE_DATA_PATH_ARG}")"
+    export PW_DATA_PATH_MODE="1"
+    export PW_DISABLE_SCRIPT_UPDATES="1"
+else
+    PORT_WINE_PATH="${PORT_WINE_PROGRAM_PATH}"
+    export PW_DATA_PATH_MODE="0"
+    unset PW_DISABLE_SCRIPT_UPDATES
+fi
+
 PW_LOG_FILE="${PORT_WINE_PATH}/PortProton.log"
-export PORT_SCRIPTS_PATH PORT_WINE_PATH PW_LOG_FILE
+export PORT_SCRIPTS_PATH PORT_WINE_PATH PW_LOG_FILE PORT_WINE_PROGRAM_PATH PORT_WINE_APP_DATA_PATH
 
 # shellcheck source=/dev/null
 source "$PORT_SCRIPTS_PATH/functions_helper"
+
+if [[ "${PW_DATA_PATH_MODE}" == "1" ]] ; then
+    create_new_dir "${PORT_WINE_PATH}"
+    create_new_dir "${PORT_WINE_PATH}/data"
+
+    for static_data_item in img themes locales changelog_en changelog_ru dxvk.conf vkBasalt.conf ; do
+        src_item="${PORT_WINE_APP_DATA_PATH}/${static_data_item}"
+        dst_item="${PORT_WINE_PATH}/data/${static_data_item}"
+        if [[ ! -e "${dst_item}" ]] && [[ -e "${src_item}" ]] ; then
+            ln -s "${src_item}" "${dst_item}" || fatal "Failed to link ${dst_item}"
+        fi
+    done
+
+    create_new_dir "${PORT_WINE_PATH}/data/dist"
+    create_new_dir "${PORT_WINE_PATH}/data/prefixes"
+    create_new_dir "${PORT_WINE_PATH}/data/tmp"
+fi
 
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 create_new_dir "$PORT_WINE_TMP_PATH"
@@ -76,6 +125,25 @@ if [[ ${1,,} == "cli" ]] ; then
     shift
 fi
 check_variables PW_CLI "0"
+
+if [[ "${PW_CLI}" == "1" ]] ; then
+    while true ; do
+        case "${1:-}" in
+            --data-path)
+                if [[ -z "${2:-}" ]] ; then
+                    fatal "Missing value for --data-path"
+                fi
+                shift 2
+                ;;
+            --data-path=*)
+                shift
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+fi
 
 if [[ "${1:-}" == file://* ]] ; then
     pw_file_path="${1#file://}"
@@ -385,7 +453,8 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     killall -15 yad_gui_pp &>/dev/null
     kill -TERM "$(pgrep -a yad | grep PortProton | head -n 1 | awk '{print $1}')" &>/dev/null
 
-    if [[ -f "/usr/bin/portproton" ]] \
+    if [[ "${PW_DATA_PATH_MODE}" != "1" ]] \
+    && [[ -f "/usr/bin/portproton" ]] \
     && [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]]
     then
         rm -f "${HOME}/.local/share/applications/PortProton.desktop"
@@ -436,6 +505,7 @@ case "$1" in
 --debug                                             ${translations[Debug scripts for PortProton
                                                     (saved log in]} $PORT_WINE_PATH/scripts-debug.log)
 --update                                            ${translations[Check update scripts for PortProton]}
+--data-path                                         ${translations[Use custom writable data path (dist/prefixes/tmp) and disable script self-update]}
 --launch                                            ${translations[Launches the application immediately, requires the path to the .exe file]}
 --edit-db                                           ${translations[After the variable, the path to the .exe file is required and then the variables.
                                                     (List their variables and values for example PW_MANGOHUD=1 PW_VKBASALT=0, etc.)]}
@@ -459,6 +529,7 @@ case "$1" in
 $(echo $files_from_autoinstall | awk '{for (i = 1; i <= NF; i++) {if (i % 10 == 0) {print ""} printf "%s ", $i}}')
 
 ${translations[Usage examples:]}
+  portproton cli --data-path /path/to/portproton-data --launch /path/to/game.exe
   portproton cli --launch /path/to/game.exe
   portproton cli --edit-db /path/to/game.exe PW_MANGOHUD=1 PW_VKBASALT=0
   portproton cli --get-user-conf PW_MANGOHUD
@@ -494,6 +565,10 @@ ${translations[Usage examples:]}
         exit 0
         ;;
     --update)
+        if [[ "${PW_DISABLE_SCRIPT_UPDATES:-0}" == "1" ]] ; then
+            print_warning "Script update is disabled in --data-path mode."
+            exit 0
+        fi
         gui_pw_update
         ;;
     --launch)
