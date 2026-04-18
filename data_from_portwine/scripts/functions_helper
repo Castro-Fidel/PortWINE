@@ -2523,6 +2523,11 @@ pw_init_db () {
 
 # GUI UPDATE SCRIPTS
 pw_port_update () {
+    if [[ "${PW_DISABLE_SCRIPT_UPDATES:-0}" == "1" ]] ; then
+        print_warning "Script update is disabled in --data-path mode."
+        return 0
+    fi
+
     case "$BRANCH" in
         master|stable)
             BRANCH_VERSION_UPDATE="SCRIPTS_STABLE_VERSION"
@@ -8038,6 +8043,11 @@ gui_rm_portproton () {
 export -f gui_rm_portproton
 
 gui_pw_update () {
+    if [[ "${PW_DISABLE_SCRIPT_UPDATES:-0}" == "1" ]] ; then
+        print_warning "Script update is disabled in --data-path mode."
+        return 0
+    fi
+
     export PW_FORCE_UPDATE="1"
     try_remove_file "${PORT_WINE_TMP_PATH}/scripts_update_notifier"
     print_info "Restarting PP for check update..."
@@ -8293,4 +8303,3 @@ find_ext_ppdb () {
         restart_pp
     fi
 }
-
