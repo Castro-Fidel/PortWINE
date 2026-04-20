@@ -2,6 +2,7 @@
 # GPL-3.0 license
 # based on https://github.com/sonic2kk/steamtinkerlaunch/blob/master/steamtinkerlaunch
 PROGNAME="PortProton"
+STEAM_DEBUG_URL="http://localhost:8080"
 
 # Generate random signed 32bit integer which can be converted into hex, using the first argument (AppName and Exe fields) as seed (in an attempt to reduce the chances of the same AppID being generated twice)
 generateShortcutVDFAppId() {
@@ -317,6 +318,83 @@ parseSteamTargetExe() {
 	fi
 }
 
+enableSteamApi() {
+	[[ -z "${STEAM_BASE_FOLDER}" ]] && STEAM_BASE_FOLDER="$(getSteamPath)"
+	[[ -z "${STEAM_BASE_FOLDER}" ]] && return 69
+	if [[ ! -f "${STEAM_BASE_FOLDER}/.cef-enable-remote-debugging" ]]; then
+		touch "${STEAM_BASE_FOLDER}/.cef-enable-remote-debugging"
+		return 75
+	fi
+	return 0
+}
+
+callSteamApi() {
+	local js_cmd="$1"
+	shift
+
+	if [[ -z "${js_cmd}" ]]; then
+		echo "Error: JavaScript function name not specified." >&2
+		return 1
+	fi
+
+	local js=$(<"${PORT_SCRIPTS_PATH:-.}/steam.js")
+	enableSteamApi || return 1
+
+	local websocat="${PW_PLUGINS_PATH:+${PW_PLUGINS_PATH}/portable/bin/}websocat"
+	if ! command -v "${websocat}" &>/dev/null; then
+		echo "Error: websocat utility not found." >&2
+		return 1
+	fi
+
+	local wss_url=$(curl -s --connect-timeout 2 "${STEAM_DEBUG_URL}/json" | jq -r '.[] | select(.title == "SharedJSContext") | .webSocketDebuggerUrl')
+	if [[ -z "${wss_url}" ]]; then
+		echo "Could not connect to Steam API. Make sure Steam is running in debug mode." >&2
+		return 1
+	fi
+
+	local js_args
+	if [ "$#" -gt 0 ]; then
+		js_args=$(jq -rn --args '$ARGS.positional | map(. | @json) | join(", ")' "$@")
+	elif [ ! -t 0 ]; then
+		js_args=$(cat)
+	fi
+
+	local params=$(jq -Rs \
+		--arg js "${js}" \
+		--arg js_cmd "${js_cmd}" \
+		'{
+			"expression": ($js + " " + $js_cmd + "(" + . + ");"),
+			"awaitPromise": true,
+			"returnByValue": true
+		}' <<< "${js_args}"
+	)
+
+	local payload=$(jq -c \
+		--arg id "${RANDOM}" \
+		'{
+			"id": ($id | tonumber),
+			"method": "Runtime.evaluate",
+			"params": .
+		}' <<< "${params}"
+	)
+	local payload_size=${#payload}
+	local buffer_size=$(( payload_size + 1024 ))
+
+	local response=$(timeout 5 "${websocat}" -n1 -B ${buffer_size} --text "${wss_url}" <<< "${payload}")
+	if [[ $? -ne 0 ]]; then
+		echo "Error: websocat command did not finish successfully." >&2
+		return 1
+	fi
+	if echo "${response}" | jq -e '.result.exceptionDetails' > /dev/null; then
+		echo "Error executing JavaScript in Steam:" >&2
+		echo "${response}" | jq -r '.result.exceptionDetails.exception.description' >&2
+		return 1
+	fi
+
+	echo "${response}" | jq -r '.result.result.value | select(. != null)'
+	return 0
+}
+
 restartSteam() {
 	if [[ "${PW_SKIP_RESTART_STEAM}" != 1 ]] && pgrep -i steam &>/dev/null ; then
 		if yad_question "For adding shortcut to STEAM, needed restart.\\n\\nRestart STEAM now?" ; then
@@ -339,6 +417,7 @@ restartSteam() {
 }
 
 downloadImage() {
+	echo "downloadImage: $1 => ${STCFGPATH}/grid/$2"
 	if ! curl -Lf# --connect-timeout 5 -m 10 -o "${STCFGPATH}/grid/$2" "$1"; then
 		return 1
 	fi
@@ -373,29 +452,40 @@ downloadImageSteamGridDB() {
 
 addGrids() {
 	local AppId="${NOSTAPPID:-0}"
-	local in=("header.jpg" "library_600x900_2x.jpg" "library_hero.jpg" "logo.png")
-	local out=("${AppId}.jpg" "${AppId}"p".jpg" "${AppId}"_hero".jpg" "${AppId}"_logo".png")
-	local gtype=("grids" "grids" "heroes" "logos")
-	local mimes=("image/jpeg" "image/jpeg" "image/jpeg" "image/png")
-	local dims=("460x215,920x430" "600x900,660x930" "" "")
+	local in=("library_600x900_2x.jpg" "library_hero.jpg" "logo.png" "header.jpg")
+	local out=("${AppId}"p".jpg" "${AppId}"_hero".jpg" "${AppId}"_logo".png" "${AppId}.jpg")
+	local gtype=("grids" "heroes" "logos" "grids")
+	local mimes=("image/jpeg" "image/jpeg" "image/png" "image/jpeg")
+	local dims=("600x900,660x930" "" "" "460x215,920x430")
 	if [[ -z "${SteamGridDBId}" ]] && [[ -z "${SteamAppId}" ]]; then
 		getSteamId > /dev/null
 	fi
 	if [[ -n "${SteamGridDBId}" ]] || [[ -n "${SteamAppId}" ]]; then
 		create_new_dir "${STCFGPATH}/grid"
 		for i in "${!in[@]}"; do
-			downloadImageSteam "${in[${i}]}" "${out[${i}]}" || \
-				downloadImageSteamGridDB "${gtype[${i}]}" "${out[${i}]}" ${mimes[${i}]:+"mimes=${mimes[${i}]}"} ${dims[${i}]:+"dimensions=${dims[${i}]}"} || \
+			if downloadImageSteam "${in[${i}]}" "${out[${i}]}" || downloadImageSteamGridDB "${gtype[${i}]}" "${out[${i}]}" ${mimes[${i}]:+"mimes=${mimes[${i}]}"} ${dims[${i}]:+"dimensions=${dims[${i}]}"}; then
+				if [[ -z "${NOSTAIDVDF}" ]]; then
+					local file="${STCFGPATH}/grid/${out[${i}]}"
+					base64 -w 0 "${file}" | jq -Rs --arg id "${AppId}" --arg i ${i} --arg ext "${file##*.}" '
+					{
+						id: ($id | tonumber),
+						i: ($i | tonumber),
+						ext: $ext,
+						image: .
+					}' | callSteamApi "setGrid"
+				fi
+			else
 				echo "Failed to load ${in[${i}]}"
+			fi
 		done
 	else
 		echo "Game is not found"
 	fi
 }
 
-addEntry() {
+addEntryVdf() {
 	if [[ -n "${SCPATH}" ]]; then
-		if [[ -f "${SCPATH}" ]] ; then
+		if [[ -f "${SCPATH}" ]]; then
 			truncate -s-2 "${SCPATH}"
 			OLDSET="$(grep -aPo '\x00[0-9]\x00\x02appid' "${SCPATH}" | tail -n1 | tr -dc '0-9')"
 			NEWSET=$((OLDSET + 1))
@@ -433,6 +523,7 @@ addEntry() {
 }
 
 removeNonSteamGame() {
+	local use_vdf=false
 	[[ -n "$1" ]] && appid="$1"
 	[[ -n "$2" ]] && NOSTSHPATH="$2"
 	[[ -z "${STUID}" ]] && STUID=$(getUserId)
@@ -444,36 +535,41 @@ removeNonSteamGame() {
 	if [[ -n "${appid}" ]]; then
 		games=$(listNonSteamGames)
 		[[ -z "${NOSTSHPATH}" ]] && NOSTSHPATH=$(jq -r --arg id "${appid}" 'map(select(.id == $id)) | first(.[].exe)' <<< "${games}")
-		if [[ -n "${NOSTSHPATH}" ]]; then
-			mv "${SCPATH}" "${SCPATH//.vdf}_${PROGNAME}_backup.vdf" 2>/dev/null
-			jq --arg id "${appid}" 'map(select(.id != $id))' <<< "${games}" | jq -c '.[]' | while read -r game; do
-				NOSTAPPID=$(jq -r '.id' <<< "${game}")
-				NOSTAPPNAME=$(jq -r '.name' <<< "${game}")
-				NOSTEXEPATH=$(jq -r '.exe' <<< "${game}")
-				NOSTSTDIR=$(jq -r '.dir' <<< "${game}")
-				NOSTICONPATH=$(jq -r '.icon' <<< "${game}")
-				NOSTARGS=$(jq -r '.args' <<< "${game}")
-				addEntry
-			done
-			rm -f "${STCFGPATH}/grid/${appid}.jpg" "${STCFGPATH}/grid/${appid}p.jpg" "${STCFGPATH}/grid/${appid}_hero.jpg" "${STCFGPATH}/grid/${appid}_logo.png"
-			rm -rf "${STEAM_BASE_FOLDER}/steamapps/compatdata/${appid}"
-			rm -rf "${STEAM_BASE_FOLDER}/steamapps/shadercache/${appid}"
-			if [[ -f "${NOSTSHPATH}" ]]; then
-				isInstallGame=false
-				for STUIDCUR in $(getUserIds); do
-					[[ "${STUIDCUR}" == "${STUID}" ]] && continue
-					STCFGPATH="$(getUserPath ${STUIDCUR})"
-					SCPATH="${STCFGPATH}/shortcuts.vdf"
-					if [[ -n "$(getAppId "${NOSTSHPATH}")" ]]; then
-						isInstallGame=true
-						break
-					fi
+		if ! callSteamApi "removeShortcut" "${appid}"; then
+			if [[ -n "${NOSTSHPATH}" ]]; then
+				mv "${SCPATH}" "${SCPATH//.vdf}_${PROGNAME}_backup.vdf" 2>/dev/null
+				jq --arg id "${appid}" 'map(select(.id != $id))' <<< "${games}" | jq -c '.[]' | while read -r game; do
+					NOSTAPPID=$(jq -r '.id' <<< "${game}")
+					NOSTAPPNAME=$(jq -r '.name' <<< "${game}")
+					NOSTEXEPATH=$(jq -r '.exe' <<< "${game}")
+					NOSTSTDIR=$(jq -r '.dir' <<< "${game}")
+					NOSTICONPATH=$(jq -r '.icon' <<< "${game}")
+					NOSTARGS=$(jq -r '.args' <<< "${game}")
+					addEntryVdf
 				done
-				unset STCFGPATH SCPATH
-				if [[ ${isInstallGame} == false ]]; then
-					rm "${NOSTSHPATH}"
-				fi
 			fi
+			use_vdf=true
+		fi
+		rm -f "${STCFGPATH}/grid/${appid}.jpg" "${STCFGPATH}/grid/${appid}p.jpg" "${STCFGPATH}/grid/${appid}_hero.jpg" "${STCFGPATH}/grid/${appid}_logo.png"
+		rm -rf "${STEAM_BASE_FOLDER}/steamapps/compatdata/${appid}"
+		rm -rf "${STEAM_BASE_FOLDER}/steamapps/shadercache/${appid}"
+		if [[ -n "${NOSTSHPATH}" ]] && [[ -f "${NOSTSHPATH}" ]]; then
+			local isInstallGame=false
+			for STUIDCUR in $(getUserIds); do
+				[[ "${STUIDCUR}" == "${STUID}" ]] && continue
+				STCFGPATH="$(getUserPath ${STUIDCUR})"
+				SCPATH="${STCFGPATH}/shortcuts.vdf"
+				if [[ -n "$(getAppId "${NOSTSHPATH}")" ]]; then
+					isInstallGame=true
+					break
+				fi
+			done
+			unset STCFGPATH SCPATH
+			if [[ ${isInstallGame} == false ]]; then
+				rm "${NOSTSHPATH}"
+			fi
+		fi
+		if [[ ${use_vdf} == true ]]; then
 			restartSteam
 		fi
 	fi
@@ -506,28 +602,35 @@ addNonSteamGame() {
 			[[ -z "${NOSTSTDIR}" ]] && NOSTSTDIR="${STEAM_SCRIPTS}"
 			NOSTEXEPATH="${NOSTSHPATH}"
 			NOSTICONPATH="${PORT_WINE_PATH}/data/img/${name_desktop_png}.png"
-			NOSTAIDVDF="$(generateShortcutVDFAppId "${NOSTAPPNAME}${NOSTEXEPATH}")"  # signed integer AppID, stored in the VDF as hexidecimal - ex: -598031679
-			NOSTAPPID="$(extractSteamId32 "${NOSTAIDVDF}")"  # unsigned 32bit ingeger version of "$NOSTAIDVDF", which is used as the AppID for Steam artwork ("grids"), as well as for our shortcuts
-
-			if [[ -f "${SCPATH}" ]] ; then
-				cp "${SCPATH}" "${SCPATH//.vdf}_${PROGNAME}_backup.vdf" 2>/dev/null
-			fi
 
 			if [[ "${USE_STEAMAPPID_AS_NAME:-0}" == "1" ]]; then
 				getSteamId > /dev/null
 				[[ -n "${SteamAppId}" ]] && NOSTAPPNAME="${SteamAppId}"
 			fi
 
-			addEntry
+			local response
+			if response=$(callSteamApi "createShortcut" "${NOSTAPPNAME}" "${NOSTEXEPATH}" "${NOSTSTDIR}" "${NOSTICONPATH}" "${NOSTARGS:-}"); then
+				NOSTAPPID=$(echo "${response}" | jq -e -r '.id // empty')
+			fi
+			if [[ -z "${NOSTAPPID}" ]]; then
+				NOSTAIDVDF="$(generateShortcutVDFAppId "${NOSTAPPNAME}${NOSTEXEPATH}")"  # signed integer AppID, stored in the VDF as hexidecimal - ex: -598031679
+				NOSTAPPID="$(extractSteamId32 "${NOSTAIDVDF}")"  # unsigned 32bit ingeger version of "$NOSTAIDVDF", which is used as the AppID for Steam artwork ("grids"), as well as for our shortcuts
+				if [[ -f "${SCPATH}" ]]; then
+					cp "${SCPATH}" "${SCPATH//.vdf}_${PROGNAME}_backup.vdf" 2>/dev/null
+				fi
+				addEntryVdf
+			fi
 
-			if [[ "${DOWNLOAD_STEAM_GRID}" == "1" ]] ; then
+			if [[ "${DOWNLOAD_STEAM_GRID}" == "1" ]]; then
 				NOSTAPPNAME="${name_desktop}"
 				pw_start_progress_bar_block "Please wait. downloading covers for ${NOSTAPPNAME}"
 				addGrids
 				pw_stop_progress_bar
 			fi
 
-			restartSteam
+			if [[ -n "${NOSTAIDVDF}" ]]; then
+				restartSteam
+			fi
 		fi
 	else
 		return 1
