@@ -1784,11 +1784,20 @@ pw_init_runtime () {
 
     if grep -i "altlinux" "/etc/os-release" &>/dev/null ; then
         export LIBGL_DRIVERS_PATH="/usr/lib/X11/modules/dri:/usr/lib64/X11/modules/dri"
-        if [[ -f "/usr/share/vulkan/icd.d/nvidia_icd.json" ]] \
-        && [[ "$LSPCI_VGA" == *nvidia* ]]
-        then
-            VK_ADD_DRIVER_FILES="$(realpath /usr/share/vulkan/icd.d/nvidia_icd.json)"
-            export VK_ADD_DRIVER_FILES
+        if [[ "${LSPCI_VGA,,}" == *nvidia* ]] ; then
+            if [[ -f "/usr/share/vulkan/icd.d/nvidia_icd.json" ]] ; then
+                VK_ADD_DRIVER_FILES="$(realpath /usr/share/vulkan/icd.d/nvidia_icd.json)"
+                export VK_ADD_DRIVER_FILES
+            fi
+            local nvidia_lib64_path nvidia_lib32_path
+            nvidia_lib64_path="$(realpath /etc/libnvidiacurrent 2>/dev/null)"
+            nvidia_lib32_path="$(realpath /etc/libnvidia32current 2>/dev/null)"
+            if [[ -n "$nvidia_lib64_path" ]] || [[ -n "$nvidia_lib32_path" ]] ; then
+                export PRESSURE_VESSEL_APP_LD_LIBRARY_PATH="\
+${LD_LIBRARY_PATH:+${LD_LIBRARY_PATH}:}\
+${nvidia_lib64_path:+$nvidia_lib64_path:}\
+${nvidia_lib32_path}"
+            fi
         fi
     elif grep -i -E '(ROSA|RED OS)' "/etc/os-release" &>/dev/null ; then
         export LOCPATH="/run/host/usr/share/locale/"
