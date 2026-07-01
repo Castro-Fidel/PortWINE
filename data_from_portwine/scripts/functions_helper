@@ -3892,8 +3892,12 @@ start_portwine () {
     [[ "${PW_VKBASALT_USER_CONF}" == 1 ]] && unset PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS
 
     if [[ $PW_GPU_USE != "disabled" ]] ; then
-        export DXVK_FILTER_DEVICE_NAME="$PW_GPU_USE"
-        export VKD3D_FILTER_DEVICE_NAME="$PW_GPU_USE"
+        PW_GPU_FILTER_NAME="$PW_GPU_USE"
+        if [[ "$PW_GPU_FILTER_NAME" == "AMD Custom GPU 0405 (RADV VANGOGH)" ]] ; then
+            PW_GPU_FILTER_NAME="AMD VANGOGH"
+        fi
+        export DXVK_FILTER_DEVICE_NAME="$PW_GPU_FILTER_NAME"
+        export VKD3D_FILTER_DEVICE_NAME="$PW_GPU_FILTER_NAME"
         export MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE="1"
         export MESA_VK_DEVICE_SELECT="$PW_vendorID:$PW_deviceID"
     fi
@@ -8302,4 +8306,3 @@ find_ext_ppdb () {
         restart_pp
     fi
 }
-
