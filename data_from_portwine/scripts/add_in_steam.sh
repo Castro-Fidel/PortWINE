@@ -162,7 +162,7 @@ getUserId() {
 			if [[ "${line}" =~ ^[[:space:]]*\"([0-9]+)\"$ ]]; then
 				STUIDCUR="${BASH_REMATCH[1]}"
 				SLUFUB=true
-			elif [[ "${line}" == *'"MostRecent"'*'"1"' && ${SLUFUB} = true ]]; then
+			elif [[ "${line}" == *'"AutoLogin"'*'"1"' && ${SLUFUB} = true ]]; then
 				STUID=$(extractSteamId32 "${STUIDCUR}")
 				break
 			elif [[ "${line}" == "}" ]]; then
