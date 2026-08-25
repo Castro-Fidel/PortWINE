@@ -2153,31 +2153,30 @@ pw_download_libs () {
     || [[ ! -f "${PW_WINELIB}/pressure-vessel/bin/pressure-vessel-wrap" ]]
     then
         print_info "Download and install libraries..."
-        if try_download "github.com/Castro-Fidel/PortWINE/releases/download/libs${PW_LIBS_VER}/libs${PW_LIBS_VER}.tar.xz" \
-                        "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" ; then
-            if unpack "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/" ; then
-                try_remove_file "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz"
-                if lsbash "${PORT_WINE_TMP_PATH}" --grep libs_v --grep -v libs"${PW_LIBS_VER}" ; then
-                    for RM_LIBS in $(lsbash "${PORT_WINE_TMP_PATH}" --grep libs_v --grep -v libs"${PW_LIBS_VER}")
-                    do try_remove_dir "${PORT_WINE_TMP_PATH}/${RM_LIBS}"
-                    done
-                fi
-            else
+
+        local archives="${PORT_WINE_TMP_PATH}/archives"
+        create_new_dir "$archives"
+        if [[ -f "${archives}/libs${PW_LIBS_VER}.tar.xz" ]] \
+        && unpack "${archives}/libs${PW_LIBS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/"
+        then
+            return 0
+        elif try_download "github.com/Castro-Fidel/PortWINE/releases/download/libs${PW_LIBS_VER}/libs${PW_LIBS_VER}.tar.xz" \
+                        "${archives}/libs${PW_LIBS_VER}.tar.xz"
+        then
+            if ! unpack "${archives}/libs${PW_LIBS_VER}.tar.xz" "${PORT_WINE_TMP_PATH}/" ; then
                 try_remove_dir "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
-                try_remove_file "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}.tar.xz"
+                try_remove_file "${archives}/libs${PW_LIBS_VER}.tar.xz"
                 if yad_error_download
                 then pw_download_libs
                 else
-                    export PW_LIBS_VER="_v$((${PW_LIBS_VER//_v/} - 1))"
-                    export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
+                    fatal "Failed to download: libs${PW_LIBS_VER}"
                 fi
             fi
         else
             if yad_error_download
             then pw_download_libs
             else
-                export PW_LIBS_VER="_v$((${PW_LIBS_VER//_v/} - 1))"
-                export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
+                fatal "Failed to download: libs${PW_LIBS_VER}"
             fi
         fi
     fi
