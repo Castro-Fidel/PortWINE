@@ -5429,8 +5429,12 @@ gui_proton_downloader () {
         pw_start_progress_bar_block "${translations[Check new version WINE...]}"
     fi
 
-    METADATA_URL="https://git.linux-gaming.ru/Boria138/PortProton-Wine-Metadata/raw/branch/main/wine_metadata.json"
-    METADATA=$(curl  -A 'PortProton' -s "$METADATA_URL")
+    if [[ "${MIRROR}" == CLOUD ]] ; then
+        METADATA_URL="https://git.linux-gaming.ru/Boria138/PortProton-Wine-Metadata/raw/branch/main/wine_metadata.json"
+    else
+        METADATA_URL="https://raw.githubusercontent.com/linux-gaming-ru/PortProtonQt-Wine-Metadata/main/wine_metadata.json"
+    fi
+    METADATA=$(curl -A 'PortProton' -f -s --connect-timeout 10 --max-time 30 "$METADATA_URL") || METADATA=""
     if [[ -z "$METADATA" ]] ; then
         yad_error "${translations[Error: failed to fetch metadata.]}"
         restart_pp
