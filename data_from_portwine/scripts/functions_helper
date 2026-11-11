@@ -799,10 +799,6 @@ debug_timer () {
             case $3 in
                 PW_TIME_IN_GAME)
                     START_PW_TIME_IN_GAME=$START ;;
-                UPDATE_GITHUB)
-                    START_UPDATE_GITHUB=$START ;;
-                UPDATE_PP_GITEA)
-                    START_UPDATE_PP_GITEA=$START ;;
             esac
         fi
     elif [[ "$1" == "--end" ]] ; then
@@ -812,10 +808,6 @@ debug_timer () {
                 case $3 in
                     PW_TIME_IN_GAME)
                         START=$START_PW_TIME_IN_GAME ;;
-                    UPDATE_GITHUB)
-                        START=$START_UPDATE_GITHUB ;;
-                    UPDATE_PP_GITEA)
-                        START=$START_UPDATE_PP_GITEA ;;
                 esac
                 export "$3"="$((( END - START )/1000000 ))"
             else
@@ -2545,56 +2537,57 @@ pw_port_update () {
         BRANCH="master"
     fi
 
-    URL_GITHUB="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/${BRANCH}/data_from_portwine/scripts/var"
-    URL_PP_GITEA="https://git.linux-gaming.ru/CastroFidel/PortWINE/raw/branch/${BRANCH}/data_from_portwine/scripts/var"
+    pw_update_set_urls () {
+        case "$1" in
+            UPDATE_GITHUB)
+                URL_FOR_CHANGELOG="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/${BRANCH}/data_from_portwine"
+                URL_TO_PW_BRANCH="https://github.com/Castro-Fidel/PortWINE/archive/refs/heads/${BRANCH}.tar.gz"
+                ;;
+            UPDATE_PP_GITEA)
+                URL_FOR_CHANGELOG="https://git.linux-gaming.ru/CastroFidel/PortWINE/raw/branch/${BRANCH}/data_from_portwine"
+                URL_TO_PW_BRANCH="https://git.linux-gaming.ru/CastroFidel/PortWINE/archive/${BRANCH}.tar.gz"
+                ;;
+        esac
+    }
+
+    # mirrors in order of preference, the first one that answers is used
+    if [[ "$USE_ONLY_LG_RU" == "1" ]] ; then
+        PW_UPDATE_MIRRORS=(UPDATE_PP_GITEA)
+    elif [[ "$MIRROR" == "CLOUD" ]] ; then
+        PW_UPDATE_MIRRORS=(UPDATE_PP_GITEA UPDATE_GITHUB)
+    else
+        PW_UPDATE_MIRRORS=(UPDATE_GITHUB UPDATE_PP_GITEA)
+    fi
+
+    # download scripts/var from mirror $1 to curent_var_ver
+    pw_fetch_remote_var () {
+        pw_update_set_urls "$1"
+        curl -fsL -m 3 -A 'PortProton' "${URL_FOR_CHANGELOG}/scripts/var" -o "${PORT_WINE_TMP_PATH}/curent_var_ver.tmp" \
+        && mv -f "${PORT_WINE_TMP_PATH}/curent_var_ver.tmp" "${PORT_WINE_TMP_PATH}/curent_var_ver"
+    }
 
     pw_check_update () {
-        if [[ $USE_ONLY_LG_RU != "1" ]] ; then
-            debug_timer --start -s "UPDATE_GITHUB"
-            if ! timeout 2 curl -f -s --list-only "$URL_GITHUB" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
-            then
-                print_warning "https://raw.githubusercontent.com/ broken. Skip it..."
-                UPDATE_SKIP_GITHUB="1"
+        local mirror
+        unset UPDATE_URL_MIRROR
+        for mirror in "${PW_UPDATE_MIRRORS[@]}" ; do
+            if pw_fetch_remote_var "$mirror" ; then
+                UPDATE_URL_MIRROR="$mirror"
+                break
             fi
-            debug_timer --end -s "UPDATE_GITHUB"
-        else
-            UPDATE_SKIP_GITHUB="1"
-        fi
+            print_warning "${URL_FOR_CHANGELOG} is unavailable. Skip it..."
+        done
+        try_remove_file "${PORT_WINE_TMP_PATH}/curent_var_ver.tmp"
 
-        debug_timer --start -s "UPDATE_PP_GITEA"
-        if ! timeout 2 curl -A 'PortProton' -f -s --list-only "$URL_PP_GITEA" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
-        then
-            print_warning "https://git.linux-gaming.ru/ broken. Skip it..."
-            UPDATE_SKIP_PP_GITEA="1"
-        fi
-        debug_timer --end -s "UPDATE_PP_GITEA"
-
-        if [[ "$UPDATE_SKIP_GITHUB" == "1" ]] \
-        && [[ "$UPDATE_SKIP_PP_GITEA" == "1" ]] ; then
+        if [[ -z "$UPDATE_URL_MIRROR" ]] ; then
             print_error "Unable to determine the version on the server. Skip it..."
             return 1
         fi
 
-        read -r -a PW_UPDATE_ALL_LIST <<< "$UPDATE_GITHUB $UPDATE_PP_GITEA"
-
-        UPDATE_MIN=${PW_UPDATE_ALL_LIST[0]}
-        for i in "${!PW_UPDATE_ALL_LIST[@]}"; do
-        if (( ${PW_UPDATE_ALL_LIST[$i]} < UPDATE_MIN )) ; then
-            UPDATE_MIN=${PW_UPDATE_ALL_LIST[$i]}
-        fi
-        done
-
+        local mirror_host="${URL_FOR_CHANGELOG#https://}"
+        print_info "Selected https://${mirror_host%%/*}/"
         UPDATE_DAYS=$(date +%-j)
         UPDATE_MINUTES=$(($(date +%-H) * 60 + $(date +%-M)))
-        if [[ "$UPDATE_GITHUB" == "$UPDATE_MIN" ]] ; then
-            print_info "Selected https://raw.githubusercontent.com/"
-            echo "$UPDATE_DAYS $UPDATE_MINUTES UPDATE_GITHUB $UPDATE_MINUTES" > "${PORT_WINE_TMP_PATH}/update_skip_mirror"
-            UPDATE_URL_MIRROR="UPDATE_GITHUB"
-        elif [[ "$UPDATE_PP_GITEA" == "$UPDATE_MIN" ]] ; then
-            print_info "Selected https://git.linux-gaming.ru/"
-            echo "$UPDATE_DAYS $UPDATE_MINUTES UPDATE_PP_GITEA $UPDATE_MINUTES" > "${PORT_WINE_TMP_PATH}/update_skip_mirror"
-            UPDATE_URL_MIRROR="UPDATE_PP_GITEA"
-        fi
+        echo "$UPDATE_DAYS $UPDATE_MINUTES $UPDATE_URL_MIRROR $UPDATE_MINUTES" > "${PORT_WINE_TMP_PATH}/update_skip_mirror"
         PW_FORCE_UPDATE="1"
     }
 
@@ -2641,27 +2634,12 @@ pw_port_update () {
             UPDATE_URL_MIRROR="${CHECK_UPDATE_MIRROR[2]}"
             sed -i 's/[0-9]*$/'"$UPDATE_MINUTES"'/' "${PORT_WINE_TMP_PATH}/update_skip_mirror"
         fi
-        case "$UPDATE_URL_MIRROR" in
-            UPDATE_GITHUB)
-                if [[ ! -f "${PORT_WINE_TMP_PATH}/curent_var_ver" ]] \
-                && ! timeout 2 curl -f -s --list-only "$URL_GITHUB" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
-                then
-                    pw_check_update
-                fi
-                URL_FOR_CHANGELOG="https://raw.githubusercontent.com/Castro-Fidel/PortWINE/${BRANCH}/data_from_portwine"
-                URL_TO_PW_BRANCH="https://github.com/Castro-Fidel/PortWINE/archive/refs/heads/${BRANCH}.tar.gz"
-                ;;
-            UPDATE_PP_GITEA)
-                if [[ ! -f "${PORT_WINE_TMP_PATH}/curent_var_ver" ]] \
-                && ! timeout 2 curl -A 'PortProton' -f -s --list-only "$URL_PP_GITEA" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
-                then
-                    pw_check_update
-                fi
-                URL_FOR_CHANGELOG="https://git.linux-gaming.ru/CastroFidel/PortWINE/raw/branch/${BRANCH}/data_from_portwine"
-                URL_TO_PW_BRANCH="https://git.linux-gaming.ru/CastroFidel/PortWINE/archive/${BRANCH}.tar.gz"
-                UPDATE_PP_GITEA_FIX=1
-                ;;
-        esac
+        pw_update_set_urls "$UPDATE_URL_MIRROR"
+        if [[ ! -f "${PORT_WINE_TMP_PATH}/curent_var_ver" ]] \
+        && ! pw_fetch_remote_var "$UPDATE_URL_MIRROR"
+        then
+            pw_check_update
+        fi
     else
         return 0
     fi
@@ -2695,7 +2673,7 @@ pw_port_update () {
                 YAD_STATUS=20
                 unset PW_CHANGE_BRANCH
             else
-                curl -s --list-only "${URL_FOR_CHANGELOG}/${PW_CHANGELOG_FILE}" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
+                curl -fsL -m 5 -A 'PortProton' "${URL_FOR_CHANGELOG}/${PW_CHANGELOG_FILE}" > "${PORT_WINE_TMP_PATH}/curent_var_ver"
                 sed -i "/Scripts version ${scripts_install_ver}/,$ d" "${PORT_WINE_TMP_PATH}/curent_var_ver"
                 "${pw_yad}" --title "${translations[Update scripts:]} v.(${scripts_install_ver}${BRANCH_VERSION})" \
                 --window-icon="$PW_GUI_ICON_PATH/portproton.svg" --width=1280 --height=720 --text-info --wrap --scroll \
@@ -2717,15 +2695,25 @@ pw_port_update () {
                 20)
                     echo "######################################################"
                     print_info "Update scripts..."
-                    if [[ $UPDATE_PP_GITEA_FIX == 1 ]] ; then
-                        unset UPDATE_PP_GITEA_FIX
-                        PW_NAME_ARCHIVE="portwine"
-                    else
-                        PW_NAME_ARCHIVE="PortWINE-${BRANCH}"
-                    fi
-                    try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-${BRANCH}.tar.gz"
-                    if try_download "${URL_TO_PW_BRANCH}" "${PORT_WINE_TMP_PATH}/PortWINE-${BRANCH}.tar.gz" no_mirror ; then
-                        if unpack "${PORT_WINE_TMP_PATH}/PortWINE-${BRANCH}.tar.gz" "${PORT_WINE_TMP_PATH}"
+                    local mirror PW_UPDATE_ARCHIVE="${PORT_WINE_TMP_PATH}/PortWINE-${BRANCH}.tar.gz"
+                    local update_mirrors=("$UPDATE_URL_MIRROR")
+                    for mirror in "${PW_UPDATE_MIRRORS[@]}" ; do
+                        [[ "$mirror" != "$UPDATE_URL_MIRROR" ]] && update_mirrors+=("$mirror")
+                    done
+                    unset PW_NAME_ARCHIVE
+                    for mirror in "${update_mirrors[@]}" ; do
+                        pw_update_set_urls "$mirror"
+                        try_remove_file "$PW_UPDATE_ARCHIVE"
+                        if try_download "${URL_TO_PW_BRANCH}" "$PW_UPDATE_ARCHIVE" no_mirror ; then
+                            # the top directory name differs between github and gitea archives
+                            PW_NAME_ARCHIVE="$(tar -tzf "$PW_UPDATE_ARCHIVE" 2>/dev/null | head -n 1 | cut -d/ -f1)"
+                            [[ -n "$PW_NAME_ARCHIVE" ]] && break
+                        fi
+                        print_warning "Download from ${URL_TO_PW_BRANCH} failed. Try next mirror..."
+                    done
+                    if [[ -n "$PW_NAME_ARCHIVE" ]] ; then
+                        try_remove_dir "${PORT_WINE_TMP_PATH}/$PW_NAME_ARCHIVE/"
+                        if unpack "$PW_UPDATE_ARCHIVE" "${PORT_WINE_TMP_PATH}"
                         then
                             create_new_dir "${PORT_WINE_TMP_PATH}/scripts_backup"
                             cd "${PORT_WINE_PATH}/data/" || fatal
@@ -2733,11 +2721,11 @@ pw_port_update () {
                             ./scripts ./img/gui ./locales ./themes ./changelog* ./dxvk.conf ./vkBasalt.conf ./tmp/scripts_ver
                             try_remove_dir "${PORT_WINE_PATH}/data/scripts/"
                             cp -fr "${PORT_WINE_TMP_PATH}/$PW_NAME_ARCHIVE/data_from_portwine/"* "${PORT_WINE_PATH}/data/"
-                            try_remove_file "${PORT_WINE_TMP_PATH}/PortWINE-${BRANCH}.tar.gz"
+                            try_remove_file "$PW_UPDATE_ARCHIVE"
                             try_remove_dir "${PORT_WINE_TMP_PATH}/$PW_NAME_ARCHIVE/"
                             echo "${scripts_current_ver}" > "${PORT_WINE_TMP_PATH}/scripts_ver"
                             unset SKIP_CHECK_UPDATES
-                            curl -X GET "http://cloud.linux-gaming.ru:8081/api/download/${scripts_current_ver}" &>/dev/null
+                            curl -s -m 5 -X GET "http://cloud.linux-gaming.ru:8081/api/download/${scripts_current_ver}" &>/dev/null
                             echo "Restarting PP after update..."
                             restart_pp
                         fi

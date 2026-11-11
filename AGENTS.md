@@ -274,7 +274,7 @@ stop_portwine
 
 - `try_download URL DEST [флаг]`: при `MIRROR=CLOUD` сначала пробует `$url_cloud/<basename>`, затем URL; при `GITHUB` наоборот. Флаг `no_mirror` — только прямой URL (сторонние установщики), `silent` — без GUI
 - Кнопка в прогресс-баре позволяет переключить зеркало (записывается в user.conf)
-- `pw_port_update`: выбирает самый быстрый из двух источников скриптов (raw.githubusercontent.com, git.linux-gaming.ru), кеширует выбор в `data/tmp/update_skip_mirror`; читает `SCRIPTS_STABLE_VERSION` (master) или `SCRIPTS_NEXT_VERSION` (devel) из `var` удалённой ветки
+- `pw_port_update`: перебирает источники скриптов по приоритету (`PW_UPDATE_MIRRORS`: при `MIRROR=CLOUD` или `USE_ONLY_LG_RU=1` сначала git.linux-gaming.ru, иначе raw.githubusercontent.com), берёт первый ответивший, при скачивании архива тоже fallback на следующее зеркало; кеширует выбор в `data/tmp/update_skip_mirror`; читает `SCRIPTS_STABLE_VERSION` (master) или `SCRIPTS_NEXT_VERSION` (devel) из `var` удалённой ветки
 - Wine-сборки: GitHub releases Castro-Fidel/PortWINE + метаданные с зеркала (см. `gui_proton_downloader`)
 - `SKIP_CHECK_UPDATES=1` отключает проверку (используется при перезапуске)
 
