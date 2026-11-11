@@ -5408,7 +5408,10 @@ gui_proton_downloader () {
     # the first mirror that answers is used
     METADATA=""
     for METADATA_URL in "${METADATA_URLS[@]}" ; do
-        METADATA=$(curl -A 'PortProton' -f -s --connect-timeout 5 --max-time 30 "$METADATA_URL") && [[ -n "$METADATA" ]] && break
+        if METADATA=$(curl -A 'PortProton' -f -s --connect-timeout 5 --max-time 30 "$METADATA_URL") && [[ -n "$METADATA" ]] ; then
+            print_info "Wine metadata fetched from $METADATA_URL"
+            break
+        fi
         print_warning "Failed to fetch wine metadata from $METADATA_URL"
     done
     if [[ -z "$METADATA" ]] ; then
