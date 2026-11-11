@@ -268,8 +268,6 @@ stop_portwine
 --autoinstall PW_NAME
 ```
 
-Примечание: в `--help` указан `--del-user-conf`, в коде команда называется `--delete-user-conf`.
-
 Запуск без `cli`: `start.sh /path/game.exe` открывает окно настроек запуска. Формат `file://` поддерживается.
 
 ## Зеркала и обновления

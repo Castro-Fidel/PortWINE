@@ -442,7 +442,7 @@ case "$1" in
                                                     (List their variables and values for example PW_MANGOHUD=1 PW_VKBASALT=0, etc.)]}
 --get-user-conf                                     ${translations[Get a value from user.conf file, requires variable name]}
 --set-user-conf                                     ${translations[Set a value in user.conf file, requires variable name and value]}
---del-user-conf                                     ${translations[Delete a value from user.conf file, requires variable name]}
+--delete-user-conf                                  ${translations[Delete a value from user.conf file, requires variable name]}
 --list-db                                           ${translations[List all available database variables]}
 --show-ppdb                                         ${translations[Show the content of .ppdb file for specified .exe file]}
 --backup-prefix                                     ${translations[Backup specified prefix to a file]}
@@ -464,7 +464,7 @@ ${translations[Usage examples:]}
   portproton cli --edit-db /path/to/game.exe PW_MANGOHUD=1 PW_VKBASALT=0
   portproton cli --get-user-conf PW_MANGOHUD
   portproton cli --set-user-conf PW_MANGOHUD 1
-  portproton cli --del-user-conf PW_MANGOHUD
+  portproton cli --delete-user-conf PW_MANGOHUD
   portproton cli --backup-prefix DEFAULT /path/to/backup/directory
   portproton cli --restore-prefix /path/to/backup/file.ppack
   portproton cli --winecfg WINE_LG DEFAULT
@@ -517,7 +517,7 @@ ${translations[Usage examples:]}
         manage_user_conf_value set "$2" "$3"
         exit 0
         ;;
-        --delete-user-conf)
+    --delete-user-conf)
         # --delete-user-conf VARIABLE_NAME
         manage_user_conf_value delete "$2"
         exit 0
