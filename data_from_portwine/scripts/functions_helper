@@ -403,7 +403,12 @@ try_check_sha256sum () {
         print_ok "Used no_mirror downloading. Skipping check sha256sum."
         return 0
     fi
-    SHA256SUM_EXT=$(curl --silent -L "${1//.tar*/}.sha256sum" | awk '{print $1}')
+    local sha_url
+    for sha_url in "$1" "${SECOND_URL[0]}" "${FIRST_URL[0]}" ; do
+        [[ -z "$sha_url" ]] && continue
+        SHA256SUM_EXT=$(curl -sfL -m 15 -A 'PortProton' "${sha_url//.tar*/}.sha256sum" 2>/dev/null | awk '{print $1}')
+        [[ ${#SHA256SUM_EXT} == 64 ]] && break
+    done
     if [[ ${#SHA256SUM_EXT} == 64 ]] ; then
         SHA256SUM_INT=$(sha256sum "$dest" | awk '{print $1}')
         if [[ "$SHA256SUM_EXT" == "$SHA256SUM_INT" ]] ; then
@@ -495,14 +500,15 @@ try_download () {
             local curl_status="error"
         fi
 
-        if [[ $curl_status != "error" ]] \
-        && try_check_sha256sum "${FIRST_URL[@]}"
-        then
-            print_ok "File downloaded successfully: $filename from ${FIRST_URL[0]}"
-            return 0
-        else
-            local curl_status="error"
+        if [[ $curl_status != "error" ]] ; then
+            if try_check_sha256sum "${FIRST_URL[@]}" ; then
+                print_ok "File downloaded successfully: $filename from ${FIRST_URL[0]}"
+                return 0
+            else
+                try_remove_file "$dest"
+            fi
         fi
+        local curl_status="error"
     else
         set -o pipefail
         curl -f -# -A 'Mozilla/5.0 (compatible; Konqueror/2.1.1; X11)' -H 'Cache-Control: no-cache, no-store' \
@@ -782,11 +788,11 @@ unpack () {
         $PW_TERM "echo ; echo ; echo \"Unpacking file: $1. Please wait...\" ; $command \"$1\" -C \"$2\""
         [[ "$?" != 0 ]] && return 1 || return 0
     elif [[ "$silent" != "true" ]] ; then
-        set -o pipefail
         pw_start_progress_bar_cover "${COVERS_PATH}/unpacking_${LANGUAGE_GIF}.gif" --block
         $command "$1" -C "$2" 2>/dev/null
+        local unpack_status="$?"
         pw_stop_progress_bar
-        [[ "${PIPESTATUS[0]}" != 0 ]] && print_error "File $1 unpacking error." && return 1 || return 0
+        [[ "$unpack_status" != 0 ]] && print_error "File $1 unpacking error." && return 1 || return 0
     else
         $command "$1" -C "$2" && return 0 || return 1
     fi
@@ -3522,24 +3528,22 @@ start_portwine () {
 
         if [[ ! -f "${WINEPREFIX}/.${FILE_NAME_PFX}" ]] ; then
             print_info "Download and install ${FILE_NAME_PFX} pfx..."
-            if [[ ! -f "${PFX_TMP}/${FILE_NAME_PFX}.tar.xz" ]] ; then
-                if try_download "${PFX_URL}" "${PFX_TMP}/${FILE_NAME_PFX}.tar.xz" ; then
-                    if unpack "${PFX_TMP}/${FILE_NAME_PFX}.tar.xz" "${PORT_WINE_PATH}/data/prefixes/"
-                    then touch "${WINEPREFIX}/.${FILE_NAME_PFX}"
-                    fi
-                else
-                    try_remove_file "${PFX_TMP}/${FILE_NAME_PFX}.tar.xz"
-                    yad_error_download && exit 1
+            local PFX_ARCHIVE="${PFX_TMP}/${FILE_NAME_PFX}.tar.xz"
+            if [[ -f "$PFX_ARCHIVE" ]] || try_download "${PFX_URL}" "$PFX_ARCHIVE" ; then
+                if unpack "$PFX_ARCHIVE" "${PORT_WINE_PATH}/data/prefixes/" \
+                && [[ -d "${WINEPREFIX}/drive_c" ]]
+                then
+                    touch "${WINEPREFIX}/.${FILE_NAME_PFX}"
+                    echo "based_on_dotnet" >> "${WINEPREFIX}/winetricks.log"
+                    return 0
                 fi
-            else
-                if unpack "${PFX_TMP}/${FILE_NAME_PFX}.tar.xz" "${PORT_WINE_PATH}/data/prefixes/"
-                then touch "${WINEPREFIX}/.${FILE_NAME_PFX}"
-                else
-                    try_remove_file "${PFX_TMP}/${FILE_NAME_PFX}.tar.xz"
-                    yad_error_download && exit 1
-                fi
+                print_error "Failed to unpack ${FILE_NAME_PFX} pfx, the archive is broken and has been removed."
             fi
-            echo "based_on_dotnet" >> "${PORT_WINE_PATH}/data/prefixes/${PW_PREFIX_NAME}/winetricks.log"
+            try_remove_file "$PFX_ARCHIVE"
+            if yad_error_download
+            then pw_get_pfx ; return $?
+            else exit 1
+            fi
         fi
         return 0
     }
@@ -5195,6 +5199,7 @@ pw_start_progress_bar_cover () {
         PW_GIF_FILE="${COVERS_PATH}/loading_deck.gif"
         "${pw_yad}" --picture --filename="${PW_GIF_FILE}" $AUTOCLOUSE --borders=0 --no-buttons --undecorated --fullscreen --skip-taskbar > /dev/null 2>&1 &
         PW_YAD_PID_PROGRESS_BAR+=($!)
+        disown
     elif ! check_start_from_steam ; then
         PW_GIF_FILE="$1"
         PW_GIF_SIZE_X=$(file "${PW_GIF_FILE}" | awk '{print $7 + 8}')
@@ -5202,6 +5207,7 @@ pw_start_progress_bar_cover () {
         "${pw_yad}" --picture --filename="${PW_GIF_FILE}" $AUTOCLOUSE --no-buttons --undecorated \
         --skip-taskbar --width="$PW_GIF_SIZE_X" --height="$PW_GIF_SIZE_Y" --window-icon="$PW_GUI_ICON_PATH/portproton.svg" > /dev/null 2>&1 &
         PW_YAD_PID_PROGRESS_BAR+=($!)
+        disown
     fi
     return 0
 }
