@@ -274,7 +274,7 @@ stop_portwine
 
 - `try_download URL DEST [флаг]`: при `MIRROR=CLOUD` сначала пробует `$url_cloud/<basename>`, затем URL; при `GITHUB` наоборот. Флаг `no_mirror` — только прямой URL (сторонние установщики), `silent` — без GUI
 - Кнопка в прогресс-баре позволяет переключить зеркало (записывается в user.conf)
-- `pw_port_update`: выбирает самый быстрый из трёх источников скриптов (gitlab.eterfund.ru, raw.githubusercontent.com, git.linux-gaming.ru), кеширует выбор в `data/tmp/update_skip_mirror`; читает `SCRIPTS_STABLE_VERSION` (master) или `SCRIPTS_NEXT_VERSION` (devel) из `var` удалённой ветки
+- `pw_port_update`: выбирает самый быстрый из двух источников скриптов (raw.githubusercontent.com, git.linux-gaming.ru), кеширует выбор в `data/tmp/update_skip_mirror`; читает `SCRIPTS_STABLE_VERSION` (master) или `SCRIPTS_NEXT_VERSION` (devel) из `var` удалённой ветки
 - Wine-сборки: GitHub releases Castro-Fidel/PortWINE + метаданные с зеркала (см. `gui_proton_downloader`)
 - `SKIP_CHECK_UPDATES=1` отключает проверку (используется при перезапуске)
 
@@ -379,7 +379,7 @@ shellcheck -x data_from_portwine/scripts/start.sh   # ожидаются сущ�
 - **База ppdb**: https://ppdb.linux-gaming.ru
 - **Переводы**: https://translate.codeberg.org/projects/portproton/
 - **Flathub**: ru.linux_gaming.PortProton
-- **Зеркала скриптов**: git.linux-gaming.ru/CastroFidel/PortWINE, gitlab.eterfund.ru/Castro-Fidel/PortWINE
+- **Зеркала скриптов**: git.linux-gaming.ru/CastroFidel/PortWINE
 - **Сообщество**: https://t.me/linux_gaming_ru
 
 ## Примечания для AI агентов
