@@ -5398,12 +5398,19 @@ gui_proton_downloader () {
         pw_start_progress_bar_block "${translations[Check new version WINE...]}"
     fi
 
-    if [[ "${MIRROR}" == CLOUD ]] ; then
-        METADATA_URL="https://git.linux-gaming.ru/Boria138/PortProton-Wine-Metadata/raw/branch/main/wine_metadata.json"
-    else
-        METADATA_URL="https://raw.githubusercontent.com/linux-gaming-ru/PortProtonQt-Wine-Metadata/main/wine_metadata.json"
+    local METADATA_URL_CLOUD="https://git.linux-gaming.ru/Boria138/PortProton-Wine-Metadata/raw/branch/main/wine_metadata.json"
+    local METADATA_URL_GITHUB="https://raw.githubusercontent.com/linux-gaming-ru/PortProtonQt-Wine-Metadata/main/wine_metadata.json"
+    local METADATA_URLS
+    if [[ "${MIRROR}" == CLOUD ]]
+    then METADATA_URLS=("$METADATA_URL_CLOUD" "$METADATA_URL_GITHUB")
+    else METADATA_URLS=("$METADATA_URL_GITHUB" "$METADATA_URL_CLOUD")
     fi
-    METADATA=$(curl -A 'PortProton' -f -s --connect-timeout 10 --max-time 30 "$METADATA_URL") || METADATA=""
+    # the first mirror that answers is used
+    METADATA=""
+    for METADATA_URL in "${METADATA_URLS[@]}" ; do
+        METADATA=$(curl -A 'PortProton' -f -s --connect-timeout 5 --max-time 30 "$METADATA_URL") && [[ -n "$METADATA" ]] && break
+        print_warning "Failed to fetch wine metadata from $METADATA_URL"
+    done
     if [[ -z "$METADATA" ]] ; then
         yad_error "${translations[Error: failed to fetch metadata.]}"
         restart_pp
