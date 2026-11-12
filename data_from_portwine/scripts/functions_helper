@@ -2178,8 +2178,15 @@ pw_download_libs () {
 }
 
 pw_check_and_download_dxvk_and_vkd3d () {
-    # Download DXVK versions
-    for DXVK_VAR_VER in "${DXVK_SAREK_VER}" "${DXVK_OLD_VER}" "${DXVK_NEW_VER}" ; do
+    case "${PW_VULKAN_USE}" in
+        1) DXVK_VAR_VER="${DXVK_SAREK_VER}"; VKD3D_VAR_VER="${VKD3D_SAREK_VER}" ;;
+        2) DXVK_VAR_VER="${DXVK_OLD_VER}"; VKD3D_VAR_VER="${VKD3D_OLD_VER}" ;;
+        6) DXVK_VAR_VER="${DXVK_NEW_VER}"; VKD3D_VAR_VER="${VKD3D_NEW_VER}" ;;
+        *) DXVK_VAR_VER=""; VKD3D_VAR_VER="" ;;
+    esac
+
+    # Download DXVK
+    if [[ -n "${DXVK_VAR_VER}" ]] ; then
         if [[ ! -d "${PW_VULKAN_DIR}/dxvk-${DXVK_VAR_VER}" ]] ; then
             print_info "Download and install DXVK v.${DXVK_VAR_VER}"
             if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/dxvk-${DXVK_VAR_VER}/dxvk-${DXVK_VAR_VER}.tar.xz" \
@@ -2206,10 +2213,10 @@ pw_check_and_download_dxvk_and_vkd3d () {
                 yad_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
             fi
         fi
-    done
+    fi
 
-    # Download VKD3D versions
-    for VKD3D_VAR_VER in "${VKD3D_SAREK_VER}" "${VKD3D_OLD_VER}" "${VKD3D_NEW_VER}" ; do
+    # Download VKD3D
+    if [[ -n "${VKD3D_VAR_VER}" ]] ; then
         if [[ ! -d "${PW_VULKAN_DIR}/vkd3d-proton-${VKD3D_VAR_VER}" ]] ; then
             print_info "Download and install VKD3D-PROTON v.${VKD3D_VAR_VER}"
             if try_download "https://github.com/Castro-Fidel/vulkan/releases/download/vkd3d-proton-${VKD3D_VAR_VER}/vkd3d-proton-${VKD3D_VAR_VER}.tar.xz" \
@@ -2236,7 +2243,7 @@ pw_check_and_download_dxvk_and_vkd3d () {
                 yad_error_download && pw_check_and_download_dxvk_and_vkd3d || exit 1
             fi
         fi
-    done
+    fi
 
     return 0
 }
@@ -4044,6 +4051,7 @@ fi
     try_force_link_file "${PHYSX_PATH}/cudart64_65.dll" "${WINEPREFIX}/drive_c/windows/system32/cudart64_65.dll"
 
     # 3D API
+    pw_check_and_download_dxvk_and_vkd3d
     unset CP_VKD3D_FILES CP_DXVK_FILES CP_DGV2_FILES CP_WINE_FILES PATH_TO_DXVK_FILES PATH_TO_VKD3D_FILES CP_GALLIUM_NINE_FILES
     case "${PW_VULKAN_USE}" in
         0)
