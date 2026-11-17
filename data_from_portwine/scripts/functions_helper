@@ -2777,6 +2777,32 @@ pw_check_vulkan () {
     fi
 }
 
+pw_get_wine_gpu_name () {
+    local names_file="${PORT_SCRIPTS_PATH}/gpu_list.csv"
+    [[ -r "$names_file" && -s "$names_file" ]] || return 1
+    awk -F ',' -v vendor="$PW_vendorID" -v device="$PW_deviceID" '
+        function normalize(id) {
+            id = tolower(id)
+            gsub(/[[:space:]{}]/, "", id)
+            sub(/^0x/, "", id)
+            sub(/^0+/, "", id)
+            return id
+        }
+        /^0x[[:xdigit:]]+,0x[[:xdigit:]]+,/ {
+            if (normalize($1) == normalize(vendor) && normalize($2) == normalize(device)) {
+                name = $0
+                sub(/^[^,]*,[^,]*,/, "", name)
+                if (name ~ /^".*"$/) {
+                    name = substr(name, 2, length(name) - 2)
+                    gsub(/""/, "\"", name)
+                }
+                print name
+                exit
+            }
+        }
+    ' "$names_file"
+}
+
 pw_check_vulkan_extensions () {
     if sed -n "/deviceName \+ = $PW_GPU_USE/,/GPU/p" "${PW_TMPFS_PATH}/vulkaninfo.tmp" | grep -w "$1" &>/dev/null
     then return 0
@@ -3864,8 +3890,13 @@ start_portwine () {
     [[ "${PW_VKBASALT_USER_CONF}" == 1 ]] && unset PW_VKBASALT_EFFECTS PW_VKBASALT_FFX_CAS
 
     if [[ $PW_GPU_USE != "disabled" ]] ; then
-        export DXVK_FILTER_DEVICE_NAME="$PW_GPU_USE"
-        export VKD3D_FILTER_DEVICE_NAME="$PW_GPU_USE"
+        local gpu_filter_name
+        if ! gpu_filter_name="$(pw_get_wine_gpu_name)" ; then
+            print_warning "Wine GPU name lookup failed; using the native GPU name for device filters."
+        fi
+        gpu_filter_name="${gpu_filter_name:-$PW_GPU_USE}"
+        [[ -v DXVK_FILTER_DEVICE_NAME ]] || export DXVK_FILTER_DEVICE_NAME="$gpu_filter_name"
+        [[ -v VKD3D_FILTER_DEVICE_NAME ]] || export VKD3D_FILTER_DEVICE_NAME="$gpu_filter_name"
         export MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE="1"
         export MESA_VK_DEVICE_SELECT="$PW_vendorID:$PW_deviceID"
     fi
