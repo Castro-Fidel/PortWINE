@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Author: minergenon
+# type: games
+# name: Rostelecom Games
+# image: rtgames
+# info_en: Launcher for the Rostelecom game library
+# info_ru: Лаунчер для библиотеки игр Ростелеком
+########################################################################
+export PW_PREFIX_NAME="RTGAMES"
+export PW_WINE_USE="WINE_LG_RTG_11-21"
+export LAUNCH_PARAMETERS="/S"
+export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/RostelecomGames.exe"
+export PORTWINE_CREATE_SHORTCUT_NAME="Rostelecom Games"
+
+start_portwine
+if try_download "https://cdn3.igrovoy.rt.ru/public/downloads/launcher/windows/RostelecomGames.exe" "${PW_AUTOINSTALL_EXE}" no_mirror
+then
+    pw_start_progress_bar_install_game "Rostelecom Games."
+    get_and_set_reg_file --add 'Control Panel\Colors' 'ActiveBorder'   'REG_SZ' "19 20 22" "user"
+    get_and_set_reg_file --add 'Control Panel\Colors' 'InactiveBorder' 'REG_SZ' "19 20 22" "user"
+    get_and_set_reg_file --add 'Control Panel\Colors' 'ButtonHilight'  'REG_SZ' "19 20 22" "user"
+    get_and_set_reg_file --add 'Control Panel\Colors' 'ButtonLight'    'REG_SZ' "19 20 22" "user"
+    get_and_set_reg_file --add 'Control Panel\Colors' 'ButtonShadow'   'REG_SZ' "19 20 22" "user"
+    get_and_set_reg_file --add 'Control Panel\Colors' 'ButtonDkShadow' 'REG_SZ' "19 20 22" "user"
+    get_and_set_reg_file --add 'Control Panel\Desktop\WindowMetrics' 'BorderWidth' 'REG_SZ' "5" "user"
+    pw_run "${PW_AUTOINSTALL_EXE}"
+    portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/RostelecomGames/RostelecomGamesLauncher.exe"
+    try_remove_file "${PW_AUTOINSTALL_EXE}"
+    try_remove_file "${portwine_exe}.ppdb"
+    kill_portwine
+    pw_stop_progress_bar
+    portwine_create_shortcut
+fi
+stop_portwine
