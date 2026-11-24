@@ -2097,7 +2097,7 @@ stop_portwine () {
     if ! check_wayland_session \
     && [[ "$(xrandr | sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')" != "$PW_SCREEN_RESOLUTION" ]]
     then
-        xrandr --output "$PW_SCREEN_PRIMARY" --mode "$PW_SCREEN_RESOLUTION"
+        xrandr --output "$PW_SCREEN_PRIMARY" --mode "$PW_SCREEN_RESOLUTION" --rate "$PW_SCREEN_REFRESH_RATE"
     fi
 
     if [[ "${PW_DISABLE_COMPOSITING}" == "1" ]] \
@@ -3021,6 +3021,18 @@ pw_skip_get_info () {
         if [[ -f "${PW_TMPFS_PATH}/xrandr.tmp" ]] ; then
             PW_SCREEN_RESOLUTION="$(<"${PW_TMPFS_PATH}/xrandr.tmp" sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
             PW_SCREEN_PRIMARY="$(grep -e 'primary' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}')"
+            PW_SCREEN_REFRESH_RATE="$(awk '
+                /^[^[:space:]]/ { primary = ($2 == "connected" && $3 == "primary"); next }
+                primary {
+                    for (i = 2; i <= NF; i++) {
+                        if ($i ~ /[*]/) {
+                            sub(/[+*]+$/, "", $i)
+                            print $i
+                            exit
+                        }
+                    }
+                }
+            ' "${PW_TMPFS_PATH}/xrandr.tmp")"
         fi
 
         if [[ $PW_SCREEN_RESOLUTION != *x* ]] ; then
@@ -3033,7 +3045,7 @@ pw_skip_get_info () {
 
         [[ $PW_SCREEN_RESOLUTION != *x* ]] && PW_SCREEN_RESOLUTION="1920x1080"
 
-        export PW_SCREEN_PRIMARY PW_SCREEN_RESOLUTION
+        export PW_SCREEN_PRIMARY PW_SCREEN_RESOLUTION PW_SCREEN_REFRESH_RATE
 
         if [[ -f "${PW_TMPFS_PATH}/locale.tmp" ]] ; then
             GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
@@ -7773,6 +7785,7 @@ portwine_start_debug () {
     fi
     echo "PW_SCREEN_RESOLUTION=$PW_SCREEN_RESOLUTION" >> "$PW_LOG_FILE"
     echo "PW_SCREEN_PRIMARY=$PW_SCREEN_PRIMARY" >> "$PW_LOG_FILE"
+    echo "PW_SCREEN_REFRESH_RATE=$PW_SCREEN_REFRESH_RATE" >> "$PW_LOG_FILE"
     echo "----------------------------------------------" >> "$PW_LOG_FILE"
     echo "Vulkan info device name:" >> "$PW_LOG_FILE"
     grep -E '^GPU|deviceName|driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" >> "$PW_LOG_FILE"
